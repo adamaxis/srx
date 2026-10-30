@@ -2,6 +2,14 @@
 -- attributes/skills, magic, pocket secretary). Each check cites its source: [C ROM] or [srx].
 package.path = "decompilation/gameplay/scripts/?.lua;decompilation/gameplay/scripts/?/init.lua;decompilation/gameplay/parked/?.lua;" .. package.path
 local E = require("enums"); local Route = require("menu")
+local SpellIds = require("data.spells").catalog_order
+local Inventory = require("menu.rules.inventory")
+local function cell(column, row) return { column = column, row = row } end
+local function equipment_item(id, column, row, properties)
+    local item = properties or {}
+    item.id, item.cell = id, cell(column, row)
+    return item
+end
 local P, S, MM = E.Pad, E.MenuScreen, E.MenuMessage
 local fails, n = 0, 0
 local function check(c, msg) n = n + 1; if not c then fails = fails + 1; print("FAIL " .. msg) end end
@@ -15,8 +23,11 @@ local function runner(o)
     local r = { runner_facts = {
             lifecycle = { active = true, downed = false, dead = false },
             clip_distribution_remainder = false,
-        }, clips = 2, rounds = 0, weapon_slot = 0, weapon_code = 3, armor = 0,
-        inventory = zeros(8), phase = zeros(8),
+        }, clips = 2, rounds = 0,
+        equipped_weapon_id = "american_l36", equipped_weapon_cell = cell(0, 0),
+        selected_spell_id = nil, equipped_armor_id = nil,
+        first_aid_continuation = E.RunnerContinuation.IDLE,
+        equipment = {},
         attributes = { body = 0, quickness = 0, strength = 0, charisma = 0,
                        intelligence = 0, willpower = 0 },
         skills = { sorcery = 0, firearms = 0, pistols = 0, smgs = 0,
@@ -34,6 +45,11 @@ local function runner(o)
             else
                 r.runner_facts.lifecycle[k] = v
             end
+        elseif (k == "equipped_weapon_id" or
+                k == "equipped_weapon_cell" or
+                k == "selected_spell_id" or k == "equipped_armor_id") and
+               v == false then
+            r[k] = nil
         else
             r[k] = v
         end
@@ -99,7 +115,8 @@ local function mk(o)
         commit_party = function(p) for k, v in pairs(p) do g.party[k] = v end end,
         set_runner_ammo = function(slot, clips, rounds) local r = g.party[slot]; r.clips, r.rounds = clips, rounds end,
         consume_debug_unlock = function() g.unlock = false end,
-        seed_debug_contacts = function() g.debug_contacts = true end, set_spell_table = function(index, t) g.spell_index = index; g.spells = t end,
+        seed_debug_contacts = function() g.debug_contacts = true end,
+        set_spell_table = function(t) g.spells = t end,
         matrix_world_state = function() return { field = { alarm = 0 } } end, commit_matrix_world_state = function(w) g.world = w end,
         source_random_bound = function(n) g.draws = (g.draws or 0) + 1; return 0 end, matrix_alert_random_bound = function(n) return 0 end,
     }
@@ -121,8 +138,11 @@ local AT = require("menu.screens.attributes").Attributes
 local MR = require("menu.rules.magic")
 local MXr = require("menu.rules.matrix")
 local MatrixWorldEffectModes = require("data.matrix_world_effect_modes")
--- host spell_table(index) shape (game_script_runtime.cpp MenuBinding::spell_table): entry_count + 1-based entries
-local function sp(code, limit) return { code = code, force_limit = limit, availability = 0, difficulty_modifier = 0, base_effect = 0 } end
+-- The host exposes a compact list of semantic spell records.
+local function sp(id, limit)
+    return { id = id, force_limit = limit, availability = 0,
+             difficulty_modifier = 0, base_effect = 0 }
+end
 local function deck(o) o = o or {}; o.deck = true; local r, l, g = mk(o); r:frame(P.A); r:frame(P.DOWN); r:frame(P.DOWN); r:frame(P.A); return r, l, g end
 -- ---- clips (ROM 0x11B58: one-shot, out/menu_sound_sites.txt) ------------------------------------------
 section('clips (ROM 0x11B58: one-shot, ou', function()
@@ -158,8 +178,9 @@ local l2n = #r2b.stack; r2b:frame(P.START); check(st(r2b).message == MM.FUNCTION
 end)
 -- ---- item action ----------------------------------------------------------------------------------------
 section('item action', function()
-local inv = zeros(8); inv[0] = 0x20
-local r3 = mk({ leader = { inventory = inv } }); page(r3, 0); r3:frame(P.A)
+local r3 = mk({ leader = { equipment = {
+    equipment_item("mana_zap_focus", 0, 0),
+} } }); page(r3, 0); r3:frame(P.A)
 check(top(r3) == S.ITEM_ACTION, "item action open")
 r3:frame(P.LEFT); check(st(r3).selector == E.ItemAction.CANCEL, "action wrap")
 r3:frame(P.A); check(top(r3) == S.COMMAND, "cancel pops")
@@ -167,6 +188,37 @@ r3:frame(P.A); r3:frame(P.C); check(top(r3) == S.ITEM_ACTION, "item row: C no-op
 r3:frame(P.START); check(top(r3) == S.COMMAND, "item row: Start exits [C 0x118A4]")
 r3:frame(P.A); r3:frame(P.LEFT); r3:frame(P.B); check(top(r3) == S.COMMAND, "item row: B confirms like A [C 0x1188A]")
 
+end)
+section('inventory uses positioned item records', function()
+    local member = runner()
+    local expected = 1
+    for row = 0, Inventory.ROWS - 1 do
+        for column = 0, Inventory.COLUMNS - 1 do
+            local position = cell(column, row)
+            Inventory.set_cell(member, position,
+                equipment_item("medkit", column, row))
+            local selected = Inventory.selected(member, column, row)
+            check(selected ~= nil and selected.id == "medkit" and
+                  Inventory.same_cell(selected.cell, position),
+                  "inventory cell round-trips at visual position " .. expected)
+            expected = expected + 1
+        end
+    end
+    check(Inventory.free_cell(member) == nil, "full inventory has no free cell")
+    local cleared = cell(1, 2)
+    Inventory.set_cell(member, cleared, nil)
+    local free = Inventory.free_cell(member)
+    check(Inventory.same_cell(free, cleared), "first empty cell uses row-major UI order")
+    check(Inventory.percent(15, 30) == 50 and
+          Inventory.percent(1, 6) == 17 and
+          Inventory.scale(50, 30) == 15 and
+          Inventory.scale(100, 64) == 64 and
+          Inventory.percent(12, 0) == 0,
+          "ammo ratios are ordinary quantities with explicit zero capacity")
+    local totem = equipment_item("gator_totem", 1, 3)
+    check(not Inventory.can_discard(totem) and
+          Inventory.can_discard(equipment_item("gator_totem", 0, 3)),
+          "the fixed totem cell is protected by item semantics")
 end)
 -- ---- attributes ------------------------------------------------------------------------------------------
 section('attributes', function()
@@ -209,13 +261,18 @@ end)
 -- ---- magic -----------------------------------------------------------------------------------------------
 section('magic', function()
 local r5 = mk(); page(r5, E.MenuPage.MAGIC); r5:frame(P.A); check(top(r5) == S.MAGICAL_DEFENSE, "non-caster -> defense [srx]")
-local spells = { entry_count = 3, entries = { sp(0, 4), sp(1, 2), sp(2, 6) } }
-local r6, _, g6 = mk({ leader = { character_class = E.RunnerClass.MAGE, magic = 3, weapon_slot = -1, weapon_code = 0 }, spells = spells })
+local spells = { sp("flame_dart", 4), sp("flame_bolt", 2),
+                 sp("hellblast", 6) }
+local r6, _, g6 = mk({ leader = { character_class = E.RunnerClass.MAGE, magic = 3, equipped_weapon_id = false, equipped_weapon_cell = false, selected_spell_id = false }, spells = spells })
 page(r6, E.MenuPage.MAGIC); r6:frame(P.A); check(top(r6) == S.MAGIC, "caster spell grid")
 local magic_view = st(r6).magic_view
-check(magic_view.title_text_x == 128 and magic_view.spell_codes[1] == 0 and
-      magic_view.spell_codes[2] == 1 and magic_view.spell_codes[3] == 2 and
-      magic_view.spell_codes[4] == nil and
+check(magic_view.title_text_x == 128 and
+      magic_view.spell_ids[1] == "flame_dart" and
+      magic_view.spell_ids[2] == "flame_bolt" and
+      magic_view.spell_ids[3] == "hellblast" and
+      magic_view.spell_ids[4] == nil and
+      magic_view.spell_codes == nil and st(r6).table.entries == nil and
+      st(r6).table[1].code == nil and
       magic_view.spell_grid_icon_height == 16 and
       magic_view.cursor_offset_x == 0 and magic_view.cursor_offset_y == 0,
       "Lua publishes spell grid/title layout; e6 9060 shows no third icon row [C]")
@@ -228,15 +285,11 @@ r6:frame(P.A); check(top(r6) == S.MAGIC_FORCE and st(r6).force == 6, "force star
 r6:frame(P.RIGHT); check(st(r6).force == 6, "force clamp hi"); r6:frame(P.LEFT); check(st(r6).force == 5, "force -1")
 r6:frame(P.DOWN); check(top(r6) == S.MAGIC_POSTURE, "down -> posture"); r6:frame(P.UP); check(top(r6) == S.MAGIC_FORCE, "up -> force")
 r6:frame(P.DOWN); r6:frame(P.A)
-check(top(r6) == S.MAGIC and g6.party[0].weapon_code == 3 and g6.party[0].force == 5 and g6.party[0].weapon_slot == -1, "spell equipped")
+check(top(r6) == S.MAGIC and g6.party[0].selected_spell_id == "hellblast" and g6.party[0].force == 5 and g6.party[0].equipped_weapon_id == nil, "spell equipped")
 
-local offset_spells = { entry_count = 14, entries = {
-    sp(0, 1), sp(1, 1), sp(2, 1), sp(3, 1),
-    sp(4, 1), sp(5, 1), sp(6, 1), sp(7, 1),
-    sp(8, 1), sp(9, 1), sp(10, 1), sp(11, 1),
-    sp(12, 1), sp(13, 1),
-} }
-local r_cursor = mk({ leader = { character_class = E.RunnerClass.MAGE, magic = 3, weapon_slot = -1, weapon_code = 0 }, spells = offset_spells })
+local offset_spells = {}
+for _, id in ipairs(SpellIds) do offset_spells[#offset_spells + 1] = sp(id, 1) end
+local r_cursor = mk({ leader = { character_class = E.RunnerClass.MAGE, magic = 3, equipped_weapon_id = false, equipped_weapon_cell = false, selected_spell_id = false }, spells = offset_spells })
 page(r_cursor, E.MenuPage.MAGIC); r_cursor:frame(P.A)
 r_cursor:frame(P.RIGHT)
 r_cursor:frame(P.DOWN)
@@ -249,7 +302,7 @@ check(st(r_cursor).sel.column == 1 and st(r_cursor).sel.row == 1 and
 -- 8952, then phase 0 at 9060, 1 at 9265 and 1 at 9400 [C]. The live host
 -- skips menu heartbeats during the 12 blank frames, so heartbeat n after A
 -- is e6 frame 8952 + n.
-local r_phase = mk({ leader = { character_class = E.RunnerClass.MAGE, magic = 3, weapon_slot = -1, weapon_code = 0 }, spells = spells })
+local r_phase = mk({ leader = { character_class = E.RunnerClass.MAGE, magic = 3, equipped_weapon_id = false, equipped_weapon_cell = false, selected_spell_id = false }, spells = spells })
 page(r_phase, E.MenuPage.MAGIC); r_phase:frame(P.A)
 check(st(r_phase).magic_view.cursor_phase == 1 and st(r_phase).cursor_timer == 5,
       "Magic entry leaves FDFE timer/phase 5/1 (e6 8952) [C]")
@@ -266,7 +319,7 @@ check(st(r_phase).magic_view.cursor_phase == 1, "Magic cursor phase at e6 9400 [
 -- e6 B 9060 -> Set Force & Posture, A 9260 -> back: FDFE ticks stay on
 -- 9043 + 7k across both transitions, so the clock never resets [C emulator].
 local function phase_trace(with_force)
-    local r = mk({ leader = { character_class = E.RunnerClass.MAGE, magic = 3, weapon_slot = -1, weapon_code = 0 }, spells = spells })
+    local r = mk({ leader = { character_class = E.RunnerClass.MAGE, magic = 3, equipped_weapon_id = false, equipped_weapon_cell = false, selected_spell_id = false }, spells = spells })
     page(r, E.MenuPage.MAGIC); r:frame(P.A)
     local trace = {}
     for f = 1, 460 do
@@ -517,7 +570,7 @@ check(gd.party[0].runner_facts.lifecycle.active and
       not gd.party[0].runner_facts.lifecycle.downed and
       not gd.party[0].runner_facts.lifecycle.dead and
       gd.party[0].physical == 10, "heal all clears downed/dead facts")
-rd:frame(P.UP); rd:frame(P.A); rd:frame(P.DOWN); rd:frame(P.A); check(gd.spells.entry_count == 14 and gd.spells.entries[1].code == 13 and gd.spells.entries[14].code == 0 and gd.spells.entries[1].force_limit == 4, "spells 13..0 force 4 [C 0x59B34]")
+rd:frame(P.UP); rd:frame(P.A); rd:frame(P.DOWN); rd:frame(P.A); check(#gd.spells == 14 and gd.spells[1].id == "barrier" and gd.spells[14].id == "flame_dart" and gd.spells[1].force_limit == 4, "spells 13..0 force 4 [C 0x59B34]")
 rd:frame(P.UP); rd:frame(P.A); for _ = 1, 3 do rd:frame(P.DOWN) end; rd:frame(P.A); check(top(rd) == S.DEBUG_PICK_SYSTEM, "pick system")
 rd:frame(P.UP); check(st(rd).system == 0, "pick clamp lo"); for _ = 1, 30 do rd:frame(P.DOWN) end; check(st(rd).system == 0x18, "pick clamp hi")
 -- 0x59B10 writes FFFBBC and jumps to 0xE47A; its 20-VBlank entry opens 0x181F8.
@@ -535,28 +588,35 @@ require("menu.matrix_session").finish(nil)   -- the session is module-wide; do n
 end)
 -- automatic-use item: message only, no effect [C 0x121C0]
 section('automatic-use item: message only, no', function()
-local inv2 = zeros(8); inv2[0] = 0x19
-local ra = mk({ leader = { inventory = inv2 } }); page(ra, 0); ra:frame(P.A); ra:frame(P.A)
+local ra = mk({ leader = { equipment = {
+    equipment_item("flame_dart_focus", 0, 0),
+} } }); page(ra, 0); ra:frame(P.A); ra:frame(P.A)
 check(top(ra) == S.MESSAGE and st(ra).message == MM.AUTOMATIC_USE and ra.stack[1].state and true, "auto-use message")
 ra:frame(P.B); check(top(ra) == S.COMMAND, "auto-use returns")
 end)
 -- magic value maths (rules/magic.lua) [C ROM 0x55F02/0x55F20/0x10660/0x1047E]
 section('magic value maths (rules/magic.lua) [C ROM 0x55F02/0x55ED6/0x1055E/0x10660/0x1047E]', function()
 local mage = runner({ character_class = E.RunnerClass.MAGE, magic = 6, posture = 2 }); mage.skills.sorcery = 5; mage.attributes.willpower = 4; mage.attributes.body = 3
-mage.inventory[6] = MR.ITEM.POWER_FOCUS; mage.phase[6] = 3
+mage.equipment = { equipment_item(MR.ITEM.POWER_FOCUS, 0, 3,
+                                   { sorcery_bonus = 3 }) }
 check(MR.item18_skill(mage) == 8, "0x55F02: sorcery + first power focus phase")
-mage.inventory[7] = MR.ITEM.POWER_FOCUS; mage.phase[7] = 9; check(MR.item18_skill(mage) == 8, "power focus scan is slots 6..0 (slot 7 = totem)")
-mage.inventory[7] = 0
+mage.equipment[#mage.equipment + 1] = equipment_item(
+    MR.ITEM.POWER_FOCUS, 1, 3, { sorcery_bonus = 9 })
+check(MR.item18_skill(mage) == 8, "power focus scan ignores the totem position")
+mage.equipment[#mage.equipment] = nil
 local a, b = MR.split(8, 2); check(a == 4 and b == 4, "posture 2 -> 50%"); a = MR.split(7, 1); check(a == 1, "7*25//100 = 1")
 local cp = runner(); cp.attributes.quickness = 3; cp.attributes.intelligence = 2; cp.attributes.willpower = 4
-check(MR.combat_pool(cp) == 4, "0x55ED6: (Q+I+W)>>1"); cp.inventory[0] = MR.ITEM.COMBAT_SENSE; cp.phase[0] = 2
-check(MR.combat_pool(cp) == 6, "+ first Combat Sense phase")
-local tbl = { entry_count = 12, entries = {} }; for k = 0, 11 do tbl.entries[k + 1] = sp(k, 6) end
+check(MR.combat_pool(cp) == 4, "0x55ED6: (Q+I+W)>>1"); cp.equipment[1] = equipment_item(MR.ITEM.COMBAT_SENSE, 0, 0, { command_bonus = 2 })
+check(MR.combat_pool(cp) == 6, "+ Combat Sense bonus")
+local tbl = {}
+for index = 1, 12 do tbl[index] = sp(SpellIds[index], 6) end
 check(MR.success_value(mage, tbl, 0, 0, 3) == 4 + 3, "success = min(posture remainder, magic) + force")
-mage.inventory[7] = MR.ITEM.GATOR; check(MR.success_value(mage, tbl, 0, 0, 3) == 9, "Gator +2 on category-1 spell")
-check(MR.success_value(mage, tbl, 1, 5, 3) == 7, "metric index row*6+column = 11 (category 2): Gator +0")
-mage.inventory[7] = MR.ITEM.RAT; mage.inventory[2] = MR.ITEM.SPELL_FOCUS_BASE + 0; mage.phase[2] = 2
-check(MR.success_value(mage, tbl, 0, 0, 3) == 4 + 3 + 2 - 1, "spell focus +2, Rat -1 on category 1")
+mage.equipment[#mage.equipment + 1] = equipment_item(MR.ITEM.GATOR, 1, 3); check(MR.success_value(mage, tbl, 0, 0, 3) == 9, "Gator +2 on Flame Dart")
+check(MR.success_value(mage, tbl, 1, 5, 3) == 7, "metric list row*6+column selects Heal Wounds")
+mage.equipment[#mage.equipment] = equipment_item(MR.ITEM.RAT, 1, 3)
+mage.equipment[#mage.equipment + 1] = equipment_item(
+    MR.ITEM.SPELL_FOCUS.flame_dart, 0, 1, { spell_action_bonus = 2 })
+check(MR.success_value(mage, tbl, 0, 0, 3) == 4 + 3 + 2 - 1, "Flame Dart focus +2, Rat -1")
 -- effect: tn = ceil(f/2) + diff (min 2); pct = (7-tn)*20 (10 at tn>=7); rolls = posture remainder + Willpower
 check(MR.effect_value(mage, { difficulty_modifier = 3, base_effect = 6 }, 6) == 5, "effect: tn 6 -> 8*20 = 1.6 -> 2 -> //2 = 1")
 check(MR.effect_value(mage, { difficulty_modifier = 0, base_effect = 1 }, 1) == -3, "effect: tn floor 2 -> 8*100 -> 8 -> //2 = 4")
@@ -566,8 +626,8 @@ local df = MR.defense({ [0] = mage, [1] = runner() }, { [0] = true, [1] = true }
 check(df.pool == 2 and df.physical == 5 and df.mana == 6, "defense pool 8//4 = 2, non-casters skipped")
 local m7 = runner({ character_class = E.RunnerClass.SHAMAN }); m7.skills.sorcery = 7
 check(MR.defense({ [0] = m7 }, { [0] = true }, m7).pool == 2, "7/4 rem 3 -> +1")
-local pv = MR.presentation(mage, { [0] = mage }, { [0] = true }, tbl, tbl.entries[3], 0, 2, 4)
-check(pv.table_entry_index == 2 and pv.spell_code == 2 and pv.maximum_force == 6 and pv.force == 4, "presentation view fields")
+local pv = MR.presentation(mage, { [0] = mage }, { [0] = true }, tbl, tbl[3], 0, 2, 4)
+check(pv.table_entry_index == 2 and pv.spell_id == "hellblast" and pv.maximum_force == 6 and pv.force == 4, "presentation view fields")
 check(MR.can_cast(runner({ stun = 1 })) == false and MR.can_cast(runner()), "stun 1 cannot cast")
 end)
 -- species max table equals ROM 0xC22A6 [C]
@@ -578,13 +638,28 @@ do local d = ROM; if d then
     local fields = { "body", "quickness", "strength", "charisma", "intelligence", "willpower" }
     local ok = true; for sp = 0, 4 do for i = 1, 6 do if AT.MAX[races[sp + 1]][fields[i]] ~= d:byte(0xC22A6 + sp * 6 + i) then ok = false end end end
     check(ok, "species max table == ROM 0xC22A6")
-    local okc = true; for i = 0, 13 do local b = d:byte(0xC8AE0 + i + 1); if b >= 128 then b = b - 256 end; if MR.CATEGORY[i] ~= b then okc = false end end
-    check(okc, "totem category table == ROM 0xC8AE0")
-    local okt = true; for code = 0x29, 0x2B do for c = 0, 2 do local o = 0xD4540 + (code - 1) * 0x30 + 0x22 + c * 2 + 1
-        local w = d:byte(o) * 256 + d:byte(o + 1); if w >= 0x8000 then w = w - 0x10000 end; if MR.TOTEM_MOD[code][c] ~= w then okt = false end end end
-    check(okt, "totem modifiers == ROM")
-    local oks = true; for i = 0, 13 do local o = 0xD4EA0 + i * 0x30 + 1; if MR.SPELL[i][1] ~= d:byte(o + 0x24) or MR.SPELL[i][2] ~= d:byte(o + 0x26) then oks = false end end
-    check(oks, "spell drain level/mod == ROM 0xD4EA0") end end
+    local items = require("data.items").by_id
+    local order = require("data.spells").catalog_order
+    local totem_ids = { "rat_totem", "gator_totem", "bear_totem" }
+    local totem_codes = { 0x29, 0x2A, 0x2B }
+    local okc, okt = true, true
+    for index, spell_id in ipairs(order) do
+        local category = d:byte(0xC8AE0 + index)
+        if category >= 128 then category = category - 256 end
+        for totem_index, item_id in ipairs(totem_ids) do
+            local item = items[item_id]
+            local modifier = item.totem_spell_modifiers[spell_id]
+            local expected
+            if category >= 0 then
+                local offset = 0xD4540 + (totem_codes[totem_index] - 1) * 0x30 + 0x22 + category * 2
+                expected = d:byte(offset + 1) * 256 + d:byte(offset + 2)
+                if expected >= 0x8000 then expected = expected - 0x10000 end
+            end
+            if modifier ~= expected then okt = false end
+        end
+    end
+    check(okt, "named totem modifiers match their spell and item rows")
+end end
 end)
 -- deck rules + sub-screens (0x19238, 0xE2DFE) [C]
 section('deck rules + sub-screens (0x19238, 0x', function()

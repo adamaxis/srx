@@ -1,6 +1,7 @@
 -- rules/clips.lua: Clips page rules 0x11B58 (srx clips_menu_conversion.cpp) [C unless marked]
 local E = require("enums")
 local C = E.ClipsCommand
+local Items = require("items").by_id
 local M = { RELOAD_ROUNDS = 0x26 }          -- one clip = 0x26 rounds (same constant as AiTuning.RELOAD_ROUNDS) [C]
 
 function M.cycle(cur, step)
@@ -19,7 +20,11 @@ function M.gate(r, cmd)
         r.clips = 0
         return E.MenuMessage.FUNCTION_ABORTED, cleared
     end
-    if cmd == C.RELOAD and (r.weapon_slot < 0 or r.weapon_code >= 0x0D) then return E.MenuMessage.ITEM_NO_CLIPS end
+    local weapon = r.equipped_weapon_id and Items[r.equipped_weapon_id]
+    if cmd == C.RELOAD and
+       (weapon == nil or weapon.kind ~= "firearm") then
+        return E.MenuMessage.ITEM_NO_CLIPS
+    end
 end
 function M.reload(r, cap)
     r.clips = r.clips - 1

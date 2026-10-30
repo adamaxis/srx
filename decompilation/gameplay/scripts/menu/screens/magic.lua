@@ -77,9 +77,9 @@ local function publish_layout(values, st, table_)
         LAYOUT.posture_bar_x, LAYOUT.posture_bar_y
     values.posture_text_x, values.posture_text_y =
         LAYOUT.posture_text_x, LAYOUT.posture_text_y
-    values.spell_codes = {}
-    for index = 1, math.min(table_.entry_count, 14) do
-        values.spell_codes[index] = table_.entries[index].code
+    values.spell_ids = {}
+    for index = 1, math.min(#table_, 14) do
+        values.spell_ids[index] = table_[index].id
     end
     values.cursor_phase = st.cursor_phase
     values.cursor_sat_phase = st.cursor_sat_phase or st.cursor_phase
@@ -128,11 +128,11 @@ end
 
 function M.selected(table_, sel)
     local index = sel.row * 7 + sel.column
-    return table_.entries[index + 1], index
+    return table_[index + 1], index
 end
 
 function M.initial_force(record, entry)
-    if record.weapon_slot < 0 and record.weapon_code == entry.code + 1 then
+    if record.selected_spell_id == entry.id then
         return record.force
     end
     return entry.force_limit
@@ -167,11 +167,11 @@ function M.enter(st, ctx)
         }
     end
 
-    st.table = ctx.game.spell_table(record.magic_table_index)
-    if not st.table or st.table.entry_count == 0 then
+    st.table = ctx.game.spell_table()
+    if not st.table or #st.table == 0 then
         return { transition = T.POP }
     end
-    st.last_entry = st.table.entry_count - 1
+    st.last_entry = #st.table - 1
     st.cursor_timer = CURSOR_ENTRY_TIMER
     st.cursor_phase = CURSOR_ENTRY_PHASE
     st.cursor_sat_phase = CURSOR_ENTRY_PHASE
@@ -222,8 +222,8 @@ function M.input(st, events, ctx)
         -- is open [C emulator]. The port's HUD reads the live record, so the
         -- write is applied in child_returned, before any other reader.
         st.pending_spell = {
-            code = entry.code + 1,
-            rounds = (record.weapon_slot >= 0 and record.weapon_code ~= 0)
+            id = entry.id,
+            rounds = record.equipped_weapon_id ~= nil
                 and force or nil,
         }
         return {
@@ -258,9 +258,10 @@ function M.child_returned(st, child, result, ctx)
     st.pending_spell = nil
     if pending then
         if pending.rounds then record.rounds = pending.rounds end
-        record.weapon_code = pending.code
+        record.selected_spell_id = pending.id
     end
-    record.weapon_slot = -1
+    record.equipped_weapon_id = nil
+    record.equipped_weapon_cell = nil
     record.force = result.force or record.force
     ctx.game.commit_party(party)
     st.force = record.force

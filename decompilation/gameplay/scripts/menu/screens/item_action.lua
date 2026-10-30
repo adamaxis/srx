@@ -23,7 +23,7 @@ local FIRST_AID_FOOTERS = {
 }
 
 local function action_footer(selector, sel)
-    local labels = sel and Inv.classify(sel.code, true) == E.ItemBranch.FIRST_AID
+    local labels = sel and Inv.classify(sel, true) == E.ItemBranch.FIRST_AID
         and FIRST_AID_FOOTERS or ACTION_FOOTERS
     return labels[selector] or ""
 end
@@ -71,15 +71,18 @@ function M.input(st, events, ctx)
     if not sel or st.selector == A.CANCEL then return { transition = T.POP } end
     ctx.sound(S.SELECT)
     if st.selector == A.EQUIP_OR_USE then
-        local br = Inv.classify(sel.code, true)
+        local br = Inv.classify(sel, true)
         if br == E.ItemBranch.FIRST_AID then return { transition = T.REPLACE, screen = E.MenuScreen.FIRST_AID, args = { sel = sel } } end
         if br == E.ItemBranch.AUTOMATIC_USE then
             -- ROM 0x12168: codes 0x13/0x14/0x16/0x18..0x2B -> 0x121C0 prints "This item is automatically used." (0xD202F),
             -- waits 0xD94 and returns. The menu applies NO effect: these items act passively wherever their code is read [C]
             return { transition = T.REPLACE, screen = E.MenuScreen.MESSAGE, args = { message = E.MenuMessage.AUTOMATIC_USE, data = { sel = sel } } }
         end
-        local cap = function(code) return ctx.game.magazine_capacity(code) end
-        local m = Inv.toggle_equipment(r, sel, cap(r.weapon_code), cap(sel.code))
+        local cap = function(item_id)
+            return ctx.game.magazine_capacity(item_id)
+        end
+        local m = Inv.toggle_equipment(
+            r, sel, cap(r.equipped_weapon_id), cap(sel.id))
         if m ~= "invalid" and m ~= "rejected" then
             ctx.game.commit_party(party)
             ctx.redraw(DETAIL)
@@ -91,7 +94,7 @@ function M.input(st, events, ctx)
         return { transition = T.REPLACE, screen = E.MenuScreen.DISCARD_CONFIRM, args = { sel = sel } }
     end
     -- TRADE
-    if not Inv.can_trade(sel.code) then return { transition = T.REPLACE, screen = E.MenuScreen.MESSAGE, args = { message = E.MenuMessage.CANNOT_TRADE, data = { sel = sel } } } end
+    if not Inv.can_trade(sel) then return { transition = T.REPLACE, screen = E.MenuScreen.MESSAGE, args = { message = E.MenuMessage.CANNOT_TRADE, data = { sel = sel } } } end
     local active = ctx.game.slot_active_set()
     local src = ctx.game.active_slot()
     local rec = Inv.next_recipient(active, src, src)
@@ -122,8 +125,8 @@ end
 local Trade = { window = E.WindowPlane.SIDEBAR }
 local function pick(ctx, st, slot)
     st.recipient = slot
-    st.dst_slot = Inv.free_slot(ctx.game.party()[slot])
-    st.full = st.dst_slot == nil
+    st.dst_cell = Inv.free_cell(ctx.game.party()[slot])
+    st.full = st.dst_cell == nil
     st.yes = false
 end
 function Trade.new(a) return { sel = a.sel, source = a.source, recipient = a.recipient } end
@@ -139,7 +142,7 @@ function Trade.input(st, events, ctx)
         pick(ctx, st, nxt); ctx.redraw(R.SUBMENU); return
     end
     local party = ctx.game.party()
-    if Inv.transfer(party[st.source], st.sel, party[st.recipient], st.dst_slot) then
+    if Inv.transfer(party[st.source], st.sel, party[st.recipient], st.dst_cell) then
         ctx.game.commit_party(party)
         ctx.redraw(DETAIL)
     end
@@ -164,7 +167,7 @@ function FirstAid.input(st, events, ctx)
     if st.row >= #st.targets then return { transition = T.POP } end            -- Cancel row
     local party = ctx.game.party()
     local target_slot = st.targets[st.row + 1]
-    local msg = FA.use(active_member(party, ctx), st.sel.slot, party[target_slot],
+    local msg = FA.use(active_member(party, ctx), st.sel, party[target_slot],
                        function(n, tn) return ctx.game.roll_successes(n, tn) end)
     if not msg then return { transition = T.POP } end
     if msg ~= E.MenuMessage.NOT_INJURED then

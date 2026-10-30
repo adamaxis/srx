@@ -140,12 +140,7 @@ void FieldSceneRuntime::synchronize_command_overview_magic_from_route(
         menu_route_magic_physical_defense_;
     command_overview_magic_mana_defense_ = menu_route_magic_mana_defense_;
 
-    if (view.spell_code < 0 || view.spell_code > 0xFF) {
-        command_overview_magic_selected_spell_.reset();
-        return;
-    }
-    const auto* spell = find_us_magic_spell(
-        static_cast<std::uint8_t>(view.spell_code));
+    const auto* spell = find_us_magic_spell(view.spell_id);
     if (spell == nullptr) {
         command_overview_magic_selected_spell_.reset();
         source_boundary("field.command_overview.magic.lua_spell_missing");
@@ -154,7 +149,7 @@ void FieldSceneRuntime::synchronize_command_overview_magic_from_route(
     command_overview_magic_selected_spell_ = MagicSpellSelection{
         static_cast<std::uint16_t>(std::clamp(
             view.table_entry_index, 0, 0xFFFF)),
-        static_cast<std::uint8_t>(view.spell_code),
+        spell->spell_code,
         static_cast<std::uint8_t>(std::clamp(view.maximum_force, 0, 0xFF)),
         spell->availability_byte,
         spell->availability_byte >= 0

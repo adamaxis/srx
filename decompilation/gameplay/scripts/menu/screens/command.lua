@@ -2,6 +2,7 @@
 -- State mirrors the ROM bytes: page = FFF0D0, row = FFF0D1, posture_gate = FFF115, panel_dirty = FFF112.
 local E = require("enums")
 local Inv = require("menu.rules.inventory")
+local Items = require("items").by_id
 local P, Page, R, T, S = E.Pad, E.MenuPage, E.MenuRegion, E.MenuTransition, E.MenuSound
 
 local M = { window = E.WindowPlane.SIDEBAR }   -- [C] 0x10D30 never writes VDP reg 0x11 (docs/09 s11)
@@ -27,22 +28,23 @@ end
 
 local function leader(ctx) return ctx.game.party()[ctx.game.active_slot()] end
 
-local function picture_bank(code)
-    if not code or code == E.ItemId.NONE then return nil end
-    return code < E.FIRST_NON_WEAPON and "weapon" or "non_weapon"
+local function picture_bank(item_id)
+    local item = item_id and Items[item_id]
+    if not item then return nil end
+    return item.kind == "firearm" and "weapon" or "non_weapon"
 end
 
-local function mark_picture_bank(st, code)
-    local bank = picture_bank(code)
+local function mark_picture_bank(st, item_id)
+    local bank = picture_bank(item_id)
     if bank then st.inventory_picture_bank = bank end
 end
 
-local function current_picture_code(st, ctx)
+local function current_picture_item_id(st, ctx)
     if st.page < Page.CLIPS then
         local selected = Inv.selected(leader(ctx), st.page, st.row)
-        return selected and selected.code or nil
+        return selected and selected.id or nil
     end
-    return leader(ctx).weapon_code
+    return leader(ctx).equipped_weapon_id
 end
 
 -- 0x10D36/0x10D40: btst #6 / #4 on leader +0x10 (DEAD / DOWN), then 0x391A [C].
@@ -108,7 +110,7 @@ local function build(st, ctx, full, black_frames, reveal_line, reveal, lead)
     ctx.redraw(M.REFRESH)
     -- 0x12A54 compares FFF100 with the selected picture bank and calls
     -- 0x1107E to upload only when the bank changes.
-    mark_picture_bank(st, current_picture_code(st, ctx))
+    mark_picture_bank(st, current_picture_item_id(st, ctx))
 end
 
 function M.enter(st, ctx) build(st, ctx, true, BLANK_OPEN, BLANK_REVEAL_LINE, OPEN.reveal, OPEN.lead) end
@@ -116,7 +118,7 @@ function M.enter(st, ctx) build(st, ctx, true, BLANK_OPEN, BLANK_REVEAL_LINE, OP
 -- 0x11592: inventory cursor sprite at (page*0x28, row*0x18) + item detail [C]
 local function inventory_cursor(st, ctx)
     ctx.redraw(R.INVENTORY_CURSOR | R.ITEM_PICTURE | R.ITEM_HEADER)
-    mark_picture_bank(st, current_picture_code(st, ctx))
+    mark_picture_bank(st, current_picture_item_id(st, ctx))
 end
 
 -- 0x114A0 [C]
@@ -157,9 +159,11 @@ local function update_inventory_ammo_count(st, ctx)
     st.inventory_ammo_count = nil
     local record = leader(ctx)
     local selected = selected_inventory_item(st, ctx)
-    if selected and selected.code < E.ItemId.FRAG_GRENADE and
-       selected.slot == record.weapon_slot and
-       selected.code == record.weapon_code then
+    if selected and record.equipped_weapon_id and
+       Items[record.equipped_weapon_id] and
+       Items[record.equipped_weapon_id].kind == "firearm" and
+       Inv.same_cell(selected.cell, record.equipped_weapon_cell) and
+       selected.id == record.equipped_weapon_id then
         st.inventory_ammo_count = record.rounds
     end
 end
@@ -171,9 +175,9 @@ local function finish_move(st, old_page, old_row, previous_picture_bank, ctx)
         Inv.selected(leader(ctx), old_page, old_row) or nil
     local selected = moved_inventory_item and selected_inventory_item(st, ctx) or nil
     if previous and selected then
-        local next_picture_bank = picture_bank(selected.code)
+        local next_picture_bank = picture_bank(selected.id)
         local loaded_picture_bank = previous_picture_bank or
-            picture_bank(previous.code)
+            picture_bank(previous.id)
         if loaded_picture_bank == next_picture_bank then
             st.inventory_item_hold_frames = 0
             st.inventory_detail_pending = false
@@ -185,7 +189,7 @@ local function finish_move(st, old_page, old_row, previous_picture_bank, ctx)
             st.inventory_cursor_hidden = true
             ctx.sound(S.MOVE)
             ctx.redraw(M.REFRESH)
-            mark_picture_bank(st, selected.code)
+            mark_picture_bank(st, selected.id)
         else
             st.inventory_item_hold_frames =
                 PICTURE_BANK_HOLD_FRAMES[next_picture_bank]
@@ -194,7 +198,7 @@ local function finish_move(st, old_page, old_row, previous_picture_bank, ctx)
             st.inventory_cursor_hidden_frames = 0
             st.inventory_cursor_hidden = true
             ctx.redraw(M.REFRESH)
-            mark_picture_bank(st, selected.code)
+            mark_picture_bank(st, selected.id)
         end
     else
         st.inventory_item_hold_frames = 0
@@ -208,7 +212,7 @@ local function finish_move(st, old_page, old_row, previous_picture_bank, ctx)
             st.inventory_cursor_hidden_frames > 0
         ctx.sound(S.MOVE)
         ctx.redraw(M.REFRESH)
-        mark_picture_bank(st, current_picture_code(st, ctx))
+        mark_picture_bank(st, current_picture_item_id(st, ctx))
     end
     update_inventory_ammo_count(st, ctx)
 end

@@ -14,7 +14,9 @@ local AFTER = R.SIDEBAR_SLOT | R.COMBAT_BARS
 local CONFIRM = P.A | P.B | P.C
 
 local function active(ctx) return ctx.game.party()[ctx.game.active_slot()] end
-local function cap(ctx) return ctx.game.magazine_capacity(active(ctx).weapon_code) end
+local function cap(ctx)
+    return ctx.game.magazine_capacity(active(ctx).equipped_weapon_id)
+end
 local function commit(ctx, slot, record)
     ctx.game.set_runner_ammo(slot, record.clips, record.rounds)
 end

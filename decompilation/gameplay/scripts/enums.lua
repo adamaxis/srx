@@ -90,7 +90,7 @@ E.FieldAlarmRomLayout = {
     LAST_LIST_SCENE = 43, -- raw 0x2B: last profile list scene [C; extractor only]
     SCENE_21_REINFORCEMENT_LIST = 0x1D7460, -- raw 0x1D7460: scene 21 effect list [C; extractor/test fixture only]
 }
-E.StateFn   = { IDLE = 0xB45C, WALK = 0xB574, PROJECTILE = 0xAC4E }                 -- +0x3A handlers [C]
+E.RunnerContinuation = { IDLE = "idle" } -- first-aid return state; host maps it to the native continuation [C]
 E.CombatPhase = { NONE = 0, ATTACK_ANIM = 1, APPROACH = 2, HOLD = 3 }               -- FFDFE0 [C]
 
 -- Shared 0xABFC / 0xD7EA delay calculation. D0=0 is unchanged, D0=2 doubles,

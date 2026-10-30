@@ -1,6 +1,8 @@
 -- lua5.4 decompilation/gameplay/tests_lua/menu_tests.lua (run from the repository root)
 package.path = "decompilation/gameplay/scripts/?.lua;decompilation/gameplay/scripts/?/init.lua;" .. package.path
 local E = require("enums"); local Route = require("menu")
+local Items = require("items").by_id
+local Inventory = require("menu.rules.inventory")
 local P, S, T, Pg = E.Pad, E.MenuScreen, E.MenuTransition, E.MenuPage
 local fails, n = 0, 0
 local function check(c, msg) n = n + 1; if not c then fails = fails + 1; print("FAIL " .. msg) end end
@@ -51,6 +53,10 @@ local function mk(o)
         leader_posture = function() return g.posture end, set_leader_posture = function(v) g.posture = v end,
         leader_class = function() return g.character_class end,
         party = function() return g.party end, active_slot = function() return 0 end,
+        magazine_capacity = function(item_id)
+            local item = item_id and Items[item_id]
+            return item and item.weapon and item.weapon.magazine_capacity or 0
+        end,
         pocket_extra_row = function() return false end, secretary_effect_tick = function() end,
  spell_table = function() return { entries = {} } end,
         -- sr-refactor game API (record copies are committed back explicitly)
@@ -70,9 +76,23 @@ local function mk(o)
     skills = { sorcery = 0, firearms = 0, pistols = 0, smgs = 0,
                shotguns = 0, melee_combat = 0, throwing = 0, computer = 0,
                biotech = 0, electronics = 0, reputation = 0, negotiation = 0 },
-    inventory = { [0] = 0, 0, 0, 0, 0, 0, 0, 0 },
-    phase = { [0] = 0, 0, 0, 0, 0, 0, 0, 0 } } }
-    for slot, code in pairs(o.items or {}) do g.party[0].inventory[slot] = code end
+    equipment = {}, selected_spell_id = nil,
+    equipped_weapon_id = nil, equipped_weapon_cell = nil,
+    equipped_armor_id = nil } }
+    for source_position, item_id in pairs(o.items or {}) do
+        g.party[0].equipment[#g.party[0].equipment + 1] = {
+            id = item_id,
+            cell = Inventory.cell(source_position % 2,
+                                  source_position // 2),
+        }
+    end
+    table.sort(g.party[0].equipment,
+               function(left, right)
+                   if left.cell.row ~= right.cell.row then
+                       return left.cell.row < right.cell.row
+                   end
+                   return left.cell.column < right.cell.column
+               end)
     if o.inc then g.party[0].runner_facts.lifecycle.downed = true end
     local r = Route.new(host, game); r:open(S.COMMAND); return r, log, g
 end
@@ -120,13 +140,13 @@ r:frame(P.LEFT); check(st(r).page == 6, "wrap down")
 -- measured per-picture delays to the native menu route.
 do
     local held, held_log, held_game = mk({ items = {
-        [0] = E.ItemId.MODEL_101T,
-        [1] = E.ItemId.ARMOR_CLOTHING,
-        [2] = E.ItemId.FETISH,
+        [0] = "model_101t",
+        [1] = "armor_clothing",
+        [2] = "fetish",
     } })
     local runner = held_game.party[0]
-    runner.weapon_slot, runner.weapon_code, runner.rounds = 0,
-        E.ItemId.MODEL_101T, 12
+    runner.equipped_weapon_cell, runner.equipped_weapon_id, runner.rounds =
+        Inventory.cell(0, 0), "model_101t", 12
     clear(held_log)
     held:frame(P.RIGHT)
     check(st(held).page == 0 and st(held).inventory_cursor_hidden_frames == 1 and
@@ -261,8 +281,8 @@ do
         return route
     end
     for _, fixture in ipairs({
-        { E.ItemId.STREETLINE_SPECIAL, expected_actions, "ordinary" },
-        { E.ItemId.MEDKIT, expected_first_aid, "First Aid" },
+        { "streetline", expected_actions, "ordinary" },
+        { "medkit", expected_first_aid, "First Aid" },
     }) do
         local route = action_route(fixture[1])
         for selector = E.ItemAction.EQUIP_OR_USE, E.ItemAction.CANCEL do

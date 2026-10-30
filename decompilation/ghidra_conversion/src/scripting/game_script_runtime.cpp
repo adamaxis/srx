@@ -1474,6 +1474,33 @@ bool read_field_integer(lua_State* state, const int table_index,
     return valid;
 }
 
+void push_inventory_cell(lua_State* state, const int table_index,
+                         const char* field, const std::size_t position) {
+    lua_createtable(state, 0, 2);
+    const auto cell_index = lua_absindex(state, -1);
+    lua_pushinteger(state, static_cast<lua_Integer>(position % 2U));
+    lua_setfield(state, cell_index, "column");
+    lua_pushinteger(state, static_cast<lua_Integer>(position / 2U));
+    lua_setfield(state, cell_index, "row");
+    lua_setfield(state, table_index, field);
+}
+
+bool read_inventory_cell(lua_State* state, const int table_index,
+                         const char* field, std::uint32_t& column,
+                         std::uint32_t& row) {
+    lua_getfield(state, table_index, field);
+    if (!lua_istable(state, -1)) {
+        lua_pop(state, 1);
+        return false;
+    }
+    const auto cell_index = lua_absindex(state, -1);
+    const bool valid = read_field_integer(state, cell_index, "column", 1U,
+                                          column) &&
+                       read_field_integer(state, cell_index, "row", 3U, row);
+    lua_pop(state, 1);
+    return valid;
+}
+
 bool read_field_number(lua_State* state, const int table_index,
                        const char* field, double& value) {
     lua_getfield(state, table_index, field);
@@ -1566,6 +1593,111 @@ bool push_combat_inventory(
         }
         lua_rawseti(state, inventory_index, inventory_entry++);
     }
+    return true;
+}
+
+bool push_menu_equipment(
+    lua_State* state, const std::array<std::uint8_t, 8>& item_codes,
+    const std::array<std::uint8_t, 8>& item_values) {
+    lua_createtable(state, static_cast<int>(item_codes.size()), 0);
+    const auto inventory_index = lua_absindex(state, -1);
+    lua_Integer inventory_entry = 1;
+    for (std::size_t index = 0U; index < item_codes.size(); ++index) {
+        if (item_codes[index] == 0U) {
+            continue;
+        }
+        const auto item = script_combat_inventory_item(
+            static_cast<std::uint8_t>(index + 1U), item_codes[index],
+            item_values[index]);
+        if (!item.has_value()) {
+            lua_pop(state, 1);
+            return false;
+        }
+        lua_createtable(state, 0, item->value_property.empty() ? 2 : 3);
+        const auto item_index = lua_absindex(state, -1);
+        lua_pushlstring(state, item->item_id.data(), item->item_id.size());
+        lua_setfield(state, item_index, "id");
+        push_inventory_cell(state, item_index, "cell", index);
+        if (!item->value_property.empty()) {
+            lua_pushinteger(state, item->value);
+            lua_setfield(state, item_index,
+                         std::string(item->value_property).c_str());
+        }
+        lua_rawseti(state, inventory_index, inventory_entry++);
+    }
+    return true;
+}
+
+bool read_menu_equipment(
+    lua_State* state, const int combatant_index,
+    std::array<std::uint8_t, 8>& item_codes,
+    std::array<std::uint8_t, 8>& item_values,
+    const std::array<std::uint8_t, 8>& original_item_codes,
+    const std::array<std::uint8_t, 8>& original_item_values) {
+    lua_getfield(state, combatant_index, "equipment");
+    if (!lua_istable(state, -1) || lua_rawlen(state, -1) > item_codes.size()) {
+        lua_pop(state, 1);
+        return false;
+    }
+    item_codes.fill(0U);
+    item_values = original_item_values;
+    std::array<bool, 8> used_slots{};
+    const auto inventory_index = lua_absindex(state, -1);
+    const auto inventory_size = lua_rawlen(state, inventory_index);
+    for (std::size_t index = 0U; index < inventory_size; ++index) {
+        lua_rawgeti(state, inventory_index,
+                    static_cast<lua_Integer>(index + 1U));
+        if (!lua_istable(state, -1)) {
+            lua_pop(state, 2);
+            return false;
+        }
+        const auto item_index = lua_absindex(state, -1);
+        std::string item_id;
+        std::uint32_t column = 0U;
+        std::uint32_t row = 0U;
+        if (!read_field_string(state, item_index, "id", item_id) ||
+            !read_inventory_cell(state, item_index, "cell", column, row)) {
+            lua_pop(state, 2);
+            return false;
+        }
+        const auto position = row * 2U + column;
+        if (position >= used_slots.size() || used_slots[position]) {
+            lua_pop(state, 2);
+            return false;
+        }
+        const auto source_code = script_item_source_code_from_id(item_id);
+        if (!source_code.has_value()) {
+            lua_pop(state, 2);
+            return false;
+        }
+        const auto item = script_combat_inventory_item(
+            static_cast<std::uint8_t>(position + 1U), *source_code, 0U);
+        if (!item.has_value()) {
+            lua_pop(state, 2);
+            return false;
+        }
+        item_codes[position] = *source_code;
+        used_slots[position] = true;
+        if (!item->value_property.empty()) {
+            std::uint32_t value = 0U;
+            if (!read_field_integer(state, item_index,
+                                    std::string(item->value_property).c_str(),
+                                    0xFFU, value)) {
+                lua_pop(state, 2);
+                return false;
+            }
+            item_values[position] = static_cast<std::uint8_t>(value);
+        } else if (original_item_codes[position] != *source_code) {
+            item_values[position] = 0U;
+        }
+        lua_pop(state, 1);
+    }
+    for (std::size_t slot = 0U; slot < item_codes.size(); ++slot) {
+        if (item_codes[slot] == 0U) {
+            item_values[slot] = 0U;
+        }
+    }
+    lua_pop(state, 1);
     return true;
 }
 
@@ -2758,7 +2890,7 @@ struct GameScriptRuntime::Impl {
             lua_createtable(lua, static_cast<int>(party.size()), 0);
             for (std::size_t index = 0; index < party.size(); ++index) {
                 const auto& member = party[index];
-                lua_createtable(lua, 0, 22);
+                lua_createtable(lua, 0, 24);
                 const auto member_index = lua_absindex(lua, -1);
                 const auto set_integer = [lua, member_index](
                     const char* name, const lua_Integer value) {
@@ -2774,9 +2906,50 @@ struct GameScriptRuntime::Impl {
                 lua_setfield(lua, member_index, "runner_facts");
                 set_integer("clips", member.clips);
                 set_integer("rounds", member.rounds);
-                set_integer("weapon_slot", member.weapon_slot);
-                set_integer("weapon_code", member.weapon_code);
-                set_integer("armor", member.armor);
+                if (member.weapon_slot >= 0 &&
+                    member.weapon_slot <
+                        static_cast<int>(member.inventory.size())) {
+                    const auto item_id = script_item_id_from_source_code(
+                        member.weapon_code);
+                    if (item_id.has_value()) {
+                        set_string("equipped_weapon_id", *item_id);
+                        push_inventory_cell(
+                            lua, member_index, "equipped_weapon_cell",
+                            static_cast<std::size_t>(member.weapon_slot));
+                    } else {
+                        lua_pushnil(lua);
+                        lua_setfield(lua, member_index,
+                                     "equipped_weapon_id");
+                        lua_pushnil(lua);
+                        lua_setfield(lua, member_index,
+                                     "equipped_weapon_cell");
+                    }
+                    lua_pushnil(lua);
+                    lua_setfield(lua, member_index, "selected_spell_id");
+                } else {
+                    lua_pushnil(lua);
+                    lua_setfield(lua, member_index, "equipped_weapon_id");
+                    lua_pushnil(lua);
+                    lua_setfield(lua, member_index,
+                                 "equipped_weapon_cell");
+                    const auto spell_id =
+                        script_spell_id_from_action_code(member.weapon_code);
+                    if (spell_id.has_value()) {
+                        set_string("selected_spell_id", *spell_id);
+                    } else {
+                        lua_pushnil(lua);
+                        lua_setfield(lua, member_index,
+                                     "selected_spell_id");
+                    }
+                }
+                const auto armor_id = script_armor_item_id_from_source_index(
+                    member.armor);
+                if (armor_id.has_value()) {
+                    set_string("equipped_armor_id", *armor_id);
+                } else {
+                    lua_pushnil(lua);
+                    lua_setfield(lua, member_index, "equipped_armor_id");
+                }
                 set_integer("physical", member.physical);
                 set_integer("stun", member.stun);
                 set_integer("magic", member.magic_resource);
@@ -2786,21 +2959,17 @@ struct GameScriptRuntime::Impl {
                 set_integer("karma", member.karma);
                 set_integer("force", member.magic_force);
                 set_integer("posture", member.posture);
-                set_integer("magic_table_index", member.magic_table_index);
-                set_integer("state_function", member.state_function);
-                const auto push_array = [lua, member_index](
-                    const char* name, const auto& values) {
-                    lua_createtable(lua, static_cast<int>(values.size()), 0);
-                    for (std::size_t array_index = 0;
-                         array_index < values.size(); ++array_index) {
-                        lua_pushinteger(lua, values[array_index]);
-                        lua_rawseti(lua, -2,
-                                    static_cast<lua_Integer>(array_index));
-                    }
-                    lua_setfield(lua, member_index, name);
-                };
-                push_array("inventory", member.inventory);
-                push_array("phase", member.phase);
+                const auto continuation = member.state_function == 0xB45CU
+                    ? std::string_view{"idle"}
+                    : std::string_view{"unknown"};
+                set_string("first_aid_continuation", continuation);
+                if (push_menu_equipment(lua, member.inventory,
+                                        member.phase)) {
+                    lua_setfield(lua, member_index, "equipment");
+                } else {
+                    lua_pushnil(lua);
+                    lua_setfield(lua, member_index, "equipment");
+                }
                 lua_createtable(lua, 0, 6);
                 lua_pushinteger(lua, member.attributes.body);
                 lua_setfield(lua, -2, "body");
@@ -2847,61 +3016,42 @@ struct GameScriptRuntime::Impl {
         }
         case MenuBinding::spell_table: {
             const auto table = self->menu_route_bindings.game.spell_table
-                                   ? self->menu_route_bindings.game.spell_table(
-                                         integer_argument(1))
+                                   ? self->menu_route_bindings.game.spell_table()
                                    : std::nullopt;
             if (!table.has_value()) {
                 lua_pushnil(lua);
                 return 1;
             }
-            lua_createtable(lua, 0, 2);
-            lua_pushinteger(lua, table->entry_count);
-            lua_setfield(lua, -2, "entry_count");
-            lua_createtable(lua, table->entry_count, 0);
+            lua_createtable(lua,
+                            static_cast<int>(table->entry_count), 0);
             for (std::size_t index = 0; index < table->entry_count;
                  ++index) {
                 const auto& entry = table->entries[index];
                 lua_createtable(lua, 0, 5);
-                lua_pushinteger(lua, entry.code);
-                lua_setfield(lua, -2, "code");
+                const auto entry_index = lua_absindex(lua, -1);
+                lua_pushlstring(lua, entry.spell_id.data(),
+                                entry.spell_id.size());
+                lua_setfield(lua, entry_index, "id");
                 lua_pushinteger(lua, entry.force_limit);
-                lua_setfield(lua, -2, "force_limit");
+                lua_setfield(lua, entry_index, "force_limit");
                 lua_pushinteger(lua, entry.availability);
-                lua_setfield(lua, -2, "availability");
+                lua_setfield(lua, entry_index, "availability");
                 lua_pushinteger(lua, entry.difficulty_modifier);
-                lua_setfield(lua, -2, "difficulty_modifier");
+                lua_setfield(lua, entry_index, "difficulty_modifier");
                 lua_pushinteger(lua, entry.base_effect);
-                lua_setfield(lua, -2, "base_effect");
+                lua_setfield(lua, entry_index, "base_effect");
                 lua_rawseti(lua, -2, static_cast<lua_Integer>(index + 1U));
             }
-            lua_setfield(lua, -2, "entries");
             return 1;
         }
         case MenuBinding::set_spell_table: {
             const auto callback = self->menu_route_bindings.game.set_spell_table;
-            if (!callback || !lua_istable(lua, 2)) {
+            if (!callback || !lua_istable(lua, 1)) {
                 return 0;
             }
-            const auto read_integer = [lua](const int table_index,
-                                            const char* name,
-                                            const lua_Integer fallback) {
-                lua_getfield(lua, table_index, name);
-                int is_number = 0;
-                const auto value = lua_tointegerx(lua, -1, &is_number);
-                lua_pop(lua, 1);
-                return is_number ? value : fallback;
-            };
-            const auto table_index = std::clamp<lua_Integer>(
-                integer_argument(1), 0, 0xFFFF);
-            const auto input_index = lua_absindex(lua, 2);
-            const auto entry_count = read_integer(input_index, "entry_count", -1);
-            if (entry_count < 0 || entry_count > 14) {
-                return 0;
-            }
-            lua_getfield(lua, input_index, "entries");
-            const auto entries_index = lua_absindex(lua, -1);
-            if (!lua_istable(lua, entries_index)) {
-                lua_pop(lua, 1);
+            const auto entries_index = lua_absindex(lua, 1);
+            const auto entry_count = lua_rawlen(lua, entries_index);
+            if (entry_count > 14U) {
                 return 0;
             }
             ScriptMenuSpellTable parsed;
@@ -2914,19 +3064,31 @@ struct GameScriptRuntime::Impl {
                     return 0;
                 }
                 const auto entry_index = lua_absindex(lua, -1);
-                const auto code = read_integer(entry_index, "code", -1);
-                const auto force = read_integer(entry_index, "force_limit", -1);
+                std::string spell_id;
+                std::uint32_t force = 0U;
+                const bool valid_entry =
+                    read_field_string(lua, entry_index, "id", spell_id) &&
+                    read_field_integer(lua, entry_index, "force_limit",
+                                       0xFFU, force);
                 lua_pop(lua, 1);
-                if (code < 0 || code > 13 || force < 0 || force > 0xFF) {
+                const auto action_code = valid_entry
+                    ? script_spell_action_code_from_id(spell_id)
+                    : std::nullopt;
+                if (!action_code.has_value()) {
                     lua_pop(lua, 1);
                     return 0;
                 }
-                parsed.entries[index].code = static_cast<std::uint8_t>(code);
+                for (std::size_t prior = 0U; prior < index; ++prior) {
+                    if (parsed.entries[prior].spell_id == spell_id) {
+                        lua_pop(lua, 1);
+                        return 0;
+                    }
+                }
+                parsed.entries[index].spell_id = std::move(spell_id);
                 parsed.entries[index].force_limit =
                     static_cast<std::uint8_t>(force);
             }
-            lua_pop(lua, 1);
-            callback(static_cast<int>(table_index), parsed);
+            callback(parsed);
             return 0;
         }
         case MenuBinding::active_slot:
@@ -2936,11 +3098,19 @@ struct GameScriptRuntime::Impl {
                          : 0);
             return 1;
         case MenuBinding::magazine_capacity:
-            lua_pushinteger(
-                lua, self->menu_route_bindings.game.magazine_capacity
-                         ? self->menu_route_bindings.game.magazine_capacity(
-                               integer_argument(1))
-                         : 0);
+            {
+                std::string item_id;
+                const auto item_code = read_string(lua, 1, item_id)
+                    ? script_item_source_code_from_id(item_id)
+                    : std::nullopt;
+                lua_pushinteger(
+                    lua, item_code.has_value() &&
+                                 self->menu_route_bindings.game
+                                     .magazine_capacity
+                             ? self->menu_route_bindings.game
+                                   .magazine_capacity(*item_code)
+                             : 0);
+            }
             return 1;
         case MenuBinding::set_runner_ammo:
             if (self->menu_route_bindings.game.set_runner_ammo) {
@@ -2979,26 +3149,6 @@ struct GameScriptRuntime::Impl {
                 lua_pop(lua, 1);
                 return is_number ? value : fallback;
             };
-            const auto read_array = [lua](const int table_index,
-                                          const char* name, auto& values) {
-                lua_getfield(lua, table_index, name);
-                const auto array_index = lua_absindex(lua, -1);
-                if (lua_istable(lua, array_index)) {
-                    for (std::size_t index = 0; index < values.size();
-                         ++index) {
-                        lua_rawgeti(lua, array_index,
-                                    static_cast<lua_Integer>(index));
-                        int is_number = 0;
-                        const auto value = lua_tointegerx(lua, -1, &is_number);
-                        if (is_number) {
-                            values[index] = static_cast<std::uint8_t>(
-                                std::clamp<lua_Integer>(value, 0, 0xFF));
-                        }
-                        lua_pop(lua, 1);
-                    }
-                }
-                lua_pop(lua, 1);
-            };
             const auto read_stat = [&read_integer](const int table_index,
                                                    const char* name,
                                                    const int fallback) {
@@ -3029,13 +3179,66 @@ struct GameScriptRuntime::Impl {
                         original_party[index].character_class;
                     member.clips = bounded_byte(member_index, "clips");
                     member.rounds = bounded_byte(member_index, "rounds");
-                    member.weapon_slot = static_cast<int>(
-                        std::clamp<lua_Integer>(
-                            read_integer(member_index, "weapon_slot", -1),
-                            -128, 127));
-                    member.weapon_code =
-                        bounded_byte(member_index, "weapon_code");
-                    member.armor = bounded_byte(member_index, "armor");
+                    member.weapon_slot = original_party[index].weapon_slot;
+                    member.weapon_code = original_party[index].weapon_code;
+                    lua_getfield(lua, member_index, "equipped_weapon_id");
+                    const auto weapon_id_type = lua_type(lua, -1);
+                    std::string weapon_item_id;
+                    const bool has_weapon_item_id =
+                        weapon_id_type == LUA_TSTRING &&
+                        read_string(lua, -1, weapon_item_id);
+                    lua_pop(lua, 1);
+                    if (has_weapon_item_id) {
+                        std::uint32_t weapon_column = 0U;
+                        std::uint32_t weapon_row = 0U;
+                        const bool has_weapon_cell = read_inventory_cell(
+                            lua, member_index, "equipped_weapon_cell",
+                            weapon_column, weapon_row);
+                        const auto weapon_code =
+                            script_item_source_code_from_id(weapon_item_id);
+                        if (weapon_code.has_value() && has_weapon_cell) {
+                            member.weapon_slot = static_cast<int>(
+                                weapon_row * 2U + weapon_column);
+                            member.weapon_code = *weapon_code;
+                        }
+                    } else if (weapon_id_type == LUA_TNIL) {
+                        lua_getfield(lua, member_index, "selected_spell_id");
+                        const auto spell_id_type = lua_type(lua, -1);
+                        std::string spell_id;
+                        const bool has_spell_id =
+                            spell_id_type == LUA_TSTRING &&
+                            read_string(lua, -1, spell_id);
+                        lua_pop(lua, 1);
+                        if (has_spell_id) {
+                            const auto action_code =
+                                script_spell_action_code_from_id(spell_id);
+                            if (action_code.has_value()) {
+                                member.weapon_slot = -1;
+                                member.weapon_code = *action_code;
+                            }
+                        } else if (spell_id_type == LUA_TNIL) {
+                            member.weapon_slot = -1;
+                            member.weapon_code = 0U;
+                        }
+                    }
+                    member.armor = original_party[index].armor;
+                    lua_getfield(lua, member_index, "equipped_armor_id");
+                    const auto armor_id_type = lua_type(lua, -1);
+                    std::string armor_item_id;
+                    const bool has_armor_item_id =
+                        armor_id_type == LUA_TSTRING &&
+                        read_string(lua, -1, armor_item_id);
+                    lua_pop(lua, 1);
+                    if (has_armor_item_id) {
+                        const auto armor_index =
+                            script_armor_source_index_from_item_id(
+                                armor_item_id);
+                        if (armor_index.has_value()) {
+                            member.armor = *armor_index;
+                        }
+                    } else if (armor_id_type == LUA_TNIL) {
+                        member.armor = 0U;
+                    }
                     member.physical =
                         bounded_byte(member_index, "physical");
                     member.stun = bounded_byte(member_index, "stun");
@@ -3046,16 +3249,50 @@ struct GameScriptRuntime::Impl {
                         bounded_byte(member_index, "force");
                     member.posture =
                         bounded_byte(member_index, "posture");
-                    member.magic_table_index = static_cast<std::uint16_t>(
-                        std::clamp<lua_Integer>(
-                            read_integer(member_index, "magic_table_index", 0),
-                            0, 0xFFFF));
-                    member.state_function = static_cast<std::uint32_t>(
-                        std::clamp<lua_Integer>(
-                            read_integer(member_index, "state_function", 0),
-                            0, 0xFFFFFFFFLL));
-                    read_array(member_index, "inventory", member.inventory);
-                    read_array(member_index, "phase", member.phase);
+                    member.magic_table_index =
+                        original_party[index].magic_table_index;
+                    member.state_function = original_party[index].state_function;
+                    std::string continuation;
+                    lua_getfield(lua, member_index,
+                                 "first_aid_continuation");
+                    const bool has_continuation =
+                        lua_type(lua, -1) == LUA_TSTRING &&
+                        read_string(lua, -1, continuation);
+                    lua_pop(lua, 1);
+                    if (has_continuation && continuation == "idle") {
+                        member.state_function = 0xB45CU;
+                    }
+                    auto equipment_codes = original_party[index].inventory;
+                    auto equipment_values = original_party[index].phase;
+                    if (read_menu_equipment(
+                            lua, member_index, equipment_codes,
+                            equipment_values,
+                            original_party[index].inventory,
+                            original_party[index].phase)) {
+                        member.inventory = equipment_codes;
+                        member.phase = equipment_values;
+                        if (member.armor != original_party[index].armor) {
+                            for (std::size_t slot = 0U;
+                                 slot < member.inventory.size(); ++slot) {
+                                const auto item_id =
+                                    script_item_id_from_source_code(
+                                        member.inventory[slot]);
+                                if (!item_id.has_value()) continue;
+                                const auto armor_index =
+                                    script_armor_source_index_from_item_id(
+                                        *item_id);
+                                if (armor_index.has_value()) {
+                                    member.phase[slot] =
+                                        member.armor == *armor_index
+                                            ? *armor_index
+                                            : 0U;
+                                }
+                            }
+                        }
+                    } else {
+                        member.inventory = original_party[index].inventory;
+                        member.phase = original_party[index].phase;
+                    }
                     member.attributes = original_party[index].attributes;
                     lua_getfield(lua, member_index, "attributes");
                     if (lua_istable(lua, -1)) {
@@ -4050,8 +4287,15 @@ struct GameScriptRuntime::Impl {
                     read_optional(screen_state_index, "source");
                 menu_route_state.top_recipient =
                     read_optional(screen_state_index, "recipient");
-                menu_route_state.top_destination_slot =
-                    read_optional(screen_state_index, "dst_slot");
+                std::uint32_t destination_column = 0U;
+                std::uint32_t destination_row = 0U;
+                if (read_inventory_cell(state, screen_state_index, "dst_cell",
+                                        destination_column,
+                                        destination_row)) {
+                    menu_route_state.top_destination_slot =
+                        static_cast<int>(destination_row * 2U +
+                                         destination_column);
+                }
                 menu_route_state.top_target =
                     read_optional(screen_state_index, "target");
                 menu_route_state.top_grid_effect_frames =
@@ -4552,8 +4796,9 @@ struct GameScriptRuntime::Impl {
                     view.table_entry_index =
                         read_optional(view_index, "table_entry_index")
                             .value_or(0);
-                    view.spell_code =
-                        read_optional(view_index, "spell_code").value_or(-1);
+                    lua_getfield(state, view_index, "spell_id");
+                    read_string(state, -1, view.spell_id);
+                    lua_pop(state, 1);
                     view.title_icon_x =
                         read_optional(view_index, "title_icon_x").value_or(80);
                     view.title_icon_y =
@@ -4590,8 +4835,8 @@ struct GameScriptRuntime::Impl {
                         read_optional(view_index, "posture_text_x").value_or(160);
                     view.posture_text_y =
                         read_optional(view_index, "posture_text_y").value_or(144);
-                    view.spell_codes = read_integer_array(
-                        view_index, "spell_codes", 14U, 0, 13);
+                    view.spell_ids = read_string_array(
+                        view_index, "spell_ids", 14U);
                     view.force =
                         read_optional(view_index, "force").value_or(1);
                     view.maximum_force =
@@ -4798,12 +5043,40 @@ struct GameScriptRuntime::Impl {
                                    ? std::optional<int>(static_cast<int>(value))
                                    : std::nullopt;
                     };
-                    menu_route_state.top_item_slot =
-                        read_item_integer("slot");
-                    menu_route_state.top_item_code =
-                        read_item_integer("code");
-                    menu_route_state.top_item_phase =
-                        read_item_integer("phase");
+                    std::uint32_t column = 0U;
+                    std::uint32_t row = 0U;
+                    const bool has_cell = read_inventory_cell(
+                        lua, item_index, "cell", column, row);
+                    const int position = static_cast<int>(row * 2U + column + 1U);
+                    menu_route_state.top_item_slot = has_cell
+                        ? std::optional<int>(position - 1)
+                        : std::nullopt;
+                    std::string item_id;
+                    lua_getfield(lua, item_index, "id");
+                    const bool has_item_id = read_string(lua, -1, item_id);
+                    lua_pop(lua, 1);
+                    if (!has_cell || !has_item_id) {
+                        menu_route_state.top_item_code.reset();
+                        menu_route_state.top_item_phase.reset();
+                        return;
+                    }
+                    const auto source_code =
+                        script_item_source_code_from_id(item_id);
+                    if (!source_code.has_value()) {
+                        menu_route_state.top_item_code.reset();
+                        menu_route_state.top_item_phase.reset();
+                        return;
+                    }
+                    menu_route_state.top_item_code = *source_code;
+                    const auto source_item = script_combat_inventory_item(
+                        static_cast<std::uint8_t>(position), *source_code, 0U);
+                    if (source_item.has_value() &&
+                        !source_item->value_property.empty()) {
+                        menu_route_state.top_item_phase = read_item_integer(
+                            std::string(source_item->value_property).c_str());
+                    } else {
+                        menu_route_state.top_item_phase = 0;
+                    }
                 };
                 lua_getfield(state, screen_state_index, "sel");
                 read_item(lua_absindex(state, -1));

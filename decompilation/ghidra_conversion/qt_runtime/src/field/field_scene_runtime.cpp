@@ -9165,13 +9165,10 @@ void FieldSceneRuntime::configure_field_menu_route() {
         }
         return party;
     };
-    bindings.game.spell_table = [this](const int table_index)
+    bindings.game.spell_table = [this]()
         -> std::optional<scripting::ScriptMenuSpellTable> {
-        if (table_index < 0 || table_index > 0xFFFF) {
-            return std::nullopt;
-        }
-        const auto* source_table = field_magic_spell_table(
-            static_cast<std::uint16_t>(table_index));
+        const auto table_index = active_runner_record().magic_table_index;
+        const auto* source_table = field_magic_spell_table(table_index);
         if (source_table == nullptr ||
             source_table->entry_count >
                 scripting::ScriptMenuSpellTable{}.entries.size()) {
@@ -9186,7 +9183,7 @@ void FieldSceneRuntime::configure_field_menu_route() {
                 return std::nullopt;
             }
             result.entries[index] = {
-                source_entry.spell_code,
+                std::string(spell->id),
                 source_entry.force_limit,
                 spell->availability_byte,
                 spell->difficulty_modifier,
@@ -9195,10 +9192,9 @@ void FieldSceneRuntime::configure_field_menu_route() {
         return result;
     };
     bindings.game.set_spell_table = [this](
-        const int table_index,
         const scripting::ScriptMenuSpellTable& script_table) {
-        if (table_index < 0 ||
-            static_cast<std::size_t>(table_index) >=
+        const auto table_index = active_runner_record().magic_table_index;
+        if (static_cast<std::size_t>(table_index) >=
                 field_magic_spell_table_overrides_.size() ||
             script_table.entry_count > kMagicSpellTableEntryCapacity) {
             return;
@@ -9207,10 +9203,12 @@ void FieldSceneRuntime::configure_field_menu_route() {
         updated.entry_count = script_table.entry_count;
         for (std::size_t index = 0; index < updated.entry_count; ++index) {
             const auto& source = script_table.entries[index];
-            if (find_us_magic_spell(source.code) == nullptr) {
+            const auto* spell = find_us_magic_spell(source.spell_id);
+            if (spell == nullptr) {
                 return;
             }
-            updated.entries[index] = {source.code, source.force_limit};
+            updated.entries[index] = {spell->spell_code,
+                                      source.force_limit};
         }
         field_magic_spell_table_overrides_[
             static_cast<std::size_t>(table_index)] = updated;
@@ -15560,10 +15558,9 @@ void FieldSceneRuntime::paint_command_overview_magic(
         active_runner_record().magic_table_index);
     const auto draw_spell_slot = [this, &painter, lua_view](
                                      const std::size_t index,
-                                     const int spell_code) {
-        if (spell_code < 0 ||
-            static_cast<std::size_t>(spell_code) >=
-                command_overview_magic_spell_icons_.size()) {
+                                     const MagicSpellDefinition& spell) {
+        const auto spell_code = static_cast<std::size_t>(spell.spell_code);
+        if (spell_code >= command_overview_magic_spell_icons_.size()) {
             return;
         }
         const auto column = index % 7U;
@@ -15578,8 +15575,7 @@ void FieldSceneRuntime::paint_command_overview_magic(
                                  static_cast<int>(row) *
                                      lua_view->spell_grid_row_step
                            : 168 + static_cast<int>(row * 24U);
-        const auto& icon = command_overview_magic_spell_icons_[
-            static_cast<std::size_t>(spell_code)];
+        const auto& icon = command_overview_magic_spell_icons_[spell_code];
         if (lua_view != nullptr) {
             painter.save();
             // The ROM redraws the 16-pixel-high cell borders over glyph spill;
@@ -15596,31 +15592,35 @@ void FieldSceneRuntime::paint_command_overview_magic(
     };
     if (lua_view != nullptr) {
         for (std::size_t index = 0U;
-             index < lua_view->spell_codes.size(); ++index) {
-            draw_spell_slot(index, lua_view->spell_codes[index]);
+             index < lua_view->spell_ids.size(); ++index) {
+            const auto* spell = find_us_magic_spell(lua_view->spell_ids[index]);
+            if (spell != nullptr) {
+                draw_spell_slot(index, *spell);
+            }
         }
     } else if (table != nullptr) {
         for (std::size_t index = 0;
              index < table->entry_count &&
              index < kMagicSpellTableEntryCapacity;
              ++index) {
-            draw_spell_slot(
-                index,
-                static_cast<int>(table->entries[index].spell_code));
+            const auto* spell = find_us_magic_spell(
+                table->entries[index].spell_code);
+            if (spell != nullptr) {
+                draw_spell_slot(index, *spell);
+            }
         }
     }
 
-    const auto selected_spell_code =
-        lua_view != nullptr
-            ? lua_view->spell_code
-            : command_overview_magic_selected_spell_.has_value()
-                  ? static_cast<int>(command_overview_magic_selected_spell_->spell_code)
-                  : -1;
-    if (selected_spell_code < 0 || selected_spell_code > 0xFF) {
+    const auto* spell = lua_view != nullptr
+        ? find_us_magic_spell(lua_view->spell_id)
+        : command_overview_magic_selected_spell_.has_value()
+              ? find_us_magic_spell(
+                    command_overview_magic_selected_spell_->spell_code)
+              : nullptr;
+    if (spell == nullptr) {
         return;
     }
-    const auto spell_code = static_cast<std::uint8_t>(selected_spell_code);
-    const auto* spell = find_us_magic_spell(spell_code);
+    const auto spell_code = static_cast<std::size_t>(spell->spell_code);
     if (spell_code < field_menu_text_.magic_spell_names.size()) {
         // ROM 0x10276 selects the glyph pointer at D4EA0 + 0x1A; 0x11190
         // transfers six tile words as a 3x2, 24x16 glyph into C194. Clip the

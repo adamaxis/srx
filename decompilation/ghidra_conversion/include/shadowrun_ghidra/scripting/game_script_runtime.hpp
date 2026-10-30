@@ -225,6 +225,8 @@ struct ScriptMenuPartyMember {
     std::uint8_t status = 0U;
     std::uint8_t clips = 0U;
     std::uint8_t rounds = 0U;
+    // Native adapter action fields. Lua receives item and spell IDs plus the
+    // active runner's semantic spell list.
     int weapon_slot = -1;
     std::uint8_t weapon_code = 0U;
     std::uint8_t armor = 0U;
@@ -235,12 +237,14 @@ struct ScriptMenuPartyMember {
     // Typed runner fields used by the ROM Magic menu: +0x7F, +0x9B,
     // +0x9D, +0x4D, and +0xA0 respectively.
     std::uint8_t magic_resource = 0U;
-    std::uint8_t archetype = 0U;
     std::uint8_t karma = 0U;
     std::uint8_t magic_force = 0U;
     std::uint8_t posture = 0U;
+    // Source table index and continuation are translated at the Lua boundary.
     std::uint16_t magic_table_index = 0U;
     std::uint32_t state_function = 0U;
+    // Native source adapter storage only. Lua receives ordered equipment
+    // records with item IDs and item-specific values through game.party().
     std::array<std::uint8_t, 8> inventory{};
     std::array<std::uint8_t, 8> phase{};
     ScriptRunnerAttributes attributes;
@@ -248,7 +252,9 @@ struct ScriptMenuPartyMember {
 };
 
 struct ScriptMenuSpellEntry {
-    std::uint8_t code = 0U;
+    // The C++/Lua bridge carries stable domain IDs; the native host resolves
+    // those IDs when it accesses the source spell table.
+    std::string spell_id;
     std::uint8_t force_limit = 0U;
     std::int8_t availability = -1;
     std::uint8_t difficulty_modifier = 0U;
@@ -449,8 +455,8 @@ struct ScriptMenuRouteGame {
     std::function<void(int)> set_leader_posture;
     std::function<ScriptRunnerClass()> leader_class;
     std::function<std::array<ScriptMenuPartyMember, 3>()> party;
-    std::function<std::optional<ScriptMenuSpellTable>(int)> spell_table;
-    std::function<void(int, const ScriptMenuSpellTable&)> set_spell_table;
+    std::function<std::optional<ScriptMenuSpellTable>()> spell_table;
+    std::function<void(const ScriptMenuSpellTable&)> set_spell_table;
     std::function<int()> active_slot;
     std::function<int(int)> magazine_capacity;
     std::function<void(int, int, int)> set_runner_ammo;
@@ -759,7 +765,7 @@ struct ScriptMenuRouteSnapshot {
         int row = 0;
         int column = 0;
         int table_entry_index = 0;
-        int spell_code = -1;
+        std::string spell_id;
         int title_icon_x = 80;
         int title_icon_y = 24;
         int title_text_x = 128;
@@ -776,7 +782,7 @@ struct ScriptMenuRouteSnapshot {
         int posture_bar_y = 136;
         int posture_text_x = 160;
         int posture_text_y = 144;
-        std::vector<int> spell_codes;
+        std::vector<std::string> spell_ids;
         int force = 1;
         int maximum_force = 1;
         int success_value = 0;

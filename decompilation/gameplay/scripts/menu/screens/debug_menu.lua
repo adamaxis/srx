@@ -3,6 +3,7 @@
 -- development. Six source effects are wired to typed host services below.
 local E = require("enums")
 local Grid = require("menu.rules.random_grid")
+local SpellOrder = require("data.spells").catalog_order
 local P, D, R, T = E.Pad, E.DebugOption, E.MenuRegion,
                     E.MenuTransition
 
@@ -39,14 +40,14 @@ M.effects = {
         local party = ctx.game.party()
         local runner = party[ctx.game.active_slot()]
         if not runner then return end
-        local entries = {}
-        for code = 13, 0, -1 do
-            entries[#entries + 1] = { code = code, force_limit = 4 }
+        local spells = {}
+        for index = #SpellOrder, 1, -1 do
+            spells[#spells + 1] = {
+                id = SpellOrder[index],
+                force_limit = 4,
+            }
         end
-        ctx.game.set_spell_table(runner.magic_table_index, {
-            entry_count = #entries,
-            entries = entries,
-        })
+        ctx.game.set_spell_table(spells)
     end,
     [D.HEAL_ALL] = function(ctx)
         local party = ctx.game.party()

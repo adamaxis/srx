@@ -1,104 +1,238 @@
--- rules/inventory.lua: item selection, equip, discard, trade rules (srx inventory_action_conversion.cpp, ROM cited).
--- Runner tables are 0-based arrays: inventory[0..7], phase[0..7]; weapon_slot -1 (= +0x56 0x7F/neg) when none.
+-- Runner equipment rules over named item identities and item-specific facts.
+-- The host translates source item records into this positioned equipment list.
 local E = require("enums")
-local B, I = E.ItemBranch, E.ItemId
-local M = {}
+local Items = require("items").by_id
+local B = E.ItemBranch
+local M = { COLUMNS = 2, ROWS = 4 }
 
-M.SLOTS, M.ROWS = 8, 4
-function M.slot_of(column, row) return row * 2 + column end          -- 0x12148 [C srx]
-function M.selected(r, column, row)
-    if column > 1 or row > 3 then return nil end
-    local slot = M.slot_of(column, row)
-    local code = r.inventory[slot]
-    if code == 0 then return nil end
-    return { slot = slot, code = code, phase = r.phase[slot] }
+local FIRST_AID_KINDS = {
+    medical_kit = true, stim_patch = true, trauma_patch = true,
+}
+local AUTOMATIC_USE_KINDS = {
+    fetish = true, passkey = true, smart_goggles = true,
+    power_focus = true, spell_focus = true, talisman = true,
+    spell_lock = true, totem = true,
+}
+local TRADEABLE_KINDS = {
+    firearm = true, grenade = true, medical_kit = true,
+    stim_patch = true, trauma_patch = true, fetish = true,
+    passkey = true, electronic_kit = true, smart_goggles = true,
+    armor = true,
+}
+
+function M.cell(column, row)
+    if column < 0 or column >= M.COLUMNS or row < 0 or row >= M.ROWS then
+        return nil
+    end
+    return { column = column, row = row }
 end
 
--- 0x121C0 classification [srx C]
-function M.classify(code, pending_medical)
-    -- 0x121C0 [C]: medical 0x10..0x12; fetish, passkey, goggles and the
-    -- power focus .. totems (0x18..0x2B) are automatic use; armor starts at 0x2C.
-    if pending_medical and code >= I.MEDKIT and code <= I.TRAUMA_PATCH then return B.FIRST_AID end
-    if code == I.FETISH or code == I.MAGLOCK_PASSKEY or code == I.SMART_GOGGLES or
-        (code >= I.POWER_FOCUS and code < I.ARMOR_VEST) then return B.AUTOMATIC_USE end
-    if code < I.POWER_FOCUS then return B.WEAPON_OR_GEAR end
-    return B.ARMOR
+function M.same_cell(left, right)
+    return left ~= nil and right ~= nil and
+           left.column == right.column and left.row == right.row
 end
 
-local function percent(rounds, cap)          -- 0x125FA: ceil(rounds*100/cap); cap 0 keeps rounds*100 & 0xFFFF
-    local n = rounds * 100
-    if cap == 0 then return n & 0xFFFF end
-    local p = n // cap
-    if n % cap ~= 0 then p = p + 1 end
-    return p & 0xFFFF
+local function cell_order(cell)
+    return cell.row * M.COLUMNS + cell.column
 end
-local function scale(pct, cap)
-    local s = pct * cap
-    local r = s // 100
-    if s % 100 >= 50 then r = r + 1 end
-    return math.min(r, 0xFF)
+
+function M.at_cell(runner, cell)
+    if type(runner.equipment) ~= "table" then return nil end
+    for _, item in ipairs(runner.equipment) do
+        if M.same_cell(item.cell, cell) then return item end
+    end
+end
+
+local function equipment_index(runner, cell)
+    if type(runner.equipment) ~= "table" then return nil end
+    for index, item in ipairs(runner.equipment) do
+        if M.same_cell(item.cell, cell) then return index end
+    end
+end
+
+function M.set_cell(runner, cell, item)
+    if cell == nil then return false end
+    runner.equipment = runner.equipment or {}
+    local index = equipment_index(runner, cell)
+    if item == nil then
+        if index ~= nil then table.remove(runner.equipment, index) end
+        return true
+    end
+
+    item.cell = { column = cell.column, row = cell.row }
+    if index ~= nil then
+        runner.equipment[index] = item
+        return true
+    end
+    local insert_at = #runner.equipment + 1
+    for current, existing in ipairs(runner.equipment) do
+        if cell_order(existing.cell) > cell_order(cell) then
+            insert_at = current
+            break
+        end
+    end
+    table.insert(runner.equipment, insert_at, item)
+    return true
+end
+
+function M.selected(runner, column, row)
+    return M.at_cell(runner, M.cell(column, row))
+end
+
+local function definition(item)
+    return item and Items[item.id] or nil
+end
+
+function M.classify(item, pending_medical)
+    local data = definition(item)
+    if data == nil then return nil end
+    if pending_medical and FIRST_AID_KINDS[data.kind] then
+        return B.FIRST_AID
+    end
+    if AUTOMATIC_USE_KINDS[data.kind] then return B.AUTOMATIC_USE end
+    if data.kind == "armor" then return B.ARMOR end
+    return B.WEAPON_OR_GEAR
+end
+
+local function is_firearm(item_id)
+    local data = Items[item_id]
+    return data ~= nil and data.kind == "firearm"
+end
+
+local function percent(rounds, capacity)
+    local amount = rounds * 100
+    if capacity <= 0 then return 0 end
+    local value = amount // capacity
+    if amount % capacity ~= 0 then value = value + 1 end
+    return value
+end
+
+local function scale(percent_value, capacity)
+    if capacity <= 0 then return 0 end
+    local amount = percent_value * capacity
+    local value = amount // 100
+    if amount % 100 >= 50 then value = value + 1 end
+    return value
 end
 M.percent, M.scale = percent, scale
 
--- toggle_selected_equipment (0x1219C armor / 0x125FA, 0x12222 weapons) [srx C]; returns mutation name
-function M.toggle_equipment(r, sel, old_cap, new_cap)
-    if r.inventory[sel.slot] ~= sel.code or sel.code == 0 then return "invalid" end
-    local br = M.classify(sel.code)
-    if br == B.ARMOR then
-        if r.armor ~= 0 then r.armor = 0; r.phase[sel.slot] = 0; return "armor_unequipped" end
-        r.armor = sel.code - 0x2B; r.phase[sel.slot] = r.armor; return "armor_equipped"
+function M.toggle_equipment(runner, selected, old_capacity, new_capacity)
+    local item = selected and M.at_cell(runner, selected.cell)
+    if item == nil or item.id ~= selected.id then return "invalid" end
+    local branch = M.classify(item)
+    if branch == B.ARMOR then
+        if runner.equipped_armor_id ~= nil then
+            runner.equipped_armor_id = nil
+            return "armor_unequipped"
+        end
+        runner.equipped_armor_id = item.id
+        return "armor_equipped"
     end
-    if br ~= B.WEAPON_OR_GEAR then return "rejected" end
-    local old = r.rounds
-    local valid = r.weapon_slot >= 0 and r.weapon_slot < M.SLOTS
-    local cur_weapon = valid and r.weapon_code ~= 0 and r.weapon_code < 0x0D
-    local carried = cur_weapon and (percent(old, old_cap) & 0xFF) or old
-    if valid and r.weapon_slot == sel.slot then
-        r.rounds = carried; r.weapon_slot = -1; r.weapon_code = 0; return "unequipped"
+    if branch ~= B.WEAPON_OR_GEAR then return "rejected" end
+
+    local old_rounds = runner.rounds
+    local current_firearm = runner.equipped_weapon_cell ~= nil and
+                            is_firearm(runner.equipped_weapon_id)
+    local carried_rounds = current_firearm and
+        percent(old_rounds, old_capacity) or old_rounds
+    if M.same_cell(runner.equipped_weapon_cell, item.cell) then
+        runner.rounds = carried_rounds
+        runner.equipped_weapon_id = nil
+        runner.equipped_weapon_cell = nil
+        runner.selected_spell_id = nil
+        return "unequipped"
     end
-    if sel.code < 0x0D then
-        r.rounds = cur_weapon and scale(percent(old, old_cap), new_cap) or (new_cap == 0 and 0 or scale(carried, new_cap))
+
+    if is_firearm(item.id) then
+        if current_firearm then
+            runner.rounds = scale(percent(old_rounds, old_capacity),
+                                  new_capacity)
+        elseif new_capacity == 0 then
+            runner.rounds = 0
+        else
+            runner.rounds = scale(carried_rounds, new_capacity)
+        end
     else
-        r.rounds = carried
+        runner.rounds = carried_rounds
     end
-    r.weapon_slot = sel.slot; r.weapon_code = sel.code
+    runner.equipped_weapon_id = item.id
+    runner.equipped_weapon_cell = {
+        column = item.cell.column, row = item.cell.row,
+    }
+    runner.selected_spell_id = nil
     return "equipped"
 end
 
-function M.can_discard(sel) return not (sel.slot == 7 and sel.code >= 0x29 and sel.code <= 0x2B) end   -- [srx C]
-function M.can_trade(code) return code < 0x17 or code >= 0x2C end                                        -- [srx C]
-
-local function remove(r, sel, discard)       -- discard: 0x1275C; transfer: 0x12A30..0x12A4E
-    if r.weapon_slot >= 0 and r.weapon_slot == sel.slot then
-        r.weapon_slot = -1
-        r.weapon_code = 0
-        -- Discard clears +0x4E; transfer clears +0x56/+0x57 but retains rounds.
-        if discard then r.rounds = 0 end
-    end
-    if sel.code >= 0x2C and r.armor == sel.code - 0x2B and r.phase[sel.slot] ~= 0 then
-        r.armor = 0
-    end
-    r.inventory[sel.slot] = 0; r.phase[sel.slot] = 0
-end
-function M.discard(r, sel)
-    if r.inventory[sel.slot] ~= sel.code or sel.code == 0 or not M.can_discard(sel) then return false end
-    remove(r, sel, true); return true
+function M.can_discard(item)
+    local data = definition(item)
+    local totem_cell = M.cell(M.COLUMNS - 1, M.ROWS - 1)
+    return not (item and data and data.kind == "totem" and
+                M.same_cell(item.cell, totem_cell))
 end
 
-function M.free_slot(r) for i = 0, M.SLOTS - 1 do if r.inventory[i] == 0 then return i end end end
-function M.next_recipient(active, source, after)   -- cyclic scan of the 3 party slots [srx C]
-    for step = 1, 3 do
-        local c = (after + step) % 3
-        if c ~= source and active[c] then return c end
-    end
+function M.can_trade(item)
+    local data = definition(item)
+    return data ~= nil and TRADEABLE_KINDS[data.kind] == true
 end
-function M.transfer(src, sel, dst, dst_slot)
-    if src.inventory[sel.slot] ~= sel.code or sel.code == 0 or dst.inventory[dst_slot] ~= 0 or not M.can_trade(sel.code) then
-        return false
+
+local function remove(runner, item, discard)
+    if M.same_cell(runner.equipped_weapon_cell, item.cell) and
+       runner.equipped_weapon_id == item.id then
+        runner.equipped_weapon_cell = nil
+        runner.equipped_weapon_id = nil
+        if discard then runner.rounds = 0 end
     end
-    dst.inventory[dst_slot] = sel.code
-    dst.phase[dst_slot] = sel.code >= 0x2C and 0 or sel.phase
-    remove(src, sel, false)
+    if runner.equipped_armor_id == item.id then
+        runner.equipped_armor_id = nil
+    end
+    M.set_cell(runner, item.cell, nil)
+end
+
+function M.remove_item(runner, selected)
+    local item = selected and M.at_cell(runner, selected.cell)
+    if item == nil or item.id ~= selected.id then return false end
+    remove(runner, item, false)
     return true
 end
+
+function M.discard(runner, selected)
+    local item = selected and M.at_cell(runner, selected.cell)
+    if item == nil or item.id ~= selected.id or not M.can_discard(item) then
+        return false
+    end
+    remove(runner, item, true)
+    return true
+end
+
+function M.free_cell(runner)
+    for row = 0, M.ROWS - 1 do
+        for column = 0, M.COLUMNS - 1 do
+            local cell = M.cell(column, row)
+            if M.at_cell(runner, cell) == nil then return cell end
+        end
+    end
+end
+
+function M.next_recipient(active, source, after)
+    for step = 1, 3 do
+        local candidate = (after + step) % 3
+        if candidate ~= source and active[candidate] then return candidate end
+    end
+end
+
+function M.transfer(source, selected, destination, destination_cell)
+    local item = selected and M.at_cell(source, selected.cell)
+    if item == nil or item.id ~= selected.id or
+       M.at_cell(destination, destination_cell) ~= nil or
+       not M.can_trade(item) then
+        return false
+    end
+
+    local transferred = {}
+    for key, value in pairs(item) do transferred[key] = value end
+    M.set_cell(destination, destination_cell, transferred)
+    remove(source, item, false)
+    return true
+end
+
 return M
