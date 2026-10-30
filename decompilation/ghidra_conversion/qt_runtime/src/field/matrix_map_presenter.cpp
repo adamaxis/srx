@@ -306,7 +306,8 @@ bool paint_matrix_traversal_view(
     // ROM name-table addresses are converted to screen cells: $C086 active
     // program, $C108 its FFF0E8 state, $C0B0 node function, $C0B8 security
     // band, $C0C6 difficulty, $C12E file class, $C1AE/$C22E IC rows, and
-    // $C208 system alert. Knowledge gates come from FFFB30's high nibble.
+    // $C208 system alert. Lua supplies semantic analysis levels for the
+    // file-class, security, difficulty, and IC visibility gates.
     if (!view.active_program_label.empty()) {
         draw_text(24, 8, view.active_program_label);
         draw_text(32, 16, view.active_program_status_label);

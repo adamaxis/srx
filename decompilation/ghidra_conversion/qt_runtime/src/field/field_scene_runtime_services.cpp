@@ -355,7 +355,7 @@ bool FieldSceneRuntime::open_matrix_traversal_for_dump(
     // The Section 21 capture is a previously explored node. ROM FFFB30 keeps
     // its rank across the 0x181F8 direct Matrix entry, so seed rank 4 before
     // the entry animation rather than deriving it from the test traversal.
-    arguments.matrix_node_knowledge_rank = 4U;
+    arguments.matrix_node_analysis_level = 4U;
     arguments.return_to_field = true;
     open_command_overview(
         static_cast<std::uint16_t>(srx::MenuScreen::MATRIX_ENTRY),

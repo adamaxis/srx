@@ -850,12 +850,14 @@ hypothesis that the next outer pass preserves the negative `FFDF84` marker.
 The field traversal path enters after the `0x174E4` clear. `0x17490` compares
 the selected system ID at `FFFBBC` with the previously selected ID at `FFFBBD`;
 only a change calls `0x53290`, whose 35 longword clears cover the 140 cells in
-both `FFFAA4` revealed-cell flags and `FFFB30` knowledge/color records. The Matrix host now
-retains the 140 visible cells of each array across same-system entries, imports
-them into Lua, and clears them on a system change or fresh bootstrap. ROM
-`0x54662` updates the selected record's high nibble to 4 after node entry, and
-the Lua bridge preserves its low color nibble. This RAM is not included in the
-host save format. The direct menu entry at `0x181F8` does not itself clear
+both `FFFAA4` revealed-cell flags and `FFFB30` knowledge/color records. The
+host retains these facts in a typed 14-by-10 coordinate grid across same-
+system entries and clears it on a system change or fresh bootstrap. Lua
+receives named per-cell analysis level, security color, and reveal facts;
+packed discovery bytes and RAM offsets remain source evidence, not script
+state. ROM `0x54662` changes the selected node's analysis fact after node
+entry while the named security color remains intact. This transient state is
+not included in the host save format. The direct menu entry at `0x181F8` does not itself clear
 `FFDF84`, so it must receive the current value from its host. The Qt binding
 now reads the signed field
 timeout marker maintained by the `0x1DBAA` world-activity path; the Matrix

@@ -55,12 +55,11 @@ ok(PR.trace_frame(bar, {}) == "running", "trace B")
 st = { trace_rewind = true }; ok(PR.trace_frame(bar, st, 0x1B00) == "cancelled" and not st.trace_rewind, "rewind")
 deck = { mpcp = 3, hardening = 1, response = 2 }
 ok(PR.burn(deck, { ic_code = 7, ic_rating = 4, ic_rating2 = 4 }, { alert = 0 }, function() return 5 end) == 4 and deck.mpcp == 0 and deck.response == 0, "burn")
-do -- Analyze 0x56064: net capped at 4 into FFFB30 high nibble
+do -- Analyze returns a capped semantic discovery level.
   local PRm = require("menu.rules.matrix_combat"); local dt = PRm.decker_test
   PRm.decker_test = function() return 7 end
-  local map = { [3] = 0x02 }
-  local r2 = PR.analyze({ sensor = 1 }, {}, { security = 4 }, {}, function(d, tn) ok(d == 4 and tn == 2, "analyze roll"); return 1 end, map, 3)
-  ok(r2.net == 6 and r2.level == 4 and map[3] == 0x42, "analyze nibble")
+  local r2 = PR.analyze({ sensor = 1 }, {}, { security = 4 }, {}, function(d, tn) ok(d == 4 and tn == 2, "analyze roll"); return 1 end)
+  ok(r2.net == 6 and r2.level == 4, "analyze semantic result")
   PRm.decker_test = dt
 end
 do local a2, b2 = PR.dump_jitter(0x8593); ok(a2 == -19 and b2 == -5, "dump jitter") end

@@ -144,13 +144,15 @@ Matrix map RAM now survives direct re-entry into the same system. At
 `0x17490`, the ROM compares `FFFBBC` with `FFFBBD`; when they differ,
 `0x53290` clears the `FFFAA4` revealed-cell flags and `FFFB30` cell records
 before copying the selected system ID into `FFFBBD`. Its 35 longword writes
-clear exactly 140 bytes in each array. The typed Lua bridge now
-carries those 140 knowledge/color records and revealed flags across same-
-system entries, and clears them on a system change or fresh bootstrap. Analyze
-and node-action knowledge updates preserve the low color nibble. This transient
-RAM is not added to save data. Lua Debug/Release tests cover same-system
-retention, mode selection from a restored rank, and system-change clearing;
-the host route test covers the typed round trip. The live frame-debugger route
+clear exactly 140 bytes in each array. The host retains a typed 14-by-10 grid;
+Lua receives named per-cell analysis level, security color, and reveal facts,
+then commits that same semantic model. Packed discovery bytes and RAM offsets
+do not appear in this scripting-state model. Analyze and node-action updates modify
+the analysis fact while preserving the named security color. This transient
+state is not added to save data. Lua Debug/Release tests cover same-system
+retention, mode selection from restored facts, system-change clearing, and
+connector flood behavior; the host route test covers the coordinate-grid
+round trip. The live frame-debugger route
 to System 15's System Map also matches independent Section 15 longplay frame
 `004520`: the full 320x224 grid, cell spacing, labels, and visible node
 positions align. The longplay shows one additional revealed cell from its

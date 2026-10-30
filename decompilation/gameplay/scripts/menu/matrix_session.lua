@@ -44,76 +44,134 @@ local function typed_node(source)
     }
 end
 
-local function copy_map_memory(system_id, source)
-    local memory = { system_id = system_id, cells = {}, revealed = {} }
+local matrix_security_colors = {
+    [0] = "unvisited", "blue", "green", "orange", "red",
+}
+local valid_matrix_security_colors = {
+    unvisited = true, blue = true, green = true, orange = true, red = true,
+}
+
+local function new_cell_grid()
+    local rows = {}
+    for y = 0, Rules.H - 1 do rows[y] = {} end
+    return rows
+end
+
+local function new_map_cell_knowledge()
+    return {
+        analysis_level = 0,
+        security_color = "unvisited",
+        revealed = false,
+    }
+end
+
+local function map_cell_knowledge(map_knowledge, x, y)
+    local row = map_knowledge.cells[y]
+    if type(row) ~= "table" then
+        row = {}
+        map_knowledge.cells[y] = row
+    end
+    local facts = row[x]
+    if type(facts) ~= "table" then
+        facts = new_map_cell_knowledge()
+        row[x] = facts
+    end
+    return facts
+end
+
+local function ensure_state_map_knowledge(state)
+    if type(state.map_knowledge) ~= "table" then
+        state.map_knowledge = {
+            system_id = state.system_id,
+            cells = new_cell_grid(),
+        }
+    end
+    return state.map_knowledge
+end
+
+local function copy_map_knowledge(system_id, source)
+    local knowledge = { system_id = system_id, cells = new_cell_grid() }
     if type(source) ~= "table" or source.system_id ~= system_id or
        type(source.cells) ~= "table" then
-        return memory
+        return knowledge
     end
-    -- ROM 0x53290 clears 35 longwords in each map array. The 14x10 map
-    -- consumes exactly cells 0..0x8B; preserve only those records.
-    for cell = 0, Rules.LAST do
-        local value = source.cells[cell]
-        if type(value) == "number" and value % 1 == 0 and
-           value >= 0 and value <= 0xFF then
-            memory.cells[cell] = value
-        end
-        local revealed = source.revealed and source.revealed[cell]
-        if revealed == true then
-            memory.revealed[cell] = 0xFF
-        elseif type(revealed) == "number" and revealed > 0 and
-               revealed % 1 == 0 and revealed <= 0xFF then
-            memory.revealed[cell] = revealed
+    -- 0x53290 clears the 14x10 discovery grid on a system change. Keep each
+    -- cell as named facts across same-system entry.
+    for y = 0, Rules.H - 1 do
+        local source_row = source.cells[y]
+        if type(source_row) == "table" then
+            for x = 0, Rules.W - 1 do
+                local source_facts = source_row[x]
+                if type(source_facts) == "table" then
+                    local facts = new_map_cell_knowledge()
+                    local level = source_facts.analysis_level
+                    if type(level) == "number" and level % 1 == 0 and
+                       level >= 0 and level <= 7 then
+                        facts.analysis_level = level
+                    end
+                    if valid_matrix_security_colors[
+                        source_facts.security_color] then
+                        facts.security_color = source_facts.security_color
+                    end
+                    facts.revealed = source_facts.revealed == true
+                    if facts.analysis_level > 0 or facts.revealed or
+                       facts.security_color ~= "unvisited" then
+                        knowledge.cells[y][x] = facts
+                    end
+                end
+            end
         end
     end
-    return memory
+    return knowledge
 end
 
-local function copy_map_memory_for_host(memory)
-    if type(memory) ~= "table" or type(memory.system_id) ~= "number" or
-       type(memory.cells) ~= "table" then
+local function copy_map_knowledge_for_host(knowledge)
+    if type(knowledge) ~= "table" or
+       type(knowledge.system_id) ~= "number" or
+       type(knowledge.cells) ~= "table" then
         return nil
     end
-    return copy_map_memory(memory.system_id, memory)
+    return copy_map_knowledge(knowledge.system_id, knowledge)
 end
 
-local function remember_node_colour(state, node_id)
-    local node = state.nodes[node_id]
-    if node then
-        local cell = node.y * Rules.W + node.x
-        state.map_colours[cell] = node.colour
-        local memory = state.matrix_map_memory
-        if memory and memory.cells then
-            local record = memory.cells[cell] or 0
-            memory.cells[cell] = record | (node.colour & 0x0F)
+local function map_from_source(source)
+    local rows = {}
+    for y = 0, Rules.H - 1 do
+        local row = {}
+        rows[y] = row
+        for x = 0, Rules.W - 1 do
+            row[x] = source.map[y * Rules.W + x + 1] or 0
         end
     end
+    return rows
 end
 
-local function sync_revealed_map_memory(state)
-    local memory = state.matrix_map_memory
-    if not memory then return end
-    state.known = state.known or {}
-    memory.revealed = memory.revealed or {}
-    for cell = 0, Rules.LAST do
-        memory.revealed[cell] = state.known[cell] == true and 0xFF or 0
+local function remember_node_security_color(state, node_id)
+    local node = state.nodes[node_id]
+    if node then
+        local knowledge = state.map_knowledge
+        if knowledge then
+            local facts = map_cell_knowledge(knowledge, node.x, node.y)
+            if facts.security_color == "unvisited" then
+                facts.security_color =
+                    matrix_security_colors[node.colour] or "unvisited"
+            end
+        end
     end
 end
 
 function M.begin(system_id, field_alarm, initial_node_id,
                  initial_node_ic_condition,
                  initial_world_effect_gate_negative,
-                 initial_node_knowledge_rank, initial_matrix_map_memory)
+                 initial_node_analysis_level, initial_map_knowledge)
     local source = Systems[system_id]
     if type(source) ~= "table" then return false end
 
-    local map = {}
-    for index, value in ipairs(source.map) do map[index - 1] = value end
-    local nodes, node_at = {}, {}
+    local map = map_from_source(source)
+    local nodes = {}
     for index, source_node in pairs(source.nodes) do
         local node = typed_node(source_node)
         nodes[index] = node
-        node_at[node.y * Rules.W + node.x] = index
     end
     local entry_node = nodes[0]
     if not entry_node then return false end
@@ -133,17 +191,17 @@ function M.begin(system_id, field_alarm, initial_node_id,
        type(initial_world_effect_gate_negative) ~= "boolean" then
         return false
     end
-    if initial_node_knowledge_rank ~= nil and
-       (type(initial_node_knowledge_rank) ~= "number" or
-        initial_node_knowledge_rank % 1 ~= 0 or
-        initial_node_knowledge_rank < 0 or
-        initial_node_knowledge_rank > 4) then
+    if initial_node_analysis_level ~= nil and
+       (type(initial_node_analysis_level) ~= "number" or
+        initial_node_analysis_level % 1 ~= 0 or
+        initial_node_analysis_level < 0 or
+        initial_node_analysis_level > 4) then
         return false
     end
     local selected_node_id = initial_node_id or 0
     local selected_node = nodes[selected_node_id]
-    local matrix_map_memory = copy_map_memory(
-        system_id, initial_matrix_map_memory)
+    local map_knowledge = copy_map_knowledge(
+        system_id, initial_map_knowledge)
     if initial_node_ic_condition ~= nil then
         selected_node.ic_condition = initial_node_ic_condition
     end
@@ -152,7 +210,6 @@ function M.begin(system_id, field_alarm, initial_node_id,
         system_id = system_id,
         map = map,
         nodes = nodes,
-        node_at = node_at,
         current_node = selected_node_id,
         -- FFF0D4 selects one of the five loaded Matrix program slots. The
         -- world service moves this cursor horizontally before the A/B/C
@@ -173,34 +230,19 @@ function M.begin(system_id, field_alarm, initial_node_id,
         -- Matrix entry can supply the current host world fact.
         world_effect_gate_negative =
             initial_world_effect_gate_negative == true,
-        known = {},
-        map_colours = {},
-        -- FFFB30 is indexed by map cell. Keep its high nibble as a typed
-        -- per-cell knowledge rank instead of deriving it from visibility.
-        knowledge_ranks = {},
-        matrix_map_memory = matrix_map_memory,
+        -- Discovery is an authoritative per-cell model. Reveal state,
+        -- analysis knowledge, and remembered security color stay independent.
+        map_knowledge = map_knowledge,
     }
-    for cell, value in pairs(matrix_map_memory.cells) do
-        local rank = (value >> 4) & 0x0F
-        if rank > 0 then state.knowledge_ranks[cell] = rank end
-        local colour = value & 0x0F
-        if colour > 0 then state.map_colours[cell] = colour end
-    end
-    for cell, value in pairs(matrix_map_memory.revealed) do
-        if value > 0 then state.known[cell] = true end
-    end
     -- A test or recovered caller may provide an explicit current-node seed.
-    if initial_node_knowledge_rank ~= nil then
-        local cell = selected_node.y * Rules.W + selected_node.x
-        state.knowledge_ranks[cell] = initial_node_knowledge_rank
-        local record = matrix_map_memory.cells[cell] or 0
-        matrix_map_memory.cells[cell] =
-            (record & 0x0F) | (initial_node_knowledge_rank << 4)
+    if initial_node_analysis_level ~= nil then
+        map_cell_knowledge(map_knowledge, selected_node.x, selected_node.y)
+            .analysis_level =
+            initial_node_analysis_level
     end
-    state.known = Rules.reveal(map, state.known,
-                              selected_node.x, selected_node.y)
-    remember_node_colour(state, selected_node_id)
-    sync_revealed_map_memory(state)
+    Rules.reveal(map, map_knowledge.cells,
+                 selected_node.x, selected_node.y)
+    remember_node_security_color(state, selected_node_id)
     M.active = state
     return true, state
 end
@@ -240,20 +282,20 @@ function M.world_state(game)
     return world
 end
 
--- FFFB30 is a narrow typed RAM fact. Lua owns its nibble updates; the host
--- keeps the byte array alive while the field session is active.
-function M.commit_map_memory(game, state)
+-- Persist named per-cell discovery facts across Matrix sessions. ROM RAM
+-- addresses and packed status bytes stay in the source trace and C++ adapter.
+function M.commit_map_knowledge(game, state)
     state = state or M.active
     if type(state) ~= "table" or
-       type(state.matrix_map_memory) ~= "table" or
+       type(state.map_knowledge) ~= "table" or
        type(game) ~= "table" or
        type(game.commit_matrix_world_state) ~= "function" then
         return false
     end
-    local memory = copy_map_memory_for_host(state.matrix_map_memory)
-    if not memory then return false end
+    local knowledge = copy_map_knowledge_for_host(state.map_knowledge)
+    if not knowledge then return false end
     game.commit_matrix_world_state({
-        matrix_map_memory = memory,
+        map_knowledge = knowledge,
     })
     return true
 end
@@ -305,34 +347,37 @@ function M.retreat(state)
     state.current_node, state.previous_node = state.previous_node,
                                               state.current_node
     local node = state.nodes[state.current_node]
-    Rules.reveal(state.map, state.known, node.x, node.y)
-    remember_node_colour(state, state.current_node)
-    sync_revealed_map_memory(state)
+    Rules.reveal(state.map, state.map_knowledge.cells, node.x, node.y)
+    remember_node_security_color(state, state.current_node)
     state.phase = "node"
     state.pending_action = nil
     return true
 end
 
--- Build the source 14x10 map's render records. Unknown cells use the ROM's
--- blank tile; known cells select the exact 2x2 source table record. The low
--- map colour byte only changes when a node is first entered, so revealed but
--- unvisited nodes and all connectors retain the source grey/blue palette.
+-- Project the coordinate grid into the presenter's row-major draw list.
+-- Discovery stays semantic; only this view model contains tile selections.
 function M.map_visual_cells(state)
     state = state or M.active
     if not state then return {} end
     local cells = {}
-    for cell = 0, Rules.W * Rules.H - 1 do
-        local known = state.known[cell] == true
-        local kind = known and state.map[cell] or 0
-        local colour = known and state.map_colours[cell] or 0
-        local palette_word = Rules.cell_style(colour)
-        local tile_table = colour >= 3 and Rules.TILE_B or Rules.TILE_A
-        local source_tiles = tile_table[kind] or tile_table[0]
-        local words = {}
-        for tile = 1, 4 do
-            words[tile] = palette_word | source_tiles[tile]
+    for y = 0, Rules.H - 1 do
+        for x = 0, Rules.W - 1 do
+            local facts = state.map_knowledge.cells[y][x]
+            local known = facts ~= nil and facts.revealed == true
+            local kind = known and state.map[y][x] or 0
+            local security_color = known and facts.security_color or
+                                   "unvisited"
+            local palette_word, tile_family =
+                Rules.cell_style(security_color)
+            local tile_table = tile_family == "warm" and
+                               Rules.TILE_B or Rules.TILE_A
+            local source_tiles = tile_table[kind] or tile_table[0]
+            local words = {}
+            for tile = 1, 4 do
+                words[tile] = palette_word | source_tiles[tile]
+            end
+            cells[y * Rules.W + x + 1] = { tiles = words }
         end
-        cells[cell + 1] = { tiles = words }
     end
     return cells
 end
@@ -352,56 +397,56 @@ local NODE_NAMES = {
 }
 local NODE_FUNCTION_LABELS = HUD.node_functions
 
-function M.set_current_node_knowledge(state, rank)
-    if type(state) ~= "table" or type(rank) ~= "number" or
-       rank % 1 ~= 0 or rank < 0 or rank > 4 then
+function M.set_current_node_analysis_level(state, level)
+    if type(state) ~= "table" or type(level) ~= "number" or
+       level % 1 ~= 0 or level < 0 or level > 4 then
         return false
     end
     local node = M.current_node(state)
     if not node then return false end
-    state.knowledge_ranks = state.knowledge_ranks or {}
-    local cell = node.y * Rules.W + node.x
-    state.knowledge_ranks[cell] = rank
-    state.matrix_map_memory = state.matrix_map_memory or
-        { system_id = state.system_id, cells = {} }
-    local record = state.matrix_map_memory.cells[cell] or 0
-    state.matrix_map_memory.cells[cell] =
-        (record & 0x0F) | (rank << 4)
+    local map_knowledge = ensure_state_map_knowledge(state)
+    map_cell_knowledge(map_knowledge, node.x, node.y).analysis_level = level
     if node.function_id == 1 then
         -- ROM 0x54676 calls 0x532A8 when the selected node is the CPU, which
-        -- marks all 0x8C map cells revealed in FFFAA4.
-        for map_cell = 0, Rules.LAST do state.known[map_cell] = true end
+        -- reveals every Matrix map cell.
+        for y = 0, Rules.H - 1 do
+            for x = 0, Rules.W - 1 do
+                map_cell_knowledge(map_knowledge, x, y).revealed = true
+            end
+        end
     end
-    sync_revealed_map_memory(state)
     return true
 end
 
--- ROM 0x19D50 ORs Analyze's result nibble into FFFB30 instead of replacing
--- the rank that node entry published at 0x54662.
-function M.merge_current_node_knowledge(state, rank)
-    if type(state) ~= "table" or type(rank) ~= "number" or
-       rank % 1 ~= 0 or rank < 0 or rank > 4 then
+-- ROM 0x19D50 merges Analyze's result into the node's analysis level instead
+-- of replacing the level that node entry published at 0x54662.
+function M.merge_current_node_analysis_level(state, level)
+    if type(state) ~= "table" or type(level) ~= "number" or
+       level % 1 ~= 0 or level < 0 or level > 4 then
         return false
     end
     local node = M.current_node(state)
     if not node then return false end
-    state.knowledge_ranks = state.knowledge_ranks or {}
-    local cell = node.y * Rules.W + node.x
-    state.knowledge_ranks[cell] =
-        (state.knowledge_ranks[cell] or 0) | rank
-    state.matrix_map_memory = state.matrix_map_memory or
-        { system_id = state.system_id, cells = {} }
-    local record = state.matrix_map_memory.cells[cell] or 0
-    state.matrix_map_memory.cells[cell] =
-        (record & 0x0F) | (state.knowledge_ranks[cell] << 4)
+    local map_knowledge = ensure_state_map_knowledge(state)
+    local facts = map_cell_knowledge(map_knowledge, node.x, node.y)
+    facts.analysis_level = facts.analysis_level | level
     return true
 end
 
-function M.current_node_knowledge(state)
+function M.current_node_analysis_level(state)
     state = state or M.active
     local node = M.current_node(state)
-    if not node then return 0 end
-    return (state.knowledge_ranks or {})[node.y * Rules.W + node.x] or 0
+    if not node or type(state.map_knowledge) ~= "table" or
+       type(state.map_knowledge.cells) ~= "table" then
+        return 0
+    end
+    local row = state.map_knowledge.cells[node.y]
+    local facts = row and row[node.x]
+    return facts and facts.analysis_level or 0
+end
+
+function M.current_node_discovered(state)
+    return M.current_node_analysis_level(state) > 0
 end
 
 function M.begin_world_entry(state, world_effect_gate_negative)
@@ -433,7 +478,7 @@ function M.begin_world_entry(state, world_effect_gate_negative)
     -- entry sequence. 0x54662 raises the node's knowledge rank only after
     -- that sequence returns, so capture the mode from the current rank now.
     state.world_effect_animation = nil
-    world_effect_animation(state, node, M.current_node_knowledge(state))
+    world_effect_animation(state, node, M.current_node_discovered(state))
     state.analyze_runner_idle = false
     return true
 end
@@ -517,14 +562,14 @@ local function model_canvas_for_entry(state, entry)
     }
 end
 
-world_effect_animation = function(state, node, rank)
+world_effect_animation = function(state, node, node_discovered)
     -- 0x19B40 selects the current node's IC type through E31A7; 0x1A908
     -- installs that mode record, or the 1AA10 fallback for an unseen node.
     -- The ROM stores this selection in FFE0BC; later alert/rank changes do
     -- not select a new mode until 0x1A908 runs again.
     local mode = Rules.ic_type(
         node, state.alert or Rules.NONE,
-        state.world_effect_gate_negative == true, rank)
+        state.world_effect_gate_negative == true, node_discovered)
     local animation = state.world_effect_animation
     if type(animation) ~= "table" then
         local record = mode == Rules.UNSEEN and WORLD_EFFECT_MODES.default or
@@ -555,7 +600,7 @@ function M.advance_world_effect_frame(state)
     local node = M.current_node(state)
     if not node then return false end
     local animation = world_effect_animation(
-        state, node, M.current_node_knowledge(state))
+        state, node, M.current_node_discovered(state))
     if animation.cadence <= 0 or animation.phase_count <= 0 then
         return false
     end
@@ -780,19 +825,19 @@ end
 function M.node_status(state)
     local node = M.current_node(state)
     if not node then return nil end
-    local rank = M.current_node_knowledge(state)
+    local analysis_level = M.current_node_analysis_level(state)
     -- ROM 0x546F2 keeps function values 0 and 1, then subtracts one from
     -- values 2..5 before indexing the five 0x38-byte layout records at
     -- 0x166330. The same +5 color byte selects the 0x166448 palette table.
     local background_profile = node.function_id < 2 and node.function_id or
                                node.function_id - 1
     return {
-        knowledge_rank = rank,
-        file_class_label = rank >= 3 and
+        analysis_level = analysis_level,
+        file_class_label = analysis_level >= 3 and
                            (FILE_CLASSES[node.file_class_id] or "") or "",
-        alert_band_label = HUD.security_bands[rank > 0 and node.colour or 0]
-                           or HUD.security_bands[0],
-        action_difficulty = rank >= 2 and node.security or -1,
+        alert_band_label = HUD.security_bands[
+            analysis_level > 0 and node.colour or 0] or HUD.security_bands[0],
+        action_difficulty = analysis_level >= 2 and node.security or -1,
         background_profile = background_profile,
         palette_theme = node.colour,
         -- ROM 0x17858 indexes the E2EDA records with the current node's first
@@ -807,7 +852,7 @@ function M.traversal_view(state, active_program_label,
     local status = M.node_status(state)
     if not node or not status then return nil end
     local effect_animation = world_effect_animation(
-        state, node, status.knowledge_rank)
+        state, node, M.current_node_discovered(state))
     local entry = state.world_entry
     local entry_profile = entry and WORLD_ENTRY[entry.profile_id] or nil
     local entry_phase = entry and entry.phase == "setup" and 0 or
@@ -821,9 +866,9 @@ function M.traversal_view(state, active_program_label,
         ice_label = HUD.ic_visibility[0]
     elseif node.ic_condition <= 0 then
         ice_label = HUD.ic_visibility[2]
-    elseif status.knowledge_rank <= 0 then
-        -- 0x17A5E emits "Ice Unknown" until the map-status high nibble is
-        -- positive, even if another combat path can infer the IC type.
+    elseif status.analysis_level <= 0 then
+        -- 0x17A5E emits "Ice Unknown" until node analysis has discovered IC,
+        -- even if another combat path can infer its type.
         ice_label = HUD.ic_visibility[1]
     else
         local combo = Rules.IC_TABLE[node.ic_code]
@@ -835,7 +880,7 @@ function M.traversal_view(state, active_program_label,
            first_type <= 8 then
             ice_label = HUD.ic_types[first_type]
             ice_rating_column = HUD.ic_rating_columns[first_type]
-            ice_rating_label = status.knowledge_rank >= 2 and
+            ice_rating_label = status.analysis_level >= 2 and
                 tostring(node.ic_rating + alert_bonus) or "?"
         else
             ice_label = HUD.ic_visibility[0]
@@ -844,17 +889,17 @@ function M.traversal_view(state, active_program_label,
            second_type <= 8 then
             second_ice_label = HUD.ic_types[second_type]
             second_ice_rating_column = HUD.ic_rating_columns[second_type]
-            second_ice_rating_label = status.knowledge_rank >= 2 and
+            second_ice_rating_label = status.analysis_level >= 2 and
                 tostring(node.ic_rating2 + alert_bonus) or "?"
         end
     end
 
     return {
         world_model_id = status.world_model_id,
-        -- ROM 0x19DF2 leaves D0 at zero when 0x17C3C reports no known node
-        -- rank. Otherwise it selects the active node's security-color row.
+        -- ROM 0x19DF2 leaves D0 at zero when 0x17C3C reports no node
+        -- analysis. Otherwise it selects the active node's security-color row.
         -- Row zero is the neutral gray model palette at 0xE2D52.
-        palette_theme = status.knowledge_rank > 0 and
+        palette_theme = status.analysis_level > 0 and
                         status.palette_theme or 0,
         world_effect_mode = effect_animation.mode,
         world_effect_phase = effect_animation.phase,
@@ -875,7 +920,7 @@ function M.traversal_view(state, active_program_label,
         model_canvas_y = model_canvas and model_canvas.y or 0,
         model_canvas_width = model_canvas and model_canvas.width or 0,
         model_canvas_height = model_canvas and model_canvas.height or 0,
-        knowledge_rank = status.knowledge_rank,
+        analysis_level = status.analysis_level,
         function_label = NODE_FUNCTION_LABELS[node.function_id],
         file_class_label = status.file_class_label,
         alert_band_label = status.alert_band_label,
@@ -980,9 +1025,9 @@ local function enter_node(state, target, previous)
     state.phase = "node"
     state.pending_action = nil
     state.link_cursor, state.goto_cursor = 0, nil
-    Rules.reveal(state.map, state.known, next_node.x, next_node.y)
-    remember_node_colour(state, target)
-    sync_revealed_map_memory(state)
+    Rules.reveal(state.map, state.map_knowledge.cells,
+                 next_node.x, next_node.y)
+    remember_node_security_color(state, target)
     return true
 end
 

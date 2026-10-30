@@ -258,13 +258,32 @@ struct ScriptMatrixDatastoreFacts {
     std::optional<std::uint8_t> mr_johnsons_met_flags; // FFFC27.
 };
 
-// ROM FFFB30 stores one byte per Matrix map cell: the high nibble is node
-// knowledge and the low nibble is the remembered security color. ROM 0x53290
-// clears the 0x8C visible cells when the selected system changes.
-struct ScriptMatrixMapMemory {
+enum class ScriptMatrixSecurityColor : std::uint8_t {
+    unvisited,
+    blue,
+    green,
+    orange,
+    red,
+};
+
+// Host-side Matrix discovery state is expressed as facts about each map cell.
+// The ROM stores these facts in FFFB30 and FFFAA4; neither packed bytes nor
+// source-sized arrays cross the Lua boundary.
+struct ScriptMatrixCellKnowledge {
+    std::uint8_t analysis_level = 0U;
+    ScriptMatrixSecurityColor security_color =
+        ScriptMatrixSecurityColor::unvisited;
+    bool revealed = false;
+};
+
+inline constexpr std::size_t kMatrixMapWidth = 14U;
+inline constexpr std::size_t kMatrixMapHeight = 10U;
+
+// ROM 0x53290 clears the 14x10 cell facts when the selected system changes.
+struct ScriptMatrixMapKnowledge {
     std::uint8_t system_id = 0U;
-    std::array<std::uint8_t, 0x8C> cells{};
-    std::array<std::uint8_t, 0x8C> revealed{};
+    std::array<std::array<ScriptMatrixCellKnowledge, kMatrixMapWidth>,
+               kMatrixMapHeight> rows{};
 };
 
 struct ScriptMatrixWorldState {
@@ -277,9 +296,9 @@ struct ScriptMatrixWorldState {
     std::optional<std::int8_t> karma_counter;
     // ROM FFF0A3 is reset by the Attack and Slow program handlers.
     std::optional<std::int8_t> passive_ic_counter;
-    // FFFB30 is transient Matrix RAM. It survives reopening the same system,
-    // resets when its system changes, and is not part of the host save format.
-    std::optional<ScriptMatrixMapMemory> matrix_map_memory;
+    // Matrix discovery survives reopening the same system, resets when its
+    // system changes, and is not part of the host save format.
+    std::optional<ScriptMatrixMapKnowledge> map_knowledge;
 };
 
 struct ScriptMenuRouteGame {
@@ -326,7 +345,7 @@ struct ScriptMenuRouteGame {
     std::function<std::optional<ScriptMatrixNodeFacts>()> matrix_node;
     std::function<int()> alert;
     std::function<bool()> world_effect_gate_negative;
-    std::function<int()> map_seen;
+    std::function<bool()> matrix_node_discovered;
     std::function<ScriptMatrixWorldState()> matrix_world_state;
     std::function<void(const ScriptMatrixWorldState&)>
         commit_matrix_world_state;
@@ -349,8 +368,8 @@ struct ScriptMenuRouteStartArguments {
     std::optional<std::uint8_t> matrix_node_id;
     // Optional current IC condition for a progressed Matrix snapshot.
     std::optional<std::uint8_t> matrix_node_ic_condition;
-    // Optional FFFB30 high-nibble seed for a progressed Matrix QA snapshot.
-    std::optional<std::uint8_t> matrix_node_knowledge_rank;
+    // Optional semantic analysis level for a progressed Matrix QA snapshot.
+    std::optional<std::uint8_t> matrix_node_analysis_level;
     std::optional<std::uint8_t> taxi_current_region;
     bool return_to_field = false;
 };
@@ -405,7 +424,7 @@ struct ScriptMatrixTraversalView {
     int model_canvas_y = 0;
     int model_canvas_width = 0;
     int model_canvas_height = 0;
-    int knowledge_rank = 0;
+    int analysis_level = 0;
     std::string function_label;
     std::string file_class_label;
     std::string alert_band_label;

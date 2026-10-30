@@ -39966,7 +39966,7 @@ int main(int argc, char** argv) {
                                    sub_processor_unit &&
                            view.palette_theme == 2 &&
                            view.function_label == "SPU" &&
-                           view.knowledge_rank == 4 &&
+                           view.analysis_level == 4 &&
                            view.alert_band_label == " Green-" &&
                            view.action_difficulty_label == "3" &&
                            view.file_class_label == " Data Routing " &&
@@ -40158,7 +40158,7 @@ int main(int argc, char** argv) {
                     final_route.top_matrix_traversal_view
                             ->world_entry_sequence_vblanks != 239 ||
                     final_route.top_matrix_traversal_view
-                            ->knowledge_rank != 4 ||
+                            ->analysis_level != 4 ||
                     final_route.top_matrix_traversal_view->palette_theme != 2 ||
                     final_route.top_matrix_traversal_view->alert_band_label !=
                         " Green-" ||
@@ -40370,9 +40370,9 @@ int main(int argc, char** argv) {
                     route.top_matrix_traversal_view
                             ->analyze_runner_phase != 2 ||
                     route.top_matrix_traversal_view
-                            ->knowledge_rank < 4 ||
+                            ->analysis_level < 4 ||
                     route.top_matrix_traversal_view
-                            ->knowledge_rank > 7 ||
+                            ->analysis_level > 7 ||
                     route.top_matrix_traversal_view
                             ->action_difficulty_label != "3" ||
                     (route.top_matrix_traversal_view
@@ -42355,7 +42355,7 @@ int main(int argc, char** argv) {
                     traversal_route.top_matrix_traversal_view->palette_theme >
                         4U ||
                     traversal_route.top_matrix_traversal_view
-                            ->knowledge_rank != 4 ||
+                            ->analysis_level != 4 ||
                     traversal_route.top_matrix_traversal_view
                         ->function_label.empty() ||
                     (!traversal_route.top_matrix_traversal_view
@@ -42371,7 +42371,7 @@ int main(int argc, char** argv) {
                         const auto& view =
                             *traversal_route.top_matrix_traversal_view;
                         std::cerr << "Matrix traversal view: rank="
-                                  << view.knowledge_rank
+                                  << view.analysis_level
                                   << " program=\"" << view.active_program_label
                                   << "\" status=\""
                                   << view.active_program_status_label << "\"\n";

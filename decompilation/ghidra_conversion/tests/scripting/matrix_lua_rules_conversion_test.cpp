@@ -168,18 +168,18 @@ eq(failed_medic_commits, 1,
 local function test_matrix_degrade_route()
 local knowledge_state = {
     current_node = 0, nodes = { [0] = { x = 0, y = 0 } },
-    knowledge_ranks = {},
+    map_knowledge = { system_id = 0, cells = {} },
 }
-eq(Session.set_current_node_knowledge(knowledge_state, 4), true,
-   "node entry replaces the prior knowledge nibble with four")
-eq(Session.merge_current_node_knowledge(knowledge_state, 1), true,
-   "Analyze ORs new knowledge into the existing source nibble")
-eq(Session.current_node_knowledge(knowledge_state), 5,
-   "Analyze retains the entry marker while adding its result bit")
-eq(Session.merge_current_node_knowledge(knowledge_state, 2), true,
-   "later Analyze results continue merging into the same node byte")
-eq(Session.current_node_knowledge(knowledge_state), 7,
-   "knowledge rank preserves the ROM bitwise-OR representation")
+eq(Session.set_current_node_analysis_level(knowledge_state, 4), true,
+   "node entry sets the current analysis level")
+eq(Session.merge_current_node_analysis_level(knowledge_state, 1), true,
+   "Analyze merges its result into the current analysis state")
+eq(Session.current_node_analysis_level(knowledge_state), 5,
+   "Analyze combines successive discovery results")
+eq(Session.merge_current_node_analysis_level(knowledge_state, 2), true,
+   "later Analyze results continue merging into the same node")
+eq(Session.current_node_analysis_level(knowledge_state), 7,
+   "combined analysis results preserve their reported level")
 
 local function run_matrix_degrade(roll_results)
     local record = {
@@ -516,7 +516,7 @@ eq(HUD.ic_visibility[2], "Ice Suppressed",
     "IC visibility catalog includes the suppression state")
 local routed_spu_state = select(2, Session.begin(2, false, 2))
 local routed_spu_status = Session.node_status(routed_spu_state)
-eq(routed_spu_status.knowledge_rank, 0,
+eq(routed_spu_status.analysis_level, 0,
     "unvisited Matrix node starts with no IC knowledge")
 eq(routed_spu_status.file_class_label, "",
     "unrevealed node hides its file-class label")
@@ -524,8 +524,8 @@ eq(routed_spu_status.action_difficulty, -1,
     "unrevealed node hides its security rating")
 eq(Session.traversal_view(routed_spu_state).palette_theme, 0,
     "ROM keeps an unrevealed world model on neutral palette row zero")
-eq(Session.set_current_node_knowledge(routed_spu_state, 4), true,
-    "node-action entry sets the source knowledge rank")
+eq(Session.set_current_node_analysis_level(routed_spu_state, 4), true,
+    "node-action entry sets the source analysis level")
 routed_spu_status = Session.node_status(routed_spu_state)
 eq(routed_spu_status.file_class_label, " Data Routing ",
     "system 2 SPU renders its padded ROM file-class label")
@@ -595,7 +595,7 @@ MatrixNodeAction.input(alert_screen, E.Pad.A, alert_context)
 for _ = 1, 14 do MatrixNodeAction.input(alert_screen, 0, alert_context) end
 eq(Session.traversal_view(active_spu_state).world_effect_phase, 4,
     "stored world-effect phase remains fixed while the node-action loop is open")
-eq(Session.set_current_node_knowledge(active_spu_state, 0), true,
+eq(Session.set_current_node_analysis_level(active_spu_state, 0), true,
     "active-alert reproduction keeps the SPU unknown")
 local active_spu_view = Session.traversal_view(active_spu_state)
 eq(active_spu_view.world_model_id, 2,
@@ -621,43 +621,56 @@ eq(Session.traversal_view(gate_session).world_effect_phase, 0,
 Session.finish(gate_session)
 local memory_previous_active = Session.active
 local remembered_node = Systems[15].nodes[13]
-local remembered_cell = remembered_node.y * MX.W + remembered_node.x
-local map_memory = {
+local map_knowledge = {
     system_id = 15,
-    cells = { [remembered_cell] = 0x42 },
-    revealed = { [0] = 0xFF },
+    cells = {
+        [remembered_node.y] = {
+            [remembered_node.x] = {
+                analysis_level = 4,
+                security_color = "green",
+            },
+        },
+        [9] = { [13] = { revealed = true } },
+    },
 }
 local memory_started, memory_state = Session.begin(
-    15, false, 13, nil, false, nil, map_memory)
-eq(memory_started, true, "same-system Matrix entry accepts FFFB30 memory")
-eq(Session.current_node_knowledge(memory_state), 4,
-    "direct entry restores the current node's FFFB30 knowledge nibble")
-eq(memory_state.map_colours[remembered_cell], 2,
-    "direct entry restores the FFFB30 visited-node color nibble")
-eq(memory_state.known[0], true,
-    "same-system direct entry restores the FFFAA4 revealed-cell bitmap")
+    15, false, 13, nil, false, nil, map_knowledge)
+eq(memory_started, true, "same-system Matrix entry accepts map knowledge")
+eq(Session.current_node_analysis_level(memory_state), 4,
+    "direct entry restores the current node's analysis rank")
+eq(memory_state.map_knowledge.cells[remembered_node.y]
+       [remembered_node.x].security_color, "green",
+    "direct entry restores the visited node's named security color")
+eq(memory_state.map_knowledge.cells[9][13].revealed, true,
+    "same-system direct entry restores a revealed cell")
 eq(Session.begin_world_entry(memory_state), true,
     "restored map knowledge participates in source world-mode selection")
 eq(Session.traversal_view(memory_state).world_effect_mode, 3,
     "remembered rank reveals the System 15/node 13 Blaster effect without FFDF84")
-Session.set_current_node_knowledge(memory_state, 4)
-eq(memory_state.matrix_map_memory.cells[remembered_cell], 0x42,
-    "rank updates preserve the FFFB30 security-color nibble")
+Session.set_current_node_analysis_level(memory_state, 4)
+eq(memory_state.map_knowledge.cells[remembered_node.y]
+       [remembered_node.x].analysis_level, 4,
+    "rank updates preserve the remembered analysis rank")
+eq(memory_state.map_knowledge.cells[remembered_node.y]
+       [remembered_node.x].security_color, "green",
+    "rank updates preserve the remembered security color")
 local reopened_started, reopened_state = Session.begin(
-    15, false, 13, nil, false, nil, memory_state.matrix_map_memory)
+    15, false, 13, nil, false, nil, memory_state.map_knowledge)
 eq(reopened_started, true, "reopening the same system reuses its RAM memory")
-eq(Session.current_node_knowledge(reopened_state), 4,
+eq(Session.current_node_analysis_level(reopened_state), 4,
     "same-system re-entry retains the analyzed node rank")
-eq(reopened_state.map_colours[remembered_cell], 2,
+eq(reopened_state.map_knowledge.cells[remembered_node.y]
+       [remembered_node.x].security_color, "green",
     "same-system re-entry retains the visited map color")
 local switched_started, switched_state = Session.begin(
-    16, false, 0, nil, false, nil, reopened_state.matrix_map_memory)
+    16, false, 0, nil, false, nil, reopened_state.map_knowledge)
 eq(switched_started, true, "switching Matrix systems starts a valid session")
-eq(switched_state.matrix_map_memory.cells[remembered_cell], nil,
-    "a system change clears the previous FFFB30 map records")
-eq(switched_state.matrix_map_memory.revealed[0], 0,
-    "a system change clears the previous FFFAA4 reveal bitmap")
-eq(Session.current_node_knowledge(switched_state), 0,
+eq(switched_state.map_knowledge.cells[remembered_node.y]
+       [remembered_node.x], nil,
+    "a system change clears the previous cell's analysis and color")
+eq(switched_state.map_knowledge.cells[9][13], nil,
+    "a system change clears the previous cell's revealed state")
+eq(Session.current_node_analysis_level(switched_state), 0,
     "a different system does not inherit the previous node's knowledge")
 Session.active = memory_previous_active
 active_spu_state.phase = "link_select"
@@ -667,7 +680,7 @@ eq(active_spu_state.current_node, 0,
     "link confirmation selects the linked System Access node")
 eq(alert_screen.world_entry_pending, true,
     "traversal link confirmation starts the next world-entry sequence")
-eq(Session.current_node_knowledge(active_spu_state), 0,
+eq(Session.current_node_analysis_level(active_spu_state), 0,
     "the new node's knowledge rank stays unchanged during entry")
 for _ = 1, 400 do
     if not alert_screen.world_entry_pending then break end
@@ -675,7 +688,7 @@ for _ = 1, 400 do
 end
 eq(alert_screen.world_entry_pending, false,
     "the second world-entry sequence reaches its node-action handoff")
-eq(Session.current_node_knowledge(active_spu_state), 4,
+eq(Session.current_node_analysis_level(active_spu_state), 4,
     "the node-action handoff applies rank four after world entry")
 end
 local loading_state = {}
@@ -723,14 +736,14 @@ eq(paired_ice_view.file_class_label, "",
     "rank one hides the node file class")
 eq(paired_ice_view.action_difficulty, -1,
     "unseen node hides the node security rating")
-Session.set_current_node_knowledge(paired_ice_state, 1)
+Session.set_current_node_analysis_level(paired_ice_state, 1)
 paired_ice_view = Session.traversal_view(
     paired_ice_state, "Analyze-2", Session.program_status_label(10))
 eq(paired_ice_view.ice_label, HUD.ic_types[0],
     "rank one reveals the IC type")
 eq(paired_ice_view.ice_rating_label, "?",
     "rank one shows the IC type but hides its rating")
-Session.set_current_node_knowledge(paired_ice_state, 4)
+Session.set_current_node_analysis_level(paired_ice_state, 4)
 paired_ice_view = Session.traversal_view(
     paired_ice_state, "Analyze-2", Session.program_status_label(10))
 eq(paired_ice_view.function_label, "SPU",
@@ -755,8 +768,10 @@ eq(first_session.current_node, 0, "Matrix session enters access node")
 eq(first_session.mode, E.MatrixModeResult.BALANCED,
     "ROM Matrix entry clears the deck mode to balanced")
 eq(first_session.nodes[0].links[0], 4, "system zero access link")
-eq(first_session.map[139] ~= nil, true, "Matrix session copies cell 139")
-eq(first_session.map[140], nil, "Matrix session does not create cell 140")
+eq(first_session.map[9][13] ~= nil, true,
+    "Matrix session copies the bottom-right map coordinate")
+eq(first_session.map[10], nil,
+    "Matrix session contains only the ten coordinate rows")
 local alarm_started, alarm_session = Session.begin(0, true)
 eq(alarm_started, true, "alarm-backed Matrix session starts")
 eq(alarm_session.alert, MX.ACTIVE,
@@ -1054,7 +1069,7 @@ do
                 end,
                 alert = function() return MX.NONE end,
                 world_effect_gate_negative = function() return false end,
-                map_seen = function() return 0 end,
+                matrix_node_discovered = function() return false end,
                 in_combat = function() return false end,
                 matrix_online = function() return false end,
             },
@@ -1331,11 +1346,11 @@ end
 
 -- IC visibility, layered types, and alert bonuses follow the ROM tables.
 local node = { ic_condition = 10, ic_code = 7, ic_rating = 3, ic_rating2 = 5 }
-eq(MX.ic_type(node, 0, false, 0), MX.UNSEEN, "unseen node")
-eq(MX.ic_type(node, 0, true, 0), 0, "normal IC layer")
-eq(MX.ic_type(node, 1, true, 1), 6, "active IC layer")
+eq(MX.ic_type(node, 0, false, false), MX.UNSEEN, "unseen node")
+eq(MX.ic_type(node, 0, true, false), 0, "normal IC layer")
+eq(MX.ic_type(node, 1, true, true), 6, "active IC layer")
 node.ic_condition = 0
-eq(MX.ic_type(node, 1, true, 1), MX.NO_IC, "crashed IC")
+eq(MX.ic_type(node, 1, true, true), MX.NO_IC, "crashed IC")
 node.ic_condition = 10
 eq(MX.ic_rating(node, -1), 3, "no-alert rating")
 eq(MX.ic_rating(node, 0), 4, "passive-alert rating")
@@ -1372,18 +1387,31 @@ eq(random_bound_seen, 10,
 -- mark every reachable cell once and terminate while preserving the ROM's
 -- directional connector checks.
 local matrix_map = {}
-for cell = 0, MX.LAST do matrix_map[cell] = 0xFF end
-matrix_map[0] = 0
-matrix_map[1] = 19
-matrix_map[2] = 19
-matrix_map[15] = 20
-matrix_map[16] = 18
+for y = 0, MX.H - 1 do
+    matrix_map[y] = {}
+    for x = 0, MX.W - 1 do matrix_map[y][x] = 0xFF end
+end
+matrix_map[0][0] = 0
+matrix_map[0][1] = 19
+matrix_map[0][2] = 19
+matrix_map[1][1] = 20
+matrix_map[1][2] = 18
 local visible = MX.reveal(matrix_map, {}, 0, 0)
-eq(visible[0], true, "map reveals current node")
-eq(visible[1], true, "map reveals first connector")
-eq(visible[2], true, "map follows connector east")
-eq(visible[15], true, "map follows connector south")
-eq(visible[16], true, "map follows connector loop")
+eq(visible[0][0].revealed, true, "map reveals current node at its coordinate")
+eq(visible[0][1].revealed, true, "map reveals first connector to the east")
+eq(visible[0][2].revealed, true, "map follows connector east")
+eq(visible[1][1].revealed, true, "map follows connector south")
+eq(visible[1][2].revealed, true, "map follows connector loop")
+local wrap_map = {}
+for y = 0, MX.H - 1 do
+    wrap_map[y] = {}
+    for x = 0, MX.W - 1 do wrap_map[y][x] = 0 end
+end
+wrap_map[1][0] = 12
+wrap_map[0][13] = 12
+local wrapped = MX.reveal(wrap_map, {}, 0, 1)
+eq(wrapped[0][13].revealed, true,
+    "horizontal connector flow preserves the ROM's row-edge wrap")
 
 -- Deck pool splits, target floors, and source word-sized memory math.
 local deck = {
@@ -1707,7 +1735,6 @@ local analyze_node = { colour = 2, security = 3 }
 local analyze_state = { mode = E.MatrixModeResult.ATTACK,
                         alert = 0, smoke = 0 }
 local analyze_roll_count = 0
-local known_nodes = { [14] = 0 }
 local analyzed = Programs.analyze(
     analyze_deck, { d81c = 3, computer = 6 }, analyze_node,
     analyze_state,
@@ -1721,12 +1748,11 @@ local analyzed = Programs.analyze(
         eq(dice, 3, "Analyze opposes with node security")
         eq(tn, 5, "Analyze opposition uses deck Sensor")
         return 0
-    end, known_nodes, 14)
+    end)
 eq(analyzed.ok, true, "Analyze returns its successful outcome")
 eq(analyzed.net, 2, "Analyze floors and reports net successes")
-eq(analyzed.level, 2, "Analyze returns the FFFB30 knowledge rank")
+eq(analyzed.analysis_level, 2, "Analyze returns a semantic discovery level")
 eq(analyzed.frames, 0x3C, "Analyze starts the ROM profile duration")
-eq(known_nodes[14], 0x20, "Analyze stores its knowledge nibble")
 local analyze_failed = Programs.analyze(
     analyze_deck, { d81c = 3, computer = 6 }, analyze_node,
     analyze_state, function() return 0 end)
@@ -1779,6 +1805,7 @@ local run_probe = {
 }
 local committed_world
 game = {
+    modules = { run_support = require("run_support") },
     runs = { registry = Registry, matrix_objective = run_probe },
     matrix_world_state = function()
         return { run = { state = 9 }, field = {}, actors = {} }

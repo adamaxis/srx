@@ -5,7 +5,7 @@ local C = require("menu.rules.matrix_combat")
 local M = {}
 local P = { REBOUND = 3, MEDIC = 4, SLEAZE = 8, DECEPTION = 9, RELOCATE = 10, ANALYZE = 11 }   -- names 0xE2F46, dispatch 0xE2E0A
 M.P = P
-local function itype(node, st) return MX.ic_type(node, st.alert, true, 1) end
+local function itype(node, st) return MX.ic_type(node, st.alert, true, true) end
 
 -- Rebound 0x1B8BC: fail -> state 7, unload, FFF0B6 = FF, sfx 0x20. Success -> charges FFF0D9 = successes.
 function M.rebound(deck, decker, node, st, roll)
@@ -58,15 +58,20 @@ function M.relocate(deck, decker, node, st, roll)
     if net > 0 then node.ic_condition = 0; st.trace_rewind = true; return { state = 6, crashed = true } end
     return { state = 10 }
 end
--- Analyze 0x19D26: decker test (fail -> 0x19B34 code 11); then 0x56064: roll(node security +6, max(Sensor,2)),
--- net = s - that (floor 0); FFFB30[FFF102] |= min(net, 4) << 4 (high nibble = analyze level 0..4) [C].
-function M.analyze(deck, decker, node, st, roll, fffb30, idx)
+-- Analyze 0x19D26 tests the runner, then 0x56064 compares the roll against
+-- node security + 6. Return the semantic discovery result; the Matrix session
+-- records it on the current node instead of exposing its source RAM slot.
+function M.analyze(deck, decker, node, st, roll)
     local s = C.decker_test(deck, decker, node, st, P.ANALYZE, roll)
     if s < 0 then return { fail = true, unload = true } end
     local net = s - roll(node.security, math.max(deck.sensor, 2)); if net < 0 then net = 0 end
-    local lv = net >= 5 and 4 or net
-    if fffb30 then fffb30[idx] = (fffb30[idx] or 0) | (lv << 4) end
-    return { ok = true, net = net, level = lv, frames = 0x3C }
+    local analysis_level = net >= 5 and 4 or net
+    return {
+        ok = true,
+        net = net,
+        analysis_level = analysis_level,
+        frames = 0x3C,
+    }
 end
 -- Dump 0x1B302 (FFE084): 60 frames (FFE086) of screen shake: each frame 0x58 groups of 4 scroll words at FFCB40
 -- get += (r & 0x1F, sign bit 7) x2 and ((r >> 8) & 0x1F, sign bit 15) x2, r = 0xD44 (seed*0x20E5+1); then

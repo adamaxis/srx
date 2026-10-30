@@ -9,6 +9,7 @@ extern "C" {
 #include <array>
 #include <cstdint>
 #include <optional>
+#include <string_view>
 #include <type_traits>
 
 namespace shadowrun::ghidra_conversion::scripting {
@@ -78,6 +79,47 @@ int read_integer(lua_State* lua, const int table_index, const char* name,
     lua_pop(lua, 1);
     return static_cast<int>(std::clamp<lua_Integer>(
         is_number ? value : fallback, minimum, maximum));
+}
+
+std::string_view matrix_security_color_name(
+    const ScriptMatrixSecurityColor color) {
+    switch (color) {
+    case ScriptMatrixSecurityColor::unvisited:
+        return "unvisited";
+    case ScriptMatrixSecurityColor::blue:
+        return "blue";
+    case ScriptMatrixSecurityColor::green:
+        return "green";
+    case ScriptMatrixSecurityColor::orange:
+        return "orange";
+    case ScriptMatrixSecurityColor::red:
+        return "red";
+    }
+    return "unvisited";
+}
+
+ScriptMatrixSecurityColor matrix_security_color_from_lua(
+    lua_State* lua, const int table_index) {
+    lua_getfield(lua, table_index, "security_color");
+    ScriptMatrixSecurityColor color = ScriptMatrixSecurityColor::unvisited;
+    if (lua_type(lua, -1) == LUA_TSTRING) {
+        std::size_t length = 0U;
+        const char* value = lua_tolstring(lua, -1, &length);
+        if (value != nullptr) {
+            const std::string_view name(value, length);
+            if (name == "blue") {
+                color = ScriptMatrixSecurityColor::blue;
+            } else if (name == "green") {
+                color = ScriptMatrixSecurityColor::green;
+            } else if (name == "orange") {
+                color = ScriptMatrixSecurityColor::orange;
+            } else if (name == "red") {
+                color = ScriptMatrixSecurityColor::red;
+            }
+        }
+    }
+    lua_pop(lua, 1);
+    return color;
 }
 
 template <typename Values>
@@ -256,27 +298,35 @@ void push_matrix_world_state(lua_State* lua,
                           world.karma_counter);
     push_optional_integer(lua, world_index, "passive_ic_counter",
                           world.passive_ic_counter);
-    if (world.matrix_map_memory.has_value()) {
-        const auto& memory = *world.matrix_map_memory;
+    if (world.map_knowledge.has_value()) {
+        const auto& knowledge = *world.map_knowledge;
         lua_createtable(lua, 0, 3);
-        const auto memory_index = lua_absindex(lua, -1);
-        lua_pushinteger(lua, memory.system_id);
-        lua_setfield(lua, memory_index, "system_id");
-        lua_createtable(lua, static_cast<int>(memory.cells.size()), 0);
-        const auto cells_index = lua_absindex(lua, -1);
-        for (std::size_t index = 0; index < memory.cells.size(); ++index) {
-            lua_pushinteger(lua, memory.cells[index]);
-            lua_rawseti(lua, cells_index, static_cast<lua_Integer>(index));
+        const auto knowledge_index = lua_absindex(lua, -1);
+        lua_pushinteger(lua, knowledge.system_id);
+        lua_setfield(lua, knowledge_index, "system_id");
+        lua_createtable(lua, static_cast<int>(knowledge.rows.size()), 0);
+        const auto rows_index = lua_absindex(lua, -1);
+        for (std::size_t y = 0; y < knowledge.rows.size(); ++y) {
+            const auto& row = knowledge.rows[y];
+            lua_createtable(lua, static_cast<int>(row.size()), 0);
+            const auto row_index = lua_absindex(lua, -1);
+            for (std::size_t x = 0; x < row.size(); ++x) {
+                const auto& cell = row[x];
+                lua_createtable(lua, 0, 3);
+                lua_pushinteger(lua, cell.analysis_level);
+                lua_setfield(lua, -2, "analysis_level");
+                const auto color =
+                    matrix_security_color_name(cell.security_color);
+                lua_pushlstring(lua, color.data(), color.size());
+                lua_setfield(lua, -2, "security_color");
+                lua_pushboolean(lua, cell.revealed);
+                lua_setfield(lua, -2, "revealed");
+                lua_rawseti(lua, row_index, static_cast<lua_Integer>(x));
+            }
+            lua_rawseti(lua, rows_index, static_cast<lua_Integer>(y));
         }
-        lua_setfield(lua, memory_index, "cells");
-        lua_createtable(lua, static_cast<int>(memory.revealed.size()), 0);
-        const auto revealed_index = lua_absindex(lua, -1);
-        for (std::size_t index = 0; index < memory.revealed.size(); ++index) {
-            lua_pushinteger(lua, memory.revealed[index]);
-            lua_rawseti(lua, revealed_index, static_cast<lua_Integer>(index));
-        }
-        lua_setfield(lua, memory_index, "revealed");
-        lua_setfield(lua, world_index, "matrix_map_memory");
+        lua_setfield(lua, knowledge_index, "cells");
+        lua_setfield(lua, world_index, "map_knowledge");
     }
     if (world.run.has_value()) {
         const auto& run = *world.run;
@@ -356,18 +406,50 @@ ScriptMatrixWorldState read_matrix_world_state(lua_State* lua,
         world.passive_ic_counter = static_cast<std::int8_t>(
             std::clamp<lua_Integer>(*value, -128, 127));
     }
-    lua_getfield(lua, world_index, "matrix_map_memory");
+    lua_getfield(lua, world_index, "map_knowledge");
     if (lua_istable(lua, -1)) {
-        const auto memory_index = lua_absindex(lua, -1);
+        const auto knowledge_index = lua_absindex(lua, -1);
         const auto system_id = read_optional_integer(
-            lua, memory_index, "system_id");
+            lua, knowledge_index, "system_id");
         if (system_id.has_value() && *system_id >= 0 && *system_id <= 24) {
-            ScriptMatrixMapMemory memory;
-            memory.system_id = static_cast<std::uint8_t>(*system_id);
-            read_array(lua, memory_index, "cells", memory.cells, 0, 0xFF);
-            read_array(lua, memory_index, "revealed", memory.revealed, 0,
-                       0xFF);
-            world.matrix_map_memory = memory;
+            ScriptMatrixMapKnowledge knowledge;
+            knowledge.system_id = static_cast<std::uint8_t>(*system_id);
+            lua_getfield(lua, knowledge_index, "cells");
+            if (lua_istable(lua, -1)) {
+                const auto rows_index = lua_absindex(lua, -1);
+                for (std::size_t y = 0; y < knowledge.rows.size(); ++y) {
+                    lua_rawgeti(lua, rows_index, static_cast<lua_Integer>(y));
+                    if (lua_istable(lua, -1)) {
+                        const auto row_index = lua_absindex(lua, -1);
+                        for (std::size_t x = 0;
+                             x < knowledge.rows[y].size(); ++x) {
+                            lua_rawgeti(lua, row_index,
+                                        static_cast<lua_Integer>(x));
+                            if (lua_istable(lua, -1)) {
+                                const auto cell_index = lua_absindex(lua, -1);
+                                auto& cell = knowledge.rows[y][x];
+                                const auto level = read_optional_integer(
+                                    lua, cell_index, "analysis_level");
+                                if (level.has_value() && *level >= 0 &&
+                                    *level <= 7) {
+                                    cell.analysis_level =
+                                        static_cast<std::uint8_t>(*level);
+                                }
+                                cell.security_color =
+                                    matrix_security_color_from_lua(
+                                        lua, cell_index);
+                                cell.revealed = read_optional_boolean(
+                                    lua, cell_index, "revealed")
+                                                    .value_or(false);
+                            }
+                            lua_pop(lua, 1);
+                        }
+                    }
+                    lua_pop(lua, 1);
+                }
+            }
+            lua_pop(lua, 1);
+            world.map_knowledge = knowledge;
         }
     }
     lua_pop(lua, 1);
@@ -546,8 +628,9 @@ int dispatch_cyberdeck_menu_binding(
         lua_pushboolean(lua, game.world_effect_gate_negative &&
                                   game.world_effect_gate_negative());
         return 1;
-    case CyberdeckMenuBinding::map_seen:
-        lua_pushinteger(lua, game.map_seen ? game.map_seen() : 0);
+    case CyberdeckMenuBinding::matrix_node_discovered:
+        lua_pushboolean(lua, game.matrix_node_discovered &&
+                                  game.matrix_node_discovered());
         return 1;
     case CyberdeckMenuBinding::matrix_world_state:
         push_matrix_world_state(

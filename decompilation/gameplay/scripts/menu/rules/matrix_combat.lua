@@ -128,7 +128,7 @@ function M.trace_step(deck, node, st, roll)
 end
 -- Attack IC 0x56268 roll + 0x562EC resolve. Returns events table.
 function M.ic_attack(deck, decker, node, st, roll)
-    local black = MX.ic_type(node, st.alert, true, 1) == 8
+    local black = MX.ic_type(node, st.alert, true, true) == 8
     local hits = roll(MX.ic_rating(node, st.alert), M.tn_ic(deck.bod, st))
     if hits <= 0 then return { miss = true } end
     local def = roll(M.pool(deck, decker, st.mode, true) + deck.mpcp, M.tn_decker(node.security, st))
@@ -147,7 +147,7 @@ function M.ic_attack(deck, decker, node, st, roll)
     end
     deck.persona = math.max(0, math.min(10, deck.persona + dmg))                         -- 0x17DB8
     local ev = { persona = dmg }
-    if deck.persona == 0 and MX.ic_type(node, st.alert, true, 1) == 3 then             -- Blaster: MPCP burn 0x563CC
+    if deck.persona == 0 and MX.ic_type(node, st.alert, true, true) == 3 then          -- Blaster: MPCP burn 0x563CC
         local b = roll(MX.ic_rating(node, st.alert), min2(deck.mpcp)) - deck.hardening
         if b > 0 then
             deck.mpcp = deck.mpcp - b; if deck.mpcp < 0 then deck.mpcp = 0; deck.response = 0 end

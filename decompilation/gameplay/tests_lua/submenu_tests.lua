@@ -76,7 +76,8 @@ local function mk(o)
         show_retreat = function() g.rmap = true end, deck_restore_screen = function() g.restored = true end,
         previous_node = function() return o.prev or -1 end, retreat = function() g.retreated = true end,
         matrix_online = function() return o.online or false end, matrix_node = function() return { ic_condition = 10, ic_code = o.ic == 8 and 4 or 0, ic_rating = 6, ic_rating2 = 0 } end,
-        alert = function() return -1 end, in_alert = function() return true end, map_seen = function() return 1 end,
+        alert = function() return -1 end, in_alert = function() return true end,
+        matrix_node_discovered = function() return true end,
         apply_physical = function(d) g.party[0].physical = math.max(0, g.party[0].physical + d) end,
         matrix_logout = function() g.logout = true end,
 
@@ -628,16 +629,27 @@ do local d = ROM; if d then local ok = true
     local function rs(a, set) local ok2 = true; for i = 0, 6 do if not set[d:byte(a + i + 1)] then ok2 = false end end; return ok2 end
     check(rs(0x15FC9A, MXr.CONNECT_LEFT) and rs(0x15FCA1, MXr.CONNECT_RIGHT) and rs(0x15FCA8, MXr.CONNECT_UP) and rs(0x15FCAF, MXr.CONNECT_DOWN), "connector sets == ROM") end end
 local nd = { ic_condition = 10, ic_code = 13, ic_rating = 4, ic_rating2 = 7 }
-check(MXr.ic_type(nd, MXr.NONE, false, 1) == 0 and MXr.ic_type(nd, MXr.ACTIVE, false, 1) == 8, "two-layer IC: Access then Black at active alert")
-check(MXr.ic_type(nd, MXr.NONE, false, 0) == MXr.UNSEEN and MXr.ic_type(nd, MXr.NONE, true, 0) == 0, "unseen unless FFDF84 < 0")
-check(MXr.ic_type({ ic_condition = 0, ic_code = 1 }, 0, true, 1) == 0x45 and MXr.ic_type({ ic_condition = 5, ic_code = 0xFF }, 0, true, 1) == 0x45, "0x45 = no live IC")
-check(MXr.ic_type({ ic_condition = 5, ic_code = 26 }, MXr.ACTIVE, true, 0) == 8 and MXr.ic_type({ ic_condition = 5, ic_code = -1 }, MXr.ACTIVE, true, 1) == 0x45, "upper ROM IC code and signed no-IC sentinel")
+check(MXr.ic_type(nd, MXr.NONE, false, true) == 0 and MXr.ic_type(nd, MXr.ACTIVE, false, true) == 8, "two-layer IC: Access then Black at active alert")
+check(MXr.ic_type(nd, MXr.NONE, false, false) == MXr.UNSEEN and MXr.ic_type(nd, MXr.NONE, true, false) == 0, "unseen unless FFDF84 < 0")
+check(MXr.ic_type({ ic_condition = 0, ic_code = 1 }, 0, true, true) == 0x45 and MXr.ic_type({ ic_condition = 5, ic_code = 0xFF }, 0, true, true) == 0x45, "0x45 = no live IC")
+check(MXr.ic_type({ ic_condition = 5, ic_code = 26 }, MXr.ACTIVE, true, false) == 8 and MXr.ic_type({ ic_condition = 5, ic_code = -1 }, MXr.ACTIVE, true, true) == 0x45, "upper ROM IC code and signed no-IC sentinel")
 check(MXr.ic_rating(nd, MXr.NONE) == 4 and MXr.ic_rating(nd, MXr.PASSIVE) == 5 and MXr.ic_rating(nd, MXr.ACTIVE) == 9, "IC rating + alert bonus, layer 2")
 local a, ov = MXr.raise_alert(MXr.ACTIVE, 1, true); local a2 = MXr.raise_alert(MXr.NONE, -1, false)
 check(a == 1 and ov and a2 == -1 and MXr.raise_alert(-1, 1, true) == 0, "alert clamp + overload")
-local mp = {}; for i = 0, 139 do mp[i] = 0 end; mp[16] = 12; mp[17] = 3; mp[30] = 13; mp[44] = 5
-local kn = MXr.reveal(mp, {}, 1, 1)   -- cur 15 (node 0) -> right 16 connector (12 connects left) -> 17 node: own 12 connects right
-check(kn[15] and kn[16] and kn[17] and not kn[29], "map reveal flood")
+local mp = {}
+for y = 0, MXr.H - 1 do
+    mp[y] = {}
+    for x = 0, MXr.W - 1 do mp[y][x] = 0 end
+end
+mp[1][2] = 12
+mp[1][3] = 3
+mp[2][2] = 13
+mp[3][2] = 5
+local kn = MXr.reveal(mp, {}, 1, 1)
+check(kn[1][1].revealed and kn[1][2].revealed and kn[1][3].revealed and
+      kn[2][2].revealed and kn[3][2].revealed and
+      not (kn[2] and kn[2][1]),
+      "map reveal flood follows coordinate connectors")
 local act, run = { [0] = 1, 5, -1, 1, -1 }, { [0] = 6, 6, 0, 6, 0 }
 check(MXr.cycle_slot(0, -1, act, run) == 4 and run[0] == 1, "slot cycle wraps, resets state>=6")
 check(MXr.cycle_slot(1, 1, act, run) == 2 and run[1] == 6, "persistent program 5 keeps state")
@@ -700,7 +712,7 @@ if started then
     check(first_effect_tick and
           MatrixSession.traversal_view(hidden_state).world_effect_phase == 1,
           "unseen Matrix node advances on the first world-sequence service")
-    MatrixSession.set_current_node_knowledge(hidden_state, 4)
+    MatrixSession.set_current_node_analysis_level(hidden_state, 4)
     check(MatrixSession.traversal_view(hidden_state).world_effect_mode ==
               MXr.UNSEEN,
           "node-action knowledge update does not replace the stored entry mode")
@@ -712,7 +724,7 @@ if started then
     local reselection = MatrixSession.begin_world_entry(hidden_state)
     local selected_mode = MXr.ic_type(
         MatrixSession.current_node(hidden_state), hidden_state.alert,
-        hidden_state.in_alert, MatrixSession.current_node_knowledge(
+        hidden_state.in_alert, MatrixSession.current_node_discovered(
             hidden_state))
     local active_view = MatrixSession.traversal_view(hidden_state)
     check(reselection and active_view.world_effect_mode == selected_mode and
@@ -724,7 +736,11 @@ else
 end
 local zero_effect_state = {
     phase = "node", current_node = 0, alert = MXr.NONE,
-    in_alert = false, knowledge_ranks = { [0] = 1 },
+    in_alert = false,
+    map_knowledge = {
+        system_id = 0,
+        cells = { [0] = { [0] = { analysis_level = 1 } } },
+    },
     nodes = { [0] = {
         x = 0, y = 0, function_id = 2, file_class_id = 0,
         colour = 1, security = 1, ic_condition = 10, ic_code = 0,
@@ -748,7 +764,7 @@ check(zero_entry and zero_first_tick and zero_second_tick and
       "mode-zero entry uses raw cadence and clamps at source phase 3")
 local entry_started, entry_state = MatrixSession.begin(2, false, 2, 0)
 if entry_started then
-    MatrixSession.set_current_node_knowledge(entry_state, 4)
+    MatrixSession.set_current_node_analysis_level(entry_state, 4)
     local began = MatrixSession.begin_world_entry(entry_state)
     local entry_view = MatrixSession.traversal_view(entry_state)
     for _ = 1, 61 do

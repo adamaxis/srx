@@ -266,10 +266,15 @@ function M.input(st, events, ctx)
         else
             gate_negative = false
         end
-        local black = MX.ic_type(node, alert,
-                                 gate_negative,
-                                 MatrixSession.is_online(st.matrix_state) and 1 or
-                                     g.map_seen()) == M.BLACK_IC and
+        local node_discovered
+        if MatrixSession.is_online(st.matrix_state) then
+            node_discovered = MatrixSession.current_node_discovered(
+                st.matrix_state)
+        else
+            node_discovered = g.matrix_node_discovered()
+        end
+        local black = MX.ic_type(node, alert, gate_negative,
+                                 node_discovered) == M.BLACK_IC and
                       g.in_combat() -- 0x19B40 == 8 && FFDF84
         return { transition = T.PUSH, screen = E.MenuScreen.PULL_PLUG,
                  args = { black_ic = black,

@@ -2432,7 +2432,7 @@ struct GameScriptRuntime::Impl {
         matrix_node,
         alert,
         world_effect_gate_negative,
-        map_seen,
+        matrix_node_discovered,
         matrix_world_state,
         commit_matrix_world_state,
         deck_record,
@@ -3076,10 +3076,10 @@ struct GameScriptRuntime::Impl {
             return dispatch_cyberdeck_menu_binding(
                 lua, self->menu_route_bindings.game,
                 CyberdeckMenuBinding::world_effect_gate_negative);
-        case MenuBinding::map_seen:
+        case MenuBinding::matrix_node_discovered:
             return dispatch_cyberdeck_menu_binding(
                 lua, self->menu_route_bindings.game,
-                CyberdeckMenuBinding::map_seen);
+                CyberdeckMenuBinding::matrix_node_discovered);
         case MenuBinding::matrix_world_state:
             return dispatch_cyberdeck_menu_binding(
                 lua, self->menu_route_bindings.game,
@@ -3268,8 +3268,8 @@ struct GameScriptRuntime::Impl {
         add_menu_binding(state, table_index,
                          "world_effect_gate_negative",
                          MenuBinding::world_effect_gate_negative);
-        add_menu_binding(state, table_index, "map_seen",
-                         MenuBinding::map_seen);
+        add_menu_binding(state, table_index, "matrix_node_discovered",
+                         MenuBinding::matrix_node_discovered);
         add_menu_binding(state, table_index, "matrix_world_state",
                          MenuBinding::matrix_world_state);
         add_menu_binding(state, table_index, "commit_matrix_world_state",
@@ -3952,8 +3952,8 @@ struct GameScriptRuntime::Impl {
                         read_optional(view_index, "model_canvas_width");
                     const auto model_canvas_height =
                         read_optional(view_index, "model_canvas_height");
-                    const auto knowledge_rank =
-                        read_optional(view_index, "knowledge_rank");
+                    const auto analysis_level =
+                        read_optional(view_index, "analysis_level");
                     const auto action_difficulty =
                         read_optional(view_index, "action_difficulty");
                     const auto ice_rating_column =
@@ -4071,8 +4071,8 @@ struct GameScriptRuntime::Impl {
                           *model_canvas_height > 0 &&
                           *model_canvas_x + *model_canvas_width <= 320 &&
                           *model_canvas_y + *model_canvas_height <= 224)) &&
-                        knowledge_rank.has_value() &&
-                        *knowledge_rank >= 0 && *knowledge_rank <= 0x0F &&
+                        analysis_level.has_value() &&
+                        *analysis_level >= 0 && *analysis_level <= 7 &&
                         action_difficulty.has_value() &&
                         *action_difficulty >= -1 &&
                         *action_difficulty <= 255 &&
@@ -4111,7 +4111,7 @@ struct GameScriptRuntime::Impl {
                         view.model_canvas_y = *model_canvas_y;
                         view.model_canvas_width = *model_canvas_width;
                         view.model_canvas_height = *model_canvas_height;
-                        view.knowledge_rank = *knowledge_rank;
+                        view.analysis_level = *analysis_level;
                         view.action_difficulty = *action_difficulty;
                         view.ice_rating_column = *ice_rating_column;
                         view.second_ice_rating_column =
@@ -14991,10 +14991,10 @@ bool GameScriptRuntime::open_menu_route(
                         *start_arguments.matrix_node_ic_condition);
         lua_setfield(state, -2, "node_ic_condition");
     }
-    if (start_arguments.matrix_node_knowledge_rank.has_value()) {
+    if (start_arguments.matrix_node_analysis_level.has_value()) {
         lua_pushinteger(state,
-                        *start_arguments.matrix_node_knowledge_rank);
-        lua_setfield(state, -2, "node_knowledge_rank");
+                        *start_arguments.matrix_node_analysis_level);
+        lua_setfield(state, -2, "node_analysis_level");
     }
     if (start_arguments.taxi_current_region.has_value()) {
         lua_pushinteger(state, *start_arguments.taxi_current_region);
