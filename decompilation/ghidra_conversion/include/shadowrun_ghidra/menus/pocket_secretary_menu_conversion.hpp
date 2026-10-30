@@ -176,6 +176,15 @@ DismissRunnerMenuEvent apply_dismiss_runner_input(
     DismissRunnerMenuState& state, std::uint16_t input);
 std::vector<std::size_t> pocket_secretary_group_item_display_order(
     std::uint32_t group_item_flags);
+// The field-menu host projects persisted state into ordered content IDs before
+// exposing these choices to Lua. These IDs address the Pocket Secretary
+// catalogs; they are not save-word values.
+std::vector<std::size_t> pocket_secretary_notebook_tip_content_ids(
+    const std::array<std::uint32_t, 3>& tip_flags);
+std::vector<std::size_t> pocket_secretary_notebook_referral_content_ids(
+    std::uint8_t referral_flags);
+std::vector<std::size_t> pocket_secretary_notebook_record_content_ids(
+    std::uint32_t record_flags, std::size_t record_count);
 
 // ROM 0xC2D4..0xC374: apply one sampled controller event. Source bit 8 has
 // priority over bit 9, then action (bit 14), mode action (bit 13), and exit

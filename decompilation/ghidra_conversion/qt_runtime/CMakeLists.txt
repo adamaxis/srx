@@ -2089,6 +2089,14 @@ target_link_libraries(shadowrun_ghidra_magic_menu_conversion_test
 add_test(NAME shadowrun_ghidra_magic_menu_conversion
          COMMAND shadowrun_ghidra_magic_menu_conversion_test)
 
+add_executable(shadowrun_ghidra_pocket_secretary_menu_conversion_test
+    ../tests/menus/pocket_secretary_menu_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_pocket_secretary_menu_conversion_test
+    PRIVATE shadowrun_ghidra_conversion_runtime)
+add_test(NAME shadowrun_ghidra_pocket_secretary_menu_conversion
+         COMMAND shadowrun_ghidra_pocket_secretary_menu_conversion_test)
+
 # Keep the source-state and arithmetic contract in the same CTest suite as
 # the executable walk. The Qt QA test proves wiring/pixels; this leaf test
 # proves selector wrap, cancellation, equipment/ammo math, discard gates, and

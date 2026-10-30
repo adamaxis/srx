@@ -89,11 +89,11 @@ struct ScriptMenuRouteArgs {
 
 enum class ScriptNotebookBoundary : std::uint8_t {
     event_gates_unresolved,
-    tips_flags_unresolved,
+    tips_unresolved,
     current_run_unresolved,
-    contacts_flags_unresolved,
-    shadowrunners_flags_unresolved,
-    mr_johnsons_flags_unresolved,
+    contacts_unresolved,
+    shadowrunners_unresolved,
+    mr_johnsons_unresolved,
 };
 
 struct ScriptMenuRouteHost {
@@ -169,10 +169,12 @@ struct ScriptMenuSpellTable {
 struct ScriptNotebookFacts {
     bool current_run_available = false;
     std::optional<std::array<bool, 3>> event_gates;
-    std::optional<std::array<std::uint32_t, 3>> tip_flags;
-    std::optional<std::uint8_t> referral_flags;
-    std::optional<std::uint32_t> contact_flags;
-    std::optional<std::uint16_t> shadowrunner_flags;
+    // Ordered menu catalog IDs. The host has already resolved persistent save
+    // state before these facts cross into Lua.
+    std::optional<std::vector<int>> tip_ids;
+    std::optional<std::vector<int>> referral_ids;
+    std::optional<std::vector<int>> contact_ids;
+    std::optional<std::vector<int>> shadowrunner_ids;
 };
 
 struct ScriptCyberdeckFile {
@@ -373,7 +375,7 @@ struct ScriptMenuRouteGame {
     std::function<void(std::uint32_t)> set_nuyen;
     std::function<bool(int)> begin_taxi_cabbie;
     std::function<void()> consume_debug_unlock;
-    std::function<void(std::uint32_t)> set_contact_flags;
+    std::function<void()> seed_debug_contacts;
     std::function<void()> set_walk_fast;
     std::function<void()> install_test_deck;
     std::function<int(int)> source_random_bound;
@@ -381,7 +383,7 @@ struct ScriptMenuRouteGame {
     // binding keeps route QA able to script alert draws independently.
     std::function<int(int)> matrix_alert_random_bound;
     std::function<void(int)> dismiss_runner;
-    std::function<std::optional<std::uint32_t>()> group_item_flags;
+    std::function<std::optional<std::vector<int>>()> group_item_ids;
     std::function<std::optional<ScriptNotebookFacts>()> notebook_facts;
     std::function<std::optional<bool>()> cyberdeck_available;
     std::function<int()> deck_enter;
@@ -595,7 +597,7 @@ struct ScriptMenuRouteSnapshot {
     std::optional<int> top_item_phase;
     std::optional<int> top_target;
     std::optional<int> top_page;
-    std::optional<int> top_detail_index;
+    std::optional<int> top_detail_entry_id;
     std::optional<int> top_detail_row;
     std::optional<ScriptNotebookCurrentRunView> top_notebook_current_run;
     bool top_matrix_state_present = false;
@@ -658,7 +660,7 @@ struct ScriptMenuRouteSnapshot {
     std::optional<int> top_grid_effect_frames;
     std::vector<int> top_visible_item_ids;
     std::vector<int> top_visible_option_ids;
-    std::vector<int> top_visible_source_ids;
+    std::vector<int> top_visible_entry_ids;
     struct MagicView {
         int row = 0;
         int column = 0;

@@ -55,8 +55,13 @@ local function mk(o)
         magazine_capacity = function() return o.cap or 0x40 end, roll_successes = function(d, t) g.rolls = (g.rolls or 0) + 1; local q = o.rolls; return q and table.remove(q, 1) or 1 end,
         pocket_extra_row = function() return o.extra or false end,
         secretary_effect_tick = function() g.ticks = g.ticks + 1 end,
-        group_item_flags = function() return 0x8001 end, cyberdeck_available = function() return o.deck or false end,
-        notebook = function() return { gates = o.gates or {}, current_run = false, tips = { 5, 0, 0 }, referrals = o.refs or 0 } end,
+        group_item_ids = function() return { 14, 0 } end, cyberdeck_available = function() return o.deck or false end,
+        notebook = function() return {
+            gates = o.gates or {}, current_run = false,
+            tip_ids = { 0, 2 }, referral_ids = o.refs or { 0, 2, 4 },
+            contact_ids = o.contact_ids or {},
+            shadowrunner_ids = o.shadowrunner_ids or {},
+        } end,
         dismiss_runner = function(s) log.dismissed = s end,
         clear_debug_unlock = function() g.unlock = false end, set_nuyen = function(v) g.nuyen = v end,
         install_test_deck = function() g.deck = true end, set_contacts = function(m) g.contacts = m end,
@@ -86,7 +91,7 @@ local function mk(o)
         commit_party = function(p) for k, v in pairs(p) do g.party[k] = v end end,
         set_runner_ammo = function(slot, clips, rounds) local r = g.party[slot]; r.clips, r.rounds = clips, rounds end,
         consume_debug_unlock = function() g.unlock = false end,
-        set_contact_flags = function(m) g.contacts = m end, set_spell_table = function(index, t) g.spell_index = index; g.spells = t end,
+        seed_debug_contacts = function() g.debug_contacts = true end, set_spell_table = function(index, t) g.spell_index = index; g.spells = t end,
         matrix_world_state = function() return { field = { alarm = 0 } } end, commit_matrix_world_state = function(w) g.world = w end,
         source_random_bound = function(n) g.draws = (g.draws or 0) + 1; return 0 end, matrix_alert_random_bound = function(n) return 0 end,
     }
@@ -265,7 +270,7 @@ r7:frame(P.DOWN); check(st(r7).row == 0 and st(r7).grid_effect_frames == f7 + 1 
 r7:frame(P.B); check(top(r7) == S.POCKET_SECRETARY, "B ignored (A bit14 only) [C]")
 r7:frame(P.C); check(g7.reselects == 1, "C -> 0x391A [C]")
 r7:frame(P.A); check(top(r7) == S.NOTEBOOK and #st(r7).options == 2, "notebook gated rows")
-r7:frame(P.DOWN); r7:frame(P.A); check(top(r7) == S.NOTEBOOK_TIPS and #st(r7).visible == 2, "tips flags")
+r7:frame(P.DOWN); r7:frame(P.A); check(top(r7) == S.NOTEBOOK_TIPS and st(r7).visible_entry_ids[1] == 0 and st(r7).visible_entry_ids[2] == 2, "Tips uses host-projected content IDs")
 r7:frame(P.RIGHT); r7:frame(P.RIGHT); check(st(r7).page == 1, "tips clamp")
 r7:frame(P.B); r7:frame(P.START); check(top(r7) == S.POCKET_SECRETARY, "Tips B, then Notebook Start returns to PS [C]")
 r7:frame(P.DOWN); r7:frame(P.DOWN); r7:frame(P.A); check(top(r7) == S.MESSAGE and st(r7).message == MM.NO_CYBERDECK, "no deck")
@@ -287,8 +292,11 @@ do
     parent_return:frame(P.DOWN)
     parent_return:frame(P.A)
     check(top(parent_return) == S.GROUP_ITEMS and
-          parent_return.stack[2].state.row == 1,
-          "Group Items opens from Pocket Secretary row 1")
+          parent_return.stack[2].state.row == 1 and
+          parent_return.stack[3].state.visible_item_ids[1] == 14 and
+          parent_return.stack[3].state.visible_item_ids[2] == 0 and
+          parent_return.stack[3].state.group_item_flags == nil,
+          "Group Items receives ordered item IDs without save flags")
     parent_return:frame(P.START)
     check(top(parent_return) == S.POCKET_SECRETARY and
           parent_return.stack[2].state.row == 0,
@@ -348,6 +356,34 @@ do
     local slash_count = select(2, underline:gsub("\\", ""))
     check(underline:sub(1, 1) == "[" and slash_count == 30,
           "Notebook separator asset encodes the 16-cell underline [C]")
+end
+
+-- The host resolves notebook save state into ordered catalog IDs; Lua owns
+-- the page choices and inserted navigation rows.
+do
+    local records = mk({ gates = { true, false, false },
+                         contact_ids = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 } })
+    records:frame(P.A)
+    records:frame(P.A)
+    records:frame(P.DOWN)
+    records:frame(P.DOWN)
+    records:frame(P.A)
+    check(top(records) == S.NOTEBOOK_CONTACTS and
+          records.stack[4].state.visible_entry_ids[1] == 0 and
+          records.stack[4].state.visible_entry_ids[7] == 6 and
+          records.stack[4].state.visible_entry_ids[8] == 13,
+          "Contacts receives host-projected IDs and inserts the forward row")
+    for _ = 1, 7 do records:frame(P.DOWN) end
+    records:frame(P.A)
+    check(st(records).page == 1 and
+          st(records).visible_entry_ids[1] == 7 and
+          st(records).visible_entry_ids[4] == 14,
+          "Contacts continuation page uses available IDs and return row")
+    for _ = 1, 3 do records:frame(P.DOWN) end
+    records:frame(P.A)
+    check(st(records).page == 0 and
+          st(records).visible_entry_ids[8] == 13,
+          "Contacts return row restores the first page")
 end
 
 -- save/load 0xEFB4 [C] -- srx host JSON saves (screens/save_load.lua): combat gate FFDF84 [C 0xEFE6], two slots.
@@ -447,6 +483,9 @@ rd:frame(P.UP); check(st(rd).row == 7, "debug cursor wraps to 7")
 rd:frame(P.DOWN); rd:frame(P.A); check(gd.nuyen == 0x3D090 and gd.unlock == false and top(rd) == S.POCKET_SECRETARY, "Nuyen = 250000, FFF101 cleared")
 rd:frame(P.UP); rd:frame(P.A); for _ = 1, 5 do rd:frame(P.DOWN) end; rd:frame(P.A)
 check(gd.party[0].karma == 4 and gd.party[1].karma == 11, "+10 karma wraps byte [C +0x8D]")
+rd:frame(P.UP); rd:frame(P.A); for _ = 1, 6 do rd:frame(P.DOWN) end; rd:frame(P.A)
+check(gd.debug_contacts == true,
+      "Debug Contacts invokes the semantic host seed [C ROM 0x59C48]")
 rd:frame(P.UP); rd:frame(P.A); for _ = 1, 4 do rd:frame(P.DOWN) end; rd:frame(P.A)
 check(gd.party[0].runner_facts.lifecycle.active and
       not gd.party[0].runner_facts.lifecycle.downed and

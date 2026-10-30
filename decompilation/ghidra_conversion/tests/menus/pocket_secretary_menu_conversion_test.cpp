@@ -86,6 +86,8 @@ int main() {
                 state.open && !state.group_items_wait)) {
         return 6;
     }
+    // ROM 0xC8C8 displays these item catalog IDs from 14 down to 0; Lua now
+    // receives this ordered list instead of the persisted group-item word.
     if (!expect(pocket_secretary_group_item_display_order(
                     (std::uint32_t{1} << 14U) | (std::uint32_t{1} << 1U) |
                     std::uint32_t{1}) ==
@@ -148,6 +150,12 @@ int main() {
     tips_state.notebook.selection = 1U;
     const std::array<std::uint32_t, 3> tip_flags{
         0x00000005U, 0x00000002U, 0x80000000U};
+    // ROM 0xF9A4 scans its three tip longwords low bit to high bit and turns
+    // them into menu content IDs before the Lua boundary.
+    if (!expect(pocket_secretary_notebook_tip_content_ids(tip_flags) ==
+                std::vector<std::size_t>{0U, 2U, 33U, 95U})) {
+        return 9;
+    }
     begin_pocket_secretary_notebook_tips(tips_state, tip_flags);
     const auto& tips = tips_state.notebook.tips;
     if (!expect(tips.open && tips.visible_count == 4U &&
@@ -205,6 +213,18 @@ int main() {
     begin_pocket_secretary_notebook(
         johnsons_state, false, std::array<bool, 3>{false, true, false});
     begin_pocket_secretary_notebook_mr_johnsons(johnsons_state, 0x15U);
+    // ROM 0xF416 presents referral IDs. ROM 0xF5F4 builds Contacts (caller
+    // 0xF840) and Shadowrunners (caller 0xF6DC) in ascending catalog order.
+    if (!expect(pocket_secretary_notebook_referral_content_ids(0x15U) ==
+                std::vector<std::size_t>{0U, 2U, 4U} &&
+                pocket_secretary_notebook_record_content_ids(
+                    0x15U, kNotebookContactCount) ==
+                    std::vector<std::size_t>{0U, 2U, 4U} &&
+                pocket_secretary_notebook_record_content_ids(
+                    0x15U, kNotebookShadowrunnerCount) ==
+                    std::vector<std::size_t>{0U, 2U, 4U})) {
+        return 24;
+    }
     const auto& johnsons = johnsons_state.notebook.mr_johnsons;
     if (!expect(johnsons.open && johnsons.visible_count == 3U &&
                 johnsons.selection == 0U &&

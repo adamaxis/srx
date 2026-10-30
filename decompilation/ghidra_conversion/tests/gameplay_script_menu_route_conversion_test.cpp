@@ -98,6 +98,7 @@ constexpr std::array<std::uint8_t, 8> kMatrixLogoutSparkleRows{{
 constexpr std::uint16_t kNotebook = 10U;
 constexpr std::uint16_t kNotebookTips = 21U;
 constexpr std::uint16_t kMrJohnsons = 20U;
+constexpr std::uint16_t kNotebookContacts = 35U;
 constexpr std::uint16_t kGroupItems = 17U;
 constexpr std::uint16_t kDismissRunner = 11U;
 constexpr std::uint16_t kClips = 4U;
@@ -469,9 +470,8 @@ int main() {
     ScriptNotebookFacts notebook_facts;
     notebook_facts.current_run_available = false;
     notebook_facts.event_gates = std::array<bool, 3>{true, true, false};
-    notebook_facts.tip_flags =
-        std::array<std::uint32_t, 3>{0x5U, 0x1U, 0U};
-    notebook_facts.referral_flags = 0x15U;
+    notebook_facts.tip_ids = std::vector<int>{0, 2, 32};
+    notebook_facts.referral_ids = std::vector<int>{0, 2, 4};
     std::array<ScriptMenuPartyMember, 3> party{{
         {1U, 3U, 20U, 0, 2U},
         {3U, 5U, 0U, 0, 2U},
@@ -605,8 +605,9 @@ int main() {
     bindings.game.dismiss_runner = [&dismissed_slot](const int slot) {
         dismissed_slot = slot;
     };
-    bindings.game.group_item_flags = [] {
-        return std::optional<std::uint32_t>{(1U << 14U) | (1U << 1U) | 1U};
+    bindings.game.group_item_ids = [] {
+        return std::optional<std::vector<int>>{
+            std::vector<int>{14, 1, 0}};
     };
     bindings.game.notebook_facts = [&notebook_facts] {
         return std::optional<ScriptNotebookFacts>{notebook_facts};
@@ -957,8 +958,8 @@ int main() {
     runtime.advance_menu_route(0x4000U);
     route = runtime.menu_route_snapshot();
     check(route.top_screen == kNotebookTips && route.top_page == 0 &&
-              route.top_visible_source_ids == std::vector<int>{0, 2, 32},
-          "Tips & Clues filters the three source bitsets in LSB-first order",
+              route.top_visible_entry_ids == std::vector<int>{0, 2, 32},
+          "Tips & Clues presents the ordered content IDs supplied by its host",
           failures);
     runtime.advance_menu_route(0x0400U); // Left clamps at zero.
     runtime.advance_menu_route(0x0800U); // Right to second unlocked tip.
@@ -973,28 +974,60 @@ int main() {
     // [C ROM; e3 9240].
     check(route.top_screen == kNotebook && route.top_row == 0,
           "Tips & Clues returns to Notebook row zero (0xF236)", failures);
+    // ROM 0xF840 uses the shared 0xF5F4 record list. The host supplies
+    // available content IDs; the Lua screen inserts the two page rows.
+    notebook_facts.contact_ids =
+        std::vector<int>{0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    runtime.advance_menu_route(0x0200U); // Tips & Clues.
+    runtime.advance_menu_route(0x0200U); // Contacts.
+    runtime.advance_menu_route(0x4000U);
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kNotebookContacts &&
+              route.top_visible_entry_ids ==
+                  std::vector<int>{0, 1, 2, 3, 4, 5, 6, 13},
+          "Contacts presents its ordered entries and page-forward choice",
+          failures);
+    for (int index = 0; index < 7; ++index) {
+        runtime.advance_menu_route(0x0200U);
+    }
+    runtime.advance_menu_route(0x4000U);
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kNotebookContacts && route.top_page == 1 &&
+              route.top_visible_entry_ids == std::vector<int>{7, 8, 9, 14},
+          "Contacts continuation page presents its entries and return choice",
+          failures);
+    for (int index = 0; index < 3; ++index) {
+        runtime.advance_menu_route(0x0200U);
+    }
+    runtime.advance_menu_route(0x4000U);
+    check(runtime.menu_route_snapshot().top_screen == kNotebookContacts &&
+              runtime.menu_route_snapshot().top_page == 0,
+          "Contacts return choice restores the first page", failures);
+    runtime.advance_menu_route(0x8000U); // Start returns to Notebook.
+
+    notebook_facts.contact_ids.reset();
     runtime.advance_menu_route(0x0200U); // Tips & Clues.
     runtime.advance_menu_route(0x0200U); // Contacts.
     runtime.advance_menu_route(0x4000U); // Explicit unresolved page boundary.
     check(runtime.menu_route_snapshot().top_screen == kNotebook &&
               notebook_boundaries.back() ==
-                  ScriptNotebookBoundary::contacts_flags_unresolved,
-          "Contacts remains behind its unresolved source flag boundary",
+                  ScriptNotebookBoundary::contacts_unresolved,
+          "Contacts reports an unavailable host entry list",
           failures);
     runtime.advance_menu_route(0x0200U); // Mr. Johnsons.
     runtime.advance_menu_route(0x4000U);
     route = runtime.menu_route_snapshot();
     check(route.top_screen == kMrJohnsons && route.top_row == 0 &&
-              route.top_visible_source_ids == std::vector<int>{0, 2, 4},
-          "Mr. Johnsons exposes only the five ROM-defined referral bits",
+              route.top_visible_entry_ids == std::vector<int>{0, 2, 4},
+          "Mr. Johnsons presents the available referral content IDs",
           failures);
     runtime.advance_menu_route(0x0100U); // Up wraps to the final visible row.
     runtime.advance_menu_route(0x1000U); // B opens the selected detail.
     route = runtime.menu_route_snapshot();
     check(route.top_screen == kMessage && route.top_message == 19 &&
-              route.top_detail_index == 4 && route.top_detail_row == 2 &&
-              route.top_visible_source_ids == std::vector<int>{0, 2, 4},
-          "Mr. Johnson detail carries its source record and selected row to the presenter",
+              route.top_detail_entry_id == 4 && route.top_detail_row == 2 &&
+              route.top_visible_entry_ids == std::vector<int>{0, 2, 4},
+          "Mr. Johnson detail carries its entry ID and selected row to the presenter",
           failures);
     runtime.advance_menu_route(0x1000U); // Dismiss detail, preserving selection.
     route = runtime.menu_route_snapshot();

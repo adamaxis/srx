@@ -2544,7 +2544,7 @@ struct GameScriptRuntime::Impl {
         source_random_bound,
         matrix_alert_random_bound,
         dismiss_runner,
-        group_item_flags,
+        group_item_ids,
         notebook_facts,
         cyberdeck_available,
         notebook_boundary,
@@ -2552,7 +2552,7 @@ struct GameScriptRuntime::Impl {
         nuyen,
         set_nuyen,
         begin_taxi_cabbie,
-        set_contact_flags,
+        seed_debug_contacts,
         set_walk_fast,
         install_test_deck,
         deck_enter,
@@ -2717,8 +2717,7 @@ struct GameScriptRuntime::Impl {
             const auto value = integer_argument(1);
             if (value >= 0 &&
                 value <= static_cast<int>(
-                             ScriptNotebookBoundary::
-                                 mr_johnsons_flags_unresolved) &&
+                             ScriptNotebookBoundary::mr_johnsons_unresolved) &&
                 self->menu_route_bindings.host.notebook_boundary) {
                 self->menu_route_bindings.host.notebook_boundary(
                     static_cast<ScriptNotebookBoundary>(value));
@@ -3084,15 +3083,19 @@ struct GameScriptRuntime::Impl {
                     integer_argument(1));
             }
             return 0;
-        case MenuBinding::group_item_flags: {
-            const auto flags = self->menu_route_bindings.game.group_item_flags
-                                   ? self->menu_route_bindings.game
-                                         .group_item_flags()
-                                   : std::nullopt;
-            if (flags.has_value()) {
-                lua_pushinteger(lua, static_cast<lua_Integer>(*flags));
-            } else {
+        case MenuBinding::group_item_ids: {
+            const auto ids = self->menu_route_bindings.game.group_item_ids
+                                 ? self->menu_route_bindings.game
+                                       .group_item_ids()
+                                 : std::nullopt;
+            if (!ids.has_value()) {
                 lua_pushnil(lua);
+                return 1;
+            }
+            lua_createtable(lua, static_cast<int>(ids->size()), 0);
+            for (std::size_t index = 0; index < ids->size(); ++index) {
+                lua_pushinteger(lua, (*ids)[index]);
+                lua_rawseti(lua, -2, static_cast<lua_Integer>(index + 1U));
             }
             return 1;
         }
@@ -3105,7 +3108,7 @@ struct GameScriptRuntime::Impl {
                 lua_pushnil(lua);
                 return 1;
             }
-            lua_createtable(lua, 0, 4);
+            lua_createtable(lua, 0, 8);
             lua_pushboolean(lua, facts->current_run_available ? 1 : 0);
             lua_setfield(lua, -2, "current_run");
             if (facts->event_gates.has_value()) {
@@ -3123,9 +3126,9 @@ struct GameScriptRuntime::Impl {
                 lua_pushnil(lua);
                 lua_setfield(lua, -2, "gates");
             }
-            const auto push_optional_array = [lua](
+            const auto push_optional_ids = [lua](
                 const char* field,
-                const std::optional<std::array<std::uint32_t, 3>>& values) {
+                const std::optional<std::vector<int>>& values) {
                 if (!values.has_value()) {
                     lua_pushnil(lua);
                     lua_setfield(lua, -2, field);
@@ -3133,37 +3136,17 @@ struct GameScriptRuntime::Impl {
                 }
                 lua_createtable(lua, static_cast<int>(values->size()), 0);
                 for (std::size_t index = 0; index < values->size(); ++index) {
-                    lua_pushinteger(lua, (*values)[index]);
+                    lua_pushinteger(lua,
+                                    static_cast<lua_Integer>((*values)[index]));
                     lua_rawseti(lua, -2,
                                 static_cast<lua_Integer>(index + 1U));
                 }
                 lua_setfield(lua, -2, field);
             };
-            push_optional_array("tips", facts->tip_flags);
-            if (facts->referral_flags.has_value()) {
-                lua_pushinteger(lua, *facts->referral_flags);
-                lua_setfield(lua, -2, "referrals");
-            } else {
-                lua_pushnil(lua);
-                lua_setfield(lua, -2, "referrals");
-            }
-            if (facts->contact_flags.has_value()) {
-                lua_pushinteger(lua,
-                                static_cast<lua_Integer>(*facts->contact_flags));
-                lua_setfield(lua, -2, "contacts");
-            } else {
-                lua_pushnil(lua);
-                lua_setfield(lua, -2, "contacts");
-            }
-            if (facts->shadowrunner_flags.has_value()) {
-                lua_pushinteger(lua,
-                                static_cast<lua_Integer>(
-                                    *facts->shadowrunner_flags));
-                lua_setfield(lua, -2, "shadowrunners");
-            } else {
-                lua_pushnil(lua);
-                lua_setfield(lua, -2, "shadowrunners");
-            }
+            push_optional_ids("tip_ids", facts->tip_ids);
+            push_optional_ids("referral_ids", facts->referral_ids);
+            push_optional_ids("contact_ids", facts->contact_ids);
+            push_optional_ids("shadowrunner_ids", facts->shadowrunner_ids);
             return 1;
         }
         case MenuBinding::cyberdeck_available: {
@@ -3265,11 +3248,9 @@ struct GameScriptRuntime::Impl {
                 self->menu_route_bindings.game.consume_debug_unlock();
             }
             return 0;
-        case MenuBinding::set_contact_flags:
-            if (self->menu_route_bindings.game.set_contact_flags) {
-                self->menu_route_bindings.game.set_contact_flags(
-                    static_cast<std::uint32_t>(
-                        std::max(integer_argument(1), 0)));
+        case MenuBinding::seed_debug_contacts:
+            if (self->menu_route_bindings.game.seed_debug_contacts) {
+                self->menu_route_bindings.game.seed_debug_contacts();
             }
             return 0;
         case MenuBinding::set_walk_fast:
@@ -3365,8 +3346,8 @@ struct GameScriptRuntime::Impl {
                          MenuBinding::matrix_alert_random_bound);
         add_menu_binding(state, table_index, "dismiss_runner",
                          MenuBinding::dismiss_runner);
-        add_menu_binding(state, table_index, "group_item_flags",
-                         MenuBinding::group_item_flags);
+        add_menu_binding(state, table_index, "group_item_ids",
+                         MenuBinding::group_item_ids);
         add_menu_binding(state, table_index, "notebook",
                          MenuBinding::notebook_facts);
         add_menu_binding(state, table_index, "cyberdeck_available",
@@ -3378,8 +3359,8 @@ struct GameScriptRuntime::Impl {
                          MenuBinding::begin_taxi_cabbie);
         add_menu_binding(state, table_index, "consume_debug_unlock",
                          MenuBinding::consume_debug_unlock);
-        add_menu_binding(state, table_index, "set_contact_flags",
-                         MenuBinding::set_contact_flags);
+        add_menu_binding(state, table_index, "seed_debug_contacts",
+                         MenuBinding::seed_debug_contacts);
         add_menu_binding(state, table_index, "set_walk_fast",
                          MenuBinding::set_walk_fast);
         add_menu_binding(state, table_index, "install_test_deck",
@@ -4658,9 +4639,8 @@ struct GameScriptRuntime::Impl {
                 menu_route_state.top_visible_option_ids =
                     read_integer_array(screen_state_index, "options", 8U,
                                        0, 7);
-                menu_route_state.top_visible_source_ids =
-                    read_integer_array(screen_state_index, "visible", 96U,
-                                       0, 95);
+                menu_route_state.top_visible_entry_ids = read_integer_array(
+                    screen_state_index, "visible_entry_ids", 96U, 0, 95);
                 lua_getfield(state, screen_state_index, "yes");
                 if (lua_isboolean(state, -1)) {
                     menu_route_state.top_yes = lua_toboolean(state, -1) != 0;
@@ -4675,13 +4655,14 @@ struct GameScriptRuntime::Impl {
                 lua_getfield(state, screen_state_index, "data");
                 if (lua_istable(state, -1)) {
                     const auto data_index = lua_absindex(state, -1);
-                    menu_route_state.top_detail_index =
-                        read_optional(data_index, "index");
+                    menu_route_state.top_detail_entry_id =
+                        read_optional(data_index, "entry_id");
                     menu_route_state.top_detail_row =
                         read_optional(data_index, "row");
-                    if (menu_route_state.top_visible_source_ids.empty()) {
-                        menu_route_state.top_visible_source_ids =
-                            read_integer_array(data_index, "visible", 96U,
+                    if (menu_route_state.top_visible_entry_ids.empty()) {
+                        menu_route_state.top_visible_entry_ids =
+                            read_integer_array(data_index,
+                                               "visible_entry_ids", 96U,
                                                0, 95);
                     }
                 }

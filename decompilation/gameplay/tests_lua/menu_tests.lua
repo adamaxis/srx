@@ -55,7 +55,7 @@ local function mk(o)
         commit_party = function(p) for k, v in pairs(p) do g.party[k] = v end end,
         set_runner_ammo = function(slot, clips, rounds) local r = g.party[slot]; r.clips, r.rounds = clips, rounds end,
         consume_debug_unlock = function() g.unlock = false end,
-        set_contact_flags = function(m) g.contacts = m end, set_spell_table = function(t) g.spells = t end,
+        seed_debug_contacts = function() g.contacts = true end, set_spell_table = function(t) g.spells = t end,
         source_random_bound = function(n) return 0 end, matrix_alert_random_bound = function(n) return 0 end,
     }
     g.party = { [0] = { runner_facts = {

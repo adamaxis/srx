@@ -43,6 +43,7 @@
 #include "shadowrun_ghidra/menus/clips_menu_conversion.hpp"
 #include "shadowrun_ghidra/menus/menu_transfer_batch_conversion.hpp"
 #include "shadowrun_ghidra/menus/cyberware_detail_conversion.hpp"
+#include "shadowrun_ghidra/menus/pocket_secretary_menu_conversion.hpp"
 #include "genesis_image_compositor.hpp"
 #include "numeric_visual_renderer.hpp"
 #include "field_map_composition.hpp"
@@ -9078,26 +9079,25 @@ void FieldSceneRuntime::configure_field_menu_route() {
                 source_boundary(
                     "field.pocket_secretary.notebook.event_flags_unresolved");
                 break;
-            case scripting::ScriptNotebookBoundary::tips_flags_unresolved:
+            case scripting::ScriptNotebookBoundary::tips_unresolved:
                 source_boundary(
-                    "field.pocket_secretary.notebook.tips.flags_unresolved");
+                    "field.pocket_secretary.notebook.tips.unresolved");
                 break;
             case scripting::ScriptNotebookBoundary::current_run_unresolved:
                 source_boundary(
                     "field.pocket_secretary.notebook.current_run.path_pending");
                 break;
-            case scripting::ScriptNotebookBoundary::contacts_flags_unresolved:
+            case scripting::ScriptNotebookBoundary::contacts_unresolved:
                 source_boundary(
-                    "field.pocket_secretary.notebook.contacts.flags_unresolved");
+                    "field.pocket_secretary.notebook.contacts.unresolved");
                 break;
-            case scripting::ScriptNotebookBoundary::shadowrunners_flags_unresolved:
+            case scripting::ScriptNotebookBoundary::shadowrunners_unresolved:
                 source_boundary(
-                    "field.pocket_secretary.notebook.shadowrunners.flags_unresolved");
+                    "field.pocket_secretary.notebook.shadowrunners.unresolved");
                 break;
-            case scripting::ScriptNotebookBoundary::
-                mr_johnsons_flags_unresolved:
+            case scripting::ScriptNotebookBoundary::mr_johnsons_unresolved:
                 source_boundary(
-                    "field.pocket_secretary.notebook.mr_johnsons.flags_unresolved");
+                    "field.pocket_secretary.notebook.mr_johnsons.unresolved");
                 break;
             }
         };
@@ -9331,10 +9331,9 @@ void FieldSceneRuntime::configure_field_menu_route() {
         pocket_secretary_.maximum_selection =
             debug_menu_unlocked_ ? 5U : 4U;
     };
-    bindings.game.set_contact_flags = [this](const std::uint32_t flags) {
-        // ROM 0x59C48 is debug-menu Contacts handler table entry 6 at
-        // 0x1D90C0; it replaces the entire FFFC2C long with the debug seed.
-        notebook_contacts_flags_ = flags;
+    bindings.game.seed_debug_contacts = [this] {
+        // ROM 0x59C48 writes 0x1C7F to FFFC2C; keep that encoding in C++.
+        notebook_contacts_flags_ = 0x1C7FU;
     };
     bindings.game.set_walk_fast = [this] {
         field_walk_fast_enabled_ = true;
@@ -9356,24 +9355,54 @@ void FieldSceneRuntime::configure_field_menu_route() {
                 static_cast<std::size_t>(slot));
         }
     };
-    bindings.game.group_item_flags = [this]()
-        -> std::optional<std::uint32_t> {
+    bindings.game.group_item_ids = [this]()
+        -> std::optional<std::vector<int>> {
         if (!group_item_flags_.has_value()) {
             return std::nullopt;
         }
-        return *group_item_flags_ & 0x7FFFU;
+        const auto content_ids = pocket_secretary_group_item_display_order(
+            *group_item_flags_);
+        std::vector<int> ids;
+        ids.reserve(content_ids.size());
+        for (const auto content_id : content_ids) {
+            ids.push_back(static_cast<int>(content_id));
+        }
+        return ids;
     };
     bindings.game.notebook_facts = [this]()
         -> std::optional<scripting::ScriptNotebookFacts> {
         scripting::ScriptNotebookFacts facts;
         facts.current_run_available = notebook_current_run_available_;
         facts.event_gates = notebook_event_gates();
+        const auto as_ids = [](const std::vector<std::size_t>& content_ids) {
+            std::vector<int> ids;
+            ids.reserve(content_ids.size());
+            for (const auto content_id : content_ids) {
+                ids.push_back(static_cast<int>(content_id));
+            }
+            return ids;
+        };
         if (notebook_tip_flags_resolved_) {
-            facts.tip_flags = notebook_tip_flags_;
+            facts.tip_ids = as_ids(
+                pocket_secretary_notebook_tip_content_ids(
+                    notebook_tip_flags_));
         }
-        facts.referral_flags = notebook_referral_flags_;
-        facts.contact_flags = notebook_contacts_flags_;
-        facts.shadowrunner_flags = notebook_shadowrunner_flags_;
+        if (notebook_referral_flags_.has_value()) {
+            facts.referral_ids = as_ids(
+                pocket_secretary_notebook_referral_content_ids(
+                    *notebook_referral_flags_));
+        }
+        if (notebook_contacts_flags_.has_value()) {
+            facts.contact_ids = as_ids(
+                pocket_secretary_notebook_record_content_ids(
+                    *notebook_contacts_flags_, kNotebookContactCount));
+        }
+        if (notebook_shadowrunner_flags_.has_value()) {
+            facts.shadowrunner_ids = as_ids(
+                pocket_secretary_notebook_record_content_ids(
+                    *notebook_shadowrunner_flags_,
+                    kNotebookShadowrunnerCount));
+        }
         return facts;
     };
     bindings.game.cyberdeck_available = [this] {

@@ -62,22 +62,18 @@ function M.child_returned(st, child, res, ctx)
     ctx.host.blank(E.DisplayBlank.OFF); ctx.redraw(R.FULL); ctx.host.blank(E.DisplayBlank.ON)  -- bra 0xC2AA rebuild [C]
 end
 
--- Group Items 0xC8C8 reads FFFC22, displays set bits 14..0, then waits for a
--- newly pressed controller edge at F312. The host presents these item IDs.
+-- Group Items 0xC8C8 displays the available catalog entries, then waits for a
+-- newly pressed controller edge at F312. The host resolves save state into
+-- ordered item IDs before Lua sees it.
 local GroupItems = { window = E.WindowPlane.SIDEBAR }
 function GroupItems.new()
     return { visible_item_ids = {}, grid_cells = Grid.cells,
              grid_effect_frames = Grid.frames }
 end
 function GroupItems.enter(st, ctx)
-    local flags = ctx.game.group_item_flags()
-    if flags == nil then return { transition = T.POP } end
-    st.group_item_flags = flags & 0x7FFF
-    for item_id = 14, 0, -1 do
-        if (st.group_item_flags >> item_id) & 1 ~= 0 then
-            st.visible_item_ids[#st.visible_item_ids + 1] = item_id
-        end
-    end
+    local item_ids = ctx.game.group_item_ids()
+    if item_ids == nil then return { transition = T.POP } end
+    st.visible_item_ids = item_ids
     ctx.redraw(R.SUBMENU)
 end
 function GroupItems.input(st, events, ctx)
@@ -167,48 +163,49 @@ function Notebook.input(st, events, ctx)
             return
         end
         if opt == N.TIPS_AND_CLUES then
-            if not st.nb.tips then
+            if not st.nb.tip_ids then
                 ctx.host.notebook_boundary(
-                    E.NotebookBoundary.TIPS_FLAGS_UNRESOLVED)
+                    E.NotebookBoundary.TIPS_UNRESOLVED)
                 return
             end
             return { transition = T.PUSH,
                      screen = E.MenuScreen.NOTEBOOK_TIPS,
-                     args = { flags = st.nb.tips } }
+                     args = { entry_ids = st.nb.tip_ids } }
         end
         if opt == N.MR_JOHNSONS then
-            if not st.nb.referrals then
+            if not st.nb.referral_ids then
                 ctx.host.notebook_boundary(
-                    E.NotebookBoundary.MR_JOHNSON_FLAGS_UNRESOLVED)
+                    E.NotebookBoundary.MR_JOHNSON_UNRESOLVED)
                 return
             end
             return { transition = T.PUSH,
                      screen = E.MenuScreen.MR_JOHNSONS,
-                     args = { flags = st.nb.referrals } }
+                     args = { entry_ids = st.nb.referral_ids } }
         end
         if opt == N.CONTACTS then
             local refreshed = ctx.game.notebook()
-            if not refreshed or refreshed.contacts == nil then
+            if not refreshed or refreshed.contact_ids == nil then
                 ctx.host.notebook_boundary(
-                    E.NotebookBoundary.CONTACTS_FLAGS_UNRESOLVED)
+                    E.NotebookBoundary.CONTACTS_UNRESOLVED)
                 return
             end
             st.nb = refreshed
             return { transition = T.PUSH,
                      screen = E.MenuScreen.NOTEBOOK_CONTACTS,
-                     args = { kind = "contacts", flags = refreshed.contacts } }
+                     args = { kind = "contacts",
+                              entry_ids = refreshed.contact_ids } }
         elseif opt == N.SHADOWRUNNERS then
             local refreshed = ctx.game.notebook()
-            if not refreshed or refreshed.shadowrunners == nil then
+            if not refreshed or refreshed.shadowrunner_ids == nil then
                 ctx.host.notebook_boundary(
-                    E.NotebookBoundary.SHADOWRUNNERS_FLAGS_UNRESOLVED)
+                    E.NotebookBoundary.SHADOWRUNNERS_UNRESOLVED)
                 return
             end
             st.nb = refreshed
             return { transition = T.PUSH,
                      screen = E.MenuScreen.NOTEBOOK_SHADOWRUNNERS,
                      args = { kind = "shadowrunners",
-                              flags = refreshed.shadowrunners } }
+                              entry_ids = refreshed.shadowrunner_ids } }
         end
         return
     end
@@ -227,23 +224,16 @@ end
 -- Tips & Clues: Left/Right page (clamped), A/B/Start back, C reselect [srx C]
 local Tips = { window = E.WindowPlane.SIDEBAR }
 function Tips.new(a)
-    local v = {}
-    for g = 0, 2 do
-        for b = 0, 31 do
-            if (a.flags[g + 1] >> b) & 1 == 1 then
-                v[#v + 1] = g * 32 + b
-            end
-        end
-    end
-    return { visible = v, page = 0, grid_cells = Grid.cells,
+    return { visible_entry_ids = a.entry_ids or {}, page = 0,
+             grid_cells = Grid.cells,
              grid_effect_frames = Grid.frames }
 end
 function Tips.enter(st, ctx) ctx.redraw(R.SUBMENU) end
 function Tips.input(st, events, ctx)
     st.grid_effect_frames = Grid.advance(ctx)
     if events & (P.LEFT | P.RIGHT) ~= 0 then
-        if #st.visible == 0 then return end
-        if events & P.LEFT ~= 0 then st.page = math.max(0, st.page - 1) else st.page = math.min(#st.visible - 1, st.page + 1) end
+        if #st.visible_entry_ids == 0 then return end
+        if events & P.LEFT ~= 0 then st.page = math.max(0, st.page - 1) else st.page = math.min(#st.visible_entry_ids - 1, st.page + 1) end
         ctx.redraw(R.SUBMENU); return
     end
     if events & (P.A | P.B | P.START) ~= 0 then return { transition = T.POP } end
@@ -256,21 +246,18 @@ end
 -- Mr. Johnsons: Up/Down wrap, A/B detail (message), C reselect, Start back; closes at once if none [srx C]
 local Johnsons = { window = E.WindowPlane.SIDEBAR }
 function Johnsons.new(a)
-    local v = {}
-    for b = 0, 4 do
-        if (a.flags >> b) & 1 == 1 then v[#v + 1] = b end
-    end
-    return { visible = v, row = 0, grid_cells = Grid.cells,
+    return { visible_entry_ids = a.entry_ids or {}, row = 0,
+             grid_cells = Grid.cells,
              grid_effect_frames = Grid.frames }
 end
 function Johnsons.enter(st, ctx)
-    if #st.visible == 0 then return { transition = T.POP } end
+    if #st.visible_entry_ids == 0 then return { transition = T.POP } end
     ctx.redraw(R.SUBMENU)
 end
 function Johnsons.input(st, events, ctx)
     st.grid_effect_frames = Grid.advance(ctx)
     if events & (P.UP | P.DOWN) ~= 0 then
-        local n = #st.visible
+        local n = #st.visible_entry_ids
         st.row = Cursor.step(st.row, events & P.UP ~= 0 and -1 or 1, n - 1)
         ctx.redraw(R.SUBMENU); return
     end
@@ -278,8 +265,10 @@ function Johnsons.input(st, events, ctx)
         return { transition = T.PUSH, screen = E.MenuScreen.MESSAGE,
                  args = { message = MM.MR_JOHNSON_DETAIL,
                           grid_effect = true,
-                          data = { index = st.visible[st.row + 1],
-                                   row = st.row, visible = st.visible } } }
+                          data = { entry_id =
+                                       st.visible_entry_ids[st.row + 1],
+                                   row = st.row,
+                                   visible_entry_ids = st.visible_entry_ids } } }
     end
     if events & P.C ~= 0 then
         ctx.sound(E.MenuSound.MOVE)
@@ -294,15 +283,12 @@ function Johnsons.child_returned(st, child, res, ctx)
     ctx.redraw(R.SUBMENU)
 end
 
--- Contacts 0xF840 and Shadowrunners 0xF6DC share the ROM 0xF5F4
--- bitmask-list builder. Its inserted eighth row is the source's page-forward
--- string; the final overflow row on the continuation page returns to page 1.
-local function build_notebook_record_rows(flags, count)
+-- The host supplies unlocked record catalog IDs. Lua owns the page choices and
+-- inserts the forward/return rows around that ordered list.
+local function build_notebook_record_rows(entry_ids, count)
     local selected = {}
-    for source_index = 0, count - 1 do
-        if (flags >> source_index) & 1 ~= 0 then
-            selected[#selected + 1] = source_index
-        end
+    for index = 1, math.min(#entry_ids, count) do
+        selected[#selected + 1] = entry_ids[index]
     end
     if #selected <= 8 then return selected end
     local rows = {}
@@ -329,36 +315,38 @@ end
 local function make_record_page(count, detail_message)
     local Records = { window = E.WindowPlane.SIDEBAR }
     function Records.new(args)
-        local rows = build_notebook_record_rows(args.flags or 0, count)
-        return { rows = rows, visible = record_page(rows, 0), row = 0,
+        local rows = build_notebook_record_rows(args.entry_ids or {}, count)
+        return { rows = rows,
+                 visible_entry_ids = record_page(rows, 0), row = 0,
                  page = 0, count = count, detail_message = detail_message,
                  grid_cells = Grid.cells, grid_effect_frames = Grid.frames }
     end
     function Records.enter(st, ctx)
-        if #st.visible == 0 then return { transition = T.POP } end
+        if #st.visible_entry_ids == 0 then return { transition = T.POP } end
         ctx.redraw(R.SUBMENU)
     end
     function Records.input(st, events, ctx)
         st.grid_effect_frames = Grid.advance(ctx)
         if events & (P.UP | P.DOWN) ~= 0 then
-            local n = #st.visible
+            local n = #st.visible_entry_ids
             st.row = Cursor.step(st.row, events & P.UP ~= 0 and -1 or 1,
                                  n - 1)
             ctx.redraw(R.SUBMENU); return
         end
         if events & (P.A | P.B) ~= 0 then
-            local source_index = st.visible[st.row + 1]
-            if st.page == 0 and source_index == count then
-                st.page = 1; st.visible = record_page(st.rows, 1); st.row = 0
+            local entry_id = st.visible_entry_ids[st.row + 1]
+            if st.page == 0 and entry_id == count then
+                st.page = 1; st.visible_entry_ids = record_page(st.rows, 1); st.row = 0
                 ctx.redraw(R.SUBMENU); return
-            elseif st.page == 1 and source_index == count + 1 then
-                st.page = 0; st.visible = record_page(st.rows, 0); st.row = 0
+            elseif st.page == 1 and entry_id == count + 1 then
+                st.page = 0; st.visible_entry_ids = record_page(st.rows, 0); st.row = 0
                 ctx.redraw(R.SUBMENU); return
             end
             return { transition = T.PUSH, screen = E.MenuScreen.MESSAGE,
                      args = { message = detail_message, grid_effect = true,
-                              data = { index = source_index, row = st.row,
-                                       visible = st.visible } } }
+                              data = { entry_id = entry_id, row = st.row,
+                                       visible_entry_ids =
+                                           st.visible_entry_ids } } }
         end
         if events & P.C ~= 0 then
             ctx.sound(E.MenuSound.MOVE)

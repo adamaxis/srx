@@ -641,11 +641,11 @@ enum class MusicId : std::int64_t {
 };
 enum class NotebookBoundary : std::int64_t {
     EVENT_GATES_UNRESOLVED = 0x0,
-    TIPS_FLAGS_UNRESOLVED = 0x1,
+    TIPS_UNRESOLVED = 0x1,
     CURRENT_RUN_UNRESOLVED = 0x2,
-    CONTACTS_FLAGS_UNRESOLVED = 0x3,
-    SHADOWRUNNERS_FLAGS_UNRESOLVED = 0x4,
-    MR_JOHNSON_FLAGS_UNRESOLVED = 0x5,
+    CONTACTS_UNRESOLVED = 0x3,
+    SHADOWRUNNERS_UNRESOLVED = 0x4,
+    MR_JOHNSON_UNRESOLVED = 0x5,
 };
 enum class NotebookOption : std::int64_t {
     CURRENT_RUN = 0x0,

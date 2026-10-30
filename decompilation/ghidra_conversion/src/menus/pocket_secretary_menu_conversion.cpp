@@ -91,15 +91,10 @@ void begin_pocket_secretary_notebook_tips(
     }
     auto& tips = state.notebook.tips;
     tips = NotebookMenuState::TipsState{};
-    for (std::size_t group = 0; group < tip_flags.size(); ++group) {
-        for (std::size_t bit = 0; bit < 32U; ++bit) {
-            if ((tip_flags[group] & (std::uint32_t{1} << bit)) == 0U) {
-                continue;
-            }
-            const auto source_index = group * 32U + bit;
-            tips.visible_source_indices[tips.visible_count++] =
-                static_cast<std::uint8_t>(source_index);
-        }
+    for (const auto content_id :
+         pocket_secretary_notebook_tip_content_ids(tip_flags)) {
+        tips.visible_source_indices[tips.visible_count++] =
+            static_cast<std::uint8_t>(content_id);
     }
     tips.open = true;
 }
@@ -111,12 +106,10 @@ void begin_pocket_secretary_notebook_mr_johnsons(
     }
     auto& page = state.notebook.mr_johnsons;
     page = NotebookMenuState::MrJohnsonsState{};
-    for (std::size_t bit = 0; bit < kNotebookMrJohnsonCount; ++bit) {
-        if ((referral_flags & (std::uint8_t{1} << bit)) == 0U) {
-            continue;
-        }
+    for (const auto content_id :
+         pocket_secretary_notebook_referral_content_ids(referral_flags)) {
         page.visible_source_indices[page.visible_count++] =
-            static_cast<std::uint8_t>(bit);
+            static_cast<std::uint8_t>(content_id);
     }
     page.open = page.visible_count != 0U;
 }
@@ -183,6 +176,47 @@ std::vector<std::size_t> pocket_secretary_group_item_display_order(
     for (std::size_t index = 15U; index-- > 0U;) {
         if ((group_item_flags & (std::uint32_t{1} << index)) != 0U) {
             result.push_back(index);
+        }
+    }
+    return result;
+}
+
+std::vector<std::size_t> pocket_secretary_notebook_tip_content_ids(
+    const std::array<std::uint32_t, 3>& tip_flags) {
+    // ROM 0xF9A4 visits FFFC30/34/38 from bit zero through bit 31. Convert
+    // those saved words to the ordered tip catalog consumed by the menu.
+    std::vector<std::size_t> result;
+    for (std::size_t page = 0; page < tip_flags.size(); ++page) {
+        for (std::size_t item = 0; item < 32U; ++item) {
+            if ((tip_flags[page] & (std::uint32_t{1} << item)) != 0U) {
+                result.push_back(page * 32U + item);
+            }
+        }
+    }
+    return result;
+}
+
+std::vector<std::size_t> pocket_secretary_notebook_referral_content_ids(
+    const std::uint8_t referral_flags) {
+    // ROM 0xF416 emits the five referral entries in catalog order.
+    std::vector<std::size_t> result;
+    for (std::size_t item = 0; item < kNotebookMrJohnsonCount; ++item) {
+        if ((referral_flags & (std::uint8_t{1} << item)) != 0U) {
+            result.push_back(item);
+        }
+    }
+    return result;
+}
+
+std::vector<std::size_t> pocket_secretary_notebook_record_content_ids(
+    const std::uint32_t record_flags, const std::size_t record_count) {
+    // ROM 0xF5F4 appends unlocked records in ascending catalog order; the
+    // Contacts and Shadowrunners callers supply their own catalog lengths.
+    std::vector<std::size_t> result;
+    const auto count = std::min(record_count, std::size_t{32U});
+    for (std::size_t item = 0; item < count; ++item) {
+        if ((record_flags & (std::uint32_t{1} << item)) != 0U) {
+            result.push_back(item);
         }
     }
     return result;

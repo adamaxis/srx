@@ -244,11 +244,11 @@ void FieldSceneRuntime::synchronize_pocket_secretary_notebook_from_route(
     if (notebook.tips.open) {
         auto& tips = notebook.tips;
         tips.visible_count = static_cast<std::uint8_t>(
-            std::min<std::size_t>(route_state.top_visible_source_ids.size(),
+            std::min<std::size_t>(route_state.top_visible_entry_ids.size(),
                                   tips.visible_source_indices.size()));
         for (std::size_t index = 0; index < tips.visible_count; ++index) {
             tips.visible_source_indices[index] = static_cast<std::uint8_t>(
-                route_state.top_visible_source_ids[index]);
+                route_state.top_visible_entry_ids[index]);
         }
         tips.selection = static_cast<std::uint8_t>(
             std::clamp(route_state.top_page.value_or(0), 0,
@@ -260,11 +260,11 @@ void FieldSceneRuntime::synchronize_pocket_secretary_notebook_from_route(
     if (notebook.mr_johnsons.open) {
         auto& page = notebook.mr_johnsons;
         page.visible_count = static_cast<std::uint8_t>(
-            std::min<std::size_t>(route_state.top_visible_source_ids.size(),
+            std::min<std::size_t>(route_state.top_visible_entry_ids.size(),
                                   page.visible_source_indices.size()));
         for (std::size_t index = 0; index < page.visible_count; ++index) {
             page.visible_source_indices[index] = static_cast<std::uint8_t>(
-                route_state.top_visible_source_ids[index]);
+                route_state.top_visible_entry_ids[index]);
         }
         const auto selected_row = johnson_detail
                                       ? route_state.top_detail_row.value_or(0)
@@ -278,12 +278,12 @@ void FieldSceneRuntime::synchronize_pocket_secretary_notebook_from_route(
                        const bool detail_wait) {
             if (!page.open) return;
             page.visible_count = static_cast<std::uint8_t>(
-                std::min<std::size_t>(route_state.top_visible_source_ids.size(),
+                std::min<std::size_t>(route_state.top_visible_entry_ids.size(),
                                       page.visible_source_indices.size()));
             for (std::size_t index = 0; index < page.visible_count; ++index) {
                 page.visible_source_indices[index] =
                     static_cast<std::uint8_t>(
-                        route_state.top_visible_source_ids[index]);
+                        route_state.top_visible_entry_ids[index]);
             }
             const auto selected_row = detail_wait
                                           ? route_state.top_detail_row.value_or(0)
