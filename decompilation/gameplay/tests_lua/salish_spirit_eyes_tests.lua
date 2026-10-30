@@ -49,10 +49,10 @@ assert(actions:execute("story.set_fact", {
 }))
 assert(game.state.serpent_scale_taken == true and
        game.state.shaman_tasks_done == nil)
-assert(actions:execute("item.set_group_flag", {
-    flagBit = 2, value = true,
+assert(actions:execute("item.set_group_item", {
+    itemId = E.GroupItemId.FEATHERED_SCALE, value = true,
 }))
-assert(game.state.group_item_flag_bit_2 == true)
+assert(game.state["group_item.feathered_scale"] == true)
 assert(actions:execute("field.set_auxiliary_flag", {
     flagBit = 2, value = false,
 }))
@@ -65,13 +65,13 @@ assert(game.state.field_auxiliary_flag_bit_2 == false)
 game.state.shaman_pelt_given = true
 game.state.serpent_scale_taken = false
 game.state.shaman_tasks_done = false
-game.state.group_item_flag_bit_2 = false
+game.state["group_item.feathered_scale"] = false
 local licourtrix_unavailable = SpiritEyes.present_serpent_encounter()
 assert(type(licourtrix_unavailable) == "table" and
        licourtrix_unavailable.type == "source_boundary" and
        licourtrix_unavailable.reason ==
            "dialogue_graph:content_catalog_missing" and
        game.state.serpent_scale_taken == false and
-       game.state.group_item_flag_bit_2 == false)
+       game.state["group_item.feathered_scale"] == false)
 
 print("Spirit Eyes tests passed: graph adapter boundaries and shared Lua actions")

@@ -201,8 +201,8 @@
         },
         "mark_passport_owned": {
           "type": "action",
-          "actionId": "item.set_group_flag",
-          "arguments": { "flagBit": 1, "value": true },
+          "actionId": "item.set_group_item",
+          "arguments": { "itemId": "indian_lands_visa", "value": true },
           "next": "post_purchase_menu"
         },
         "post_purchase_menu": {

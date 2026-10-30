@@ -36,7 +36,7 @@ local function reset(called, service_results, ...)
         vid_phone_called_9 = called,
         lone_star_criminal_record_active = true,
         hollywood_access_granted = false,
-        group_item_flag_bit_11 = false,
+        ["group_item.weapon_permit"] = false,
     }
 end
 
@@ -115,7 +115,7 @@ local offers = {
       fact = "hollywood_access_granted", value = true },
     { id = "weapon_permit", menu = "henry_offer_weapon_permit",
       operation = "charge_8000", result = "weapon_permit_granted",
-      fact = "group_item_flag_bit_11", value = true },
+      fact = "group_item.weapon_permit", value = true },
 }
 
 for _, offer in ipairs(offers) do

@@ -3,15 +3,12 @@
 -- its own FFE187 gate and is checked afterward. [C]
 local E = require("enums")
 local StoryFacts = require("story_facts")
+local GroupItems = require("group_items")
 
 local Safes = {}
 
 local function set_effect_flag(bit, value)
     game.state["field_mode_effect_flag_bit_" .. bit] = value
-end
-
-local function set_group_item(bit, value)
-    game.state["group_item_flag_bit_" .. bit] = value
 end
 
 local function renraku_map_overlay(context)
@@ -30,7 +27,7 @@ local function renraku_map_overlay(context)
     set_effect_flag(16, false)
     set_effect_flag(8, false)
     set_effect_flag(17, false)
-    set_group_item(E.GroupItemBit.RENRAKU_MAP_OVERLAY, true)
+    GroupItems.set(E.GroupItemId.MAP_OVERLAY, true)
     return true
 end
 
@@ -46,7 +43,7 @@ local function fuchi_prototype_cyberheart(context)
     StoryFacts.set(E.StoryFact.CYBERHEART_SAFE)
     set_effect_flag(19, false)
     set_effect_flag(20, true)
-    set_group_item(E.GroupItemBit.PROTOTYPE_CYBERHEART, true)
+    GroupItems.set(E.GroupItemId.PROTOTYPE_CYBERHEART, true)
     return true
 end
 

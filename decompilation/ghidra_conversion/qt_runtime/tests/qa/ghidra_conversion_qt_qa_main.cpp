@@ -33309,7 +33309,7 @@ int run_field_spirit_eyes_physical_entry_qa(
           << "96\t27\t0x53D5A\tshaman_met=0\t"
           << movement_ticks << "\tcomplete_first_contact_prompt_chain\t"
           << field_audio_events.size() << '\n'
-          << "96\t27\t0x53E98\tserpent_scale_taken=1,group_item_flag_bit_2=1\t"
+          << "96\t27\t0x53E98\tserpent_scale_taken=1,group_item.feathered_scale=1\t"
           << "seeded\tcomplete_four_page_ritual_and_source_context_return\t"
           << field_audio_events.size() << '\n';
     std::cout << "field_spirit_eyes_physical_entry_qa=passed "

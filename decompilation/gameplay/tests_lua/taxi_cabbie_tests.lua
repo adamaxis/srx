@@ -12,9 +12,9 @@ local function fixture(options)
     options = options or {}
     local state = {}
     state[E.StoryFact.MOTEL_BILL_PAID] = options.story_flag
-    state["group_item_flag_bit_" .. E.GroupItemBit.INDIAN_LANDS_VISA] =
+    state["group_item." .. E.GroupItemId.INDIAN_LANDS_VISA] =
         options.visa == true
-    state["group_item_flag_bit_" .. E.GroupItemBit.ORK_ARMBAND] =
+    state["group_item." .. E.GroupItemId.ORK_ARMBAND] =
         options.armband == true
 
     local queued_choices = options.choices or {}
@@ -152,8 +152,8 @@ local armband_state_unresolved = fixture({
     story_flag = true,
     choices = { "yes" },
 })
-armband_state_unresolved.state["group_item_flag_bit_" ..
-    E.GroupItemBit.ORK_ARMBAND] = nil
+armband_state_unresolved.state["group_item." ..
+    E.GroupItemId.ORK_ARMBAND] = nil
 check(Cabbie.present() == "taxi_armband_state_unresolved" and
       #armband_state_unresolved.prompts == 1 and
       #armband_state_unresolved.speeches == 0,
@@ -264,8 +264,8 @@ local salish_ride = fixture({
     choices = { "yes", "sure_thing" },
 })
 check(Cabbie.present() == "taxi_ride_accepted" and salish_ride.funds == 900 and
-      salish_ride.state["group_item_flag_bit_" ..
-          E.GroupItemBit.INDIAN_LANDS_VISA] == false,
+      salish_ride.state["group_item." ..
+          E.GroupItemId.INDIAN_LANDS_VISA] == false,
     "accepted Salish ride deducts the fare and consumes the visa")
 
 print("taxi cabbie dialogue, gates, fares, and visa consumption passed")

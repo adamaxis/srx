@@ -14340,7 +14340,7 @@ int main() {
         {"both_maps_shown", false},
         {"post_ito_briefed", true},
         {"frosty_met", true},
-        {"group_item_flag_bit_8", false},
+        {"group_item.map_overlay", false},
     });
     const auto tarislar_repeat_route =
         scripts.resolve_field_location_route(tarislar_context);
@@ -14399,7 +14399,7 @@ int main() {
         {"both_maps_shown", false},
         {"post_ito_briefed", true},
         {"frosty_met", true},
-        {"group_item_flag_bit_8", false},
+        {"group_item.map_overlay", false},
     });
     auto tarislar_repeat = scripts.start_task(
         "tarislar_apartments", "present_repeat_service");
@@ -14456,8 +14456,8 @@ int main() {
         {"both_maps_shown", false},
         {"post_ito_briefed", true},
         {"frosty_met", true},
-        {"group_item_flag_bit_7", false},
-        {"group_item_flag_bit_8", false},
+        {"group_item.landmark_map", false},
+        {"group_item.map_overlay", false},
     });
     auto tarislar_briefed_without_maps = scripts.start_task(
         "tarislar_apartments", "present_repeat_service");
@@ -14549,8 +14549,8 @@ int main() {
     scripts.set_location_context("building", kRedBuffaloLocation,
                                  "salish.red_buffalo", "red_buffalo_woman");
     scripts.set_story_state({
-        {"group_item_flag_bit_7", false},
-        {"group_item_flag_bit_8", false},
+        {"group_item.landmark_map", false},
+        {"group_item.map_overlay", false},
     });
     auto harlequin_without_map = scripts.start_task(
         "harlequin_dialogue", "present_map_information");
@@ -14626,8 +14626,8 @@ int main() {
 
     scripts.set_story_state({
         {"ito_fight_won", true},
-        {"group_item_flag_bit_7", false},
-        {"group_item_flag_bit_8", false},
+        {"group_item.landmark_map", false},
+        {"group_item.map_overlay", false},
     });
     auto harlequin_ito = scripts.start_task(
         "harlequin_dialogue", "present_main_conversation");
@@ -14690,8 +14690,8 @@ int main() {
         {"both_maps_shown", false},
         {"post_ito_briefed", true},
         {"frosty_met", true},
-        {"group_item_flag_bit_7", false},
-        {"group_item_flag_bit_8", true},
+        {"group_item.landmark_map", false},
+        {"group_item.map_overlay", true},
     });
     auto tarislar_one_map_flow = scripts.start_task(
         "tarislar_apartments", "present_repeat_service");
@@ -14796,8 +14796,8 @@ int main() {
         {"both_maps_shown", false},
         {"post_ito_briefed", true},
         {"frosty_met", true},
-        {"group_item_flag_bit_7", true},
-        {"group_item_flag_bit_8", true},
+        {"group_item.landmark_map", true},
+        {"group_item.map_overlay", true},
     });
     auto tarislar_paired_map_flow = scripts.start_task(
         "tarislar_apartments", "present_repeat_service");
@@ -14890,8 +14890,8 @@ int main() {
         {"both_maps_shown", false},
         {"post_ito_briefed", true},
         {"frosty_met", true},
-        {"group_item_flag_bit_7", false},
-        {"group_item_flag_bit_8", true},
+        {"group_item.landmark_map", false},
+        {"group_item.map_overlay", true},
     });
     auto tarislar_first_map_available = scripts.start_task(
         "tarislar_apartments", "present_repeat_service");
@@ -14918,8 +14918,8 @@ int main() {
         {"both_maps_shown", false},
         {"post_ito_briefed", true},
         {"frosty_met", true},
-        {"group_item_flag_bit_7", true},
-        {"group_item_flag_bit_8", true},
+        {"group_item.landmark_map", true},
+        {"group_item.map_overlay", true},
     });
     auto tarislar_pair_map_available = scripts.start_task(
         "tarislar_apartments", "present_repeat_service");
@@ -14946,8 +14946,8 @@ int main() {
         {"both_maps_shown", false},
         {"post_ito_briefed", false},
         {"frosty_met", true},
-        {"group_item_flag_bit_7", false},
-        {"group_item_flag_bit_8", false},
+        {"group_item.landmark_map", false},
+        {"group_item.map_overlay", false},
     });
     auto tarislar_post_ito = scripts.start_task(
         "tarislar_apartments", "present_repeat_service");
@@ -15544,7 +15544,7 @@ int main() {
         {"field_mode_effect_flag_bit_15", false},
         {"field_mode_effect_flag_bit_16", false},
         {"field_auxiliary_flag_bit_0", false},
-        {"group_item_flag_bit_4", false},
+        {"group_item.gargoyle_horn", false},
     });
     const auto spirit_page_is = [](const ScriptTaskStep& task,
                                    const std::string_view event_id) {
@@ -15685,7 +15685,7 @@ int main() {
     // Exercise both sides of every ROM inventory gate through the JSON graph.
     scripts.set_story_state({
         {"shaman_met", true}, {"shaman_item4_given", false},
-        {"group_item_flag_bit_4", false},
+        {"group_item.gargoyle_horn", false},
     });
     spirit_eyes_task = scripts.start_task("salish_spirit_eyes", "present");
     if (!expect(spirit_page_is(spirit_eyes_task, "need_horn") &&
@@ -15706,7 +15706,7 @@ int main() {
 
     scripts.set_story_state({
         {"shaman_met", true}, {"shaman_item4_given", false},
-        {"group_item_flag_bit_4", true},
+        {"group_item.gargoyle_horn", true},
         {"field_mode_effect_flag_bit_14", true},
         {"field_mode_effect_flag_bit_16", true},
         {"field_mode_effect_flag_bit_17", false},
@@ -15715,7 +15715,7 @@ int main() {
     });
     spirit_eyes_task = scripts.start_task("salish_spirit_eyes", "present");
     if (!expect(spirit_page_is(spirit_eyes_task, "second_item") &&
-                    !scripts.story_state().at("group_item_flag_bit_4") &&
+                    !scripts.story_state().at("group_item.gargoyle_horn") &&
                     scripts.story_state().at("shaman_item4_given") &&
                     !scripts.story_state().at(
                         "field_mode_effect_flag_bit_14") &&
@@ -15740,7 +15740,7 @@ int main() {
 
     scripts.set_story_state({
         {"shaman_met", true}, {"shaman_item4_given", true},
-        {"shaman_pelt_given", false}, {"group_item_flag_bit_3", false},
+        {"shaman_pelt_given", false}, {"group_item.hell_hound_pelt", false},
     });
     spirit_eyes_task = scripts.start_task("salish_spirit_eyes", "present");
     if (!expect(spirit_page_is(spirit_eyes_task, "need_pelt"),
@@ -15759,7 +15759,7 @@ int main() {
 
     scripts.set_story_state({
         {"shaman_met", true}, {"shaman_item4_given", true},
-        {"shaman_pelt_given", false}, {"group_item_flag_bit_3", true},
+        {"shaman_pelt_given", false}, {"group_item.hell_hound_pelt", true},
         {"field_mode_effect_flag_bit_17", true},
         {"field_mode_effect_flag_bit_18", false},
         {"field_auxiliary_flag_bit_1", true},
@@ -15767,7 +15767,7 @@ int main() {
     });
     spirit_eyes_task = scripts.start_task("salish_spirit_eyes", "present");
     if (!expect(spirit_page_is(spirit_eyes_task, "final_item") &&
-                    !scripts.story_state().at("group_item_flag_bit_3") &&
+                    !scripts.story_state().at("group_item.hell_hound_pelt") &&
                     scripts.story_state().at("shaman_pelt_given") &&
                     !scripts.story_state().at(
                         "field_mode_effect_flag_bit_17") &&
@@ -15791,7 +15791,7 @@ int main() {
     scripts.set_story_state({
         {"shaman_met", true}, {"shaman_item4_given", true},
         {"shaman_pelt_given", true}, {"serpent_scale_taken", false},
-        {"shaman_tasks_done", false}, {"group_item_flag_bit_2", false},
+        {"shaman_tasks_done", false}, {"group_item.feathered_scale", false},
     });
     spirit_eyes_task = scripts.start_task("salish_spirit_eyes", "present");
     if (!expect(spirit_page_is(spirit_eyes_task, "need_scale"),
@@ -15820,13 +15820,13 @@ int main() {
     scripts.set_story_state({
         {"shaman_pelt_given", false},
         {"serpent_scale_taken", true},
-        {"group_item_flag_bit_2", false},
+        {"group_item.feathered_scale", false},
     });
     auto licourtrix_task = scripts.start_task(
         "salish_spirit_eyes", "present_serpent_encounter");
     if (!expect(licourtrix_page_is(licourtrix_task, "serpent_flight") && !has_story_fact(scripts.story_state(), "story_trigger_active_8") &&
                     scripts.story_state().at("serpent_scale_taken") &&
-                    !scripts.story_state().at("group_item_flag_bit_2") &&
+                    !scripts.story_state().at("group_item.feathered_scale") &&
                     scripts.dialogue_text(
                         "salish.licourtrix.page.serpent_flight") != nullptr,
                 "Licourtrix bit-7-first branch did not select the flight text")) {
@@ -15839,7 +15839,7 @@ int main() {
                     dialogue_outcome_type(*licourtrix_task.dialogue_outcome) ==
                         DialogueOutcomeType::continue_in_place &&
                     scripts.story_state().at("serpent_scale_taken") &&
-                    !scripts.story_state().at("group_item_flag_bit_2"),
+                    !scripts.story_state().at("group_item.feathered_scale"),
                 "Licourtrix flight notice changed its source story/item state")) {
         std::cerr << scripts.failure() << '\n';
         return 18;
@@ -15850,7 +15850,7 @@ int main() {
     scripts.set_story_state({
         {"shaman_pelt_given", true},
         {"serpent_scale_taken", true},
-        {"group_item_flag_bit_2", false},
+        {"group_item.feathered_scale", false},
     });
     licourtrix_task = scripts.start_task(
         "salish_spirit_eyes", "present_serpent_encounter");
@@ -15866,7 +15866,7 @@ int main() {
                     licourtrix_task.dialogue_outcome.has_value() &&
                     dialogue_outcome_type(*licourtrix_task.dialogue_outcome) ==
                         DialogueOutcomeType::continue_in_place &&
-                    !scripts.story_state().at("group_item_flag_bit_2"),
+                    !scripts.story_state().at("group_item.feathered_scale"),
                 "Licourtrix empty-lair repeat changed the scale item")) {
         std::cerr << scripts.failure() << '\n';
         return 18;
@@ -15879,7 +15879,7 @@ int main() {
     scripts.set_story_state({
         {"shaman_pelt_given", true},
         {"serpent_scale_taken", false},
-        {"group_item_flag_bit_2", false},
+        {"group_item.feathered_scale", false},
     });
     licourtrix_task = scripts.start_task(
         "salish_spirit_eyes", "present_serpent_encounter");
@@ -15888,7 +15888,7 @@ int main() {
                     dialogue_outcome_type(*licourtrix_task.dialogue_outcome) ==
                         DialogueOutcomeType::continue_in_place && !has_story_fact(scripts.story_state(), "story_trigger_active_8") &&
                     !scripts.story_state().at("serpent_scale_taken") &&
-                    !scripts.story_state().at("group_item_flag_bit_2"),
+                    !scripts.story_state().at("group_item.feathered_scale"),
                 "Licourtrix mode gate opened the conversation outside mode 8")) {
         std::cerr << scripts.failure() << '\n';
         return 18;
@@ -15905,7 +15905,7 @@ int main() {
                     dialogue_outcome_type(*licourtrix_task.dialogue_outcome) ==
                         DialogueOutcomeType::continue_in_place &&
                     !scripts.story_state().at("serpent_scale_taken") &&
-                    !scripts.story_state().at("group_item_flag_bit_2"),
+                    !scripts.story_state().at("group_item.feathered_scale"),
                 "Licourtrix profile gate accepted FFFC0E equal to zero")) {
         std::cerr << scripts.failure() << '\n';
         return 18;
@@ -15916,7 +15916,7 @@ int main() {
     scripts.set_story_state({
         {"shaman_pelt_given", true},
         {"serpent_scale_taken", false},
-        {"group_item_flag_bit_2", false},
+        {"group_item.feathered_scale", false},
     });
     licourtrix_task = scripts.start_task(
         "salish_spirit_eyes", "present_serpent_encounter");
@@ -15926,7 +15926,7 @@ int main() {
                         DialogueOutcomeType::source_boundary &&
                     !has_story_fact(scripts.story_state(), "story_trigger_active_8") &&
                     !scripts.story_state().at("serpent_scale_taken") &&
-                    !scripts.story_state().at("group_item_flag_bit_2"),
+                    !scripts.story_state().at("group_item.feathered_scale"),
                 "Licourtrix graph ignored the outer transition-context gate")) {
         std::cerr << scripts.failure() << '\n';
         return 18;
@@ -15949,7 +15949,7 @@ int main() {
                     scripts.dialogue_text(
                         "salish.licourtrix.option.scale") != nullptr &&
                     !scripts.story_state().at("serpent_scale_taken") &&
-                    !scripts.story_state().at("group_item_flag_bit_2"),
+                    !scripts.story_state().at("group_item.feathered_scale"),
                 "Licourtrix direct route did not begin at the ROM opening page")) {
         std::cerr << scripts.failure() << '\n';
         return 18;
@@ -16067,7 +16067,7 @@ int main() {
     licourtrix_task = scripts.complete_native_operation(true);
     if (!expect(licourtrix_page_is(licourtrix_task, "farewell") &&
                     !scripts.story_state().at("serpent_scale_taken") &&
-                    !scripts.story_state().at("group_item_flag_bit_2"),
+                    !scripts.story_state().at("group_item.feathered_scale"),
                 "Licourtrix granted the scale before its final page was closed")) {
         std::cerr << scripts.failure() << '\n';
         return 18;
@@ -16078,7 +16078,7 @@ int main() {
                     dialogue_outcome_type(*licourtrix_task.dialogue_outcome) ==
                         DialogueOutcomeType::continue_in_place && !has_story_fact(scripts.story_state(), "story_trigger_active_8") &&
                     scripts.story_state().at("serpent_scale_taken") &&
-                    scripts.story_state().at("group_item_flag_bit_2"),
+                    scripts.story_state().at("group_item.feathered_scale"),
                 "Licourtrix completion did not grant FFFC22 bit 2 with story bit 8")) {
         std::cerr << scripts.failure() << '\n';
         return 18;
@@ -16093,7 +16093,7 @@ int main() {
         {"shaman_pelt_given", true},
         {"serpent_scale_taken", true},
         {"shaman_tasks_done", false},
-        {"group_item_flag_bit_2", false},
+        {"group_item.feathered_scale", false},
     });
     auto missing_scale = scripts.start_task(
         "salish_spirit_eyes", "present");
@@ -16117,7 +16117,7 @@ int main() {
         {"shaman_pelt_given", true},
         {"serpent_scale_taken", true},
         {"shaman_tasks_done", false},
-        {"group_item_flag_bit_2", true},
+        {"group_item.feathered_scale", true},
         {"field_mode_effect_flag_bit_15", true},
         {"field_mode_effect_flag_bit_18", true},
         {"field_mode_effect_flag_bit_19", false},
@@ -16135,7 +16135,7 @@ int main() {
                         "salish.spirit_eyes.page.tasks_done") != nullptr &&
                     scripts.story_state().at("shaman_tasks_done") && !has_story_fact(scripts.story_state(), "story_trigger_active_8") &&
                     !has_story_fact(scripts.story_state(), "story_trigger_active_9") &&
-                    !scripts.story_state().at("group_item_flag_bit_2") &&
+                    !scripts.story_state().at("group_item.feathered_scale") &&
                     !scripts.story_state().at(
                         "field_mode_effect_flag_bit_15") &&
                     !scripts.story_state().at(
@@ -16292,7 +16292,7 @@ int main() {
         {"ilene_met", true},
         {"gillian_initiation", true},
         {"frosty_met", false},
-        {"group_item_flag_bit_5", false},
+        {"group_item.gift_lady_gillian", false},
     });
     auto sinsearach_gate = scripts.start_task(
         "salish_sinsearach_gate", "present");
@@ -16472,7 +16472,7 @@ int main() {
         {"ilene_met", true},
         {"gillian_initiation", true},
         {"frosty_met", false},
-        {"group_item_flag_bit_5", false},
+        {"group_item.gift_lady_gillian", false},
     });
     const auto fare_menu_has_choices = [&sinsearach_fare_scripts](
         const ScriptTaskStep& task, const std::string_view menu_id) {
@@ -16693,7 +16693,7 @@ int main() {
             {"ilene_met", bit_19},
             {"gillian_initiation", bit_20},
             {"frosty_met", bit_30},
-            {"group_item_flag_bit_5", group_item_5},
+            {"group_item.gift_lady_gillian", group_item_5},
         });
 
         const std::string_view expected_root = !bit_18 || group_item_5
@@ -16863,7 +16863,7 @@ int main() {
         {"ilene_met", false},
         {"gillian_initiation", false},
         {"frosty_met", false},
-        {"group_item_flag_bit_5", false},
+        {"group_item.gift_lady_gillian", false},
     });
     auto gate_questions = sinsearach_fare_scripts.start_task(
         "salish_sinsearach_gate", "present");
@@ -16942,7 +16942,7 @@ int main() {
         {"ilene_met", false},
         {"gillian_initiation", false},
         {"frosty_met", false},
-        {"group_item_flag_bit_5", false},
+        {"group_item.gift_lady_gillian", false},
     });
     auto question_later = sinsearach_fare_scripts.start_task(
         "salish_sinsearach_gate", "present");
@@ -16973,7 +16973,7 @@ int main() {
         {"ilene_met", false},
         {"gillian_initiation", false},
         {"frosty_met", false},
-        {"group_item_flag_bit_5", false},
+        {"group_item.gift_lady_gillian", false},
     });
     gate_questions = sinsearach_fare_scripts.start_task(
         "salish_sinsearach_gate", "present");
@@ -17012,7 +17012,7 @@ int main() {
         {"ilene_met", false},
         {"gillian_initiation", true},
         {"frosty_met", false},
-        {"group_item_flag_bit_5", false},
+        {"group_item.gift_lady_gillian", false},
     });
     auto frosty_left = sinsearach_fare_scripts.start_task(
         "salish_sinsearach_gate", "present");
@@ -17094,7 +17094,7 @@ int main() {
         {"ilene_met", true},
         {"gillian_initiation", true},
         {"frosty_met", false},
-        {"group_item_flag_bit_5", false},
+        {"group_item.gift_lady_gillian", false},
     });
     auto return_offer_yes = sinsearach_fare_scripts.start_task(
         "salish_sinsearach_gate", "present");

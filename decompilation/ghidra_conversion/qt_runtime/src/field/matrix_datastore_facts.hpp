@@ -66,7 +66,7 @@ inline scripting::ScriptMatrixDatastoreFacts make_matrix_datastore_facts(
         facts.lone_star_prisoner_file_collected = has(page3, 9U);
     }
     // ROM 0x550456..0x550470 checks Group Item FFFC22 bit 8. This is the
-    // named Renraku map overlay item in E.GroupItemBit.
+    // named Renraku map overlay item in E.GroupItemId.
     if (group_item_flags.has_value()) {
         facts.renraku_map_overlay_collected =
             (*group_item_flags & (1U << 8U)) != 0U;

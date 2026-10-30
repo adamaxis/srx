@@ -2,13 +2,11 @@
 local E = require("enums")
 local Taxi = require("data.taxi_destinations")
 local StoryFacts = require("story_facts")
+local GroupItems = require("group_items")
 
 local M = {}
 local SPEAKER = "taxi_cabbie"
 local PROFILE = "field.taxi"
-local VISA_FACT = "group_item_flag_bit_" .. E.GroupItemBit.INDIAN_LANDS_VISA
-local ARMBAND_FACT = "group_item_flag_bit_" .. E.GroupItemBit.ORK_ARMBAND
-
 function M.fare_offer_text(region)
     local destination = assert(Taxi.regions[region],
         "taxi offer needs a known destination region")
@@ -27,7 +25,7 @@ local function accepted_ride(region)
     -- Return the gameplay outcome; the host translates that named destination
     -- into its field transition state after this dialogue accepts [C].
     if region == Taxi.Region.SALISH_SHIDHE then
-        game.state[VISA_FACT] = false
+        GroupItems.set(E.GroupItemId.INDIAN_LANDS_VISA, false)
     end
     return "taxi_ride_accepted"
 end
@@ -62,13 +60,15 @@ function M.run(destination_region)
         { "yes", "no" }, SPEAKER, PROFILE)
     if choice ~= "yes" then return nil end
 
-    local has_armband = game.state[ARMBAND_FACT] == true
-    local has_visa = game.state[VISA_FACT] == true
-    if game.state[ARMBAND_FACT] == nil then
+    local armband = GroupItems.has(E.GroupItemId.ORK_ARMBAND)
+    local visa = GroupItems.has(E.GroupItemId.INDIAN_LANDS_VISA)
+    local has_armband = armband == true
+    local has_visa = visa == true
+    if armband == nil then
         return "taxi_armband_state_unresolved"
     end
     if destination_region == Taxi.Region.SALISH_SHIDHE and
-       game.state[VISA_FACT] == nil then
+       visa == nil then
         return "taxi_visa_state_unresolved"
     end
     -- 0x2076A checks the leader's FF018F bit 5. The host exposes the

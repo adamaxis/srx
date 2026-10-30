@@ -123,8 +123,8 @@
         },
         "consume_horn": {
           "type": "action",
-          "actionId": "item.set_group_flag",
-          "arguments": { "flagBit": 4, "value": false },
+          "actionId": "item.set_group_item",
+          "arguments": { "itemId": "gargoyle_horn", "value": false },
           "next": "mark_horn_given"
         },
         "mark_horn_given": {
@@ -185,8 +185,8 @@
         },
         "consume_pelt": {
           "type": "action",
-          "actionId": "item.set_group_flag",
-          "arguments": { "flagBit": 3, "value": false },
+          "actionId": "item.set_group_item",
+          "arguments": { "itemId": "hell_hound_pelt", "value": false },
           "next": "mark_pelt_given"
         },
         "mark_pelt_given": {
@@ -242,8 +242,8 @@
         },
         "consume_scale": {
           "type": "action",
-          "actionId": "item.set_group_flag",
-          "arguments": { "flagBit": 2, "value": false },
+          "actionId": "item.set_group_item",
+          "arguments": { "itemId": "feathered_scale", "value": false },
           "next": "mark_tasks_done"
         },
         "mark_tasks_done": {
@@ -448,8 +448,8 @@
         },
         "grant_scale_item": {
           "type": "action",
-          "actionId": "item.set_group_flag",
-          "arguments": { "flagBit": 2, "value": true },
+          "actionId": "item.set_group_item",
+          "arguments": { "itemId": "feathered_scale", "value": true },
           "next": "encounter_complete"
         },
         "encounter_complete": {

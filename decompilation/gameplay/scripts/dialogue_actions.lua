@@ -4,6 +4,7 @@ local DialogueActions = {}
 local Registry = {}
 Registry.__index = Registry
 local StoryFacts = require("story_facts")
+local GroupItems = require("group_items")
 
 local function is_identifier(value)
     return type(value) == "string" and value ~= "" and
@@ -92,13 +93,11 @@ local function register_core_actions(registry)
         return true
     end)
 
-    registry:register("item.set_group_flag", function(arguments)
-        assert(is_integer(arguments.flagBit, 0, 14) and
+    registry:register("item.set_group_item", function(arguments)
+        assert(GroupItems.is_known(arguments.itemId) and
                type(arguments.value) == "boolean",
-            "item.set_group_flag needs a group-item flagBit and boolean value")
-        game.state["group_item_flag_bit_" .. arguments.flagBit] =
-            arguments.value
-        return true
+            "item.set_group_item needs a known itemId and boolean value")
+        return GroupItems.set(arguments.itemId, arguments.value)
     end)
 
     registry:register("party.award_karma", function(arguments)

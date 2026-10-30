@@ -1,6 +1,8 @@
 -- Henry's choices and outcomes live in the JSON conversation graph. This
 -- module contains only the three transactional effects recovered from ROM.
 local HenryJCulver = {}
+local E = require("enums")
+local GroupItems = require("group_items")
 
 local function charge(amount, effect)
     local result = game.services.call("building", "charge_" .. amount)
@@ -39,7 +41,7 @@ function HenryJCulver.actions(contact)
         end,
         ["vid_phone.henry.weapon_permit"] = function()
             return charge(8000, function()
-                game.state.group_item_flag_bit_11 = true
+                GroupItems.set(E.GroupItemId.WEAPON_PERMIT, true)
             end)
         end,
     }

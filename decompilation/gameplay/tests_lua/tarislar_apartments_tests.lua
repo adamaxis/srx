@@ -101,12 +101,12 @@ local map_information_available = {
     any = {
         { all = {
             eq("story.renraku_map_shown", false),
-            eq("story.group_item_flag_bit_8", true),
+            eq("story.group_item.map_overlay", true),
         } },
         { all = {
             eq("story.renraku_map_shown", true),
             eq("story.both_maps_shown", false),
-            eq("story.group_item_flag_bit_7", true),
+            eq("story.group_item.landmark_map", true),
         } },
     },
 }
@@ -119,8 +119,8 @@ game = {
         both_maps_shown = false,
         post_ito_briefed = false,
         frosty_met = true,
-        group_item_flag_bit_7 = false,
-        group_item_flag_bit_8 = false,
+        ["group_item.landmark_map"] = false,
+        ["group_item.map_overlay"] = false,
     },
     location = { type = "building", id = location_id },
     field = { package_run_status = "none" },
@@ -273,7 +273,7 @@ assert(#speeches == 0 and map_information_calls == 1)
 
 -- A held Renraku map exposes the outer graph's map-information route. The
 -- injected helper stands in for the separately tested shared map graph.
-game.state.group_item_flag_bit_8 = true
+game.state["group_item.map_overlay"] = true
 expect_repeat({ "information" }, "information")
 assert(#prompts == 1 and map_information_calls == 2)
 assert(game.state.renraku_map_shown ~= true)
@@ -281,7 +281,7 @@ assert(game.state.field_mode_effect_flag_bit_12 ~= true)
 assert(game.state.both_maps_shown ~= true)
 
 -- After story bit 26 is set, item bit 7 exposes the paired-map route.
-game.state.group_item_flag_bit_7 = true
+game.state["group_item.landmark_map"] = true
 expect_repeat({ "information" }, "information")
 assert(#prompts == 1 and map_information_calls == 3)
 assert(game.state.both_maps_shown ~= true)
@@ -290,8 +290,8 @@ assert(game.state.both_maps_shown ~= true)
 -- the service falls back to questions.
 set_story("renraku_map_shown", true)
 set_story("both_maps_shown", true)
-game.state.group_item_flag_bit_8 = false
-game.state.group_item_flag_bit_7 = false
+game.state["group_item.map_overlay"] = false
+game.state["group_item.landmark_map"] = false
 expect_repeat({ "questions" }, "questions")
 
 print("Tarislar Apartments dialogue graph and map-information tests passed")

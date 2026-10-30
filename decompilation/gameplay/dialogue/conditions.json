@@ -66,7 +66,7 @@
             { "fact": "story.aragorn_found", "op": "eq", "value": false }
           ] } },
           { "fact": "story.red_buffalo_woman", "op": "eq", "value": true },
-          { "fact": "story.group_item_flag_bit_5", "op": "eq", "value": false },
+          { "fact": "story.group_item.gift_lady_gillian", "op": "eq", "value": false },
           { "fact": "story.ilene_met", "op": "eq", "value": false }
         ]
       },
@@ -81,7 +81,7 @@
           ] } },
           { "any": [
             { "fact": "story.red_buffalo_woman", "op": "eq", "value": false },
-            { "fact": "story.group_item_flag_bit_5", "op": "eq", "value": true },
+            { "fact": "story.group_item.gift_lady_gillian", "op": "eq", "value": true },
             { "fact": "story.ilene_met", "op": "eq", "value": true }
           ] },
           { "fact": "story.shaman_tasks_done", "op": "eq", "value": true }
@@ -97,7 +97,7 @@
           { "fact": "story.shaman_tasks_done", "op": "in", "value": [true, false] },
           { "fact": "story.red_buffalo_woman", "op": "in", "value": [true, false] },
           { "fact": "story.ilene_met", "op": "in", "value": [true, false] },
-          { "fact": "story.group_item_flag_bit_5", "op": "in", "value": [true, false] }
+          { "fact": "story.group_item.gift_lady_gillian", "op": "in", "value": [true, false] }
         ]
       },
       "provenance": { "romAddresses": ["0x53F8C"], "scope": "topic_menu_required_story_and_item_facts" }
@@ -214,12 +214,12 @@
         "any": [
           { "all": [
             { "fact": "story.renraku_map_shown", "op": "eq", "value": false },
-            { "fact": "story.group_item_flag_bit_8", "op": "eq", "value": true }
+            { "fact": "story.group_item.map_overlay", "op": "eq", "value": true }
           ] },
           { "all": [
             { "fact": "story.renraku_map_shown", "op": "eq", "value": true },
             { "fact": "story.both_maps_shown", "op": "eq", "value": false },
-            { "fact": "story.group_item_flag_bit_7", "op": "eq", "value": true }
+            { "fact": "story.group_item.landmark_map", "op": "eq", "value": true }
           ] }
         ]
       },
@@ -289,7 +289,7 @@
     },
     "harlequin.map_information_has_renraku_map": {
       "expression": {
-        "fact": "story.group_item_flag_bit_8", "op": "eq", "value": true
+        "fact": "story.group_item.map_overlay", "op": "eq", "value": true
       },
       "provenance": {
         "romAddresses": ["0x220CC", "0x22018", "0x22072"],
@@ -298,7 +298,7 @@
     },
     "harlequin.map_information_has_vigore_map": {
       "expression": {
-        "fact": "story.group_item_flag_bit_7", "op": "eq", "value": true
+        "fact": "story.group_item.landmark_map", "op": "eq", "value": true
       },
       "provenance": {
         "romAddresses": ["0x220CC", "0x22018", "0x22072"],
@@ -667,7 +667,7 @@
     },
     "salish.spirit_eyes.horn_available": {
       "expression": {
-        "fact": "story.group_item_flag_bit_4", "op": "eq", "value": true
+        "fact": "story.group_item.gargoyle_horn", "op": "eq", "value": true
       },
       "provenance": {
         "romAddresses": ["0x53DD0", "0xF4BD8"],
@@ -685,7 +685,7 @@
     },
     "salish.spirit_eyes.pelt_available": {
       "expression": {
-        "fact": "story.group_item_flag_bit_3", "op": "eq", "value": true
+        "fact": "story.group_item.hell_hound_pelt", "op": "eq", "value": true
       },
       "provenance": {
         "romAddresses": ["0x53E38", "0xF4BD8"],
@@ -705,7 +705,7 @@
       "expression": {
         "all": [
           { "fact": "story.serpent_scale_taken", "op": "eq", "value": true },
-          { "fact": "story.group_item_flag_bit_2", "op": "eq", "value": true }
+          { "fact": "story.group_item.feathered_scale", "op": "eq", "value": true }
         ]
       },
       "provenance": {
@@ -781,7 +781,7 @@
       "expression": {
         "any": [
           { "fact": "story.red_buffalo_woman", "op": "eq", "value": false },
-          { "fact": "story.group_item_flag_bit_5", "op": "eq", "value": true }
+          { "fact": "story.group_item.gift_lady_gillian", "op": "eq", "value": true }
         ]
       },
       "provenance": {
@@ -806,7 +806,7 @@
           { "fact": "story.red_buffalo_woman", "op": "eq", "value": true },
           { "fact": "story.ilene_met", "op": "eq", "value": true },
           { "fact": "story.gillian_initiation", "op": "eq", "value": true },
-          { "fact": "story.group_item_flag_bit_5", "op": "eq", "value": false },
+          { "fact": "story.group_item.gift_lady_gillian", "op": "eq", "value": false },
           { "fact": "story.frosty_met", "op": "eq", "value": false }
         ]
       },

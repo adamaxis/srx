@@ -1,5 +1,6 @@
 -- Party runner down (ROM 0xB330) and party wipe recovery (0xC64C/0xC716).
 local E = require("enums")
+local GroupItems = require("group_items")
 
 local PartyDown = {}
 
@@ -237,12 +238,12 @@ function PartyDown.prepare_run_failure(context)
     registry.clear_active_offer_after_party_wipe()
     local objective_result = "unchanged"
     if failure.clear_run_objective then
-        local key = "group_item_flag_bit_" ..
-            E.GroupItemBit.RUN_OBJECTIVE_ACTIVE
-        if game.state[key] == nil then
+        local current_run_package = GroupItems.has(
+            E.GroupItemId.CURRENT_RUN_PACKAGE)
+        if current_run_package == nil then
             objective_result = "unavailable"
         else
-            game.state[key] = false
+            GroupItems.set(E.GroupItemId.CURRENT_RUN_PACKAGE, false)
             objective_result = "cleared"
         end
     end

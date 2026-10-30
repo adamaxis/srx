@@ -157,13 +157,24 @@ E.WeaponSlot  = { NONE = 0x7F }                                                 
 E.FIRST_NON_WEAPON = E.ItemId.FRAG_GRENADE
 
 E.Pickup = { CLIPS_FLAG = 0xC000, NUYEN_FLAG = 0x8000, GARGOYLE_HORN = 0x64, HOUND_PELT = 0x65 }  -- 0x133A6 [C]
--- Group-item bits in FFFC22; the Pocket Secretary rows identify these items [C].
-E.GroupItemBit = {
-    PROTOTYPE_CYBERHEART = 0, -- 0x541B2 sets FFFC22 bit 0 [C]
-    INDIAN_LANDS_VISA = 1, -- FFFC22 bit 1, pocket_secretary row indian_lands_visa [C]
-    RUN_OBJECTIVE_ACTIVE = 9, -- FFFC22 bit 9, cleared by 0x1EF2C/0x1F000/0xC6EE [C]
-    ORK_ARMBAND = 14,      -- FFFC22 bit 14; taxi checks leader FF018F bit 5 [C]
-    RENRAKU_MAP_OVERLAY = 8, -- 0x540D6 sets FFFC22 bit 8 [C]
+-- Stable content identities used by gameplay. The host maps these IDs to the
+-- legacy group-item save representation; Lua never addresses its bit positions.
+E.GroupItemId = {
+    PROTOTYPE_CYBERHEART = "prototype_cyberheart",
+    INDIAN_LANDS_VISA = "indian_lands_visa",
+    FEATHERED_SCALE = "feathered_scale",
+    HELL_HOUND_PELT = "hell_hound_pelt",
+    GARGOYLE_HORN = "gargoyle_horn",
+    GIFT_LADY_GILLIAN = "gift_lady_gillian",
+    GIFT_RED_BUFFALO_WOMAN = "gift_red_buffalo_woman",
+    LANDMARK_MAP = "landmark_map",
+    MAP_OVERLAY = "map_overlay",
+    CURRENT_RUN_PACKAGE = "current_run_package",
+    SECURITY_PASS = "security_pass",
+    WEAPON_PERMIT = "weapon_permit",
+    EYE_FIVER_EAR_CUFF = "eye_fiver_ear_cuff",
+    HALLOWEENER_PATCH = "halloweener_patch",
+    ORK_ARMBAND = "ork_armband",
 }
 
 -- Spell types: spell record = item 0x33 + type; held weapon_code = type + 1 [C]

@@ -2,6 +2,8 @@
 -- ROM commands 0x79-0x7B each charge the same effects as Henry at different
 -- prices; only the confirmed transaction writes the corresponding game fact.
 local Chillicut = {}
+local E = require("enums")
+local GroupItems = require("group_items")
 
 local function charge(amount, effect)
     local result = game.services.call("building", "charge_" .. amount)
@@ -40,7 +42,7 @@ function Chillicut.actions(contact)
         end,
         ["vid_phone.chillicut.weapon_permit"] = function()
             return charge(10000, function()
-                game.state.group_item_flag_bit_11 = true
+                GroupItems.set(E.GroupItemId.WEAPON_PERMIT, true)
             end)
         end,
     }

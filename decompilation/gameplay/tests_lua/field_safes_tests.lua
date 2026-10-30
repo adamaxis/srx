@@ -13,7 +13,7 @@ end
 local function reset()
     host = {
         story = {},
-        group_items = 0,
+        group_items = {},
         field_effects = 0,
         strike_team_stage = 5,
         fuchi_cyberheart_safe_armed = false,
@@ -23,11 +23,11 @@ local function reset()
         state = setmetatable({}, {
             __index = function(_, name)
                 if story_fact_ids[name] then return host.story[name] end
-                bit = name:match("^group_item_flag_bit_(%d+)$")
-                if bit then
-                    return (host.group_items & (1 << tonumber(bit))) ~= 0
+                local item_id = name:match("^group_item%.([%w_]+)$")
+                if item_id then
+                    return host.group_items[item_id]
                 end
-                bit = name:match("^field_mode_effect_flag_bit_(%d+)$")
+                local bit = name:match("^field_mode_effect_flag_bit_(%d+)$")
                 if bit then
                     return (host.field_effects & (1 << tonumber(bit))) ~= 0
                 end
@@ -38,13 +38,12 @@ local function reset()
                     host.story[name] = value
                     return
                 end
-                bit = name:match("^group_item_flag_bit_(%d+)$")
-                if bit then
-                    host.group_items = set_bit(
-                        host.group_items, tonumber(bit), value)
+                local item_id = name:match("^group_item%.([%w_]+)$")
+                if item_id then
+                    host.group_items[item_id] = value
                     return
                 end
-                bit = name:match("^field_mode_effect_flag_bit_(%d+)$")
+                local bit = name:match("^field_mode_effect_flag_bit_(%d+)$")
                 if bit then
                     host.field_effects = set_bit(
                         host.field_effects, tonumber(bit), value)
@@ -70,6 +69,12 @@ local function same_facts(first, second)
     return true
 end
 
+local function copy_facts(source)
+    local copy = {}
+    for key, value in pairs(source) do copy[key] = value end
+    return copy
+end
+
 local Safes = require("field_safes")
 local checks = 0
 local function check(value, label)
@@ -80,6 +85,7 @@ end
 local function renraku_prerequisites()
     reset()
     set_story_fact(E.StoryFact.ITO_FIGHT_WON, true)
+    set_story_fact(E.StoryFact.RENRAKU_MAP_OVERLAY, false)
     host.field_effects = set_bit(host.field_effects, 16, true)
     host.field_effects = set_bit(host.field_effects, 8, true)
     host.field_effects = set_bit(host.field_effects, 17, true)
@@ -115,7 +121,7 @@ renraku_prerequisites()
 local renraku = Safes.resolve(context(0x28, true))
 check(renraku.action == "renraku_map_overlay" and renraku.raise_alarm,
       "Renraku map overlay reward selected")
-check(game.state.renraku_map_overlay and game.state.group_item_flag_bit_8 and
+check(game.state.renraku_map_overlay and game.state["group_item.map_overlay"] and
       game.state.field_mode_effect_flag_bit_9 and
       not game.state.field_mode_effect_flag_bit_16 and
       not game.state.field_mode_effect_flag_bit_8 and
@@ -128,12 +134,13 @@ host.strike_team_stage = 0
 host.alarm_transition_scheduled = true
 local renraku_story = {}
 for key, value in pairs(host.story) do renraku_story[key] = value end
-local renraku_items = host.group_items
+local renraku_items = copy_facts(host.group_items)
 local renraku_effects = host.field_effects
 local renraku_strike = host.strike_team_stage
 local renraku_alarm = host.alarm_transition_scheduled
 check(Safes.resolve(context(0x28, true)).action == "none" and
-      same_facts(host.story, renraku_story) and host.group_items == renraku_items and
+      same_facts(host.story, renraku_story) and
+      same_facts(host.group_items, renraku_items) and
       host.field_effects == renraku_effects and
       host.strike_team_stage == renraku_strike and
       host.alarm_transition_scheduled == renraku_alarm,
@@ -157,6 +164,7 @@ check(Safes.resolve(context(0x28, false)).action == "none",
 
 reset()
 set_story_fact(E.StoryFact.HOSPITAL_VISITED, true)
+set_story_fact(E.StoryFact.CYBERHEART_SAFE, false)
 host.fuchi_cyberheart_safe_armed = true
 host.field_effects = set_bit(host.field_effects, 19, true)
 local fuchi = Safes.resolve(context(0x28, false))
@@ -164,16 +172,17 @@ check(fuchi.action == "fuchi_prototype_cyberheart" and
       not fuchi.raise_alarm,
       "Fuchi cyber-heart reward is independent of FFE178")
 check(game.state.cyberheart_safe and
-      game.state.group_item_flag_bit_0 and
+      game.state["group_item.prototype_cyberheart"] and
       not game.state.field_mode_effect_flag_bit_19 and
       game.state.field_mode_effect_flag_bit_20,
       "Fuchi story, item, and field-effect writes match 0x541B2")
 local fuchi_story = {}
 for key, value in pairs(host.story) do fuchi_story[key] = value end
-local fuchi_items = host.group_items
+local fuchi_items = copy_facts(host.group_items)
 local fuchi_effects = host.field_effects
 check(Safes.resolve(context(0x28, false)).action == "none" and
-      same_facts(host.story, fuchi_story) and host.group_items == fuchi_items and
+      same_facts(host.story, fuchi_story) and
+      same_facts(host.group_items, fuchi_items) and
       host.field_effects == fuchi_effects,
       "Fuchi safe repeat has no further effects")
 

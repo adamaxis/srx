@@ -310,8 +310,6 @@ constexpr std::string_view kFieldDialogueFlagBitPrefix =
 // Island Spirit Eyes sequence. Keep it distinct from FFFC34 mode effects.
 constexpr std::string_view kFieldAuxiliaryFlagBitPrefix =
     "field_auxiliary_flag_bit_";
-constexpr std::string_view kGroupItemFlagBitPrefix =
-    "group_item_flag_bit_";
 constexpr std::string_view kNotebookTipFlagBitPrefix =
     "notebook_tip_flag_bit_";
 constexpr std::string_view kMrJohnsonsFlagBitPrefix =
@@ -336,6 +334,39 @@ std::optional<std::uint8_t> story_fact_bit_index(
         return std::nullopt;
     }
     return static_cast<std::uint8_t>(index);
+}
+
+// [C] ROM FFFC22 stores the 15 Pocket Secretary group items; 0x541B2 sets
+// bit 0, 0x540D6 sets bit 8, and 0xC8C8 reads the word for the item list.
+// Keep this legacy save mapping at the host boundary. The IDs follow the
+// source item catalog order, while gameplay uses stable item identities.
+constexpr std::array<std::string_view, 15U> kGroupItemFactIds{{
+    "group_item.prototype_cyberheart",
+    "group_item.indian_lands_visa",
+    "group_item.feathered_scale",
+    "group_item.hell_hound_pelt",
+    "group_item.gargoyle_horn",
+    "group_item.gift_lady_gillian",
+    "group_item.gift_red_buffalo_woman",
+    "group_item.landmark_map",
+    "group_item.map_overlay",
+    "group_item.current_run_package",
+    "group_item.security_pass",
+    "group_item.weapon_permit",
+    "group_item.eye_fiver_ear_cuff",
+    "group_item.halloweener_patch",
+    "group_item.ork_armband",
+}};
+
+std::optional<std::uint8_t> group_item_index_from_fact_id(
+    const std::string_view fact_id) {
+    const auto found = std::find(kGroupItemFactIds.begin(),
+                                 kGroupItemFactIds.end(), fact_id);
+    if (found == kGroupItemFactIds.end()) {
+        return std::nullopt;
+    }
+    return static_cast<std::uint8_t>(
+        std::distance(kGroupItemFactIds.begin(), found));
 }
 
 std::optional<std::uint8_t> story_flag_source_bit(
@@ -10293,12 +10324,11 @@ bool FieldSceneRuntime::bootstrap(
                 return (*notebook_shadowrunner_flags_ &
                         static_cast<std::uint16_t>(1U << *bit)) != 0U;
             }
-            if (const auto bit = story_fact_bit_index(
-                    name, kGroupItemFlagBitPrefix)) {
-                if (*bit >= 15U || !group_item_flags_.has_value()) {
+            if (const auto item_index = group_item_index_from_fact_id(name)) {
+                if (!group_item_flags_.has_value()) {
                     return std::nullopt;
                 }
-                return (*group_item_flags_ & (1U << *bit)) != 0U;
+                return (*group_item_flags_ & (1U << *item_index)) != 0U;
             }
             if (name == "pending_world_effect") {
                 return field_pending_world_effect_;
@@ -10505,12 +10535,11 @@ bool FieldSceneRuntime::bootstrap(
                           static_cast<std::uint16_t>(~mask));
                 return true;
             }
-            if (const auto bit = story_fact_bit_index(
-                    name, kGroupItemFlagBitPrefix)) {
-                if (*bit >= 15U || !group_item_flags_.has_value()) {
+            if (const auto item_index = group_item_index_from_fact_id(name)) {
+                if (!group_item_flags_.has_value()) {
                     return false;
                 }
-                const auto mask = std::uint32_t{1U} << *bit;
+                const auto mask = std::uint32_t{1U} << *item_index;
                 *group_item_flags_ = value
                     ? *group_item_flags_ | mask
                     : *group_item_flags_ & ~mask;

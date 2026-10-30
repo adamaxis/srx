@@ -52,14 +52,14 @@ local function new_game(choices, flags, funds, package_run_status, inventory)
         field_dialogue_flag_bit_1 = false,
         field_dialogue_flag_bit_2 = false,
         field_dialogue_flag_bit_3 = false,
-        group_item_flag_bit_1 = false,
+        ["group_item.indian_lands_visa"] = false,
         tarislar_asked_shale = false,
         aragorn_found = false,
         shaman_tasks_done = false,
         michael_alias_learned = false,
         red_buffalo_woman = false,
         ilene_met = false,
-        group_item_flag_bit_5 = false,
+        ["group_item.gift_lady_gillian"] = false,
         field_mode_flag_bit_6 = true,
         field_mode_flag_bit_7 = true,
         field_mode_flag_bit_20 = false,
@@ -293,7 +293,7 @@ outcome = Boris.present_indexed_title_service()
 assert(outcome.type == "continue_in_place" and state.funds == 0 and
        state.service_calls[1] == 100 and state.service_calls[2] == 1000 and
        state.state.field_dialogue_flag_bit_0 == true and
-       state.state.group_item_flag_bit_1 == true and
+       state.state["group_item.indian_lands_visa"] == true and
        state.seen_pages[3].text_key ==
            "boris.greenhouse.page.privacy_request" and
        state.seen_pages[4].menu_id == "item_categories" and
@@ -309,7 +309,7 @@ state = new_game({
 outcome = Boris.present_indexed_title_service()
 assert(outcome.type == "continue_in_place" and state.funds == 999 and
        state.service_calls[1] == 100 and state.service_calls[2] == 1000 and
-       state.state.group_item_flag_bit_1 == false and
+       state.state["group_item.indian_lands_visa"] == false and
        state.seen_events[#state.seen_events].text_key ==
            "boris.greenhouse.page.insufficient_funds")
 
@@ -466,7 +466,7 @@ state = new_game({ "more", "information", "ilene", "later" }, {
     field_dialogue_flag_bit_2 = true,
     red_buffalo_woman = true,
     ilene_met = false,
-    group_item_flag_bit_5 = false,
+    ["group_item.gift_lady_gillian"] = false,
 }, 1000)
 outcome = Boris.present_indexed_title_service()
 assert(outcome.type == "continue_in_place" and
@@ -489,7 +489,7 @@ state = new_game({ "more", "information", "david", "brother" }, {
     aragorn_found = false,
     red_buffalo_woman = true,
     ilene_met = false,
-    group_item_flag_bit_5 = false,
+    ["group_item.gift_lady_gillian"] = false,
 }, 1000)
 outcome = Boris.present_indexed_title_service()
 assert(outcome.type == "source_boundary" and
@@ -497,7 +497,7 @@ assert(outcome.type == "source_boundary" and
        state.seen_pages[2].choice_ids[3] ~= "ilene")
 
 state = new_game({ "more", "information" }, { field_dialogue_flag_bit_2 = true })
-state.state.group_item_flag_bit_5 = nil
+state.state["group_item.gift_lady_gillian"] = nil
 outcome = Boris.present_indexed_title_service()
 assert(outcome.type == "source_boundary" and
        outcome.reason:find("condition_unknown", 1, true) ~= nil and
