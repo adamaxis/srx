@@ -891,28 +891,41 @@ eq(restored_deck_mode, E.MatrixModeResult.ATTACK,
 local no_alert_state = { alert = -1 }
 local no_alert_result = Actions.cancel_alert(no_alert_state)
 eq(no_alert_state.alert, -1, "Cancel Alert leaves the none state unchanged")
-eq(no_alert_result.text, Actions.TEXT.NO_ALERTS,
-    "Cancel Alert selects the ROM no-alert message")
+eq(no_alert_result.message_id, Actions.MESSAGE_ID.NO_ALERTS,
+    "Cancel Alert selects the semantic no-alert message ID")
 local active_alert_state = { alert = 1 }
 local cancelled_alert_result = Actions.cancel_alert(active_alert_state)
 eq(active_alert_state.alert, -1, "Cancel Alert clears an active alert")
-eq(cancelled_alert_result.text, Actions.TEXT.ALERT_CANCELLED,
-    "Cancel Alert selects the ROM cancellation message")
-eq(Actions.lockout().text, Actions.TEXT.LOCKOUT,
-    "Lockout selects its ROM text address")
-eq(MatrixText.from_rom(Actions.TEXT.LOCKOUT), MatrixText.LOCKOUT,
-    "ROM Lockout text address resolves to the decoded message")
-eq(MatrixText.from_rom(Actions.TEXT.SHUTDOWN),
+eq(cancelled_alert_result.message_id, Actions.MESSAGE_ID.ALERT_CANCELLED,
+    "Cancel Alert selects the semantic cancellation message ID")
+eq(Actions.lockout().message_id, Actions.MESSAGE_ID.LOCKOUT,
+    "Lockout selects its semantic message ID")
+eq(MatrixText.resolve(Actions.MESSAGE_ID.LOCKOUT), MatrixText.LOCKOUT,
+    "Lockout message ID resolves to the decoded display copy")
+eq(MatrixText.resolve(Actions.MESSAGE_ID.SHUTDOWN),
     "  INITIATING||SYSTEM  SHUTDOWN|| IN - - SECONDS",
-    "ROM Crash System text address resolves to the decoded message")
-eq(MatrixText.from_rom(Actions.TEXT.OFFLINE), "NODE IS OFFLINE",
-    "ROM Turn Off Node text address resolves to its decoded message")
-eq(MatrixText.from_rom(Actions.TEXT.ERASE_OBJECTIVE),
+    "Crash System message ID resolves to its decoded display copy")
+eq(MatrixText.resolve(Actions.MESSAGE_ID.OFFLINE), "NODE IS OFFLINE",
+    "Turn Off Node message ID resolves to its decoded display copy")
+eq(MatrixText.resolve(Actions.MESSAGE_ID.ERASE_OBJECTIVE),
     "  The recog-code| rapidly finds the|data and zaps it to| electron heaven!!|| Run accomplished!",
-    "ROM objective Erase text preserves source line breaks")
-eq(MatrixText.from_rom(Actions.TEXT.ERASED),
+    "objective Erase display copy preserves source line breaks")
+eq(MatrixText.resolve(Actions.MESSAGE_ID.ERASED),
     "You find a file that| appears important| and obliterate it|  from memory!!!|| Score one for the|downtrodden hacker!",
-    "ROM ordinary Erase text preserves source line breaks")
+    "ordinary Erase display copy preserves source line breaks")
+eq(MatrixText.resolve(0x1669A2), nil,
+    "a ROM text address is not a Matrix message lookup key")
+for name, message_id in pairs(E.MatrixMessageId) do
+    eq(type(MatrixText.resolve(message_id)), "string",
+       "Matrix message ID resolves: " .. name)
+end
+-- Source DBF waits become elapsed durations at the host update layer [C].
+eq(Actions.SEARCH_DOT_INTERVAL_FRAMES, 21,
+   "search dots use their elapsed-frame interval")
+eq(Actions.SEARCH_FINAL_PAUSE_FRAMES, 10,
+   "search uses its elapsed final pause")
+eq(Actions.SHUTDOWN_COUNTDOWN_STEP_FRAMES, 61,
+   "shutdown digits use their elapsed-frame duration")
 local crash_run = matrix_run(E.MatrixRunStatus.ACTIVE, "cpu",
     E.MatrixRunAction.CRASH_SYSTEM, nil, nil, 0)
 local crash_field = { alarm = true, security_off = false, maglocks_off = false }
@@ -962,7 +975,8 @@ eq(class_27_field.security_off, true, "class 0x27 disables building security")
 eq(class_27_actors[1].actor_facts.roles.despawn_offscreen, true,
     "class 0x27 marks alarm responders for despawn")
 eq(class_27_result.stop_sfx, 0x30, "class 0x27 stops the alarm sound")
-eq(class_27_result.text, Actions.TEXT.OFFLINE, "class 0x27 uses ROM offline text")
+eq(class_27_result.message_id, Actions.MESSAGE_ID.OFFLINE,
+    "class 0x27 selects the semantic offline message")
 local class_28_field = { alarm = true }
 local class_28_result = Actions.turn_off_node(
     { file_class = "Cameras" }, class_28_field)
@@ -1512,6 +1526,40 @@ local ordinary_slot = Actions.store(stored_files, objective_run,
 eq(ordinary_slot, 1, "ordinary data file uses the next free slot")
 eq(stored_files.files[1].data_value, 2,
     "ordinary file retains its positive sale multiplier")
+-- ROM 0x16668A maps the sum of rand(7) and rand(6) to data units;
+-- node colour 2 applies a multiplier of one. Exercise every roll total [C].
+local expected_data_units_by_roll_total = {
+    [0] = 0, [1] = 1, [2] = 3, [3] = 0,
+    [4] = 2, [5] = 0, [6] = 5, [7] = 4,
+    [8] = 6, [9] = 8, [10] = 0, [11] = 0,
+}
+for roll_total = 0, 11 do
+    local first_draw = math.min(roll_total, 6)
+    local second_draw = roll_total - first_draw
+    local draw_count = 0
+    local reward_record = { storage = 100, files = {}, ratings = {} }
+    for slot = 0, 4 do
+        reward_record.files[slot] = {
+            id = -1, size = 0, data_value = 0, run_objective = false,
+        }
+    end
+    for rating = 0, 11 do reward_record.ratings[rating] = 0 end
+    local reward_slot, reward_message_id = Actions.store(
+        reward_record, nil, { class = 9, colour = 2 },
+        { id = 45, size = 20 }, function(bound)
+            draw_count = draw_count + 1
+            eq(bound, draw_count == 1 and 7 or 6,
+               "data value uses the source draw bounds")
+            return draw_count == 1 and first_draw or second_draw
+        end)
+    eq(reward_slot, 0, "random data file uses the first open slot")
+    eq(reward_record.files[0].data_value,
+       expected_data_units_by_roll_total[roll_total],
+       "data value units match roll total " .. roll_total)
+    eq(reward_message_id, Actions.MESSAGE_ID.STORED,
+       "ordinary download selects its stored message ID")
+    eq(draw_count, 2, "ordinary data value consumes two random draws")
+end
 D.erase_file(stored_files, 0)
 eq(stored_files.files[0].run_objective, false,
     "erasing a file clears its named objective marker")
@@ -1569,7 +1617,8 @@ local cancelled_alert_state = {
     alert = 0, world_effect_gate_negative = true,
 }
 local cancelled = Actions.cancel_alert(cancelled_alert_state)
-eq(cancelled.text, Actions.TEXT.ALERT_CANCELLED, "cancel active alert text")
+eq(cancelled.message_id, Actions.MESSAGE_ID.ALERT_CANCELLED,
+   "cancel active alert message ID")
 eq(cancelled_alert_state.alert, MX.NONE,
    "0x54AEA Cancel Alert writes FFF0A0 to No Alert")
 eq(cancelled_alert_state.world_effect_gate_negative, true,
@@ -1595,7 +1644,7 @@ eq(targeted_run.status, E.MatrixRunStatus.ACTIVE,
     "searching a same-class node outside the target leaves the run active")
 local wrong_system_erase = Actions.erase(
     targeted_run, run_node, 5)
-eq(wrong_system_erase.text, Actions.TEXT.ERASED,
+eq(wrong_system_erase.message_id, Actions.MESSAGE_ID.ERASED,
     "Erase cannot complete a Matrix objective in another system")
 eq(targeted_run.status, E.MatrixRunStatus.ACTIVE,
     "wrong-system Erase leaves the objective unfinished")
@@ -1606,7 +1655,7 @@ eq(target_system_search.file.run_objective, true,
 local upload_run = matrix_run(E.MatrixRunStatus.ACTIVE, "datastore",
     E.MatrixRunAction.UPLOAD_FILE, "Security Files", nil, 30)
 local upload = Actions.begin_search(upload_run, run_node)
-eq(upload.text, Actions.TEXT.UPLOAD_DONE,
+eq(upload.message_id, Actions.MESSAGE_ID.UPLOAD_DONE,
     "upload objective completes immediately without a download prompt")
 eq(upload_run.status, E.MatrixRunStatus.COMPLETED,
     "immediate objective upload completes the run")
@@ -1629,7 +1678,7 @@ local missed_search = Actions.finish_search(
     { attributes = { intelligence = 0 }, skills = { computer = 0 } },
     { sensor = 0 }, nil,
     function(bound) return bound - 1 end)
-eq(missed_search.text, Actions.TEXT.NOTHING,
+eq(missed_search.message_id, Actions.MESSAGE_ID.NOTHING,
     "detection failure uses Int, Computer, and Sensor from typed records")
 local RunCatalog = require("data.matrix_run_catalog")
 local function datastore(system_key, facts)
@@ -1858,31 +1907,32 @@ local story_search = Actions.finish_search(
     function() error("story datastores do not roll for random data") end)
 eq(story_search.story, true,
     "story datastore returns its report before ordinary detection")
-eq(story_search.text, Actions.TEXT.STORY_FILE,
+eq(story_search.message_id, Actions.MESSAGE_ID.STORY_FILE,
     "special datastore selects the story-file message")
 local low_storage = { storage = 0, files = {}, ratings = {} }
 for i = 0, 4 do low_storage.files[i] = { id = -1, size = 0 } end
 for i = 0, 11 do low_storage.ratings[i] = 0 end
-local _, low_storage_text = Actions.store(
+local _, low_storage_message_id = Actions.store(
     low_storage, nil, { class = 9, colour = 1 },
     { id = 45, size = 20 }, function() return 0 end)
-eq(low_storage_text, Actions.TEXT.NO_STORAGE,
+eq(low_storage_message_id, Actions.MESSAGE_ID.NO_STORAGE,
     "insufficient deck storage uses the ROM two-part message")
 local full_file_slots = { storage = 100, files = {}, ratings = {} }
 for i = 0, 4 do full_file_slots.files[i] = { id = i, size = 0 } end
 for i = 0, 11 do full_file_slots.ratings[i] = 0 end
-local _, full_file_text = Actions.store(
+local _, full_file_message_id = Actions.store(
     full_file_slots, nil, { class = 9, colour = 1 },
     { id = 45, size = 20 }, function() return 0 end)
-eq(full_file_text, Actions.TEXT.FIVE_FILES,
+eq(full_file_message_id, Actions.MESSAGE_ID.FIVE_FILES,
     "five occupied file slots use the ROM capacity message")
 local result = Actions.erase(run, run_node)
-eq(result.text, Actions.TEXT.ERASE_OBJECTIVE, "objective erase text")
+eq(result.message_id, Actions.MESSAGE_ID.ERASE_OBJECTIVE,
+   "objective erase message ID")
 eq(run.status, E.MatrixRunStatus.COMPLETED, "objective erase completes run")
 local ordinary_erase_run = matrix_run(E.MatrixRunStatus.ACTIVE,
     "datastore", E.MatrixRunAction.DELETE_FILE, "Financial Data", 0, 30)
 local ordinary_erase = Actions.erase(ordinary_erase_run, run_node)
-eq(ordinary_erase.text, Actions.TEXT.ERASED,
+eq(ordinary_erase.message_id, Actions.MESSAGE_ID.ERASED,
     "non-objective Erase uses the ordinary ROM message")
 eq(ordinary_erase_run.status, E.MatrixRunStatus.ACTIVE,
     "non-objective Erase leaves the active run incomplete")
@@ -1890,12 +1940,12 @@ local erase_nonzero_value_run = matrix_run(E.MatrixRunStatus.ACTIVE,
     "datastore", E.MatrixRunAction.DOWNLOAD_FILE, "Security Files", 1, 30)
 local erase_nonzero_value = Actions.erase(erase_nonzero_value_run,
     run_node)
-eq(erase_nonzero_value.text, Actions.TEXT.ERASED,
+eq(erase_nonzero_value.message_id, Actions.MESSAGE_ID.ERASED,
     "download objective does not complete through Erase")
 eq(erase_nonzero_value_run.status, E.MatrixRunStatus.ACTIVE,
     "download objective remains active after Erase")
 local no_run_erase = Actions.erase(nil, run_node)
-eq(no_run_erase.text, Actions.TEXT.ERASED,
+eq(no_run_erase.message_id, Actions.MESSAGE_ID.ERASED,
     "Erase without an imported active run remains a normal file erase")
 local gate_state = { attempts = 0 }
 eq(Actions.gate(3, 2, { colour = 1, security = 4 }, gate_state,

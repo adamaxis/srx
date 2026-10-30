@@ -413,6 +413,34 @@ E.MatrixRunAction = {
     CRASH_SYSTEM = "crash_system",
     DOWNLOAD_FILE = "download_file",
 }
+-- Stable Matrix UI message identities. ROM text pointers are import provenance,
+-- never gameplay results or runtime lookup keys.
+E.MatrixMessageId = {
+    ACTION_FAILED = "matrix.action_failed",
+    ALERT_CANCELLED = "matrix.alert_cancelled",
+    NO_ALERTS = "matrix.no_alerts",
+    SHUTDOWN = "matrix.shutdown",
+    OFFLINE = "matrix.offline",
+    ERASE_OBJECTIVE = "matrix.erase_objective",
+    ERASED = "matrix.erased",
+    LOCKOUT = "matrix.lockout",
+    SEARCHING = "matrix.searching",
+    NOTHING = "matrix.nothing",
+    OBJECTIVE_FOUND = "matrix.objective_found",
+    UPLOAD_DONE = "matrix.upload_done",
+    STORED_OBJECTIVE = "matrix.stored_objective",
+    STORED = "matrix.stored",
+    SEARCH_DOT = "matrix.search_dot",
+    STORY_FILE = "matrix.story_file",
+    FILE_METER = "matrix.file_meter",
+    DOWNLOAD_FILE = "matrix.download_file",
+    DOWNLOAD_CANCELLED = "matrix.download_cancelled",
+    FIVE_FILES = "matrix.five_files",
+    NO_STORAGE = "matrix.no_storage",
+    STORAGE_SUFFIX = "matrix.storage_suffix",
+    SYSTEM_ALERT = "matrix.system_alert",
+    SYSTEM_OVERLOAD = "matrix.system_overload",
+}
 -- Stable gameplay identities for the Johnsons that offer work. Native import
 -- code maps source scene/context values to these IDs before Lua sees them.
 E.RunId = {

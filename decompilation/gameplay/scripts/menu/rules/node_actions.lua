@@ -5,16 +5,12 @@ local FieldAlarm = require("field_alarm")
 local DECK = require("menu.rules.deck")
 local SPECIAL = require("menu.rules.datastore_special")
 local M = {}
-M.TEXT = { ALERT_CANCELLED = 0x1666A8, NO_ALERTS = 0x1666DD, SHUTDOWN = 0x166A44, OFFLINE = 0x16684A,
-    ERASE_OBJECTIVE = 0x1668CE, ERASED = 0x16685A, LOCKOUT = 0x1669A2, SEARCHING = 0x16674D, NOTHING = 0x1667A5,
-    OBJECTIVE_FOUND = 0x166770, UPLOAD_DONE = 0x16692D, STORED_OBJECTIVE = 0x1667DD, STORED = 0x1667F8,
-    SEARCH_DOT = 0x166848, STORY_FILE = 0x166968, DOWNLOAD_FILE = 0x1667CE,
-    DOWNLOAD_CANCELLED = 0x1667BA, FIVE_FILES = 0x16681B, NO_STORAGE = 0xE383D }
--- 0xC24 waits d5 + 1 VBlanks [C]: search dots 0x54D3A d5 = 0x14, search tail
--- 0x54D50 d5 = 9, Crash System digits 0x54BAE d5 = 0x3C.
-M.SEARCH_DOT_FRAMES = 0x14 + 1
-M.SEARCH_TAIL_FRAMES = 9 + 1
-M.SHUTDOWN_STEP_FRAMES = 0x3C + 1
+M.MESSAGE_ID = E.MatrixMessageId
+-- Native presentation uses elapsed durations. The source DBF waits at
+-- 0x54D3A, 0x54D50, and 0x54BAE resolve to 21, 10, and 61 frames. [C]
+M.SEARCH_DOT_INTERVAL_FRAMES = 21
+M.SEARCH_FINAL_PAUSE_FRAMES = 10
+M.SHUTDOWN_COUNTDOWN_STEP_FRAMES = 61
 
 local function complete(run)                       -- shared run completion (0x54B34 / 0x54F72 / 0x5559E)
     run.completion_marker_present = false
@@ -41,9 +37,9 @@ end
 function M.cancel_alert(st)
     if st.alert >= 0 then
         st.alert = -1
-        return { text = M.TEXT.ALERT_CANCELLED, redraw = true }
+        return { message_id = M.MESSAGE_ID.ALERT_CANCELLED, redraw = true }
     end
-    return { text = M.TEXT.NO_ALERTS }
+    return { message_id = M.MESSAGE_ID.NO_ALERTS }
 end
 -- 0x54B34 Crash System: countdown 3..0 at 61 VBlanks each, fade 0x18776, logout 0x26A00.
 function M.crash_system(run, field, actors)
@@ -55,12 +51,24 @@ function M.crash_system(run, field, actors)
     end
     M.alarm_off(field, actors)                          -- 0x1E09A
     field.security_off, field.maglocks_off = true, true
-    return { text = M.TEXT.SHUTDOWN, countdown = { 3, 2, 1, 0 }, step = M.SHUTDOWN_STEP_FRAMES, logout = true, stop_sfx = E.SoundId.ALARM }
+    return { message_id = M.MESSAGE_ID.SHUTDOWN,
+             countdown = { 3, 2, 1, 0 },
+             step = M.SHUTDOWN_COUNTDOWN_STEP_FRAMES,
+             logout = true, stop_sfx = E.SoundId.ALARM }
 end
 -- 0x1E09A alarm off: if FFE16F set -> clear; actors FF0400..FF0A00 with +0x9E bit1 get bit2;
 -- always stops E.SoundId.ALARM (0x30) through 0x530D2 (FF 12 30).
 function M.alarm_off(field, actors)
-    local result = FieldAlarm.clear(field, actors)
+    if type(field) ~= "table" or type(field.alarm) ~= "boolean" then
+        return false
+    end
+    -- Matrix keeps alarm state in its semantic field snapshot. Project it to
+    -- the shared alarm-policy vocabulary, then apply the returned transition.
+    local alarm_state = { alarm_active = field.alarm }
+    local result = FieldAlarm.clear(alarm_state, actors)
+    if result ~= nil then
+        field.alarm = alarm_state.alarm_active
+    end
     return result ~= nil and result.was_active == true -- caller stops E.SoundId.ALARM
 end
 -- [C] 0x54BD2 dispatches class-specific shutdown effects. The native rules
@@ -82,32 +90,40 @@ function M.turn_off_node(node, field, actors)
         if e.security then field.security_off = true end   -- FFE170 [H: suppresses guard spawns 0x163DA/0x1DFD8]
         if e.maglocks then field.maglocks_off = true end   -- FFE17F maglocks disengaged
     end
-    return { text = M.TEXT.OFFLINE, stop_sfx = stop_sfx }
+    return { message_id = M.MESSAGE_ID.OFFLINE, stop_sfx = stop_sfx }
 end
 -- [C] 0x5559E Erase completes a matching Delete objective with value zero.
 function M.erase(run, node, current_system_id)
     if on_objective(run, node, current_system_id) and
        run.objective.action == E.MatrixRunAction.DELETE_FILE then
         complete(run)
-        return { text = M.TEXT.ERASE_OBJECTIVE }
+        return { message_id = M.MESSAGE_ID.ERASE_OBJECTIVE }
     end
-    return { text = M.TEXT.ERASED }
+    return { message_id = M.MESSAGE_ID.ERASED }
 end
 -- 0x5561E Lockout: text only.
-function M.lockout() return { text = M.TEXT.LOCKOUT } end
+function M.lockout() return { message_id = M.MESSAGE_ID.LOCKOUT } end
 
--- 0x54C5E Transfer Data, phase 1 (search). r = datastore_special record (system, flags, nuyen ...).
-M.VALUE = { [0]=0, 1, 3, 0, 2, 0, 5, 4, 6, 8, 0, 0 }      -- 0x16668A
+-- Datafile sale units by the sum of two search draws, from ROM 0x16668A.
+-- Lua works with the gameplay value `roll_total`, not a copied table index. [C]
+local data_value_units_by_roll_total = {
+    [0] = 0, [1] = 1, [2] = 3, [3] = 0,
+    [4] = 2, [5] = 0, [6] = 5, [7] = 4,
+    [8] = 6, [9] = 8, [10] = 0, [11] = 0,
+}
+
+-- 0x54C5E Transfer Data, phase 1 (search). The host translates story-state
+-- fields into the named `special` facts consumed here.
 -- The objective check precedes the browsing animation. Upload objectives
 -- complete immediately; file objectives show their named target file.
 function M.begin_search(run, node, current_system_id)
     if on_objective(run, node, current_system_id) then
         if run.objective.action == E.MatrixRunAction.UPLOAD_FILE then
             complete(run)
-            return { text = M.TEXT.UPLOAD_DONE }
+            return { message_id = M.MESSAGE_ID.UPLOAD_DONE }
         end
         if run.objective.file_id ~= nil then
-            return { text = M.TEXT.OBJECTIVE_FOUND,
+            return { message_id = M.MESSAGE_ID.OBJECTIVE_FOUND,
                      file = { run_objective = true,
                               id = run.objective.file_id,
                               size = run.file_size } }
@@ -133,10 +149,10 @@ function M.finish_search(node, decker, deck, special, rand)
     if special and file_class ~= nil and
        SPECIAL.can_match(special, file_class) and
        SPECIAL.matches(special, file_class) then
-        return { story = true, text = M.TEXT.STORY_FILE }
+        return { story = true, message_id = M.MESSAGE_ID.STORY_FILE }
     end
     if detection_score(decker, deck) < rand(10) + 1 then
-        return { text = M.TEXT.NOTHING }
+        return { message_id = M.MESSAGE_ID.NOTHING }
     end
     return { file = { id = node.class * 5 + rand(5), size = (rand(5) + 2) * 10 } }
 end
@@ -150,10 +166,10 @@ function M.file_name(id) return DECK.FILE_NAMES[id] end
 -- Phase 2 (after "Download File?" A = yes). Returns message key or stored slot.
 function M.store(rec, run, node, file, rand)
     if not DECK.storage_fits_file(rec, file.size) then
-        return nil, M.TEXT.NO_STORAGE
+        return nil, M.MESSAGE_ID.NO_STORAGE
     end
     local k; for i = 0, DECK.FILES - 1 do if rec.files[i].id < 0 then k = i; break end end
-    if not k then return nil, M.TEXT.FIVE_FILES end
+    if not k then return nil, M.MESSAGE_ID.FIVE_FILES end
     local id = file.id
     if id == nil then id = node.class * 5 end
     local f = rec.files[k]; f.id, f.size = id, file.size
@@ -161,15 +177,17 @@ function M.store(rec, run, node, file, rand)
     if f.run_objective then
         f.data_value = 0
         complete(run)
-        return k, M.TEXT.STORED_OBJECTIVE
+        return k, M.MESSAGE_ID.STORED_OBJECTIVE
     end
-    local m = node.colour == 4 and 5 or node.colour - 1
-    f.data_value = M.VALUE[rand(7) + rand(6)] * m
-    return k, M.TEXT.STORED
+    local roll_total = rand(7) + rand(6)
+    local data_value_units = data_value_units_by_roll_total[roll_total]
+    local colour_multiplier = node.colour == 4 and 5 or node.colour - 1
+    f.data_value = data_value_units * colour_multiplier
+    return k, M.MESSAGE_ID.STORED
 end
 -- Node-action loop 0x54662 gate (A edge, 0x548A0): dice = min(pool, Computer +0x88) + Computer (0 -> 1) - (colour - 1);
--- <= 0 or roll(dice, security +6) <= 0 -> text 0x166AA5; else dispatch 0x1664D8[function].+6[cursor]. FFF0A8 += 1 either way.
-M.TEXT.ACTION_FAILED, M.TEXT.SYSTEM_ALERT = 0x166AA5, 0x1669E8
+-- <= 0 or roll(dice, security +6) <= 0 -> ACTION_FAILED; else dispatch
+-- 0x1664D8[function].+6[cursor]. FFF0A8 += 1 either way.
 
 -- 0x54662 combines the named Matrix profile attributes, Computer skill, deck
 -- Response, and the selected program mode. The legal profile and deck ranges

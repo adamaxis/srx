@@ -23,12 +23,13 @@ local function refresh(st)
     st.matrix_node_status = nil
     st.matrix_traversal_view = nil
     if st.shutdown then
-        st.title, st.text, st.labels = "Matrix Message", MatrixText.SHUTDOWN, {}
+        st.title, st.text, st.labels = "Matrix Message",
+            MatrixText.resolve(E.MatrixMessageId.SHUTDOWN), {}
         return
     end
     if st.transfer and st.transfer.phase == "search" then
         st.title = "Matrix Message"
-        st.text = MatrixText.SEARCHING .. "|" ..
+        st.text = MatrixText.resolve(E.MatrixMessageId.SEARCHING) .. "|" ..
                   string.rep(".", st.transfer.dots)
         st.labels = {}
         return
@@ -36,8 +37,9 @@ local function refresh(st)
         local file = st.transfer.file
         local name = NodeActions.file_name(file.id) or
                      ("File " .. tostring(file.id))
-        st.title = MatrixText.DOWNLOAD_FILE
-        st.text = name .. "|" .. MatrixText.FILE_METER .. " " ..
+        st.title = MatrixText.resolve(E.MatrixMessageId.DOWNLOAD_FILE)
+        st.text = name .. "|" ..
+                  MatrixText.resolve(E.MatrixMessageId.FILE_METER) .. " " ..
                   tostring(file.size)
         st.labels = { "Yes", "No" }
         st.row = st.transfer.choice
@@ -388,7 +390,8 @@ local function show_random_alert(st, ctx)
         st.matrix_transition = MatrixRules.new_exit_transition(false)
     else
         st.matrix_message_kind = "system_alert"
-        st.matrix_message = MatrixText.SYSTEM_ALERT
+        st.matrix_message =
+            MatrixText.resolve(E.MatrixMessageId.SYSTEM_ALERT)
         st.message_delay_frames = MatrixRules.ALERT_MESSAGE_WAIT_FRAMES
     end
     refresh(st)
@@ -483,13 +486,13 @@ local function action_succeeds(st, ctx)
         end)
 end
 
-local function show_message(st, text, ctx)
+local function show_message(st, message_id, ctx)
     if st.transfer_return_row ~= nil then
         st.row = st.transfer_return_row
         st.transfer_return_row = nil
     end
     st.transfer = nil
-    st.matrix_message = MatrixText.from_rom(text)
+    st.matrix_message = MatrixText.resolve(message_id)
     refresh(st)
     ctx.redraw(R.FULL)
 end
@@ -512,9 +515,9 @@ local function start_transfer(st, ctx)
         world.run, node, st.system_id)
     st.matrix_message = nil
     if result then
-        if result.text == NodeActions.TEXT.UPLOAD_DONE then
+        if result.message_id == NodeActions.MESSAGE_ID.UPLOAD_DONE then
             MatrixSession.commit_world_state(game, world)
-            show_message(st, result.text, ctx)
+            show_message(st, result.message_id, ctx)
         else
             show_file_prompt(st, result.file, ctx)
         end
@@ -523,7 +526,9 @@ local function start_transfer(st, ctx)
 
     -- 0x54D3A prints a dot every 21 VBlanks; after the fourth dot the ROM
     -- waits 10 more before checking story files and running detection.
-    st.transfer = { phase = "search", frames = NodeActions.SEARCH_DOT_FRAMES,
+    st.transfer = {
+        phase = "search",
+        frames = NodeActions.SEARCH_DOT_INTERVAL_FRAMES,
                     dots = 0, return_row = st.transfer_return_row }
     refresh(st)
     ctx.redraw(R.FULL)
@@ -547,7 +552,8 @@ local function finish_transfer_search(st, ctx)
         show_file_prompt(st, result.file, ctx)
     else
         if result.story then MatrixSession.commit_world_state(game, world) end
-        show_message(st, result.text or NodeActions.TEXT.NOTHING, ctx)
+        show_message(st,
+            result.message_id or NodeActions.MESSAGE_ID.NOTHING, ctx)
     end
 end
 
@@ -558,7 +564,8 @@ local function advance_transfer_search(st, ctx)
     if transfer.dots < 4 then
         transfer.dots = transfer.dots + 1
         transfer.frames = transfer.dots < 4 and
-                          NodeActions.SEARCH_DOT_FRAMES or NodeActions.SEARCH_TAIL_FRAMES
+                          NodeActions.SEARCH_DOT_INTERVAL_FRAMES or
+                          NodeActions.SEARCH_FINAL_PAUSE_FRAMES
         refresh(st)
         ctx.redraw(R.FULL)
         return
@@ -572,7 +579,7 @@ local function store_transfer_file(st, ctx)
     local world = MatrixSession.world_state(game)
     local record = game.deck_record()
     local slots = game.deck_slots()
-    local slot, text = NodeActions.store(
+    local slot, message_id = NodeActions.store(
         record, world.run, MatrixSession.current_node(st.matrix_state),
         transfer.file,
         function(bound) return game.source_random_bound(bound) end)
@@ -582,7 +589,7 @@ local function store_transfer_file(st, ctx)
             MatrixSession.commit_world_state(game, world)
         end
     end
-    show_message(st, text, ctx)
+    show_message(st, message_id, ctx)
 end
 
 local function advance_transfer(st, events, ctx)
@@ -598,7 +605,7 @@ local function advance_transfer(st, events, ctx)
         ctx.redraw(R.FULL)
     elseif events & P.A ~= 0 then
         if transfer.choice == 1 then
-            show_message(st, NodeActions.TEXT.DOWNLOAD_CANCELLED, ctx)
+            show_message(st, NodeActions.MESSAGE_ID.DOWNLOAD_CANCELLED, ctx)
         else
             store_transfer_file(st, ctx)
         end
@@ -623,7 +630,8 @@ local function advance_matrix_transition(st, ctx)
                      } }
         end
         st.matrix_message_kind = "system_overload"
-        st.matrix_message = MatrixText.SYSTEM_OVERLOAD
+        st.matrix_message =
+            MatrixText.resolve(E.MatrixMessageId.SYSTEM_OVERLOAD)
         st.message_delay_frames = MatrixRules.OVERLOAD_MESSAGE_WAIT_FRAMES
         refresh(st)
     end
@@ -775,11 +783,11 @@ function M.input(st, events, ctx)
                     local navigated = MatrixSession.select_node_action(
                         state, action.id)
                     if not navigated and action.id == "cancel_alert" then
-                        st.matrix_message = MatrixText.from_rom(
-                            NodeActions.cancel_alert(state).text)
+                        st.matrix_message = MatrixText.resolve(
+                            NodeActions.cancel_alert(state).message_id)
                     elseif not navigated and action.id == "lockout" then
-                        st.matrix_message = MatrixText.from_rom(
-                            NodeActions.lockout().text)
+                        st.matrix_message = MatrixText.resolve(
+                            NodeActions.lockout().message_id)
                     elseif not navigated and action.id == "crash_system" then
                         -- The host supplies the run/field facts it knows and
                         -- commits the mutated typed state to the live world.
@@ -791,7 +799,8 @@ function M.input(st, events, ctx)
                         if result.stop_sfx then
                             ctx.host.stop_sound(result.stop_sfx)
                         end
-                        st.matrix_message = MatrixText.from_rom(result.text)
+                        st.matrix_message = MatrixText.resolve(
+                            result.message_id)
                         st.shutdown = {
                             values = result.countdown,
                             step = result.step,
@@ -810,20 +819,22 @@ function M.input(st, events, ctx)
                         if result.stop_sfx then
                             ctx.host.stop_sound(result.stop_sfx)
                         end
-                        st.matrix_message = MatrixText.from_rom(result.text)
+                        st.matrix_message = MatrixText.resolve(
+                            result.message_id)
                     elseif not navigated and action.id == "erase" then
                         local world = MatrixSession.world_state(game)
                         local result = NodeActions.erase(
                             world.run, MatrixSession.current_node(state),
                             st.system_id)
                         MatrixSession.commit_world_state(game, world)
-                        st.matrix_message = MatrixText.from_rom(result.text)
+                        st.matrix_message = MatrixText.resolve(
+                            result.message_id)
                     elseif not navigated and action.id == "transfer_data" then
                         start_transfer(st, ctx)
                     end
                 else
-                    st.matrix_message = MatrixText.from_rom(
-                        NodeActions.TEXT.ACTION_FAILED)
+                    st.matrix_message = MatrixText.resolve(
+                        NodeActions.MESSAGE_ID.ACTION_FAILED)
                 end
                 refresh(st)
                 ctx.redraw(R.FULL)

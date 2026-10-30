@@ -88,6 +88,15 @@ saved run records once; the active run model contains only the normalized
 facts. Cyberdeck file state exposes `run_objective` as a boolean, while the
 narrow storage adapter maps that fact to the host record format.
 
+Matrix node-action results carry stable `E.MatrixMessageId` identities, and
+the screen resolves those IDs through the decoded text catalog. ROM text
+pointers remain provenance comments only. Ordinary file downloads use the
+named `roll_total -> data value units` mapping from `0x16668A`; the Lua policy
+suite checks all twelve totals from `rand(7) + rand(6)`. The UI update uses
+elapsed durations of 21, 10, and 61 frames for search-dot spacing, the final
+search pause, and shutdown digits instead of storing DBF counter seeds in
+gameplay state. [C: ROM `0x16668A`, `0x54D3A`, `0x54D50`, `0x54BAE`]
+
 ## Seven-question visual review
 
 1. **Does it look correct?** The Qt route captures show the search message,

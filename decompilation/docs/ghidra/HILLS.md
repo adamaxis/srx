@@ -454,6 +454,15 @@ the taxi selector and arrival full-screen dumps are byte-identical across
 builds. This hill remains partial: physical input coverage for every contact
 service, full Matrix presentation/actions, and the ROM's mode-exit dialogue are
 still open.
+
+On 2026-10-30, Matrix node-action rules and the screen route now exchange
+stable message IDs such as `matrix.lockout` and `matrix.upload_done`; the
+presenter resolves those IDs to the existing decoded strings. ROM text
+addresses are retained as provenance comments and are no longer message
+values or lookup keys in Lua. Matrix Lua policy and node-action route QA pass
+in Debug/Release. The Matrix alarm-off caller projects its field snapshot to
+the shared `alarm_active` policy state and applies the resulting transition,
+covering Crash System and Turn Off Node. The gameplay hill remains partial.
 See
 [`field-map-trigger-profile.md`](field-map-trigger-profile.md).
 
