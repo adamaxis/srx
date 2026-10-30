@@ -2,12 +2,21 @@
 
 **Status:** `FieldSceneRuntime` calls the Lua `0xA800` selector with the
 canonical active run ID (for example `employee_recruitment`), a named scene
-mode translated from FFDF40, FFE180/FFE182, a derived presence projection of
-the typed FFFC3C actor-template marker, and typed FFE12C / FFF0C8 indices. The
-selected FFE110 actor descriptor is retained in typed state; eligible bit-3
-contact copies that descriptor into FFFC3C, and escort cleanup clears it.
-Lua accepts the candidate list's full 24-bit source offset and keeps generic
-pedestrian contact on the shared activity path without opening a story task.
+mode, named activity lifecycle state, completed story facts, party activity
+IDs, and encounter readiness. The selector returns a named decision and
+stable candidate ID; Lua sees only stable candidate IDs and named variants
+(`first`, `second`, or `unreachable`), not ROM list offsets, spawn
+coordinates, or actor-record flags. The native
+adapter resolves that ID through the imported actor catalog and retains the
+typed actor descriptor. Eligible bit-3 contact transfers that descriptor into
+the typed world-activity state, and escort cleanup clears it. This boundary is
+confirmed in `ScriptConditionalActorSelectionContext`,
+`GameScriptRuntime::resolve_conditional_actor_selection`, and
+`World.conditional_actor_candidates_for_scene` /
+`World.resolve_conditional_actor_selection`. The source selector and its
+candidate tables remain provenance for the behavior, not Lua's data model.
+Generic pedestrian contact stays on the shared activity path without opening
+a story task.
 Debug/Release Scene-34 QA verifies the pedestrian template is pending while
 the A8AE dialogue is open and is cleared by its `0x1E514` cleanup. The runtime
 queues and publishes the selected A8AE story actor and randomized candidate
@@ -1440,6 +1449,25 @@ therefore no additional direct absolute-short reference to `FFDF42`. This
 narrows the direct-operand census but does not resolve a pointer-computed or
 indirect writer, so the automatic request producer remains an explicit source
 boundary.
+
+### Nearby base-address alias check
+
+**[C]** A separate full-ROM scan for the exact longword address `0x00FFDF40`
+finds 40 occurrences. The corresponding disassembly entries are direct
+word-sized tests, comparisons, or stores; none loads `FFDF40` into an address
+register or performs a longword store that spans `FFDF42`. The only code
+constructing `FFDF44` in an address register is at `0x2FAA` and `0xBC66`.
+At `0x2FAA`, the routine reads successive words from `FFDF44` into actor
+records. At `0xBC66`, it writes successive coordinate pairs beginning at
+`FFDF44`; neither routine accesses backward into `FFDF42`. The candidate
+pointer caches are separate as well: `0x1438C` writes forward from `FFDF96`,
+and `0x14446` writes forward from `FFDFCA`; their readers start at those
+array bases and use a nonnegative, bounded selector index. These routines do
+not address or walk back to `FFDF42`. This rules out those exact nearby-base
+paths as the missing request producer. It does not exclude a computed pointer
+formed from another base or an unresolved indirect call, so the
+direct/computed `FFDF42` producer remains open. [C: US ROM scan;
+`disassembly.s:0x2FAA`, `0xBC66`, `0x1438C..0x144E6`]
 
 ## ROM callback at `0x1F16A`: extraction result
 

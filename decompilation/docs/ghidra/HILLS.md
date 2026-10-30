@@ -977,7 +977,11 @@ covered by focused Debug/Release QA.
 The raw-ROM `FFDF42` census also checked the absolute-short alias `0xDF42`.
 Only the aligned absolute-long request test/clear operands exist; the remaining
 byte-pair hit at odd offset `0x1896C3` crosses data words `0x00DF`/`0x424F`.
-Computed/indirect writes and the physical automatic callback path remain open.
+The nearby-base follow-up checked all 40 `FFDF40` references, both `FFDF44`
+pointer paths, and the forward-only `FFDF96`/`FFDFCA` candidate caches; none
+writes back into `FFDF42`. Computed pointers from other bases, indirect writes,
+and the physical automatic callback path remain open. See the
+[conditional pedestrian runtime audit](visual-audits/conditional-pedestrian-runtime-gap-2026-10-26.md#nearby-base-address-alias-check).
 
 The ROM `0x1E43C` path is represented by a semantic request model: a nonzero
 conditional choice requests the result flow, and the active-escort fact
@@ -998,9 +1002,10 @@ The focused offscreen Debug/Release pedestrian/A800 rerun passed all 14 tests;
 the matching output directories contain 1,485 files per build with identical
 paths and SHA-256 hashes. These are internal regression artifacts only.
 
-The field runtime now calls the selector
-with the accepted offer's raw FFFBED byte, FFDF40, both effect markers, the
-boolean zero/nonzero FFFC3C gate, and typed FFE12C/FFF0C8 words. Resource
+The field runtime normalizes the active offer, scene mode, actor lifecycle,
+story completion, party presence, and encounter readiness into named facts
+before calling the Lua selector. The source selector bytes, effect markers,
+FFFC3C state, and active/selected indices stay in the native adapter. Resource
 initialization captures the selected index, and elevator
 handoffs retain the current floor word across child-scene loads. The A8AE list
 is represented by a typed world-activity actor row and publishes through the
@@ -1166,8 +1171,10 @@ stores the tagged FFE110 template in FFFC3C, and `0x286E` uses it for the
 `0x1E4AC` player-position spawn if no active/effect-ready record exists. The
 typed transfer descriptor and FFFC3C producer/cleanup now run in Qt; Debug and
 Release Scene-34 QA check the pedestrian template while A8AE dialogue is open
-and its clear through `0x1E514`. Lua accepts 24-bit candidate list offsets and
-leaves generic A800 contact on the shared activity path. The `0x286E` callback
+and its clear through `0x1E514`. The importer strips candidate rows to scene
+identity, stable candidate ID, and named variant for Lua; ROM offsets,
+placement, and actor flags stay in the host-side actor catalog. Generic A800
+contact stays on the shared activity path. The `0x286E` callback
 now scans the typed seven actor records that can hold `+0xB0.7`, publishes the
 `0x1E4AC` fallback at Joshua x+`0x80`/y through Lua, and suppresses a duplicate
 on the next guard pass. The Scene-34 pedestrian QA captures
