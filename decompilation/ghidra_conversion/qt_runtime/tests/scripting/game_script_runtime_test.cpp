@@ -4226,7 +4226,7 @@ int main() {
                     julius_task.operation.has_value() &&
                     julius_task.operation->menu.has_value() &&
                     julius_task.operation->menu->id == "first_meeting" &&
-                    scripts.story_state().at("mr_johnsons_flag_bit_1") &&
+                    scripts.story_state().at("johnson.julius_known") &&
                     scripts.story_state().at("mr_johnsons_flag_bit_5"),
                 "Julius first visit did not set FFFC27 and select its first-meeting root")) {
         std::cerr << scripts.failure() << '\n';
@@ -4394,7 +4394,7 @@ int main() {
     // Synthetic clear-contact state isolates command 0x50's write. The fresh
     // New Game FFFC2C seed already includes Alesandro's bit 1.
     scripts.set_story_state({
-        {"mr_johnsons_flag_bit_1", true},
+        {"johnson.julius_known", true},
         {"johnson.mortimer_known", false},
         {"owlfeather_asked", true},
         {"aragorn_found", false},
@@ -4540,7 +4540,7 @@ int main() {
     }
 
     scripts.set_story_state({
-        {"mr_johnsons_flag_bit_1", false},
+        {"johnson.julius_known", false},
         {"johnson.mortimer_known", true},
         {"owlfeather_asked", false},
         {"aragorn_found", false},

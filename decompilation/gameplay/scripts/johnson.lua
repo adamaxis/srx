@@ -254,7 +254,7 @@ end
 local function present_mortimer_questions()
     while true do
         local choices = {}
-        if game.state.mr_johnsons_flag_bit_1 then
+        if game.state[E.JohnsonFact.JULIUS_KNOWN] then
             choices[#choices + 1] = "julius"
         end
         if game.state.michael_alias_learned and

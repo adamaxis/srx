@@ -1477,7 +1477,7 @@ int main() {
     // Keep Vid-Phone contact 1 clear so command 0x50's FFFC2C write can be
     // asserted.
     gameplay_scripts.set_story_state({
-        {"mr_johnsons_flag_bit_1", true},
+        {"johnson.julius_known", true},
         {"johnson.mortimer_known", false},
         {"owlfeather_asked", true},
         {"aragorn_found", false},

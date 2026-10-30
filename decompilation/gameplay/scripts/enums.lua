@@ -692,6 +692,8 @@ E.StoryFact = {
 -- Persistent Johnson contact knowledge. The host maps these IDs to the save
 -- representation; gameplay code does not address FFFC27 bit positions.
 E.JohnsonFact = {
+  -- Notebook row gate for Julius at 0xF482; the writer is unresolved [C].
+  JULIUS_KNOWN = "johnson.julius_known",
   MORTIMER_KNOWN = "johnson.mortimer_known", -- Pocket Secretary contact row at 0xF4AC [C]
   CALEB_KNOWN = "johnson.caleb_known", -- Pocket Secretary contact row at 0xF500 [C]
   -- Caleb's first-contact branch at 0x20A78 [C].

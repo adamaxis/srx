@@ -333,12 +333,14 @@ struct JohnsonFactMapping {
     std::uint8_t save_bit;
 };
 
-// [C] Notebook lists 0xF4AC/0xF500 gate Mortimer/Caleb with bits 2/4;
-// question builder 0x22F90 reads Vigore's alternate response at bit 3, and
-// first-contact handler 0x20A78 sets Caleb's first-meeting marker at bit 7.
-// Lua uses contact, meeting, and response facts.
-constexpr std::array<JohnsonFactMapping, 4U>
+// [C] Notebook builder 0xF482 gates Julius's row 0xC5755 with bit 1;
+// lists 0xF4AC/0xF500 gate Mortimer/Caleb with bits 2/4. Question builder
+// 0x22F90 reads Vigore's alternate response at bit 3, and first-contact
+// handler 0x20A78 sets Caleb's first-meeting marker at bit 7. Lua uses semantic
+// fact IDs.
+constexpr std::array<JohnsonFactMapping, 5U>
     kJohnsonFactMappings{{
+        {"johnson.julius_known", 1U},
         {"johnson.mortimer_known", 2U},
         {"johnson.vigore_alternate_response_available", 3U},
         {"johnson.caleb_known", 4U},
