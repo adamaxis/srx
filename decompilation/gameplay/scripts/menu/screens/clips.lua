@@ -9,7 +9,7 @@
 -- Rules: rules/clips.lua.
 local E = require("enums")
 local Clips = require("menu.rules.clips")
-local P, C, TC, R, T, S, MM = E.Pad, E.ClipsCommand, E.ClipTradeCommand, E.MenuRegion, E.MenuTransition, E.MenuSound, E.MenuMessage
+local P, C, TC, R, T, S, MM = E.Pad, E.ClipsAction, E.ClipTradeAction, E.MenuRegion, E.MenuTransition, E.MenuSound, E.MenuMessage
 local AFTER = R.SIDEBAR_SLOT | R.COMBAT_BARS
 local CONFIRM = P.A | P.B | P.C
 
@@ -32,27 +32,28 @@ end
 local function finish(msg) return { transition = T.REPLACE, screen = E.MenuScreen.MESSAGE, args = { message = msg, mask = P.EDGES } } end
 
 local M = { window = E.WindowPlane.SIDEBAR }
-function M.new() return { selection = C.RELOAD } end
+function M.new() return { selected_action = C.RELOAD } end
 function M.enter(st, ctx) ctx.redraw(R.SUBMENU) end
 function M.input(st, events, ctx)
     if events & P.LEFT ~= 0 or events & P.RIGHT ~= 0 then             -- Left tested first (0x11BD8) [C]
-        st.selection = Clips.cycle(st.selection, events & P.LEFT ~= 0 and -1 or 1)
+        st.selected_action = Clips.cycle(
+            st.selected_action, events & P.LEFT ~= 0 and -1 or 1)
         ctx.sound(S.MOVE); ctx.redraw(R.SUBMENU); return
     end
     if events & CONFIRM == 0 then return end                           -- Start ignored [C]
     ctx.sound(S.SELECT)
     local rec = active(ctx)
-    if st.selection == C.CANCEL then return finish(MM.FUNCTION_ABORTED) end
-    local gate, reserve_cleared = Clips.gate(rec, st.selection)
+    if st.selected_action == C.CANCEL then return finish(MM.FUNCTION_ABORTED) end
+    local gate, reserve_cleared = Clips.gate(rec, st.selected_action)
     if gate then
         if reserve_cleared then commit(ctx, ctx.game.active_slot(), rec) end
         return finish(gate)
     end
-    if st.selection == C.RELOAD then
+    if st.selected_action == C.RELOAD then
         if rec.rounds ~= 0 then return { transition = T.PUSH, screen = E.MenuScreen.RELOAD_CONFIRM } end
         Clips.reload(rec, cap(ctx)); commit(ctx, ctx.game.active_slot(), rec)
         ctx.redraw(AFTER); return finish(MM.RELOADED)
-    elseif st.selection == C.TRADE then
+    elseif st.selected_action == C.TRADE then
         local list = Clips.recipients(ctx.game.party(), ctx.game.active_slot())
         if #list == 0 then return finish(MM.NO_PARTY) end
         return { transition = T.PUSH, screen = E.MenuScreen.CLIP_TRADE, args = { recipients = list, quantity = rec.clips } }
@@ -86,12 +87,28 @@ function Confirm.input(st, events, ctx)
 end
 
 local Trade = { window = E.WindowPlane.SIDEBAR }
-function Trade.new(a) return { recipients = a.recipients, index = 1, command = TC.INCREASE, quantity = a.quantity } end
+local TRADE_ACTION_ORDER = {
+    TC.INCREASE, TC.DECREASE, TC.TRADE, TC.CHANGE_RECIPIENT,
+}
+local TRADE_ACTION_POSITION = {}
+for position, action in ipairs(TRADE_ACTION_ORDER) do
+    TRADE_ACTION_POSITION[action] = position
+end
+local function next_trade_action(action, direction)
+    local position = TRADE_ACTION_POSITION[action]
+    position = (position - 1 + direction) % #TRADE_ACTION_ORDER + 1
+    return TRADE_ACTION_ORDER[position]
+end
+
+function Trade.new(a)
+    return { recipients = a.recipients, index = 1,
+             selected_action = TC.INCREASE, quantity = a.quantity }
+end
 function Trade.enter(st, ctx) ctx.redraw(R.SUBMENU) end
 function Trade.input(st, events, ctx)
     if events & (P.LEFT | P.RIGHT) ~= 0 then
-        if events & P.LEFT ~= 0 then st.command = st.command <= TC.INCREASE and TC.CHANGE_RECIPIENT or st.command - 1
-        else st.command = st.command >= TC.CHANGE_RECIPIENT and TC.INCREASE or st.command + 1 end
+        st.selected_action = next_trade_action(
+            st.selected_action, events & P.LEFT ~= 0 and -1 or 1)
         ctx.sound(S.MOVE); ctx.redraw(R.SUBMENU); return
     end
     if events & CONFIRM == 0 then
@@ -100,9 +117,9 @@ function Trade.input(st, events, ctx)
     end
     ctx.sound(S.SELECT)
     local party = ctx.game.party(); local src = party[ctx.game.active_slot()]
-    if st.command == TC.INCREASE then st.quantity = st.quantity >= src.clips and 1 or st.quantity + 1          -- 0x120E4 wrap [srx H]
-    elseif st.command == TC.DECREASE then st.quantity = st.quantity <= 1 and src.clips or st.quantity - 1
-    elseif st.command == TC.CHANGE_RECIPIENT then st.index = st.index % #st.recipients + 1                   -- 0x1209A FFDD28 toggle
+    if st.selected_action == TC.INCREASE then st.quantity = st.quantity >= src.clips and 1 or st.quantity + 1          -- 0x120E4 wrap [srx H]
+    elseif st.selected_action == TC.DECREASE then st.quantity = st.quantity <= 1 and src.clips or st.quantity - 1
+    elseif st.selected_action == TC.CHANGE_RECIPIENT then st.index = st.index % #st.recipients + 1                   -- 0x1209A FFDD28 toggle
     else
         local dst = party[st.recipients[st.index]]
         if st.quantity == 0 or st.quantity > src.clips then return end

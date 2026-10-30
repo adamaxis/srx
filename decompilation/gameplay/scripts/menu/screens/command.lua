@@ -1,9 +1,26 @@
--- command.lua: the Start/Command overview, ROM 0x10D30..0x10F4E plus page helpers 0x114A0/0x11506/0x11740.
--- State mirrors the ROM bytes: page = FFF0D0, row = FFF0D1, posture_gate = FFF115, panel_dirty = FFF112.
+-- command.lua: the Start/Command overview, with named section and cursor state.
+-- ROM addresses below document recovered behavior; source selectors stay in
+-- the native adapter and are not part of this Lua state.
 local E = require("enums")
 local Inv = require("menu.rules.inventory")
 local Items = require("items").by_id
-local P, Page, R, T, S = E.Pad, E.MenuPage, E.MenuRegion, E.MenuTransition, E.MenuSound
+local P, Section, R, T, S = E.Pad, E.CommandSection, E.MenuRegion, E.MenuTransition, E.MenuSound
+local SECTION_ORDER = {
+    Section.INVENTORY_LEFT, Section.INVENTORY_RIGHT, Section.CLIPS,
+    Section.ATTRIBUTES_SKILLS, Section.CYBERWARE, Section.MAGIC,
+    Section.POCKET_SECRETARY,
+}
+local SECTION_POSITION = {}
+for position, section in ipairs(SECTION_ORDER) do
+    SECTION_POSITION[section] = position
+end
+local INVENTORY_COLUMN = {
+    [Section.INVENTORY_LEFT] = 0,
+    [Section.INVENTORY_RIGHT] = 1,
+}
+local function is_inventory_section(section)
+    return INVENTORY_COLUMN[section] ~= nil
+end
 
 local M = { window = E.WindowPlane.SIDEBAR }   -- [C] 0x10D30 never writes VDP reg 0x11 (docs/09 s11)
 
@@ -11,16 +28,20 @@ local M = { window = E.WindowPlane.SIDEBAR }   -- [C] 0x10D30 never writes VDP r
 M.REFRESH = R.ITEM_PICTURE | R.ITEM_HEADER | R.RATING | R.DAMAGE_POWER | R.COMBAT_BARS | R.WEAPON_BARS
           | R.ARMOR | R.POSTURE_BLOCK | R.BUTTON_STRIP | R.COMMAND_LABEL
 
-local CHILD = {   -- 0xD2A0A jump table, indexed page-2 [C]
-    [Page.CLIPS] = E.MenuScreen.CLIPS, [Page.ATTRIBUTES_SKILLS] = E.MenuScreen.ATTRIBUTES_SKILLS,
-    [Page.CYBERWARE] = E.MenuScreen.CYBERWARE, [Page.MAGIC] = E.MenuScreen.MAGIC,
-    [Page.POCKET_SECRETARY] = E.MenuScreen.POCKET_SECRETARY,
+local CHILD = {   -- recovered section-to-screen routes; the ROM uses a jump table
+    [Section.CLIPS] = E.MenuScreen.CLIPS,
+    [Section.ATTRIBUTES_SKILLS] = E.MenuScreen.ATTRIBUTES_SKILLS,
+    [Section.CYBERWARE] = E.MenuScreen.CYBERWARE,
+    [Section.MAGIC] = E.MenuScreen.MAGIC,
+    [Section.POCKET_SECRETARY] = E.MenuScreen.POCKET_SECRETARY,
 }
 
 function M.new()
     return {
-        page = Page.POCKET_SECRETARY, row = 0, posture_gate = false,
-        panel_dirty = false, inventory_item_hold_frames = 0,
+        section = Section.POCKET_SECRETARY,
+        selected_inventory_row = 0,
+        suppress_next_posture_focus = false,
+        inventory_item_hold_frames = 0,
         inventory_picture_bank = nil,
         inventory_cursor_hidden_frames = 0, inventory_cursor_hidden = false,
     }
@@ -40,8 +61,9 @@ local function mark_picture_bank(st, item_id)
 end
 
 local function current_picture_item_id(st, ctx)
-    if st.page < Page.CLIPS then
-        local selected = Inv.selected(leader(ctx), st.page, st.row)
+    if is_inventory_section(st.section) then
+        local selected = Inv.selected(
+            leader(ctx), INVENTORY_COLUMN[st.section], st.selected_inventory_row)
         return selected and selected.id or nil
     end
     return leader(ctx).equipped_weapon_id
@@ -92,7 +114,7 @@ local AS_RETURN = { black = 27, line = 211,
 local function build(st, ctx, full, black_frames, reveal_line, reveal, lead)
     if full then
         reselect_if_incapacitated(ctx)
-        st.page, st.row = Page.POCKET_SECRETARY, 0          -- 0x10F50 [C]
+        st.section, st.selected_inventory_row = Section.POCKET_SECRETARY, 0 -- 0x10F50 [C]
         ctx.host.blank(E.DisplayBlank.OFF)
         ctx.redraw(R.FULL)
         for _, r in ipairs(lead or {}) do
@@ -105,7 +127,6 @@ local function build(st, ctx, full, black_frames, reveal_line, reveal, lead)
     else
         ctx.redraw(M.REFRESH)                              -- 0x10D90: panels without blanking [C]
     end
-    st.panel_dirty = true                                   -- FFF112=FF [C value, H meaning]
     ctx.sound(S.MOVE)                                       -- 0x10E2E plays 0x25 even on open [C]
     ctx.redraw(M.REFRESH)
     -- 0x12A54 compares FFF100 with the selected picture bank and calls
@@ -122,26 +143,34 @@ local function inventory_cursor(st, ctx)
 end
 
 -- 0x114A0 [C]
-function M.step_page(st, d, ctx)
-    local p = st.page + d
-    if p < 0 then p = Page.POCKET_SECRETARY; st.panel_dirty = true end
-    if p == Page.COUNT then p = Page.INVENTORY_LEFT end
-    if p == Page.CLIPS and d >= 0 then st.panel_dirty = true end
-    st.page = p
-    if p < Page.CLIPS then inventory_cursor(st, ctx) else ctx.redraw(R.BUTTON_STRIP) end
+function M.step_section(st, direction, ctx)
+    local position = SECTION_POSITION[st.section]
+    assert(position ~= nil, "unknown command section: " .. tostring(st.section))
+    local next_position = position + direction
+    if next_position < 1 then next_position = #SECTION_ORDER end
+    if next_position > #SECTION_ORDER then next_position = 1 end
+    st.section = SECTION_ORDER[next_position]
+    if is_inventory_section(st.section) then
+        inventory_cursor(st, ctx)
+    else
+        ctx.redraw(R.BUTTON_STRIP)
+    end
 end
 
 -- 0x11506 [C]; returns a PUSH of the posture focus when the ROM would enter 0x119CE
 function M.step_row(st, d, events, ctx)
-    if st.page < Page.CLIPS then
-        local r = st.row + d
+    if is_inventory_section(st.section) then
+        local r = st.selected_inventory_row + d
         if r < 0 then r = 0 elseif r >= E.InventoryGrid.ROWS then r = E.InventoryGrid.ROWS - 1 end
-        st.row = r
+        st.selected_inventory_row = r
         inventory_cursor(st, ctx)
         return nil
     end
     if events & (P.HELD_DOWN | P.HELD_LEFT | P.HELD_RIGHT) ~= 0 then return nil end
-    if st.posture_gate then st.posture_gate = false; return nil end   -- consumed by the C path [C]
+    if st.suppress_next_posture_focus then
+        st.suppress_next_posture_focus = false
+        return nil
+    end
     return { transition = T.PUSH, screen = E.MenuScreen.POSTURE }
 end
 
@@ -151,8 +180,9 @@ end
 local PICTURE_BANK_HOLD_FRAMES = { weapon = 8, non_weapon = 7 }
 
 local function selected_inventory_item(st, ctx)
-    if st.page >= Page.CLIPS then return nil end
-    return Inv.selected(leader(ctx), st.page, st.row)
+    if not is_inventory_section(st.section) then return nil end
+    return Inv.selected(
+        leader(ctx), INVENTORY_COLUMN[st.section], st.selected_inventory_row)
 end
 
 local function update_inventory_ammo_count(st, ctx)
@@ -168,11 +198,12 @@ local function update_inventory_ammo_count(st, ctx)
     end
 end
 
-local function finish_move(st, old_page, old_row, previous_picture_bank, ctx)
-    local moved_inventory_item = old_page < Page.CLIPS and
-        st.page < Page.CLIPS and (old_page ~= st.page or old_row ~= st.row)
+local function finish_move(st, old_section, old_row, previous_picture_bank, ctx)
+    local moved_inventory_item = is_inventory_section(old_section) and
+        is_inventory_section(st.section) and
+        (old_section ~= st.section or old_row ~= st.selected_inventory_row)
     local previous = moved_inventory_item and
-        Inv.selected(leader(ctx), old_page, old_row) or nil
+        Inv.selected(leader(ctx), INVENTORY_COLUMN[old_section], old_row) or nil
     local selected = moved_inventory_item and selected_inventory_item(st, ctx) or nil
     if previous and selected then
         local next_picture_bank = picture_bank(selected.id)
@@ -207,7 +238,8 @@ local function finish_move(st, old_page, old_row, previous_picture_bank, ctx)
         -- [C emulator] On entry, the inventory art and MOVE cue appear on the
         -- input frame; only the yellow slot cursor waits one frame.
         st.inventory_cursor_hidden_frames =
-            old_page >= Page.CLIPS and st.page < Page.CLIPS and 1 or 0
+            (not is_inventory_section(old_section) and
+             is_inventory_section(st.section)) and 1 or 0
         st.inventory_cursor_hidden =
             st.inventory_cursor_hidden_frames > 0
         ctx.sound(S.MOVE)
@@ -258,38 +290,43 @@ function M.input(st, events, ctx)
     local previous_picture_bank = st.inventory_picture_bank
     -- priority order of 0x10DD8..0x10F2A [C]
     if events & P.LEFT ~= 0 then
-        local old_page, old_row = st.page, st.row
-        M.step_page(st, -1, ctx); finish_move(st, old_page, old_row, previous_picture_bank, ctx); return
+        local old_section, old_row = st.section, st.selected_inventory_row
+        M.step_section(st, -1, ctx); finish_move(st, old_section, old_row, previous_picture_bank, ctx); return
     end
     if events & P.UP ~= 0 then
-        local old_page, old_row = st.page, st.row
+        local old_section, old_row = st.section, st.selected_inventory_row
         local r = M.step_row(st, -1, events, ctx); if r then return r end
-        finish_move(st, old_page, old_row, previous_picture_bank, ctx); return
+        finish_move(st, old_section, old_row, previous_picture_bank, ctx); return
     end
     if events & P.RIGHT ~= 0 then
-        local old_page, old_row = st.page, st.row
-        M.step_page(st, 1, ctx); finish_move(st, old_page, old_row, previous_picture_bank, ctx); return
+        local old_section, old_row = st.section, st.selected_inventory_row
+        M.step_section(st, 1, ctx); finish_move(st, old_section, old_row, previous_picture_bank, ctx); return
     end
     if events & P.DOWN ~= 0 then
-        local old_page, old_row = st.page, st.row
+        local old_section, old_row = st.section, st.selected_inventory_row
         local r = M.step_row(st, 1, events, ctx); if r then return r end
-        finish_move(st, old_page, old_row, previous_picture_bank, ctx); return
+        finish_move(st, old_section, old_row, previous_picture_bank, ctx); return
     end
     if events & (P.A | P.B) ~= 0 then
         ctx.sound(S.SELECT)                                  -- 0x10E4E [C]
-        local child = CHILD[st.page]
-        if child then return { transition = T.PUSH, screen = child, args = { page = st.page } } end
-        if Inv.selected(leader(ctx), st.page, st.row) then   -- 0x11740 -> 0x12148 [C]
+        local child = CHILD[st.section]
+        if child then
+            return { transition = T.PUSH, screen = child,
+                     args = { command_section = st.section } }
+        end
+        if Inv.selected(leader(ctx), INVENTORY_COLUMN[st.section],
+                        st.selected_inventory_row) then      -- 0x11740 -> 0x12148 [C]
             return { transition = T.PUSH, screen = E.MenuScreen.ITEM_ACTION,
-                     args = { column = st.page, row = st.row } }
+                     args = { command_section = st.section,
+                              row = st.selected_inventory_row } }
         end
         inventory_cursor(st, ctx); return                   -- empty slot: 0x11592 only [C]
     end
     if events & P.C ~= 0 then                               -- 0x10EC8.. [C]
         ctx.game.reselect_leader()                          -- 0x391A (plays 0x25 itself, docs/09 s4)
-        st.page, st.row = Page.POCKET_SECRETARY, 0
-        M.step_page(st, 0, ctx)
-        st.posture_gate = true
+        st.section, st.selected_inventory_row = Section.POCKET_SECRETARY, 0
+        M.step_section(st, 0, ctx)
+        st.suppress_next_posture_focus = true
         M.step_row(st, 0, events, ctx)                      -- consumes the gate, never opens posture
         build(st, ctx, false); return
     end
@@ -307,15 +344,18 @@ function M.child_returned(st, child, res, ctx)
         -- submenu returns, not the inline posture focus helper.
         ctx.redraw(M.REFRESH); return
     end
-    local p = st.page
-    if p < Page.CLIPS then inventory_cursor(st, ctx); return end
-    if p == Page.ATTRIBUTES_SKILLS then build(st, ctx, true, AS_RETURN.black, AS_RETURN.line, AS_RETURN.reveal); return end   -- re-init: 0x10F50 resets page to 6 [C]
-    if p == Page.POCKET_SECRETARY then
+    local section = st.section
+    if is_inventory_section(section) then inventory_cursor(st, ctx); return end
+    if section == Section.ATTRIBUTES_SKILLS then
+        build(st, ctx, true, AS_RETURN.black, AS_RETURN.line, AS_RETURN.reveal)
+        return
+    end   -- re-init: 0x10F50 returns to the pocket secretary [C]
+    if section == Section.POCKET_SECRETARY then
         if res.exit_menu then reselect_if_incapacitated(ctx); return { transition = T.EXIT } end   -- FFF0CD [C]
         build(st, ctx, true); return
     end
     if E.RunnerClass.CASTERS[ctx.game.leader_class()] and
-       p == Page.MAGIC then build(st, ctx, true); return end   -- re-init: 0x10F50 resets page to 6 [C]
+       section == Section.MAGIC then build(st, ctx, true); return end
     build(st, ctx, false)
 end
 

@@ -9677,10 +9677,12 @@ void FieldSceneRuntime::advance_field_menu_route() {
     synchronize_command_overview_clips_from_route(route_state);
     synchronize_command_overview_inventory_from_route(route_state);
     synchronize_command_overview_magic_from_route(route_state);
-    if (route_state.page.has_value() && route_state.row.has_value()) {
+    if (route_state.command_section.has_value() &&
+        route_state.selected_inventory_row.has_value()) {
         command_overview_.sync_script_selection(
-            static_cast<std::uint8_t>(*route_state.page),
-            static_cast<std::uint8_t>(*route_state.row));
+            *route_state.command_section,
+            static_cast<std::uint8_t>(
+                *route_state.selected_inventory_row));
     }
     menu_route_screen_ = route_state.top_screen;
     posture_dialog_active_ =

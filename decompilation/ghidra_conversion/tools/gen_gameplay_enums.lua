@@ -1,7 +1,15 @@
--- Generates enums.hpp from enums.lua so the two never drift:  lua5.4 gen_enums_hpp.lua > enums.hpp
-package.path = "gameplay/scripts/?.lua;" .. package.path
+-- Run from decompilation/: lua ghidra_conversion/tools/gen_gameplay_enums.lua
+-- Gameplay enums stay in gameplay/scripts; native selector enums live beside this generator.
+local script_dir = (arg[0]:match("^(.*[/\\])") or "")
+package.path = script_dir .. "?.lua;gameplay/scripts/?.lua;" .. package.path
 local E = require("enums")
-local out = { "// enums.hpp: GENERATED from enums.lua by gen_enums_hpp.lua; do not edit. ROM sources are cited in enums.lua.",
+-- Source selector values used at the native adapter edge are deliberately
+-- kept outside the gameplay script package.
+for name, values in pairs(require("native_boundary_enums")) do
+    assert(E[name] == nil, "native boundary enum conflicts with gameplay enum: " .. name)
+    E[name] = values
+end
+local out = { "// enums.hpp: GENERATED from gameplay enums and tools/native_boundary_enums.lua; do not edit.",
               "#pragma once", "#include <cstdint>", "namespace srx {" }
 local function format_value(value)
     if value < 0 then return string.format("%d", value) end
@@ -16,14 +24,22 @@ for _, k in ipairs(names) do
         out[#out + 1] = string.format("inline constexpr std::int64_t %s = %s;", k, format_value(v))
     else
         local keys = {}
-        for kk, vv in pairs(v) do if type(kk) == "string" and type(vv) == "number" then keys[#keys + 1] = kk end end
+        local has_string_values = false
+        for kk, vv in pairs(v) do
+            if type(kk) == "string" and type(vv) == "number" then
+                keys[#keys + 1] = kk
+            elseif type(vv) == "string" then
+                has_string_values = true
+            end
+        end
         table.sort(keys, function(a, b) return v[a] < v[b] or (v[a] == v[b] and a < b) end)
         if #keys > 0 then
             out[#out + 1] = string.format("enum class %s : std::int64_t {", k)
             for _, kk in ipairs(keys) do out[#out + 1] = string.format("    %s = %s,", kk, format_value(v[kk])) end
             out[#out + 1] = "};"
         else
-            out[#out + 1] = string.format("// %s: index-keyed table, see enums.lua", k)
+            local kind = has_string_values and "string-valued gameplay data" or "index-keyed table"
+            out[#out + 1] = string.format("// %s: %s, see enums.lua", k, kind)
         end
     end
 end

@@ -1,4 +1,4 @@
-// enums.hpp: GENERATED from enums.lua by gen_enums_hpp.lua; do not edit. ROM sources are cited in enums.lua.
+// enums.hpp: GENERATED from gameplay enums and tools/native_boundary_enums.lua; do not edit.
 #pragma once
 #include <cstdint>
 namespace srx {

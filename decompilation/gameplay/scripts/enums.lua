@@ -479,11 +479,18 @@ E.PartyWipeArrival = {
         -- 0x2B24 raw (0x66F0,0x2310), aligned by 0x2B90 [C]
     },
 }
--- FFF0D0 primary page; pages 0/1 are the two inventory columns, 2..6 dispatch through table 0xD2A0A [C]
-E.MenuPage = { INVENTORY_LEFT = 0, INVENTORY_RIGHT = 1, CLIPS = 2, ATTRIBUTES_SKILLS = 3, CYBERWARE = 4, MAGIC = 5,
-               POCKET_SECRETARY = 6, COUNT = 7 }
-E.MenuPageHandler = { CLIPS = 0x11B58, ATTRIBUTES_SKILLS = 0xD01C, CYBERWARE = 0x11950, MAGIC = 0xFBA6,
-                      POCKET_SECRETARY = 0xC2A6 }   -- longwords at 0xD2A0A [C]
+-- Lua menu state names the visible section. The numeric page selectors and
+-- ROM handler addresses stay in the native boundary enum source used only to
+-- generate the C++ adapter enum; gameplay scripts do not receive them.
+E.CommandSection = {
+    INVENTORY_LEFT = "inventory_left",
+    INVENTORY_RIGHT = "inventory_right",
+    CLIPS = "clips",
+    ATTRIBUTES_SKILLS = "attributes_and_skills",
+    CYBERWARE = "cyberware",
+    MAGIC = "magic",
+    POCKET_SECRETARY = "pocket_secretary",
+}
 E.InventoryGrid = { COLUMNS = 2, ROWS = 4, CURSOR_DX = 0x28, CURSOR_DY = 0x18 }   -- FFF0D1 clamp 0..3, 0x11592 mulu [C]
 -- Screen ids for the Lua route stack (refactor names; the ROM has nested blocking loops instead) [C structure, names ours]
 E.MenuScreen = { COMMAND = 1, POSTURE = 2, ITEM_ACTION = 3, CLIPS = 4, ATTRIBUTES_SKILLS = 5, CYBERWARE = 6, MAGIC = 7,
@@ -545,10 +552,27 @@ E.RunnerSkill = {
     ELECTRONICS = "electronics", REPUTATION = "reputation",
     NEGOTIATION = "negotiation",
 } -- named runner profile values translated by the native record adapter [C 0xC1A2A]
-E.ItemAction = { EQUIP_OR_USE = 2, DISCARD = 3, TRADE = 4, CANCEL = 5 }   -- FFF0D0 reused as selector 0x11780 [C]
+-- Semantic action names stay in Lua. Their source selector values belong to
+-- tools/native_boundary_enums.lua, used only by native compatibility adapters.
+E.InventoryAction = {
+    EQUIP_OR_USE = "equip_or_use",
+    DISCARD = "discard",
+    TRADE = "trade",
+    CANCEL = "cancel",
+}
 E.ItemBranch = { FIRST_AID = 1, AUTOMATIC_USE = 2, WEAPON_OR_GEAR = 3, ARMOR = 4 }
-E.ClipsCommand = { RELOAD = 2, TRADE = 3, DISTRIBUTE = 4, CANCEL = 5 }
-E.ClipTradeCommand = { INCREASE = 2, DECREASE = 3, TRADE = 4, CHANGE_RECIPIENT = 5 }   -- nested trade selector reuses 2..5 [C srx clips_menu_conversion]
+E.ClipsAction = {
+    RELOAD = "reload",
+    TRADE = "trade",
+    DISTRIBUTE = "distribute",
+    CANCEL = "cancel",
+}
+E.ClipTradeAction = {
+    INCREASE = "increase",
+    DECREASE = "decrease",
+    TRADE = "trade_clips",
+    CHANGE_RECIPIENT = "change_recipient",
+}
 E.DebugOption = { NUYEN = 0, SPELLS = 1, TEST_DECK = 2, PICK_SYSTEM = 3, HEAL_ALL = 4, KARMA = 5, CONTACTS = 6, WALK_FAST = 7 }  -- table 0x1D90C0 [C]
 E.SaveLoadOption = { SAVE = 0, LOAD = 1 }   -- 0xC2600 rows [C]
 E.PocketOption = { NOTEBOOK = 0, GROUP_ITEMS = 1, CYBERDECK = 2, DISMISS_RUNNER = 3, SAVE_LOAD = 4, DEBUG = 5 } -- table 0xC1400; 5 = debug menu 0x599DA (FFF101) [C]

@@ -76,6 +76,82 @@ using field_scene_detail::kSceneProfileEntityPositionWord;
 using field_scene_detail::kFieldModalReturnTransitionFrames;
 using field_scene_detail::magic_action_record_from_runner;
 
+namespace {
+
+std::optional<menus::CommandSection> command_section_for_legacy_page(
+    const int page) {
+    using Section = menus::CommandSection;
+    switch (static_cast<srx::MenuPage>(page)) {
+    case srx::MenuPage::INVENTORY_LEFT: return Section::inventory_left;
+    case srx::MenuPage::INVENTORY_RIGHT: return Section::inventory_right;
+    case srx::MenuPage::CLIPS: return Section::clips;
+    case srx::MenuPage::ATTRIBUTES_SKILLS:
+        return Section::attributes_and_skills;
+    case srx::MenuPage::CYBERWARE: return Section::cyberware;
+    case srx::MenuPage::MAGIC: return Section::magic;
+    case srx::MenuPage::POCKET_SECRETARY:
+        return Section::pocket_secretary;
+    case srx::MenuPage::COUNT: break;
+    }
+    return std::nullopt;
+}
+
+std::optional<std::uint8_t> clips_action_selector_from_id(
+    const std::string_view action) {
+    using srx::ClipsCommand;
+    if (action == "reload") {
+        return static_cast<std::uint8_t>(ClipsCommand::RELOAD);
+    }
+    if (action == "trade") {
+        return static_cast<std::uint8_t>(ClipsCommand::TRADE);
+    }
+    if (action == "distribute") {
+        return static_cast<std::uint8_t>(ClipsCommand::DISTRIBUTE);
+    }
+    if (action == "cancel") {
+        return static_cast<std::uint8_t>(ClipsCommand::CANCEL);
+    }
+    return std::nullopt;
+}
+
+std::optional<std::uint8_t> clip_trade_selector_from_id(
+    const std::string_view action) {
+    using srx::ClipTradeCommand;
+    if (action == "increase") {
+        return static_cast<std::uint8_t>(ClipTradeCommand::INCREASE);
+    }
+    if (action == "decrease") {
+        return static_cast<std::uint8_t>(ClipTradeCommand::DECREASE);
+    }
+    if (action == "trade_clips") {
+        return static_cast<std::uint8_t>(ClipTradeCommand::TRADE);
+    }
+    if (action == "change_recipient") {
+        return static_cast<std::uint8_t>(ClipTradeCommand::CHANGE_RECIPIENT);
+    }
+    return std::nullopt;
+}
+
+std::optional<std::uint8_t> inventory_action_selector_from_id(
+    const std::string_view action) {
+    using srx::ItemAction;
+    if (action == "equip_or_use") {
+        return static_cast<std::uint8_t>(ItemAction::EQUIP_OR_USE);
+    }
+    if (action == "discard") {
+        return static_cast<std::uint8_t>(ItemAction::DISCARD);
+    }
+    if (action == "trade") {
+        return static_cast<std::uint8_t>(ItemAction::TRADE);
+    }
+    if (action == "cancel") {
+        return static_cast<std::uint8_t>(ItemAction::CANCEL);
+    }
+    return std::nullopt;
+}
+
+} // namespace
+
 void FieldSceneRuntime::synchronize_command_overview_magic_from_route(
     const scripting::ScriptMenuRouteSnapshot& route_state) {
     menu_route_magic_view_.reset();
@@ -293,7 +369,6 @@ void FieldSceneRuntime::synchronize_pocket_secretary_notebook_from_route(
 
 void FieldSceneRuntime::synchronize_command_overview_clips_from_route(
     const scripting::ScriptMenuRouteSnapshot& route_state) {
-    constexpr int kClipsPage = static_cast<int>(srx::MenuPage::CLIPS);
     constexpr std::uint16_t kClips =
         static_cast<std::uint16_t>(srx::MenuScreen::CLIPS);
     constexpr std::uint16_t kReloadConfirm =
@@ -303,7 +378,8 @@ void FieldSceneRuntime::synchronize_command_overview_clips_from_route(
     constexpr std::uint16_t kMessage =
         static_cast<std::uint16_t>(srx::MenuScreen::MESSAGE);
     const bool clips_route =
-        route_state.open && route_state.page == kClipsPage &&
+        route_state.open &&
+        route_state.command_section == menus::CommandSection::clips &&
         (route_state.top_screen == kClips ||
          route_state.top_screen == kReloadConfirm ||
          route_state.top_screen == kClipTrade ||
@@ -345,12 +421,24 @@ void FieldSceneRuntime::synchronize_command_overview_clips_from_route(
     };
     const bool reload_confirmation = route_state.top_screen == kReloadConfirm;
     const bool trade = route_state.top_screen == kClipTrade;
+    auto selection = u8_or(
+        route_state.top_selection, command_overview_clips_.selection());
+    if (route_state.top_screen == kClips) {
+        const auto selected =
+            clips_action_selector_from_id(route_state.top_action_id);
+        if (selected.has_value()) selection = *selected;
+    }
+    auto command = u8_or(route_state.top_command, 2U);
+    if (trade) {
+        const auto selected =
+            clip_trade_selector_from_id(route_state.top_action_id);
+        if (selected.has_value()) command = *selected;
+    }
     command_overview_clips_.synchronize_route_presentation(
-        u8_or(route_state.top_selection,
-              command_overview_clips_.selection()),
+        selection,
         reload_confirmation,
         reload_confirmation && route_state.top_yes.value_or(false), trade,
-        u8_or(route_state.top_command, 2U),
+        command,
         u8_or(route_state.top_quantity, active_runner_record().ammo_clips),
         route_state.top_recipient.has_value() && *route_state.top_recipient >= 0
             ? static_cast<std::size_t>(*route_state.top_recipient)
@@ -436,9 +524,11 @@ void FieldSceneRuntime::synchronize_command_overview_inventory_from_route(
         srx::MenuScreen::FIRST_AID);
     const auto message = static_cast<std::uint16_t>(
         srx::MenuScreen::MESSAGE);
-    const bool inventory_page = route_state.page.has_value() &&
-                                *route_state.page >= 0 &&
-                                *route_state.page < 2;
+    const bool inventory_page =
+        route_state.command_section ==
+            menus::CommandSection::inventory_left ||
+        route_state.command_section ==
+            menus::CommandSection::inventory_right;
     const bool item_message = route_state.top_screen == message &&
                               route_state.top_item_slot.has_value();
     const bool inventory_screen = route_state.top_screen == action ||
@@ -516,9 +606,11 @@ void FieldSceneRuntime::synchronize_command_overview_inventory_from_route(
             std::clamp(route_state.top_column.value_or(0), 0, 1));
         command_overview_inventory_action_.row = static_cast<std::uint8_t>(
             std::clamp(route_state.top_row.value_or(0), 0, 3));
+        const auto legacy_action = inventory_action_selector_from_id(
+            route_state.top_action_id);
         command_overview_inventory_action_.action_selector =
-            static_cast<std::uint8_t>(std::clamp(
-                route_state.top_selection.value_or(2), 2, 5));
+            legacy_action.value_or(static_cast<std::uint8_t>(std::clamp(
+                route_state.top_selection.value_or(2), 2, 5)));
     } else {
         command_overview_inventory_action_active_ = false;
     }
@@ -625,22 +717,24 @@ void FieldSceneRuntime::synchronize_command_overview_inventory_from_route(
 void FieldSceneRuntime::start_command_menu_legacy_screen(
     const std::uint16_t screen,
     const scripting::ScriptMenuRouteArgs& args) {
-    auto page = static_cast<int>(
-        command_overview_.view().source_state.primary_page);
+    auto section = command_section_for_legacy_page(static_cast<int>(
+        command_overview_.view().source_state.primary_page));
     auto row = static_cast<int>(
         command_overview_.view().source_state.secondary_page);
-    if (args.page.has_value()) {
-        page = *args.page;
+    if (args.command_section.has_value()) {
+        section = args.command_section;
+    } else if (args.page.has_value()) {
+        section = command_section_for_legacy_page(*args.page);
     }
     if (args.column.has_value()) {
-        page = *args.column;
+        section = command_section_for_legacy_page(*args.column);
     }
     if (args.row.has_value()) {
         row = *args.row;
     }
-    if (page >= 0 && page < 7 && row >= 0 && row < 4) {
+    if (section.has_value() && row >= 0 && row < 4) {
         command_overview_.sync_script_selection(
-            static_cast<std::uint8_t>(page), static_cast<std::uint8_t>(row));
+            *section, static_cast<std::uint8_t>(row));
     }
 
     if (screen == static_cast<std::uint16_t>(srx::MenuScreen::ITEM_ACTION)) {
@@ -817,9 +911,10 @@ void FieldSceneRuntime::open_command_overview(
     if (root_screen == static_cast<std::uint16_t>(
                            srx::MenuScreen::CYBERWARE)) {
         // A direct CYBERWARE root has no parent COMMAND route to supply its
-        // owning page. Seed the typed parent view from the ROM page identity
+        // owning section. Seed the typed parent view from the section identity
         // before the wait screen's legacy presenter is opened.
-        command_overview_.sync_script_selection(4U, 0U);
+        command_overview_.sync_script_selection(
+            menus::CommandSection::cyberware, 0U);
     }
     field_matrix_route_active_ =
         root_screen == static_cast<std::uint16_t>(
@@ -846,10 +941,12 @@ void FieldSceneRuntime::open_command_overview(
         posture_dialog_active_ =
             menu_route_screen_ ==
             static_cast<std::uint16_t>(srx::MenuScreen::POSTURE);
-        if (route_state.page.has_value() && route_state.row.has_value()) {
+        if (route_state.command_section.has_value() &&
+            route_state.selected_inventory_row.has_value()) {
             command_overview_.sync_script_selection(
-                static_cast<std::uint8_t>(*route_state.page),
-                static_cast<std::uint8_t>(*route_state.row));
+                *route_state.command_section,
+                static_cast<std::uint8_t>(
+                    *route_state.selected_inventory_row));
         }
         synchronize_command_overview_clips_from_route(route_state);
         synchronize_command_overview_inventory_from_route(route_state);

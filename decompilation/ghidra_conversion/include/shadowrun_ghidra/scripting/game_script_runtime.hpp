@@ -2,6 +2,7 @@
 
 #include "shadowrun_ghidra/core/movement_direction.hpp"
 #include "shadowrun_ghidra/field/field_map_event_system_conversion.hpp"
+#include "shadowrun_ghidra/menus/command_section.hpp"
 #include "shadowrun_ghidra/scripting/dialogue_outcome.hpp"
 #include "shadowrun_ghidra/scripting/weapon_action_policy.hpp"
 
@@ -79,9 +80,11 @@ struct ScriptMenuDefinition {
 };
 
 // The live field-menu route is stored in the same Lua state as gameplay
-// scripts. These callbacks are narrow host services; page, row, posture focus,
-// and the active route stack remain Lua-owned.
+// scripts. These callbacks are narrow host services; command section,
+// inventory selection, posture focus, and the active route stack remain
+// Lua-owned.
 struct ScriptMenuRouteArgs {
+    std::optional<menus::CommandSection> command_section;
     std::optional<int> page;
     std::optional<int> row;
     std::optional<int> column;
@@ -710,6 +713,10 @@ struct ScriptMenuRouteSnapshot {
     std::string top_footer_text;
     std::vector<std::string> top_option_labels;
     std::optional<ScriptMenuRouteLayout> top_layout;
+    std::optional<menus::CommandSection> command_section;
+    std::optional<int> selected_inventory_row;
+    // Other menu screens may have their own visible list index or row. These
+    // are independent presentation coordinates, not command-page selectors.
     std::optional<int> page;
     std::optional<int> row;
     std::optional<bool> root_inventory_detail_pending;
@@ -720,6 +727,7 @@ struct ScriptMenuRouteSnapshot {
     std::optional<int> top_column;
     std::optional<int> top_row;
     std::optional<int> top_selection;
+    std::string top_action_id;
     std::optional<int> top_program_index;
     std::optional<int> top_program_slot;
     std::optional<int> top_program_choice;

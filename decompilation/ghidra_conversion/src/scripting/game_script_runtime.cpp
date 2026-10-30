@@ -1458,6 +1458,33 @@ bool read_optional_field_string(lua_State* state, const int table_index,
     return valid;
 }
 
+std::optional<menus::CommandSection> command_section_from_id(
+    const std::string_view section) noexcept {
+    using menus::CommandSection;
+    if (section == "inventory_left") return CommandSection::inventory_left;
+    if (section == "inventory_right") return CommandSection::inventory_right;
+    if (section == "clips") return CommandSection::clips;
+    if (section == "attributes_and_skills") {
+        return CommandSection::attributes_and_skills;
+    }
+    if (section == "cyberware") return CommandSection::cyberware;
+    if (section == "magic") return CommandSection::magic;
+    if (section == "pocket_secretary") {
+        return CommandSection::pocket_secretary;
+    }
+    return std::nullopt;
+}
+
+std::optional<menus::CommandSection> read_optional_command_section(
+    lua_State* state, const int table_index, const char* field) {
+    std::string section;
+    if (!read_optional_field_string(state, table_index, field, section) ||
+        section.empty()) {
+        return std::nullopt;
+    }
+    return command_section_from_id(section);
+}
+
 bool read_field_integer(lua_State* state, const int table_index,
                         const char* field, const std::uint32_t maximum,
                         std::uint32_t& value) {
@@ -2852,6 +2879,8 @@ struct GameScriptRuntime::Impl {
         case MenuBinding::legacy_open: {
             ScriptMenuRouteArgs args;
             if (lua_istable(lua, 2)) {
+                args.command_section = read_optional_command_section(
+                    lua, 2, "command_section");
                 const auto read_optional = [lua](const char* name)
                     -> std::optional<int> {
                     lua_getfield(lua, 2, name);
@@ -4302,6 +4331,9 @@ struct GameScriptRuntime::Impl {
                 menu_route_state.top_selection =
                     read_optional_alias(screen_state_index, "selection",
                                         "selector");
+                (void)read_optional_field_string(
+                    state, screen_state_index, "selected_action",
+                    menu_route_state.top_action_id);
                 menu_route_state.top_program_index =
                     read_optional(screen_state_index, "p");
                 menu_route_state.top_program_slot =
@@ -5215,6 +5247,11 @@ struct GameScriptRuntime::Impl {
             lua_getfield(state, -1, "state");
             if (lua_istable(state, -1)) {
                 const auto state_index = lua_absindex(state, -1);
+                menu_route_state.command_section =
+                    read_optional_command_section(state, state_index,
+                                                  "section");
+                menu_route_state.selected_inventory_row =
+                    read_optional(state_index, "selected_inventory_row");
                 menu_route_state.page = read_optional(state_index, "page");
                 menu_route_state.row = read_optional(state_index, "row");
                 lua_getfield(state, state_index, "inventory_detail_pending");

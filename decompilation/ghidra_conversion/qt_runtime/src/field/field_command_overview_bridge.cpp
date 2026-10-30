@@ -1,8 +1,34 @@
 #include "field_command_overview_bridge.hpp"
+#include "enums.hpp"
 
 #include <utility>
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
+namespace {
+
+std::optional<std::uint8_t> legacy_page_for_section(
+    const shadowrun::ghidra_conversion::menus::CommandSection section) {
+    using Section = shadowrun::ghidra_conversion::menus::CommandSection;
+    switch (section) {
+    case Section::inventory_left:
+        return static_cast<std::uint8_t>(srx::MenuPage::INVENTORY_LEFT);
+    case Section::inventory_right:
+        return static_cast<std::uint8_t>(srx::MenuPage::INVENTORY_RIGHT);
+    case Section::clips:
+        return static_cast<std::uint8_t>(srx::MenuPage::CLIPS);
+    case Section::attributes_and_skills:
+        return static_cast<std::uint8_t>(srx::MenuPage::ATTRIBUTES_SKILLS);
+    case Section::cyberware:
+        return static_cast<std::uint8_t>(srx::MenuPage::CYBERWARE);
+    case Section::magic:
+        return static_cast<std::uint8_t>(srx::MenuPage::MAGIC);
+    case Section::pocket_secretary:
+        return static_cast<std::uint8_t>(srx::MenuPage::POCKET_SECRETARY);
+    }
+    return std::nullopt;
+}
+
+} // namespace
 
 void FieldCommandOverviewBridge::begin(
     const CommandOverviewInput& input,
@@ -237,12 +263,14 @@ void FieldCommandOverviewBridge::advance(
 }
 
 void FieldCommandOverviewBridge::sync_script_selection(
-    const std::uint8_t page, const std::uint8_t row) {
-    if (!view_.open || page >= 7U || row >= 4U ||
-        (state_.primary_page == page && state_.secondary_page == row)) {
+    const shadowrun::ghidra_conversion::menus::CommandSection section,
+    const std::uint8_t row) {
+    const auto page = legacy_page_for_section(section);
+    if (!view_.open || !page.has_value() || row >= 4U ||
+        (state_.primary_page == *page && state_.secondary_page == row)) {
         return;
     }
-    state_.primary_page = page;
+    state_.primary_page = *page;
     state_.secondary_page = row;
     state_.action_dialog_gate = 0;
     refresh_view();

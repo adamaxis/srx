@@ -26,6 +26,7 @@ extern "C" {
 #include <vector>
 
 using shadowrun::ghidra_conversion::scripting::GameScriptRuntime;
+using shadowrun::ghidra_conversion::menus::CommandSection;
 using shadowrun::ghidra_conversion::scripting::ScriptNotebookBoundary;
 using shadowrun::ghidra_conversion::scripting::ScriptNotebookFacts;
 using shadowrun::ghidra_conversion::scripting::ScriptCyberdeckRecord;
@@ -92,7 +93,6 @@ constexpr std::uint16_t kMatrixSearch = 39U;
 constexpr std::uint16_t kDeckCyberInfo = 32U;
 constexpr std::uint16_t kTaxiSelector = 40U;
 constexpr std::uint16_t kNotebookCurrentRun = 41U;
-constexpr std::uint16_t kCommandPagePocketSecretary = 6U;
 constexpr std::array<std::uint8_t, 8> kMatrixLogoutSparkleRows{{
     0x08U, 0x2AU, 0x1CU, 0xFFU, 0x1CU, 0x2AU, 0x08U, 0x08U}};
 constexpr std::uint16_t kNotebook = 10U;
@@ -685,8 +685,10 @@ int main() {
     auto route = runtime.menu_route_snapshot();
     check(route.open && route.top_screen == kCommand,
           "command is active route root", failures);
-    check(route.page == 6 && route.row == 0,
-          "command initializes to Pocket Secretary and row zero", failures);
+    check(route.command_section == CommandSection::pocket_secretary &&
+              route.selected_inventory_row == 0,
+          "command initializes to Pocket Secretary and inventory row zero",
+          failures);
     check(sounds.size() == 1U && sounds.front() == kMoveSound,
           "opening the command screen plays move sound", failures);
     check(blank_modes.size() == 2U && blank_modes.front() == 0x8134U &&
@@ -731,7 +733,8 @@ int main() {
     const auto legacy_count_before_secretary = legacy_screens.size();
     runtime.advance_menu_route(0x4000U); // A: Pocket Secretary child.
     route = runtime.menu_route_snapshot();
-    check(route.top_screen == kPocketSecretary && route.page == 6 &&
+    check(route.top_screen == kPocketSecretary &&
+              route.command_section == CommandSection::pocket_secretary &&
               route.top_row == 0,
           "A opens the Lua Pocket Secretary root at row zero", failures);
     check(legacy_screens.size() == legacy_count_before_secretary,
@@ -1053,7 +1056,8 @@ int main() {
           "Start returns from Notebook to the Pocket Secretary", failures);
     runtime.advance_menu_route(0x8000U); // Start returns to Command.
     route = runtime.menu_route_snapshot();
-    check(route.top_screen == kCommand && route.page == 6,
+    check(route.top_screen == kCommand &&
+              route.command_section == CommandSection::pocket_secretary,
           "Start returns from the Lua Pocket Secretary to command page six",
           failures);
 
@@ -1092,7 +1096,8 @@ int main() {
     runtime.advance_menu_route(0x0400U); // page 6 -> 5
     runtime.advance_menu_route(0x0400U); // page 5 -> 4
     runtime.advance_menu_route(0x0400U); // page 4 -> 3
-    check(runtime.menu_route_snapshot().page == 3,
+    check(runtime.menu_route_snapshot().command_section ==
+              CommandSection::attributes_and_skills,
           "command page navigation reaches Attributes/Skills", failures);
     const auto legacy_count_before_attributes = legacy_screens.size();
     runtime.advance_menu_route(0x1000U);
@@ -1115,7 +1120,8 @@ int main() {
           "Lua Attributes/Skills owns its visible column selection", failures);
     runtime.advance_menu_route(0x1000U); // View-only A leaves the page.
     route = runtime.menu_route_snapshot();
-    check(route.top_screen == kCommand && route.page == 6 &&
+    check(route.top_screen == kCommand &&
+              route.command_section == CommandSection::pocket_secretary &&
               windows.back() == kSidebarWindow && sounds.back() == kMoveSound &&
               legacy_screens.size() == legacy_count_before_attributes,
           "view-only Attributes return fully reinitializes page six without "
@@ -1125,7 +1131,8 @@ int main() {
     const auto command_reselect_count = reselect_count;
     runtime.advance_menu_route(0x2000U); // C: reselect and refresh.
     route = runtime.menu_route_snapshot();
-    check(route.page == 6 && reselect_count == command_reselect_count + 1,
+    check(route.command_section == CommandSection::pocket_secretary &&
+              reselect_count == command_reselect_count + 1,
           "C reselects the leader and returns to page six", failures);
     check(std::find(sounds.begin(), sounds.end(), kSelectSound) !=
               sounds.end(),
@@ -1133,12 +1140,14 @@ int main() {
 
     runtime.advance_menu_route(0x0400U); // page 6 -> 5.
     runtime.advance_menu_route(0x0400U); // page 5 -> 4 (Cyberware).
-    check(runtime.menu_route_snapshot().page == 4,
+    check(runtime.menu_route_snapshot().command_section ==
+              CommandSection::cyberware,
           "command navigation reaches Cyberware", failures);
     const auto legacy_count_before_cyberware = legacy_screens.size();
     runtime.advance_menu_route(0x1000U); // A opens the wait-only screen.
     route = runtime.menu_route_snapshot();
-    check(route.top_screen == kCyberware && route.page == 4 &&
+    check(route.top_screen == kCyberware &&
+              route.command_section == CommandSection::cyberware &&
               legacy_screens.size() == legacy_count_before_cyberware,
           "Cyberware is a Lua wait screen, not a legacy adapter", failures);
     runtime.advance_menu_route(0x0002U); // held input is not a new edge.
@@ -1146,7 +1155,8 @@ int main() {
           "Cyberware waits through held-only input", failures);
     runtime.advance_menu_route(0x0100U); // a fresh Up edge returns.
     route = runtime.menu_route_snapshot();
-    check(route.top_screen == kCommand && route.page == 4,
+    check(route.top_screen == kCommand &&
+              route.command_section == CommandSection::cyberware,
           "any fresh controller edge returns to the selected command page",
           failures);
 
@@ -1156,12 +1166,13 @@ int main() {
     runtime.advance_menu_route(0x0400U); // Cyberware -> Attributes.
     runtime.advance_menu_route(0x0400U); // Attributes -> Clips.
     route = runtime.menu_route_snapshot();
-    check(route.page == 2,
+    check(route.command_section == CommandSection::clips,
           "command route reaches the Clips page", failures);
     runtime.advance_menu_route(0x4000U); // open Clips.
     route = runtime.menu_route_snapshot();
-    check(route.top_screen == kClips && route.page == 2 &&
-              route.top_selection == 2,
+    check(route.top_screen == kClips &&
+              route.command_section == CommandSection::clips &&
+              route.top_action_id == "reload",
           "Clips selector opens with Reload selected", failures);
     runtime.advance_menu_route(0x4000U); // enter reload prompt.
     route = runtime.menu_route_snapshot();
@@ -1172,7 +1183,8 @@ int main() {
           "reload prompt ignores B", failures);
     runtime.advance_menu_route(0x4000U); // No exits silently.
     route = runtime.menu_route_snapshot();
-    check(route.top_screen == kCommand && route.page == 2 &&
+    check(route.top_screen == kCommand &&
+              route.command_section == CommandSection::clips &&
               party[0].clips == 3U && party[0].rounds == 20U &&
               ammo_commits.empty(),
           "No returns to Command without changing live ammo", failures);
@@ -1189,7 +1201,8 @@ int main() {
           failures);
     runtime.advance_menu_route(0x4000U); // acknowledge result.
     check(runtime.menu_route_snapshot().top_screen == kCommand &&
-              runtime.menu_route_snapshot().page == 2,
+              runtime.menu_route_snapshot().command_section ==
+                  CommandSection::clips,
           "reload result returns to the selected Command page", failures);
 
     // The ROM tests +0x4F as a signed byte. Values 0x80..0xFF take the same
@@ -1213,7 +1226,7 @@ int main() {
     runtime.advance_menu_route(0x4000U); // open Clips.
     runtime.advance_menu_route(0x0800U); // Trade.
     runtime.advance_menu_route(0x0800U); // Distribute.
-    check(runtime.menu_route_snapshot().top_selection == 4,
+    check(runtime.menu_route_snapshot().top_action_id == "distribute",
           "Clips selector reaches Distribute", failures);
     const auto commits_before_distribution = ammo_commits.size();
     runtime.advance_menu_route(0x4000U);
@@ -1233,7 +1246,8 @@ int main() {
     runtime.advance_menu_route(0x0800U); // Trade.
     runtime.advance_menu_route(0x4000U); // open filtered Clip Trade.
     route = runtime.menu_route_snapshot();
-    check(route.top_screen == kClipTrade && route.top_command == 2 &&
+    check(route.top_screen == kClipTrade &&
+              route.top_action_id == "increase" &&
               route.top_quantity == 3 && route.top_recipient == 1,
           "Clip Trade carries Lua-selected recipient and quantity to presenter",
           failures);
@@ -1306,7 +1320,7 @@ int main() {
 
     runtime.advance_menu_route(0x4000U); // open Clips.
     runtime.advance_menu_route(0x0400U); // wrap from Reload to Cancel.
-    check(runtime.menu_route_snapshot().top_selection == 5,
+    check(runtime.menu_route_snapshot().top_action_id == "cancel",
           "Left wraps the Clips selector from Reload to Cancel", failures);
     runtime.advance_menu_route(0x4000U);
     route = runtime.menu_route_snapshot();
@@ -1314,7 +1328,8 @@ int main() {
           "Cancel displays the ROM Function Aborted message", failures);
     runtime.advance_menu_route(0x4000U);
     check(runtime.menu_route_snapshot().top_screen == kCommand &&
-              runtime.menu_route_snapshot().page == 2,
+              runtime.menu_route_snapshot().command_section ==
+                  CommandSection::clips,
           "message acknowledgement restores the Clips command page", failures);
 
     // Inventory actions now run through the Grok-authored Lua route. The
@@ -1328,28 +1343,32 @@ int main() {
     runtime.advance_menu_route(0x0400U); // Clips -> inventory right.
     runtime.advance_menu_route(0x4000U); // Open selected item.
     route = runtime.menu_route_snapshot();
-    check(route.top_screen == kItemAction && route.top_selection == 2 &&
+    check(route.top_screen == kItemAction &&
+              route.top_action_id == "equip_or_use" &&
               route.top_item_slot == 1 && route.top_item_code == 3,
           "Lua item-action route opens with the selected template item",
           failures);
     runtime.advance_menu_route(0x0C00U); // Simultaneous Left+Right: ROM checks Left first.
-    check(runtime.menu_route_snapshot().top_selection == 5,
+    check(runtime.menu_route_snapshot().top_action_id == "cancel",
           "simultaneous item-action directions follow ROM Left priority",
           failures);
     runtime.advance_menu_route(0x0800U); // Right wraps Cancel to Equip/Use.
     runtime.advance_menu_route(0x4000U); // Equip the L36.
     route = runtime.menu_route_snapshot();
-    if (!(route.top_screen == kCommand && route.page == 1 &&
+    if (!(route.top_screen == kCommand &&
+          route.command_section == CommandSection::inventory_right &&
           party[0].weapon_slot == 1 && party[0].weapon_code == 3U &&
           party[0].rounds == 12U && inventory_commits == 1)) {
         std::cerr << "inventory equipment debug: screen=" << route.top_screen
-                  << " page=" << route.page.value_or(-1)
+                  << " command_section_present="
+                  << route.command_section.has_value()
                   << " slot=" << party[0].weapon_slot
                   << " code=" << static_cast<int>(party[0].weapon_code)
                   << " rounds=" << static_cast<int>(party[0].rounds)
                   << " commits=" << inventory_commits << '\n';
     }
-    check(route.top_screen == kCommand && route.page == 1 &&
+    check(route.top_screen == kCommand &&
+              route.command_section == CommandSection::inventory_right &&
               party[0].weapon_slot == 1 && party[0].weapon_code == 3U &&
               party[0].rounds == 12U && inventory_commits == 1,
           "Lua equipment action writes the selected weapon and its capacity",
@@ -1368,7 +1387,8 @@ int main() {
     runtime.advance_menu_route(0x0800U); // Yes.
     runtime.advance_menu_route(0x4000U); // Transfer.
     route = runtime.menu_route_snapshot();
-    check(route.top_screen == kCommand && route.page == 1 &&
+    check(route.top_screen == kCommand &&
+              route.command_section == CommandSection::inventory_right &&
               party[0].inventory[1] == 0U && party[0].weapon_slot == -1 &&
               party[0].rounds == 12U && party[1].inventory[0] == 3U &&
               inventory_commits == 2,
@@ -1432,7 +1452,8 @@ int main() {
           failures);
     runtime.advance_menu_route(0x4000U);
     check(runtime.menu_route_snapshot().top_screen == kCommand &&
-              runtime.menu_route_snapshot().page == 0,
+              runtime.menu_route_snapshot().command_section ==
+                  CommandSection::inventory_left,
           "First Aid result returns to the inventory grid", failures);
 
     party[0].inventory[4] = 0x11U;
@@ -2776,7 +2797,7 @@ int main() {
     runtime.advance_menu_route(0U);
     route = runtime.menu_route_snapshot();
     check(route.open && route.top_screen == kCommand &&
-              route.page == kCommandPagePocketSecretary &&
+              route.command_section == CommandSection::pocket_secretary &&
               deck_leave_count == matrix_route_deck_leave_baseline + 3 &&
               closed_count == 4,
           "Pull Plug rebuilds Command after its 64-frame source logout",

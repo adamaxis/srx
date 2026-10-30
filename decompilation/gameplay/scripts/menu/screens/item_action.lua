@@ -3,7 +3,12 @@
 -- Rules: rules/inventory.lua + rules/first_aid.lua. Sounds: ROM where cited, otherwise srx FSR (6333-6720) [H].
 local E = require("enums")
 local Inv, FA = require("menu.rules.inventory"), require("menu.rules.first_aid")
-local P, A, R, T, S = E.Pad, E.ItemAction, E.MenuRegion, E.MenuTransition, E.MenuSound
+local P, A, R, T, S = E.Pad, E.InventoryAction, E.MenuRegion, E.MenuTransition, E.MenuSound
+local Section = E.CommandSection
+local INVENTORY_COLUMN = {
+    [Section.INVENTORY_LEFT] = 0,
+    [Section.INVENTORY_RIGHT] = 1,
+}
 local DETAIL = R.SIDEBAR_SLOT | R.COMBAT_BARS | R.ITEM_PICTURE | R.ITEM_HEADER | R.RATING | R.DAMAGE_POWER | R.WEAPON_BARS | R.ARMOR
 
 -- ROM 0x117BA..0x117D0 and 0x11824..0x1183A draw the selector's 17-cell
@@ -22,40 +27,55 @@ local FIRST_AID_FOOTERS = {
     [A.CANCEL] = "     Cancel      ",
 }
 
-local function action_footer(selector, sel)
+local function action_footer(action, sel)
     local labels = sel and Inv.classify(sel, true) == E.ItemBranch.FIRST_AID
         and FIRST_AID_FOOTERS or ACTION_FOOTERS
-    return labels[selector] or ""
+    return labels[action] or ""
 end
 
 local function active_member(party, ctx)
     return party[ctx.game.active_slot()]
 end
+local ACTION_ORDER = {
+    A.EQUIP_OR_USE, A.DISCARD, A.TRADE, A.CANCEL,
+}
+local ACTION_POSITION = {}
+for position, action in ipairs(ACTION_ORDER) do
+    ACTION_POSITION[action] = position
+end
+
 local function wrap(cur, left, right)
     -- ROM 0x117E6 tests Left first; simultaneous Left+Right therefore moves left.
-    if left then return cur <= A.EQUIP_OR_USE and A.CANCEL or cur - 1 end
-    if right then return cur >= A.CANCEL and A.EQUIP_OR_USE or cur + 1 end
-    return cur
+    local position = ACTION_POSITION[cur]
+    if left then
+        position = position <= 1 and #ACTION_ORDER or position - 1
+    elseif right then
+        position = position >= #ACTION_ORDER and 1 or position + 1
+    end
+    return ACTION_ORDER[position]
 end
 
 -- ---- action row ---------------------------------------------------------------------------------------------
 local M = { window = E.WindowPlane.SIDEBAR }
 function M.new(a)
-    return { column = a.column, row = a.row, selector = A.EQUIP_OR_USE,
+    local column = INVENTORY_COLUMN[a.command_section]
+    if column == nil then column = a.column end -- legacy callers pass a cell coordinate
+    return { column = column, row = a.row,
+             selected_action = A.EQUIP_OR_USE,
              footer_text = ACTION_FOOTERS[A.EQUIP_OR_USE] }
 end
 function M.enter(st, ctx)
     st.sel = Inv.selected(active_member(ctx.game.party(), ctx),
                           st.column, st.row)
-    st.footer_text = action_footer(st.selector, st.sel)
+    st.footer_text = action_footer(st.selected_action, st.sel)
     ctx.redraw(R.BUTTON_STRIP | R.COMMAND_LABEL)
 end
 function M.input(st, events, ctx)
     local left, right = events & P.LEFT ~= 0, events & P.RIGHT ~= 0
-    local nxt = wrap(st.selector, left, right)
-    if nxt ~= st.selector then
-        st.selector = nxt
-        st.footer_text = action_footer(st.selector, st.sel)
+    local next_action = wrap(st.selected_action, left, right)
+    if next_action ~= st.selected_action then
+        st.selected_action = next_action
+        st.footer_text = action_footer(st.selected_action, st.sel)
         ctx.sound(S.MOVE)
         ctx.redraw(R.BUTTON_STRIP | R.COMMAND_LABEL)
         return
@@ -68,9 +88,9 @@ function M.input(st, events, ctx)
     local party = ctx.game.party()
     local r = active_member(party, ctx)
     local sel = st.sel or Inv.selected(r, st.column, st.row)
-    if not sel or st.selector == A.CANCEL then return { transition = T.POP } end
+    if not sel or st.selected_action == A.CANCEL then return { transition = T.POP } end
     ctx.sound(S.SELECT)
-    if st.selector == A.EQUIP_OR_USE then
+    if st.selected_action == A.EQUIP_OR_USE then
         local br = Inv.classify(sel, true)
         if br == E.ItemBranch.FIRST_AID then return { transition = T.REPLACE, screen = E.MenuScreen.FIRST_AID, args = { sel = sel } } end
         if br == E.ItemBranch.AUTOMATIC_USE then
@@ -89,7 +109,7 @@ function M.input(st, events, ctx)
         end
         return { transition = T.POP }
     end
-    if st.selector == A.DISCARD then
+    if st.selected_action == A.DISCARD then
         if not Inv.can_discard(sel) then return { transition = T.REPLACE, screen = E.MenuScreen.MESSAGE, args = { message = E.MenuMessage.CANNOT_DISCARD, data = { sel = sel } } } end
         return { transition = T.REPLACE, screen = E.MenuScreen.DISCARD_CONFIRM, args = { sel = sel } }
     end

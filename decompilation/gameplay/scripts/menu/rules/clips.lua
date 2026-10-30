@@ -1,13 +1,19 @@
 -- rules/clips.lua: Clips page rules 0x11B58 (srx clips_menu_conversion.cpp) [C unless marked]
 local E = require("enums")
-local C = E.ClipsCommand
+local C = E.ClipsAction
 local Items = require("items").by_id
 local M = { RELOAD_ROUNDS = 0x26 }          -- one clip = 0x26 rounds (same constant as AiTuning.RELOAD_ROUNDS) [C]
 
+local ACTION_ORDER = { C.RELOAD, C.TRADE, C.DISTRIBUTE, C.CANCEL }
+local ACTION_POSITION = {}
+for position, action in ipairs(ACTION_ORDER) do
+    ACTION_POSITION[action] = position
+end
+
 function M.cycle(cur, step)
-    local c = cur + step
-    if c < C.RELOAD then return C.CANCEL elseif c > C.CANCEL then return C.RELOAD end
-    return c
+    local position = ACTION_POSITION[cur]
+    position = (position - 1 + step) % #ACTION_ORDER + 1
+    return ACTION_ORDER[position]
 end
 -- 0x12062 common gate
 function M.gate(r, cmd)
