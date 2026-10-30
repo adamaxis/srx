@@ -945,9 +945,22 @@ local function movement_bearing_case(bearing_degrees, expected_direction,
           description)
 end
 
-game.movement.probe = function()
+game.movement.probe = function(x, y, direction, distance)
+    local offsets = {
+        north = { x = 0, y = -1 },
+        north_east = { x = 1, y = -1 },
+        east = { x = 1, y = 0 },
+        south_east = { x = 1, y = 1 },
+        south = { x = 0, y = 1 },
+        south_west = { x = -1, y = 1 },
+        west = { x = -1, y = 0 },
+        north_west = { x = -1, y = -1 },
+    }
+    local offset = offsets[direction]
     return { kind = "clear", blocks_route_fallback = false,
-        terrain_is_clear = true }
+        terrain_is_clear = true,
+        candidate_x = (x + offset.x * distance) % 0x10000,
+        candidate_y = (y + offset.y * distance) % 0x10000 }
 end
 movement_bearing_case(337.5, 7, true,
     "enemy B574/C062 truncates 0xF000 with THINK clear to direction 7 / selector 0x3C [C]")

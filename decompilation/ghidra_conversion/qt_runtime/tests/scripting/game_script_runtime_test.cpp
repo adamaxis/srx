@@ -10169,6 +10169,24 @@ int main() {
         [](const std::uint16_t) { return ScriptMovementRouteFacts{}; };
     const auto clear_step = scripts.actor_heartbeat(clear_step_context);
 
+    // ROM 0xB77E applies signed compass displacement to 16-bit world
+    // coordinates. The native query owns that map-position boundary [C: 0xB77E, C002].
+    auto wrapped_position_context = player_step_context(
+        "movement_native_position_wrap", 0x4000U,
+        MovementDirection::east);
+    wrapped_position_context.movement_state.position_x = 0xFFFCU;
+    std::uint16_t wrapped_candidate_x = 0U;
+    wrapped_position_context.movement_collision =
+        [&wrapped_candidate_x](const std::uint16_t x,
+                              const std::uint16_t) {
+            wrapped_candidate_x = x;
+            return ScriptMovementCollisionResult{0, 0U};
+        };
+    wrapped_position_context.movement_route_lookup =
+        [](const std::uint16_t) { return ScriptMovementRouteFacts{}; };
+    const auto wrapped_position_step =
+        scripts.actor_heartbeat(wrapped_position_context);
+
     auto route_step_context = player_step_context(
         "movement_route_fallback", 0x4000U,
         MovementDirection::east);
@@ -10421,6 +10439,10 @@ int main() {
                 clear_step->movement_step->state.route_flags == 0x03U &&
                 clear_step->movement_step->state.terrain_collision_code == 0U &&
                 clear_collision_queries == 1U &&
+                wrapped_position_step.has_value() &&
+                wrapped_position_step->movement_step.has_value() &&
+                wrapped_position_step->movement_step->state.position_x == 6U &&
+                wrapped_candidate_x == 6U &&
                 route_step.has_value() && route_step->movement_step.has_value() &&
                 route_step->movement_step->state.position_x == 100U &&
                 route_step->movement_step->state.position_y == 90U &&

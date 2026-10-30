@@ -2,10 +2,8 @@
 -- Split from the pre-module gameplay/scripts/actor_ai.lua; see docs/ghidra/lua-actor-ai-module-boundaries.md.
 local R = require("actor.registry")
 local E = require("enums")
-local I = require("lib.int68k")
 local Bearing = require("bearing")
 local EntityMotion = require("entity_motion")
-local u16 = I.u16
 local SoundId, EntryDelayMax, AiTuning =
     E.SoundId, E.EntryDelayMax, E.AiTuning
 local MovementBearingDegrees = E.MovementBearingDegrees
@@ -416,17 +414,6 @@ local direction_names = {
     "south", "south_west", "west", "north_west",
 }
 
-local direction_vectors = {
-    north = { x = 0, y = -1 },
-    north_east = { x = 1, y = -1 },
-    east = { x = 1, y = 0 },
-    south_east = { x = 1, y = 1 },
-    south = { x = 0, y = 1 },
-    south_west = { x = -1, y = 1 },
-    west = { x = -1, y = 0 },
-    north_west = { x = -1, y = -1 },
-}
-
 local direction_bearings = {
     north = 0, north_east = 45, east = 90, south_east = 135,
     south = 180, south_west = 225, west = 270, north_west = 315,
@@ -449,10 +436,6 @@ local function direction_name(octant)
         return nil
     end
     return direction_names[octant + 1]
-end
-
-local function direction_vector(direction)
-    return direction_vectors[direction]
 end
 
 local function actor_lifecycle(context)
@@ -587,29 +570,27 @@ end
 
 local function probe_movement(movement_state, direction,
                               step_distance)
-    local vector = direction_vector(direction)
-    if vector == nil then
+    if direction_bearings[direction] == nil then
         return nil
     end
-    local candidate_x = u16(
-        movement_state.position_x + vector.x * step_distance)
-    local candidate_y = u16(
-        movement_state.position_y + vector.y * step_distance)
     local collision = game.movement.probe(
-        candidate_x, candidate_y, direction)
+        movement_state.position_x, movement_state.position_y,
+        direction, step_distance)
     if type(collision) ~= "table" or
        (collision.kind ~= "clear" and
         collision.kind ~= "requires_recovery" and
         collision.kind ~= "blocked") or
        type(collision.blocks_route_fallback) ~= "boolean" or
-       type(collision.terrain_is_clear) ~= "boolean" then
+       type(collision.terrain_is_clear) ~= "boolean" or
+       type(collision.candidate_x) ~= "number" or
+       type(collision.candidate_y) ~= "number" then
         return nil
     end
     movement_state.terrain_is_clear = collision.terrain_is_clear
     return {
         collision = collision,
-        candidate_x = candidate_x,
-        candidate_y = candidate_y,
+        candidate_x = collision.candidate_x,
+        candidate_y = collision.candidate_y,
         direction = direction,
     }
 end

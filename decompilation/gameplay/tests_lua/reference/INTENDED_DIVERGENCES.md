@@ -38,11 +38,13 @@ Asset selectors remain in the host presentation adapter, while `animator_tests.l
 runtime QA assert the complete frame schedules and semantic completion behavior.
 
 ## Movement collision and route boundary
-`game.movement.probe` returns `clear`, `requires_recovery`, or `blocked`, along
-with the named fallback blocking fact and terrain-clear fact. Recovery receives
-a compass direction; route lookup receives a cardinal direction and returns
-marker-presence facts plus named fallback directions. The native adapter applies
-the B77E/B732 collision rules and keeps the source collision value for B7B8
+`game.movement.probe` receives a world position, compass direction, and step
+distance; the native geometry service returns its candidate position plus
+`clear`, `requires_recovery`, or `blocked`, the named fallback blocking fact,
+and the terrain-clear fact. Recovery receives a compass direction. Route
+lookup receives a cardinal direction and returns marker-presence facts plus
+named fallback directions. The native adapter applies the B77E/B732 collision
+rules and keeps the source collision value for B7B8
 recovery. Formation following uses its own `follow_route_step_clear` service
 because ROM 0x14550/0x1455A accepts nonpositive collision results. The embedded
 runtime QA exercises preserved and unpreserved negative results, ordinary and

@@ -38,6 +38,22 @@ end
 
 -- typed mock results (shapes the actor code expects); 1 in 7 calls still returns a random shape
 local function b(h, n) return ((h >> n) & 1) == 1 end
+local movement_probe_vectors = {
+  north = { x = 0, y = -1 }, north_east = { x = 1, y = -1 },
+  east = { x = 1, y = 0 }, south_east = { x = 1, y = 1 },
+  south = { x = 0, y = 1 }, south_west = { x = -1, y = 1 },
+  west = { x = -1, y = 0 }, north_west = { x = -1, y = -1 },
+}
+local function movement_probe_candidate(arguments)
+  local x, y = arguments[1], arguments[2]
+  local offset = movement_probe_vectors[arguments[3]]
+  local distance = arguments[4] or 0
+  if offset ~= nil then
+    x = (x + offset.x * distance) % 0x10000
+    y = (y + offset.y * distance) % 0x10000
+  end
+  return { x = x, y = y }
+end
 TYPED = {
   ["movement.collision"] = function(h) return ((h >> 3) % 0xA0) - 0x20, (h >> 9) % 8 end,
   ["movement.probe"] = function(h)
@@ -98,6 +114,11 @@ local function make_game(log, legacy_services)
             end
           end
         end
+        local probe_candidate
+        if full == "movement.probe" then
+          probe_candidate = movement_probe_candidate(arguments)
+          arguments = { probe_candidate.x, probe_candidate.y }
+        end
         local semantic_geometry = full == "entity_motion.heading_offsets"
         local logged_full = full
         if full == "movement.collision" or full == "movement.probe" or
@@ -115,7 +136,9 @@ local function make_game(log, legacy_services)
         if full == "movement.collision" then return 0, 0 end
         if full == "movement.probe" then
           return { kind = "clear", blocks_route_fallback = false,
-            terrain_is_clear = true }
+            terrain_is_clear = true,
+            candidate_x = probe_candidate.x,
+            candidate_y = probe_candidate.y }
         end
         if full == "movement.follow_route_step_clear" then return true end
         if full == "movement.recover_collision" then

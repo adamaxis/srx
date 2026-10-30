@@ -50,9 +50,17 @@ constexpr double kSourceHeadingUnitsPerTurn = 65536.0;
 constexpr double kWorldCoordinatePeriod = 65536.0;
 // ROM 0xB77E preserves a negative terrain result when entity flag bit 1 is set [C].
 constexpr std::uint8_t kMovementRecoveryEnabledFlag = 0x02U;
+struct CompassOffset {
+    std::int8_t x = 0;
+    std::int8_t y = 0;
+};
 constexpr std::array<std::string_view, 8> kCompassDirections{
     "north", "north_east", "east", "south_east",
     "south", "south_west", "west", "north_west"};
+// Host compass geometry; source coordinate wrapping stays at the native edge [C: 0xB77E, C002].
+constexpr std::array<CompassOffset, 8> kCompassOffsets{{
+    {0, -1}, {1, -1}, {1, 0}, {1, 1},
+    {0, 1}, {-1, 1}, {-1, 0}, {-1, -1}}};
 // ROM 0xB7B8 consumes these encodings. Keep them in the native adapter;
 // field_events.lua receives only the resulting event facts and rewrite intent.
 constexpr std::uint8_t kTerrainMarkerSuppressionByte = 0xDAU;
@@ -5574,19 +5582,26 @@ struct GameScriptRuntime::Impl {
         auto* self = from_upvalue(lua);
         std::uint32_t x = 0U;
         std::uint32_t y = 0U;
+        std::uint32_t step_distance = 0U;
+        const auto argument_count = lua_gettop(lua);
         if (self == nullptr || self->active_actor_context == nullptr ||
             !self->active_actor_context->movement_collision ||
+            (argument_count != 2 && argument_count != 4) ||
             !read_integer(lua, 1, 0xFFFFU, x) ||
             !read_integer(lua, 2, 0xFFFFU, y)) {
             return luaL_error(
                 lua,
-                "game.movement.probe expects x/y coordinates during an actor heartbeat");
+                "game.movement.probe expects a world position with an optional direction and distance during an actor heartbeat");
         }
         std::optional<std::uint8_t> direction_ordinal;
-        if (lua_gettop(lua) >= 3) {
+        if (argument_count == 4) {
             if (lua_type(lua, 3) != LUA_TSTRING) {
                 return luaL_error(
                     lua, "game.movement.probe direction must be a compass name");
+            }
+            if (!read_integer(lua, 4, 0xFFFFU, step_distance)) {
+                return luaL_error(
+                    lua, "game.movement.probe distance must be a nonnegative whole number");
             }
             std::size_t direction_length = 0U;
             const char* direction_text = lua_tolstring(lua, 3, &direction_length);
@@ -5601,12 +5616,26 @@ struct GameScriptRuntime::Impl {
             direction_ordinal = static_cast<std::uint8_t>(
                 std::distance(kCompassDirections.begin(), direction_it));
         }
+        const auto& offset = direction_ordinal.has_value()
+            ? kCompassOffsets[*direction_ordinal]
+            : kCompassOffsets[0U];
+        const auto candidate_x = static_cast<std::uint16_t>(
+            static_cast<std::int32_t>(x) +
+            (direction_ordinal.has_value()
+                 ? static_cast<std::int32_t>(offset.x) *
+                       static_cast<std::int32_t>(step_distance)
+                 : 0));
+        const auto candidate_y = static_cast<std::uint16_t>(
+            static_cast<std::int32_t>(y) +
+            (direction_ordinal.has_value()
+                 ? static_cast<std::int32_t>(offset.y) *
+                       static_cast<std::int32_t>(step_distance)
+                 : 0));
         try {
             self->last_actor_movement_recovery_probe.reset();
             const auto result =
                 self->active_actor_context->movement_collision(
-                    static_cast<std::uint16_t>(x),
-                    static_cast<std::uint16_t>(y));
+                    candidate_x, candidate_y);
             self->last_actor_terrain_collision_code =
                 result.terrain_collision_code;
 
@@ -5634,17 +5663,20 @@ struct GameScriptRuntime::Impl {
                 if (direction_ordinal.has_value()) {
                     self->last_actor_movement_recovery_probe =
                         PendingMovementRecoveryProbe{
-                            static_cast<std::uint16_t>(x),
-                            static_cast<std::uint16_t>(y), probe_code,
+                            candidate_x, candidate_y, probe_code,
                             *direction_ordinal};
                 }
             }
 
             // The B732 policy decides whether this probe blocks route
             // fallback. Its low-bit event encoding never crosses into Lua [C].
-            lua_createtable(lua, 0, 3);
+            lua_createtable(lua, 0, 5);
             lua_pushstring(lua, kind);
             lua_setfield(lua, -2, "kind");
+            lua_pushinteger(lua, candidate_x);
+            lua_setfield(lua, -2, "candidate_x");
+            lua_pushinteger(lua, candidate_y);
+            lua_setfield(lua, -2, "candidate_y");
             lua_pushboolean(lua, route_code > 0);
             lua_setfield(lua, -2, "blocks_route_fallback");
             lua_pushboolean(lua, result.terrain_collision_code == 0U);
