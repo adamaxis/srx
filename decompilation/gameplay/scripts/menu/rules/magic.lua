@@ -2,6 +2,7 @@
 -- Inputs are typed runner fields and the source-decoded spell table supplied
 -- by the host. This module contains no ROM-address or RAM access.
 local M = {}
+local E = require("enums")
 
 M.ITEM = {
     FETISH = 0x13,
@@ -44,7 +45,7 @@ end
 
 -- 0x55F02: +0x80 plus the first Power Focus phase in slots 6..0.
 function M.item18_skill(r)
-    local value = r.skills[0] or 0
+    local value = r.skills.sorcery or 0
     local slot = find(r, M.ITEM.POWER_FOCUS, 6, 0)
     if slot then value = (value + r.phase[slot]) & 0xFF end
     return value
@@ -53,7 +54,8 @@ end
 -- 0x55ED6: (Quickness + Intelligence + Willpower) >> 1, plus first Combat
 -- Sense phase. Addition follows source byte wrapping.
 function M.combat_pool(r)
-    local value = ((r.attributes[1] + r.attributes[4] + r.attributes[5]) & 0xFF) >> 1
+    local value = (r.attributes.quickness + r.attributes.intelligence +
+                   r.attributes.willpower) // 2
     for slot = 0, 7 do
         if r.inventory[slot] == M.ITEM.COMBAT_SENSE then
             return (value + r.phase[slot]) & 0xFF
@@ -107,7 +109,8 @@ function M.success_value(r, table_, row, column, force)
 end
 
 local function effect_roll_count(r)
-    return posture_remainder(M.item18_skill(r), r.posture) + r.attributes[5]
+    return posture_remainder(M.item18_skill(r), r.posture) +
+           r.attributes.willpower
 end
 
 -- 0x10660: ceil(force/2) + the D4EA0 difficulty byte (minimum TN 2),
@@ -134,13 +137,14 @@ function M.defense(party, slot_active, r)
     local pool = 0
     for slot = 0, 2 do
         local member = party[slot]
-        if member and slot_active[slot] and member.archetype <= 1 then
+        if member and slot_active[slot] and
+           E.RunnerClass.CASTERS[member.character_class] then
             local magic = M.item18_skill(member)
             pool = pool + (magic // 4) + ((magic % 4 >= 3) and 1 or 0)
         end
     end
-    local physical = (r.attributes[0] + pool) & 0xFF
-    local mana = (r.attributes[5] + pool) & 0xFF
+    local physical = r.attributes.body + pool
+    local mana = r.attributes.willpower + pool
     return {
         pool = pool,
         physical = physical,

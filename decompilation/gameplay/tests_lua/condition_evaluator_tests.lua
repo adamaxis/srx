@@ -62,7 +62,7 @@ local previous_game = game
 local active_reputation = 5
 game = {
     party = function()
-        return { [0] = { skills = { [10] = active_reputation } } }
+        return { [0] = { skills = { reputation = active_reputation } } }
     end,
     active_slot = function() return 0 end,
 }
@@ -76,7 +76,7 @@ assert(runner_evaluator:evaluate(
     compare("runner.skill.reputation", "lt", 5)).status ==
     Status.true_value)
 game.party = function()
-    return { [0] = { skills = {} } }
+    return { [0] = { skills = { reputation = nil } } }
 end
 assert(runner_evaluator:evaluate(
     compare("runner.skill.reputation", "gte", 5)).status ==

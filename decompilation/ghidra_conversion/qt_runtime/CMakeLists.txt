@@ -279,6 +279,14 @@ if(SHADOWRUN_LUA_EXECUTABLE)
     set_tests_properties(shadowrun_gameplay_combat_skill_policy_qa PROPERTIES
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/../.."
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy")
+    add_test(NAME shadowrun_gameplay_karma_upgrade_rules_qa
+        COMMAND "${SHADOWRUN_LUA_EXECUTABLE}"
+            "${CMAKE_SOURCE_DIR}/../gameplay/tests_lua/run_lua_ctest.lua"
+            "${CMAKE_SOURCE_DIR}/../.."
+            "${CMAKE_SOURCE_DIR}/../gameplay/tests_lua/karma_tests.lua")
+    set_tests_properties(shadowrun_gameplay_karma_upgrade_rules_qa PROPERTIES
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/../.."
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy")
     add_test(NAME shadowrun_gameplay_field_encounters_qa
         COMMAND "${SHADOWRUN_LUA_EXECUTABLE}"
             "${CMAKE_SOURCE_DIR}/../gameplay/tests_lua/run_lua_ctest.lua"

@@ -145,11 +145,10 @@ local function start_combat_program(st, events, ctx, program)
 
     local mode = MatrixSession.program_mode_from_buttons(events)
     state.mode = mode
-    local attributes = runner.attributes or {}
-    local skills = runner.skills or {}
     local decker = {
-        d81c = (((attributes[1] or 0) + (attributes[4] or 0)) & 0xFF) >> 1,
-        computer = skills[7] or 0,
+        d81c = (runner.attributes.quickness +
+                runner.attributes.intelligence) // 2,
+        computer = runner.skills.computer,
     }
     local deck = {
         mpcp = record.mpcp or 0,
@@ -283,8 +282,6 @@ local function start_analyze(st, events, ctx)
     local runner = party[game.active_slot()]
     local node = MatrixSession.current_node(state)
     if not runner or not node then return false end
-    local attributes = runner.attributes or {}
-    local skills = runner.skills or {}
     local persona = record.persona or {}
     local deck = {
         mpcp = record.mpcp or 0,
@@ -292,11 +289,13 @@ local function start_analyze(st, events, ctx)
         sensor = persona[3] or 0,
         ratings = record.ratings or {},
     }
-    -- ROM 0xD81C is the wrapped byte sum of leader attributes +0x78/+0x7B,
-    -- divided by two; Computer is leader skill +0x88.
+    -- The native party adapter exposes the two named attributes and the
+    -- Computer skill. Runner profile limits keep this sum within its ordinary
+    -- game range, so the port uses integer division without source-byte wrap.
     local decker = {
-        d81c = (((attributes[1] or 0) + (attributes[4] or 0)) & 0xFF) >> 1,
-        computer = skills[7] or 0,
+        d81c = (runner.attributes.quickness +
+                runner.attributes.intelligence) // 2,
+        computer = runner.skills.computer,
     }
     local action_state = {
         alert = state.alert,

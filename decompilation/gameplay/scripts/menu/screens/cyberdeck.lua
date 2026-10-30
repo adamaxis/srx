@@ -352,13 +352,13 @@ function M.dumpshock(ctx, matrix_state)
                   MatrixSession.alert(matrix_state) or
                   g.alert()
     local tn = MX.ic_rating(node, alert)                                -- 0x19BF6
-    if g.roll_successes(r.attributes[5], tn) == 0 then
+    if g.roll_successes(r.attributes.willpower, tn) == 0 then
         r.physical = math.max(0, r.physical - (tn >> 1))
         g.commit_party(party)
         ctx.sound(S.DAMAGE)
         return r.physical == 0
     end
-    if g.roll_successes(r.attributes[0], M.BODY_TN) == 0 then
+    if g.roll_successes(r.attributes.body, M.BODY_TN) == 0 then
         r.stun = r.stun - M.STUN_LOSS
         if r.stun < 1 then r.stun = 1 end
         g.commit_party(party)

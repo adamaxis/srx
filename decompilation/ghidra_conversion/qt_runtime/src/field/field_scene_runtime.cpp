@@ -9121,8 +9121,9 @@ void FieldSceneRuntime::configure_field_menu_route() {
             source_boundary("field.posture.lua_adjusted");
         }
     };
-    bindings.game.leader_archetype = [this] {
-        return static_cast<int>(active_runner_record().archetype_index);
+    bindings.game.leader_class = [this] {
+        return scripting::runner_class_from_source_index(
+            active_runner_record().archetype_index);
     };
     bindings.game.party = [this] {
         std::array<scripting::ScriptMenuPartyMember,
@@ -9140,7 +9141,11 @@ void FieldSceneRuntime::configure_field_menu_route() {
             member.physical = record.delay_meter;
             member.stun = record.behavior_meter;
             member.magic_resource = record.auxiliary[0];
-            member.archetype = record.archetype_index;
+            member.race = scripting::runner_race_from_source_index(
+                record.species_index);
+            member.character_class =
+                scripting::runner_class_from_source_index(
+                    record.archetype_index);
             member.karma = record.karma;
             member.magic_force = record.magic_force;
             member.posture = record.posture;
@@ -9148,8 +9153,15 @@ void FieldSceneRuntime::configure_field_menu_route() {
             member.state_function = record.first_aid_continuation;
             member.inventory = record.inventory_item_codes;
             member.phase = record.inventory_phase_bytes;
-            member.attributes = record.attributes;
-            member.skills = record.skills;
+            member.attributes = {
+                record.attributes[0], record.attributes[1],
+                record.attributes[2], record.attributes[3],
+                record.attributes[4], record.attributes[5]};
+            member.skills = {
+                record.skills[0], record.skills[1], record.skills[2],
+                record.skills[3], record.skills[4], record.skills[5],
+                record.skills[6], record.skills[7], record.skills[8],
+                record.skills[9], record.skills[10], record.skills[11]};
         }
         return party;
     };
@@ -9258,15 +9270,34 @@ void FieldSceneRuntime::configure_field_menu_route() {
             record.behavior_meter = member.stun;
             record.auxiliary[0] = member.magic_resource;
             record.karma = member.karma;
-            record.archetype_index = member.archetype;
             record.magic_force = member.magic_force;
             record.posture = member.posture;
             record.magic_table_index = member.magic_table_index;
             record.first_aid_continuation = member.state_function;
             record.inventory_item_codes = member.inventory;
             record.inventory_phase_bytes = member.phase;
-            record.attributes = member.attributes;
-            record.skills = member.skills;
+            const auto source_stat = [](const int value) {
+                return static_cast<std::uint8_t>(
+                    std::clamp(value, 0, 0xFF));
+            };
+            record.attributes[0] = source_stat(member.attributes.body);
+            record.attributes[1] = source_stat(member.attributes.quickness);
+            record.attributes[2] = source_stat(member.attributes.strength);
+            record.attributes[3] = source_stat(member.attributes.charisma);
+            record.attributes[4] = source_stat(member.attributes.intelligence);
+            record.attributes[5] = source_stat(member.attributes.willpower);
+            record.skills[0] = source_stat(member.skills.sorcery);
+            record.skills[1] = source_stat(member.skills.firearms);
+            record.skills[2] = source_stat(member.skills.pistols);
+            record.skills[3] = source_stat(member.skills.smgs);
+            record.skills[4] = source_stat(member.skills.shotguns);
+            record.skills[5] = source_stat(member.skills.melee_combat);
+            record.skills[6] = source_stat(member.skills.throwing);
+            record.skills[7] = source_stat(member.skills.computer);
+            record.skills[8] = source_stat(member.skills.biotech);
+            record.skills[9] = source_stat(member.skills.electronics);
+            record.skills[10] = source_stat(member.skills.reputation);
+            record.skills[11] = source_stat(member.skills.negotiation);
         }
         refresh_field_hud_runner_slot();
         refresh_command_overview_combat_bars();

@@ -310,7 +310,8 @@ function M.child_returned(st, child, res, ctx)
         if res.exit_menu then reselect_if_incapacitated(ctx); return { transition = T.EXIT } end   -- FFF0CD [C]
         build(st, ctx, true); return
     end
-    if ctx.game.leader_archetype() <= 1 and p == Page.MAGIC then build(st, ctx, true); return end   -- re-init: 0x10F50 resets page to 6 [C]
+    if E.RunnerClass.CASTERS[ctx.game.leader_class()] and
+       p == Page.MAGIC then build(st, ctx, true); return end   -- re-init: 0x10F50 resets page to 6 [C]
     build(st, ctx, false)
 end
 

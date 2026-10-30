@@ -281,12 +281,12 @@ bool test_affiliation_graph(GameScriptRuntime& scripts,
                (contact_flags & history) == 0U;
     };
 
-    party[static_cast<std::size_t>(active_slot)].skills[10] = 4U;
+    party[static_cast<std::size_t>(active_slot)].skills.reputation = 4;
     runner_flags = 0U;
     contact_flags = availability;
     if (!finish_after_first_page("low_reputation")) return false;
 
-    party[static_cast<std::size_t>(active_slot)].skills[10] = 5U;
+    party[static_cast<std::size_t>(active_slot)].skills.reputation = 5;
     runner_flags = static_cast<std::uint8_t>(
         1U << rival_affiliation_bit);
     contact_flags = availability;
@@ -377,7 +377,7 @@ int main() {
     // Use a nonzero slot so the graph test catches implementations that read
     // the first roster member instead of the active runner record.
     int active_slot = 2;
-    party[0].skills[10] = 0U;
+    party[0].skills.reputation = 0;
     scripts.set_story_fact_accessors(
         [&contact_flags, &runner_flags](const std::string_view name)
             -> std::optional<bool> {

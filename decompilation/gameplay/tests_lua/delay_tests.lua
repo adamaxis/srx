@@ -21,9 +21,9 @@ local modifiers = {
     Modifier.FACTOR_BONUS_8,
     Modifier.FACTOR_BONUS_12,
 }
-for species, maxima in pairs(Karma.ATTRIBUTE_MAXIMA) do
-    for quickness = 0, maxima[2] do
-        for intelligence = 0, maxima[5] do
+for race, maxima in pairs(Karma.ATTRIBUTE_MAXIMA) do
+    for quickness = 0, maxima.quickness do
+        for intelligence = 0, maxima.intelligence do
             assert(quickness + intelligence <= 13,
                    "race cap unexpectedly exceeds legal delay-stat range")
             for _, modifier in ipairs(modifiers) do
@@ -43,8 +43,8 @@ for species, maxima in pairs(Karma.ATTRIBUTE_MAXIMA) do
                     assert(Delay.calculate(quickness, intelligence, modifier,
                                mode) == expected,
                            string.format(
-                               "delay mismatch for race %d Quickness %d Intelligence %d modifier %d mode %d",
-                               species, quickness, intelligence, modifier,
+                               "delay mismatch for race %s Quickness %d Intelligence %d modifier %d mode %d",
+                               race, quickness, intelligence, modifier,
                                mode))
                 end
             end

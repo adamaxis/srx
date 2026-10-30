@@ -518,10 +518,32 @@ E.DisplayBlank = { OFF = 0x8134, ON = 0x8174 }   -- VDP reg 1 writes around a bu
 E.MenuMask = { LEAD = 1, REVEAL = 2 }   -- port host phases for staged partial frames (not ROM values)
 E.WindowPlane = { SIDEBAR = 0x9191, OFF = 0x9100 } -- VDP reg 0x11 [C]
 
-E.KarmaUpgrade = { AVAILABLE = 0, INVALID = 1, NOT_UPGRADEABLE = 2, UNKNOWN_SPECIES = 3,
-                  CLASS_RESTRICTED = 4, AT_LIMIT = 5 }   -- 0xD82A preview outcome (D9DE = error path) [C]
-E.Archetype = { CASTER_LIMIT = 2 }        -- +0x9B < 2 = magic user (0xFBA6 path, Sorcery gate) [C]
-E.Skill = { SORCERY = 0, FIREARMS = 1, PISTOLS = 2, SMGS = 3, SHOTGUNS = 4, BIOTECH = 8 }   -- index into skills[] [C 0x12C74; BIOTECH srx]
+E.KarmaUpgrade = {
+    AVAILABLE = "available", INVALID = "invalid",
+    NOT_UPGRADEABLE = "not_upgradeable", UNKNOWN_RACE = "unknown_race",
+    CLASS_RESTRICTED = "class_restricted", AT_LIMIT = "at_limit",
+} -- semantic outcomes for the 0xD82A upgrade rules [C]
+E.Skill = { SORCERY = 0, FIREARMS = 1, PISTOLS = 2, SMGS = 3, SHOTGUNS = 4, BIOTECH = 8 }   -- selection order in the Attributes/Skills grid [C]
+E.RunnerRace = {
+    HUMAN = "human", ELF = "elf", DWARF = "dwarf", ORC = "orc", TROLL = "troll",
+} -- named profile race translated from +0x9A [C 0xC22A6]
+E.RunnerClass = {
+    MAGE = "mage", SHAMAN = "shaman", SAMURAI = "samurai", DECKER = "decker",
+}
+E.RunnerClass.CASTERS = {
+    [E.RunnerClass.MAGE] = true, [E.RunnerClass.SHAMAN] = true,
+} -- class-specific gameplay set; source caster gate is +0x9B < 2 at 0xFBA6 [C]
+E.RunnerAttribute = {
+    BODY = "body", QUICKNESS = "quickness", STRENGTH = "strength",
+    CHARISMA = "charisma", INTELLIGENCE = "intelligence", WILLPOWER = "willpower",
+} -- named runner profile values translated by the native record adapter [C 0xC1A2A]
+E.RunnerSkill = {
+    SORCERY = "sorcery", FIREARMS = "firearms", PISTOLS = "pistols",
+    SMGS = "smgs", SHOTGUNS = "shotguns", MELEE_COMBAT = "melee_combat",
+    THROWING = "throwing", COMPUTER = "computer", BIOTECH = "biotech",
+    ELECTRONICS = "electronics", REPUTATION = "reputation",
+    NEGOTIATION = "negotiation",
+} -- named runner profile values translated by the native record adapter [C 0xC1A2A]
 E.ItemAction = { EQUIP_OR_USE = 2, DISCARD = 3, TRADE = 4, CANCEL = 5 }   -- FFF0D0 reused as selector 0x11780 [C]
 E.ItemBranch = { FIRST_AID = 1, AUTOMATIC_USE = 2, WEAPON_OR_GEAR = 3, ARMOR = 4 }
 E.ClipsCommand = { RELOAD = 2, TRADE = 3, DISTRIBUTE = 4, CANCEL = 5 }

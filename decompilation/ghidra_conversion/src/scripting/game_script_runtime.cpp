@@ -24,6 +24,7 @@ extern "C" {
 #include <limits>
 #include <set>
 #include <string>
+#include <string_view>
 #include <system_error>
 #include <unordered_map>
 #include <utility>
@@ -2525,7 +2526,7 @@ struct GameScriptRuntime::Impl {
         reselect_leader,
         leader_posture,
         set_leader_posture,
-        leader_archetype,
+        leader_class,
         party,
         spell_table,
         set_spell_table,
@@ -2741,11 +2742,14 @@ struct GameScriptRuntime::Impl {
                     integer_argument(1));
             }
             return 0;
-        case MenuBinding::leader_archetype:
-            lua_pushinteger(
-                lua, self->menu_route_bindings.game.leader_archetype
-                         ? self->menu_route_bindings.game.leader_archetype()
-                         : 0);
+        case MenuBinding::leader_class:
+            {
+                const auto class_name = runner_class_name(
+                    self->menu_route_bindings.game.leader_class
+                        ? self->menu_route_bindings.game.leader_class()
+                        : ScriptRunnerClass::unknown);
+                lua_pushlstring(lua, class_name.data(), class_name.size());
+            }
             return 1;
         case MenuBinding::party: {
             const auto party = self->menu_route_bindings.game.party
@@ -2754,14 +2758,20 @@ struct GameScriptRuntime::Impl {
             lua_createtable(lua, static_cast<int>(party.size()), 0);
             for (std::size_t index = 0; index < party.size(); ++index) {
                 const auto& member = party[index];
-                lua_createtable(lua, 0, 20);
-                const auto set_integer = [lua](const char* name,
-                                               const lua_Integer value) {
+                lua_createtable(lua, 0, 22);
+                const auto member_index = lua_absindex(lua, -1);
+                const auto set_integer = [lua, member_index](
+                    const char* name, const lua_Integer value) {
                     lua_pushinteger(lua, value);
-                    lua_setfield(lua, -2, name);
+                    lua_setfield(lua, member_index, name);
+                };
+                const auto set_string = [lua, member_index](
+                    const char* name, const std::string_view value) {
+                    lua_pushlstring(lua, value.data(), value.size());
+                    lua_setfield(lua, member_index, name);
                 };
                 push_runner_menu_facts(lua, member.status);
-                lua_setfield(lua, -2, "runner_facts");
+                lua_setfield(lua, member_index, "runner_facts");
                 set_integer("clips", member.clips);
                 set_integer("rounds", member.rounds);
                 set_integer("weapon_slot", member.weapon_slot);
@@ -2770,14 +2780,16 @@ struct GameScriptRuntime::Impl {
                 set_integer("physical", member.physical);
                 set_integer("stun", member.stun);
                 set_integer("magic", member.magic_resource);
-                set_integer("archetype", member.archetype);
+                set_string("race", runner_race_name(member.race));
+                set_string("character_class",
+                           runner_class_name(member.character_class));
                 set_integer("karma", member.karma);
                 set_integer("force", member.magic_force);
                 set_integer("posture", member.posture);
                 set_integer("magic_table_index", member.magic_table_index);
                 set_integer("state_function", member.state_function);
-                const auto push_array = [lua](const char* name,
-                                              const auto& values) {
+                const auto push_array = [lua, member_index](
+                    const char* name, const auto& values) {
                     lua_createtable(lua, static_cast<int>(values.size()), 0);
                     for (std::size_t array_index = 0;
                          array_index < values.size(); ++array_index) {
@@ -2785,12 +2797,50 @@ struct GameScriptRuntime::Impl {
                         lua_rawseti(lua, -2,
                                     static_cast<lua_Integer>(array_index));
                     }
-                    lua_setfield(lua, -2, name);
+                    lua_setfield(lua, member_index, name);
                 };
                 push_array("inventory", member.inventory);
                 push_array("phase", member.phase);
-                push_array("attributes", member.attributes);
-                push_array("skills", member.skills);
+                lua_createtable(lua, 0, 6);
+                lua_pushinteger(lua, member.attributes.body);
+                lua_setfield(lua, -2, "body");
+                lua_pushinteger(lua, member.attributes.quickness);
+                lua_setfield(lua, -2, "quickness");
+                lua_pushinteger(lua, member.attributes.strength);
+                lua_setfield(lua, -2, "strength");
+                lua_pushinteger(lua, member.attributes.charisma);
+                lua_setfield(lua, -2, "charisma");
+                lua_pushinteger(lua, member.attributes.intelligence);
+                lua_setfield(lua, -2, "intelligence");
+                lua_pushinteger(lua, member.attributes.willpower);
+                lua_setfield(lua, -2, "willpower");
+                lua_setfield(lua, member_index, "attributes");
+                lua_createtable(lua, 0, 12);
+                lua_pushinteger(lua, member.skills.sorcery);
+                lua_setfield(lua, -2, "sorcery");
+                lua_pushinteger(lua, member.skills.firearms);
+                lua_setfield(lua, -2, "firearms");
+                lua_pushinteger(lua, member.skills.pistols);
+                lua_setfield(lua, -2, "pistols");
+                lua_pushinteger(lua, member.skills.smgs);
+                lua_setfield(lua, -2, "smgs");
+                lua_pushinteger(lua, member.skills.shotguns);
+                lua_setfield(lua, -2, "shotguns");
+                lua_pushinteger(lua, member.skills.melee_combat);
+                lua_setfield(lua, -2, "melee_combat");
+                lua_pushinteger(lua, member.skills.throwing);
+                lua_setfield(lua, -2, "throwing");
+                lua_pushinteger(lua, member.skills.computer);
+                lua_setfield(lua, -2, "computer");
+                lua_pushinteger(lua, member.skills.biotech);
+                lua_setfield(lua, -2, "biotech");
+                lua_pushinteger(lua, member.skills.electronics);
+                lua_setfield(lua, -2, "electronics");
+                lua_pushinteger(lua, member.skills.reputation);
+                lua_setfield(lua, -2, "reputation");
+                lua_pushinteger(lua, member.skills.negotiation);
+                lua_setfield(lua, -2, "negotiation");
+                lua_setfield(lua, member_index, "skills");
                 lua_rawseti(lua, -2, static_cast<lua_Integer>(index));
             }
             return 1;
@@ -2949,6 +2999,12 @@ struct GameScriptRuntime::Impl {
                 }
                 lua_pop(lua, 1);
             };
+            const auto read_stat = [&read_integer](const int table_index,
+                                                   const char* name,
+                                                   const int fallback) {
+                return static_cast<int>(std::clamp<lua_Integer>(
+                    read_integer(table_index, name, fallback), 0, 0xFF));
+            };
             const auto party_index = lua_absindex(lua, 1);
             for (std::size_t index = 0; index < party.size(); ++index) {
                 lua_rawgeti(lua, party_index,
@@ -2966,6 +3022,11 @@ struct GameScriptRuntime::Impl {
                     merge_runner_menu_facts(
                         lua, member_index, original_party[index].status,
                         member.status);
+                    // Race and class are host-owned profile facts. Lua rules
+                    // can inspect their named values but cannot mutate them.
+                    member.race = original_party[index].race;
+                    member.character_class =
+                        original_party[index].character_class;
                     member.clips = bounded_byte(member_index, "clips");
                     member.rounds = bounded_byte(member_index, "rounds");
                     member.weapon_slot = static_cast<int>(
@@ -2980,8 +3041,6 @@ struct GameScriptRuntime::Impl {
                     member.stun = bounded_byte(member_index, "stun");
                     member.magic_resource =
                         bounded_byte(member_index, "magic");
-                    member.archetype =
-                        bounded_byte(member_index, "archetype");
                     member.karma = bounded_byte(member_index, "karma");
                     member.magic_force =
                         bounded_byte(member_index, "force");
@@ -2997,8 +3056,63 @@ struct GameScriptRuntime::Impl {
                             0, 0xFFFFFFFFLL));
                     read_array(member_index, "inventory", member.inventory);
                     read_array(member_index, "phase", member.phase);
-                    read_array(member_index, "attributes", member.attributes);
-                    read_array(member_index, "skills", member.skills);
+                    member.attributes = original_party[index].attributes;
+                    lua_getfield(lua, member_index, "attributes");
+                    if (lua_istable(lua, -1)) {
+                        const auto attributes_index = lua_absindex(lua, -1);
+                        member.attributes.body = read_stat(
+                            attributes_index, "body", member.attributes.body);
+                        member.attributes.quickness = read_stat(
+                            attributes_index, "quickness",
+                            member.attributes.quickness);
+                        member.attributes.strength = read_stat(
+                            attributes_index, "strength",
+                            member.attributes.strength);
+                        member.attributes.charisma = read_stat(
+                            attributes_index, "charisma",
+                            member.attributes.charisma);
+                        member.attributes.intelligence = read_stat(
+                            attributes_index, "intelligence",
+                            member.attributes.intelligence);
+                        member.attributes.willpower = read_stat(
+                            attributes_index, "willpower",
+                            member.attributes.willpower);
+                    }
+                    lua_pop(lua, 1);
+                    member.skills = original_party[index].skills;
+                    lua_getfield(lua, member_index, "skills");
+                    if (lua_istable(lua, -1)) {
+                        const auto skills_index = lua_absindex(lua, -1);
+                        member.skills.sorcery = read_stat(
+                            skills_index, "sorcery", member.skills.sorcery);
+                        member.skills.firearms = read_stat(
+                            skills_index, "firearms", member.skills.firearms);
+                        member.skills.pistols = read_stat(
+                            skills_index, "pistols", member.skills.pistols);
+                        member.skills.smgs = read_stat(
+                            skills_index, "smgs", member.skills.smgs);
+                        member.skills.shotguns = read_stat(
+                            skills_index, "shotguns", member.skills.shotguns);
+                        member.skills.melee_combat = read_stat(
+                            skills_index, "melee_combat",
+                            member.skills.melee_combat);
+                        member.skills.throwing = read_stat(
+                            skills_index, "throwing", member.skills.throwing);
+                        member.skills.computer = read_stat(
+                            skills_index, "computer", member.skills.computer);
+                        member.skills.biotech = read_stat(
+                            skills_index, "biotech", member.skills.biotech);
+                        member.skills.electronics = read_stat(
+                            skills_index, "electronics",
+                            member.skills.electronics);
+                        member.skills.reputation = read_stat(
+                            skills_index, "reputation",
+                            member.skills.reputation);
+                        member.skills.negotiation = read_stat(
+                            skills_index, "negotiation",
+                            member.skills.negotiation);
+                    }
+                    lua_pop(lua, 1);
                 }
                 lua_pop(lua, 1);
             }
@@ -3309,8 +3423,8 @@ struct GameScriptRuntime::Impl {
                          MenuBinding::leader_posture);
         add_menu_binding(state, table_index, "set_leader_posture",
                          MenuBinding::set_leader_posture);
-        add_menu_binding(state, table_index, "leader_archetype",
-                         MenuBinding::leader_archetype);
+        add_menu_binding(state, table_index, "leader_class",
+                         MenuBinding::leader_class);
         add_menu_binding(state, table_index, "party", MenuBinding::party);
         add_menu_binding(state, table_index, "spell_table",
                          MenuBinding::spell_table);

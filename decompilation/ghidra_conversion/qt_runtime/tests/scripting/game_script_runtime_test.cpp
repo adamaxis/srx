@@ -17043,11 +17043,14 @@ int main() {
         return 19;
     }
     std::array<ScriptMenuPartyMember, 3> hospital_party{};
-    hospital_party[0].archetype = 2U;
+    hospital_party[0].character_class =
+        shadowrun::ghidra_conversion::scripting::ScriptRunnerClass::samurai;
+    hospital_party[0].race =
+        shadowrun::ghidra_conversion::scripting::ScriptRunnerRace::human;
     hospital_party[0].physical = 3U;
     hospital_party[0].stun = 3U;
-    hospital_party[0].attributes[0] = 6U;
-    hospital_party[0].attributes[5] = 6U;
+    hospital_party[0].attributes.body = 6;
+    hospital_party[0].attributes.willpower = 6;
     std::uint32_t hospital_funds = 1000U;
     std::size_t hospital_commits = 0U;
     ScriptMenuRouteBindings hospital_bindings{};

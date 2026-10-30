@@ -28,7 +28,9 @@ end
 local function mk(o)
     o = o or {}
     local log = { sounds = {}, redraws = 0, blanks = {}, windows = {}, closed = false, legacy = {} }
-    local g = { posture = o.posture or 2, gate = o.gate or 0, reselects = 0 }
+    local g = { posture = o.posture or 2,
+                character_class = o.character_class or E.RunnerClass.DECKER,
+                reselects = 0 }
     local host = {
         play_sound = function(id) log.sounds[#log.sounds + 1] = id end,
         redraw = function() log.redraws = log.redraws + 1 end,
@@ -47,7 +49,7 @@ local function mk(o)
         scene_mode = function() return 0 end, in_combat = function() return false end,
         reselect_leader = function() g.reselects = g.reselects + 1 end,
         leader_posture = function() return g.posture end, set_leader_posture = function(v) g.posture = v end,
-        leader_archetype = function() return g.gate end,
+        leader_class = function() return g.character_class end,
         party = function() return g.party end, active_slot = function() return 0 end,
         pocket_extra_row = function() return false end, secretary_effect_tick = function() end,
  spell_table = function() return { entries = {} } end,
@@ -61,7 +63,15 @@ local function mk(o)
     g.party = { [0] = { runner_facts = {
         lifecycle = { active = true, downed = false, dead = false },
         clip_distribution_remainder = false,
-    }, archetype = 3, magic = 0, species = 0, karma = 0, attributes = {}, skills = {}, inventory = { [0] = 0, 0, 0, 0, 0, 0, 0, 0 }, phase = { [0] = 0, 0, 0, 0, 0, 0, 0, 0 } } }
+    }, character_class = E.RunnerClass.DECKER,
+    race = E.RunnerRace.HUMAN, magic = 0, karma = 0,
+    attributes = { body = 0, quickness = 0, strength = 0, charisma = 0,
+                   intelligence = 0, willpower = 0 },
+    skills = { sorcery = 0, firearms = 0, pistols = 0, smgs = 0,
+               shotguns = 0, melee_combat = 0, throwing = 0, computer = 0,
+               biotech = 0, electronics = 0, reputation = 0, negotiation = 0 },
+    inventory = { [0] = 0, 0, 0, 0, 0, 0, 0, 0 },
+    phase = { [0] = 0, 0, 0, 0, 0, 0, 0, 0 } } }
     for slot, code in pairs(o.items or {}) do g.party[0].inventory[slot] = code end
     if o.inc then g.party[0].runner_facts.lifecycle.downed = true end
     local r = Route.new(host, game); r:open(S.COMMAND); return r, log, g

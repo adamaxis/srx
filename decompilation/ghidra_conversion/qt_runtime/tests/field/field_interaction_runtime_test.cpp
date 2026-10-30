@@ -255,7 +255,7 @@ int main() {
     // the source files sentence and records the missing input explicitly.
     std::uint16_t successful_seed = 0U;
     bool found_file_success_seed = false;
-    party[0].skills[9] = 8U;
+    party[0].skills[9] = 8;
     for (std::uint32_t candidate = 0U; candidate <= 0xFFFFU; ++candidate) {
         auto candidate_seed = static_cast<std::uint16_t>(candidate);
         const auto successes = count_thresholded_random_rolls(

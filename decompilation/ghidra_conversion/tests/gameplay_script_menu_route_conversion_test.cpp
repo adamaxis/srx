@@ -529,7 +529,10 @@ int main() {
             taxi_destination = destination;
             return true;
         };
-    bindings.game.leader_archetype = [] { return 3; };
+    bindings.game.leader_class = [] {
+        return shadowrun::ghidra_conversion::scripting::
+            ScriptRunnerClass::decker;
+    };
     bindings.game.party = [&party] { return party; };
     bindings.game.deck_record = [&matrix_deck] { return matrix_deck; };
     bindings.game.deck_slots = [&matrix_deck_slots] {
@@ -1392,8 +1395,8 @@ int main() {
 
     party[0].inventory[4] = 0x10U;
     party[0].phase[4] = 1U;
-    party[0].skills[8] = 4U;
-    party[0].attributes[0] = 9U;
+    party[0].skills.biotech = 4;
+    party[0].attributes.body = 9;
     runtime.advance_menu_route(0x0200U); // Row two.
     runtime.advance_menu_route(0x4000U); // Open actions.
     runtime.advance_menu_route(0x4000U); // First Aid.
@@ -1486,9 +1489,9 @@ int main() {
     // enters the source Cyberdeck loop. The separate node-action rules are
     // exercised below through a controlled route seam because the Matrix
     // world-view handoff after the deck is not integrated yet.
-    party[0].attributes[1] = 12U;
-    party[0].attributes[4] = 12U;
-    party[0].skills[7] = 12U;
+    party[0].attributes.quickness = 12;
+    party[0].attributes.intelligence = 12;
+    party[0].skills.computer = 12;
     matrix_world_state.field.alarm = false;
     action_rolls.clear();
     forced_roll_successes = 2;
@@ -2069,9 +2072,9 @@ int main() {
     // Transfer Data runs the source search cadence before presenting the ROM
     // file name and Yes/No choice. The typed runner/deck fields here are the
     // same +0x7B, +0x88, and deck +0x0B inputs read by 0x54D6A.
-    party[0].attributes[1] = 6U;
-    party[0].attributes[4] = 6U;
-    party[0].skills[7] = 6U;
+    party[0].attributes.quickness = 6;
+    party[0].attributes.intelligence = 6;
+    party[0].skills.computer = 6;
     forced_roll_successes = 2;
     runtime.advance_menu_route(0x0200U); // Select Transfer Data.
     const auto transfer_gate_count = action_rolls.size();

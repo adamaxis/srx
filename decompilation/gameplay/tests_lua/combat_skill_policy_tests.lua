@@ -43,10 +43,10 @@ local function combatant(firearms, pistols, maxima, posture)
         action_profile_options = { primary = false, secondary = false },
         attributes = {
             body = 0,
-            quickness = maxima[2],
+            quickness = maxima.quickness,
             strength = 0,
-            intelligence = maxima[5],
-            willpower = maxima[6],
+            intelligence = maxima.intelligence,
+            willpower = maxima.willpower,
         },
         skills = {
             firearms = firearms,
@@ -67,9 +67,9 @@ local function combatant(firearms, pistols, maxima, posture)
     }
 end
 
-for species, maxima in pairs(Karma.ATTRIBUTE_MAXIMA) do
+for race, maxima in pairs(Karma.ATTRIBUTE_MAXIMA) do
     local command_average = math.floor(
-        (maxima[2] + maxima[5] + maxima[6]) / 2)
+        (maxima.quickness + maxima.intelligence + maxima.willpower) / 2)
     for _, posture in ipairs(postures) do
         local posture_component = math.floor(
             command_average * posture * 25 / 100)
@@ -88,8 +88,8 @@ for species, maxima in pairs(Karma.ATTRIBUTE_MAXIMA) do
                 selected + math.min(selected, posture_component), 1)
             check(result == expected,
                   string.format(
-                      "species %d posture %d Firearms %d / Pistols %d -> %s (expected %d)",
-                      species, posture, firearms, pistols,
+                      "race %s posture %d Firearms %d / Pistols %d -> %s (expected %d)",
+                      race, posture, firearms, pistols,
                       tostring(result), expected))
         end
         for firearms = 0, Karma.SKILL_LIMIT - 1 do

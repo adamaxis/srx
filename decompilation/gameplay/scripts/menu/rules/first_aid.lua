@@ -19,7 +19,7 @@ local function revive(t)
 end
 function M.difficulty(t)
     local d = t.physical >= 7 and 4 or (t.physical >= 4 and 6 or 8)
-    local red = t.attributes[0] // 3                          -- Body / 3
+    local red = t.attributes.body // 3                         -- Body / 3
     d = d > red and d - red or 0
     return math.max(d, 2)
 end
@@ -49,7 +49,7 @@ function M.use(user, slot, t, roll)
     if code < I.MEDKIT or code > I.TRAUMA_PATCH or ph == 0 then return nil end
     if code == I.MEDKIT then         -- 0x10
         if t.physical == 10 and t.stun == 10 then return E.MenuMessage.NOT_INJURED end
-        local s = roll(user.skills[E.Skill.BIOTECH], M.difficulty(t))
+        local s = roll(user.skills[E.RunnerSkill.BIOTECH], M.difficulty(t))
         local d = s == 0 and 1 or s
         phys(t, d); mental(t, d); revive(t); t.state_function = M.REVIVED_STATE
         consume(user, slot); return E.MenuMessage.FIRST_AID_USED

@@ -16,8 +16,16 @@ local function runner(o)
             lifecycle = { active = true, downed = false, dead = false },
             clip_distribution_remainder = false,
         }, clips = 2, rounds = 0, weapon_slot = 0, weapon_code = 3, armor = 0,
-        inventory = zeros(8), phase = zeros(8), attributes = zeros(8), skills = zeros(16),
-        karma = 0, species = 0, archetype = 3, magic = 0, force = 1, posture = 2, stun = 10, physical = 10 }
+        inventory = zeros(8), phase = zeros(8),
+        attributes = { body = 0, quickness = 0, strength = 0, charisma = 0,
+                       intelligence = 0, willpower = 0 },
+        skills = { sorcery = 0, firearms = 0, pistols = 0, smgs = 0,
+                   shotguns = 0, melee_combat = 0, throwing = 0,
+                   computer = 0, biotech = 0, electronics = 0,
+                   reputation = 0, negotiation = 0 },
+        karma = 0, race = E.RunnerRace.HUMAN,
+        character_class = E.RunnerClass.DECKER,
+        magic = 0, force = 1, posture = 2, stun = 10, physical = 10 }
     for k, v in pairs(o or {}) do
         if k == "downed" or k == "dead" or k == "active" or
            k == "clip_distribution_remainder" then
@@ -49,7 +57,7 @@ local function mk(o)
     local game = {
         reselect_leader = function() g.reselects = g.reselects + 1 end,
         leader_posture = function() return 2 end, set_leader_posture = function() end,
-        leader_archetype = function() return g.party[0].archetype end,
+        leader_class = function() return g.party[0].character_class end,
         party = function() return g.party end, active_slot = function() return 0 end,
         slot_active_set = function() local t = {}; for i = 0, 2 do t[i] = g.party[i] ~= nil end; return t end,
         magazine_capacity = function() return o.cap or 0x40 end, roll_successes = function(d, t) g.rolls = (g.rolls or 0) + 1; local q = o.rolls; return q and table.remove(q, 1) or 1 end,
@@ -167,24 +175,42 @@ check(top(r4) == S.ATTRIBUTES_SKILLS and l4.windows[#l4.windows] == E.WindowPlan
 r4:frame(P.UP); check(st(r4).row == 0, "row clamp")
 for _ = 1, 12 do r4:frame(P.DOWN) end; check(st(r4).row == 9, "row clamp hi")
 r4:frame(P.A); check(top(r4) == S.COMMAND, "view-only A leaves [srx command_view_only]")
-local hr = runner({ karma = 7, species = 1 }); hr.attributes[1] = 6
-check(select(1, AT.preview(hr, 1, 0)) == "at_limit" or true, "preview callable")
-check(AT.apply(hr, 0, 1) == "upgraded" and hr.attributes[1] == 7 and hr.karma == 0, "attr cost = next value")
-local sr = runner({ karma = 10, archetype = 0 }); sr.skills[E.Skill.FIREARMS] = 3
+local hr = runner({ karma = 7, race = E.RunnerRace.ELF }); hr.attributes.quickness = 6
+local hr_status, hr_next, hr_cost = AT.preview(hr, 0, 1)
+check(hr_status == "available" and hr_next == 7 and hr_cost == 7,
+      "Elf Quickness uses its race cap of seven")
+check(AT.apply(hr, 0, 1) == "upgraded" and hr.attributes.quickness == 7 and hr.karma == 0, "attr cost = next value")
+local sr = runner({ karma = 10, character_class = E.RunnerClass.MAGE }); sr.skills.firearms = 3
 local _, nxt, cost = AT.preview(sr, 0, 4 + E.Skill.PISTOLS)
 check(nxt == 4 and cost == 6, "specialty defaults to firearms, cost ceil(1.5n) [srx]")
-check(AT.preview(runner({ archetype = 3 }), 0, 4) == "class_restricted", "sorcery mage-only")
+for _, caster in ipairs({ E.RunnerClass.MAGE, E.RunnerClass.SHAMAN }) do
+    check(AT.preview(runner({ character_class = caster }), 0, 4) == "available",
+          caster .. " can raise Sorcery")
+end
+for _, noncaster in ipairs({ E.RunnerClass.SAMURAI, E.RunnerClass.DECKER }) do
+    check(AT.preview(runner({ character_class = noncaster }), 0, 4) == "class_restricted",
+          noncaster .. " cannot raise Sorcery")
+end
+local human_body = runner({ race = E.RunnerRace.HUMAN })
+human_body.attributes.body = 6
+check(AT.preview(human_body, 0, 0) == "at_limit",
+      "Human Body stops at its race maximum of six")
+local troll_body = runner({ race = E.RunnerRace.TROLL })
+troll_body.attributes.body = 10
+local troll_status, troll_next, troll_cost = AT.preview(troll_body, 0, 0)
+check(troll_status == "available" and troll_next == 11 and troll_cost == 11,
+      "Troll Body uses its race maximum of eleven")
 -- hotel mode prompt
 local r4b, _, g4b = mk({ leader = { karma = 5 } }); r4b:apply(r4b:top(), { transition = E.MenuTransition.PUSH, screen = S.ATTRIBUTES_SKILLS, args = { karma = true } })
 r4b:frame(P.A); check(top(r4b) == S.UPGRADE_PROMPT, "karma prompt")
-r4b:frame(P.B); check(top(r4b) == S.ATTRIBUTES_SKILLS and g4b.party[0].attributes[0] == 1 and g4b.party[0].karma == 4, "upgrade applied")
+r4b:frame(P.B); check(top(r4b) == S.ATTRIBUTES_SKILLS and g4b.party[0].attributes.body == 1 and g4b.party[0].karma == 4, "upgrade applied")
 
 end)
 -- ---- magic -----------------------------------------------------------------------------------------------
 section('magic', function()
 local r5 = mk(); page(r5, E.MenuPage.MAGIC); r5:frame(P.A); check(top(r5) == S.MAGICAL_DEFENSE, "non-caster -> defense [srx]")
 local spells = { entry_count = 3, entries = { sp(0, 4), sp(1, 2), sp(2, 6) } }
-local r6, _, g6 = mk({ leader = { archetype = 0, magic = 3, weapon_slot = -1, weapon_code = 0 }, spells = spells })
+local r6, _, g6 = mk({ leader = { character_class = E.RunnerClass.MAGE, magic = 3, weapon_slot = -1, weapon_code = 0 }, spells = spells })
 page(r6, E.MenuPage.MAGIC); r6:frame(P.A); check(top(r6) == S.MAGIC, "caster spell grid")
 local magic_view = st(r6).magic_view
 check(magic_view.title_text_x == 128 and magic_view.spell_codes[1] == 0 and
@@ -210,7 +236,7 @@ local offset_spells = { entry_count = 14, entries = {
     sp(8, 1), sp(9, 1), sp(10, 1), sp(11, 1),
     sp(12, 1), sp(13, 1),
 } }
-local r_cursor = mk({ leader = { archetype = 0, magic = 3, weapon_slot = -1, weapon_code = 0 }, spells = offset_spells })
+local r_cursor = mk({ leader = { character_class = E.RunnerClass.MAGE, magic = 3, weapon_slot = -1, weapon_code = 0 }, spells = offset_spells })
 page(r_cursor, E.MenuPage.MAGIC); r_cursor:frame(P.A)
 r_cursor:frame(P.RIGHT)
 r_cursor:frame(P.DOWN)
@@ -223,7 +249,7 @@ check(st(r_cursor).sel.column == 1 and st(r_cursor).sel.row == 1 and
 -- 8952, then phase 0 at 9060, 1 at 9265 and 1 at 9400 [C]. The live host
 -- skips menu heartbeats during the 12 blank frames, so heartbeat n after A
 -- is e6 frame 8952 + n.
-local r_phase = mk({ leader = { archetype = 0, magic = 3, weapon_slot = -1, weapon_code = 0 }, spells = spells })
+local r_phase = mk({ leader = { character_class = E.RunnerClass.MAGE, magic = 3, weapon_slot = -1, weapon_code = 0 }, spells = spells })
 page(r_phase, E.MenuPage.MAGIC); r_phase:frame(P.A)
 check(st(r_phase).magic_view.cursor_phase == 1 and st(r_phase).cursor_timer == 5,
       "Magic entry leaves FDFE timer/phase 5/1 (e6 8952) [C]")
@@ -240,7 +266,7 @@ check(st(r_phase).magic_view.cursor_phase == 1, "Magic cursor phase at e6 9400 [
 -- e6 B 9060 -> Set Force & Posture, A 9260 -> back: FDFE ticks stay on
 -- 9043 + 7k across both transitions, so the clock never resets [C emulator].
 local function phase_trace(with_force)
-    local r = mk({ leader = { archetype = 0, magic = 3, weapon_slot = -1, weapon_code = 0 }, spells = spells })
+    local r = mk({ leader = { character_class = E.RunnerClass.MAGE, magic = 3, weapon_slot = -1, weapon_code = 0 }, spells = spells })
     page(r, E.MenuPage.MAGIC); r:frame(P.A)
     local trace = {}
     for f = 1, 460 do
@@ -477,7 +503,7 @@ complete_pull_plug_exit(rc, lc, gc, "Black IC kills")
 end)
 -- debug menu (hidden row 5, docs/12) [C]
 section('debug menu (hidden row 5, docs/12) [C', function()
-local rd, ld, gd = mk({ extra = true, party = { [0] = runner({ karma = 250, downed = true, archetype = 0 }), [1] = runner({ karma = 1 }) } })
+local rd, ld, gd = mk({ extra = true, party = { [0] = runner({ karma = 250, downed = true, character_class = E.RunnerClass.MAGE }), [1] = runner({ karma = 1 }) } })
 rd:frame(P.A); rd:frame(P.UP); rd:frame(P.A); check(top(rd) == S.DEBUG_MENU, "row 5 -> debug menu")
 rd:frame(P.UP); check(st(rd).row == 7, "debug cursor wraps to 7")
 rd:frame(P.DOWN); rd:frame(P.A); check(gd.nuyen == 0x3D090 and gd.unlock == false and top(rd) == S.POCKET_SECRETARY, "Nuyen = 250000, FFF101 cleared")
@@ -516,13 +542,13 @@ ra:frame(P.B); check(top(ra) == S.COMMAND, "auto-use returns")
 end)
 -- magic value maths (rules/magic.lua) [C ROM 0x55F02/0x55F20/0x10660/0x1047E]
 section('magic value maths (rules/magic.lua) [C ROM 0x55F02/0x55ED6/0x1055E/0x10660/0x1047E]', function()
-local mage = runner({ archetype = 0, magic = 6, posture = 2 }); mage.skills[0] = 5; mage.attributes[5] = 4; mage.attributes[0] = 3
+local mage = runner({ character_class = E.RunnerClass.MAGE, magic = 6, posture = 2 }); mage.skills.sorcery = 5; mage.attributes.willpower = 4; mage.attributes.body = 3
 mage.inventory[6] = MR.ITEM.POWER_FOCUS; mage.phase[6] = 3
 check(MR.item18_skill(mage) == 8, "0x55F02: sorcery + first power focus phase")
 mage.inventory[7] = MR.ITEM.POWER_FOCUS; mage.phase[7] = 9; check(MR.item18_skill(mage) == 8, "power focus scan is slots 6..0 (slot 7 = totem)")
 mage.inventory[7] = 0
 local a, b = MR.split(8, 2); check(a == 4 and b == 4, "posture 2 -> 50%"); a = MR.split(7, 1); check(a == 1, "7*25//100 = 1")
-local cp = runner(); cp.attributes[1] = 3; cp.attributes[4] = 2; cp.attributes[5] = 4
+local cp = runner(); cp.attributes.quickness = 3; cp.attributes.intelligence = 2; cp.attributes.willpower = 4
 check(MR.combat_pool(cp) == 4, "0x55ED6: (Q+I+W)>>1"); cp.inventory[0] = MR.ITEM.COMBAT_SENSE; cp.phase[0] = 2
 check(MR.combat_pool(cp) == 6, "+ first Combat Sense phase")
 local tbl = { entry_count = 12, entries = {} }; for k = 0, 11 do tbl.entries[k + 1] = sp(k, 6) end
@@ -538,7 +564,7 @@ check(MR.effect_value(mage, { difficulty_modifier = 4, base_effect = 5 }, 8) == 
 check(MR.bar_row(0) == 0 and MR.bar_row(5) == 4, "bar row")
 local df = MR.defense({ [0] = mage, [1] = runner() }, { [0] = true, [1] = true }, mage)
 check(df.pool == 2 and df.physical == 5 and df.mana == 6, "defense pool 8//4 = 2, non-casters skipped")
-local m7 = runner({ archetype = 1 }); m7.skills[0] = 7
+local m7 = runner({ character_class = E.RunnerClass.SHAMAN }); m7.skills.sorcery = 7
 check(MR.defense({ [0] = m7 }, { [0] = true }, m7).pool == 2, "7/4 rem 3 -> +1")
 local pv = MR.presentation(mage, { [0] = mage }, { [0] = true }, tbl, tbl.entries[3], 0, 2, 4)
 check(pv.table_entry_index == 2 and pv.spell_code == 2 and pv.maximum_force == 6 and pv.force == 4, "presentation view fields")
@@ -547,7 +573,10 @@ end)
 -- species max table equals ROM 0xC22A6 [C]
 section('species max table equals ROM 0xC22A6', function()
 do local d = ROM; if d then
-    local ok = true; for sp = 0, 4 do for i = 1, 6 do if AT.MAX[sp][i] ~= d:byte(0xC22A6 + sp * 6 + i) then ok = false end end end
+    local races = { E.RunnerRace.HUMAN, E.RunnerRace.ELF, E.RunnerRace.DWARF,
+                    E.RunnerRace.ORC, E.RunnerRace.TROLL }
+    local fields = { "body", "quickness", "strength", "charisma", "intelligence", "willpower" }
+    local ok = true; for sp = 0, 4 do for i = 1, 6 do if AT.MAX[races[sp + 1]][fields[i]] ~= d:byte(0xC22A6 + sp * 6 + i) then ok = false end end end
     check(ok, "species max table == ROM 0xC22A6")
     local okc = true; for i = 0, 13 do local b = d:byte(0xC8AE0 + i + 1); if b >= 128 then b = b - 256 end; if MR.CATEGORY[i] ~= b then okc = false end end
     check(okc, "totem category table == ROM 0xC8AE0")
@@ -563,8 +592,20 @@ local DR = require("menu.rules.deck")
 do local d = ROM; if d then local ok = true
     for i = 0, 11 do if DR.FOOTPRINT[i] ~= d:byte(0xE2DF2 + i + 1) then ok = false end end; check(ok, "footprints == ROM 0xE2DF2") end end
 check(DR.size(1, 3) == 36 and DR.load_steps(36, 5) == 6 and DR.load_steps(10, 5) == 2 and DR.load_steps(11, 5) == 3, "size r^2*fp, load ceil clamp 6")
-check(DR.run_info(-1, -1, 0) == "ACTIVE" and select(2, DR.run_info(-1, -1, 0)) == 2 and select(2, DR.run_info(-1, 0, -5)) == 1
-    and select(2, DR.run_info(-1, 0, 0)) == 0 and select(2, DR.run_info(-1, 0, 2)) == 3 and DR.run_info(1, 0, 0) == "COMPLETE", "run info 0xE44C8 index")
+local no_run = DR.run_info(nil)
+local inactive_run = DR.run_info({ status = E.MatrixRunStatus.INACTIVE })
+local completed_run = DR.run_info({ status = E.MatrixRunStatus.COMPLETED })
+local cpu_run = DR.run_info({ status = E.MatrixRunStatus.ACTIVE,
+    objective = { node = "cpu" } })
+local file_run = DR.run_info({ status = E.MatrixRunStatus.ACTIVE,
+    objective = { node = "file", action = E.MatrixRunAction.UPLOAD_FILE,
+                 file_class = "account" } })
+check(no_run.status == "none" and inactive_run.status == "none" and
+      completed_run.status == "complete" and cpu_run.status == "active" and
+      cpu_run.action == E.MatrixRunAction.CRASH_SYSTEM and
+      file_run.status == "active" and file_run.node == "file" and
+      file_run.action == E.MatrixRunAction.UPLOAD_FILE and
+      file_run.file_class == "account", "run info 0xE44C8 semantic states")
 local function deckp(o, col, row) local r, l, g = deck(o); for _ = 1, col do r:frame(P.RIGHT) end; for _ = 1, row do r:frame(P.DOWN) end; r:frame(P.A); return r, l, g end
 local function rec(rt, act) local R0 = { memory = 40, storage = 500, load_io = 3, ratings = zeros(12), active = act or { [0] = -1, -1, -1, -1, -1 }, files = {} }
     for k = 0, 4 do R0.files[k] = { id = -1, size = 0 } end; for p, v in pairs(rt) do R0.ratings[p] = v end; return R0 end

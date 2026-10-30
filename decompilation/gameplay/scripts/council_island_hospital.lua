@@ -4,6 +4,7 @@
 -- alternate-result byte; the default root offers Hospital Options or leave.
 -- No site loads a hospital interior.
 local Sites = require("data.hospital_sites")
+local E = require("enums")
 local Hospital = {}
 
 -- The active site's narrator/profile; set by assert_hospital_field_context.
@@ -44,19 +45,18 @@ local function ceil_thirds_minus_one(value)
 end
 
 local function medical_attention_value(runner, base_service_level)
-    local class_delta = (runner.archetype - 2) % 256
     local service_level = base_service_level
-    if class_delta >= 128 then
+    if E.RunnerClass.CASTERS[runner.character_class] then
         service_level = service_level + 2
     end
     service_level = service_level -
-        ceil_thirds_minus_one(runner.attributes[0]) -
-        ceil_thirds_minus_one(runner.attributes[5])
+        ceil_thirds_minus_one(runner.attributes.body) -
+        ceil_thirds_minus_one(runner.attributes.willpower)
     service_level = math.max(service_level, 2)
 
     local tier_delta = service_level - 7
     local factor = tier_delta >= 0 and 10 or -tier_delta * 20
-    local scaled_body = runner.attributes[0] * factor
+    local scaled_body = runner.attributes.body * factor
     local amount = math.floor(scaled_body / 100)
     if scaled_body % 100 >= 50 then
         amount = amount + 1

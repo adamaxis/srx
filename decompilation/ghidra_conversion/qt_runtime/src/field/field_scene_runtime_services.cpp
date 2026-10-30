@@ -77,6 +77,68 @@ using field_scene_detail::kSceneProfileEntityPositionWord;
 using field_scene_detail::kFieldModalReturnTransitionFrames;
 using field_scene_detail::magic_action_record_from_runner;
 
+namespace {
+
+scripting::ScriptPersistentValue karma_runner_profile(
+    const RunnerRecordFields& record) {
+    using Value = scripting::ScriptPersistentValue;
+    const auto integer = [](const std::uint8_t source_value) {
+        Value value;
+        value.value = static_cast<std::int64_t>(source_value);
+        return value;
+    };
+    const auto string = [](const std::string_view text) {
+        Value value;
+        value.value = std::string(text);
+        return value;
+    };
+
+    // Convert source identity and profile fields into named game data before
+    // the Hotel upgrade policy is called. ROM +0x77..+0x7C are the six core
+    // attributes and +0x80..+0x8C are the twelve displayed skills [C].
+    Value::Object attributes;
+    attributes.emplace("body", integer(record.attributes[0]));
+    attributes.emplace("quickness", integer(record.attributes[1]));
+    attributes.emplace("strength", integer(record.attributes[2]));
+    attributes.emplace("charisma", integer(record.attributes[3]));
+    attributes.emplace("intelligence", integer(record.attributes[4]));
+    attributes.emplace("willpower", integer(record.attributes[5]));
+
+    Value::Object skills;
+    skills.emplace("sorcery", integer(record.skills[0]));
+    skills.emplace("firearms", integer(record.skills[1]));
+    skills.emplace("pistols", integer(record.skills[2]));
+    skills.emplace("smgs", integer(record.skills[3]));
+    skills.emplace("shotguns", integer(record.skills[4]));
+    skills.emplace("melee_combat", integer(record.skills[5]));
+    skills.emplace("throwing", integer(record.skills[6]));
+    skills.emplace("computer", integer(record.skills[7]));
+    skills.emplace("biotech", integer(record.skills[8]));
+    skills.emplace("electronics", integer(record.skills[9]));
+    skills.emplace("reputation", integer(record.skills[10]));
+    skills.emplace("negotiation", integer(record.skills[11]));
+
+    Value::Object profile;
+    profile.emplace("race", string(scripting::runner_race_name(
+                                  scripting::runner_race_from_source_index(
+                                      record.species_index))));
+    profile.emplace("character_class", string(
+                        scripting::runner_class_name(
+                            scripting::runner_class_from_source_index(
+                                record.archetype_index))));
+    Value attributes_value;
+    attributes_value.value = std::move(attributes);
+    profile.emplace("attributes", std::move(attributes_value));
+    Value skills_value;
+    skills_value.value = std::move(skills);
+    profile.emplace("skills", std::move(skills_value));
+    Value result;
+    result.value = std::move(profile);
+    return result;
+}
+
+} // namespace
+
 void FieldSceneRuntime::provide_source_profile_patrol_movement_services(
     scripting::ScriptActorBehaviorContext& context,
     DefaultFieldActorPresentation& actor) {
@@ -1743,41 +1805,112 @@ HotelMenuEvent FieldSceneRuntime::process_hotel_menu_events(
         hotel_karma_skills_.set_upgrade_rule(
             [this](const RunnerRecordFields& record,
                    const AttributeSkillCursor cursor) {
-                auto preview = preview_attribute_skill_upgrade(record, cursor);
-                if (preview.status ==
-                    AttributeSkillUpgradeStatus::invalid_selection) {
+                AttributeSkillUpgradePreview preview{};
+                if (cursor.column >= kAttributesSkillsColumnCount ||
+                    cursor.row >= kAttributesSkillsRowCount) {
                     return preview;
                 }
+                const auto grid = read_attributes_and_skills_grid(
+                    record, true);
+                const auto& cell = selected_attribute_skill_cell(grid, cursor);
+                preview.section = cell.section;
+                preview.value_index = cell.value_index;
+                preview.record_offset = cell.record_offset;
+                preview.current_value = cell.value;
                 const bool skill =
                     preview.section == AttributeSkillSection::skill;
-                const auto lua = game_scripts_.call_integers(
-                    "karma", "upgrade_preview_flat",
-                    {cursor.column, cursor.row, preview.current_value,
-                     record.species_index, record.archetype_index,
-                     record.skills[1U]});
-                constexpr std::array kStatus{
-                    AttributeSkillUpgradeStatus::available,
-                    AttributeSkillUpgradeStatus::invalid_selection,
-                    AttributeSkillUpgradeStatus::attribute_not_upgradeable,
-                    AttributeSkillUpgradeStatus::unknown_species,
-                    AttributeSkillUpgradeStatus::class_restricted,
-                    AttributeSkillUpgradeStatus::at_limit};
-                if (!lua.has_value() || lua->size() != 5U ||
-                    (*lua)[0] < 0 ||
-                    (*lua)[0] >= static_cast<std::int64_t>(kStatus.size()) ||
-                    (*lua)[1] != (skill ? 1 : 0) ||
-                    (*lua)[2] != preview.value_index ||
-                    (*lua)[3] < 0 || (*lua)[3] > 0xFF ||
-                    (*lua)[4] < 0 || (*lua)[4] > 0xFF) {
+                const auto integer_argument = [](const int value) {
+                    scripting::ScriptPersistentValue result;
+                    result.value = static_cast<std::int64_t>(value);
+                    return result;
+                };
+                const auto lua = game_scripts_.call_value(
+                    "karma", "upgrade_preview",
+                    {karma_runner_profile(record),
+                     integer_argument(cursor.column),
+                     integer_argument(cursor.row)});
+                const auto* output = lua.has_value()
+                    ? std::get_if<scripting::ScriptPersistentValue::Object>(
+                          &lua->value)
+                    : nullptr;
+                const auto string_field = [output](const char* name)
+                    -> std::optional<std::string_view> {
+                    if (output == nullptr) return std::nullopt;
+                    const auto found = output->find(name);
+                    if (found == output->end()) return std::nullopt;
+                    const auto* value = std::get_if<std::string>(
+                        &found->second.value);
+                    return value == nullptr
+                        ? std::nullopt
+                        : std::optional<std::string_view>(*value);
+                };
+                const auto integer_field = [output](const char* name)
+                    -> std::optional<std::int64_t> {
+                    if (output == nullptr) return std::nullopt;
+                    const auto found = output->find(name);
+                    if (found == output->end()) return std::nullopt;
+                    const auto* value = std::get_if<std::int64_t>(
+                        &found->second.value);
+                    return value == nullptr
+                        ? std::nullopt
+                        : std::optional<std::int64_t>(*value);
+                };
+                const auto status_id = string_field("status");
+                const auto section_id = string_field("section");
+                const auto field_id = string_field("field");
+                const auto next_value = integer_field("next_value");
+                const auto karma_cost = integer_field("karma_cost");
+                std::optional<AttributeSkillUpgradeStatus> lua_status;
+                if (status_id == "available") {
+                    lua_status = AttributeSkillUpgradeStatus::available;
+                } else if (status_id == "invalid") {
+                    lua_status =
+                        AttributeSkillUpgradeStatus::invalid_selection;
+                } else if (status_id == "not_upgradeable") {
+                    lua_status =
+                        AttributeSkillUpgradeStatus::attribute_not_upgradeable;
+                } else if (status_id == "unknown_race") {
+                    lua_status =
+                        AttributeSkillUpgradeStatus::unknown_species;
+                } else if (status_id == "class_restricted") {
+                    lua_status =
+                        AttributeSkillUpgradeStatus::class_restricted;
+                } else if (status_id == "at_limit") {
+                    lua_status = AttributeSkillUpgradeStatus::at_limit;
+                }
+                constexpr std::array<std::string_view, 6U> kAttributes{
+                    "body", "quickness", "strength", "charisma",
+                    "intelligence", "willpower"};
+                constexpr std::array<std::string_view, 12U> kSkills{
+                    "sorcery", "firearms", "pistols", "smgs",
+                    "shotguns", "melee_combat", "throwing", "computer",
+                    "biotech", "electronics", "reputation", "negotiation"};
+                std::string_view expected_field;
+                if (skill && preview.value_index < kSkills.size()) {
+                    expected_field = kSkills[preview.value_index];
+                } else if (!skill && preview.value_index < kAttributes.size()) {
+                    expected_field = kAttributes[preview.value_index];
+                } else if (!skill && preview.value_index == 6U) {
+                    expected_field = "essence";
+                } else if (!skill && preview.value_index == 7U) {
+                    expected_field = "magic";
+                }
+                if (!lua_status.has_value() || !section_id.has_value() ||
+                    !field_id.has_value() || !next_value.has_value() ||
+                    !karma_cost.has_value() ||
+                    *section_id != (skill ? "skill" : "attribute") ||
+                    *field_id != expected_field || *next_value < 0 ||
+                    *next_value > 0xFF || *karma_cost < 0 ||
+                    *karma_cost > 0xFF) {
                     source_boundary("field.hotel.karma_rule_script_failed");
                     preview.status =
                         AttributeSkillUpgradeStatus::invalid_selection;
                     return preview;
                 }
-                preview.status =
-                    kStatus[static_cast<std::size_t>((*lua)[0])];
-                preview.next_value = static_cast<std::uint8_t>((*lua)[3]);
-                preview.karma_cost = static_cast<std::uint16_t>((*lua)[4]);
+                preview.status = *lua_status;
+                preview.next_value = static_cast<std::uint8_t>(*next_value);
+                preview.karma_cost =
+                    static_cast<std::uint16_t>(*karma_cost);
                 return preview;
             });
         hotel_karma_skills_.open(active_runner_record());

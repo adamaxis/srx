@@ -23,46 +23,44 @@ local function state_value(state, key)
     return value
 end
 
-local runner_skill_indices = {
-    sorcery = 0,
-    firearms = 1,
-    pistols = 2,
-    smgs = 3,
-    shotguns = 4,
-    melee_combat = 5,
-    throwing = 6,
-    computer = 7,
-    biotech = 8,
-    electronics = 9,
-    reputation = 10,
-    negotiation = 11,
+local runner_skill_fields = {
+    sorcery = "sorcery",
+    firearms = "firearms",
+    pistols = "pistols",
+    smgs = "smgs",
+    shotguns = "shotguns",
+    melee_combat = "melee_combat",
+    throwing = "throwing",
+    computer = "computer",
+    biotech = "biotech",
+    electronics = "electronics",
+    reputation = "reputation",
+    negotiation = "negotiation",
 }
 
-local runner_attribute_indices = {
-    body = 0,
-    quickness = 1,
-    strength = 2,
-    charisma = 3,
-    intelligence = 4,
-    willpower = 5,
-    essence = 6,
-    magic = 7,
+local runner_attribute_fields = {
+    body = "body",
+    quickness = "quickness",
+    strength = "strength",
+    charisma = "charisma",
+    intelligence = "intelligence",
+    willpower = "willpower",
 }
 
 local function runner_stat_value(fact_name)
     local category, id = fact_name:match("^runner%.([%w_]+)%.([%w_]+)$")
-    local index
+    local field
     local collection
     if category == "skill" then
         collection = "skills"
-        index = runner_skill_indices[id]
+        field = runner_skill_fields[id]
     elseif category == "attribute" then
         collection = "attributes"
-        index = runner_attribute_indices[id]
+        field = runner_attribute_fields[id]
     else
         return unknown_fact
     end
-    if index == nil or type(game) ~= "table" or
+    if field == nil or type(game) ~= "table" or
        type(game.party) ~= "function" or
        type(game.active_slot) ~= "function" then
         return unknown_fact
@@ -76,7 +74,7 @@ local function runner_stat_value(fact_name)
         end
         local runner = party[active_slot]
         local values = type(runner) == "table" and runner[collection] or nil
-        local stat = type(values) == "table" and values[index] or nil
+        local stat = type(values) == "table" and values[field] or nil
         return type(stat) == "number" and stat or unknown_fact
     end)
     return ok and value or unknown_fact

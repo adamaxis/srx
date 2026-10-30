@@ -122,12 +122,9 @@ local function detection_score(decker, deck)
     decker, deck = decker or {}, deck or {}
     local attributes = decker.attributes or {}
     local skills = decker.skills or {}
-    local intelligence = decker.int
-    if intelligence == nil then intelligence = attributes[4] or 0 end
-    local computer = decker.computer
-    if computer == nil then computer = skills[7] or 0 end
-    local sensor = deck.sensor
-    if sensor == nil then sensor = (deck.persona or {})[3] or 0 end
+    local intelligence = attributes.intelligence or 0
+    local computer = skills.computer or 0
+    local sensor = deck.sensor or 0
     return (intelligence + computer + sensor) // 3
 end
 
@@ -167,24 +164,24 @@ function M.store(rec, run, node, file, rand)
         return k, M.TEXT.STORED_OBJECTIVE
     end
     local m = node.colour == 4 and 5 or node.colour - 1
-    f.data_value = (M.VALUE[rand(7) + rand(6)] * m) & 0xFF
+    f.data_value = M.VALUE[rand(7) + rand(6)] * m
     return k, M.TEXT.STORED
 end
 -- Node-action loop 0x54662 gate (A edge, 0x548A0): dice = min(pool, Computer +0x88) + Computer (0 -> 1) - (colour - 1);
 -- <= 0 or roll(dice, security +6) <= 0 -> text 0x166AA5; else dispatch 0x1664D8[function].+6[cursor]. FFF0A8 += 1 either way.
 M.TEXT.ACTION_FAILED, M.TEXT.SYSTEM_ALERT = 0x166AA5, 0x1669E8
 
--- ROM 0x54662 calls 0x55F44 with request D1=0, then combines that result
--- with runner +0x88. The typed menu record maps +0x78/+0x7B to attributes[1]
--- and [4], +0x88 to skills[7], and deck +0/+7 to MPCP/Response. The node loop
--- enters with Matrix mode -1 (FFF0B7); keep the byte additions and divide
--- rounding from the source routine before handing the result to gate().
+-- 0x54662 combines the named Matrix profile attributes, Computer skill, deck
+-- Response, and the selected program mode. The legal profile and deck ranges
+-- keep this calculation in ordinary integer range; Lua never sees record
+-- offsets or byte arrays.
 function M.runner_action_inputs(runner, deck, mode)
     local attributes = runner.attributes or {}
     local skills = runner.skills or {}
-    local computer = skills[7] or 0
-    local delay = (((attributes[1] or 0) + (attributes[4] or 0)) & 0xFF) >> 1
-    delay = (delay + computer + 2 * (deck.response or 0)) & 0xFF
+    local computer = skills.computer or 0
+    local delay = ((attributes.quickness or 0) +
+                   (attributes.intelligence or 0)) // 2
+    delay = delay + computer + 2 * (deck.response or 0)
     if mode > 0 then
         delay = delay // 3
     elseif mode < 0 then
@@ -204,7 +201,7 @@ function M.gate(pool, computer, node, st, roll)
     local d = math.min(pool, computer) + computer; if d == 0 then d = 1 end
     d = d - (node.colour - 1)
     local ok = d > 0 and roll(d, node.security) > 0
-    st.attempts = ((st.attempts or 0) + 1) & 0xFF
+    st.attempts = (st.attempts or 0) + 1
     return ok
 end
 -- 0x54A8E random alert (each loop pass): rand(10) < FFF0A8 -> FFF0A8 = 0, raise_alert(+1) (0x1989A); unless logged out

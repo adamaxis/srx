@@ -213,7 +213,8 @@ local function run_matrix_degrade(roll_results)
         [4] = { status = 6, phase = 1, timer = 0 },
     }
     local runner = {
-        attributes = { [1] = 8, [4] = 4 }, skills = { [7] = 7 },
+        attributes = { quickness = 8, intelligence = 4 },
+        skills = { computer = 7 },
     }
     local state = {
         phase = "node", current_node = 0, selected_program_slot = 0,
@@ -305,8 +306,9 @@ local function run_matrix_combat_program_route(program, condition, reaction,
         [4] = { status = 6, phase = 1, timer = 0 },
     }
     local party = {
-        [0] = { karma = 1, attributes = { [1] = 8, [4] = 4 },
-                skills = { [7] = 7 } },
+        [0] = { karma = 1,
+                attributes = { quickness = 8, intelligence = 4 },
+                skills = { computer = 7 } },
         [1] = { karma = 4 },
         [2] = { karma = 255 },
     }
@@ -1608,8 +1610,10 @@ eq(upload.text, Actions.TEXT.UPLOAD_DONE,
     "upload objective completes immediately without a download prompt")
 eq(upload_run.status, E.MatrixRunStatus.COMPLETED,
     "immediate objective upload completes the run")
-local source_decker = { attributes = { [4] = 6 }, skills = { [7] = 6 } }
-local source_deck = { persona = { [3] = 5 } }
+local source_decker = {
+    attributes = { intelligence = 6 }, skills = { computer = 6 },
+}
+local source_deck = { sensor = 5 }
 local search_bounds = {}
 local ordinary_search = Actions.finish_search(
     { class = 9 }, source_decker, source_deck, nil,
@@ -1621,8 +1625,9 @@ eq(ordinary_search.file.size, 20,
 eq(table.concat(search_bounds, ","), "10,5,5",
     "ordinary search draws detection, file ID, and size in ROM order")
 local missed_search = Actions.finish_search(
-    { class = 9 }, { attributes = { [4] = 0 }, skills = { [7] = 0 } },
-    { persona = { [3] = 0 } }, nil,
+    { class = 9 },
+    { attributes = { intelligence = 0 }, skills = { computer = 0 } },
+    { sensor = 0 }, nil,
     function(bound) return bound - 1 end)
 eq(missed_search.text, Actions.TEXT.NOTHING,
     "detection failure uses Int, Computer, and Sensor from typed records")
@@ -1898,17 +1903,17 @@ eq(Actions.gate(3, 2, { colour = 1, security = 4 }, gate_state,
     true, "successful node action gate")
 eq(gate_state.attempts, 1, "node action gate counts attempt")
 local action_runner = {
-    attributes = { [1] = 8, [4] = 4 },
-    skills = { [7] = 7 },
+    attributes = { quickness = 8, intelligence = 4 },
+    skills = { computer = 7 },
 }
 local action_delay, action_computer = Actions.runner_action_inputs(
     action_runner, { response = 2 }, E.MatrixModeResult.ATTACK)
 eq(action_delay, 12,
-    "ROM action delay uses two-thirds mode and wrapped response inputs")
-eq(action_computer, 7, "node action gate reads Computer at runner +0x88")
+    "Matrix action delay uses the named runner profile and response")
+eq(action_computer, 7, "node action gate reads the Computer skill")
 action_delay = Actions.runner_action_inputs(
     action_runner, { response = 2 }, E.MatrixDeckMode.BALANCED)
-eq(action_delay, 8, "balanced action delay halves the wrapped total")
+eq(action_delay, 8, "balanced action delay halves the profile total")
 action_delay = Actions.runner_action_inputs(
     action_runner, { response = 2 }, E.MatrixDeckMode.DEFENSE)
 eq(action_delay, 5, "defense action delay uses the one-third branch")

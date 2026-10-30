@@ -33,7 +33,7 @@ M.effects = {
     [D.SPELLS] = function(ctx)
         -- ROM 0x59B34 is a no-op for non-magic archetypes. For a caster it
         -- replaces that runner's editable spell row with IDs 13..0 at force 4.
-        if ctx.game.leader_archetype() >= E.Archetype.CASTER_LIMIT then
+        if not E.RunnerClass.CASTERS[ctx.game.leader_class()] then
             return
         end
         local party = ctx.game.party()

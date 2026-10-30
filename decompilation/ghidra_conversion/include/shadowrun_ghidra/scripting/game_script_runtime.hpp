@@ -127,6 +127,98 @@ enum class ScriptFieldReturnTransitionPhase : std::uint8_t {
     complete = 4U,
 };
 
+struct ScriptRunnerAttributes {
+    int body = 0;
+    int quickness = 0;
+    int strength = 0;
+    int charisma = 0;
+    int intelligence = 0;
+    int willpower = 0;
+};
+
+enum class ScriptRunnerRace : std::uint8_t {
+    human,
+    elf,
+    dwarf,
+    orc,
+    troll,
+    unknown,
+};
+
+enum class ScriptRunnerClass : std::uint8_t {
+    mage,
+    shaman,
+    samurai,
+    decker,
+    unknown,
+};
+
+// Source identity selectors are decoded here, at the native profile boundary.
+// Race row order is ROM 0xC22A6; class 0/1 are the caster paths at 0xFBA6,
+// with the selected/recruited profiles identifying the four class names.
+constexpr ScriptRunnerRace runner_race_from_source_index(
+    const std::uint8_t index) noexcept {
+    switch (index) {
+    case 0U: return ScriptRunnerRace::human;
+    case 1U: return ScriptRunnerRace::elf;
+    case 2U: return ScriptRunnerRace::dwarf;
+    case 3U: return ScriptRunnerRace::orc;
+    case 4U: return ScriptRunnerRace::troll;
+    default: return ScriptRunnerRace::unknown;
+    }
+}
+
+constexpr ScriptRunnerClass runner_class_from_source_index(
+    const std::uint8_t index) noexcept {
+    switch (index) {
+    case 0U: return ScriptRunnerClass::mage;
+    case 1U: return ScriptRunnerClass::shaman;
+    case 2U: return ScriptRunnerClass::samurai;
+    case 3U: return ScriptRunnerClass::decker;
+    default: return ScriptRunnerClass::unknown;
+    }
+}
+
+constexpr std::string_view runner_race_name(
+    const ScriptRunnerRace race) noexcept {
+    switch (race) {
+    case ScriptRunnerRace::human: return "human";
+    case ScriptRunnerRace::elf: return "elf";
+    case ScriptRunnerRace::dwarf: return "dwarf";
+    case ScriptRunnerRace::orc: return "orc";
+    case ScriptRunnerRace::troll: return "troll";
+    case ScriptRunnerRace::unknown: return "unknown";
+    }
+    return "unknown";
+}
+
+constexpr std::string_view runner_class_name(
+    const ScriptRunnerClass character_class) noexcept {
+    switch (character_class) {
+    case ScriptRunnerClass::mage: return "mage";
+    case ScriptRunnerClass::shaman: return "shaman";
+    case ScriptRunnerClass::samurai: return "samurai";
+    case ScriptRunnerClass::decker: return "decker";
+    case ScriptRunnerClass::unknown: return "unknown";
+    }
+    return "unknown";
+}
+
+struct ScriptRunnerSkills {
+    int sorcery = 0;
+    int firearms = 0;
+    int pistols = 0;
+    int smgs = 0;
+    int shotguns = 0;
+    int melee_combat = 0;
+    int throwing = 0;
+    int computer = 0;
+    int biotech = 0;
+    int electronics = 0;
+    int reputation = 0;
+    int negotiation = 0;
+};
+
 struct ScriptMenuPartyMember {
     // Native adapter storage for source +0x10. The Lua menu API exposes its
     // lifecycle and clip-distribution meanings as named booleans instead.
@@ -138,6 +230,8 @@ struct ScriptMenuPartyMember {
     std::uint8_t armor = 0U;
     std::uint8_t physical = 0U;
     std::uint8_t stun = 0U;
+    ScriptRunnerRace race = ScriptRunnerRace::unknown;
+    ScriptRunnerClass character_class = ScriptRunnerClass::unknown;
     // Typed runner fields used by the ROM Magic menu: +0x7F, +0x9B,
     // +0x9D, +0x4D, and +0xA0 respectively.
     std::uint8_t magic_resource = 0U;
@@ -149,8 +243,8 @@ struct ScriptMenuPartyMember {
     std::uint32_t state_function = 0U;
     std::array<std::uint8_t, 8> inventory{};
     std::array<std::uint8_t, 8> phase{};
-    std::array<std::uint8_t, 8> attributes{};
-    std::array<std::uint8_t, 12> skills{};
+    ScriptRunnerAttributes attributes;
+    ScriptRunnerSkills skills;
 };
 
 struct ScriptMenuSpellEntry {
@@ -353,7 +447,7 @@ struct ScriptMenuRouteGame {
     std::function<void()> reselect_leader;
     std::function<int()> leader_posture;
     std::function<void(int)> set_leader_posture;
-    std::function<int()> leader_archetype;
+    std::function<ScriptRunnerClass()> leader_class;
     std::function<std::array<ScriptMenuPartyMember, 3>()> party;
     std::function<std::optional<ScriptMenuSpellTable>(int)> spell_table;
     std::function<void(int, const ScriptMenuSpellTable&)> set_spell_table;

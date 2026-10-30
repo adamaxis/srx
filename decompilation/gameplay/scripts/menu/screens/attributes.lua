@@ -4,10 +4,44 @@
 local E = require("enums")
 local P, R, T, MM = E.Pad, E.MenuRegion, E.MenuTransition, E.MenuMessage
 local M = { window = E.WindowPlane.OFF }
+local ATTRIBUTE_FIELDS = {
+    E.RunnerAttribute.BODY, E.RunnerAttribute.QUICKNESS,
+    E.RunnerAttribute.STRENGTH, E.RunnerAttribute.CHARISMA,
+    E.RunnerAttribute.INTELLIGENCE, E.RunnerAttribute.WILLPOWER,
+}
+local SKILL_FIELDS = {
+    E.RunnerSkill.SORCERY, E.RunnerSkill.FIREARMS,
+    E.RunnerSkill.PISTOLS, E.RunnerSkill.SMGS,
+    E.RunnerSkill.SHOTGUNS, E.RunnerSkill.MELEE_COMBAT,
+    E.RunnerSkill.THROWING, E.RunnerSkill.COMPUTER,
+    E.RunnerSkill.BIOTECH, E.RunnerSkill.ELECTRONICS,
+    E.RunnerSkill.REPUTATION, E.RunnerSkill.NEGOTIATION,
+}
 
--- species attribute maxima: ROM table 0xC22A6, 5 x 6 bytes, row = +0x9A species, col = attribute index;
+-- Race attribute maxima: ROM table 0xC22A6, six values for each +0x9A race [C].
 -- 0xD884..0xD8B8: next = attr(+0x77+i)+1, cmp > table -> "at limit" (0xD9DE); i >= 6 -> not raisable (0xD87A) [C]
-M.MAX = { [0] = { 6, 6, 6, 6, 6, 6 }, { 6, 7, 6, 8, 6, 6 }, { 7, 5, 8, 6, 6, 7 }, { 9, 6, 8, 5, 5, 6 }, { 11, 5, 10, 4, 4, 5 } }
+M.MAX = {
+    [E.RunnerRace.HUMAN] = {
+        body = 6, quickness = 6, strength = 6,
+        charisma = 6, intelligence = 6, willpower = 6,
+    },
+    [E.RunnerRace.ELF] = {
+        body = 6, quickness = 7, strength = 6,
+        charisma = 8, intelligence = 6, willpower = 6,
+    },
+    [E.RunnerRace.DWARF] = {
+        body = 7, quickness = 5, strength = 8,
+        charisma = 6, intelligence = 6, willpower = 7,
+    },
+    [E.RunnerRace.ORC] = {
+        body = 9, quickness = 6, strength = 8,
+        charisma = 5, intelligence = 5, willpower = 6,
+    },
+    [E.RunnerRace.TROLL] = {
+        body = 11, quickness = 5, strength = 10,
+        charisma = 4, intelligence = 4, willpower = 5,
+    },
+}
 M.ROWS, M.COLUMNS = 10, 2
 
 -- cell -> (section, index): rows 0..3 attributes (col*4 + row), rows 4..9 skills ((row-4) + col*6)
@@ -20,15 +54,21 @@ function M.preview(r, col, row)
     local sec, i = M.cell(col, row)
     if sec == "attribute" then
         if i >= 6 then return "not_raisable" end
-        local mx = M.MAX[r.species]; if not mx then return "unknown_species" end
-        local nxt = r.attributes[i] + 1
-        if nxt > mx[i + 1] then return "at_limit" end
+        local mx = M.MAX[r.race]; if not mx then return "unknown_species" end
+        local attribute = ATTRIBUTE_FIELDS[i + 1]
+        local nxt = r.attributes[attribute] + 1
+        if nxt > mx[attribute] then return "at_limit" end
         return "available", nxt, nxt
     end
-    if i == E.Skill.SORCERY and r.archetype >= E.Archetype.CASTER_LIMIT then return "class_restricted" end
-    local base = r.skills[i]
+    if i == E.Skill.SORCERY and not E.RunnerClass.CASTERS[r.character_class] then
+        return "class_restricted"
+    end
+    local skill = SKILL_FIELDS[i + 1]
+    local base = r.skills[skill]
     local reduced = col == 0 and i >= E.Skill.PISTOLS and i <= E.Skill.SHOTGUNS   -- weapon specialities default to Firearms
-    if reduced and base == 0 then base = r.skills[E.Skill.FIREARMS] end
+    if reduced and base == 0 then
+        base = r.skills[E.RunnerSkill.FIREARMS]
+    end
     local nxt = base + 1
     if nxt >= 0x0D then return "at_limit" end
     return "available", nxt, reduced and (nxt * 15 + 9) // 10 or nxt * 2
@@ -39,7 +79,11 @@ function M.apply(r, col, row)
     if r.karma < cost then return "insufficient_karma" end
     r.karma = r.karma - cost
     local sec, i = M.cell(col, row)
-    if sec == "attribute" then r.attributes[i] = nxt else r.skills[i] = nxt end
+    if sec == "attribute" then
+        r.attributes[ATTRIBUTE_FIELDS[i + 1]] = nxt
+    else
+        r.skills[SKILL_FIELDS[i + 1]] = nxt
+    end
     return "upgraded"
 end
 
@@ -74,7 +118,11 @@ function M.input(st, events, ctx)
         if not st.karma then return exit(ctx) end    -- view-only (0xD33A -> 0xD4A0): upgrade key leaves (selection_data_unavailable)
         local r = rec(ctx)
         if st.col == 1 and (st.row == 2 or st.row == 3) then return { transition = T.PUSH, screen = E.MenuScreen.MESSAGE, args = { message = MM.NOT_RAISABLE } } end
-        if st.col == 0 and st.row == 4 and r.archetype >= E.Archetype.CASTER_LIMIT then return { transition = T.PUSH, screen = E.MenuScreen.MESSAGE, args = { message = MM.MAGE_ONLY } } end
+        if st.col == 0 and st.row == 4 and
+           not E.RunnerClass.CASTERS[r.character_class] then
+            return { transition = T.PUSH, screen = E.MenuScreen.MESSAGE,
+                     args = { message = MM.MAGE_ONLY } }
+        end
         local status, _, cost = M.preview(r, st.col, st.row)
         if status ~= "available" then return end
         if r.karma < cost then return { transition = T.PUSH, screen = E.MenuScreen.MESSAGE, args = { message = MM.INSUFFICIENT_KARMA } } end
