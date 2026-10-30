@@ -809,8 +809,8 @@ int main() {
         {"notebook_tip_flag_bit_5", false},
         {"notebook_tip_flag_bit_6", false},
         {"notebook_tip_flag_bit_8", false},
-        {"mr_johnsons_flag_bit_2", false},
-        {"mr_johnsons_flag_bit_4", false},
+        {"johnson.mortimer_known", false},
+        {"johnson.caleb_known", false},
     });
     gameplay_scripts.set_location_context(
         "building", "puyallup_site_03_tarislar_city_inn",
@@ -1328,8 +1328,8 @@ int main() {
                           "BMP");
     };
     gameplay_scripts.set_story_state({
-        {"mr_johnsons_flag_bit_2", true},
-        {"mr_johnsons_flag_bit_4", true},
+        {"johnson.mortimer_known", true},
+        {"johnson.caleb_known", true},
         {"mr_johnsons_flag_bit_5", false},
         {"vid_phone_contact_0", false},
     });
@@ -1478,7 +1478,7 @@ int main() {
     // asserted.
     gameplay_scripts.set_story_state({
         {"mr_johnsons_flag_bit_1", true},
-        {"mr_johnsons_flag_bit_2", false},
+        {"johnson.mortimer_known", false},
         {"owlfeather_asked", true},
         {"aragorn_found", false},
         {"michael_alias_learned", true},

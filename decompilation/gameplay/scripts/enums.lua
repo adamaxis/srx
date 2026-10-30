@@ -688,4 +688,11 @@ E.StoryFact = {
   FROSTY_MET = "frosty_met",                           -- handler at 0x21FD6 [C]
 }
 
+-- Persistent Johnson contact knowledge. The host maps these IDs to the save
+-- representation; gameplay code does not address FFFC27 bit positions.
+E.JohnsonFact = {
+  MORTIMER_KNOWN = "johnson.mortimer_known", -- Pocket Secretary contact row at 0xF4AC [C]
+  CALEB_KNOWN = "johnson.caleb_known", -- Pocket Secretary contact row at 0xF500 [C]
+}
+
 return E

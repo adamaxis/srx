@@ -334,11 +334,10 @@ Dialogue.johnson_interaction_profiles = {
     ["big-rhino.mortimer_reed"] = {
         run_contact_id = E.RunContact.BIG_RHINO,
         information_flow = "big_rhino",
-        access_facts = { "mr_johnsons_flag_bit_2" },
-        -- ROM scene 11 selects 0x105544 on first contact and 0x105574
-        -- afterward. FFFC27 bit 2 is set by this scene branch and records
-        -- that Mortimer is now a known Johnson.
-        entry_seen_fact = "mr_johnsons_flag_bit_2",
+        access_facts = { E.JohnsonFact.MORTIMER_KNOWN },
+        -- Scene 11's first/repeat greeting uses this persistent fact; the
+        -- Notebook list builder at 0xF4AC exposes Mortimer's row 0xC5766.
+        entry_seen_fact = E.JohnsonFact.MORTIMER_KNOWN,
         entry_events = { "booth_entry" },
         repeat_entry_events = { "repeat_booth_entry" },
         repeat_root = "repeat_opening",
@@ -378,7 +377,8 @@ Dialogue.johnson_interaction_profiles = {
     },
     ["icarus-descending.caleb_brightmore"] = {
         run_contact_id = E.RunContact.ICARUS_DESCENDING,
-        access_facts = { "mr_johnsons_flag_bit_4" },
+        -- The Notebook list builder at 0xF500 exposes Caleb's row 0xC5744.
+        access_facts = { E.JohnsonFact.CALEB_KNOWN },
         first_visit_fact = "mr_johnsons_flag_bit_7",
         first_visit_events = { "first_meeting", "first_meeting_continuation" },
         first_visit_karma_award = 2,

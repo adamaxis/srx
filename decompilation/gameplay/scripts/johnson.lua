@@ -3,6 +3,7 @@
 -- owns the reusable conversation flow.
 local Johnson = {}
 local StoryFacts = require("story_facts")
+local E = require("enums")
 
 local function present_location_intro(profile, entry_seen_before)
     if profile == nil then
@@ -182,10 +183,10 @@ end
 local function present_julius_questions()
     while true do
         local choices = {}
-        if game.state.mr_johnsons_flag_bit_4 then
+        if game.state[E.JohnsonFact.CALEB_KNOWN] then
             choices[#choices + 1] = "caleb"
         end
-        if game.state.mr_johnsons_flag_bit_2 then
+        if game.state[E.JohnsonFact.MORTIMER_KNOWN] then
             choices[#choices + 1] = "mortimer"
         end
         if #choices == 0 then

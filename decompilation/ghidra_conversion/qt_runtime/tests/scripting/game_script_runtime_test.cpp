@@ -4094,7 +4094,7 @@ int main() {
 
     scripts.set_story_state({
         {"michael_alias_learned", true},
-        {"mr_johnsons_flag_bit_4", false},
+        {"johnson.caleb_known", false},
         {"mr_johnsons_flag_bit_7", false},
     });
     const auto icarus_accessible_event30 = resolve_event30_location(12U);
@@ -4188,16 +4188,16 @@ int main() {
                         ScriptTaskStep::Status::completed &&
                     caleb_first_meeting.result_id ==
                         std::optional<std::string>{"leave"} &&
-                    scripts.story_state().at("mr_johnsons_flag_bit_4") &&
+                    scripts.story_state().at("johnson.caleb_known") &&
                     scripts.story_state().at("mr_johnsons_flag_bit_7"),
-                "Caleb first contact did not persist the ROM contact and visit bits")) {
+                "Caleb first contact did not persist the contact and first-visit facts")) {
         std::cerr << scripts.failure() << '\n';
         return 13;
     }
 
     scripts.set_story_state({
-        {"mr_johnsons_flag_bit_2", true},
-        {"mr_johnsons_flag_bit_4", true},
+        {"johnson.mortimer_known", true},
+        {"johnson.caleb_known", true},
         {"mr_johnsons_flag_bit_5", false},
         {"vid_phone_contact_0", false},
     });
@@ -4353,8 +4353,8 @@ int main() {
     }
 
     scripts.set_story_state({
-        {"mr_johnsons_flag_bit_2", false},
-        {"mr_johnsons_flag_bit_4", false},
+        {"johnson.mortimer_known", false},
+        {"johnson.caleb_known", false},
         {"mr_johnsons_flag_bit_5", true},
     });
     julius_task = scripts.start_task("johnson", "interaction");
@@ -4395,7 +4395,7 @@ int main() {
     // New Game FFFC2C seed already includes Alesandro's bit 1.
     scripts.set_story_state({
         {"mr_johnsons_flag_bit_1", true},
-        {"mr_johnsons_flag_bit_2", false},
+        {"johnson.mortimer_known", false},
         {"owlfeather_asked", true},
         {"aragorn_found", false},
         {"michael_alias_learned", true},
@@ -4426,7 +4426,7 @@ int main() {
     if (!expect(mortimer_task.operation.has_value() &&
                     mortimer_task.operation->menu.has_value() &&
                     mortimer_task.operation->menu->id == "opening" &&
-                    scripts.story_state().at("mr_johnsons_flag_bit_2"),
+                    scripts.story_state().at("johnson.mortimer_known"),
                 "Mortimer first entry did not set his contact bit and root")) {
         std::cerr << scripts.failure() << '\n';
         return 13;
@@ -4541,7 +4541,7 @@ int main() {
 
     scripts.set_story_state({
         {"mr_johnsons_flag_bit_1", false},
-        {"mr_johnsons_flag_bit_2", true},
+        {"johnson.mortimer_known", true},
         {"owlfeather_asked", false},
         {"aragorn_found", false},
         {"michael_alias_learned", false},

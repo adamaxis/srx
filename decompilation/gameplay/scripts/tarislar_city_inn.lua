@@ -46,7 +46,7 @@ end
 local function apply_tabatha_acceptance()
     -- ROM command 0x14 at 0x21862 calls 0x59C34 to award each runner one
     -- Karma at live-record +0x8D, then sets FFFC30 bits 2/4/5/6/8,
-    -- FFFC34 bits 2/4, and FFFC27 bits 2/4.
+    -- FFFC34 bits 2/4, and the Mortimer-known / Caleb-referral facts.
     -- The host deliberately leaves saved Notebook/referral words unresolved
     -- until their load path is modeled. Check every guarded story store before
     -- the party service can award Karma, so acceptance never writes only part
@@ -56,10 +56,9 @@ local function apply_tabatha_acceptance()
             return "service_unavailable"
         end
     end
-    for _, bit in ipairs({ 2, 4 }) do
-        if game.state["mr_johnsons_flag_bit_" .. bit] == nil then
-            return "service_unavailable"
-        end
+    if game.state[E.JohnsonFact.MORTIMER_KNOWN] == nil or
+       game.state[E.JohnsonFact.CALEB_KNOWN] == nil then
+        return "service_unavailable"
     end
 
     if game.services.call("party", "award_karma_1") ~=
@@ -71,9 +70,8 @@ local function apply_tabatha_acceptance()
     end
     game.state.field_mode_effect_flag_bit_2 = true
     game.state.field_mode_effect_flag_bit_4 = true
-    for _, bit in ipairs({ 2, 4 }) do
-        game.state["mr_johnsons_flag_bit_" .. bit] = true
-    end
+    game.state[E.JohnsonFact.MORTIMER_KNOWN] = true
+    game.state[E.JohnsonFact.CALEB_KNOWN] = true
     return "applied"
 end
 

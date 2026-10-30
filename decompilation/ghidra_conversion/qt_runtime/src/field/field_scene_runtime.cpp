@@ -317,6 +317,19 @@ constexpr std::string_view kMrJohnsonsFlagBitPrefix =
 constexpr std::string_view kRunnerInformationFlagBitPrefix =
     "runner_information_bit_";
 
+struct JohnsonContactFactMapping {
+    std::string_view fact_id;
+    std::uint8_t save_bit;
+};
+
+// [C] The Notebook list at 0xF4AC gates Mortimer's row 0xC5766 with bit 2;
+// the list at 0xF500 gates Caleb's row 0xC5744 with bit 4. Lua uses contact IDs.
+constexpr std::array<JohnsonContactFactMapping, 2U>
+    kJohnsonContactFactMappings{{
+        {"johnson.mortimer_known", 2U},
+        {"johnson.caleb_known", 4U},
+    }};
+
 std::optional<std::uint8_t> story_fact_bit_index(
     const std::string_view name, const std::string_view prefix,
     const unsigned bit_count = 32U) {
@@ -334,6 +347,23 @@ std::optional<std::uint8_t> story_fact_bit_index(
         return std::nullopt;
     }
     return static_cast<std::uint8_t>(index);
+}
+
+std::optional<std::uint8_t> mr_johnsons_fact_bit_index(
+    const std::string_view name) {
+    for (const auto& mapping : kJohnsonContactFactMappings) {
+        if (name == mapping.fact_id) {
+            return mapping.save_bit;
+        }
+    }
+    const auto bit = story_fact_bit_index(
+        name, kMrJohnsonsFlagBitPrefix, 8U);
+    for (const auto& mapping : kJohnsonContactFactMappings) {
+        if (bit == mapping.save_bit) {
+            return std::nullopt;
+        }
+    }
+    return bit;
 }
 
 // [C] ROM FFFC22 stores the 15 Pocket Secretary group items; 0x541B2 sets
@@ -10308,8 +10338,7 @@ bool FieldSceneRuntime::bootstrap(
                 const auto mask = std::uint32_t{1U} << (*bit % 32U);
                 return (notebook_tip_flags_[group] & mask) != 0U;
             }
-            if (const auto bit = story_fact_bit_index(
-                    name, kMrJohnsonsFlagBitPrefix, 8U)) {
+            if (const auto bit = mr_johnsons_fact_bit_index(name)) {
                 if (*bit >= 8U || !notebook_referral_flags_.has_value()) {
                     return std::nullopt;
                 }
@@ -10507,8 +10536,7 @@ bool FieldSceneRuntime::bootstrap(
                 }
                 return set_notebook_tip_unlocked(*bit, value);
             }
-            if (const auto bit = story_fact_bit_index(
-                    name, kMrJohnsonsFlagBitPrefix, 8U)) {
+            if (const auto bit = mr_johnsons_fact_bit_index(name)) {
                 if (*bit >= 8U || !notebook_referral_flags_.has_value()) {
                     return false;
                 }

@@ -10,6 +10,7 @@ local function load_json(path)
 end
 
 local Inn = require("tarislar_city_inn")
+local E = require("enums")
 
 local location_id = "puyallup_site_03_tarislar_city_inn"
 local choices = {}
@@ -139,8 +140,8 @@ local function seed_tabatha_acceptance_flags()
     for _, bit in ipairs({ 2, 4, 5, 6, 8 }) do
         game.state["notebook_tip_flag_bit_" .. bit] = false
     end
-    game.state.mr_johnsons_flag_bit_2 = false
-    game.state.mr_johnsons_flag_bit_4 = false
+    game.state[E.JohnsonFact.MORTIMER_KNOWN] = false
+    game.state[E.JohnsonFact.CALEB_KNOWN] = false
 end
 
 local function location_task_result(expected, ...)
@@ -262,8 +263,8 @@ assert(game.state.notebook_tip_flag_bit_6 == true)
 assert(game.state.notebook_tip_flag_bit_8 == true)
 assert(game.state.field_mode_effect_flag_bit_2 == true)
 assert(game.state.field_mode_effect_flag_bit_4 == true)
-assert(game.state.mr_johnsons_flag_bit_2 == true)
-assert(game.state.mr_johnsons_flag_bit_4 == true)
+assert(game.state[E.JohnsonFact.MORTIMER_KNOWN] == true)
+assert(game.state[E.JohnsonFact.CALEB_KNOWN] == true)
 assert(service_calls[1][1] == "party" and
        service_calls[1][2] == "award_karma_1")
 assert(#speeches == 10 and speeches[1].event == "entry" and
@@ -338,15 +339,15 @@ game.state.tarislar_asked_shale = false
 for _, bit in ipairs({ 2, 4, 5, 6, 8 }) do
     game.state["notebook_tip_flag_bit_" .. bit] = nil
 end
-game.state.mr_johnsons_flag_bit_2 = nil
-game.state.mr_johnsons_flag_bit_4 = nil
+game.state[E.JohnsonFact.MORTIMER_KNOWN] = nil
+game.state[E.JohnsonFact.CALEB_KNOWN] = nil
 karma_award_result = "applied"
 local unresolved_story_state = location_task_result("source_boundary",
     "more", "shale", "more", "more", "more")
 assert(unresolved_story_state.reason:find("0x21862", 1, true))
 assert(#service_calls == 0 and
        game.state.notebook_tip_flag_bit_2 == nil and
-       game.state.mr_johnsons_flag_bit_2 == nil)
+       game.state[E.JohnsonFact.MORTIMER_KNOWN] == nil)
 
 -- A resolved story state with an unavailable runner service also leaves all
 -- acceptance flags untouched.
