@@ -1442,10 +1442,94 @@ bool make_semantic_dynamic_actor_rows(
         return false;
     }
 
+    using WeightedActorKey =
+        std::tuple<lua_Integer, lua_Integer, lua_Integer>;
+    std::map<WeightedActorKey,
+             std::vector<std::pair<lua_Integer, std::string>>>
+        weighted_actor_profiles;
+    for (std::size_t row_index = 0U; row_index < source.rows.size();
+         ++row_index) {
+        const auto& row = source.rows[row_index];
+        lua_Integer scene_id = 0;
+        lua_Integer context_group = 0;
+        lua_Integer random_sum = 0;
+        lua_Integer source_order = 0;
+        if (!row_integer(source, row, "scene", scene_id, path,
+                         row_index + 2U, failure) ||
+            !row_integer(source, row, "context_group", context_group, path,
+                         row_index + 2U, failure) ||
+            !row_integer(source, row, "random_sum", random_sum, path,
+                         row_index + 2U, failure) ||
+            !row_integer(source, row, "source_order", source_order, path,
+                         row_index + 2U, failure)) {
+            return false;
+        }
+        if (random_sum == 0xFF) {
+            continue;
+        }
+        const auto actor_name = value_at(source, row, "actor_name");
+        if (actor_name.empty()) {
+            failure = path.string() + ": row " +
+                std::to_string(row_index + 2U) +
+                " has no display identity for its weighted actor sequence";
+            return false;
+        }
+        weighted_actor_profiles[{scene_id, context_group, random_sum}]
+            .emplace_back(source_order, std::string(actor_name));
+    }
+    std::map<WeightedActorKey, std::string> weighted_actor_sequence_ids;
+    for (auto& [key, profiles] : weighted_actor_profiles) {
+        std::sort(profiles.begin(), profiles.end(),
+                  [](const auto& left, const auto& right) {
+                      return left.first < right.first;
+                  });
+        auto sequence_id = "scene" + std::to_string(std::get<0>(key)) +
+            ".world_effect.";
+        for (std::size_t index = 0U; index < profiles.size(); ++index) {
+            if (index != 0U) {
+                sequence_id += ".then.";
+            }
+            std::string actor_id;
+            bool previous_was_separator = false;
+            for (const auto character : profiles[index].second) {
+                const auto value = static_cast<unsigned char>(character);
+                if ((value >= 'A' && value <= 'Z') ||
+                    (value >= 'a' && value <= 'z') ||
+                    (value >= '0' && value <= '9')) {
+                    actor_id.push_back(
+                        value >= 'A' && value <= 'Z'
+                            ? static_cast<char>(value - 'A' + 'a')
+                            : static_cast<char>(value));
+                    previous_was_separator = false;
+                } else if (!actor_id.empty() && !previous_was_separator) {
+                    actor_id.push_back('_');
+                    previous_was_separator = true;
+                }
+            }
+            if (!actor_id.empty() && actor_id.back() == '_') {
+                actor_id.pop_back();
+            }
+            if (actor_id.empty()) {
+                failure = path.string() +
+                    ": weighted actor name cannot form a semantic identity";
+                return false;
+            }
+            sequence_id += actor_id;
+        }
+        if (sequence_id.size() > 128U) {
+            failure = path.string() +
+                ": weighted actor sequence identity is too long";
+            return false;
+        }
+        weighted_actor_sequence_ids.emplace(key, std::move(sequence_id));
+    }
+
     semantic = {};
     semantic.columns.reserve(source.columns.size());
     for (const auto& source_column : source.columns) {
         if (source_column == "selection_cell_offset" ||
+            source_column == "context_group" ||
+            source_column == "random_sum" ||
             source_column == "sequence_list_offset" ||
             source_column == "template_offset" ||
             source_column == "run_target_area" ||
@@ -1476,7 +1560,11 @@ bool make_semantic_dynamic_actor_rows(
             ? std::string("activity_probe_enabled")
             : source_column == "action_code"
                 ? std::string("action_id")
-                : std::string(semantic_actor_runtime_column(source_column));
+                : source_column == "scene"
+                    ? std::string("scene_id")
+                    : source_column == "source_order"
+                        ? std::string("sequence_order")
+                        : std::string(semantic_actor_runtime_column(source_column));
         const auto index = semantic.columns.size();
         if (!semantic.column_indexes.emplace(runtime_column, index).second) {
             failure = path.string() +
@@ -1484,12 +1572,10 @@ bool make_semantic_dynamic_actor_rows(
             return false;
         }
         semantic.columns.push_back(runtime_column);
-        if (source_column == "random_sum") {
-            const auto sequence_index = semantic.columns.size();
-            semantic.column_indexes.emplace("sequence_id", sequence_index);
-            semantic.columns.emplace_back("sequence_id");
-        }
     }
+    const auto sequence_id_index = semantic.columns.size();
+    semantic.column_indexes.emplace("sequence_id", sequence_id_index);
+    semantic.columns.emplace_back("sequence_id");
     const auto run_target_group_index = semantic.columns.size();
     semantic.column_indexes.emplace("run_target_group_id",
                                     run_target_group_index);
@@ -1499,6 +1585,9 @@ bool make_semantic_dynamic_actor_rows(
     semantic.columns.emplace_back("selection_kind");
 
     semantic.rows.reserve(source.rows.size());
+    std::map<std::pair<std::string, lua_Integer>,
+             std::vector<std::string>>
+        unique_weighted_actor_rows;
     for (std::size_t row_index = 0U; row_index < source.rows.size();
          ++row_index) {
         const auto& source_row = source.rows[row_index];
@@ -1578,10 +1667,15 @@ bool make_semantic_dynamic_actor_rows(
             run_target_group_id = std::string(*group_id);
             sequence_id = run_target_group_id;
         } else {
-            sequence_id = "field_encounter.scene." +
-                std::to_string(scene_id) + ".context." +
-                std::to_string(context_group) + ".weight." +
-                std::to_string(random_sum);
+            const auto found = weighted_actor_sequence_ids.find(
+                {scene_id, context_group, random_sum});
+            if (found == weighted_actor_sequence_ids.end()) {
+                failure = path.string() + ": row " +
+                    std::to_string(row_index + 2U) +
+                    " has no semantic identity for its weighted actor group";
+                return false;
+            }
+            sequence_id = found->second;
         }
 
         std::vector<std::string> runtime_row;
@@ -1590,6 +1684,8 @@ bool make_semantic_dynamic_actor_rows(
              ++column) {
             const auto& source_column = source.columns[column];
             if (source_column == "selection_cell_offset" ||
+                source_column == "context_group" ||
+                source_column == "random_sum" ||
                 source_column == "sequence_list_offset" ||
                 source_column == "template_offset" ||
                 source_column == "run_target_area" ||
@@ -1624,11 +1720,6 @@ bool make_semantic_dynamic_actor_rows(
             } else if (source_column == "placement_rule" &&
                        run_target_group_id != "none") {
                 runtime_row.emplace_back("explicit_actor_positions");
-            } else if (source_column == "random_sum" &&
-                       selection_kind != "weighted_encounter") {
-                // The source uses 0xFF as a list tag. Lua receives a named
-                // selection kind, not that source-table sentinel.
-                runtime_row.emplace_back("0");
             } else if (column == tag_column->second) {
                 // Keep the source interpretation as a named fact, never as
                 // the high-bit tagged template pointer.
@@ -1648,12 +1739,33 @@ bool make_semantic_dynamic_actor_rows(
             } else {
                 runtime_row.push_back(source_row[column]);
             }
-            if (column == sum_column->second) {
-                runtime_row.push_back(sequence_id);
-            }
         }
+        runtime_row.push_back(std::move(sequence_id));
         runtime_row.push_back(std::move(run_target_group_id));
         runtime_row.push_back(std::move(selection_kind));
+        if (runtime_row.back() == "weighted_encounter") {
+            lua_Integer sequence_order = 0;
+            if (!row_integer(source, source_row, "source_order",
+                             sequence_order, path, row_index + 2U,
+                             failure)) {
+                return false;
+            }
+            const auto sequence_column = semantic.column_indexes.at(
+                "sequence_id");
+            const auto key = std::make_pair(
+                runtime_row[sequence_column], sequence_order);
+            const auto [found, inserted] =
+                unique_weighted_actor_rows.emplace(key, runtime_row);
+            if (!inserted) {
+                if (found->second != runtime_row) {
+                    failure = path.string() + ": row " +
+                        std::to_string(row_index + 2U) +
+                        " conflicts with another semantic actor sequence";
+                    return false;
+                }
+                continue;
+            }
+        }
         semantic.rows.push_back(std::move(runtime_row));
     }
     return true;
@@ -2291,14 +2403,17 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
             std::vector<std::string_view> optional_numeric_columns;
             std::vector<std::string_view> boolean_columns{};
         };
-        const std::array<SourceTable, 4> source_tables{{
-            {"world-activity-outcomes.tsv", "world_activity_outcomes",
-             {"scene", "context_group", "random_sum"},
-             {"handler_offset"}},
+        const std::array<SourceTable, 6> source_tables{{
+            {"world-activity-events.tsv", "world_activity_outcomes",
+             {"scene_id", "chance_weight"}, {}, {}},
+            {"world-activity-event-content.tsv",
+             "world_activity_event_content", {}, {}, {}},
+            {"world-activity-event-choices.tsv",
+             "world_activity_event_choices", {"choice_order"}, {}, {}},
             {"entities/dynamic-world-activity-actors.tsv",
              "dynamic_world_activity_actors",
-             {"scene", "context_group", "random_sum", "source_order",
-               "action_code", "source_spawn_state_flags",
+             {"scene_id", "sequence_order",
+              "source_spawn_state_flags",
               "source_interaction_flags", "entity_kind",
                 "palette_line", "physical_meter",
               "action_delay_modifier", "combat_mental_meter",

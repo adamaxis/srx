@@ -3012,18 +3012,21 @@ int main() {
         return 1;
     }
 
+    // Midpoints select the source probability bands while passing Lua a
+    // normalized weighted-choice value: first pair, one sum-2 pair, and one
+    // sum-6 pair, respectively (ROM 0x59986 / 0x1D70E4).
     const auto redmond_creature_sequence =
-        scripts.resolve_field_encounter(0U, 0U, 0U);
+        scripts.resolve_field_encounter(0U, 0.02);
     const auto barrens_creature_sequence =
-        scripts.resolve_field_encounter(2U, 1U, 1U);
+        scripts.resolve_field_encounter(2U, 0.18);
     const auto lone_star_sequence =
-        scripts.resolve_field_encounter(1U, 1U, 1U);
+        scripts.resolve_field_encounter(1U, 0.18);
     const auto elven_mage_sequence =
-        scripts.resolve_field_encounter(3U, 0U, 0U);
+        scripts.resolve_field_encounter(3U, 0.02);
     const auto scene26_security_plate =
-        scripts.resolve_field_encounter(26U, 2U, 4U);
+        scripts.resolve_field_encounter(26U, 0.82);
     const auto redmond_grenade_seller =
-        scripts.resolve_field_encounter(0U, 2U, 4U);
+        scripts.resolve_field_encounter(0U, 0.82);
     if (!redmond_creature_sequence.has_value() ||
         !barrens_creature_sequence.has_value() ||
         !lone_star_sequence.has_value() ||
@@ -3042,6 +3045,85 @@ int main() {
                   << " detail=" << scripts.failure() << '\n';
         return 1;
     }
+    // ROM 0x59986 uses the scene's context group with the 0x1D70E4
+    // availability table. The two bound-five random values form 25 equally
+    // likely pairs; the weighted native content must preserve scene 2's
+    // resulting event and actor-sequence frequencies.
+    constexpr std::array<std::pair<std::string_view, std::uint8_t>, 6U>
+        scene_two_expected_outcomes{{
+            {"event.urban_disturbance", 1U},
+            {"event.haggard_man_collapse", 2U},
+            {"scene2.world_effect.weenr1", 8U},
+            {"scene2.world_effect.weenr1.then.weenr1", 10U},
+            {"event.alley_grenade_seller", 3U},
+            {"scene2.world_effect.weenr2.then.weenr1.then.weenr1", 1U},
+        }};
+    std::array<std::uint8_t, scene_two_expected_outcomes.size()>
+        scene_two_observed_outcomes{};
+    bool all_scene_two_selections_resolved = true;
+    for (std::size_t ticket = 0U; ticket < 25U; ++ticket) {
+        const auto outcome = scripts.resolve_field_encounter(
+            2U, (static_cast<double>(ticket) + 0.5) / 25.0);
+        if (!outcome.has_value()) {
+            all_scene_two_selections_resolved = false;
+            continue;
+        }
+        const auto found = std::find_if(
+            scene_two_expected_outcomes.begin(),
+            scene_two_expected_outcomes.end(),
+            [&outcome](const auto& expected) {
+                return expected.first == outcome->outcome_id;
+            });
+        if (found == scene_two_expected_outcomes.end()) {
+            all_scene_two_selections_resolved = false;
+            continue;
+        }
+        ++scene_two_observed_outcomes[static_cast<std::size_t>(
+            found - scene_two_expected_outcomes.begin())];
+    }
+    for (std::size_t index = 0U;
+         index < scene_two_expected_outcomes.size(); ++index) {
+        all_scene_two_selections_resolved =
+            all_scene_two_selections_resolved &&
+            scene_two_observed_outcomes[index] ==
+                scene_two_expected_outcomes[index].second;
+    }
+    if (!expect(all_scene_two_selections_resolved,
+                "weighted field outcomes did not preserve all 25 scene-2 source pairs")) {
+        std::cerr << "scene-2 weighted selection detail="
+                  << scripts.failure() << '\n';
+        return 1;
+    }
+    // The context lookup at 0x3312 and availability table at 0x1D70E4 cover
+    // all 56 field scenes. Exhaust every weighted slot in each scene so every
+    // extracted dialogue and dynamic actor group crosses the native boundary.
+    bool every_scene_outcome_resolved = true;
+    std::uint16_t first_unresolved_scene = 0U;
+    std::uint8_t first_unresolved_ticket = 0U;
+    std::string first_unresolved_detail;
+    for (std::uint16_t scene_id = 0U; scene_id < 56U; ++scene_id) {
+        for (std::uint8_t ticket = 0U; ticket < 25U; ++ticket) {
+            const auto outcome = scripts.resolve_field_encounter(
+                scene_id, (static_cast<double>(ticket) + 0.5) / 25.0);
+            if (!outcome.has_value() || outcome->scene_id != scene_id ||
+                outcome->outcome_id.empty()) {
+                if (every_scene_outcome_resolved) {
+                    first_unresolved_scene = scene_id;
+                    first_unresolved_ticket = ticket;
+                    first_unresolved_detail = scripts.failure();
+                }
+                every_scene_outcome_resolved = false;
+            }
+        }
+    }
+    if (!expect(every_scene_outcome_resolved,
+                "some weighted field scene outcome lacks semantic runtime content")) {
+        std::cerr << "unresolved scene=" << first_unresolved_scene
+                  << " weighted_ticket="
+                  << static_cast<unsigned>(first_unresolved_ticket)
+                  << " detail=" << first_unresolved_detail << '\n';
+        return 1;
+    }
     // ROM 0x55828 follows each linked actor's +0xA0 profile selector; the
     // host restores it from profile_id after Lua returns the selected actors.
     if (!expect(redmond_creature_sequence->actors.size() == 2U &&
@@ -3057,32 +3139,33 @@ int main() {
         std::cerr << scripts.failure() << '\n';
         return 1;
     }
+    // ROM 0x21036 exposes the concealed-plate MORE prompt; 0x2112C exposes
+    // Attack, buy-grenades, and leave choices. These are named intent IDs,
+    // while the offline extractor retains the source dispatcher evidence.
     if (!expect(
             scene26_security_plate->kind ==
                     ScriptFieldEncounterOutcomeKind::dialogue_event &&
-                scene26_security_plate->event_name ==
-                    "You look down and notice you are about to step on a "
-                    "concealed security plate." &&
-                scene26_security_plate->choice_commands ==
-                    std::array<std::optional<std::uint32_t>, 3>{
-                        0xD7U, std::nullopt, std::nullopt} &&
-                scene26_security_plate->choice_dispatch_targets ==
-                    std::array<std::optional<std::uint32_t>, 3>{
-                        0x245AAU, std::nullopt, std::nullopt} &&
-                scene26_security_plate->choice_dispatch_returns ==
-                    std::array<bool, 3>{false, false, false} &&
+                scene26_security_plate->outcome_id ==
+                    "event.concealed_security_plate" &&
+                scene26_security_plate->event_id ==
+                    "concealed_security_plate" &&
+                scene26_security_plate->choices.size() == 1U &&
+                scene26_security_plate->choices[0].id == "continue" &&
+                scene26_security_plate->choices[0].label ==
+                    "|          < MORE >" &&
                 redmond_grenade_seller->kind ==
                     ScriptFieldEncounterOutcomeKind::dialogue_event &&
-                redmond_grenade_seller->choice_commands ==
-                    std::array<std::optional<std::uint32_t>, 3>{
-                        0xF1U, 0xF2U, 0x121670U} &&
-                redmond_grenade_seller->choice_dispatch_targets ==
-                    std::array<std::optional<std::uint32_t>, 3>{
-                        0x24C4CU, 0x24C96U, 0x121670U} &&
-                redmond_grenade_seller->choice_dispatch_returns ==
-                    std::array<bool, 3>{false, false, true},
-            "world encounter prompts did not preserve typed source commands "
-            "and dispatch outcomes")) {
+                redmond_grenade_seller->outcome_id ==
+                    "event.alley_grenade_seller" &&
+                redmond_grenade_seller->event_id ==
+                    "alley_grenade_seller" &&
+                redmond_grenade_seller->choices.size() == 3U &&
+                redmond_grenade_seller->choices[0].id == "attack" &&
+                redmond_grenade_seller->choices[1].id == "buy_grenades" &&
+                redmond_grenade_seller->choices[2].id == "leave" &&
+                redmond_grenade_seller->choices[1].label ==
+                    "I'll take the Grenades.",
+            "world encounter prompts did not resolve to named events and player intents")) {
         std::cerr << scripts.failure() << '\n';
         return 1;
     }
@@ -3092,7 +3175,6 @@ int main() {
                     ScriptFieldEncounterOutcomeKind::
                         dynamic_world_effect_sequence &&
                 redmond_creature_sequence->scene_id == 0U &&
-                redmond_creature_sequence->random_sum == 0U &&
                 redmond_creature_sequence->actors.size() == 2U &&
                 redmond_creature_sequence->actors[0].actor_name ==
                     "Hell Hound" &&
@@ -3186,16 +3268,13 @@ int main() {
                 dynamic_world_effect_sequence &&
             actors->placement_policy ==
                 ScriptFieldEncounterPlacementPolicy::explicit_actor_positions &&
-            actors->scene_id == 15U && actors->context_group == 0U &&
-            actors->random_sum == 0U && actors->actors.size() == 4U &&
+            actors->scene_id == 15U && actors->actors.size() == 4U &&
             actors_in_source_order;
         if (!run_target_group_resolved) {
             std::cerr << "run target group=" << group.actor_group_id
                       << " resolved=" << actors.has_value();
             if (actors.has_value()) {
                 std::cerr << " scene=" << actors->scene_id
-                          << " context=" << actors->context_group
-                          << " sum=" << actors->random_sum
                           << " count=" << actors->actors.size();
                 for (const auto& actor : actors->actors) {
                     std::cerr << " [sequence=" << actor.sequence_id

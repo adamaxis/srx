@@ -29,14 +29,13 @@ local function context(overrides)
     return value
 end
 
-local function actor_row(source_order, sequence_id, placement_rule)
+local function actor_row(sequence_order, sequence_id, placement_rule,
+                         scene_id, selection_kind)
     return {
-        scene = 2,
-        context_group = 0,
-        random_sum = 0,
-        selection_kind = "named_sequence",
+        scene_id = scene_id or 2,
+        sequence_order = sequence_order,
+        selection_kind = selection_kind or "named_sequence",
         sequence_id = sequence_id or "field_alarm_reinforcements",
-        source_order = source_order,
         actor_name = "corp guard",
         profile_id = "corp_guard_k05_item06",
         action_kind = "item",
@@ -111,22 +110,77 @@ game = {
         world_content_data = {
             world_activity_outcomes = {
                 {
-                    scene = 0,
-                    context_group = 0,
-                    random_sum = 6,
+                    scene_id = 0,
+                    chance_weight = 3,
                     outcome_kind = "dialogue_event",
-                    event_name = "grenade seller",
-                    handler_offset = 0x2112C,
+                    outcome_id = "event.alley_grenade_seller",
+                },
+                {
+                    scene_id = 0,
+                    chance_weight = 22,
+                    outcome_kind = "dynamic_world_effect_sequence",
+                    outcome_id = "scene0.world_effect.test_creature",
+                    sequence_id = "scene0.world_effect.test_creature",
+                },
+                {
+                    scene_id = 1,
+                    chance_weight = 25,
+                    outcome_kind = "dialogue_event",
+                    outcome_id = "event.variable_choice_probe",
+                },
+            },
+            world_activity_event_content = {
+                {
+                    event_id = "alley_grenade_seller",
                     opening_text = "A man calls from an alley.",
-                    choice_1 = "<Attack!!>",
-                    choice_2 = "Buy the grenades.",
-                    choice_3 = "<Walk away.>",
-                    choice_1_command = "0xF1",
-                    choice_1_dispatch_target = "0x24C4C",
-                    choice_2_command = "0xF2",
-                    choice_2_dispatch_target = "0x24C96",
-                    choice_3_command = "0x121670",
-                    choice_3_dispatch_target = "return:0x121670",
+                },
+                {
+                    event_id = "variable_choice_probe",
+                    opening_text = "Choice-list interface fixture.",
+                },
+            },
+            world_activity_event_choices = {
+                {
+                    event_id = "alley_grenade_seller",
+                    choice_order = 1,
+                    choice_id = "attack",
+                    label = "<Attack!!>",
+                },
+                {
+                    event_id = "alley_grenade_seller",
+                    choice_order = 2,
+                    choice_id = "buy_grenades",
+                    label = "I'll take the Grenades.",
+                },
+                {
+                    event_id = "alley_grenade_seller",
+                    choice_order = 3,
+                    choice_id = "leave",
+                    label = "<Walk away.>",
+                },
+                {
+                    event_id = "variable_choice_probe",
+                    choice_order = 1,
+                    choice_id = "choice_one",
+                    label = "First option",
+                },
+                {
+                    event_id = "variable_choice_probe",
+                    choice_order = 2,
+                    choice_id = "choice_two",
+                    label = "Second option",
+                },
+                {
+                    event_id = "variable_choice_probe",
+                    choice_order = 3,
+                    choice_id = "choice_three",
+                    label = "Third option",
+                },
+                {
+                    event_id = "variable_choice_probe",
+                    choice_order = 4,
+                    choice_id = "choice_four",
+                    label = "Fourth option",
                 },
             },
             dynamic_world_activity_actors = {
@@ -136,6 +190,9 @@ game = {
                     "map-derived candidates around camera-relative map anchors"),
                 actor_row(0, "boris_strike_team",
                     "map-derived candidates around camera-relative map anchors"),
+                actor_row(0, "scene0.world_effect.test_creature",
+                    "open screen-edge candidates based on the current viewport and terrain",
+                    0, "weighted_encounter"),
             },
         },
     },
@@ -176,23 +233,57 @@ eq(Encounters.trigger_attempt(context({
    })), "select_alarm_sequence",
    "active alarm selects the fixed alternate list after a successful roll")
 
-local grenade_seller = Encounters.resolve(0, 2, 4)
+local grenade_seller = Encounters.resolve(0, 0.10)
 eq(grenade_seller.kind, "dialogue_event",
-   "Redmond sum-6 row resolves as a dialogue event")
-eq(grenade_seller.choice_1_command, 0xF1,
-   "hex command IDs become typed numeric commands")
-eq(grenade_seller.choice_1_dispatch_target, 0x24C4C,
-   "hex dispatcher addresses become typed targets")
-eq(grenade_seller.choice_2_command, 0xF2,
-   "second choice command is retained")
-eq(grenade_seller.choice_3_command, 0x121670,
-   "long prompt return value retains its full source width")
-eq(grenade_seller.choice_3_dispatch_target, 0x121670,
-   "prompt return value is retained as its typed value")
-eq(grenade_seller.choice_3_dispatch_returns, true,
-   "return-tagged choice target retains prompt-return semantics")
-eq(grenade_seller.choice_1_dispatch_returns, false,
-   "ordinary dispatcher target remains a handler call")
+   "weighted dialogue outcome resolves by its semantic content")
+eq(grenade_seller.outcome_id, "event.alley_grenade_seller",
+   "selected outcome exposes its stable content identity")
+eq(grenade_seller.event_id, "alley_grenade_seller",
+   "selected event has a stable gameplay identity")
+eq(grenade_seller.choices[1].id, "attack",
+   "first choice carries its named player intent")
+eq(grenade_seller.choices[1].label, "<Attack!!>",
+   "first choice retains its displayed label")
+eq(grenade_seller.choices[2].id, "buy_grenades",
+   "second choice carries its named player intent")
+eq(grenade_seller.choices[3].id, "leave",
+   "third choice carries its named player intent")
+eq(grenade_seller.handler_offset, nil,
+   "dialogue event state excludes its source handler address")
+eq(grenade_seller.choice_1_command, nil,
+   "dialogue event state excludes source command words")
+eq(grenade_seller.choice_1_dispatch_target, nil,
+   "dialogue event state excludes source dispatcher addresses")
+
+local weighted_actor_sequence = Encounters.resolve(0, 0.50)
+eq(weighted_actor_sequence.kind, "dynamic_world_effect_sequence",
+   "weighted actor group resolves from a semantic outcome")
+eq(weighted_actor_sequence.sequence_id,
+   "scene0.world_effect.test_creature",
+   "weighted actor group uses its content identity")
+eq(weighted_actor_sequence.scene_id, 0,
+   "encounter result keeps the logical scene identity")
+eq(weighted_actor_sequence.context_group, nil,
+   "encounter result hides the source context-table index")
+eq(weighted_actor_sequence.random_sum, nil,
+   "encounter result hides the source selector sum")
+eq(#weighted_actor_sequence.actors, 1,
+   "semantic group resolves its typed actor list")
+local selected_outcome_counts = {}
+for ticket = 0, 24 do
+    local selected = Encounters.resolve(0, (ticket + 0.5) / 25)
+    selected_outcome_counts[selected.outcome_id] =
+        (selected_outcome_counts[selected.outcome_id] or 0) + 1
+end
+eq(selected_outcome_counts["event.alley_grenade_seller"], 3,
+   "dialogue entry receives exactly its configured weight")
+eq(selected_outcome_counts["scene0.world_effect.test_creature"], 22,
+   "actor sequence receives exactly its configured weight")
+local variable_choice_event = Encounters.resolve(1, 0.50)
+eq(#variable_choice_event.choices, 4,
+   "dialogue choices are not fixed to three entries")
+eq(variable_choice_event.choices[4].id, "choice_four",
+   "later choice entries keep their semantic IDs")
 
 local alarm_sequence = Encounters.resolve_alarm_sequence(2)
 eq(alarm_sequence.kind, "dynamic_world_effect_sequence",
@@ -205,8 +296,8 @@ eq(alarm_sequence.actors[1].placement_rule,
    "open screen-edge candidates based on the current viewport and terrain",
    "alarm rows retain the source-derived placement metadata")
 eq(#alarm_sequence.actors, 2, "alarm table resolves its two actor pointers")
-eq(alarm_sequence.actors[1].source_order, 0,
-   "alarm actors retain source order")
+eq(alarm_sequence.actors[1].sequence_order, 0,
+   "alarm actors retain their list order")
 eq(alarm_sequence.actors[1].sequence_id, "field_alarm_reinforcements",
    "alarm actor belongs to the named reinforcement sequence")
 eq(alarm_sequence.actors[1].combatant.equipped_armor_id,

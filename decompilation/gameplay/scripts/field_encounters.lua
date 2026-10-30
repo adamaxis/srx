@@ -1,6 +1,8 @@
 -- ROM 0x1E166 / 0x59986 selection and the ordered dynamic actor lists.
--- C++ supplies the source PRNG draws and consumes the selected typed result;
--- event policy and encounter content remain in Lua.
+-- C++ supplies a normalized weighted-choice sample and consumes the typed
+-- result; event policy and encounter content remain in Lua.
+-- Event and choice IDs are semantic; source handler operands stay in the
+-- offline evidence table and never enter this runtime state.
 local Encounters = {}
 local E = require("enums")
 
@@ -17,40 +19,19 @@ local function content()
     return value
 end
 
-local function source_hex_word(value)
-    if value == nil or value == "" then
-        return nil, true
-    end
-    if type(value) ~= "string" then
-        return nil, false
-    end
-    local digits = value:match("^0[xX]([%da-fA-F]+)$")
-    if digits == nil then
-        return nil, false
-    end
-    local parsed = tonumber(digits, 16)
-    if not integer(parsed, 0, 0xffffffff) then
-        return nil, false
-    end
-    return parsed, true
+local function semantic_id(value)
+    return type(value) == "string" and
+           value:match("^[%w_.:-]+$") ~= nil
 end
 
-local function source_dispatch_target(value)
-    if value == nil or value == "" then
-        return nil, false, true
-    end
-    if type(value) ~= "string" then
-        return nil, false, false
-    end
-    local returns_from_prompt = value:sub(1, 7) == "return:"
-    local address = returns_from_prompt and value:sub(8) or value
-    local parsed, valid = source_hex_word(address)
-    return parsed, returns_from_prompt, valid
+local function selection_fraction(value)
+    return type(value) == "number" and value == value and
+           value >= 0 and value < 1
 end
 
 local function actor_from_row(row)
     local actor = {
-        source_order = row.source_order,
+        sequence_order = row.sequence_order,
         sequence_id = row.sequence_id,
         placement_rule = row.placement_rule,
         actor_name = row.actor_name,
@@ -116,7 +97,7 @@ local function ordered_actor_rows(data, predicate)
         end
     end
     table.sort(actors, function(left, right)
-        return left.source_order < right.source_order
+        return left.sequence_order < right.sequence_order
     end)
     return actors
 end
@@ -180,10 +161,9 @@ function Encounters.trigger_attempt(context)
     return "select_scene_outcome"
 end
 
-function Encounters.resolve(scene_id, first_roll, second_roll)
+function Encounters.resolve(scene_id, weighted_selection)
     if not integer(scene_id, 0, E.Scene.LAST_ID) or
-       not integer(first_roll, 0, 4) or
-       not integer(second_roll, 0, 4) then
+       not selection_fraction(weighted_selection) then
         return nil
     end
 
@@ -191,55 +171,67 @@ function Encounters.resolve(scene_id, first_roll, second_roll)
     if data == nil then
         return nil
     end
-    local sum = first_roll + second_roll
     local selected
+    local total_weight = 0
     for _, row in ipairs(data.world_activity_outcomes or {}) do
-        if row.scene == scene_id and row.random_sum == sum then
-            selected = row
-            break
+        if row.scene_id == scene_id then
+            if not integer(row.chance_weight, 1, 25) or
+               not semantic_id(row.outcome_id) then
+                return nil
+            end
+            total_weight = total_weight + row.chance_weight
         end
     end
-    if selected == nil then
+    if total_weight ~= 25 then
         return nil
     end
+    local ticket = math.floor(weighted_selection * total_weight)
+    local cumulative_weight = 0
+    for _, row in ipairs(data.world_activity_outcomes or {}) do
+        if row.scene_id == scene_id then
+            cumulative_weight = cumulative_weight + row.chance_weight
+            if ticket < cumulative_weight then
+                selected = row
+                break
+            end
+        end
+    end
+    if selected == nil then return nil end
 
     if selected.outcome_kind == "dialogue_event" then
-        local choice_1_command, choice_1_command_valid =
-            source_hex_word(selected.choice_1_command)
-        local choice_2_command, choice_2_command_valid =
-            source_hex_word(selected.choice_2_command)
-        local choice_3_command, choice_3_command_valid =
-            source_hex_word(selected.choice_3_command)
-        local choice_1_target, choice_1_returns, choice_1_target_valid =
-            source_dispatch_target(selected.choice_1_dispatch_target)
-        local choice_2_target, choice_2_returns, choice_2_target_valid =
-            source_dispatch_target(selected.choice_2_dispatch_target)
-        local choice_3_target, choice_3_returns, choice_3_target_valid =
-            source_dispatch_target(selected.choice_3_dispatch_target)
-        assert(choice_1_command_valid and choice_2_command_valid and
-               choice_3_command_valid and choice_1_target_valid and
-               choice_2_target_valid and choice_3_target_valid,
-               "world activity outcome contains an invalid choice route")
+        local event_id = selected.outcome_id:match("^event%.([%w_.:-]+)$")
+        assert(semantic_id(event_id),
+               "world activity outcome has no semantic event ID")
+        local opening_text
+        for _, event in ipairs(data.world_activity_event_content or {}) do
+            if event.event_id == event_id then
+                opening_text = event.opening_text
+                break
+            end
+        end
+        assert(type(opening_text) == "string" and opening_text ~= "",
+               "world activity event has no opening text")
+        local semantic_choices = {}
+        for _, choice in ipairs(data.world_activity_event_choices or {}) do
+            if choice.event_id == event_id then
+                assert(choice.choice_order == #semantic_choices + 1 and
+                       semantic_id(choice.choice_id) and
+                       type(choice.label) == "string" and
+                       choice.label ~= "",
+                       "world activity outcome has an invalid semantic choice")
+                semantic_choices[#semantic_choices + 1] = {
+                    id = choice.choice_id,
+                    label = choice.label,
+                }
+            end
+        end
         return {
             kind = "dialogue_event",
-            scene = scene_id,
-            context_group = selected.context_group,
-            random_sum = sum,
-            event_name = selected.event_name,
-            handler_offset = selected.handler_offset,
-            opening_text = selected.opening_text,
-            choice_1 = selected.choice_1,
-            choice_2 = selected.choice_2,
-            choice_3 = selected.choice_3,
-            choice_1_command = choice_1_command,
-            choice_1_dispatch_target = choice_1_target,
-            choice_1_dispatch_returns = choice_1_returns,
-            choice_2_command = choice_2_command,
-            choice_2_dispatch_target = choice_2_target,
-            choice_2_dispatch_returns = choice_2_returns,
-            choice_3_command = choice_3_command,
-            choice_3_dispatch_target = choice_3_target,
-            choice_3_dispatch_returns = choice_3_returns,
+            scene_id = scene_id,
+            outcome_id = selected.outcome_id,
+            event_id = event_id,
+            opening_text = opening_text,
+            choices = semantic_choices,
         }
     end
     if selected.outcome_kind ~= "dynamic_world_effect_sequence" then
@@ -249,7 +241,8 @@ function Encounters.resolve(scene_id, first_roll, second_roll)
     local actors = {}
     actors = ordered_actor_rows(data, function(row)
         return row.selection_kind == "weighted_encounter" and
-               row.scene == scene_id and row.random_sum == sum
+               row.scene_id == scene_id and
+               row.sequence_id == selected.outcome_id
     end)
     if #actors == 0 then
         return nil
@@ -267,20 +260,9 @@ function Encounters.resolve(scene_id, first_roll, second_roll)
     return {
         kind = "dynamic_world_effect_sequence",
         placement_policy = placement_policy,
-        scene = scene_id,
-        context_group = selected.context_group,
-        random_sum = sum,
-        sequence_id = string.format(
-            "field_encounter.scene.%d.context.%d.weight.%d",
-            scene_id, selected.context_group, sum),
-        event_name = selected.event_name,
-        opening_text = "",
-        choice_1 = "",
-        choice_2 = "",
-        choice_3 = "",
-        choice_1_dispatch_returns = false,
-        choice_2_dispatch_returns = false,
-        choice_3_dispatch_returns = false,
+        scene_id = scene_id,
+        outcome_id = selected.outcome_id,
+        sequence_id = selected.outcome_id,
         actors = actors,
     }
 end
@@ -307,7 +289,7 @@ function Encounters.resolve_sequence(scene_id, sequence_id)
         return nil
     end
     local actors = ordered_actor_rows(data, function(row)
-        return row.scene == scene_id and
+        return row.scene_id == scene_id and
                row.sequence_id == sequence_id and
                (row.selection_kind == "named_sequence" or
                 (row.selection_kind == "run_target_group" and
@@ -329,18 +311,9 @@ function Encounters.resolve_sequence(scene_id, sequence_id)
     return {
         kind = "dynamic_world_effect_sequence",
         placement_policy = placement_policy,
-        scene = scene_id,
-        context_group = 0,
-        random_sum = 0,
+        scene_id = scene_id,
+        outcome_id = sequence_id,
         sequence_id = sequence_id,
-        event_name = "source_sequence",
-        opening_text = "",
-        choice_1 = "",
-        choice_2 = "",
-        choice_3 = "",
-        choice_1_dispatch_returns = false,
-        choice_2_dispatch_returns = false,
-        choice_3_dispatch_returns = false,
         actors = actors,
     }
 end

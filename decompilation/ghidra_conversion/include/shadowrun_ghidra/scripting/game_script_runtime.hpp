@@ -1724,25 +1724,24 @@ struct ScriptWorldActivityActor {
     ScriptCombatantFacts combatant{};
 };
 
-// The selector result is data, not an event-specific C++ switch. Dialogue
-// handler continuations remain source-owned until their respective branches
-// have been traced and ported; dynamic actor lists are fully typed here.
+struct ScriptFieldEncounterChoice {
+    std::string id;
+    std::string label;
+};
+
+// Encounter content reaches the host as semantic IDs and typed actor records.
+// Dialogue behavior remains an explicit boundary until its Lua events are ported.
 struct ScriptFieldEncounterOutcome {
     ScriptFieldEncounterOutcomeKind kind =
         ScriptFieldEncounterOutcomeKind::dialogue_event;
     ScriptFieldEncounterPlacementPolicy placement_policy =
         ScriptFieldEncounterPlacementPolicy::screen_edge_candidates;
     std::uint16_t scene_id = 0;
-    std::uint8_t context_group = 0;
-    std::uint8_t random_sum = 0;
+    std::string outcome_id;
     std::string sequence_id;
-    std::string event_name;
-    std::uint32_t handler_offset = 0;
+    std::string event_id;
     std::string opening_text;
-    std::array<std::string, 3> choices{};
-    std::array<std::optional<std::uint32_t>, 3> choice_commands{};
-    std::array<std::optional<std::uint32_t>, 3> choice_dispatch_targets{};
-    std::array<bool, 3> choice_dispatch_returns{};
+    std::vector<ScriptFieldEncounterChoice> choices;
     std::vector<ScriptFieldEncounterActor> actors;
 };
 
@@ -2390,9 +2389,10 @@ public:
     std::optional<ScriptFieldSafeDecision> resolve_field_safe_action(
         std::uint16_t scene_id, bool projected_terrain_event_published,
         bool fuchi_cyberheart_safe_armed);
+    // Normalized weighted-choice position in [0, 1); the host keeps source
+    // random mechanics behind this content-facing boundary.
     std::optional<ScriptFieldEncounterOutcome> resolve_field_encounter(
-        std::uint16_t scene_id, std::uint8_t first_roll,
-        std::uint8_t second_roll);
+        std::uint16_t scene_id, double weighted_selection);
     std::optional<ScriptFieldEncounterOutcome> resolve_field_actor_sequence(
         std::uint16_t scene_id, std::string_view sequence_id);
     std::optional<std::vector<ScriptWorldActivityActor>>
@@ -2553,8 +2553,7 @@ private:
                                            std::string_view list_id);
     std::optional<ScriptFieldEncounterOutcome>
     resolve_field_encounter_impl(std::uint16_t scene_id,
-                                 std::uint8_t first_roll,
-                                 std::uint8_t second_roll,
+                                 double weighted_selection,
                                  std::optional<std::string_view>
                                      source_sequence_id = std::nullopt);
     struct Impl;

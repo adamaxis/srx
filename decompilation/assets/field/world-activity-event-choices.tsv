@@ -1,0 +1,44 @@
+event_id	choice_order	choice_id	label
+alley_grenade_seller	1	attack	<Attack!!>
+alley_grenade_seller	2	buy_grenades	I'll take the Grenades.
+alley_grenade_seller	3	leave	<Walk away.>
+arrowhead_search	1	attack	<Attack!!>
+arrowhead_search	2	help_search	<Help them.>
+arrowhead_search	3	leave	<Walk away.>
+being_stalked	1	attack	<Attack!!>
+being_stalked	2	take_cover	<Duck for cover.>
+being_stalked	3	wait_for_information	<Wait for more information.>
+building_badge_check	1	continue	|          < MORE >
+company_man_confrontation	1	attack	<Attack!!>
+company_man_confrontation	2	talk	<Talk to him.>
+company_man_confrontation	3	leave	<Walk away.>
+company_man_toothpick	1	attack	<Attack!!>
+company_man_toothpick	2	insult	Slot off, frag-face!!!
+company_man_toothpick	3	leave	<Walk away.>
+concealed_security_plate	1	continue	|          < MORE >
+custodian_pass_check	1	ask_for_information	I'm looking for some information.
+custodian_pass_check	2	leave	<Walk away.>
+faction_disturbance	1	continue	|          < MORE >
+flustered_woman	1	continue	|          < MORE >
+haggard_man_collapse	1	continue	|          < MORE >
+hidden_camera	1	continue	|          < MORE >
+injured_person	1	continue	|          < MORE >
+laser_detection_field	1	continue	|          < MORE >
+lone_star_patrol	1	continue	|          < MORE >
+lone_star_patrol_stop	1	attack	<Attack!!>
+lone_star_patrol_stop	2	talk	<Talk to them.>
+lone_star_patrol_stop	3	run_away	<Run away!>
+management_terminal	1	hack_database	<Hack the database.>
+management_terminal	2	leave	<Walk away.>
+open_security_panel	1	rewire_security_panel	<Re-wire the panel.>
+open_security_panel	2	leave	<Walk away.>
+phantasmal_watcher	1	accept_watcher_request	Take me to him.  I'll help.
+phantasmal_watcher	2	insult	Slot off, frag-face!!!
+renraku_security_stop	1	continue	|          < MORE >
+renraku_strike_team	1	continue	|          < MORE >
+scientist_encounter	1	ask_for_information	I'm looking for some information.
+scientist_encounter	2	leave	<Walk away.>
+security_guard_stop	1	continue	|          < MORE >
+security_mage_stop	1	continue	|          < MORE >
+urban_disturbance	1	continue	|          < MORE >
+wilderness_disturbance	1	continue	|          < MORE >

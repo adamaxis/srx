@@ -136,6 +136,191 @@ int main() {
         vampire_profile_binding != action_profile_bindings.end() &&
             unresolved_profile_binding != action_profile_bindings.end(),
         "native actor profile bindings were not retained outside Lua");
+    lua_getfield(state, data_table, "world_activity_outcomes");
+    const auto encounter_rows = lua_absindex(state, -1);
+    bool encounter_rows_are_semantic =
+        lua_istable(state, encounter_rows) != 0 &&
+        lua_rawlen(state, encounter_rows) > 0U;
+    bool found_named_grenade_seller = false;
+    constexpr std::array<const char*, 29U> source_only_encounter_fields{{
+        "event_name", "handler_offset", "prompt_record_offset",
+        "resource_bundle_offset", "choice_1_command",
+        "choice_1_dispatch_target", "choice_2_command",
+        "choice_2_dispatch_target", "choice_3_command",
+        "choice_3_dispatch_target", "activation", "selection_cell_offset",
+        "selection_pointer_offset", "selected_target_offset", "map_position",
+        "roll_pairs", "roll_pair_count", "context_group", "random_sum",
+        "scene", "choice_1", "choice_1_id", "choice_2",
+        "choice_2_id", "choice_3", "choice_3_id",
+        "event_id", "sequence_id", "opening_text",
+    }};
+    std::array<std::uint32_t, 56U> encounter_weight_by_scene{};
+    for (std::size_t index = 1U;
+         index <= lua_rawlen(state, encounter_rows); ++index) {
+        lua_rawgeti(state, encounter_rows, static_cast<lua_Integer>(index));
+        const auto row = lua_absindex(state, -1);
+        for (const auto* field : source_only_encounter_fields) {
+            encounter_rows_are_semantic = encounter_rows_are_semantic &&
+                field_is_nil(state, row, field);
+        }
+        const bool dialogue_event =
+            field_string_is(state, row, "outcome_kind", "dialogue_event");
+        if (dialogue_event) {
+            encounter_rows_are_semantic = encounter_rows_are_semantic &&
+                field_is_nil(state, row, "event_id") &&
+                field_is_nil(state, row, "sequence_id") &&
+                field_is_nil(state, row, "opening_text");
+        } else if (field_string_is(
+                       state, row, "outcome_kind",
+                       "dynamic_world_effect_sequence")) {
+            encounter_rows_are_semantic = encounter_rows_are_semantic &&
+                field_is_nil(state, row, "event_id") &&
+                field_is_nil(state, row, "sequence_id") &&
+                field_is_nil(state, row, "opening_text");
+        }
+        std::uint32_t scene_id = 56U;
+        std::uint32_t chance_weight = 0U;
+        lua_getfield(state, row, "scene_id");
+        const bool scene_is_integer = lua_isinteger(state, -1) != 0 &&
+            lua_tointeger(state, -1) >= 0 &&
+            lua_tointeger(state, -1) < 56;
+        if (scene_is_integer) {
+            scene_id = static_cast<std::uint32_t>(lua_tointeger(state, -1));
+        }
+        lua_pop(state, 1);
+        lua_getfield(state, row, "chance_weight");
+        const bool weight_is_integer = lua_isinteger(state, -1) != 0 &&
+            lua_tointeger(state, -1) > 0 &&
+            lua_tointeger(state, -1) <= 25;
+        if (weight_is_integer) {
+            chance_weight = static_cast<std::uint32_t>(
+                lua_tointeger(state, -1));
+        }
+        lua_pop(state, 1);
+        lua_getfield(state, row, "outcome_id");
+        const bool outcome_id_is_text = lua_type(state, -1) == LUA_TSTRING &&
+            lua_tostring(state, -1) != nullptr &&
+            lua_tostring(state, -1)[0] != '\0';
+        lua_pop(state, 1);
+        encounter_rows_are_semantic = encounter_rows_are_semantic &&
+            scene_is_integer && weight_is_integer && outcome_id_is_text;
+        if (scene_is_integer && weight_is_integer) {
+            encounter_weight_by_scene[scene_id] += chance_weight;
+        }
+        found_named_grenade_seller = found_named_grenade_seller ||
+            (field_integer_is(state, row, "scene_id", 0) &&
+             field_integer_is(state, row, "chance_weight", 3) &&
+             field_string_is(state, row, "outcome_id",
+                             "event.alley_grenade_seller"));
+        lua_pop(state, 1);
+    }
+    for (const auto weight : encounter_weight_by_scene) {
+        encounter_rows_are_semantic = encounter_rows_are_semantic &&
+            weight == 25U;
+    }
+    valid = expect(encounter_rows_are_semantic && found_named_grenade_seller,
+                   "Lua encounter catalog leaked source selectors or lost weighted semantic events") &&
+            valid;
+    lua_pop(state, 1);
+
+    lua_getfield(state, data_table, "world_activity_event_content");
+    const auto encounter_event_content = lua_absindex(state, -1);
+    bool event_content_is_semantic =
+        lua_istable(state, encounter_event_content) != 0 &&
+        lua_rawlen(state, encounter_event_content) > 0U;
+    bool found_grenade_seller_content = false;
+    for (std::size_t index = 1U;
+         index <= lua_rawlen(state, encounter_event_content); ++index) {
+        lua_rawgeti(state, encounter_event_content,
+                    static_cast<lua_Integer>(index));
+        const auto row = lua_absindex(state, -1);
+        lua_getfield(state, row, "opening_text");
+        const bool opening_text_is_present =
+            lua_type(state, -1) == LUA_TSTRING &&
+            lua_tostring(state, -1) != nullptr &&
+            lua_tostring(state, -1)[0] != '\0';
+        lua_pop(state, 1);
+        for (const auto* field : {"handler_offset", "command",
+                                  "dispatch_target", "resource_bundle_offset"}) {
+            event_content_is_semantic = event_content_is_semantic &&
+                field_is_nil(state, row, field);
+        }
+        lua_getfield(state, row, "event_id");
+        const bool event_id_is_text = lua_type(state, -1) == LUA_TSTRING &&
+            lua_tostring(state, -1) != nullptr && lua_tostring(state, -1)[0] != '\0';
+        const std::string event_id = event_id_is_text
+            ? lua_tostring(state, -1) : "";
+        lua_pop(state, 1);
+        event_content_is_semantic = event_content_is_semantic &&
+            event_id_is_text && opening_text_is_present;
+        found_grenade_seller_content = found_grenade_seller_content ||
+            (event_id == "alley_grenade_seller" && opening_text_is_present);
+        lua_pop(state, 1);
+    }
+    valid = expect(event_content_is_semantic && found_grenade_seller_content,
+                   "Lua event text was not loaded as named content") && valid;
+    lua_pop(state, 1);
+
+    lua_getfield(state, data_table, "world_activity_event_choices");
+    const auto encounter_choice_rows = lua_absindex(state, -1);
+    bool encounter_choices_are_semantic =
+        lua_istable(state, encounter_choice_rows) != 0 &&
+        lua_rawlen(state, encounter_choice_rows) > 0U;
+    std::array<bool, 3U> found_grenade_choices{};
+    for (std::size_t index = 1U;
+         index <= lua_rawlen(state, encounter_choice_rows); ++index) {
+        lua_rawgeti(state, encounter_choice_rows,
+                    static_cast<lua_Integer>(index));
+        const auto row = lua_absindex(state, -1);
+        for (const auto* field : {"command", "command_word", "dispatch_target",
+                                  "handler_offset", "choice_1", "choice_2",
+                                  "choice_3"}) {
+            encounter_choices_are_semantic =
+                encounter_choices_are_semantic && field_is_nil(state, row, field);
+        }
+        lua_getfield(state, row, "choice_order");
+        const bool order_is_valid = lua_isinteger(state, -1) != 0 &&
+            lua_tointeger(state, -1) > 0;
+        const auto choice_order = order_is_valid
+            ? static_cast<std::size_t>(lua_tointeger(state, -1)) : 0U;
+        lua_pop(state, 1);
+        lua_getfield(state, row, "event_id");
+        const bool event_id_is_text = lua_type(state, -1) == LUA_TSTRING &&
+            lua_tostring(state, -1) != nullptr && lua_tostring(state, -1)[0] != '\0';
+        const std::string event_id = event_id_is_text
+            ? lua_tostring(state, -1) : "";
+        lua_pop(state, 1);
+        lua_getfield(state, row, "choice_id");
+        const bool choice_id_is_text = lua_type(state, -1) == LUA_TSTRING &&
+            lua_tostring(state, -1) != nullptr && lua_tostring(state, -1)[0] != '\0';
+        const std::string choice_id = choice_id_is_text
+            ? lua_tostring(state, -1) : "";
+        lua_pop(state, 1);
+        lua_getfield(state, row, "label");
+        const bool label_is_text = lua_type(state, -1) == LUA_TSTRING &&
+            lua_tostring(state, -1) != nullptr && lua_tostring(state, -1)[0] != '\0';
+        lua_pop(state, 1);
+        encounter_choices_are_semantic = encounter_choices_are_semantic &&
+            order_is_valid && event_id_is_text && choice_id_is_text &&
+            label_is_text;
+        if (event_id == "alley_grenade_seller" && choice_order >= 1U &&
+            choice_order <= found_grenade_choices.size()) {
+            constexpr std::array<std::string_view, 3U> grenade_choice_ids{{
+                "attack", "buy_grenades", "leave",
+            }};
+            encounter_choices_are_semantic = encounter_choices_are_semantic &&
+                choice_id == grenade_choice_ids[choice_order - 1U];
+            found_grenade_choices[choice_order - 1U] = true;
+        }
+        lua_pop(state, 1);
+    }
+    valid = expect(encounter_choices_are_semantic &&
+                       std::all_of(found_grenade_choices.begin(),
+                                   found_grenade_choices.end(),
+                                   [](const bool found) { return found; }),
+                   "Lua event choices were not loaded as variable-length semantic rows") &&
+            valid;
+    lua_pop(state, 1);
     constexpr std::array<std::string_view, 7U> armor_ids{{
         "armor_vest", "armor_clothing", "armor_jacket",
         "vest_with_plates", "lined_duster", "light_combat_armor",
@@ -314,6 +499,7 @@ int main() {
     bool dynamic_actor_rows_are_semantic = true;
     bool found_alarm_sequence = false;
     bool found_boris_sequence = false;
+    bool found_weighted_creature_sequence = false;
     for (std::size_t index = 1U; index <= lua_rawlen(state,
                                                      dynamic_actor_rows);
          ++index) {
@@ -329,6 +515,13 @@ int main() {
                 std::string_view(sequence_id) == "field_alarm_reinforcements";
             found_boris_sequence = found_boris_sequence ||
                 std::string_view(sequence_id) == "boris_strike_team";
+            found_weighted_creature_sequence =
+                found_weighted_creature_sequence ||
+                (std::string_view(sequence_id) ==
+                     "scene2.world_effect.weenr1" &&
+                 field_integer_is(state, row, "scene_id", 2) &&
+                 field_string_is(state, row, "selection_kind",
+                                 "weighted_encounter"));
         }
         lua_pop(state, 1);
         lua_getfield(state, row, "activity_probe_enabled");
@@ -361,6 +554,23 @@ int main() {
         lua_pop(state, 1);
         dynamic_actor_rows_are_semantic = dynamic_actor_rows_are_semantic &&
             field_is_nil(state, row, "action_code");
+        for (const auto* field : {
+                 "scene", "context_group", "random_sum", "source_order",
+                 "selection_cell_offset", "sequence_list_offset",
+                 "template_offset", "tagged_template",
+                 "source_spawn_state_flags", "source_interaction_flags"}) {
+            dynamic_actor_rows_are_semantic =
+                dynamic_actor_rows_are_semantic && field_is_nil(state, row, field);
+        }
+        lua_getfield(state, row, "scene_id");
+        dynamic_actor_rows_are_semantic = dynamic_actor_rows_are_semantic &&
+            lua_isinteger(state, -1) != 0 && lua_tointeger(state, -1) >= 0 &&
+            lua_tointeger(state, -1) < 56;
+        lua_pop(state, 1);
+        lua_getfield(state, row, "sequence_order");
+        dynamic_actor_rows_are_semantic = dynamic_actor_rows_are_semantic &&
+            lua_isinteger(state, -1) != 0 && lua_tointeger(state, -1) >= 0;
+        lua_pop(state, 1);
         for (const auto* field : {"primary_action_profile_enabled",
                                   "secondary_action_profile_enabled"}) {
             lua_getfield(state, row, field);
@@ -433,7 +643,8 @@ int main() {
         lua_pop(state, 1);
     }
     valid = expect(dynamic_actor_rows_are_semantic && found_alarm_sequence &&
-                       found_boris_sequence && found_named_armor,
+                       found_boris_sequence &&
+                       found_weighted_creature_sequence && found_named_armor,
                    "dynamic actor catalog leaked source pointers or failed "
                    "to resolve named sequences") && valid;
     lua_pop(state, 1);

@@ -287,10 +287,21 @@ std::int16_t FieldSceneRuntime::select_field_world_effect_sequence() {
         source_boundary("field.random_encounter.invalid_selector_draw");
         return 1;
     }
+    // The source's 16x9 table at 0x1D70E4 gives each selector sum the
+    // corresponding number of pairs from two bound-five draws. Flatten that
+    // distribution into a generic weighted-choice fraction before Lua sees it.
+    const auto sum = static_cast<unsigned>(first + second);
+    const auto pairs_before_sum = sum <= 4U
+        ? (sum * (sum + 1U)) / 2U
+        : 25U - (((9U - sum) * (10U - sum)) / 2U);
+    const auto first_for_sum = sum > 4U ? sum - 4U : 0U;
+    const auto ticket = pairs_before_sum +
+        static_cast<unsigned>(first) - first_for_sum;
+    const auto weighted_selection =
+        (static_cast<double>(ticket) + 0.5) / 25.0;
     auto outcome = game_scripts_.resolve_field_encounter(
         state_.field_scene_buffers.scene_reference,
-        static_cast<std::uint8_t>(first),
-        static_cast<std::uint8_t>(second));
+        weighted_selection);
     if (!outcome.has_value()) {
         pending_field_encounter_outcome_.reset();
         failure_ = game_scripts_.failure();
@@ -534,7 +545,8 @@ void FieldSceneRuntime::trigger_field_world_effect_sequence() {
         }
         if (pending_field_encounter_outcome_->kind ==
             scripting::ScriptFieldEncounterOutcomeKind::dialogue_event) {
-            failure_ = "ROM random-event dialogue handler is selected but not connected";
+            failure_ = "field event has no Lua behavior: " +
+                pending_field_encounter_outcome_->event_id;
             source_boundary(
                 "field.random_encounter.dialogue_handler_unimplemented");
             return;

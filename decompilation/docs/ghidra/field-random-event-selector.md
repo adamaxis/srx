@@ -1078,10 +1078,24 @@ an independent game capture or the actor's complete render path is traced.
 ## Extracted coverage
 
 `decompilation/ghidra_conversion/tools/rom_research/extract_world_activity_outcomes.py` creates
-`assets/field/world-activity-outcomes.tsv` from the US ROM. The
-table has 504 rows: nine sums for each of 56 contexts. It records all 246
-enabled scene/sum cells, their selected handler, prompt text and choices, plus
-the 258 cells that use the dynamic sequence path. The graphics importer also
+four files. `assets/field/world-activity-outcomes.tsv` is the source evidence
+table for the map viewer and this audit; it retains handler, command,
+dispatcher, and pointer provenance outside the runtime.
+`assets/field/world-activity-events.tsv` contains weighted scene outcomes. It
+combines repeated outcomes into semantic event or actor-sequence IDs, using
+the number of valid roll pairs as each entry's `chance_weight`. The host turns
+its random sample into a normalized weighted-selection fraction; Lua sees
+those IDs and does not receive the ROM context-group index, selector sum,
+handler address, or prompt command/dispatcher values.
+`assets/field/world-activity-event-content.tsv` stores opening text by event
+ID, while `assets/field/world-activity-event-choices.tsv` stores ordered,
+variable-length choice rows by event ID. These runtime files contain only
+gameplay content and stable IDs. The current weighted projection has 389
+scene/outcome rows, with total weight 25 in each scene.
+The source evidence table has 504 rows: nine sums for each of 56 contexts. It
+records all 246 enabled scene/sum cells, their selected handler, prompt text,
+choice command words and dispatcher targets, plus the 258 cells that use the
+dynamic sequence path. The graphics importer also
 creates `field/entities/dynamic-world-activity-actors.tsv` and the actor-type
 sprites referenced there. It contains 731 scene/sum/actor rows covering all
 258 dynamic outcomes, 19 named templates, and 13 entity-kind/palette pairs.
@@ -1100,11 +1114,13 @@ python decompilation/ghidra_conversion/tools/rom_research/extract_world_activity
 ## Native runtime status (partial)
 
 The Qt field loop supplies typed state to Lua's `field_encounters` module,
-which owns the ROM cadence/eligibility and probability decisions. Qt advances
-the source PRNG only after Lua reports that blockers and the `0x3FF` cadence
-allow a probability draw. Lua then decides whether to miss, forward an active
-sequence, or select a scene outcome; the host supplies the two bounded draws
-only for the selector branch. Zero-cell results spawn the listed actors
+which owns encounter eligibility and probability decisions. Qt advances the
+source PRNG only after Lua reports that blockers and the `0x3FF` cadence allow
+a probability draw. Lua then decides whether to miss, forward an active
+sequence, or select a scene outcome. For the selector branch the host maps the
+random sample to the weighted-choice fraction and Lua selects among semantic
+content entries; the source's pair-of-rolls and table-index representation
+stays outside Lua. Zero-cell results spawn the listed actors
 through the source edge-placement and entity/effect slot rules, then call Lua
 for behavior and render heartbeats. Dynamic actor entry art is extracted by
 entity kind and direction; entry delay and finite C0B2 frame count are passed

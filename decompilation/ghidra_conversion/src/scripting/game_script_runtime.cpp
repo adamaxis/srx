@@ -8914,9 +8914,8 @@ GameScriptRuntime::resolve_field_safe_action(
 
 std::optional<ScriptFieldEncounterOutcome>
 GameScriptRuntime::resolve_field_encounter(
-    const std::uint16_t scene_id, const std::uint8_t first_roll,
-    const std::uint8_t second_roll) {
-    return resolve_field_encounter_impl(scene_id, first_roll, second_roll);
+    const std::uint16_t scene_id, const double weighted_selection) {
+    return resolve_field_encounter_impl(scene_id, weighted_selection);
 }
 
 std::optional<ScriptFieldEncounterOutcome>
@@ -8926,7 +8925,7 @@ GameScriptRuntime::resolve_field_actor_sequence(
         impl_->failure = "field actor sequence id is invalid";
         return std::nullopt;
     }
-    return resolve_field_encounter_impl(scene_id, 0U, 0U, sequence_id);
+    return resolve_field_encounter_impl(scene_id, 0.5, sequence_id);
 }
 
 std::optional<std::vector<ScriptWorldActivityActor>>
@@ -9630,8 +9629,7 @@ GameScriptRuntime::world_activity_actors_for_list_id_impl(
 
 std::optional<ScriptFieldEncounterOutcome>
 GameScriptRuntime::resolve_field_encounter_impl(
-    const std::uint16_t scene_id, const std::uint8_t first_roll,
-    const std::uint8_t second_roll,
+    const std::uint16_t scene_id, const double weighted_selection,
     const std::optional<std::string_view> source_sequence_id) {
     auto* state = impl_->state;
     if (state == nullptr) {
@@ -9649,10 +9647,11 @@ GameScriptRuntime::resolve_field_encounter_impl(
     const bool run_target_actor_group = source_sequence &&
         is_run_target_actor_group_id(*source_sequence_id);
     if ((!source_sequence &&
-         (scene_id > 55U || first_roll > 4U || second_roll > 4U)) ||
+         (scene_id > 55U || !std::isfinite(weighted_selection) ||
+          weighted_selection < 0.0 || weighted_selection >= 1.0)) ||
         (source_sequence &&
          (scene_id > 55U || !valid_identifier(*source_sequence_id)))) {
-        return fail("field encounter request is outside the ROM table bounds");
+        return fail("field encounter request has invalid scene or weighted selection");
     }
     if (!impl_->push_module("field_encounters")) {
         return fail("field_encounters.lua module is missing");
@@ -9671,11 +9670,10 @@ GameScriptRuntime::resolve_field_encounter_impl(
                         source_sequence_id->size());
     } else {
         lua_pushinteger(state, scene_id);
-        lua_pushinteger(state, first_roll);
-        lua_pushinteger(state, second_roll);
+        lua_pushnumber(state, weighted_selection);
     }
     ScopedInstructionBudget instruction_budget(state);
-    if (lua_pcall(state, source_sequence ? 2 : 3, 1, 0) != LUA_OK) {
+    if (lua_pcall(state, 2, 1, 0) != LUA_OK) {
         return fail(std::string("field_encounters.") + resolver_name +
                     " failed");
     }
@@ -9693,21 +9691,15 @@ GameScriptRuntime::resolve_field_encounter_impl(
     ScriptFieldEncounterOutcome outcome{};
     std::string kind_name;
     std::uint32_t parsed_scene = 0U;
-    std::uint32_t context_group = 0U;
-    std::uint32_t random_sum = 0U;
     if (!read_field_string(state, result_index, "kind", kind_name) ||
-        !read_field_integer(state, result_index, "scene", 55U,
+        !read_field_integer(state, result_index, "scene_id", 55U,
                             parsed_scene) ||
-        !read_field_integer(state, result_index, "context_group", 15U,
-                            context_group) ||
-        !read_field_integer(state, result_index, "random_sum",
-                            8U, random_sum) ||
         parsed_scene != scene_id ||
-        (source_sequence && (context_group != 0U || random_sum != 0U)) ||
-        (!source_sequence &&
-         random_sum != static_cast<std::uint32_t>(first_roll + second_roll))) {
+        !read_field_string(state, result_index, "outcome_id",
+                           outcome.outcome_id) ||
+        !valid_identifier(outcome.outcome_id)) {
         return fail(std::string("field_encounters.") + resolver_name +
-                    " returned invalid selector facts");
+                    " returned invalid semantic outcome facts");
     }
     if (kind_name == "dialogue_event") {
         outcome.kind = ScriptFieldEncounterOutcomeKind::dialogue_event;
@@ -9751,57 +9743,57 @@ GameScriptRuntime::resolve_field_encounter_impl(
         }
     }
     outcome.scene_id = static_cast<std::uint16_t>(parsed_scene);
-    outcome.context_group = static_cast<std::uint8_t>(context_group);
-    outcome.random_sum = static_cast<std::uint8_t>(random_sum);
 
-    std::optional<std::uint32_t> handler_offset;
-    if (!read_field_text(state, result_index, "event_name",
-                         outcome.event_name, 128U) ||
-        !read_optional_field_u32(state, result_index, "handler_offset",
-                                 0x1FFFFFU, handler_offset) ||
-        !read_field_text(state, result_index, "opening_text",
-                         outcome.opening_text)) {
-        return fail("field_encounters.resolve returned invalid event text");
-    }
-    outcome.handler_offset = handler_offset.value_or(0U);
-    constexpr std::array<const char*, 3> choice_fields{
-        "choice_1", "choice_2", "choice_3"};
-    constexpr std::array<const char*, 3> command_fields{
-        "choice_1_command", "choice_2_command", "choice_3_command"};
-    constexpr std::array<const char*, 3> target_fields{
-        "choice_1_dispatch_target", "choice_2_dispatch_target",
-        "choice_3_dispatch_target"};
-    constexpr std::array<const char*, 3> target_return_fields{
-        "choice_1_dispatch_returns", "choice_2_dispatch_returns",
-        "choice_3_dispatch_returns"};
-    for (std::size_t index = 0U; index < outcome.choices.size(); ++index) {
-        std::optional<std::uint32_t> command;
-        if (!read_field_text(state, result_index, choice_fields[index],
-                             outcome.choices[index], 512U)) {
-            return fail(std::string("field_encounters.") + resolver_name +
-                        " returned invalid " + choice_fields[index]);
+    if (outcome.kind == ScriptFieldEncounterOutcomeKind::dialogue_event) {
+        if (!read_field_string(state, result_index, "event_id",
+                               outcome.event_id) ||
+            !valid_identifier(outcome.event_id) ||
+            !read_field_text(state, result_index, "opening_text",
+                             outcome.opening_text)) {
+            return fail(
+                "field_encounters.resolve returned invalid event identity or text");
         }
-        if (!read_optional_field_u32(state, result_index,
-                                     command_fields[index], 0xFFFFFFFFU,
-                                     command)) {
-            return fail(std::string("field_encounters.") + resolver_name +
-                        " returned invalid " + command_fields[index]);
+        lua_getfield(state, result_index, "choices");
+        if (!lua_istable(state, -1)) {
+            lua_pop(state, 1);
+            return fail(
+                "field_encounters.resolve returned an invalid choice list");
         }
-        if (!read_optional_field_u32(
-                state, result_index, target_fields[index], 0x1FFFFFU,
-                outcome.choice_dispatch_targets[index])) {
-            return fail(std::string("field_encounters.") + resolver_name +
-                        " returned invalid " + target_fields[index]);
+        const auto choices_index = lua_absindex(state, -1);
+        const auto choice_count = lua_rawlen(state, choices_index);
+        constexpr std::size_t kMaximumEncounterChoiceCount = 64U;
+        if (choice_count > kMaximumEncounterChoiceCount) {
+            lua_pop(state, 1);
+            return fail(
+                "field_encounters.resolve returned too many choices");
         }
-        if (!read_field_boolean(state, result_index,
-                                target_return_fields[index],
-                                outcome.choice_dispatch_returns[index])) {
-            return fail(std::string("field_encounters.") + resolver_name +
-                        " returned invalid " + target_return_fields[index]);
+        outcome.choices.reserve(choice_count);
+        for (std::size_t index = 0U; index < choice_count; ++index) {
+            lua_rawgeti(state, choices_index,
+                        static_cast<lua_Integer>(index + 1U));
+            if (!lua_istable(state, -1)) {
+                lua_pop(state, 2);
+                return fail(
+                    "field_encounters.resolve returned a non-record choice");
+            }
+            const auto choice_index = lua_absindex(state, -1);
+            ScriptFieldEncounterChoice choice{};
+            const bool choice_valid =
+                read_field_string_allow_empty(state, choice_index, "id",
+                                              choice.id) &&
+                read_field_text(state, choice_index, "label", choice.label,
+                                512U) &&
+                (choice.id.empty() == choice.label.empty()) &&
+                (choice.id.empty() || valid_identifier(choice.id));
+            lua_pop(state, 1);
+            if (!choice_valid) {
+                lua_pop(state, 1);
+                return fail(
+                    "field_encounters.resolve returned an invalid semantic choice");
+            }
+            outcome.choices.push_back(std::move(choice));
         }
-        if (command.has_value()) {
-            outcome.choice_commands[index] = *command;
-        }
+        lua_pop(state, 1);
     }
 
     if (outcome.kind ==
@@ -9837,7 +9829,7 @@ GameScriptRuntime::resolve_field_encounter_impl(
             std::optional<std::uint32_t> run_target_spawn_y;
             std::string action_kind;
             bool valid_actor =
-                read_field_integer(state, actor_index, "source_order", 31U,
+                read_field_integer(state, actor_index, "sequence_order", 31U,
                                    source_order) &&
                 read_field_string(state, actor_index, "sequence_id",
                                   actor.sequence_id) &&
@@ -9996,7 +9988,7 @@ GameScriptRuntime::resolve_field_encounter_impl(
                  run_target_spawn_y.has_value()) ||
                 (run_target_actor_group && !has_run_target_spawn)) {
                 return fail(
-                    "dynamic world encounter actor row is incomplete or unordered "
+                    "dynamic world encounter actor record is incomplete or unordered "
                     "(valid=" + std::to_string(valid_actor) +
                     ", source_order=" + std::to_string(source_order) +
                     ", expected_order=" + std::to_string(index) +
@@ -10065,7 +10057,7 @@ GameScriptRuntime::resolve_run_target_actor_group(
         impl_->failure = "run actor group identity is unknown";
         return std::nullopt;
     }
-    return resolve_field_encounter_impl(15U, 0U, 0U, actor_group_id);
+    return resolve_field_encounter_impl(15U, 0.5, actor_group_id);
 }
 
 std::optional<std::uint16_t> GameScriptRuntime::scene_music(

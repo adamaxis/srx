@@ -1,0 +1,27 @@
+event_id	opening_text
+alley_grenade_seller	<As you walk by, a man calls to you from a dark alleyway.>||Pssst.  I got six Frag grenades for sale.||I'll give 'em to ya for 180$.||That's 30$ a pop.  What you say, chummer?
+arrowhead_search	<A group of young AmerIndian boys are scouring the terrain in search of something.  One warrior looks up.>||We're looking for an arrowhead.
+being_stalked	<The hair on the back of your neck rises.||You feel like you're being stalked.>
+building_badge_check	<Someone taps you on the shoulder.>||If you don't show me an ID badge in half a tick, you'll be sorry.||<You spin to find a secretary tapping her foot.>
+company_man_confrontation	<A Company Man storms up to you.>||Hey, you can't get away with this!||Don't think I don't recognize you!
+company_man_toothpick	<A Company Man walks up and flicks a toothpick at you.>
+concealed_security_plate	<You look down and notice you are about to step on a concealed security plate.>
+custodian_pass_check	<An old custodian wiping the floor squints up at you.>
+faction_disturbance	<There is a sudden disturbance up ahead.>
+flustered_woman	<A flustered woman passes by you.||A moment later a grungy man passes in pursuit of the woman.>
+haggard_man_collapse	<A haggard man collapses at your feet.  His skin is pale and cold to the touch.||A well-dressed man runs up, followed by two ordinary thugs.>||I'm a doctor and this patient has escaped!||Help us capture him and I'll pay you.
+hidden_camera	<A shiver runs down your spine. You feel like you are being watched.>
+injured_person	<Ahead of you is a man lying on the street.||He seems to be hurt badly.>
+laser_detection_field	<With no warning, a low-level laser detection field activates.>
+lone_star_patrol	<A Lone Star patrol spots you.>||Hold it right there!
+lone_star_patrol_stop	<Crowds part as you are approached by a Lone Star patrol.>||A moment, citizen.  We want a word with you.
+management_terminal	<You find a terminal logged into the management database.||Perhaps searching the computer will provide information.>
+open_security_panel	<You notice an open security panel.||It looks like with some re-wiring, you could switch off the cameras.>
+phantasmal_watcher	<The shadowy image of a watcher, a phantasmal magical messenger, materializes in front of you.>||Come quickly!||My master needs help!
+renraku_security_stop	<Renraku Security spots you as they round a corner.>
+renraku_strike_team	<You stumble upon a Renraku Strike Team||The leader looks at you in recognition.>
+scientist_encounter	<A scientist walks by, deep in thought.>
+security_guard_stop	<A secuity guard spots you.>||Show me some ID, pal.
+security_mage_stop	<A security mage spots you.>||ID please.
+urban_disturbance	<There is a sudden disturbance up ahead.>
+wilderness_disturbance	<There is a sudden disturbance up ahead.>
