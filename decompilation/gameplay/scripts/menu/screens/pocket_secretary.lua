@@ -6,6 +6,10 @@
 local E = require("enums")
 local P, O, N, R, T, MM = E.Pad, E.PocketOption, E.NotebookOption,
                          E.MenuRegion, E.MenuTransition, E.MenuMessage
+local POCKET_OPTION_ORDER = {
+    O.NOTEBOOK, O.GROUP_ITEMS, O.CYBERDECK,
+    O.DISMISS_RUNNER, O.SAVE_LOAD, O.DEBUG,
+}
 local Grid = require("menu.rules.random_grid")
 local Cursor = require("menu.rules.cursor")
 local M = { window = E.WindowPlane.SIDEBAR }
@@ -24,9 +28,10 @@ function M.input(st, events, ctx)
     if events & P.UP ~= 0 then st.row = Cursor.step(st.row, -1, st.max); ctx.redraw(R.SUBMENU); return end
     if events & P.DOWN ~= 0 then st.row = Cursor.step(st.row, 1, st.max); ctx.redraw(R.SUBMENU); return end
     if events & P.A ~= 0 then
-        if st.row == O.NOTEBOOK then return { transition = T.PUSH, screen = E.MenuScreen.NOTEBOOK } end
-        if st.row == O.GROUP_ITEMS then return { transition = T.PUSH, screen = E.MenuScreen.GROUP_ITEMS } end
-        if st.row == O.CYBERDECK then
+        local selected_option = POCKET_OPTION_ORDER[st.row + 1]
+        if selected_option == O.NOTEBOOK then return { transition = T.PUSH, screen = E.MenuScreen.NOTEBOOK } end
+        if selected_option == O.GROUP_ITEMS then return { transition = T.PUSH, screen = E.MenuScreen.GROUP_ITEMS } end
+        if selected_option == O.CYBERDECK then
             local available = ctx.game.cyberdeck_available()
             if available == false then
                 return { transition = T.PUSH, screen = E.MenuScreen.MESSAGE,
@@ -40,8 +45,8 @@ function M.input(st, events, ctx)
             end
             return { transition = T.PUSH, screen = E.MenuScreen.CYBERDECK }
         end
-        if st.row == O.DISMISS_RUNNER then return { transition = T.PUSH, screen = E.MenuScreen.DISMISS_RUNNER } end
-        if st.row == O.SAVE_LOAD then return { transition = T.PUSH, screen = E.MenuScreen.SAVE_LOAD } end
+        if selected_option == O.DISMISS_RUNNER then return { transition = T.PUSH, screen = E.MenuScreen.DISMISS_RUNNER } end
+        if selected_option == O.SAVE_LOAD then return { transition = T.PUSH, screen = E.MenuScreen.SAVE_LOAD } end
         return { transition = T.PUSH, screen = E.MenuScreen.DEBUG_MENU }   -- row 5 (only when FFF101 != 0): debug menu 0x599DA [C]
     end
     if events & P.C ~= 0 then

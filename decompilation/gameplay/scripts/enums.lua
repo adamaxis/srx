@@ -560,7 +560,12 @@ E.InventoryAction = {
     TRADE = "trade",
     CANCEL = "cancel",
 }
-E.ItemBranch = { FIRST_AID = 1, AUTOMATIC_USE = 2, WEAPON_OR_GEAR = 3, ARMOR = 4 }
+E.ItemBranch = {
+    FIRST_AID = "first_aid",
+    AUTOMATIC_USE = "automatic_use",
+    WEAPON_OR_GEAR = "weapon_or_gear",
+    ARMOR = "armor",
+}
 E.ClipsAction = {
     RELOAD = "reload",
     TRADE = "trade",
@@ -573,9 +578,25 @@ E.ClipTradeAction = {
     TRADE = "trade_clips",
     CHANGE_RECIPIENT = "change_recipient",
 }
-E.DebugOption = { NUYEN = 0, SPELLS = 1, TEST_DECK = 2, PICK_SYSTEM = 3, HEAL_ALL = 4, KARMA = 5, CONTACTS = 6, WALK_FAST = 7 }  -- table 0x1D90C0 [C]
+E.DebugOption = {
+    NUYEN = "nuyen",
+    SPELLS = "spells",
+    TEST_DECK = "test_deck",
+    PICK_SYSTEM = "pick_system",
+    HEAL_ALL = "heal_all",
+    KARMA = "karma",
+    CONTACTS = "contacts",
+    WALK_FAST = "walk_fast",
+}
 E.SaveLoadOption = { SAVE = 0, LOAD = 1 }   -- 0xC2600 rows [C]
-E.PocketOption = { NOTEBOOK = 0, GROUP_ITEMS = 1, CYBERDECK = 2, DISMISS_RUNNER = 3, SAVE_LOAD = 4, DEBUG = 5 } -- table 0xC1400; 5 = debug menu 0x599DA (FFF101) [C]
+E.PocketOption = {
+    NOTEBOOK = "notebook",
+    GROUP_ITEMS = "group_items",
+    CYBERDECK = "cyberdeck",
+    DISMISS_RUNNER = "dismiss_runner",
+    SAVE_LOAD = "save_load",
+    DEBUG = "debug",
+}
 -- FFFC2C state long: bits 0..12 unlock Vid-Phone contacts. 0xE506 loads the
 -- full word and 0xF5F4 scans only indices 0..12 [C]; high bits remain active
 -- state (scene-20 entry bit 26, Hollywood access bit 28) and must be preserved

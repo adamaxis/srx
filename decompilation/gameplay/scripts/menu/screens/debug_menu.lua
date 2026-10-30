@@ -6,6 +6,10 @@ local Grid = require("menu.rules.random_grid")
 local SpellOrder = require("data.spells").catalog_order
 local P, D, R, T = E.Pad, E.DebugOption, E.MenuRegion,
                     E.MenuTransition
+local DEBUG_OPTION_ORDER = {
+    D.NUYEN, D.SPELLS, D.TEST_DECK, D.PICK_SYSTEM,
+    D.HEAL_ALL, D.KARMA, D.CONTACTS, D.WALK_FAST,
+}
 
 local M = {
     window = E.WindowPlane.SIDEBAR,
@@ -114,13 +118,14 @@ function M.input(st, events, ctx)
         return
     end
     if events & P.A ~= 0 then
-        local effect = M.effects[st.row]
+        local selected_option = DEBUG_OPTION_ORDER[st.row + 1]
+        local effect = M.effects[selected_option]
         if effect then
             ctx.game.consume_debug_unlock() -- ROM 0x59A64 clears FFF101.
             effect(ctx)
             return { transition = T.POP }
         end
-        if st.row == D.PICK_SYSTEM then
+        if selected_option == D.PICK_SYSTEM then
             ctx.game.consume_debug_unlock() -- ROM 0x59A64 clears FFF101.
             return { transition = T.REPLACE,
                      screen = E.MenuScreen.DEBUG_PICK_SYSTEM }
