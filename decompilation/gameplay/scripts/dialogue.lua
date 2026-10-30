@@ -379,7 +379,7 @@ Dialogue.johnson_interaction_profiles = {
         run_contact_id = E.RunContact.ICARUS_DESCENDING,
         -- The Notebook list builder at 0xF500 exposes Caleb's row 0xC5744.
         access_facts = { E.JohnsonFact.CALEB_KNOWN },
-        first_visit_fact = "mr_johnsons_flag_bit_7",
+        first_visit_fact = E.JohnsonFact.CALEB_FIRST_MEETING_SEEN,
         first_visit_events = { "first_meeting", "first_meeting_continuation" },
         first_visit_karma_award = 2,
         first_visit_root = "first_meeting",

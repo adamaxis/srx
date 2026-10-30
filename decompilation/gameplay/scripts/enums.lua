@@ -694,6 +694,8 @@ E.StoryFact = {
 E.JohnsonFact = {
   MORTIMER_KNOWN = "johnson.mortimer_known", -- Pocket Secretary contact row at 0xF4AC [C]
   CALEB_KNOWN = "johnson.caleb_known", -- Pocket Secretary contact row at 0xF500 [C]
+  -- Caleb's first-contact branch at 0x20A78 [C].
+  CALEB_FIRST_MEETING_SEEN = "johnson.caleb_first_meeting_seen",
 }
 
 return E

@@ -328,17 +328,19 @@ constexpr std::array<FieldModeFactMapping, 1U> kFieldModeFactMappings{{
     {"mako_club_lead", 21U},
 }};
 
-struct JohnsonContactFactMapping {
+struct JohnsonFactMapping {
     std::string_view fact_id;
     std::uint8_t save_bit;
 };
 
-// [C] The Notebook list at 0xF4AC gates Mortimer's row 0xC5766 with bit 2;
-// the list at 0xF500 gates Caleb's row 0xC5744 with bit 4. Lua uses contact IDs.
-constexpr std::array<JohnsonContactFactMapping, 2U>
-    kJohnsonContactFactMappings{{
+// [C] Notebook lists 0xF4AC/0xF500 gate Mortimer/Caleb with bits 2/4;
+// first-contact handler 0x20A78 sets bit 7 after Caleb's first meeting. Lua
+// uses contact and meeting facts.
+constexpr std::array<JohnsonFactMapping, 3U>
+    kJohnsonFactMappings{{
         {"johnson.mortimer_known", 2U},
         {"johnson.caleb_known", 4U},
+        {"johnson.caleb_first_meeting_seen", 7U},
     }};
 
 std::optional<std::uint8_t> story_fact_bit_index(
@@ -378,14 +380,14 @@ std::optional<std::uint8_t> field_mode_fact_bit_index(
 
 std::optional<std::uint8_t> mr_johnsons_fact_bit_index(
     const std::string_view name) {
-    for (const auto& mapping : kJohnsonContactFactMappings) {
+    for (const auto& mapping : kJohnsonFactMappings) {
         if (name == mapping.fact_id) {
             return mapping.save_bit;
         }
     }
     const auto bit = story_fact_bit_index(
         name, kMrJohnsonsFlagBitPrefix, 8U);
-    for (const auto& mapping : kJohnsonContactFactMappings) {
+    for (const auto& mapping : kJohnsonFactMappings) {
         if (bit == mapping.save_bit) {
             return std::nullopt;
         }

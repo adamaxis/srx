@@ -1810,7 +1810,7 @@ bool verify_employee_recruitment_pedestrian_request(
             script_directory, dialogue_text, "icarus_descending_booth",
             "icarus-descending.caleb_brightmore", "caleb_brightmore",
             ScriptFieldModeContext{1U, 12U, 30},
-            "mr_johnsons_flag_bit_7", "random.bounded_46", std::nullopt,
+            "johnson.caleb_first_meeting_seen", "random.bounded_46", std::nullopt,
             "employee_recruitment_renraku", 0U);
     return base_initializer_reaches_request &&
         two_site_variant_reaches_request && renraku_variant_reaches_request;
@@ -4095,7 +4095,7 @@ int main() {
     scripts.set_story_state({
         {"michael_alias_learned", true},
         {"johnson.caleb_known", false},
-        {"mr_johnsons_flag_bit_7", false},
+        {"johnson.caleb_first_meeting_seen", false},
     });
     const auto icarus_accessible_event30 = resolve_event30_location(12U);
     if (!expect(icarus_accessible_event30.has_value() &&
@@ -4189,7 +4189,7 @@ int main() {
                     caleb_first_meeting.result_id ==
                         std::optional<std::string>{"leave"} &&
                     scripts.story_state().at("johnson.caleb_known") &&
-                    scripts.story_state().at("mr_johnsons_flag_bit_7"),
+                    scripts.story_state().at("johnson.caleb_first_meeting_seen"),
                 "Caleb first contact did not persist the contact and first-visit facts")) {
         std::cerr << scripts.failure() << '\n';
         return 13;
