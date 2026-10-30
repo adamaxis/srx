@@ -287,6 +287,14 @@ if(SHADOWRUN_LUA_EXECUTABLE)
     set_tests_properties(shadowrun_gameplay_field_encounters_qa PROPERTIES
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/../.."
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy")
+    add_test(NAME shadowrun_gameplay_field_barrier_policy_qa
+        COMMAND "${SHADOWRUN_LUA_EXECUTABLE}"
+            "${CMAKE_SOURCE_DIR}/../gameplay/tests_lua/run_lua_ctest.lua"
+            "${CMAKE_SOURCE_DIR}/../.."
+            "${CMAKE_SOURCE_DIR}/../gameplay/tests_lua/field_barrier_tests.lua")
+    set_tests_properties(shadowrun_gameplay_field_barrier_policy_qa PROPERTIES
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/../.."
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy")
 endif()
 
 add_executable(shadowrun_vid_phone_script_test

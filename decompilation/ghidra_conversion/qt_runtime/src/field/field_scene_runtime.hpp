@@ -180,7 +180,7 @@ struct FieldBarrierSpritePlan {
 struct FieldBarrierPresentationOrigin {
     std::uint16_t center_x = 0U;
     std::uint16_t center_y = 0U;
-    std::uint8_t octant = 0U;
+    std::string direction;
 };
 
 inline constexpr std::size_t kFieldBarrierSpriteFrameCount =

@@ -14218,6 +14218,54 @@ std::optional<std::string> GameScriptRuntime::call_string(
     return result;
 }
 
+std::optional<ScriptPersistentValue> GameScriptRuntime::call_value(
+    const std::string_view module, const std::string_view function,
+    const std::vector<ScriptPersistentValue>& arguments) {
+    constexpr std::size_t kMaximumArguments = 64U;
+    auto* state = impl_->state;
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](std::string reason)
+        -> std::optional<ScriptPersistentValue> {
+        lua_settop(state, stack_base);
+        impl_->failure = std::move(reason);
+        return std::nullopt;
+    };
+    if (!valid_identifier(function) || arguments.size() > kMaximumArguments) {
+        return fail("invalid gameplay script structured call");
+    }
+    if (!impl_->push_module(module)) {
+        return fail("gameplay script module is missing: " +
+                    std::string(module));
+    }
+    lua_getfield(state, -1, std::string(function).c_str());
+    if (!lua_isfunction(state, -1)) {
+        return fail("script callback is missing: " + std::string(module) +
+                    "." + std::string(function));
+    }
+    lua_remove(state, -2);
+    std::size_t argument_nodes = 0U;
+    for (const auto& argument : arguments) {
+        if (!push_persistent_value(state, argument, argument_nodes, 0U)) {
+            return fail("gameplay script call arguments exceed their data limit");
+        }
+    }
+    ScopedInstructionBudget instruction_budget(state);
+    if (lua_pcall(state, static_cast<int>(arguments.size()), 1, 0) != LUA_OK) {
+        return fail(std::string(module) + "." + std::string(function) +
+                    ": " + stack_error(state));
+    }
+    ScriptPersistentValue result;
+    PersistentReadContext result_nodes;
+    if (!read_persistent_value(state, -1, result, result_nodes, 0U)) {
+        return fail(std::string(module) + "." + std::string(function) +
+                    " returned invalid structured data: " +
+                    result_nodes.error);
+    }
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return result;
+}
+
 std::optional<std::vector<std::int64_t>> GameScriptRuntime::call_integers(
     const std::string_view module, const std::string_view function,
     const std::vector<std::int64_t>& arguments) {

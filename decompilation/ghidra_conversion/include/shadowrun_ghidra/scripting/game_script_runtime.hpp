@@ -2246,6 +2246,11 @@ public:
         const ScriptActorBehaviorContext& context);
     std::optional<std::string> call_string(
         std::string_view module, std::string_view function);
+    // Structured, JSON-compatible policy result for native adapters. Gameplay
+    // modules use named fields instead of returning ROM-shaped integer slots.
+    std::optional<ScriptPersistentValue> call_value(
+        std::string_view module, std::string_view function,
+        const std::vector<ScriptPersistentValue>& arguments);
     // Generic integer call: module.function(args...) must return an array of
     // integers (at most 64). Used for small numeric Lua policies such as the
     // world_links door placement; the Lua side owns the meaning of each slot.

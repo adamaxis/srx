@@ -71,6 +71,62 @@ namespace shadowrun::ghidra_conversion::qt_runtime {
 
 namespace {
 
+using ScriptData = scripting::ScriptPersistentValue;
+constexpr std::array<std::string_view, 8U> kFieldBarrierDirections{
+    "north", "northeast", "east", "southeast",
+    "south", "southwest", "west", "northwest"};
+
+ScriptData script_integer(const std::int64_t value) {
+    ScriptData result;
+    result.value = value;
+    return result;
+}
+
+ScriptData script_number(const double value) {
+    ScriptData result;
+    result.value = value;
+    return result;
+}
+
+ScriptData script_text(std::string value) {
+    ScriptData result;
+    result.value = std::move(value);
+    return result;
+}
+
+ScriptData script_object(ScriptData::Object value) {
+    ScriptData result;
+    result.value = std::move(value);
+    return result;
+}
+
+const ScriptData* script_member(const ScriptData& value,
+                                const std::string_view name) {
+    const auto* object = std::get_if<ScriptData::Object>(&value.value);
+    if (object == nullptr) return nullptr;
+    const auto found = object->find(std::string(name));
+    return found == object->end() ? nullptr : &found->second;
+}
+
+std::optional<std::int64_t> script_integer(const ScriptData* value) {
+    if (value == nullptr) return std::nullopt;
+    const auto* integer = std::get_if<std::int64_t>(&value->value);
+    return integer == nullptr ? std::nullopt : std::optional{*integer};
+}
+
+std::optional<std::string_view> script_text(const ScriptData* value) {
+    if (value == nullptr) return std::nullopt;
+    const auto* string = std::get_if<std::string>(&value->value);
+    return string == nullptr ? std::nullopt
+                             : std::optional<std::string_view>{*string};
+}
+
+const ScriptData::Array* script_array(const ScriptData* value) {
+    return value == nullptr
+        ? nullptr
+        : std::get_if<ScriptData::Array>(&value->value);
+}
+
 // ROM 0xB340..0xB350 indexes the downed-voice cue by actor kind. Keep this
 // imported audio selection at the native audio boundary; Lua receives no
 // actor-kind code or source audio number.
@@ -809,40 +865,93 @@ void FieldSceneRuntime::service_player_spell_cast(
             source_boundary("field.combat.player_spell.effect_slot_reserved");
 
             if (field_barrier) {
-                // ROM 0x49FA reads caster +0x2E, 0x4A14/0x4A24 read its
-                // world Y/X, and 0x4A74 selects the cell byte from +0x57 [C].
-                // These are the typed field position, movement heading, and
-                // active runner's equipped action code.
-                const auto placement = game_scripts_.call_integers(
-                    "field_barrier", "place_flat",
-                    {field_entity_.world_position.x,
-                     field_entity_.world_position.y,
-                     field_movement_state_.heading,
-                     runner.equipped_item_code});
-                const auto expected_code = runner.equipped_item_code <=
+                // [C] ROM 0x49FA reads a turn word, 0x4A14/0x4A24 read the
+                // runner's map position, and 0x4A74 classifies the equipped
+                // action code. Convert those source values here so Lua sees
+                // only a map point, compass bearing, and barrier strength.
+                const auto bearing_degrees =
+                    static_cast<double>(field_movement_state_.heading) *
+                    360.0 / 65536.0;
+                const auto strength = runner.equipped_item_code <=
                         static_cast<std::uint8_t>(srx::v(
                             srx::FieldBarrier::SUPER_MAX_ACTION_CODE))
+                    ? std::string{"reinforced"}
+                    : std::string{"standard"};
+                const auto placement = game_scripts_.call_value(
+                    "field_barrier", "place",
+                    {script_object({
+                        {"map_position", script_object({
+                            {"x", script_integer(static_cast<std::int64_t>(
+                                field_entity_.world_position.x))},
+                            {"y", script_integer(static_cast<std::int64_t>(
+                                field_entity_.world_position.y))}})},
+                        {"bearing_degrees", script_number(bearing_degrees)},
+                        {"strength", script_text(strength)}})});
+                const auto direction = placement.has_value()
+                    ? script_text(script_member(*placement, "direction"))
+                    : std::nullopt;
+                const auto center = placement.has_value()
+                    ? script_member(*placement, "center") : nullptr;
+                const auto center_x = center != nullptr
+                    ? script_integer(script_member(*center, "x"))
+                    : std::nullopt;
+                const auto center_y = center != nullptr
+                    ? script_integer(script_member(*center, "y"))
+                    : std::nullopt;
+                const auto footprint = placement.has_value()
+                    ? script_array(script_member(*placement, "footprint"))
+                    : nullptr;
+                const auto returned_strength = placement.has_value()
+                    ? script_text(script_member(*placement, "strength"))
+                    : std::nullopt;
+                const bool direction_valid = direction.has_value() &&
+                    std::find(kFieldBarrierDirections.begin(),
+                              kFieldBarrierDirections.end(), *direction) !=
+                        kFieldBarrierDirections.end();
+                const bool placement_valid = direction_valid &&
+                    center_x.has_value() && center_y.has_value() &&
+                    *center_x >= -2048 && *center_x <= 67584 &&
+                    *center_y >= -2048 && *center_y <= 67584 &&
+                    footprint != nullptr &&
+                    footprint->size() == kFieldBarrierCollisionCellCount &&
+                    returned_strength.has_value() &&
+                    *returned_strength == strength;
+                const auto collision_code = strength == "reinforced"
                     ? srx::v(srx::FieldBarrier::CELL_CODE_SUPER_BARRIER)
                     : srx::v(srx::FieldBarrier::CELL_CODE_BARRIER);
-                const auto placement_size =
-                    kFieldBarrierCollisionCellCount + 4U;
-                const bool placement_valid = placement.has_value() &&
-                    placement->size() == placement_size &&
-                    placement->at(0U) >= 0 && placement->at(0U) <= 7 &&
-                    placement->at(1U) >= 0 && placement->at(1U) <= 0xFFFF &&
-                    placement->at(2U) >= 0 && placement->at(2U) <= 0xFFFF &&
-                    placement->back() == expected_code;
                 bool cells_valid = placement_valid;
                 std::array<FieldBarrierCollisionCell,
                            kFieldBarrierCollisionCellCount> cells{};
                 for (std::size_t index = 0U;
                      cells_valid && index < cells.size(); ++index) {
-                    const auto value = placement->at(index + 3U);
-                    cells_valid = value >= 0 && value <= 0xFFFF;
+                    const auto& offset = footprint->at(index);
+                    const auto offset_x = script_integer(
+                        script_member(offset, "x"));
+                    const auto offset_y = script_integer(
+                        script_member(offset, "y"));
+                    cells_valid = offset_x.has_value() && offset_y.has_value() &&
+                        *offset_x >= -2 && *offset_x <= 2 &&
+                        *offset_y >= -2 && *offset_y <= 2;
                     if (cells_valid) {
+                        // [C] ROM 0x4A18/0x4A2A wraps the projected center to
+                        // its source word before 0x4A34 flattens the 64-column
+                        // collision grid. Keep that layout conversion here;
+                        // Lua describes the wall as relative grid cells.
+                        const auto source_center_x =
+                            static_cast<std::uint16_t>(*center_x);
+                        const auto source_center_y =
+                            static_cast<std::uint16_t>(*center_y);
+                        const auto center_column = static_cast<std::int64_t>(
+                            source_center_x >> srx::v(srx::Grid::CELL_SHIFT));
+                        const auto center_row = static_cast<std::int64_t>(
+                            source_center_y >> srx::v(srx::Grid::CELL_SHIFT));
+                        const auto source_cell_index = center_row *
+                                srx::v(srx::Grid::ROW_CELLS) + center_column +
+                            *offset_y * srx::v(srx::Grid::ROW_CELLS) +
+                            *offset_x;
                         cells[index] = FieldBarrierCollisionCell{
-                            static_cast<std::uint16_t>(value),
-                            static_cast<std::uint8_t>(placement->back())};
+                            static_cast<std::uint16_t>(source_cell_index),
+                            static_cast<std::uint8_t>(collision_code)};
                     }
                 }
                 if (!cells_valid) {
@@ -855,9 +964,9 @@ void FieldSceneRuntime::service_player_spell_cast(
                     set_field_barrier_collision_overlay(cells);
                     field_barrier_presentation_origin_ =
                         FieldBarrierPresentationOrigin{
-                            static_cast<std::uint16_t>(placement->at(1U)),
-                            static_cast<std::uint16_t>(placement->at(2U)),
-                            static_cast<std::uint8_t>(placement->at(0U))};
+                            static_cast<std::uint16_t>(*center_x),
+                            static_cast<std::uint16_t>(*center_y),
+                            std::string(*direction)};
                     source_boundary(
                         "field.combat.player_spell.barrier_collision_started");
                 }
@@ -1287,38 +1396,64 @@ void FieldSceneRuntime::advance_field_actor_animation() {
                         "field.player.barrier_projection_origin_missing");
                 } else {
                     const auto& origin = *field_barrier_presentation_origin_;
-                    const auto requested_plan = game_scripts_.call_integers(
+                    const auto requested_plan = game_scripts_.call_value(
                         "field_barrier", "sprite_plan",
-                        {origin.center_x, origin.center_y, origin.octant,
-                         *decision->field_barrier_remaining});
-                    const auto expected_size = std::size_t{12U};
-                    const auto valid = requested_plan.has_value() &&
-                        requested_plan->size() == expected_size &&
-                        requested_plan->at(0U) == origin.center_x &&
-                        requested_plan->at(1U) == origin.center_y &&
-                        requested_plan->at(2U) >= 0 &&
-                        requested_plan->at(2U) < static_cast<std::int64_t>(
+                        {script_object({
+                            {"center", script_object({
+                                {"x", script_integer(origin.center_x)},
+                                {"y", script_integer(origin.center_y)}})},
+                            {"direction", script_text(origin.direction)},
+                            {"remaining_frames", script_integer(
+                                *decision->field_barrier_remaining)}})});
+                    const auto frame = requested_plan.has_value()
+                        ? script_integer(script_member(*requested_plan, "frame"))
+                        : std::nullopt;
+                    const auto plan_center = requested_plan.has_value()
+                        ? script_member(*requested_plan, "center") : nullptr;
+                    const auto plan_center_x = plan_center != nullptr
+                        ? script_integer(script_member(*plan_center, "x"))
+                        : std::nullopt;
+                    const auto plan_center_y = plan_center != nullptr
+                        ? script_integer(script_member(*plan_center, "y"))
+                        : std::nullopt;
+                    const auto segments = requested_plan.has_value()
+                        ? script_array(script_member(*requested_plan, "segments"))
+                        : nullptr;
+                    bool valid = frame.has_value() &&
+                        *frame >= 0 &&
+                        *frame < static_cast<std::int64_t>(
                             kFieldBarrierSpriteFrameCount) &&
-                        requested_plan->at(3U) == srx::v(
-                            srx::FieldBarrier::SPRITE_PLAN_SEGMENT_COUNT) &&
-                        requested_plan->at(4U) ==
-                            srx::v(srx::FieldBarrier::SPRITE_PALETTE_LINE) &&
-                        requested_plan->at(5U) ==
-                            srx::v(srx::FieldBarrier::SPRITE_PRIORITY_LOW) &&
-                        requested_plan->at(6U) >= 0 &&
-                        requested_plan->at(6U) < static_cast<std::int64_t>(
-                            srx::v(srx::FieldBarrier::SPRITE_SEGMENT_COUNT)) &&
-                        requested_plan->at(7U) >= -64 &&
-                        requested_plan->at(7U) <= 64 &&
-                        requested_plan->at(8U) >= -64 &&
-                        requested_plan->at(8U) <= 64 &&
-                        requested_plan->at(9U) >= 0 &&
-                        requested_plan->at(9U) < static_cast<std::int64_t>(
-                            srx::v(srx::FieldBarrier::SPRITE_SEGMENT_COUNT)) &&
-                        requested_plan->at(10U) >= -64 &&
-                        requested_plan->at(10U) <= 64 &&
-                        requested_plan->at(11U) >= -64 &&
-                        requested_plan->at(11U) <= 64;
+                        plan_center_x.has_value() &&
+                        *plan_center_x == origin.center_x &&
+                        plan_center_y.has_value() &&
+                        *plan_center_y == origin.center_y &&
+                        segments != nullptr && segments->size() == 2U;
+                    std::array<FieldBarrierSpriteSegment, 2U> native_segments{};
+                    for (std::size_t index = 0U;
+                         valid && index < native_segments.size(); ++index) {
+                        const auto& segment = segments->at(index);
+                        const auto variant = script_integer(
+                            script_member(segment, "variant"));
+                        const auto offset = script_member(segment, "offset");
+                        const auto offset_x = offset != nullptr
+                            ? script_integer(script_member(*offset, "x"))
+                            : std::nullopt;
+                        const auto offset_y = offset != nullptr
+                            ? script_integer(script_member(*offset, "y"))
+                            : std::nullopt;
+                        valid = variant.has_value() && *variant >= 0 &&
+                            *variant < srx::v(
+                                srx::FieldBarrier::SPRITE_SEGMENT_COUNT) &&
+                            offset_x.has_value() && offset_y.has_value() &&
+                            *offset_x >= -64 && *offset_x <= 64 &&
+                            *offset_y >= -64 && *offset_y <= 64;
+                        if (valid) {
+                            native_segments[index] = FieldBarrierSpriteSegment{
+                                static_cast<std::uint8_t>(*variant),
+                                static_cast<std::int16_t>(*offset_x),
+                                static_cast<std::int16_t>(*offset_y)};
+                        }
+                    }
                     if (!valid) {
                         failure_ = game_scripts_.failure().empty()
                             ? "Lua returned an invalid field barrier sprite plan"
@@ -1329,23 +1464,11 @@ void FieldSceneRuntime::advance_field_actor_animation() {
                         field_barrier_sprite_plan_ = FieldBarrierSpritePlan{
                             origin.center_x,
                             origin.center_y,
-                            static_cast<std::uint8_t>(
-                                requested_plan->at(2U)),
-                            static_cast<std::uint8_t>(
-                                requested_plan->at(4U)),
-                            requested_plan->at(5U) == 0,
-                            {{{static_cast<std::uint8_t>(
-                                   requested_plan->at(6U)),
-                               static_cast<std::int16_t>(
-                                   requested_plan->at(7U)),
-                               static_cast<std::int16_t>(
-                                   requested_plan->at(8U))},
-                              {static_cast<std::uint8_t>(
-                                   requested_plan->at(9U)),
-                               static_cast<std::int16_t>(
-                                   requested_plan->at(10U)),
-                               static_cast<std::int16_t>(
-                                   requested_plan->at(11U))}}}};
+                            static_cast<std::uint8_t>(*frame),
+                            static_cast<std::uint8_t>(srx::v(
+                                srx::FieldBarrier::SPRITE_PALETTE_LINE)),
+                            srx::v(srx::FieldBarrier::SPRITE_PRIORITY_LOW) == 0,
+                            native_segments};
                     }
                 }
             }

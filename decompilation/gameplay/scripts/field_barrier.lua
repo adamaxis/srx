@@ -1,77 +1,96 @@
--- Directional five-cell field barrier placement from ROM 0x49FA..0x4A86 [C].
+-- Field barrier gameplay placement and animation choices.
+-- The native adapter translates the game's source heading and equipped item
+-- into a compass direction and barrier strength before calling this module.
 local E = require("enums")
-local I = require("lib.int68k")
+local Bearing = require("bearing")
 
 local FieldBarrier = {}
 
-local function snap_axis_to_cell_center(value)
-    -- ROM 0x4A18/0x4A2A wraps the source word, clears the low cell bits, then
-    -- adds E.Grid.CELL_CENTER [C].
-    local wrapped = I.u16(value)
-    local cell_mask = ~((1 << E.Grid.CELL_SHIFT) - 1)
-    return I.u16((wrapped & cell_mask) + E.Grid.CELL_CENTER)
+local function snap_to_cell_center(position)
+    return math.floor(position / E.Grid.CELL_SIZE) * E.Grid.CELL_SIZE +
+        E.Grid.CELL_CENTER_OFFSET
 end
 
-function FieldBarrier.place_flat(caster_x, caster_y, heading_word, action_code)
-    -- 0x49FA rotates the +0x2E word left three bits and masks the octant;
-    -- its low three bits equal the original u16's high three bits [C].
-    local heading = I.u16(heading_word)
-    local octant = (heading >> E.FieldBarrier.HEADING_OCTANT_SHIFT) &
-        E.FieldBarrier.OCTANT_MASK
-    local center_offset = E.FieldBarrier.CENTER_OFFSETS[octant]
-    local center_x = snap_axis_to_cell_center(
-        I.u16(caster_x) + center_offset[1])
-    local center_y = snap_axis_to_cell_center(
-        I.u16(caster_y) + center_offset[2])
+local function direction_from_bearing(bearing_degrees)
+    local sector = Bearing.octant(bearing_degrees, false)
+    return sector ~= nil and E.FieldBarrier.DIRECTIONS[sector + 1] or nil
+end
 
-    -- ROM 0x4A34..0x4A42 computes row*E.Grid.ROW_CELLS+column [C].
-    local base = (center_y >> E.Grid.CELL_SHIFT) * E.Grid.ROW_CELLS +
-        (center_x >> E.Grid.CELL_SHIFT)
-    local cells = {}
-    for index = 1, E.FieldBarrier.CELL_COUNT do
-        -- ROM 0x4A68 adds each signed cell offset to the base word [C].
-        cells[index] = I.u16(base + E.FieldBarrier.CELL_OFFSETS[octant][index])
+function FieldBarrier.place(request)
+    if type(request) ~= "table" then
+        return nil
+    end
+    local position = request.map_position
+    local bearing_degrees = request.bearing_degrees
+    local strength = request.strength
+    if type(position) ~= "table" or type(position.x) ~= "number" or
+       type(position.y) ~= "number" then
+        return nil
+    end
+    if strength ~= "standard" and strength ~= "reinforced" then
+        return nil
     end
 
-    -- 0x4A74..0x4A7E selects the stronger byte through action code 9 [C].
-    local code = I.u8(action_code) <= E.FieldBarrier.SUPER_MAX_ACTION_CODE
-        and E.FieldBarrier.CELL_CODE_SUPER_BARRIER
-        or E.FieldBarrier.CELL_CODE_BARRIER
+    local direction = direction_from_bearing(bearing_degrees)
+    local center_offset = direction and
+        E.FieldBarrier.CENTER_OFFSET_BY_DIRECTION[direction]
+    local footprint = direction and
+        E.FieldBarrier.FOOTPRINT_BY_DIRECTION[direction]
+    if center_offset == nil or footprint == nil then
+        return nil
+    end
 
-    -- Integer array layout is octant, center X, center Y, five cell indices,
-    -- then cell code. The host uses this same Lua result for the collision map.
+    -- [C] ROM 0x4A18/0x4A2A places the wall on the nearest cell center after
+    -- applying the direction offset. Cell size and center are expressed here
+    -- as map geometry; source word wrapping is applied by the native adapter.
+    local center = {
+        x = snap_to_cell_center(position.x + center_offset.x),
+        y = snap_to_cell_center(position.y + center_offset.y),
+    }
+
+    local cells = {}
+    for index, offset in ipairs(footprint) do
+        cells[index] = { x = offset.x, y = offset.y }
+    end
     return {
-        octant, center_x, center_y,
-        cells[1], cells[2], cells[3], cells[4], cells[5], code,
+        direction = direction,
+        center = center,
+        footprint = cells,
+        strength = strength,
     }
 end
 
--- ROM 0x4ADC decrements +0x0E before 0x4AF2 chooses its art frame and
--- 0x4B2E rotates two of the five 0x4C0C pixel offsets [C]. The returned
--- integer row is a presentation request; the host only projects and draws it.
-function FieldBarrier.sprite_plan(center_x, center_y, octant, remaining_lifetime)
-    local offsets = E.FieldBarrier.SPRITE_PIXEL_OFFSETS[octant]
-    if offsets == nil then
+-- The native presenter owns palette, priority, and asset selection. Lua sends
+-- only the frame and the two animated wall segments' semantic offsets.
+function FieldBarrier.sprite_plan(request)
+    if type(request) ~= "table" then
         return nil
     end
-    local frame = remaining_lifetime & E.FieldBarrier.SPRITE_FRAME_MASK
-    local first = remaining_lifetime % E.FieldBarrier.SPRITE_SEGMENT_COUNT
-    local second = (first + 1) % E.FieldBarrier.SPRITE_SEGMENT_COUNT
-    local first_offset = offsets[first + 1]
-    local second_offset = offsets[second + 1]
+    local center = request.center
+    local direction = request.direction
+    local remaining_frames = request.remaining_frames
+    local offsets = E.FieldBarrier.SPRITE_PIXEL_OFFSETS_BY_DIRECTION[direction]
+    if type(center) ~= "table" or type(center.x) ~= "number" or
+       type(center.y) ~= "number" or offsets == nil or
+       type(remaining_frames) ~= "number" or remaining_frames < 0 then
+        return nil
+    end
+
+    local first_variant = remaining_frames % E.FieldBarrier.SPRITE_VARIANT_COUNT
+    local second_variant = (first_variant + 1) %
+        E.FieldBarrier.SPRITE_VARIANT_COUNT
+    local function segment(variant)
+        local offset = offsets[variant + 1]
+        return {
+            variant = variant,
+            offset = { x = offset.x, y = offset.y },
+        }
+    end
+
     return {
-        center_x,
-        center_y,
-        frame,
-        E.FieldBarrier.SPRITE_PLAN_SEGMENT_COUNT,
-        E.FieldBarrier.SPRITE_PALETTE_LINE,
-        E.FieldBarrier.SPRITE_PRIORITY_LOW,
-        first,
-        first_offset[1],
-        first_offset[2],
-        second,
-        second_offset[1],
-        second_offset[2],
+        frame = remaining_frames % E.FieldBarrier.SPRITE_FRAME_COUNT,
+        center = { x = center.x, y = center.y },
+        segments = { segment(first_variant), segment(second_variant) },
     }
 end
 
