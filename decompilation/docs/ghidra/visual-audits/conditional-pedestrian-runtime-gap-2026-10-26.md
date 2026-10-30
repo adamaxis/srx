@@ -1190,11 +1190,12 @@ regional pedestrian record.
 
 The post-page effect is now traced: `0x53C90` calls `0x1DED8`, which scans
 `FF0400..FF0A00` and dispatches active actor records with `+0xB0` bit 7 to
-`0x1E514`; that handler clears the escort and active bits. The Lua action queues
-this source-record cleanup, and the host consumes it before the modal return
-fade. Debug/Release QA verifies Aragorn's source slot is removed and saves a
-closed Scene-34 BMP. The route captures are internal runtime evidence, not an
-independent Genesis animation or map comparison.
+`0x1E514`; that handler ends the active escort relationship. The dialogue
+action queues a semantic escort lifecycle event, and the actor behavior service
+applies it before the modal return fade; only the host adapter retires the
+corresponding live field actor. Debug/Release QA verifies Aragorn leaves the
+Scene-34 population and saves a closed BMP. The route captures are internal
+runtime evidence, not an independent Genesis animation or map comparison.
 
 The Scene-34 Electronics branch matrix now covers Samurai no-skill, ordinary
 Decker no-kit partial success, Decker zero-success alert, and Decker kit

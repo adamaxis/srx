@@ -5,6 +5,7 @@ local Registry = {}
 Registry.__index = Registry
 local StoryFacts = require("story_facts")
 local GroupItems = require("group_items")
+local E = require("enums")
 
 local function is_identifier(value)
     return type(value) == "string" and value ~= "" and
@@ -154,25 +155,25 @@ local function register_core_actions(registry)
         return result == "applied" and result or "service_unavailable"
     end)
 
-    -- ROM 0x1DED8 scans actor records FF0400..FF0A00 and calls 0x1E514
-    -- for active records carrying +0xB0 bit 7. The actor service consumes
-    -- these Lua requests and clears the typed record fields there.
-    registry:register("actor.cleanup_escort_records", function()
+    -- ROM 0x1DED8/0x1E514 ends active escort relationships after this contact.
+    -- The host maps this semantic lifecycle event onto its live actor state.
+    registry:register("actor.conclude_escort_relationship", function()
         assert(type(game.actors) == "table",
-            "actor.cleanup_escort_records needs the Lua actor registry")
-        local cleanup_count = 0
+            "actor.conclude_escort_relationship needs the Lua actor registry")
+        local concluded_count = 0
         for _, state in pairs(game.actors) do
             local facts = type(state) == "table" and
                 state.actor_facts or nil
             if type(state) == "table" and state.live_field_actor == true and
                type(facts) == "table" and
                facts.lifecycle.active and facts.behavior.escort then
-                state.source_record_cleanup_requested = true
-                cleanup_count = cleanup_count + 1
+                state.pending_lifecycle_event =
+                    E.ActorLifecycleEvent.ESCORT_CONCLUDED
+                concluded_count = concluded_count + 1
             end
         end
-        assert(cleanup_count > 0,
-            "actor.cleanup_escort_records found no active +0xB0 bit-7 record")
+        assert(concluded_count > 0,
+            "actor.conclude_escort_relationship found no active escort")
         return true
     end)
 end

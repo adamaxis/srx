@@ -1086,6 +1086,19 @@ check(heartbeat_result ~= nil and heartbeat_result.direction == 7 and
       heartbeat_state.movement_step.direction_animation == nil,
       "dynamic enemy heartbeat preserves semantic walking state and truncated direction 7 [C]")
 
+heartbeat_context.live_field_actor = true
+heartbeat_context.actor_facts = actor_facts({
+    behavior = { escort = true },
+})
+heartbeat_state.pending_lifecycle_event =
+    E.ActorLifecycleEvent.ESCORT_CONCLUDED
+local escort_concluded = ActorAI.heartbeat(heartbeat_context)
+check(escort_concluded ~= nil and
+      heartbeat_state.pending_lifecycle_event == nil and
+      heartbeat_state.actor_facts.lifecycle.active == false and
+      heartbeat_state.actor_facts.behavior.escort == false,
+      "escort conclusion applies as a semantic actor lifecycle transition")
+
 game.movement.follow_route_step_clear = follow_route_step_clear
 
 print(string.format("ai_think tests: %d/%d passed", pass, total))

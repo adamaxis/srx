@@ -463,7 +463,7 @@
         },
         "cleanup_contact_actor": {
           "type": "action",
-          "actionId": "actor.cleanup_escort_records",
+          "actionId": "actor.conclude_escort_relationship",
           "arguments": {},
           "next": "continue_in_place",
           "evidence": "After the dialogue returns, ROM 0x53C90 calls 0x1DED8; it scans FF0400..FF0A00 and calls 0x1E514 for active records with +0xB0 bit 7 set."

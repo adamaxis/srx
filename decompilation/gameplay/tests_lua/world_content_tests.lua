@@ -114,6 +114,7 @@ assert(#World.world_activity_actors_for_activity_id(
 -- ROM 0x1DED8 scans live field actor records and requests the 0x1E514 escort
 -- cleanup path [C]. Lua selects actor state through its semantic live flag.
 local DialogueActions = require("dialogue_actions")
+local E = require("enums")
 local escorted_actor = {
     live_field_actor = true,
     actor_facts = {
@@ -134,9 +135,10 @@ game.actors = {
     ["legacy-slot-only"] = slot_only_actor,
 }
 local cleanup_registry = DialogueActions.new_default_registry()
-assert(cleanup_registry:execute("actor.cleanup_escort_records"))
-assert(escorted_actor.source_record_cleanup_requested == true and
-       slot_only_actor.source_record_cleanup_requested == nil,
-       "escort cleanup relied on a numeric record slot instead of actor facts")
+assert(cleanup_registry:execute("actor.conclude_escort_relationship"))
+assert(escorted_actor.pending_lifecycle_event ==
+           E.ActorLifecycleEvent.ESCORT_CONCLUDED and
+       slot_only_actor.pending_lifecycle_event == nil,
+       "escort conclusion relied on a numeric record slot instead of actor facts")
 
 print("world content tests passed")

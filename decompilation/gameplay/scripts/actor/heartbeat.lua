@@ -7,6 +7,7 @@ local u16, s16 = I.u16, I.s16
 local SoundId, SceneId, EntryDelayMax, AiTuning =
     E.SoundId, E.SceneId, E.EntryDelayMax, E.AiTuning
 local VisualProfile = E.ActorVisualProfile
+local ActorLifecycleEvent = E.ActorLifecycleEvent
 
 -- ROM 0x1E514 clears the escort relationship and deactivates the actor. The
 -- host clears its typed template marker and retires the live record slot.
@@ -101,8 +102,9 @@ function ActorAI.heartbeat(context)
     state.ammunition_remaining = context.ammunition_remaining or
                                 state.ammunition_remaining
     if context.phase == "behavior" and
-       state.source_record_cleanup_requested then
-        state.source_record_cleanup_requested = false
+       state.pending_lifecycle_event ==
+           ActorLifecycleEvent.ESCORT_CONCLUDED then
+        state.pending_lifecycle_event = nil
         if state.actor_facts.lifecycle.active and
            state.actor_facts.behavior.escort then
             -- ROM 0x1E514 clears +0xB0 bit 7 and +0x10 bit 0. The field host
