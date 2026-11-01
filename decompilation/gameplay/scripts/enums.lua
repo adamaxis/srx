@@ -591,6 +591,9 @@ E.ItemBranch = {
     WEAPON_OR_GEAR = "weapon_or_gear",
     ARMOR = "armor",
 }
+E.WeaponSelectionState = {
+    EMPTY = "empty",
+}
 E.ClipsAction = {
     RELOAD = "reload",
     TRADE = "trade",

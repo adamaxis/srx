@@ -3,8 +3,8 @@
 This file is kept in the repo so the notes survive if the box is wiped. The box's /workspace/shadowrun/out was lost on 2026-10-31.
 Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 
-## Current state (2026-11-01 07:20 CST)
-- Remote port-fixes: see latest Fixes entry. Both builds compile and the Lua suites pass. ctest fails 71/294, all from aa3b2cb7 (Luna fixing forward, log /tmp/luna_aa3b2.log).
+## Current state (2026-11-01 08:10 CST)
+- Remote port-fixes: see latest Fixes entry. Both builds compile and the Lua suites pass. ctest fails 69/294, all from aa3b2cb7 (Luna fixing forward, log /tmp/luna_aa3b2.log).
 - In progress: Luna (codex exec, gpt-6-luna, max effort, fast tier off) is fixing aa3b2cb7 forward. Brief is /workspace/briefs/aa3b.md, the earlier partial work is /workspace/briefs/aa3b_wip.diff and stash 'aa3b-wip'.
 - Box toolchain: `. /workspace/tcenv.sh` (conda env /workspace/mamba/envs/srx). Build dirs are /workspace/b2 (Qt) and /workspace/b2n (non-Qt). Full QA is /workspace/qa.sh, which prints QA_GREEN.
 - 7 gitignored files in decompilation/assets were dangling links into /tmp/srx_qa_asset_stage. They were replaced with real copies, not re-extracted.
@@ -28,6 +28,7 @@ Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
   - world_links_tests expects scene 0x0D = street, per ROM 0x167AE field-scene dispatch and profile 0x1B3C06 [C].
   - movement.lua resets animation_finished when a projectile restarts or stops, per ROM 0x14E32/0x14F8E.
 - shop stock uses: selected_shop_item_uses reads the selected offer byte 2 instead of removed static item.detail, per ROM 0x1AAC86 [C]. Fixes field_shop_qa (72 -> 71 fails, no new).
+- armor/weapon equip: Lua keeps per-cell armor markers and an explicit empty weapon state (vs unresolved semantic ID), per ROM 0x1219C/0x121B0 [C]. Fixes field_action_qa and profile_combat_bar_permutation_qa (71 -> 69, no new).
 
 ## Open work, in order
 1. Get ctest green again by fixing aa3b2cb7 forward.

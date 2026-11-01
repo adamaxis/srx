@@ -262,6 +262,7 @@ function M.child_returned(st, child, result, ctx)
     end
     record.equipped_weapon_id = nil
     record.equipped_weapon_cell = nil
+    record.equipped_weapon_state = E.WeaponSelectionState.EMPTY
     record.force = result.force or record.force
     ctx.game.commit_party(party)
     st.force = record.force

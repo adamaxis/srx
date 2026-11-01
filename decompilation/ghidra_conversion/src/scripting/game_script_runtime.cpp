@@ -1655,6 +1655,24 @@ bool push_menu_equipment(
         lua_pushlstring(state, item->item_id.data(), item->item_id.size());
         lua_setfield(state, item_index, "id");
         push_inventory_cell(state, item_index, "cell", index);
+        // Keep the cell marker semantic in Lua and convert its armor ID back
+        // to the source phase only at the typed host boundary.
+        if (script_armor_source_index_from_item_id(item->item_id)
+                .has_value()) {
+            const auto armor_marker_id =
+                script_armor_item_id_from_source_index(item_values[index]);
+            if (item_values[index] != 0U && !armor_marker_id.has_value()) {
+                lua_pop(state, 2);
+                return false;
+            }
+            if (armor_marker_id.has_value()) {
+                lua_pushlstring(state, armor_marker_id->data(),
+                                armor_marker_id->size());
+            } else {
+                lua_pushnil(state);
+            }
+            lua_setfield(state, item_index, "armor_marker_id");
+        }
         if (!item->value_property.empty()) {
             lua_pushinteger(state, item->value);
             lua_setfield(state, item_index,
@@ -1726,6 +1744,31 @@ bool read_menu_equipment(
             item_values[position] = static_cast<std::uint8_t>(value);
         } else if (original_item_codes[position] != *source_code) {
             item_values[position] = 0U;
+        }
+        // ROM 0x121A8/0x121B8 changes only the selected inventory cell's
+        // +0x6E marker; the Lua item carries that marker as an armor ID [C].
+        if (script_armor_source_index_from_item_id(item_id).has_value()) {
+            lua_getfield(state, item_index, "armor_marker_id");
+            const auto marker_type = lua_type(state, -1);
+            if (marker_type == LUA_TNIL) {
+                item_values[position] = 0U;
+            } else if (marker_type == LUA_TSTRING) {
+                std::string marker_id;
+                const auto valid_marker =
+                    read_string(state, -1, marker_id);
+                const auto marker_index = valid_marker
+                    ? script_armor_source_index_from_item_id(marker_id)
+                    : std::nullopt;
+                if (!marker_index.has_value()) {
+                    lua_pop(state, 3);
+                    return false;
+                }
+                item_values[position] = *marker_index;
+            } else {
+                lua_pop(state, 3);
+                return false;
+            }
+            lua_pop(state, 1);
         }
         lua_pop(state, 1);
     }
@@ -3349,8 +3392,23 @@ struct GameScriptRuntime::Impl {
                                 member.weapon_code = *action_code;
                             }
                         } else if (spell_id_type == LUA_TNIL) {
-                            member.weapon_slot = -1;
-                            member.weapon_code = 0U;
+                            // E.WeaponSelectionState.EMPTY makes an explicit
+                            // unequip distinct from a source record whose
+                            // weapon code has no semantic item ID. Keep the
+                            // latter's +0x56/+0x57 bytes unchanged on a
+                            // round-trip through Lua.
+                            lua_getfield(lua, member_index,
+                                         "equipped_weapon_state");
+                            std::string weapon_state;
+                            const bool explicitly_empty =
+                                lua_type(lua, -1) == LUA_TSTRING &&
+                                read_string(lua, -1, weapon_state) &&
+                                weapon_state == "empty";
+                            lua_pop(lua, 1);
+                            if (explicitly_empty) {
+                                member.weapon_slot = -1;
+                                member.weapon_code = 0U;
+                            }
                         }
                     }
                     member.armor = original_party[index].armor;
@@ -3403,24 +3461,6 @@ struct GameScriptRuntime::Impl {
                             original_party[index].phase)) {
                         member.inventory = equipment_codes;
                         member.phase = equipment_values;
-                        if (member.armor != original_party[index].armor) {
-                            for (std::size_t slot = 0U;
-                                 slot < member.inventory.size(); ++slot) {
-                                const auto item_id =
-                                    script_item_id_from_source_code(
-                                        member.inventory[slot]);
-                                if (!item_id.has_value()) continue;
-                                const auto armor_index =
-                                    script_armor_source_index_from_item_id(
-                                        *item_id);
-                                if (armor_index.has_value()) {
-                                    member.phase[slot] =
-                                        member.armor == *armor_index
-                                            ? *armor_index
-                                            : 0U;
-                                }
-                            }
-                        }
                     } else {
                         member.inventory = original_party[index].inventory;
                         member.phase = original_party[index].phase;

@@ -121,11 +121,15 @@ function M.toggle_equipment(runner, selected, old_capacity, new_capacity)
     if item == nil or item.id ~= selected.id then return "invalid" end
     local branch = M.classify(item)
     if branch == B.ARMOR then
+        -- ROM 0x121A4/0x121A8 clears the global armor and only the selected
+        -- cell marker; 0x121B4/0x121B8 equips and marks that selected cell [C].
         if runner.equipped_armor_id ~= nil then
             runner.equipped_armor_id = nil
+            item.armor_marker_id = nil
             return "armor_unequipped"
         end
         runner.equipped_armor_id = item.id
+        item.armor_marker_id = item.id
         return "armor_equipped"
     end
     if branch ~= B.WEAPON_OR_GEAR then return "rejected" end
@@ -139,6 +143,7 @@ function M.toggle_equipment(runner, selected, old_capacity, new_capacity)
         runner.rounds = carried_rounds
         runner.equipped_weapon_id = nil
         runner.equipped_weapon_cell = nil
+        runner.equipped_weapon_state = E.WeaponSelectionState.EMPTY
         runner.selected_spell_id = nil
         return "unequipped"
     end
@@ -159,6 +164,7 @@ function M.toggle_equipment(runner, selected, old_capacity, new_capacity)
     runner.equipped_weapon_cell = {
         column = item.cell.column, row = item.cell.row,
     }
+    runner.equipped_weapon_state = nil
     runner.selected_spell_id = nil
     return "equipped"
 end
@@ -180,6 +186,7 @@ local function remove(runner, item, discard)
        runner.equipped_weapon_id == item.id then
         runner.equipped_weapon_cell = nil
         runner.equipped_weapon_id = nil
+        runner.equipped_weapon_state = E.WeaponSelectionState.EMPTY
         if discard then runner.rounds = 0 end
     end
     if runner.equipped_armor_id == item.id then
