@@ -9,9 +9,14 @@ local function check(cond, label)
     if cond then pass = pass + 1 else print("FAIL " .. label) end
 end
 
-local function party_facts(target_role, companion_one, companion_two)
+local function party_facts(target_role, companion_one, companion_two,
+                           target_meters)
     return {
         target_role = target_role,
+        target_meters = target_meters or {
+            [E.RunnerMeter.PHYSICAL] = 0,
+            [E.RunnerMeter.MENTAL] = 0,
+        },
         party = {
             leader = { active = true, dead = false },
             companion_one = companion_one,
@@ -28,6 +33,33 @@ local alone = P.enter_runner_down_state(party_facts(
 check(alone.lifecycle.downed, "leader becomes downed")
 check(alone.recovery.party_wipe_imminent,
       "lone leader starts party recovery")
+local meters_not_depleted = P.enter_runner_down_state(party_facts(
+    "leader", { active = false, dead = false },
+    { active = false, dead = false }, {
+        [E.RunnerMeter.PHYSICAL] = 4,
+        [E.RunnerMeter.MENTAL] = 6,
+    }))
+check(not meters_not_depleted.lifecycle.downed and
+      not meters_not_depleted.recovery.party_wipe_imminent,
+      "positive physical and mental meters do not down a runner")
+local physical_zero = P.enter_runner_down_state(party_facts(
+    "leader", { active = false, dead = false },
+    { active = false, dead = false }, {
+        [E.RunnerMeter.PHYSICAL] = 0,
+        [E.RunnerMeter.MENTAL] = 6,
+    }))
+check(physical_zero.lifecycle.downed and
+      physical_zero.recovery.party_wipe_imminent,
+      "zero physical meter downs the runner and starts a lone wipe")
+local mental_zero = P.enter_runner_down_state(party_facts(
+    "leader", { active = false, dead = false },
+    { active = false, dead = false }, {
+        [E.RunnerMeter.PHYSICAL] = 4,
+        [E.RunnerMeter.MENTAL] = 0,
+    }))
+check(mental_zero.lifecycle.downed and
+      mental_zero.recovery.party_wipe_imminent,
+      "zero mental meter downs the runner and starts a lone wipe")
 local live_companion = P.enter_runner_down_state(party_facts(
     "leader", { active = true, dead = false },
     { active = false, dead = false }))

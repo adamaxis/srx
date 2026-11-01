@@ -49,9 +49,20 @@ local pending_wake_destination
 function PartyDown.enter_runner_down_state(context)
     assert(type(context) == "table" and type(context.party) == "table",
            "party_down: missing party facts")
+    assert(type(context.target_meters) == "table",
+           "party_down: missing target meter facts")
     local target = context.target_role
     assert(target == "leader" or target == "companion_one" or
            target == "companion_two", "party_down: unknown target role")
+
+    local physical = math.tointeger(
+        context.target_meters[E.RunnerMeter.PHYSICAL])
+    local mental = math.tointeger(
+        context.target_meters[E.RunnerMeter.MENTAL])
+    assert(physical ~= nil and mental ~= nil and
+           physical >= 0 and mental >= 0,
+           "party_down: invalid target meter facts")
+    local downed = physical == 0 or mental == 0
 
     local party = context.party
     local leader = party.leader
@@ -67,9 +78,9 @@ function PartyDown.enter_runner_down_state(context)
     end
 
     return {
-        lifecycle = { downed = true },
+        lifecycle = { downed = downed },
         recovery = {
-            party_wipe_imminent = leader_is_dead and
+            party_wipe_imminent = downed and leader_is_dead and
                 companion_is_unavailable(companion_one, "companion_one") and
                 companion_is_unavailable(companion_two, "companion_two"),
         },

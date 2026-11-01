@@ -14565,10 +14565,16 @@ GameScriptRuntime::party_runner_down(
     }
     lua_remove(state, -2);
 
-    lua_createtable(state, 0, 2);
+    lua_createtable(state, 0, 3);
     lua_pushlstring(state, kRoleIds[target_index].data(),
                     kRoleIds[target_index].size());
     lua_setfield(state, -2, "target_role");
+    lua_createtable(state, 0, 2);
+    lua_pushinteger(state, context.physical_meter);
+    lua_setfield(state, -2, "physical");
+    lua_pushinteger(state, context.mental_meter);
+    lua_setfield(state, -2, "mental");
+    lua_setfield(state, -2, "target_meters");
     lua_createtable(state, 0, static_cast<int>(context.party.size()));
     for (std::size_t index = 0U; index < context.party.size(); ++index) {
         lua_createtable(state, 0, 3);

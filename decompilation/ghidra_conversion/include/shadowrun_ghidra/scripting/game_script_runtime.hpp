@@ -1504,6 +1504,8 @@ struct ScriptPartyMemberLifecycleFacts {
 
 struct ScriptPartyRunnerDownContext {
     ScriptPartyMemberRole target = ScriptPartyMemberRole::leader;
+    std::uint8_t physical_meter = 0; // live runner +0x4C
+    std::uint8_t mental_meter = 0; // live runner +0x9C
     std::array<ScriptPartyMemberLifecycleFacts, 3> party{};
 };
 

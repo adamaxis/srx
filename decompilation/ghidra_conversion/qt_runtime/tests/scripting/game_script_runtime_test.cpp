@@ -2264,11 +2264,24 @@ bool verify_party_runner_down_bridge(
     // when the leader and both companion roles are unavailable.
     ScriptPartyRunnerDownContext alone{};
     alone.target = ScriptPartyMemberRole::leader;
+    alone.physical_meter = 4U;
+    alone.mental_meter = 0U;
     alone.party[0] = {true, false};
     const auto alone_decision = scripts.party_runner_down(alone);
     if (!expect(alone_decision.has_value() && alone_decision->downed &&
                     alone_decision->party_wipe_imminent,
                 "party-down Lua bridge lost the leader recovery transition")) {
+        return false;
+    }
+
+    auto standing = alone;
+    standing.physical_meter = 4U;
+    standing.mental_meter = 6U;
+    const auto standing_decision = scripts.party_runner_down(standing);
+    if (!expect(standing_decision.has_value() &&
+                    !standing_decision->downed &&
+                    !standing_decision->party_wipe_imminent,
+                "positive runner meters incorrectly entered down state")) {
         return false;
     }
 
@@ -2284,6 +2297,8 @@ bool verify_party_runner_down_bridge(
 
     auto companion_down = alone;
     companion_down.target = ScriptPartyMemberRole::companion_one;
+    companion_down.physical_meter = 0U;
+    companion_down.mental_meter = 6U;
     companion_down.party[1] = {true, false};
     const auto companion_decision = scripts.party_runner_down(companion_down);
     return expect(companion_decision.has_value() &&

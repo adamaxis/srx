@@ -1260,15 +1260,16 @@ bool FieldSceneRuntime::apply_script_combat_meter_update(
                 (static_cast<std::uint16_t>(
                      update.source_record_flags) << 8U));
         }
-        if (update.physical && target.delay_meter == 0U &&
-            (target.flags & kRunnerFlagsDown) == 0U) {
-            // ROM 0xAFF2 -> 0xB330: a zero +0x4C downs the runner. Translate
-            // the source roster into lifecycle facts for Lua; audio and the
-            // native countdown stay in their owning host systems [C].
+        if ((target.flags & kRunnerFlagsDown) == 0U) {
+            // ROM 0xA912..0xAA02 checks both +0x4C and +0x9C before
+            // 0xAFF2 enters 0xB330. Lua decides whether either meter is zero;
+            // audio and the native countdown stay in their host systems [C].
             const auto& records = field_party_roster_.records();
             scripting::ScriptPartyRunnerDownContext down_context{};
             down_context.target =
                 static_cast<scripting::ScriptPartyMemberRole>(slot);
+            down_context.physical_meter = target.delay_meter;
+            down_context.mental_meter = target.behavior_meter;
             constexpr auto kActiveStatus = static_cast<std::uint8_t>(
                 srx::ActorStatus::ACTIVE);
             constexpr auto kDownStatus = static_cast<std::uint8_t>(
@@ -1290,24 +1291,19 @@ bool FieldSceneRuntime::apply_script_combat_meter_update(
                 report("party_runner_down_failed");
                 return false;
             }
-            if (!down->downed) {
-                failure_ =
-                    "party_down.enter_runner_down_state returned no down transition";
-                report("party_runner_down_failed");
-                return false;
+            if (down->downed) {
+                target.flags |= kRunnerFlagsDown;
+                const auto down_audio = runner_down_audio_event(target.kind);
+                if (down_audio.has_value() && source_audio_event_callback_) {
+                    source_audio_event_callback_(*down_audio);
+                }
+                if (down->party_wipe_imminent) {
+                    // ROM 0xABF2 arms 60 field passes before recovery [C].
+                    field_party_wipe_countdown_ = 60U;
+                    report("party_wipe_countdown_started");
+                }
+                report("party_runner_down");
             }
-            target.flags |= kRunnerFlagsDown;
-            const auto down_audio = runner_down_audio_event(target.kind);
-            if (down_audio.has_value() && source_audio_event_callback_) {
-                source_audio_event_callback_(
-                    *down_audio);
-            }
-            if (down->party_wipe_imminent) {
-                // ROM 0xABF2 arms 60 field passes before party recovery [C].
-                field_party_wipe_countdown_ = 60U;
-                report("party_wipe_countdown_started");
-            }
-            report("party_runner_down");
         }
         if (slot == field_party_roster_.active_slot()) {
             refresh_field_hud_runner_slot();

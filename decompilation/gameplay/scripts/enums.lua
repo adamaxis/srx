@@ -82,6 +82,10 @@ E.FieldSafe = {
     FUCHI_ENTRY_EVENT = 0x02,
 }
 E.RunnerContinuation = { IDLE = "idle" } -- first-aid return state; host maps it to the native continuation [C]
+E.RunnerMeter = {
+    PHYSICAL = "physical", -- live runner +0x4C [C]
+    MENTAL = "mental",     -- live runner +0x9C [C]
+} -- field service tests both meters at 0xA912..0xAA02 [C]
 E.CombatPhase = { NONE = 0, ATTACK_ANIM = 1, APPROACH = 2, HOLD = 3 }               -- FFDFE0 [C]
 
 -- Shared 0xABFC / 0xD7EA delay calculation. D0=0 is unchanged, D0=2 doubles,
