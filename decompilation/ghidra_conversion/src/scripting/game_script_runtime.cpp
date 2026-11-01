@@ -12555,6 +12555,13 @@ GameScriptRuntime::actor_heartbeat(
         return fail("actor_ai.heartbeat returned an invalid sprite flip");
     }
     decision.animation_flip_x = returned_value == 1U;
+    if (!read_field_integer(state, decision_table, "sprite_priority", 1U,
+                            returned_value)) {
+        return fail("actor_ai.heartbeat returned an invalid sprite priority");
+    }
+    decision.sprite_priority = returned_value == 0U
+        ? ScriptFieldSpritePriority::low
+        : ScriptFieldSpritePriority::high;
     ActorFacts returned_actor_facts;
     if (!read_actor_facts(state, decision_table, returned_actor_facts)) {
         return fail("actor_ai.heartbeat returned invalid named actor facts");

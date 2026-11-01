@@ -1931,6 +1931,109 @@ int run_field_ganger_walk_facing_qa(
                   << " failure=" << field_scene.failure() << '\n';
         return 3;
     }
+
+    // Measure the existing field presenter at the ROM window boundary. Keep
+    // the actor frame and every other field state fixed; compare a live Ork
+    // Ganger at projected anchors x=240, x=380 (still in the playfield), and
+    // x=420 (inside the HUD window). This also proves the actor remains drawn
+    // up to the sidebar edge instead of disappearing due to a wide cull.
+    const auto& field_buffers = field_scene.state().field_scene_buffers;
+    const auto screen_anchor_to_world = [](const std::uint16_t camera,
+                                           const int screen_anchor) {
+        return static_cast<std::uint16_t>(
+            static_cast<int>(camera) + (screen_anchor - 0x80) * 0x10);
+    };
+    const auto sidebar_test_y = screen_anchor_to_world(
+        static_cast<std::uint16_t>(field_buffers.camera_y), 200);
+    const auto sidebar_baseline_x = screen_anchor_to_world(
+        static_cast<std::uint16_t>(field_buffers.camera_x), 240);
+    const auto sidebar_edge_x = screen_anchor_to_world(
+        static_cast<std::uint16_t>(field_buffers.camera_x), 380);
+    const auto sidebar_overlap_x = screen_anchor_to_world(
+        static_cast<std::uint16_t>(field_buffers.camera_x), 420);
+    if (!field_scene.set_default_actor_world_position_for_dump(
+            east_walker->active_actor_index, sidebar_baseline_x,
+            sidebar_test_y)) {
+        std::cerr << "field ganger facing QA: could not position the sidebar baseline\n";
+        return 3;
+    }
+    const auto sidebar_baseline = render_qa_field(field_scene, true);
+    if (!field_scene.set_default_actor_world_position_for_dump(
+            east_walker->active_actor_index, sidebar_edge_x,
+            sidebar_test_y)) {
+        std::cerr << "field ganger facing QA: could not position the sidebar edge\n";
+        return 3;
+    }
+    const auto sidebar_edge = render_qa_field(field_scene, true);
+    if (!field_scene.set_default_actor_world_position_for_dump(
+            east_walker->active_actor_index, sidebar_overlap_x,
+            sidebar_test_y)) {
+        std::cerr << "field ganger facing QA: could not position the sidebar overlap\n";
+        return 3;
+    }
+    const auto sidebar_actor = actor_by_id(east_walker->actor_instance_id);
+    const auto sidebar_overlap = render_qa_field(field_scene, true);
+    if (sidebar_baseline.isNull() || sidebar_edge.isNull() ||
+        sidebar_overlap.isNull() ||
+        !save("sidebar-baseline.bmp", sidebar_baseline) ||
+        !save("sidebar-edge.bmp", sidebar_edge) ||
+        !save("sidebar-overlap.bmp", sidebar_overlap)) {
+        std::cerr << "field ganger facing QA: could not capture sidebar overlap\n";
+        return 3;
+    }
+    std::size_t sidebar_changed_pixels = 0U;
+    std::size_t playfield_changed_pixels = 0U;
+    std::size_t edge_playfield_changed_pixels = 0U;
+    for (int y = 0; y < sidebar_edge.height(); ++y) {
+        for (int x = 0; x < 272; ++x) {
+            if (sidebar_baseline.pixel(x, y) != sidebar_edge.pixel(x, y)) {
+                ++edge_playfield_changed_pixels;
+            }
+        }
+    }
+    for (int y = 0; y < sidebar_overlap.height(); ++y) {
+        for (int x = 0; x < sidebar_overlap.width(); ++x) {
+            if (sidebar_baseline.pixel(x, y) == sidebar_overlap.pixel(x, y)) {
+                continue;
+            }
+            if (x >= 272 && x < 320) {
+                ++sidebar_changed_pixels;
+            } else if (x < 272) {
+                ++playfield_changed_pixels;
+            }
+        }
+    }
+    std::cout << "field_sidebar_overlap_measurement actor=ork_ganger"
+              << " anchor_x=420 sidebar_changed_pixels="
+              << sidebar_changed_pixels
+              << " playfield_changed_pixels=" << playfield_changed_pixels
+              << " edge_playfield_changed_pixels="
+              << edge_playfield_changed_pixels
+              << " actor_position="
+              << (sidebar_actor.has_value()
+                      ? std::to_string(sidebar_actor->world_x) + "," +
+                            std::to_string(sidebar_actor->world_y)
+                      : std::string("missing"))
+              << " animation="
+              << (sidebar_actor.has_value() ? sidebar_actor->animation_id
+                                            : std::string("missing"))
+              << " camera=" << field_buffers.camera_x << ','
+              << field_buffers.camera_y
+              << " actual=" << (output / "sidebar-overlap.bmp").string()
+              << '\n';
+    // ROM 0xD4A0 places the right-side window at x=272, and 0x481E/0x622C
+    // emit ordinary field enemies with priority clear. Keep a real enemy
+    // visible in the playfield, but never let its low-priority pixels replace
+    // the window/HUD pixels after the actor crosses that boundary.
+    if (sidebar_changed_pixels != 0U || playfield_changed_pixels == 0U ||
+        edge_playfield_changed_pixels == 0U) {
+        std::cerr << "field ganger facing QA: low-priority enemy crossed over "
+                     "the sidebar or disappeared from the field; sidebar="
+                  << sidebar_changed_pixels << " playfield="
+                  << playfield_changed_pixels << '\n';
+        return 3;
+    }
+
     std::cout << "field_ganger_walk_facing_qa=passed capture_frame="
               << capture_frame << " east=dir"
               << static_cast<unsigned>(east_walker->direction) << "/frame"

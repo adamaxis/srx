@@ -25,8 +25,9 @@ an individually named RGBA PNG for each of the 56 scene maps and lists it in
 `resources.tsv` and `field/maps/index.tsv`. The active Qt `FieldSceneRuntime`
 loads and size-checks the map/overlay pair on initial scene setup and on every
 scene transition. Its composition order is: map crop, low-priority actors,
-transparent priority overlay, then the field HUD. Native shared asset loading
-also decodes these direct PNG assets.
+transparent priority overlay, then the field HUD/window, followed by any
+Lua-selected high-priority actors. Native shared asset loading also decodes
+these direct PNG assets.
 
 All 56 overlay images are checked against their map dimensions. Every opaque
 overlay pixel must exactly match the flattened map's RGB at that coordinate;
@@ -65,10 +66,13 @@ independent Genesis captures or a substitute for scene-by-scene route QA.
    and field interaction sound behavior is unchanged and was not used as proof
    of the depth fix.
 6. **Are the other screen areas correct too?** The map crop still uses the
-   current camera rectangle; actor rendering remains in its callback, and the
-   HUD draws after both map passes. The full route contact sheets were checked
-   for changes to the HUD, terminal panel, menu, transitions, and return. The
-   known scene-2 actor/HUD overlap remains a separate open defect.
+   current camera rectangle. Low-priority actors render before the map priority
+   overlay and HUD/window; high-priority actors render after them. Headless
+   scene-2 QA measured an enemy at projected anchor x=420: zero changed pixels
+   in the x=272..319 HUD window, while 332 pixels changed in the playfield. At
+   x=380, 676 playfield pixels changed, confirming the actor remains visible
+   to the window edge. This resolves the scene-2 actor/HUD overlap in the host
+   presenter; it is not an independent Genesis screenshot comparison.
 7. **Do multiple frames support the interpretation?** The route QA contains
    614 consecutive full-screen frames through entry, movement, both locks,
    terminal result, menu navigation, and return. Eight chronological sheets

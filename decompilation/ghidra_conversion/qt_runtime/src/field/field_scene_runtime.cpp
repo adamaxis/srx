@@ -3950,6 +3950,7 @@ void FieldSceneRuntime::initialize_default_field_actors(
         actor.action_delay = decision->action_delay;
         actor.animation_direction = decision->direction;
         actor.animation_flip_x = decision->animation_flip_x;
+        actor.sprite_priority = decision->sprite_priority;
         actor.animation_id = decision->animation_id;
         actor.animation_variant = decision->animation_variant;
         actor.animation_frame = decision->animation_frame;
@@ -3998,6 +3999,7 @@ void FieldSceneRuntime::initialize_default_field_actors(
         }
         actor.animation_direction = decision->direction;
         actor.animation_flip_x = decision->animation_flip_x;
+        actor.sprite_priority = decision->sprite_priority;
         actor.animation_id = decision->animation_id;
         actor.animation_frame = decision->animation_frame;
         actor.transition_started = decision->transition_started;
@@ -4338,6 +4340,7 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
             decision->actor_facts.behavior);
         actor.animation_direction = decision->direction;
         actor.animation_flip_x = decision->animation_flip_x;
+        actor.sprite_priority = decision->sprite_priority;
         actor.animation_id = decision->animation_id;
         actor.animation_variant = decision->animation_variant;
         actor.animation_frame = decision->animation_frame;
@@ -5169,6 +5172,7 @@ void FieldSceneRuntime::advance_default_field_actors(
         }
         actor.animation_direction = decision->direction;
         actor.animation_flip_x = decision->animation_flip_x;
+        actor.sprite_priority = decision->sprite_priority;
         actor.animation_id = decision->animation_id;
         actor.animation_variant = decision->animation_variant;
         actor.animation_frame = decision->animation_frame;
@@ -5239,6 +5243,7 @@ void FieldSceneRuntime::advance_default_field_actors(
             decision->target_motion_effect_phase;
         actor.animation_direction = decision->direction;
         actor.animation_flip_x = decision->animation_flip_x;
+        actor.sprite_priority = decision->sprite_priority;
         actor.animation_id = decision->animation_id;
         actor.animation_frame = decision->animation_frame;
         // ROM 0xAB02 runs once, when the 0xB330 death list (C0B2) finishes
@@ -6701,6 +6706,7 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
             decision->actor_facts.behavior);
         actor.animation_direction = decision->direction;
         actor.animation_flip_x = decision->animation_flip_x;
+        actor.sprite_priority = decision->sprite_priority;
         actor.animation_id = decision->animation_id;
         actor.animation_variant = decision->animation_variant;
         actor.animation_frame = decision->animation_frame;
@@ -13044,6 +13050,7 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
         }
         actor.animation_direction = decision->direction;
         actor.animation_flip_x = decision->animation_flip_x;
+        actor.sprite_priority = decision->sprite_priority;
         actor.animation_id = decision->animation_id;
         actor.animation_variant = decision->animation_variant;
         actor.animation_frame = decision->animation_frame;
@@ -14714,7 +14721,9 @@ void FieldSceneRuntime::advance_frame() {
 }
 
 void FieldSceneRuntime::paint_field_scene_entities(
-    QPainter& painter, const QRect& clip_rect) const {
+    QPainter& painter, const QRect& clip_rect,
+    const std::optional<scripting::ScriptFieldSpritePriority>
+        priority_filter) const {
     struct SceneSprite {
         std::int16_t depth = 0;
         std::uint16_t source_order = 0;
@@ -14722,6 +14731,8 @@ void FieldSceneRuntime::paint_field_scene_entities(
         int y = 0;
         const QImage* image = nullptr;
         QImage mirrored_image{};
+        scripting::ScriptFieldSpritePriority priority =
+            scripting::ScriptFieldSpritePriority::low;
     };
     std::vector<SceneSprite> sprites;
     const auto camera_x = static_cast<std::uint16_t>(
@@ -14912,6 +14923,7 @@ void FieldSceneRuntime::paint_field_scene_entities(
             actor_sprite.mirrored_image =
                 flipped_image(*sprite.image, Qt::Horizontal);
         }
+        actor_sprite.priority = actor.sprite_priority;
         sprites.push_back(std::move(actor_sprite));
 
         if (actor.spell_effect_visible &&
@@ -15132,6 +15144,10 @@ void FieldSceneRuntime::paint_field_scene_entities(
         painter.setClipRect(clip_rect, Qt::IntersectClip);
     }
     for (auto sprite = sprites.rbegin(); sprite != sprites.rend(); ++sprite) {
+        if (priority_filter.has_value() &&
+            sprite->priority != *priority_filter) {
+            continue;
+        }
         if (sprite->image != nullptr) {
             painter.drawImage(
                 sprite->x, sprite->y,
@@ -18982,7 +18998,9 @@ void FieldSceneRuntime::paint_field_scene(QPainter& painter) const {
         field_vdp_mirror_->model().compose(
             composed,
             [this](QPainter& target) {
-                paint_field_scene_entities(target);
+                paint_field_scene_entities(
+                    target, QRect(),
+                    scripting::ScriptFieldSpritePriority::low);
             },
             {}, displayed);
         painter.drawImage(0, 0, composed);
@@ -18990,7 +19008,11 @@ void FieldSceneRuntime::paint_field_scene(QPainter& painter) const {
         paint_field_map_composition(
             painter, field_map_, field_map_priority_overlay_,
             QRect(viewport_x, viewport_y, 320, 224),
-            [this](QPainter& target) { paint_field_scene_entities(target); });
+            [this](QPainter& target) {
+                paint_field_scene_entities(
+                    target, QRect(),
+                    scripting::ScriptFieldSpritePriority::low);
+            });
     }
 
     // 0x334C supplies the static chrome. 0x35D4/0x35F0/0x36FC/0x3674 stamp
@@ -18998,11 +19020,13 @@ void FieldSceneRuntime::paint_field_scene(QPainter& painter) const {
     // cells. New-game keeps slots 1 and 2 inactive.
     painter.drawImage(0, 0, field_hud_);
     paint_field_hud_overlays(painter);
-    // VDP register $91 places the HUD in the low-priority window plane. ROM
-    // sprite priority therefore lets actors cover it where they extend into
-    // columns 34-39 (x=272..319). The map pass above already draws each actor
-    // against the playfield; redraw only the window area after its contents.
-    paint_field_scene_entities(painter, QRect(272, 0, 48, 224));
+    // ROM 0xD4A0 positions the right window at x=272, and ordinary field
+    // actors keep priority bit 15 clear through 0x481E/0x622C. The window
+    // covers those low-priority sprites; only Lua-selected high-priority
+    // actors are presented after the sidebar.
+    paint_field_scene_entities(
+        painter, QRect(0, 0, 320, 224),
+        scripting::ScriptFieldSpritePriority::high);
 }
 
 } // namespace shadowrun::ghidra_conversion::qt_runtime

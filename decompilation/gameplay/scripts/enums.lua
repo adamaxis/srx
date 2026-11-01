@@ -53,6 +53,8 @@ E.ActorFacing = {
     SOUTH = 4, SOUTH_WEST = 5, WEST = 6, NORTH_WEST = 7,
 } -- C062 walk list direction indices [C: 0xB6BA..0xB6DE]
 E.SpriteFlip = { NONE = 0, HORIZONTAL = 1 } -- descriptor attribute 0x0800 [C: 0x600E]
+E.FieldSpritePriority = { LOW = 0, HIGH = 1 } -- SAT attribute bit 15
+-- Ordinary actor attributes leave it clear [C: 0x481E, 0x622C, 0x1D6738+0x2C]
 E.MovementBearingDegrees = {
     [E.MovementDirection.NORTH] = 0,
     [E.MovementDirection.NORTH_EAST] = 45,

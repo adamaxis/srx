@@ -9,6 +9,7 @@ local SoundId, SceneId, EntryDelayMax, AiTuning =
     E.SoundId, E.SceneId, E.EntryDelayMax, E.AiTuning
 local PlayerHurt = E.PlayerHurt
 local ActorFacing, SpriteFlip = E.ActorFacing, E.SpriteFlip
+local FieldSpritePriority = E.FieldSpritePriority
 local VisualProfile = R.VisualProfile -- from actor/tables.lua
 local ProjectileAnimationClips =
     require("data.weapon_projectile_animation_clips")
@@ -75,6 +76,7 @@ local function snapshot(state, action, audio_event, projectile_movement,
         actor_facts = state.actor_facts,
         direction = state.direction,
         sprite_flip = walk_sprite_flip(state),
+        sprite_priority = FieldSpritePriority.LOW,
         frame = state.animation_frame,
         transition_started = state.transition_started,
         transition_complete = state.transition_complete,

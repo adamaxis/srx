@@ -55,6 +55,9 @@ local right_facing = R.snapshot({
 }, "hold", nil)
 check(right_facing.sprite_flip == E.SpriteFlip.NONE,
       "right-facing Ganger walk keeps the unflipped art")
+check(E.FieldSpritePriority.LOW == 0 and E.FieldSpritePriority.HIGH == 1 and
+      right_facing.sprite_priority == E.FieldSpritePriority.LOW,
+      "field actor snapshot carries the ROM low-priority sprite layer")
 local left_idle = R.snapshot({
     actor_id = "ganger-left-idle",
     visual_profile_id = E.ActorVisualProfile.ORK_BANDERSNATCH,

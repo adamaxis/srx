@@ -1892,7 +1892,9 @@ private:
                            int& origin_y);
     void paint_field_scene(QPainter& painter) const;
     void paint_field_scene_entities(QPainter& painter,
-                                    const QRect& clip_rect = QRect()) const;
+                                    const QRect& clip_rect = QRect(),
+                                    std::optional<scripting::ScriptFieldSpritePriority>
+                                        priority_filter = std::nullopt) const;
     void paint_field_hud_overlays(QPainter& painter) const;
     FieldHudSlotState field_hud_slot_state(std::size_t slot) const;
     void paint_command_overview_magic(QPainter& painter) const;
@@ -2150,6 +2152,8 @@ private:
         std::uint8_t initial_behavior_delay = 0;
         std::uint8_t animation_direction = 0;
         bool animation_flip_x = false;
+        scripting::ScriptFieldSpritePriority sprite_priority =
+            scripting::ScriptFieldSpritePriority::low;
         std::string animation_id = "idle";
         std::string animation_variant;
         std::uint8_t animation_frame = 0;

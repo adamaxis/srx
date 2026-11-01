@@ -2378,6 +2378,11 @@ enum class ScriptTarislarTombOutroStep {
     unresolved,
 };
 
+enum class ScriptFieldSpritePriority : std::uint8_t {
+    low = 0,
+    high = 1,
+};
+
 struct ScriptActorBehaviorDecision {
     enum class Action {
         hold,
@@ -2389,6 +2394,8 @@ struct ScriptActorBehaviorDecision {
     std::string animation_id = "idle";
     std::uint8_t direction = 0;
     bool animation_flip_x = false;
+    ScriptFieldSpritePriority sprite_priority =
+        ScriptFieldSpritePriority::low;
     std::uint8_t animation_frame = 0;
     ScriptActorFacts actor_facts;
     // A gameplay event; the field host starts the encounter activity delay.
