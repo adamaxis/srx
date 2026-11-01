@@ -12,9 +12,7 @@
         "kind": "dialogue",
         "script": "lua_dialogue",
         "priority": 0,
-        "conditionId": "stoker_coffin_motel.rom_event_02.route",
-        "returnAnchor": "collision_probe_lead",
-        "returnFacing": "face_away_from_entry"
+        "conditionId": "stoker_coffin_motel.rom_event_02.route"
       },
       "entryDialogue": {
         "task": {

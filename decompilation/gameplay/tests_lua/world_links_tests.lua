@@ -70,66 +70,73 @@ local ROM_RETURN_BANKS = {
     south = { { 0, 0x140 }, { 0x140, 0x140 }, { -0x140, 0x140 } },
     west = { { -0x1E0, 0 }, { -0x100, 0x140 }, { -0x100, -0x100 } },
 }
-local building_service_routes = 0
-for scene_id = 0, 55 do
-    local scene = D.scenes[scene_id]
-    if scene.mode == "street" then
-        for link_index, link in ipairs(scene.links) do
-            local transition = link.transition
-            local destination = transition.kind == "scene_change" and
-                D.scenes[transition.destination_scene_id] or nil
-            if transition.kind == "same_map_service" or
-               (destination ~= nil and destination.mode == "building") then
-                building_service_routes = building_service_routes + 1
-                local expected_bank = ROM_RETURN_BANKS[link.return_side]
-                check(expected_bank ~= nil,
-                      "route " .. scene_id .. "." .. link_index ..
-                          " has a ROM return bank")
-                local lead_x = math.floor(
-                    (link.bounds.left + link.bounds.right) / 2)
-                local lead_y = math.floor(
-                    (link.bounds.top + link.bounds.bottom) / 2)
-                local result = W.door_contact{
-                    outdoor_field = true,
-                    return_side = link.return_side,
-                    lead = { x = lead_x, y = lead_y },
-                    camera = { x = 0, y = 0 },
-                }
-                check(result.saved, "route " .. scene_id .. "." ..
-                      link_index .. " saves the source return point")
-                local first = result.party[1]
-                for runner = 1, 3 do
-                    local expected = expected_bank[runner]
-                    local actual = result.party[runner]
-                    check(actual.x == lead_x + expected[1] and
-                          actual.y == lead_y + expected[2],
-                          "route " .. scene_id .. "." .. link_index ..
-                              " runner " .. runner .. " matches 0xBD34")
-                end
-                local entry_bearing = link.return_side == "south" and 0 or
-                    link.return_side == "north" and 180 or
-                    link.return_side == "east" and 270 or 90
-                local returned_bearing = W.exit_bearing{
-                    facing_policy =
-                        E.FieldLocationReturnFacing.FACE_AWAY_FROM_ENTRY,
-                    entry_bearing_degrees = entry_bearing,
-                }.bearing_degrees
-                check(returned_bearing == 180,
-                      "route " .. scene_id .. "." .. link_index ..
-                          " returns at ROM heading $8000")
-                print(string.format(
-                    "field_exit_return_sweep scene=%d link=%d side=%s " ..
-                    "contact=%d,%d return=%d,%d heading=0x%04X",
-                    scene_id, link_index, link.return_side, lead_x, lead_y,
-                    first.x, first.y,
-                    math.floor(returned_bearing * 65536 / 360)))
-            end
-        end
+local building_service_exits = W.building_service_exit_cases()
+for _, exit_case in ipairs(building_service_exits) do
+    local expected_bank = ROM_RETURN_BANKS[exit_case.return_side]
+    check(expected_bank ~= nil,
+          exit_case.exit_id .. " has a ROM return bank")
+    local point = W.door_contact{
+        outdoor_field = true,
+        return_side = exit_case.return_side,
+        lead = exit_case.contact,
+        camera = { x = 0, y = 0 },
+    }
+    check(point.saved,
+          exit_case.exit_id .. " saves the source return point")
+    local entry_bearing = exit_case.return_side == "south" and 0 or
+        exit_case.return_side == "north" and 180 or
+        exit_case.return_side == "east" and 270 or 90
+    local policy = W.building_service_exit_policy{
+        exit_id = exit_case.exit_id,
+    }
+    local returned = W.building_service_exit_return{
+        point = point,
+        entry_bearing_degrees = entry_bearing,
+        return_anchor = policy.return_anchor,
+        return_facing = policy.return_facing,
+    }
+    for runner = 1, 3 do
+        local expected = expected_bank[runner]
+        local actual = returned.party[runner]
+        check(actual.x == exit_case.contact.x + expected[1] and
+              actual.y == exit_case.contact.y + expected[2],
+              exit_case.exit_id .. " runner " .. runner ..
+                  " matches the ROM bank at 0xBD34")
     end
+    local returned_bearing = returned.bearing_degrees
+    check(returned_bearing == 180,
+          exit_case.exit_id .. " returns at outward heading $8000")
+    check(returned.return_anchor ==
+              E.FieldLocationReturnAnchor.COLLISION_PROBE_LEAD and
+          returned.return_facing ==
+              E.FieldLocationReturnFacing.FACE_AWAY_FROM_ENTRY,
+          exit_case.exit_id .. " gets the shared typed exit policy")
+    print(string.format(
+        "field_exit_return_sweep id=%s scene=%d link=%d side=%s " ..
+        "contact=%d,%d return=%d,%d heading=0x%04X",
+        exit_case.exit_id, exit_case.scene_id, exit_case.link_index,
+        exit_case.return_side, exit_case.contact.x, exit_case.contact.y,
+        returned.party[1].x, returned.party[1].y,
+        math.floor(returned_bearing * 65536 / 360)))
 end
-check(building_service_routes == 30,
+check(#building_service_exits == 30,
       "30 outdoor building/service links receive a measured return, got " ..
-          building_service_routes)
+          #building_service_exits)
+local exit_exceptions = W.building_service_exit_exceptions()
+for _, exception in ipairs(exit_exceptions) do
+    print(string.format("field_exit_return_exception id=%s rom=%s anchor=%s " ..
+        "facing=%s", exception.exit_id, exception.rom_address,
+        exception.return_anchor, exception.return_facing))
+end
+check(#exit_exceptions == 1 and
+      exit_exceptions[1].exit_id ==
+          "council_medicine_lodge.rom_event_06" and
+      exit_exceptions[1].rom_address == "0x15BDB0" and
+      exit_exceptions[1].return_anchor ==
+          E.FieldLocationReturnAnchor.NONE and
+      exit_exceptions[1].return_facing ==
+          E.FieldLocationReturnFacing.PRESERVE_ENTRY,
+      "Scene 4/event 6 stays outside the doorway return policy [0x15BDB0]")
 
 local function contact(x, y, side)
     return W.door_contact{
@@ -171,14 +178,22 @@ check(not pcall(W.door_contact, {
     camera = { x = 0, y = 0 }, return_side = "diagonal",
 }), "unknown return side rejected")
 
--- Return facing policies use compass names and bearings in degrees.
+-- [C] ROM 0xBC36/0xBD34 restores the saved probe triplet; 0x09B8..0x09E0
+-- writes $8000 for the nonzero exit path. Building/service links share that
+-- one typed return policy.
 local point = contact(15584, 10890, "south")
-check(W.return_placement(point, "same_map_service", "north").facing ==
-      "south", "same-map service faces south")
-check(W.return_placement(point, "building_interior", "west").facing ==
-      "west", "building exit preserves its current facing")
-check(not pcall(W.return_placement, point, "unknown", 0),
-      "unknown return path rejected")
+local generic_exit = W.building_service_exit_return{
+    point = point,
+    entry_bearing_degrees = 0,
+}
+check(generic_exit.party == point.party and
+      generic_exit.camera == point.camera and
+      generic_exit.bearing_degrees == 180 and
+      generic_exit.return_anchor ==
+          E.FieldLocationReturnAnchor.COLLISION_PROBE_LEAD and
+      generic_exit.return_facing ==
+          E.FieldLocationReturnFacing.FACE_AWAY_FROM_ENTRY,
+      "generic building/service exit restores the saved point and faces out")
 for _, bearing in ipairs({ 0, 90, 180, 270, 45, 315 }) do
     check(W.exit_bearing({
         facing_policy = E.FieldLocationReturnFacing.FACE_AWAY_FROM_ENTRY,

@@ -12,9 +12,7 @@
         "kind": "area_event",
         "script": "area_event_table",
         "priority": 0,
-        "sourceRoutePolicy": "resume_source_route",
-        "returnAnchor": "collision_probe_lead",
-        "returnFacing": "face_away_from_entry"
+        "sourceRoutePolicy": "resume_source_route"
       },
       "provenance": {
         "evidence": "ROM scene 5 record 46 at 0x067C36; event-table row 6 at 0x0679CC selects resource activity 35 when the title service does not override entry. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
@@ -31,9 +29,7 @@
         "script": "area_event_table",
         "priority": 10,
         "sourceRoutePolicy": "resume_source_route",
-        "conditionId": "renraku_offices_frontage.renraku_map_overlay_entry.route",
-        "returnAnchor": "collision_probe_lead",
-        "returnFacing": "face_away_from_entry"
+        "conditionId": "renraku_offices_frontage.renraku_map_overlay_entry.route"
       },
       "entryDialogue": {
         "task": {

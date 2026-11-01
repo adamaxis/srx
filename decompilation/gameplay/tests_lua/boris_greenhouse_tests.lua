@@ -43,8 +43,6 @@ local area_link = {
     destination_mode = "resource_activity",
     route_priority = 0,
     source_route_policy = "resume_source_route",
-    return_anchor = E.FieldLocationReturnAnchor.COLLISION_PROBE_LEAD,
-    return_facing = E.FieldLocationReturnFacing.FACE_AWAY_FROM_ENTRY,
 }
 local function new_game(choices, flags, funds, package_run_status, inventory)
     local queued_choices = {}

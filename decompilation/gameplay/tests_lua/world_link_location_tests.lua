@@ -39,8 +39,6 @@ local hospital_interaction = {
         script = "area_event_table",
         priority = 0,
         sourceRoutePolicy = "resume_source_route",
-        returnAnchor = "collision_probe_lead",
-        returnFacing = "face_away_from_entry",
     },
     tasks = {
         fieldExitPrompt = {
@@ -177,8 +175,10 @@ check(hospital_route.kind == "area_event" and
       hospital_route.field_exit_prompt.function_name ==
           "present_field_exit_prompt" and
       hospital_route.field_exit_prompt.location_id == HOSPITAL_ID and
-      hospital_route.return_anchor == "collision_probe_lead" and
-      hospital_route.return_facing == "face_away_from_entry",
+      hospital_route.return_anchor ==
+          E.FieldLocationReturnAnchor.COLLISION_PROBE_LEAD and
+      hospital_route.return_facing ==
+          E.FieldLocationReturnFacing.FACE_AWAY_FROM_ENTRY,
       "ROM 0x1F83C hospital prompt intercepts the table's Scene-21 route")
 
 local hospital_json = read_file(

@@ -5,6 +5,7 @@
 local Building = {}
 local E = require("enums")
 local World = require("world_content")
+local WorldLinks = require("world_links")
 local resource_scene_entry_placements =
     require("data.resource_scene_entry_placements")
 local ConditionEvaluator = require("condition_evaluator")
@@ -126,24 +127,6 @@ local function unresolved_condition_reason(link, scope, result)
         link_identity .. "." .. scope
     return "location.condition_unknown:" .. identity .. ":" ..
         table.concat(result.unknown_facts or {}, ",")
-end
-
-local function return_fields(link)
-    local anchor = link.return_anchor
-    local facing = link.return_facing
-    if anchor == "" or anchor == "-" then anchor = nil end
-    if facing == "" or facing == "-" then facing = nil end
-    assert(anchor == nil or
-           anchor == E.FieldLocationReturnAnchor.COLLISION_PROBE_LEAD,
-        "location link has an unsupported field return anchor")
-    assert(facing == nil or
-           facing == E.FieldLocationReturnFacing.FACE_AWAY_FROM_ENTRY or
-           facing == E.FieldLocationReturnFacing.PRESERVE_ENTRY,
-        "location link has an unsupported field return facing")
-    return {
-        return_anchor = anchor,
-        return_facing = facing,
-    }
 end
 
 local function link_matches_context(link, context)
@@ -324,84 +307,18 @@ local function selected_scene_destination(context)
     return destination
 end
 
--- A source-suppressed field service may inherit the return policy from the
--- matching source-route row. This keeps the service route authoritative while
--- carrying the doorway placement selected by its authored Lua link data.
-local function complete_service_return_fields(fields)
-    -- Same-map service exits restore the 0xBC36/0xBD34 collision-probe lead;
-    -- the nonzero exit result follows 0x09B8 and faces outward. Keep this
-    -- shared default in Lua so every service route carries the typed policy.
-    return {
-        return_anchor = fields.return_anchor or
-            E.FieldLocationReturnAnchor.COLLISION_PROBE_LEAD,
-        return_facing = fields.return_facing or
-            E.FieldLocationReturnFacing.FACE_AWAY_FROM_ENTRY,
+local function attach_building_service_exit_policy(route, link, context)
+    local identity = link ~= nil and
+        ((link.entity_id or "location") .. "." ..
+         (link.link_id or link.id or "unnamed")) or
+        ("scene_" .. tostring(context.scene_id) .. "." ..
+         tostring(context.event_code))
+    local policy = WorldLinks.building_service_exit_policy{
+        exit_id = identity,
     }
-end
-
-local function service_return_fields(link, links, context)
-    local direct = return_fields(link)
-    if direct.return_anchor ~= nil or direct.return_facing ~= nil or
-       link.source_route_policy ~= "suppress_source_route" then
-        return complete_service_return_fields(direct)
-    end
-
-    local destination = selected_scene_destination(context)
-    if destination == nil or
-       destination ~= link.expected_destination_scene then
-        return direct
-    end
-
-    local selected_fields
-    local selected_priority
-    local ambiguous = false
-    local unresolved
-    local unresolved_priority
-    for _, candidate in ipairs(links) do
-        if candidate ~= link and candidate.entity_id == link.entity_id and
-           candidate.route_kind == route_kind.area_event and
-           candidate.script == route_script.map_event_table and
-           candidate.source_route_policy == "resume_source_route" and
-           (candidate.destination_scene == nil or
-            candidate.destination_scene == destination) then
-            local fields = return_fields(candidate)
-            if fields.return_anchor ~= nil or
-               fields.return_facing ~= nil then
-                local evaluation = link_matches_context(candidate, context)
-                local priority = candidate.route_priority or 0
-                if evaluation.status == ConditionEvaluator.Status.unknown then
-                    if unresolved_priority == nil or
-                       priority >= unresolved_priority then
-                        unresolved = unresolved_condition_reason(
-                            candidate, "route", evaluation)
-                        unresolved_priority = priority
-                    end
-                elseif evaluation.status == ConditionEvaluator.Status.true_value then
-                    if selected_fields == nil or priority > selected_priority then
-                        selected_fields = fields
-                        selected_priority = priority
-                        ambiguous = false
-                    elseif priority == selected_priority and
-                           (fields.return_anchor ~=
-                                selected_fields.return_anchor or
-                            fields.return_facing ~=
-                                selected_fields.return_facing) then
-                        ambiguous = true
-                    end
-                end
-            end
-        end
-    end
-    if unresolved ~= nil and
-       (selected_priority == nil or unresolved_priority >= selected_priority) then
-        return nil, unresolved
-    end
-    if ambiguous then
-        return nil, "location.return_policy_ambiguous:" ..
-            (link.entity_id or "location") .. "." ..
-            (link.link_id or link.id or "unnamed")
-    end
-    return complete_service_return_fields(selected_fields or direct)
+    route.return_anchor = policy.return_anchor
+    route.return_facing = policy.return_facing
+    return route
 end
 
 function Building.resolve_field_location_route(context)
@@ -435,28 +352,18 @@ function Building.resolve_field_location_route(context)
             if is_boundary then return route end
             assert(route.entry_dialogue_module ~= nil,
                 "Lua dialogue link must provide a gated dialogue task")
-            local return_policy = return_fields(link)
-            route.return_anchor = return_policy.return_anchor
-            route.return_facing = return_policy.return_facing
-            return route
+            return attach_building_service_exit_policy(route, link, context)
         elseif link.route_kind == route_kind.field_service and
                link.script == route_script.host_field_service then
             local service_id = link.field_service_id or ""
             assert(service_id ~= "" and service_id ~= "-",
                 "host field-service link must name its native service")
-            local return_policy, return_reason = service_return_fields(
-                link, links, context)
-            if return_reason ~= nil then
-                return source_boundary(context.event_code, return_reason)
-            end
-            return {
+            return attach_building_service_exit_policy({
                 kind = route_kind.field_service,
                 script = link.script,
                 event_code = context.event_code,
                 field_service_id = service_id,
-                return_anchor = return_policy.return_anchor,
-                return_facing = return_policy.return_facing,
-            }
+            }, link, context)
         elseif link.route_kind == route_kind.field_service and
                link.script == "lua_field_service" then
             if link.source_route_policy == "suppress_source_route" and
@@ -478,19 +385,12 @@ function Building.resolve_field_location_route(context)
                 link, "indexed_title_service")
             assert(service ~= nil,
                 "Lua field-service link must provide an indexed service task")
-            local return_policy, return_reason = service_return_fields(
-                link, links, context)
-            if return_reason ~= nil then
-                return source_boundary(context.event_code, return_reason)
-            end
-            return {
+            return attach_building_service_exit_policy({
                 kind = route_kind.field_service,
                 script = link.script,
                 event_code = context.event_code,
                 indexed_title_service = service,
-                return_anchor = return_policy.return_anchor,
-                return_facing = return_policy.return_facing,
-            }
+            }, link, context)
         elseif link.route_kind == route_kind.area_event and
                link.script == route_script.map_event_table and
                link.source_route_policy == "resume_source_route" then
@@ -509,7 +409,6 @@ function Building.resolve_field_location_route(context)
                 end
                 return no_route(context.event_code)
             end
-            local return_policy = return_fields(link)
             local route, is_boundary = add_entry_dialogue({
                 kind = route_kind.area_event,
                 script = route_script.map_event_table,
@@ -517,12 +416,11 @@ function Building.resolve_field_location_route(context)
                 area_event_target = target_scene,
                 area_event_destination_mode =
                     classify_area_event_destination(target_scene),
-                return_anchor = return_policy.return_anchor,
-                return_facing = return_policy.return_facing,
             }, link, context)
             if is_boundary then return route end
-            return attach_resource_scene_entry_placement(
-                add_location_script_tasks(route, link))
+            return attach_building_service_exit_policy(
+                attach_resource_scene_entry_placement(
+                    add_location_script_tasks(route, link)), link, context)
         elseif link.route_kind == route_kind.area_event and
                link.script == route_script.map_event_table and
                link.source_route_policy ~= nil then
@@ -554,7 +452,6 @@ function Building.resolve_field_location_route(context)
                     "location.override_destination_invalid:" ..
                     link_identity)
             end
-            local return_policy = return_fields(link)
             local mode = link.destination_mode
             if mode ~= destination_mode.field and
                mode ~= destination_mode.resource_activity and
@@ -569,12 +466,11 @@ function Building.resolve_field_location_route(context)
                 event_code = context.event_code,
                 area_event_target = link.destination_scene,
                 area_event_destination_mode = mode,
-                return_anchor = return_policy.return_anchor,
-                return_facing = return_policy.return_facing,
             }, link, context)
             if is_boundary then return route end
-            return attach_resource_scene_entry_placement(
-                add_location_script_tasks(route, link))
+            return attach_building_service_exit_policy(
+                attach_resource_scene_entry_placement(
+                    add_location_script_tasks(route, link)), link, context)
         elseif (link.route_kind == route_kind.area_event or
                 link.route_kind == route_kind.area_event_override) and
                link.script == route_script.map_event_table and
@@ -583,7 +479,6 @@ function Building.resolve_field_location_route(context)
                link.destination_scene <= 255 and
                link.destination_scene % 1 == 0 and
                transition_matches_link(link, context) then
-            local return_policy = return_fields(link)
             local mode = link.destination_mode
             if mode ~= destination_mode.field and
                mode ~= destination_mode.resource_activity and
@@ -598,12 +493,11 @@ function Building.resolve_field_location_route(context)
                 event_code = context.event_code,
                 area_event_target = link.destination_scene,
                 area_event_destination_mode = mode,
-                return_anchor = return_policy.return_anchor,
-                return_facing = return_policy.return_facing,
             }, link, context)
             if is_boundary then return route end
-            return attach_resource_scene_entry_placement(
-                add_location_script_tasks(route, link))
+            return attach_building_service_exit_policy(
+                attach_resource_scene_entry_placement(
+                    add_location_script_tasks(route, link)), link, context)
         elseif link.route_kind == route_kind.source_activity_return and
                link.script == route_script.source_activity_return then
             -- Scene 13/14 have null event-table pointers. Their event-0 exit
@@ -645,7 +539,7 @@ function Building.resolve_field_location_route(context)
     local target_scene = selected_scene_destination(context)
     if target_scene == nil then return no_route(context.event_code) end
 
-    return attach_resource_scene_entry_placement({
+    local route = attach_resource_scene_entry_placement({
         kind = route_kind.area_event,
         script = route_script.map_event_table,
         event_code = context.event_code,
@@ -653,6 +547,10 @@ function Building.resolve_field_location_route(context)
         area_event_destination_mode =
             classify_area_event_destination(target_scene),
     })
+    if WorldLinks.scene_mode(target_scene) == "building" then
+        return attach_building_service_exit_policy(route, nil, context)
+    end
+    return route
 end
 
 -- Location text, speaker properties, and conditional building content are

@@ -12,8 +12,6 @@ local base_link = {
     destination_scene = 13,
     destination_mode = "field",
     route_priority = 0,
-    return_anchor = "collision_probe_lead",
-    return_facing = "face_away_from_entry",
 }
 local condition_definitions = {}
 local function equal(fact, value)
@@ -31,8 +29,6 @@ local gated_link = {
     destination_scene = 13,
     destination_mode = "field",
     route_priority = 5,
-    return_anchor = "collision_probe_lead",
-    return_facing = "face_away_from_entry",
     route_condition_id = condition("test.gated.route", {
         equal("story.frosty_met", true),
         equal("run.active_id", "package_recovery"),
@@ -96,8 +92,9 @@ assert(gated.entry_location_id == "source_test_location")
 assert(gated.entry_text_profile == "source.test.entry")
 assert(gated.entry_speaker_id == "source_test_speaker")
 assert(gated.entry_continue_result_id == "continue")
-assert(gated.return_anchor == "collision_probe_lead")
-assert(gated.return_facing == "face_away_from_entry")
+assert(gated.return_anchor == E.FieldLocationReturnAnchor.COLLISION_PROBE_LEAD)
+assert(gated.return_facing ==
+       E.FieldLocationReturnFacing.FACE_AWAY_FROM_ENTRY)
 
 local unknown_gate = {
     source_scene = 1,
@@ -196,8 +193,6 @@ local override_link = {
     expected_destination_scene = 13,
     source_route_policy = "suppress_source_route",
     route_priority = 10,
-    return_anchor = "collision_probe_lead",
-    return_facing = "face_away_from_entry",
     route_condition_id = condition("test.first_entry.route", {
         equal("story.frosty_met", true),
         equal("story.garden_apts_entered", false),
@@ -227,8 +222,10 @@ assert(first_entry.kind == "area_event" and
        first_entry.area_event_target == 54 and
        first_entry.area_event_destination_mode == "scripted_activity" and
        first_entry.entry_dialogue_module == "tarislar_apartments" and
-       first_entry.return_anchor == "collision_probe_lead" and
-       first_entry.return_facing == "face_away_from_entry" and
+       first_entry.return_anchor ==
+           E.FieldLocationReturnAnchor.COLLISION_PROBE_LEAD and
+       first_entry.return_facing ==
+           E.FieldLocationReturnFacing.FACE_AWAY_FROM_ENTRY and
        first_entry.entry_continue_result_id == "enter_scene_54")
 
 override_link.source_route_policy = nil
@@ -427,8 +424,8 @@ assert(inn_service.kind == "field_service" and
        inn_service.return_facing ==
            E.FieldLocationReturnFacing.FACE_AWAY_FROM_ENTRY)
 
--- Host-owned shop services use the same ROM door-return policy as Lua-owned
--- field services even when their entity route has no explicit return fields.
+-- Host-owned shop services and Lua-owned services obtain the same generic
+-- ROM door-return policy without authored per-link placement fields.
 local host_service_context = {
     scene_id = 2,
     building_interaction_mode = false,
@@ -500,8 +497,6 @@ local motel_link = {
         equal("field.package_run_status", "none"),
         equal("field.building_interaction_mode", true),
     }),
-    return_anchor = "collision_probe_lead",
-    return_facing = "face_away_from_entry",
     entry_condition_id = condition("test.motel.entry", {
         equal("story.motel_bill_paid", false),
         equal("field.package_run_status", "none"),
@@ -524,8 +519,10 @@ assert(motel_unpaid.kind == "dialogue" and
        motel_unpaid.area_event_target == nil and
        motel_unpaid.entry_dialogue_module == "michael_package" and
        motel_unpaid.entry_dialogue_function == "stoker_interaction" and
-       motel_unpaid.return_anchor == "collision_probe_lead" and
-       motel_unpaid.return_facing == "face_away_from_entry")
+       motel_unpaid.return_anchor ==
+           E.FieldLocationReturnAnchor.COLLISION_PROBE_LEAD and
+       motel_unpaid.return_facing ==
+           E.FieldLocationReturnFacing.FACE_AWAY_FROM_ENTRY)
 
 -- Same-map contacts carry their ROM-selected dialogue event through the
 -- generic route task, without a scene-number dispatch in the host.

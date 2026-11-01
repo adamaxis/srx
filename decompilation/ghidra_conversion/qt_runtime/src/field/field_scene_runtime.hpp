@@ -452,6 +452,22 @@ public:
                !menu_reveal_masks_pending_.empty() || !menu_reveal_masks_.empty();
     }
 #ifdef SHADOWRUN_QT_QA_DRIVER
+    struct FieldBuildingServiceExitSweepRow {
+        std::string exit_id;
+        std::uint16_t scene_id = 0U;
+        std::size_t link_index = 0U;
+        std::string return_side;
+        SceneRunnerPosition contact{};
+        std::array<SceneRunnerPosition, 3> returned_party{};
+        std::uint16_t heading = 0U;
+        std::string return_anchor;
+        std::string return_facing;
+        std::string exception_rom_address;
+    };
+    std::optional<std::vector<FieldBuildingServiceExitSweepRow>>
+    perform_building_service_exit_sweep_for_dump();
+    std::optional<std::vector<std::string>>
+    building_service_exit_exceptions_for_dump();
     bool schedule_default_actor_world_activity_for_dump(
         std::uint16_t source_order);
     std::vector<FieldActorAnimationSnapshotForDump>
@@ -2780,7 +2796,11 @@ private:
         SceneRunnerPosition lead{};
         // FFDF44..4E: lead, runner 2, runner 3.
         std::array<SceneRunnerPosition, 3> party{};
-        std::uint16_t heading = 0U;
+        std::uint16_t entry_heading = 0U;
+        FieldLocationReturnAnchor return_anchor =
+            FieldLocationReturnAnchor::none;
+        FieldLocationReturnFacing return_facing =
+            FieldLocationReturnFacing::preserve_entry_heading;
         std::uint16_t camera_x = 0U;
         std::uint16_t camera_y = 0U;
     };
@@ -2800,7 +2820,7 @@ private:
     std::uint16_t field_door_exit_heading(std::uint16_t entry_heading);
     void begin_field_door_return();
     void place_party_at_field_door_return_point();
-    bool apply_field_service_close_return();
+    bool apply_field_door_exit_return();
     bool advance_field_door_return();
     std::uint8_t field_door_return_palette_level() const noexcept;
     std::uint8_t field_modal_return_blocked_inputs_ = 0U;

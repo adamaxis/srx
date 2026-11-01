@@ -12,9 +12,7 @@
         "kind": "area_event",
         "script": "area_event_table",
         "priority": 0,
-        "sourceRoutePolicy": "resume_source_route",
-        "returnAnchor": "collision_probe_lead",
-        "returnFacing": "face_away_from_entry"
+        "sourceRoutePolicy": "resume_source_route"
       },
       "provenance": {
         "evidence": "ROM scene 2 record 97 at 0X173174; event-table row 7 at 0x172CE3 selects numeric resource activity scene 26. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."

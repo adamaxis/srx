@@ -18,6 +18,7 @@ E.FieldModePrompt = {
 }
 
 E.FieldLocationReturnAnchor = {
+    NONE = "none",
     COLLISION_PROBE_LEAD = "collision_probe_lead",
 } -- ROM 0xBC36 builds FFDF44; 0x2F32 restores it [C]
 E.FieldLocationReturnFacing = {

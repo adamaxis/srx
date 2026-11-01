@@ -7655,7 +7655,8 @@ GameScriptRuntime::resolve_field_location_route(
         if (!valid) {
             return fail("building.lua route has an invalid return facing");
         }
-        if (facing_name == "" || facing_name == "preserve_entry_heading") {
+        if (facing_name == "" || facing_name == "preserve_entry_heading" ||
+            facing_name == "preserve_entry") {
             return_facing =
                 FieldLocationReturnFacing::preserve_entry_heading;
         } else if (facing_name == "face_away_from_entry") {

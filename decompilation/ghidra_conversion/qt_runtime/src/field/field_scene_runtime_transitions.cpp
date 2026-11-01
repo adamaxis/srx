@@ -110,6 +110,12 @@ ScriptValue script_text_value(const std::string_view value) {
     return result;
 }
 
+ScriptValue script_array_value(ScriptValue::Array value) {
+    ScriptValue result;
+    result.value = std::move(value);
+    return result;
+}
+
 ScriptValue script_object_value(ScriptValue::Object value) {
     ScriptValue result;
     result.value = std::move(value);
@@ -785,20 +791,17 @@ void FieldSceneRuntime::suppress_field_modal_close_input() {
 
 void FieldSceneRuntime::dispatch_field_map_scene_entry(
     const std::uint16_t scene_id) {
-    // A saved same-map service return point belongs to the scene it was
-    // recorded in. The service route's normal same-scene refresh can happen
-    // between door contact and service close, so keep that point through the
-    // refresh; discard it on a different scene or an unrelated route.
-    const bool pending_same_scene_service_return =
+    // A saved door return belongs to the scene it was recorded in. A linked
+    // same-scene refresh can happen before the modal closes, so retain the
+    // point for any route carrying the shared return policy.
+    const bool pending_same_scene_exit_return =
         field_door_return_point_.valid &&
         field_door_return_point_.scene_id == scene_id &&
         active_field_script_route_.has_value() &&
-        active_field_script_route_->kind ==
-            FieldScriptRouteKind::field_service &&
         active_field_script_route_->return_anchor !=
             FieldLocationReturnAnchor::none;
     if (!field_door_return_active_ &&
-        !pending_same_scene_service_return) {
+        !pending_same_scene_exit_return) {
         field_door_return_point_.valid = false;
     }
     field_map_event_system_.begin_scene_visit(scene_id);
@@ -984,10 +987,9 @@ void FieldSceneRuntime::save_field_door_return_point() {
             field_collision_probe_state_.points[index].y};
     }
     field_door_return_point_.lead = field_door_return_point_.party[0U];
-    // The entity-owned link chooses whether to retain its entry heading or
-    // resume facing away from the doorway (Lua world_links.exit_bearing).
-    field_door_return_point_.heading =
-        field_door_exit_heading(field_movement_state_.heading);
+    field_door_return_point_.entry_heading = field_movement_state_.heading;
+    field_door_return_point_.return_anchor = pending_field_return_anchor_;
+    field_door_return_point_.return_facing = pending_field_return_facing_;
     field_door_return_point_.camera_x =
         field_collision_probe_state_.camera_x;
     field_door_return_point_.camera_y =
@@ -997,35 +999,114 @@ void FieldSceneRuntime::save_field_door_return_point() {
 
 void FieldSceneRuntime::place_party_at_field_door_return_point() {
     const auto& point = field_door_return_point_;
-    field_entity_.world_position = point.lead;
-    field_entity_.projection.world_x = point.lead.x;
-    field_entity_.projection.world_y = point.lead.y;
-    field_movement_state_.position_x = point.lead.x;
-    field_movement_state_.position_y = point.lead.y;
+    constexpr double kDegreesPerTurn = 360.0;
+    constexpr double kUnitsPerTurn = 65536.0;
+    const auto facing_policy = point.return_facing ==
+            FieldLocationReturnFacing::face_away_from_entry
+        ? std::string_view("face_away_from_entry")
+        : std::string_view("preserve_entry");
+    const auto return_anchor = point.return_anchor ==
+            FieldLocationReturnAnchor::collision_probe_lead
+        ? std::string_view("collision_probe_lead")
+        : std::string_view{};
+    ScriptValue::Array party_input;
+    party_input.reserve(point.party.size());
+    for (const auto& runner : point.party) {
+        party_input.push_back(script_object_value({
+            {"x", script_integer_value(runner.x)},
+            {"y", script_integer_value(runner.y)},
+        }));
+    }
+    const auto entry_bearing = static_cast<double>(point.entry_heading) *
+        kDegreesPerTurn / kUnitsPerTurn;
+    const auto result = game_scripts_.call_value(
+        "world_links", "building_service_exit_return",
+        {script_object_value({
+            {"point", script_object_value({
+                {"party", script_array_value(std::move(party_input))},
+                {"camera", script_object_value({
+                    {"x", script_integer_value(point.camera_x)},
+                    {"y", script_integer_value(point.camera_y)},
+                })},
+            })},
+            {"entry_bearing_degrees", script_number_value(entry_bearing)},
+            {"return_anchor", script_text_value(return_anchor)},
+            {"return_facing", script_text_value(facing_policy)},
+        })});
+    const auto* returned_party_value = result.has_value()
+        ? script_member(*result, "party") : nullptr;
+    const auto* returned_party = script_array(returned_party_value);
+    const auto* returned_camera = result.has_value()
+        ? script_member(*result, "camera") : nullptr;
+    const auto camera_x = returned_camera == nullptr
+        ? std::nullopt : script_integer(script_member(*returned_camera, "x"));
+    const auto camera_y = returned_camera == nullptr
+        ? std::nullopt : script_integer(script_member(*returned_camera, "y"));
+    const auto bearing = result.has_value()
+        ? script_number(script_member(*result, "bearing_degrees"))
+        : std::nullopt;
+    if (returned_party == nullptr || returned_party->size() != point.party.size() ||
+        !camera_x.has_value() || !camera_y.has_value() ||
+        !bearing.has_value() || !std::isfinite(*bearing) ||
+        *bearing < 0.0 || *bearing >= kDegreesPerTurn) {
+        failure_ = result.has_value()
+            ? "world_links.building_service_exit_return returned an invalid placement"
+            : game_scripts_.failure();
+        source_boundary("field.door.exit_return_script_failed");
+        return;
+    }
+    std::array<SceneRunnerPosition, 3> returned_party_positions{};
+    for (std::size_t index = 0U; index < returned_party->size(); ++index) {
+        const auto x = script_integer(script_member(returned_party->at(index), "x"));
+        const auto y = script_integer(script_member(returned_party->at(index), "y"));
+        if (!x.has_value() || !y.has_value() || *x < 0 || *x > 0xFFFF ||
+            *y < 0 || *y > 0xFFFF) {
+            failure_ = "world_links.building_service_exit_return returned an invalid runner point";
+            source_boundary("field.door.exit_return_script_failed");
+            return;
+        }
+        returned_party_positions[index] = SceneRunnerPosition{
+            static_cast<std::uint16_t>(*x), static_cast<std::uint16_t>(*y)};
+    }
+    if (*camera_x < 0 || *camera_x > 0xFFFF || *camera_y < 0 ||
+        *camera_y > 0xFFFF) {
+        failure_ = "world_links.building_service_exit_return returned an invalid camera";
+        source_boundary("field.door.exit_return_script_failed");
+        return;
+    }
+    const auto resolved_heading = static_cast<std::uint16_t>(
+        std::llround(*bearing * kUnitsPerTurn / kDegreesPerTurn));
+    const auto& returned_lead = returned_party_positions[0U];
+    field_entity_.world_position = returned_lead;
+    field_entity_.projection.world_x = returned_lead.x;
+    field_entity_.projection.world_y = returned_lead.y;
+    field_movement_state_.position_x = returned_lead.x;
+    field_movement_state_.position_y = returned_lead.y;
     // 0x2F32 copies FFDF44..4E into all three runner records.
     auto& return_records =
         state_.field_scene_buffers.source_metadata.initial_field_records;
     for (std::size_t index = 0U;
          index < point.party.size() && index < return_records.size();
          ++index) {
-        return_records[index] = point.party[index];
+        return_records[index] = returned_party_positions[index];
     }
-    field_movement_state_.heading = point.heading;
-    field_movement_state_.animation_heading = point.heading;
-    field_target_heading_ = point.heading;
-    field_movement_behavior_record_.current_heading = point.heading;
-    field_movement_behavior_record_.target_heading = point.heading;
+    field_movement_state_.heading = resolved_heading;
+    field_movement_state_.animation_heading = resolved_heading;
+    field_target_heading_ = resolved_heading;
+    field_movement_behavior_record_.current_heading = resolved_heading;
+    field_movement_behavior_record_.target_heading = resolved_heading;
     // The Lua runner keeps its own heading after spawn; respawn it so the
     // restored facing is the one it turns from.
     field_player_actor_script_initialized_ = false;
     field_entity_.direction =
-        static_cast<std::uint8_t>(((point.heading >> 14U) & 3U) * 2U);
+        static_cast<std::uint8_t>(((resolved_heading >> 14U) & 3U) * 2U);
+    source_boundary("field.door.exit_return_applied");
 }
 
-bool FieldSceneRuntime::apply_field_service_close_return() {
-    // Same-map services (hotel, hospital, shop, Stoker) close through
-    // d6 != 0 -> 0x9B8 (heading) + 0x2FA4 (party at FFDF44..); the camera
-    // is unchanged and no scene reload runs [C, doc 27 section 3a].
+bool FieldSceneRuntime::apply_field_door_exit_return() {
+    // Same-scene services and building returns share the Lua placement path.
+    // ROM 0xBC36/0xBD34 supplies the saved party point; 0x09B8/0x2FA4
+    // establish the outgoing heading and restore the party anchors.
     if (!field_door_return_point_.valid) {
         return false;
     }
@@ -1035,6 +1116,190 @@ bool FieldSceneRuntime::apply_field_service_close_return() {
     source_boundary("field.door.service_close_return");
     return true;
 }
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
+std::optional<std::vector<
+    FieldSceneRuntime::FieldBuildingServiceExitSweepRow>>
+FieldSceneRuntime::perform_building_service_exit_sweep_for_dump() {
+    const auto cases_result = game_scripts_.call_value(
+        "world_links", "building_service_exit_cases", {});
+    const auto* cases = cases_result.has_value()
+        ? script_array(&*cases_result) : nullptr;
+    if (cases == nullptr) {
+        failure_ = cases_result.has_value()
+            ? "world_links.building_service_exit_cases returned no array"
+            : game_scripts_.failure();
+        return std::nullopt;
+    }
+
+    const auto original_scene = static_cast<std::uint16_t>(
+        state_.field_scene_buffers.scene_reference);
+    std::vector<FieldBuildingServiceExitSweepRow> rows;
+    rows.reserve(cases->size());
+    for (const auto& exit_case : *cases) {
+        const auto exit_id = script_text(script_member(exit_case, "exit_id"));
+        const auto scene_id = script_integer(
+            script_member(exit_case, "scene_id"));
+        const auto link_index = script_integer(
+            script_member(exit_case, "link_index"));
+        const auto return_side = script_text(
+            script_member(exit_case, "return_side"));
+        const auto* contact = script_member(exit_case, "contact");
+        const auto contact_x = contact == nullptr
+            ? std::nullopt : script_integer(script_member(*contact, "x"));
+        const auto contact_y = contact == nullptr
+            ? std::nullopt : script_integer(script_member(*contact, "y"));
+        if (!exit_id.has_value() || !scene_id.has_value() ||
+            *scene_id < 0 || *scene_id > 0xFF ||
+            !link_index.has_value() || *link_index < 1 ||
+            !return_side.has_value() || !contact_x.has_value() ||
+            !contact_y.has_value() || *contact_x < 0 || *contact_x > 0xFFFF ||
+            *contact_y < 0 || *contact_y > 0xFFFF) {
+            failure_ = "world_links.building_service_exit_cases returned an invalid row";
+            state_.field_scene_buffers.scene_reference = original_scene;
+            return std::nullopt;
+        }
+
+        std::uint8_t bank = 0U;
+        std::uint16_t entry_heading = 0U;
+        if (*return_side == "north") {
+            bank = 0U;
+            entry_heading = 0x8000U;
+        } else if (*return_side == "east") {
+            bank = 1U;
+            entry_heading = 0xC000U;
+        } else if (*return_side == "south") {
+            bank = 2U;
+            entry_heading = 0x0000U;
+        } else if (*return_side == "west") {
+            bank = 3U;
+            entry_heading = 0x4000U;
+        } else {
+            failure_ = "world_links.building_service_exit_cases returned an unknown side";
+            state_.field_scene_buffers.scene_reference = original_scene;
+            return std::nullopt;
+        }
+
+        state_.field_scene_buffers.scene_reference =
+            static_cast<std::uint16_t>(*scene_id);
+        set_field_entity_world_position_for_dump(
+            static_cast<std::uint16_t>(*contact_x),
+            static_cast<std::uint16_t>(*contact_y));
+        field_movement_state_.heading = entry_heading;
+        field_movement_state_.animation_heading = entry_heading;
+        field_movement_behavior_record_.current_heading = entry_heading;
+        field_movement_behavior_record_.target_heading = entry_heading;
+        field_collision_probe_state_.initialized = false;
+        const auto sample = static_cast<std::uint8_t>(0x80U | (bank << 5U));
+        record_field_door_contact({sample, 0U, 0U});
+        if (!field_collision_probe_state_.initialized) {
+            state_.field_scene_buffers.scene_reference = original_scene;
+            return std::nullopt;
+        }
+
+        const auto policy_result = game_scripts_.call_value(
+            "world_links", "building_service_exit_policy",
+            {script_object_value({
+                {"exit_id", script_text_value(*exit_id)},
+            })});
+        if (!policy_result.has_value()) {
+            failure_ = game_scripts_.failure();
+            state_.field_scene_buffers.scene_reference = original_scene;
+            return std::nullopt;
+        }
+        const auto anchor = script_text(
+            script_member(*policy_result, "return_anchor"));
+        const auto facing = script_text(
+            script_member(*policy_result, "return_facing"));
+        const auto exception_rom = script_text(
+            script_member(*policy_result, "rom_address"));
+        if (!anchor.has_value() || !facing.has_value() ||
+            *anchor != "collision_probe_lead" ||
+            (*facing != "face_away_from_entry" &&
+             *facing != "preserve_entry")) {
+            failure_ = "world_links.building_service_exit_policy returned an invalid policy";
+            state_.field_scene_buffers.scene_reference = original_scene;
+            return std::nullopt;
+        }
+        pending_field_return_anchor_ =
+            FieldLocationReturnAnchor::collision_probe_lead;
+        pending_field_return_facing_ = *facing == "face_away_from_entry"
+            ? FieldLocationReturnFacing::face_away_from_entry
+            : FieldLocationReturnFacing::preserve_entry_heading;
+        save_field_door_return_point();
+        if (!field_door_return_point_.valid ||
+            !apply_field_door_exit_return()) {
+            state_.field_scene_buffers.scene_reference = original_scene;
+            return std::nullopt;
+        }
+
+        FieldBuildingServiceExitSweepRow row{};
+        row.exit_id = std::string(*exit_id);
+        row.scene_id = static_cast<std::uint16_t>(*scene_id);
+        row.link_index = static_cast<std::size_t>(*link_index);
+        row.return_side = std::string(*return_side);
+        row.contact = SceneRunnerPosition{
+            static_cast<std::uint16_t>(*contact_x),
+            static_cast<std::uint16_t>(*contact_y)};
+        for (std::size_t index = 0U; index < row.returned_party.size(); ++index) {
+            row.returned_party[index] =
+                state_.field_scene_buffers.source_metadata
+                    .initial_field_records[index];
+        }
+        row.heading = field_entity_heading_for_dump();
+        row.return_anchor = std::string(*anchor);
+        row.return_facing = std::string(*facing);
+        if (exception_rom.has_value()) {
+            row.exception_rom_address = std::string(*exception_rom);
+        }
+        rows.push_back(std::move(row));
+    }
+    state_.field_scene_buffers.scene_reference = original_scene;
+    return rows;
+}
+
+std::optional<std::vector<std::string>>
+FieldSceneRuntime::building_service_exit_exceptions_for_dump() {
+    const auto result = game_scripts_.call_value(
+        "world_links", "building_service_exit_exceptions", {});
+    const auto* exceptions = result.has_value()
+        ? script_array(&*result) : nullptr;
+    if (exceptions == nullptr && result.has_value()) {
+        const auto* empty_object = std::get_if<ScriptValue::Object>(
+            &result->value);
+        if (empty_object != nullptr && empty_object->empty()) {
+            return std::vector<std::string>{};
+        }
+    }
+    if (exceptions == nullptr) {
+        failure_ = result.has_value()
+            ? "world_links.building_service_exit_exceptions returned no array"
+            : game_scripts_.failure();
+        return std::nullopt;
+    }
+    std::vector<std::string> rows;
+    rows.reserve(exceptions->size());
+    for (const auto& exception : *exceptions) {
+        const auto exit_id = script_text(script_member(exception, "exit_id"));
+        const auto rom_address = script_text(
+            script_member(exception, "rom_address"));
+        const auto anchor = script_text(
+            script_member(exception, "return_anchor"));
+        const auto facing = script_text(
+            script_member(exception, "return_facing"));
+        if (!exit_id.has_value() || !rom_address.has_value() ||
+            !anchor.has_value() || !facing.has_value()) {
+            failure_ = "world_links.building_service_exit_exceptions returned an invalid row";
+            return std::nullopt;
+        }
+        rows.push_back(std::string(*exit_id) + " rom=" +
+                       std::string(*rom_address) + " anchor=" +
+                       std::string(*anchor) + " facing=" +
+                       std::string(*facing));
+    }
+    return rows;
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
 
 void FieldSceneRuntime::begin_field_door_return() {
     if (!field_door_return_point_.valid) {

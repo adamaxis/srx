@@ -1502,12 +1502,9 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
     active_field_script_route_ = event_route;
     pending_field_return_anchor_ = event_route.return_anchor;
     pending_field_return_facing_ = event_route.return_facing;
-    if (event_route.kind == FieldScriptRouteKind::field_service &&
-        event_route.script == FieldScriptId::host_field_service &&
-        event_route.return_anchor != FieldLocationReturnAnchor::none) {
-        // The host-owned service route still consumes Lua's typed return
-        // policy. ROM 0xB834 -> 0xBC36 prepares FFDF44 before the service;
-        // 0x09B8/0x2FA4 restore that point when the same-map service closes.
+    if (event_route.return_anchor != FieldLocationReturnAnchor::none) {
+        // Every linked building/service route records the source probe triplet
+        // once, before its selected content takes control of the field input.
         save_field_door_return_point();
     }
     if (event_route.kind == FieldScriptRouteKind::area_event &&
@@ -1670,13 +1667,6 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                 game_scripts_.set_location_context(
                     task.location_type, task.location_id,
                     task.text_profile, task.speaker_id);
-                if (event_route.return_anchor !=
-                    FieldLocationReturnAnchor::none) {
-                    // ROM 0xBC36 records the collision-probe lead before a
-                    // field-exit service takes over. Mode/event routes use
-                    // this callback instead of open_field_location_dialogue.
-                    save_field_door_return_point();
-                }
                 if (!field_dialogue_.open_gameplay_task(
                         task.module, task.function)) {
                     source_boundary(
@@ -1805,12 +1795,6 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                 event_route.entry_text_profile,
                 event_route.entry_speaker_id,
                 event_route.entry_event_id);
-            if (event_route.return_anchor !=
-                FieldLocationReturnAnchor::none) {
-                // ROM B834 -> BC36 records the active collision probe before
-                // the same-map dialogue takes ownership of input.
-                save_field_door_return_point();
-            }
             if (!field_dialogue_.open_gameplay_task(
                     event_route.entry_dialogue_module,
                     event_route.entry_dialogue_function)) {
@@ -1838,12 +1822,6 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                 game_scripts_.set_location_context(
                     task.location_type, task.location_id,
                     task.text_profile, task.speaker_id);
-                if (event_route.return_anchor !=
-                    FieldLocationReturnAnchor::none) {
-                    // ROM 0xBC36 records the collision-probe lead before a
-                    // linked field-exit prompt takes over input.
-                    save_field_door_return_point();
-                }
                 if (!field_dialogue_.open_gameplay_task(
                         task.module, task.function)) {
                     source_boundary(
@@ -13545,7 +13523,7 @@ void FieldSceneRuntime::advance_frame() {
             } else {
                 // Place first: the suspended same-scene re-entry below must
                 // not consume or discard the service return point.
-                (void)apply_field_service_close_return();
+                (void)apply_field_door_exit_return();
                 advance_field_scene_transition_after_modal();
                 begin_field_modal_return_transition();
             }
@@ -14080,7 +14058,7 @@ void FieldSceneRuntime::advance_frame() {
             state_.display_service_word = 0U;
             field_runtime_state_.display_service_word = 0U;
             field_shop_active_definition_.reset();
-            (void)apply_field_service_close_return();
+            (void)apply_field_door_exit_return();
             shop_boundary("returned_to_field");
             break;
         case ShopMenuEvent::no_change:

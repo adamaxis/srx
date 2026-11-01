@@ -16,9 +16,7 @@
         "conditionId": "puyallup_site_02_tarislar_garden_apartments.rom_event_07_payment_due.route",
         "destinationScene": 13,
         "destinationMode": "field",
-        "sourceTableDestination": 13,
-        "returnAnchor": "collision_probe_lead",
-        "returnFacing": "face_away_from_entry"
+        "sourceTableDestination": 13
       },
       "entryDialogue": {
         "task": {
@@ -52,9 +50,7 @@
         "conditionId": "puyallup_site_02_tarislar_garden_apartments.rom_event_07_handoff_due.route",
         "destinationScene": 13,
         "destinationMode": "field",
-        "sourceTableDestination": 13,
-        "returnAnchor": "collision_probe_lead",
-        "returnFacing": "face_away_from_entry"
+        "sourceTableDestination": 13
       },
       "entryDialogue": {
         "task": {
@@ -88,9 +84,7 @@
         "conditionId": "puyallup_site_02_tarislar_garden_apartments.rom_event_07_first_authorized_visit.route",
         "destinationScene": 54,
         "destinationMode": "scripted_activity",
-        "sourceTableDestination": 13,
-        "returnAnchor": "collision_probe_lead",
-        "returnFacing": "face_away_from_entry"
+        "sourceTableDestination": 13
       },
       "entryDialogue": {
         "task": {
@@ -124,9 +118,7 @@
         "conditionId": "puyallup_site_02_tarislar_garden_apartments.rom_event_07_repeat_service.route",
         "destinationScene": 13,
         "destinationMode": "field",
-        "sourceTableDestination": 13,
-        "returnAnchor": "collision_probe_lead",
-        "returnFacing": "face_away_from_entry"
+        "sourceTableDestination": 13
       },
       "entryDialogue": {
         "task": {
@@ -160,9 +152,7 @@
         "conditionId": "puyallup_site_02_tarislar_garden_apartments.rom_event_07_tomb_departure.route",
         "destinationScene": 54,
         "destinationMode": "scripted_activity",
-        "sourceTableDestination": 13,
-        "returnAnchor": "collision_probe_lead",
-        "returnFacing": "face_away_from_entry"
+        "sourceTableDestination": 13
       },
       "entryDialogue": {
         "task": {
@@ -196,9 +186,7 @@
         "conditionId": "puyallup_site_02_tarislar_garden_apartments.rom_event_07_guarded_visit.route",
         "destinationScene": 13,
         "destinationMode": "field",
-        "sourceTableDestination": 13,
-        "returnAnchor": "collision_probe_lead",
-        "returnFacing": "face_away_from_entry"
+        "sourceTableDestination": 13
       },
       "entryDialogue": {
         "task": {
@@ -228,9 +216,7 @@
         "kind": "area_event",
         "script": "area_event_table",
         "priority": 0,
-        "sourceRoutePolicy": "resume_source_route",
-        "returnAnchor": "collision_probe_lead",
-        "returnFacing": "face_away_from_entry"
+        "sourceRoutePolicy": "resume_source_route"
       },
       "provenance": {
         "evidence": "ROM scene 1 record 67 at 0x17D9A2; event-table row 7 at 0x17D627 selects numeric field scene 13 when the indexed title-service branch does not select another route. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."

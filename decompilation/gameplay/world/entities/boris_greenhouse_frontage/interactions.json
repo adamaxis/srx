@@ -47,9 +47,7 @@
         "kind": "area_event",
         "script": "area_event_table",
         "priority": 0,
-        "sourceRoutePolicy": "resume_source_route",
-        "returnAnchor": "collision_probe_lead",
-        "returnFacing": "face_away_from_entry"
+        "sourceRoutePolicy": "resume_source_route"
       },
       "provenance": {
         "evidence": "ROM record 87 at 0x173110 selects numeric Scene 26 in event-table row 6; indexed title service 10 at 0x53F8C intercepts this event and replaces the destination with a same-map return."

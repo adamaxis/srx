@@ -128,8 +128,6 @@ local function normalize_entity_interaction(entity, interaction)
         destination_scene = route.destinationScene,
         destination_mode = route.destinationMode,
         field_service_id = route.fieldServiceId,
-        return_anchor = route.returnAnchor or "",
-        return_facing = route.returnFacing or "",
     }
     assert(type(link.route_priority) == "number" and
            link.route_priority % 1 == 0,

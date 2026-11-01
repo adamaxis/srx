@@ -796,6 +796,11 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_jump_house_entry_q
 # Run Boris' Scene-2/event-6 indexed service through the production Lua task
 # bridge, purchase the Visa and exact-balance rating-2 passkey, and verify the
 # flags and runner inventory survive save restore.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_building_service_exit_sweep_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-building-service-exit-sweep-qa)
+
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_boris_greenhouse_dialogue_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-boris-greenhouse-dialogue-qa

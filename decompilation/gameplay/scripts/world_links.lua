@@ -6,6 +6,19 @@ local E = require("enums")
 
 local WorldLinks = {}
 
+-- The source return branch (0xBC36/0xBD34 and 0x09B8/0x2FA4) is shared by
+-- ordinary building doors and same-map services. Add an entry only when a
+-- specific ROM exit has a documented exception; values are typed enums.
+local EXIT_RETURN_EXCEPTIONS = {
+    -- Scene 4/event 6 at 0x15BDB0 selects Scene 0. The route matrix's
+    -- source/site audit has not established this side event as a doorway.
+    ["council_medicine_lodge.rom_event_06"] = {
+        rom_address = "0x15BDB0",
+        return_anchor = E.FieldLocationReturnAnchor.NONE,
+        return_facing = E.FieldLocationReturnFacing.PRESERVE_ENTRY,
+    },
+}
+
 function WorldLinks.data() return Data end
 
 function WorldLinks.links_in_scene(scene_id)
@@ -37,6 +50,92 @@ function WorldLinks.transition_at(scene_id, world_x, world_y)
     return link and link.transition or nil
 end
 
+function WorldLinks.building_service_exit_cases()
+    local cases = {}
+    for scene_id = 0, 55 do
+        local scene = Data.scenes[scene_id]
+        if scene ~= nil and scene.mode == "street" then
+            for link_index, link in ipairs(scene.links) do
+                local transition = link.transition
+                local destination = transition.kind == "scene_change" and
+                    Data.scenes[transition.destination_scene_id] or nil
+                if transition.kind == "same_map_service" or
+                   (destination ~= nil and
+                    destination.mode == "building") then
+                    cases[#cases + 1] = {
+                        exit_id = string.format("scene_%02X_link_%02d",
+                            scene_id, link_index),
+                        scene_id = scene_id,
+                        link_index = link_index,
+                        return_side = link.return_side,
+                        contact = {
+                            x = math.floor(
+                                (link.bounds.left + link.bounds.right) / 2),
+                            y = math.floor(
+                                (link.bounds.top + link.bounds.bottom) / 2),
+                        },
+                        transition_kind = transition.kind,
+                        destination_scene_id = transition.destination_scene_id,
+                        service = transition.service,
+                    }
+                end
+            end
+        end
+    end
+    return cases
+end
+
+local function validate_exit_return_policy(policy)
+    assert(type(policy) == "table" and
+           (policy.return_anchor ==
+                E.FieldLocationReturnAnchor.COLLISION_PROBE_LEAD or
+            policy.return_anchor == E.FieldLocationReturnAnchor.NONE),
+        "world_links.exit_return: unsupported return anchor")
+    assert(policy.return_facing ==
+               E.FieldLocationReturnFacing.FACE_AWAY_FROM_ENTRY or
+           policy.return_facing ==
+               E.FieldLocationReturnFacing.PRESERVE_ENTRY,
+        "world_links.exit_return: unsupported return facing")
+    return policy
+end
+
+function WorldLinks.building_service_exit_policy(context)
+    local exception = EXIT_RETURN_EXCEPTIONS[context.exit_id]
+    if exception == nil then
+        return {
+            return_anchor =
+                E.FieldLocationReturnAnchor.COLLISION_PROBE_LEAD,
+            return_facing =
+                E.FieldLocationReturnFacing.FACE_AWAY_FROM_ENTRY,
+        }
+    end
+    assert(type(exception.rom_address) == "string" and
+           exception.rom_address:match("^0x[0-9A-Fa-f]+$") ~= nil,
+        "world_links.exit_return_exceptions: exception needs a ROM address")
+    local policy = validate_exit_return_policy(exception)
+    return {
+        return_anchor = policy.return_anchor,
+        return_facing = policy.return_facing,
+        rom_address = exception.rom_address,
+    }
+end
+
+function WorldLinks.building_service_exit_exceptions()
+    local result = {}
+    for exit_id, exception in pairs(EXIT_RETURN_EXCEPTIONS) do
+        result[#result + 1] = {
+            exit_id = exit_id,
+            rom_address = exception.rom_address,
+            return_anchor = exception.return_anchor,
+            return_facing = exception.return_facing,
+        }
+    end
+    table.sort(result, function(left, right)
+        return left.exit_id < right.exit_id
+    end)
+    return result
+end
+
 -- `return_side` is one of north/east/south/west. The host has already
 -- translated its collision result into this named doorway fact.
 function WorldLinks.door_contact(context)
@@ -63,20 +162,6 @@ function WorldLinks.door_contact(context)
     }
 end
 
--- Return behavior is stated as a gameplay path and compass facing.
-function WorldLinks.return_placement(point, kind, current_facing)
-    local facing
-    if kind == "same_map_service" then
-        facing = "south"
-    elseif kind == "building_interior" then
-        facing = current_facing
-    else
-        error("world_links.return_placement: unknown return kind " ..
-              tostring(kind))
-    end
-    return { party = point.party, facing = facing, camera = point.camera }
-end
-
 function WorldLinks.exit_bearing(context)
     local facing_policy = context.facing_policy
     local entry_bearing = context.entry_bearing_degrees % 360
@@ -87,6 +172,34 @@ function WorldLinks.exit_bearing(context)
     end
     error("world_links.exit_bearing: unknown facing policy " ..
           tostring(facing_policy))
+end
+
+-- One return path handles building doors and services. The host supplies the
+-- saved ROM probe triplet; Lua applies the shared policy and resolves its
+-- outward bearing through exit_bearing.
+function WorldLinks.building_service_exit_return(context)
+    local policy = validate_exit_return_policy{
+        return_anchor = context.return_anchor or
+            E.FieldLocationReturnAnchor.COLLISION_PROBE_LEAD,
+        return_facing = context.return_facing or
+            E.FieldLocationReturnFacing.FACE_AWAY_FROM_ENTRY,
+    }
+    local point = context.point
+    assert(type(point) == "table" and type(point.party) == "table" and
+           type(point.camera) == "table",
+        "world_links.building_service_exit_return: missing saved point")
+    local bearing = WorldLinks.exit_bearing{
+        facing_policy = policy.return_facing,
+        entry_bearing_degrees = context.entry_bearing_degrees,
+    }
+    return {
+        party = point.party,
+        camera = point.camera,
+        bearing_degrees = bearing.bearing_degrees,
+        return_anchor = policy.return_anchor,
+        return_facing = policy.return_facing,
+        rom_address = context.exception_rom_address,
+    }
 end
 
 function WorldLinks.service_at(scene_id, world_x, world_y)

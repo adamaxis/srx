@@ -23,9 +23,12 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <iomanip>
 #include <limits>
+#include <map>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -19169,6 +19172,15 @@ int run_field_stoker_collision_to_dialogue_qa(
         field_scene.field_entity_world_position();
     const auto stoker_trigger_heading =
         field_scene.field_entity_heading_for_dump();
+    const auto stoker_doorway_probe =
+        field_scene.field_collision_probe_state_for_dump();
+    // ROM 0xBC36 saves the door probe selected from 0xBD34; bank 2 at
+    // 0xBD4C supplies the saved lead for this south-side contact. The
+    // nonzero exit branch at 0x09B8 restores the outward heading.
+    const auto stoker_expected_return_position =
+        stoker_doorway_probe.points[0U];
+    const auto stoker_expected_return_heading =
+        static_cast<std::uint16_t>(stoker_trigger_heading ^ 0x8000U);
 
     const auto& arrival = field_scene.dialogue_panel();
     const auto arrival_text_present = [&arrival] {
@@ -19315,18 +19327,32 @@ int run_field_stoker_collision_to_dialogue_qa(
     }
     const auto returned_position = field_scene.field_entity_world_position();
     const auto returned_image = render_field();
-    if (returned_position.x != stoker_trigger_position.x ||
-        returned_position.y != stoker_trigger_position.y ||
+    if (!stoker_doorway_probe.initialized ||
+        stoker_doorway_probe.selected_offset_bank != 2U ||
+        returned_position.x != stoker_expected_return_position.x ||
+        returned_position.y != stoker_expected_return_position.y ||
         field_scene.field_entity_heading_for_dump() !=
-            stoker_trigger_heading ||
+            stoker_expected_return_heading ||
         !save_frame("returned-to-field", true) ||
         !returned_image.save(QString::fromStdWString(
             (output / "actual.bmp").wstring())) ||
         !field_hud_chrome_survives(returned_image, asset_root) ||
         count_playfield_lit(returned_image) < 100U ||
         field_scene.field_controller_nibble_for_dump() != 0U) {
-        std::cerr << "Stoker collision QA: return frame is incomplete or still "
-                     "contains a dialogue overlay\n";
+        std::cerr << "Stoker collision QA: return frame differs from the "
+                     "recorded doorway state (contact="
+                  << stoker_trigger_position.x << ','
+                  << stoker_trigger_position.y << " heading=0x" << std::hex
+                  << stoker_trigger_heading << std::dec << ", probe="
+                  << stoker_doorway_probe.initialized << " bank="
+                  << static_cast<unsigned>(
+                         stoker_doorway_probe.selected_offset_bank)
+                  << " probe_lead=" << stoker_doorway_probe.points[0U].x
+                  << ',' << stoker_doorway_probe.points[0U].y
+                  << ", returned=" << returned_position.x << ','
+                  << returned_position.y << " heading=0x" << std::hex
+                  << field_scene.field_entity_heading_for_dump() << std::dec
+                  << ", dialogue=" << field_scene.dialogue_open() << '\n';
         return 3;
     }
     write_state("returned-to-field");
@@ -19391,16 +19417,16 @@ int run_field_stoker_collision_to_dialogue_qa(
     const auto dispatches_before_departure =
         field_scene.field_map_event_system_for_dump().collision_dispatch_count();
     const auto audio_events_before_departure = field_audio_events.size();
-    if (departure_start.x != stoker_trigger_position.x ||
-        departure_start.y != stoker_trigger_position.y ||
+    if (departure_start.x != stoker_expected_return_position.x ||
+        departure_start.y != stoker_expected_return_position.y ||
         field_scene.field_entity_heading_for_dump() !=
-            stoker_trigger_heading) {
+            stoker_expected_return_heading) {
         std::cerr << "Stoker collision QA: same-scene Leave changed the ROM "
-                     "contact coordinate or facing (contact="
-                  << stoker_trigger_position.x << ','
-                  << stoker_trigger_position.y << ", return="
+                     "return probe or outward facing (probe="
+                  << stoker_doorway_probe.points[0U].x << ','
+                  << stoker_doorway_probe.points[0U].y << ", return="
                   << departure_start.x << ',' << departure_start.y
-                  << ", contact_heading=" << stoker_trigger_heading
+                  << ", entry_heading=" << stoker_trigger_heading
                   << ", return_heading="
                   << field_scene.field_entity_heading_for_dump() << ")\n";
         return 3;
@@ -27185,6 +27211,122 @@ int run_field_jump_house_entry_qa(
               << " clean_redraw=yes audio_requests="
               << field_audio_events.size() << " artifacts=" << output.string()
               << '\n';
+    return 0;
+}
+
+int run_field_building_service_exit_sweep_qa(
+    FieldSceneRuntime& field_scene) {
+    const auto rows =
+        field_scene.perform_building_service_exit_sweep_for_dump();
+    const auto exceptions =
+        field_scene.building_service_exit_exceptions_for_dump();
+    if (!rows.has_value() || !exceptions.has_value()) {
+        std::cerr << "Building/service exit sweep QA: Lua/runtime sweep "
+                     "failed: " << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    using OffsetTriplet = std::array<std::array<std::int32_t, 2>, 3>;
+    // [C] ROM 0xBC36 selects one of the signed triplets at 0xBD34;
+    // 0x09B8..0x09E0 writes the outward $8000 heading on a nonzero exit.
+    const std::map<std::string_view, OffsetTriplet> rom_return_banks{
+        {"north", {{{0, -0x140}, {-0x140, -0x140}, {0x140, -0x140}}}},
+        {"east", {{{0x1E0, 0}, {0x140, 0x140}, {0x140, -0x140}}}},
+        {"south", {{{0, 0x140}, {0x140, 0x140}, {-0x140, 0x140}}}},
+        {"west", {{{-0x1E0, 0}, {-0x100, 0x140}, {-0x100, -0x100}}}},
+    };
+    const auto entry_heading_for_side = [](const std::string_view side)
+        -> std::optional<std::uint16_t> {
+        if (side == "north") return 0x8000U;
+        if (side == "east") return 0xC000U;
+        if (side == "south") return 0x0000U;
+        if (side == "west") return 0x4000U;
+        return std::nullopt;
+    };
+    std::size_t passed = 0U;
+    bool failed = false;
+    for (const auto& row : *rows) {
+        const auto bank = rom_return_banks.find(row.return_side);
+        const auto entry_heading = entry_heading_for_side(row.return_side);
+        bool row_passed = bank != rom_return_banks.end() &&
+            entry_heading.has_value();
+        std::array<SceneRunnerPosition, 3> expected{};
+        if (row_passed) {
+            for (std::size_t runner = 0U; runner < expected.size(); ++runner) {
+                const auto x = static_cast<std::int32_t>(row.contact.x) +
+                    bank->second[runner][0];
+                const auto y = static_cast<std::int32_t>(row.contact.y) +
+                    bank->second[runner][1];
+                if (x < 0 || x > 0xFFFF || y < 0 || y > 0xFFFF) {
+                    row_passed = false;
+                    break;
+                }
+                expected[runner] = SceneRunnerPosition{
+                    static_cast<std::uint16_t>(x),
+                    static_cast<std::uint16_t>(y)};
+                row_passed = row_passed &&
+                    row.returned_party[runner].x == expected[runner].x &&
+                    row.returned_party[runner].y == expected[runner].y;
+            }
+        }
+        std::optional<std::uint16_t> expected_heading;
+        if (entry_heading.has_value()) {
+            if (row.return_facing == "face_away_from_entry") {
+                expected_heading = static_cast<std::uint16_t>(
+                    *entry_heading + 0x8000U);
+            } else if (row.return_facing == "preserve_entry") {
+                expected_heading = *entry_heading;
+            }
+        }
+        row_passed = row_passed && expected_heading.has_value() &&
+            row.heading == *expected_heading;
+        if (!row.exception_rom_address.empty()) {
+            row_passed = row_passed &&
+                row.exception_rom_address.rfind("0x", 0U) == 0U;
+        }
+        if (row_passed) ++passed;
+        else failed = true;
+
+        std::cout << "building_service_exit_sweep exit=" << row.exit_id
+                  << " side=" << row.return_side << " contact="
+                  << row.contact.x << ',' << row.contact.y << " expected=";
+        if (bank != rom_return_banks.end()) {
+            std::cout << expected[0U].x << ',' << expected[0U].y;
+        } else {
+            std::cout << "invalid-side";
+        }
+        std::cout << " returned=" << row.returned_party[0U].x << ','
+                  << row.returned_party[0U].y << " heading=0x" << std::hex
+                  << std::setw(4) << std::setfill('0') << row.heading
+                  << std::dec << std::setfill(' ') << " policy="
+                  << row.return_anchor << '/' << row.return_facing;
+        if (expected_heading.has_value()) {
+            std::cout << " expected_heading=0x" << std::hex
+                      << std::setw(4) << std::setfill('0')
+                      << *expected_heading << std::dec << std::setfill(' ');
+        }
+        if (!row.exception_rom_address.empty()) {
+            std::cout << " exception_rom=" << row.exception_rom_address;
+        }
+        std::cout << " result=" << (row_passed ? "PASS" : "FAIL") << '\n';
+    }
+    for (const auto& exception : *exceptions) {
+        std::cout << "building_service_exit_exception " << exception << '\n';
+    }
+    if (exceptions->empty()) {
+        std::cout << "building_service_exit_exceptions none\n";
+    }
+    std::cout << "building_service_exit_sweep_counts exits_swept="
+              << rows->size() << " passed=" << passed
+              << " exceptions=" << exceptions->size() << '\n';
+    if (rows->size() != 30U || passed != rows->size() || failed) {
+        std::cerr << "Building/service exit sweep QA: expected all 30 exits "
+                     "to match their ROM bank and Lua outward policy"
+                  << " (exits=" << rows->size() << ", passed=" << passed
+                  << ", exceptions=" << exceptions->size()
+                  << ", documented=" << exceptions->size() << ")\n";
+        return 3;
+    }
     return 0;
 }
 
@@ -37862,6 +38004,7 @@ int main(int argc, char** argv) {
             field_jump_house_entry_qa_path;
         std::optional<std::filesystem::path>
             field_boris_greenhouse_dialogue_qa_path;
+        bool field_building_service_exit_sweep_qa = false;
         std::optional<std::filesystem::path>
             field_boris_greenhouse_passkey_full_qa_path;
         std::optional<std::filesystem::path>
@@ -38312,6 +38455,11 @@ int main(int argc, char** argv) {
                 field_smoke = true;
                 field_boris_greenhouse_dialogue_qa_path =
                     std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                "--field-building-service-exit-sweep-qa") {
+                field_smoke = true;
+                field_building_service_exit_sweep_qa = true;
             }
             if (std::string(argv[index]) ==
                     "--field-boris-greenhouse-passkey-full-qa" &&
@@ -40401,6 +40549,9 @@ int main(int argc, char** argv) {
             if (!bootstrapped) {
                 std::cerr << "field smoke: " << field_scene.failure() << '\n';
                 return 3;
+            }
+            if (field_building_service_exit_sweep_qa) {
+                return run_field_building_service_exit_sweep_qa(field_scene);
             }
             if (field_crime_mall_ilene_gate_qa_path.has_value() ||
                 field_riannons_magic_shop_entry_qa_path.has_value() ||
