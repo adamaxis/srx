@@ -25221,7 +25221,13 @@ int run_field_mitsuhama_after_hours_entry_qa(
         walk_probe_leg(0x02U, "down", "scene34-row32-a8ae-contact",
                        source_walk_bound(0x0400U), [&field_scene] {
                            return field_scene.dialogue_open() ||
-                                  field_scene.field_entity_world_position().y >=
+                                  // ROM 0xEBB0..0xEC44 tests the current actor
+                                  // coordinate in [player - 0x40, player +
+                                  // 0x40) on each axis. At player y=0x40C0,
+                                  // the actor at 0x4100 is exactly on the
+                                  // excluded upper edge, so take one more
+                                  // ordinary south sample.
+                                  field_scene.field_entity_world_position().y >
                                       0x40C0U;
                        });
     const auto contact_approach_position =

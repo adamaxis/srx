@@ -3,8 +3,8 @@
 This file is kept in the repo so the notes survive if the box is wiped. The box's /workspace/shadowrun/out was lost on 2026-10-31.
 Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 
-## Current state (2026-11-01 10:50 CST)
-- Remote port-fixes: see latest Fixes entry. Both builds compile and the Lua suites pass. ctest fails 1/294 (mitsuhama_after_hours_entry, no spawn profile; also failed on aa3b2cb7's parent); #201 skipped.
+## Current state (2026-11-01 10:15 CST)
+- Remote port-fixes: see latest Fixes entry. QA_GREEN: both builds, ctest 294/294, Lua suites pass.
 - In progress: Luna (codex exec, gpt-6-luna, max effort, fast tier off) is fixing aa3b2cb7 forward. Brief is /workspace/briefs/aa3b.md, the earlier partial work is /workspace/briefs/aa3b_wip.diff and stash 'aa3b-wip'.
 - Box toolchain: `. /workspace/tcenv.sh` (conda env /workspace/mamba/envs/srx). Build dirs are /workspace/b2 (Qt) and /workspace/b2n (non-Qt). Full QA is /workspace/qa.sh, which prints QA_GREEN.
 - 7 gitignored files in decompilation/assets were dangling links into /tmp/srx_qa_asset_stage. They were replaced with real copies, not re-extracted.
@@ -33,6 +33,7 @@ Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 - A800 conditional actors get stable field_scene_<scene>_activity_<candidate> IDs before Lua publication, so evaluate_field_alarm accepts them. 9 -> 3 fails (A800 contact x3, pedestrian scenes, scene26 terminal), no new.
 - D-pad diagonals: input 0x05 = north-west, 0x06 = south-west per ROM 0x19D2[5]=0xE000/[6]=0xA000 (playtest #23). Expectation change with evidence: motel collision QA idle coherence now checks the current facing (+0x2E), since ROM 0xB530 turns in place before 0xB5BA/0xB5C0 select idle from +0x2E. 3 -> 2 fails (field_movement_qa), no new.
 - run offers keep the ROM location code beside the semantic location, and active_route_ids expose the selected codes from ROM 0xF3E80..0xF3EBB. Fixes field_dialogue_runtime (2 -> 1), no new.
+- Mitsuhama after-hours QA route takes one more south sample: ROM 0xEBB0..0xEC44 proximity is half-open [p-0x40, p+0x40), so y=0x40C0 vs actor 0x4100 is outside. 1 -> 0 fails.
 
 ## Open work, in order
 1. Get ctest green again by fixing aa3b2cb7 forward.
@@ -46,3 +47,8 @@ Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 - Camera: steps apply at 0x3C36; the redraw rounds down to 0x80 at 0x2BE2/0x2BEA.
 - Culling at 0x5A62: window sx 0x70..0x1AD, sy 0x63..0x179.
 - Give-screen picture hold at 0x12A54. Safes at 0x540D6 and 0x541B2.
+
+## playtest_2026-11-01 status (2026-11-01 10:15 CST)
+- #23 diagonals: fixed in 0ad99223 (ROM 0x19D2) [C].
+- #10 vid phones, #21 Gunderson booth: likely fixed by dd41821a (field contact/B7B8 transition regression from c073dda6); vid_phone QA passes, needs an in-game retest [H].
+- #9 building exit placement: not addressed.
