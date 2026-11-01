@@ -228,6 +228,10 @@ if (NOT SHADOWRUN_GHIDRA_QT_FRONTEND)
             target_compile_definitions(${test_target} PRIVATE
                 SHADOWRUN_GAMEPLAY_SCRIPT_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}/../gameplay/scripts\")
         endif()
+        if(test_name STREQUAL "movement_metric")
+            target_compile_definitions(${test_target} PRIVATE
+                SHADOWRUN_GHIDRA_ASSET_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}/../assets\")
+        endif()
         add_test(NAME "shadowrun_ghidra_${test_name}"
                  COMMAND ${test_target})
     endforeach()
