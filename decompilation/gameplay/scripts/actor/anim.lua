@@ -8,9 +8,26 @@ local Animator = R.Animator   -- from actor/animator.lua
 local SoundId, SceneId, EntryDelayMax, AiTuning =
     E.SoundId, E.SceneId, E.EntryDelayMax, E.AiTuning
 local PlayerHurt = E.PlayerHurt
+local ActorFacing, SpriteFlip = E.ActorFacing, E.SpriteFlip
 local VisualProfile = R.VisualProfile -- from actor/tables.lua
 local ProjectileAnimationClips =
     require("data.weapon_projectile_animation_clips")
+
+local function walk_sprite_flip(state)
+    if state.animation_id ~= "walk" then
+        return SpriteFlip.NONE
+    end
+    local direction = state.direction
+    if direction == ActorFacing.SOUTH_WEST or
+       direction == ActorFacing.WEST or
+       direction == ActorFacing.NORTH_WEST then
+        -- Kind 4's `0x9218/0x922C/0x9240` frame descriptors all carry
+        -- attribute 0x0800; the same left-facing walk lists are used by the
+        -- other imported world actors [C: 0xB6BA..0xB6DE, C062].
+        return SpriteFlip.HORIZONTAL
+    end
+    return SpriteFlip.NONE
+end
 
 local function snapshot(state, action, audio_event, projectile_movement,
                         target_heading_audio_event)
@@ -57,6 +74,7 @@ local function snapshot(state, action, audio_event, projectile_movement,
             state.spell_death_variant or "",
         actor_facts = state.actor_facts,
         direction = state.direction,
+        sprite_flip = walk_sprite_flip(state),
         frame = state.animation_frame,
         transition_started = state.transition_started,
         transition_complete = state.transition_complete,

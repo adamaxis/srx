@@ -48,6 +48,11 @@ E.MovementDirection = {
     SOUTH_EAST = "south_east", SOUTH = "south",
     SOUTH_WEST = "south_west", WEST = "west", NORTH_WEST = "north_west",
 }
+E.ActorFacing = {
+    NORTH = 0, NORTH_EAST = 1, EAST = 2, SOUTH_EAST = 3,
+    SOUTH = 4, SOUTH_WEST = 5, WEST = 6, NORTH_WEST = 7,
+} -- C062 walk list direction indices [C: 0xB6BA..0xB6DE]
+E.SpriteFlip = { NONE = 0, HORIZONTAL = 1 } -- descriptor attribute 0x0800 [C: 0x600E]
 E.MovementBearingDegrees = {
     [E.MovementDirection.NORTH] = 0,
     [E.MovementDirection.NORTH_EAST] = 45,

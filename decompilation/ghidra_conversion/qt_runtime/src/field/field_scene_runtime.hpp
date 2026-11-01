@@ -157,6 +157,23 @@ struct FieldCreatureAttackEffectDebugState {
     std::int16_t action_delay = 0;
 };
 
+struct FieldActorAnimationSnapshotForDump {
+    std::size_t active_actor_index = 0U;
+    std::uint16_t source_order = 0U;
+    std::string actor_instance_id;
+    std::string script_profile_id;
+    std::string sprite_stem;
+    std::string animation_id;
+    std::uint16_t world_x = 0U;
+    std::uint16_t world_y = 0U;
+    std::uint16_t movement_heading = 0U;
+    std::uint16_t animation_heading = 0U;
+    std::string ai_target_id;
+    std::uint8_t direction = 0U;
+    std::uint8_t frame = 0U;
+    bool horizontal_flip = false;
+};
+
 struct FieldBarrierCollisionCell {
     std::uint16_t cell_index = 0U;
     std::uint8_t code = 0U;
@@ -437,6 +454,8 @@ public:
 #ifdef SHADOWRUN_QT_QA_DRIVER
     bool schedule_default_actor_world_activity_for_dump(
         std::uint16_t source_order);
+    std::vector<FieldActorAnimationSnapshotForDump>
+    active_default_actor_animations_for_dump() const;
     bool field_alarm_active_for_dump() const noexcept {
         return field_matrix_field_state_.alarm.value_or(false);
     }
@@ -2130,6 +2149,7 @@ private:
         bool movement_state_initialized = false;
         std::uint8_t initial_behavior_delay = 0;
         std::uint8_t animation_direction = 0;
+        bool animation_flip_x = false;
         std::string animation_id = "idle";
         std::string animation_variant;
         std::uint8_t animation_frame = 0;
@@ -2243,6 +2263,7 @@ private:
         const QImage* image = nullptr;
         int origin_x = 0;
         int origin_y = 0;
+        bool horizontal_flip = false;
     };
 
     std::function<void(std::string_view)> source_boundary_callback_;

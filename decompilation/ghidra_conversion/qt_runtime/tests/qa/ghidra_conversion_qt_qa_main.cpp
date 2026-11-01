@@ -1628,6 +1628,321 @@ int run_field_party_wipe_qa(
     return 0;
 }
 
+int run_field_ganger_walk_facing_qa(
+    FieldSceneRuntime& field_scene,
+    const StartupIntegrationState& startup_state,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output) {
+    constexpr std::uint16_t kScene = 1U;
+    constexpr std::uint16_t kRunnerX = 0x3CE0U;
+    constexpr std::uint16_t kRunnerY = 0x2D00U;
+    constexpr std::uint16_t kHorizontalGap = 0x0500U;
+    constexpr std::uint16_t kRightwardHeading = 0x3000U;
+    constexpr std::uint16_t kLeftwardHeading = 0xF800U;
+    constexpr std::uint8_t kRightwardDirection = 1U;
+    constexpr std::uint8_t kLeftwardDirection = 7U;
+
+    std::error_code error;
+    std::filesystem::create_directories(output, error);
+    if (error) {
+        std::cerr << "field ganger facing QA: cannot create output: "
+                  << error.message() << '\n';
+        return 3;
+    }
+    clear_qa_bitmap_artifacts(output, error);
+    if (error || !field_scene.seed_current_run_for_dump("ghoul_bounty")) {
+        std::cerr << "field ganger facing QA: could not prepare the run\n";
+        return 3;
+    }
+    field_scene.set_world_effect_player_spawn_pending_for_dump(false);
+    field_scene.set_field_entity_world_position_for_dump(kRunnerX, kRunnerY);
+    field_scene.set_source_random_seed_for_dump(0x1234U);
+    if (!field_scene.reenter_field_scene_for_dump(kScene)) {
+        std::cerr << "field ganger facing QA: Scene 1 entry failed: "
+                  << field_scene.failure() << '\n';
+        return 3;
+    }
+    field_scene.set_field_entity_world_position_for_dump(kRunnerX, kRunnerY);
+    field_scene.set_field_camera_world_position_for_dump(
+        kRunnerX, static_cast<std::uint16_t>(kRunnerY - 0x0600U));
+
+    // The Scene-1 weighted row at 0x1D71A8 is selector sum 4 and contains two
+    // kind-4 Ork Gangers. The bounded pair 2+2 selects that row.
+    const auto spawned = field_scene.resolve_and_spawn_field_encounter_for_dump(
+        2U, 2U, 0x1234U);
+    auto actors = field_scene.active_default_actor_animations_for_dump();
+    std::vector<FieldActorAnimationSnapshotForDump> gangers;
+    for (const auto& actor : actors) {
+        if (actor.script_profile_id == "ork_ganger_k04_none00") {
+            gangers.push_back(actor);
+        }
+    }
+    if (spawned != 2U || gangers.size() != 2U ||
+        field_scene.field_scene_reference_for_dump() != kScene) {
+        std::cerr << "field ganger facing QA: Scene 1 row did not spawn two "
+                     "Ork Gangers; spawned="
+                  << spawned << " active=" << actors.size()
+                  << " gangers=" << gangers.size() << " failure="
+                  << field_scene.failure() << '\n';
+        return 3;
+    }
+    std::sort(gangers.begin(), gangers.end(),
+              [](const auto& left, const auto& right) {
+                  return left.source_order < right.source_order;
+              });
+    if (gangers[0].source_order != 0U ||
+        gangers[1].source_order != 1U ||
+        gangers[0].sprite_stem != "actor-kind-4-palette-3" ||
+        gangers[1].sprite_stem != "actor-kind-4-palette-3") {
+        std::cerr << "field ganger facing QA: spawned actor identities did "
+                     "not match the source row\n";
+        return 3;
+    }
+
+    // Place one ganger on either side of the runner, then let the ordinary
+    // Lua behavior/render heartbeats choose and draw their facing. The actor
+    // on the right must walk west; the actor on the left must walk east.
+    const auto left_to_right_x = static_cast<std::uint16_t>(
+        kRunnerX - kHorizontalGap);
+    const auto right_to_left_x = static_cast<std::uint16_t>(
+        kRunnerX + kHorizontalGap);
+    if (!field_scene.set_default_actor_world_position_for_dump(
+            gangers[0].active_actor_index, left_to_right_x, kRunnerY) ||
+        !field_scene.set_default_actor_world_position_for_dump(
+            gangers[1].active_actor_index, right_to_left_x, kRunnerY)) {
+        std::cerr << "field ganger facing QA: could not place the two actors\n";
+        return 3;
+    }
+
+    const auto actor_by_id = [&field_scene](const std::string& actor_id)
+        -> std::optional<FieldActorAnimationSnapshotForDump> {
+        const auto current =
+            field_scene.active_default_actor_animations_for_dump();
+        const auto found = std::find_if(
+            current.begin(), current.end(), [&actor_id](const auto& actor) {
+                return actor.actor_instance_id == actor_id;
+            });
+        return found == current.end()
+                   ? std::nullopt
+                   : std::optional<FieldActorAnimationSnapshotForDump>{*found};
+    };
+    std::optional<FieldActorAnimationSnapshotForDump> east_walker;
+    std::optional<FieldActorAnimationSnapshotForDump> west_walker;
+    QImage actual;
+    std::uint16_t capture_frame = 0U;
+    for (std::uint16_t frame = 1U; frame <= 120U; ++frame) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        const auto east_actor = actor_by_id(gangers[0].actor_instance_id);
+        const auto west_actor = actor_by_id(gangers[1].actor_instance_id);
+        if (east_actor.has_value() && west_actor.has_value() &&
+            east_actor->animation_id == "walk" &&
+            west_actor->animation_id == "walk") {
+            east_walker = east_actor;
+            west_walker = west_actor;
+            actual = render_qa_field(field_scene);
+            capture_frame = frame;
+            break;
+        }
+    }
+    const auto save = [&output](const std::string& name,
+                                const QImage& image) {
+        return image.save(QString::fromStdWString(
+            (output / std::filesystem::path(name)).wstring()));
+    };
+    const bool actual_saved = !actual.isNull() && save("actual.bmp", actual);
+
+    const auto rendered_actor_matches_named_asset =
+        [&startup_state, &field_scene](
+            const FieldActorAnimationSnapshotForDump& actor,
+            const QImage& frame) {
+            if (actor.animation_id != "walk" || actor.direction >= 8U ||
+                actor.frame >= 4U || actor.sprite_stem.empty()) {
+                return false;
+            }
+            auto asset_suffix = actor.sprite_stem;
+            std::replace(asset_suffix.begin(), asset_suffix.end(), '-', '.');
+            const auto alias =
+                "field.entities.actors." + asset_suffix + ".walk.dir." +
+                std::to_string(actor.direction) + ".frame." +
+                std::to_string(actor.frame);
+            const auto* asset =
+                startup_state.asset_catalog.catalog.find(alias);
+            if (asset == nullptr) {
+                return false;
+            }
+            QImage expected(QString::fromStdWString(
+                asset->absolute_path.wstring()));
+            if (expected.isNull()) {
+                return false;
+            }
+            if (actor.horizontal_flip) {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
+                expected = expected.flipped(Qt::Horizontal);
+#else
+                expected = expected.mirrored(true, false);
+#endif
+            }
+            EntityProjectionState projection{};
+            projection.world_x = actor.world_x;
+            projection.world_y = actor.world_y;
+            const auto& buffers = field_scene.state().field_scene_buffers;
+            const auto projected = project_entity_screen_position_standard(
+                projection,
+                static_cast<std::uint16_t>(buffers.camera_x),
+                static_cast<std::uint16_t>(buffers.camera_y));
+            if (!projected.visible) {
+                return false;
+            }
+            constexpr int kSpriteOrigin = 0x80;
+            const auto origin_x = static_cast<int>(projection.screen_x) -
+                                  kSpriteOrigin + asset->origin_x;
+            const auto origin_y = static_cast<int>(projection.screen_y) -
+                                  kSpriteOrigin + asset->origin_y;
+            if (origin_x < 0 || origin_y < 0 ||
+                origin_x + expected.width() > frame.width() ||
+                origin_y + expected.height() > frame.height()) {
+                return false;
+            }
+            std::size_t compared_pixels = 0U;
+            for (int y = 0; y < expected.height(); ++y) {
+                for (int x = 0; x < expected.width(); ++x) {
+                    if (expected.pixelColor(x, y).alpha() == 0) {
+                        continue;
+                    }
+                    ++compared_pixels;
+                    if (frame.pixelColor(origin_x + x, origin_y + y) !=
+                        expected.pixelColor(x, y)) {
+                        return false;
+                    }
+                }
+            }
+            return compared_pixels != 0U;
+        };
+
+    bool east_pixels_match = false;
+    bool west_pixels_match = false;
+    std::string east_asset;
+    std::string west_asset;
+    if (east_walker.has_value() && west_walker.has_value()) {
+        auto asset_alias = [](const auto& actor) {
+            auto stem = actor.sprite_stem;
+            std::replace(stem.begin(), stem.end(), '-', '.');
+            return "field.entities.actors." + stem + ".walk.dir." +
+                   std::to_string(actor.direction) + ".frame." +
+                   std::to_string(actor.frame);
+        };
+        east_asset = asset_alias(*east_walker);
+        west_asset = asset_alias(*west_walker);
+        east_pixels_match =
+            rendered_actor_matches_named_asset(*east_walker, actual);
+        west_pixels_match =
+            rendered_actor_matches_named_asset(*west_walker, actual);
+    }
+    {
+        std::ofstream trace(output / "ganger-walk-facing.tsv",
+                            std::ios::binary);
+        trace << "actor_id\tprofile\tanimation\tdirection\tframe\t"
+                 "world_x\tworld_y\tmovement_heading\tanimation_heading\t"
+                 "ai_target_id\thorizontal_flip\tselected_asset\n";
+        if (east_walker.has_value()) {
+            trace << east_walker->actor_instance_id << '\t'
+                  << east_walker->script_profile_id << '\t'
+                  << east_walker->animation_id << '\t'
+                  << static_cast<unsigned>(east_walker->direction) << '\t'
+                  << static_cast<unsigned>(east_walker->frame) << '\t'
+                  << east_walker->world_x << '\t' << east_walker->world_y
+                  << '\t' << east_walker->movement_heading << '\t'
+                  << east_walker->animation_heading << '\t'
+                  << east_walker->ai_target_id
+                  << '\t' << east_walker->horizontal_flip
+                  << '\t' << east_asset << '\n';
+        }
+        if (west_walker.has_value()) {
+            trace << west_walker->actor_instance_id << '\t'
+                  << west_walker->script_profile_id << '\t'
+                  << west_walker->animation_id << '\t'
+                  << static_cast<unsigned>(west_walker->direction) << '\t'
+                  << static_cast<unsigned>(west_walker->frame) << '\t'
+                  << west_walker->world_x << '\t' << west_walker->world_y
+                  << '\t' << west_walker->movement_heading << '\t'
+                  << west_walker->animation_heading << '\t'
+                  << west_walker->ai_target_id
+                  << '\t' << west_walker->horizontal_flip
+                  << '\t' << west_asset << '\n';
+        }
+    }
+
+    // ROM 0xB6BA..0xB6DE rotates the high heading bits into the C062 index.
+    // At this deterministic capture, rightward 0x3000 selects direction 1
+    // (0x91C8/0x9614, attr 0) and leftward 0xF800 selects direction 7
+    // (0x9240/0x9734, attr 0x0800) for kind 4.
+    const bool movement_matches =
+        east_walker.has_value() && west_walker.has_value() &&
+        east_walker->movement_heading == kRightwardHeading &&
+        west_walker->movement_heading == kLeftwardHeading &&
+        east_walker->direction == kRightwardDirection &&
+        west_walker->direction == kLeftwardDirection &&
+        east_walker->direction ==
+            static_cast<std::uint8_t>(
+                (east_walker->animation_heading >> 13U) & 0x07U) &&
+        west_walker->direction ==
+            static_cast<std::uint8_t>(
+                (west_walker->animation_heading >> 13U) & 0x07U) &&
+        !east_walker->horizontal_flip && west_walker->horizontal_flip &&
+        east_walker->world_x > left_to_right_x &&
+        west_walker->world_x < right_to_left_x;
+    if (!actual_saved || !movement_matches || !west_pixels_match ||
+        !field_hud_chrome_survives(actual, asset_root)) {
+        std::cerr << "field ganger facing QA: walk direction/frame art did not "
+                     "match the ROM-facing selection; capture_frame="
+                  << capture_frame << " east=";
+        if (east_walker.has_value()) {
+            std::cerr << "direction="
+                      << static_cast<unsigned>(east_walker->direction)
+                      << " frame=" << static_cast<unsigned>(east_walker->frame)
+                      << " heading=0x" << std::hex
+                      << east_walker->animation_heading << std::dec
+                      << " hflip=" << east_walker->horizontal_flip
+                      << " x=" << east_walker->world_x
+                      << " asset=" << east_asset
+                      << " pixels=" << east_pixels_match;
+        } else {
+            std::cerr << "<not-walking>";
+        }
+        std::cerr << " west=";
+        if (west_walker.has_value()) {
+            std::cerr << "direction="
+                      << static_cast<unsigned>(west_walker->direction)
+                      << " frame=" << static_cast<unsigned>(west_walker->frame)
+                      << " heading=0x" << std::hex
+                      << west_walker->animation_heading << std::dec
+                      << " hflip=" << west_walker->horizontal_flip
+                      << " x=" << west_walker->world_x
+                      << " asset=" << west_asset
+                      << " pixels=" << west_pixels_match;
+        } else {
+            std::cerr << "<not-walking>";
+        }
+        std::cerr << " actual_saved=" << actual_saved
+                  << " hud="
+                  << (!actual.isNull() &&
+                      field_hud_chrome_survives(actual, asset_root))
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+    std::cout << "field_ganger_walk_facing_qa=passed capture_frame="
+              << capture_frame << " east=dir"
+              << static_cast<unsigned>(east_walker->direction) << "/frame"
+              << static_cast<unsigned>(east_walker->frame)
+              << " west=dir" << static_cast<unsigned>(west_walker->direction)
+              << "/frame" << static_cast<unsigned>(west_walker->frame)
+              << " hflip={right:" << east_walker->horizontal_flip
+              << ",left:" << west_walker->horizontal_flip << "} actual="
+              << (output / "actual.bmp").string() << '\n';
+    return 0;
+}
+
 int run_field_random_encounter_spawn_qa(
     FieldSceneRuntime& field_scene,
     const StartupIntegrationState& startup_state,
@@ -3356,6 +3671,12 @@ int run_field_random_encounter_spawn_qa(
                       << detail << '\n';
             return 3;
         }
+    }
+
+    if (run_field_ganger_walk_facing_qa(
+            field_scene, startup_state, asset_root,
+            output / "ganger-walk-facing") != 0) {
+        return 3;
     }
 
     std::cout << "field_random_encounter_spawn_qa=passed scene=2 selector=1+2 actors=2 active="

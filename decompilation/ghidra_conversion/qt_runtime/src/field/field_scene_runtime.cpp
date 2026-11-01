@@ -3949,6 +3949,7 @@ void FieldSceneRuntime::initialize_default_field_actors(
         actor.ai_target_distance = decision->ai_target_distance.value_or(0U);
         actor.action_delay = decision->action_delay;
         actor.animation_direction = decision->direction;
+        actor.animation_flip_x = decision->animation_flip_x;
         actor.animation_id = decision->animation_id;
         actor.animation_variant = decision->animation_variant;
         actor.animation_frame = decision->animation_frame;
@@ -3996,6 +3997,7 @@ void FieldSceneRuntime::initialize_default_field_actors(
             }
         }
         actor.animation_direction = decision->direction;
+        actor.animation_flip_x = decision->animation_flip_x;
         actor.animation_id = decision->animation_id;
         actor.animation_frame = decision->animation_frame;
         actor.transition_started = decision->transition_started;
@@ -4335,6 +4337,7 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
         actor.source_behavior_flags = behavior_flags_from_facts(
             decision->actor_facts.behavior);
         actor.animation_direction = decision->direction;
+        actor.animation_flip_x = decision->animation_flip_x;
         actor.animation_id = decision->animation_id;
         actor.animation_variant = decision->animation_variant;
         actor.animation_frame = decision->animation_frame;
@@ -5165,6 +5168,7 @@ void FieldSceneRuntime::advance_default_field_actors(
             actor.combatant.source_flags = actor.source_record_flags;
         }
         actor.animation_direction = decision->direction;
+        actor.animation_flip_x = decision->animation_flip_x;
         actor.animation_id = decision->animation_id;
         actor.animation_variant = decision->animation_variant;
         actor.animation_frame = decision->animation_frame;
@@ -5234,6 +5238,7 @@ void FieldSceneRuntime::advance_default_field_actors(
         actor.target_motion_effect_phase =
             decision->target_motion_effect_phase;
         actor.animation_direction = decision->direction;
+        actor.animation_flip_x = decision->animation_flip_x;
         actor.animation_id = decision->animation_id;
         actor.animation_frame = decision->animation_frame;
         // ROM 0xAB02 runs once, when the 0xB330 death list (C0B2) finishes
@@ -6035,7 +6040,8 @@ FieldSceneRuntime::default_actor_sprite_view(
         return DefaultActorSpriteView{
             &artwork->idle_images[direction],
             artwork->idle_origin_x[direction],
-            artwork->idle_origin_y[direction]};
+            artwork->idle_origin_y[direction],
+            actor.animation_flip_x};
     }
     if (actor.animation_id == "walk") {
         const auto& frames = artwork->walk_images[direction];
@@ -6047,7 +6053,8 @@ FieldSceneRuntime::default_actor_sprite_view(
         return DefaultActorSpriteView{
             &frames[frame],
             artwork->walk_origin_x[direction][frame],
-            artwork->walk_origin_y[direction][frame]};
+            artwork->walk_origin_y[direction][frame],
+            actor.animation_flip_x};
     }
     if (actor.animation_id == "spell") {
         // Lua's C082 animator owns the frame index [C: 0xAF7C/0xAFAE/0x600E].
@@ -6060,7 +6067,8 @@ FieldSceneRuntime::default_actor_sprite_view(
         return DefaultActorSpriteView{
             &frames[frame],
             artwork->spell_origin_x[direction][frame],
-            artwork->spell_origin_y[direction][frame]};
+            artwork->spell_origin_y[direction][frame],
+            actor.animation_flip_x};
     }
     if (actor.animation_id == "weapon") {
         const auto& frames = artwork->item_action_images[direction];
@@ -6072,7 +6080,8 @@ FieldSceneRuntime::default_actor_sprite_view(
         return DefaultActorSpriteView{
             &frames[frame],
             artwork->item_action_origin_x[direction][frame],
-            artwork->item_action_origin_y[direction][frame]};
+            artwork->item_action_origin_y[direction][frame],
+            actor.animation_flip_x};
     }
     if (actor.animation_id == "action") {
         const auto& frames = artwork->action_images[direction];
@@ -6084,7 +6093,8 @@ FieldSceneRuntime::default_actor_sprite_view(
         return DefaultActorSpriteView{
             &frames[frame],
             artwork->action_origin_x[direction][frame],
-            artwork->action_origin_y[direction][frame]};
+            artwork->action_origin_y[direction][frame],
+            actor.animation_flip_x};
     }
     if (actor.animation_id == "hurt") {
         const auto& frames = artwork->hurt_images[direction];
@@ -6690,6 +6700,7 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
         actor.source_behavior_flags = behavior_flags_from_facts(
             decision->actor_facts.behavior);
         actor.animation_direction = decision->direction;
+        actor.animation_flip_x = decision->animation_flip_x;
         actor.animation_id = decision->animation_id;
         actor.animation_variant = decision->animation_variant;
         actor.animation_frame = decision->animation_frame;
@@ -13032,6 +13043,7 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
             continue;
         }
         actor.animation_direction = decision->direction;
+        actor.animation_flip_x = decision->animation_flip_x;
         actor.animation_id = decision->animation_id;
         actor.animation_variant = decision->animation_variant;
         actor.animation_frame = decision->animation_frame;
@@ -14886,14 +14898,21 @@ void FieldSceneRuntime::paint_field_scene_entities(
         // overlap priority; this painter composites later sprites on top, so
         // add the body first and marker corners after it to preserve that
         // source priority without letting the actor cover its own selector.
-        sprites.push_back(SceneSprite{
+        SceneSprite actor_sprite{
             static_cast<std::int16_t>(actor.world_position.y),
             static_cast<std::uint16_t>(actor.source_order + 1U),
             static_cast<int>(projection.screen_x) - kGenesisSpriteOrigin +
                 sprite.origin_x,
             static_cast<int>(projection.screen_y) - kGenesisSpriteOrigin +
                 sprite.origin_y,
-            sprite.image});
+            sprite.image};
+        if (sprite.horizontal_flip) {
+            // Lua carries the ROM-facing descriptor attribute through the
+            // typed actor snapshot. The image import keeps raw color pixels.
+            actor_sprite.mirrored_image =
+                flipped_image(*sprite.image, Qt::Horizontal);
+        }
+        sprites.push_back(std::move(actor_sprite));
 
         if (actor.spell_effect_visible &&
             actor.spell_effect_phase < kFieldSpellEffectPhaseCapacity &&

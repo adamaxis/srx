@@ -31,6 +31,40 @@ check(A.list(E.ActorVisualProfile.HUMAN_GUARD, A.Clip.SPELL_DEATH_E0).frame_coun
       "E0/E4 humanoid frame counts")
 check(A.list(E.ActorVisualProfile.GARGOYLE, A.Clip.SPELL).frame_count == 2,
       "gargoyle spell art list has two frames")
+
+-- ROM 0xB6BA..0xB6DE selects C062 directions 5..7 for leftward walk headings;
+-- the kind-4 Ork Ganger descriptors at 0x97C4/0x977C/0x9734 set attr 0x0800.
+for _, direction in ipairs({ E.ActorFacing.SOUTH_WEST, E.ActorFacing.WEST,
+                             E.ActorFacing.NORTH_WEST }) do
+    local facing = R.snapshot({
+        actor_id = "ganger-left-walk",
+        visual_profile_id = E.ActorVisualProfile.ORK_BANDERSNATCH,
+        animation_id = "walk",
+        direction = direction,
+        animation_frame = 0,
+    }, "hold", nil)
+    check(facing.sprite_flip == E.SpriteFlip.HORIZONTAL,
+          "left-facing Ganger walk carries the ROM horizontal flip")
+end
+local right_facing = R.snapshot({
+    actor_id = "ganger-right-walk",
+    visual_profile_id = E.ActorVisualProfile.ORK_BANDERSNATCH,
+    animation_id = "walk",
+    direction = E.ActorFacing.EAST,
+    animation_frame = 0,
+}, "hold", nil)
+check(right_facing.sprite_flip == E.SpriteFlip.NONE,
+      "right-facing Ganger walk keeps the unflipped art")
+local left_idle = R.snapshot({
+    actor_id = "ganger-left-idle",
+    visual_profile_id = E.ActorVisualProfile.ORK_BANDERSNATCH,
+    animation_id = "idle",
+    direction = E.ActorFacing.WEST,
+    animation_frame = 0,
+}, "hold", nil)
+check(left_idle.sprite_flip == E.SpriteFlip.NONE,
+      "walk-facing correction does not change idle art")
+
 local imported_hurt = A.list(E.ActorVisualProfile.FIELD_RUNNER, A.Clip.HURT)
 check(imported_hurt.rate == nil and imported_hurt.count == nil and
       imported_hurt.frame_duration_updates > 0,

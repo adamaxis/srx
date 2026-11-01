@@ -2388,6 +2388,7 @@ struct ScriptActorBehaviorDecision {
     Action action = Action::hold;
     std::string animation_id = "idle";
     std::uint8_t direction = 0;
+    bool animation_flip_x = false;
     std::uint8_t animation_frame = 0;
     ScriptActorFacts actor_facts;
     // A gameplay event; the field host starts the encounter activity delay.

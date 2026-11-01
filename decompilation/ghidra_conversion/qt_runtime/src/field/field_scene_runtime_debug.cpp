@@ -1167,6 +1167,39 @@ FieldSceneRuntime::active_default_actor_positions_for_dump() const {
 
 
 #ifdef SHADOWRUN_QT_QA_DRIVER
+std::vector<FieldActorAnimationSnapshotForDump>
+FieldSceneRuntime::active_default_actor_animations_for_dump() const {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    std::vector<FieldActorAnimationSnapshotForDump> snapshots;
+    std::size_t active_actor_index = 0U;
+    for (const auto& actor : field_default_actors_) {
+        if (!actor.active || actor.scene_reference != scene_reference) {
+            continue;
+        }
+        snapshots.push_back(FieldActorAnimationSnapshotForDump{
+            active_actor_index,
+            actor.source_order,
+            actor.actor_instance_id,
+            actor.script_profile_id,
+            actor.sprite_stem,
+            actor.animation_id,
+            actor.world_position.x,
+            actor.world_position.y,
+            actor.movement_state.heading,
+            actor.movement_state.animation_heading,
+            actor.ai_target_id,
+            actor.animation_direction,
+            actor.animation_frame,
+            actor.animation_flip_x,
+        });
+        ++active_actor_index;
+    }
+    return snapshots;
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
+
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<std::string>
 FieldSceneRuntime::selected_default_actor_id_for_dump() const {
     if (!field_entity_target_owner_.selected_target.has_value()) {
