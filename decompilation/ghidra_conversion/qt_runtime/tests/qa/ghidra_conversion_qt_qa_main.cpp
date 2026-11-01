@@ -25535,12 +25535,17 @@ int run_field_scene2_motel_street_collision_qa(
                 selector == static_cast<std::uint16_t>(0x0020U + direction * 4U) &&
                 animation_frame <= 3U;
         } else {
-            const auto heading_direction =
+            // 0xB530 turns the actor's current facing (+0x2E) toward the
+            // requested heading (+0x34) while stationary. 0xB5BA calls that
+            // turn service before 0xB5C0 selects the idle direction from
+            // +0x2E, so a turn-in-place may temporarily face neither the
+            // requested nor movement heading.
+            const auto facing_direction =
                 field_movement_direction_from_heading(
-                    field_scene.field_entity_heading_for_dump());
+                    field_scene.field_entity_animation_heading_for_dump());
             animation_state_coherent = animation_state_coherent &&
-                direction == heading_direction &&
-                selector == static_cast<std::uint16_t>(direction * 4U) &&
+                direction == facing_direction &&
+                selector == static_cast<std::uint16_t>(facing_direction * 4U) &&
                 animation_frame == 0U;
         }
         trace << phase << '\t' << frame << '\t'

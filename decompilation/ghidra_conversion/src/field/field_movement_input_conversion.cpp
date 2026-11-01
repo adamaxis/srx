@@ -24,9 +24,9 @@ std::optional<MovementDirection> field_movement_direction_from_input(
     case 0x08U: return MovementDirection::east;
     case 0x0AU: return MovementDirection::south_east;
     case 0x02U: return MovementDirection::south;
-    case 0x06U: return MovementDirection::north_west;
+    case 0x05U: return MovementDirection::north_west; // 0x19D2[5] = 0xE000 [C]
     case 0x04U: return MovementDirection::west;
-    case 0x05U: return MovementDirection::south_west;
+    case 0x06U: return MovementDirection::south_west; // 0x19D2[6] = 0xA000 [C]
     default: return std::nullopt;
     }
 }
