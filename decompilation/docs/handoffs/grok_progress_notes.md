@@ -3,8 +3,8 @@
 This file is kept in the repo so the notes survive if the box is wiped. The box's /workspace/shadowrun/out was lost on 2026-10-31.
 Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 
-## Current state (2026-11-01 09:35 CST)
-- Remote port-fixes: see latest Fixes entry. Both builds compile and the Lua suites pass. ctest fails 11/294. Bisect: the field contact regressions came from c073dda6 (movement encodings behind native boundary), not aa3b2cb7.
+## Current state (2026-11-01 10:05 CST)
+- Remote port-fixes: see latest Fixes entry. Both builds compile and the Lua suites pass. ctest fails 3/294 (matrix_traversal_entry, mitsuhama_after_hours_entry, field_movement; field_dialogue_runtime status in next run). Bisect: the field contact regressions came from c073dda6, not aa3b2cb7.
 - In progress: Luna (codex exec, gpt-6-luna, max effort, fast tier off) is fixing aa3b2cb7 forward. Brief is /workspace/briefs/aa3b.md, the earlier partial work is /workspace/briefs/aa3b_wip.diff and stash 'aa3b-wip'.
 - Box toolchain: `. /workspace/tcenv.sh` (conda env /workspace/mamba/envs/srx). Build dirs are /workspace/b2 (Qt) and /workspace/b2n (non-Qt). Full QA is /workspace/qa.sh, which prints QA_GREEN.
 - 7 gitignored files in decompilation/assets were dangling links into /tmp/srx_qa_asset_stage. They were replaced with real copies, not re-extracted.
@@ -30,6 +30,7 @@ Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 - shop stock uses: selected_shop_item_uses reads the selected offer byte 2 instead of removed static item.detail, per ROM 0x1AAC86 [C]. Fixes field_shop_qa (72 -> 71 fails, no new).
 - armor/weapon equip: Lua keeps per-cell armor markers and an explicit empty weapon state (vs unresolved semantic ID), per ROM 0x1219C/0x121B0 [C]. Fixes field_action_qa and profile_combat_bar_permutation_qa (71 -> 69, no new).
 - field contact: typed field-player B7B8 mode-transition service runs before the BB86 fallback (contact 0xFFC0 regression from c073dda6, found by bisect on scene20_passkey_qa); dynamic actor package ids per visual profile. 69 -> 11 fails, no new (2 load-flaky tests pass rerun).
+- A800 conditional actors get stable field_scene_<scene>_activity_<candidate> IDs before Lua publication, so evaluate_field_alarm accepts them. 9 -> 3 fails (A800 contact x3, pedestrian scenes, scene26 terminal), no new.
 
 ## Open work, in order
 1. Get ctest green again by fixing aa3b2cb7 forward.

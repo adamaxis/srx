@@ -10692,10 +10692,20 @@ GameScriptRuntime::evaluate_field_alarm(const ScriptFieldAlarmInput& input) {
         const auto actor_table = lua_absindex(state, -1);
         std::string actor_id;
         ActorRoleFacts roles;
-        if (!read_field_string(state, actor_table, "actor_id", actor_id) ||
-            !read_actor_role_facts(state, actor_table, roles) ||
+        const bool actor_id_valid =
+            read_field_string(state, actor_table, "actor_id", actor_id);
+        const bool actor_roles_valid =
+            read_actor_role_facts(state, actor_table, roles);
+        if (!actor_id_valid || !actor_roles_valid ||
             actor_id != input.actors[index].actor_id) {
-            return fail("field_alarm.tick returned invalid actor facts");
+            return fail(
+                "field_alarm.tick returned invalid actor facts at row " +
+                std::to_string(index) + ": expected actor_id='" +
+                input.actors[index].actor_id + "', actual actor_id='" +
+                (actor_id_valid ? actor_id : std::string("<invalid>")) +
+                "', roles_valid=" +
+                (actor_roles_valid ? std::string("true") :
+                                     std::string("false")));
         }
         result.actors.push_back(ScriptFieldAlarmActorFacts{
             std::move(actor_id), roles});

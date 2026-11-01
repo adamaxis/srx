@@ -3675,6 +3675,12 @@ void FieldSceneRuntime::initialize_default_field_actors(
 
                     scripting::ScriptWorldActivityActor actor{};
                     actor.scene_id = scene_reference;
+                    // The selected A800 candidate is a named runtime actor;
+                    // give its Lua state a stable per-scene identity before
+                    // the pending-list publisher allocates its ROM record.
+                    actor.instance_id =
+                        "field_scene_" + std::to_string(scene_reference) +
+                        "_activity_" + candidate->candidate_id;
                     actor.activity_id = candidate->candidate_id;
                     actor.activity_kind =
                         scripting::ScriptWorldActivityKind::event_driven;
