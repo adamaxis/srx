@@ -15234,11 +15234,24 @@ std::optional<std::uint8_t> FieldSceneRuntime::selected_shop_item_uses() const {
     }
     const auto& item = field_menu_text_.items[
         static_cast<std::size_t>(*item_code - 1U)].definition;
-    if (item.code != *item_code || !item.detail.has_value() ||
-        item.detail->kind != "uses") {
+    if (item.code != *item_code ||
+        (item.kind != "grenade" && item.kind != "medical_kit" &&
+         item.kind != "stim_patch" && item.kind != "trauma_patch" &&
+         item.kind != "fetish") ||
+        field_shop_menu_.selected_group() == ShopActionGroup::sell) {
         return std::nullopt;
     }
-    return item.detail->value;
+    const auto offer = field_shop_menu_.offer(
+        field_shop_menu_.selected_group(),
+        field_shop_menu_.selected_cursor());
+    if (!offer.has_value() ||
+        static_cast<std::uint8_t>(offer->type + 1U) != *item_code ||
+        offer->value == 0U) {
+        return std::nullopt;
+    }
+    // Item definitions omit static detail counts. Stock uses come from the
+    // selected source offer row instead [C: ROM 0x1AAC86].
+    return offer->value;
 }
 
 FieldActionBaseCostLookup FieldSceneRuntime::item_base_cost_lookup() const {
