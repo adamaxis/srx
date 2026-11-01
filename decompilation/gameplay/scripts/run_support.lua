@@ -179,6 +179,18 @@ Support.location_choice_ids_by_region = {
     },
 }
 
+-- ROM 0xF3E80..0xF3EBB stores six ten-entry location-code rows in the same
+-- order as contract_region_ids. Keep these source codes beside the readable
+-- gameplay identities so the registry can expose the original route values.
+Support.location_choice_source_ids_by_region = {
+    downtown_seattle = { 7, 0, 1, 2, 3, 4, 5, 6, 7, 0 },
+    puyallup_barrens = { 5, 0, 1, 2, 3, 4, 5, 6, 7, 9 },
+    redmond_barrens = { 0, 1, 2, 3, 4, 5, 6, 7, 9, 11 },
+    penumbra_district = { 0, 1, 2, 3, 4, 5, 6, 0, 4, 6 },
+    council_island = { 0, 1, 2, 3, 4, 5, 2, 3, 4, 5 },
+    renraku_arcology = { 6, 1, 2, 3, 4, 5, 6, 1, 2, 6 },
+}
+
 Support.clients = {
     mike_nana = { name = "Mike Nana" },
     john_worley = { name = "John Worley" },
@@ -568,12 +580,15 @@ end
 local function choose_location(region_id)
     local roll = Support.bounded_random(10)
     local choices = Support.location_choice_ids_by_region[region_id]
+    local source_ids = Support.location_choice_source_ids_by_region[region_id]
     assert(type(choices) == "table",
         "contract offer selected an unknown region")
+    assert(type(source_ids) == "table" and #source_ids == #choices,
+        "contract location source-code row is incomplete")
     local location_id = choices[roll + 1]
     assert(Support.location_details(location_id) ~= nil,
         "contract location choice has no semantic place")
-    return location_id
+    return location_id, source_ids[roll + 1]
 end
 
 function Support.choose_contract_route(contact_id)
@@ -589,7 +604,8 @@ function Support.choose_contract_route(contact_id)
         origin_region_id = Support.contract_region_ids[region_index + 1]
     end
 
-    local origin_location_id = choose_location(origin_region_id)
+    local origin_location_id, origin_source_location_id =
+        choose_location(origin_region_id)
     local client_id = Support.choose_client_id()
 
     local destination_region_id
@@ -604,15 +620,23 @@ function Support.choose_contract_route(contact_id)
         until destination_region_id ~= origin_region_id
     end
 
-    local destination_location_id = choose_location(destination_region_id)
+    local destination_location_id, destination_source_location_id =
+        choose_location(destination_region_id)
     while contact_id == E.RunContact.JUMP_HOUSE and
           destination_location_id == origin_location_id do
-        destination_location_id = choose_location(destination_region_id)
+        destination_location_id, destination_source_location_id =
+            choose_location(destination_region_id)
     end
 
     return {
-        origin = { location_id = origin_location_id },
-        destination = { location_id = destination_location_id },
+        origin = {
+            location_id = origin_location_id,
+            source_location_id = origin_source_location_id,
+        },
+        destination = {
+            location_id = destination_location_id,
+            source_location_id = destination_source_location_id,
+        },
         client_id = client_id,
     }
 end

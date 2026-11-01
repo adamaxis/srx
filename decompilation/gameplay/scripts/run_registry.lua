@@ -528,7 +528,7 @@ function Registry.current_completion_condition()
         Registry.current_offer.completion_condition or "none"
 end
 
-local function route_ids(offer)
+local function route_ids(offer, source_location_ids)
     local route = offer and offer.route
     if route == nil then
         return {
@@ -541,16 +541,28 @@ local function route_ids(offer)
         }
     end
     local function point_ids(point)
-        if type(point) ~= "table" then return "none", "none" end
+        if type(point) ~= "table" then return "none", "none", nil end
         local details = game.modules.run_support.location_details(
             point.location_id)
-        if details == nil then return "none", "none" end
-        return details.location_id, details.region_id
+        if details == nil then return "none", "none", nil end
+        return details.location_id, details.region_id,
+            point.source_location_id
     end
-    local origin_location, origin_region = point_ids(route.origin)
-    local destination_location, destination_region =
+    local origin_location, origin_region, origin_source_location =
+        point_ids(route.origin)
+    local destination_location, destination_region,
+        destination_source_location =
         point_ids(route.destination)
     local target_location, target_region = point_ids(route.target)
+    if source_location_ids then
+        if type(origin_source_location) == "number" then
+            origin_location = "location_" .. origin_source_location
+        end
+        if type(destination_source_location) == "number" then
+            destination_location = "location_" ..
+                destination_source_location
+        end
+    end
     return {
         origin_location = origin_location,
         origin_region = origin_region,
@@ -566,11 +578,11 @@ local function route_ids(offer)
 end
 
 function Registry.current_route_ids()
-    return route_ids(Registry.current_offer)
+    return route_ids(Registry.current_offer, false)
 end
 
 function Registry.active_route_ids()
-    return route_ids(Registry.active_offer)
+    return route_ids(Registry.active_offer, true)
 end
 
 function Registry.current_payment_values()

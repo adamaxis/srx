@@ -3,8 +3,8 @@
 This file is kept in the repo so the notes survive if the box is wiped. The box's /workspace/shadowrun/out was lost on 2026-10-31.
 Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 
-## Current state (2026-11-01 10:35 CST)
-- Remote port-fixes: see latest Fixes entry. Both builds compile and the Lua suites pass. ctest fails 2/294 (mitsuhama_after_hours_entry no spawn profile, field_dialogue_runtime route ids); #201 skipped.
+## Current state (2026-11-01 10:50 CST)
+- Remote port-fixes: see latest Fixes entry. Both builds compile and the Lua suites pass. ctest fails 1/294 (mitsuhama_after_hours_entry, no spawn profile; also failed on aa3b2cb7's parent); #201 skipped.
 - In progress: Luna (codex exec, gpt-6-luna, max effort, fast tier off) is fixing aa3b2cb7 forward. Brief is /workspace/briefs/aa3b.md, the earlier partial work is /workspace/briefs/aa3b_wip.diff and stash 'aa3b-wip'.
 - Box toolchain: `. /workspace/tcenv.sh` (conda env /workspace/mamba/envs/srx). Build dirs are /workspace/b2 (Qt) and /workspace/b2n (non-Qt). Full QA is /workspace/qa.sh, which prints QA_GREEN.
 - 7 gitignored files in decompilation/assets were dangling links into /tmp/srx_qa_asset_stage. They were replaced with real copies, not re-extracted.
@@ -32,6 +32,7 @@ Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 - field contact: typed field-player B7B8 mode-transition service runs before the BB86 fallback (contact 0xFFC0 regression from c073dda6, found by bisect on scene20_passkey_qa); dynamic actor package ids per visual profile. 69 -> 11 fails, no new (2 load-flaky tests pass rerun).
 - A800 conditional actors get stable field_scene_<scene>_activity_<candidate> IDs before Lua publication, so evaluate_field_alarm accepts them. 9 -> 3 fails (A800 contact x3, pedestrian scenes, scene26 terminal), no new.
 - D-pad diagonals: input 0x05 = north-west, 0x06 = south-west per ROM 0x19D2[5]=0xE000/[6]=0xA000 (playtest #23). Expectation change with evidence: motel collision QA idle coherence now checks the current facing (+0x2E), since ROM 0xB530 turns in place before 0xB5BA/0xB5C0 select idle from +0x2E. 3 -> 2 fails (field_movement_qa), no new.
+- run offers keep the ROM location code beside the semantic location, and active_route_ids expose the selected codes from ROM 0xF3E80..0xF3EBB. Fixes field_dialogue_runtime (2 -> 1), no new.
 
 ## Open work, in order
 1. Get ctest green again by fixing aa3b2cb7 forward.
