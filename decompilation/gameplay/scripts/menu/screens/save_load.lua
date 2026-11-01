@@ -59,16 +59,11 @@ function SaveLoad.new()
     }
 end
 function SaveLoad.enter(st, ctx)
-    -- ROM 0xEFC4 allows Save/Load only in an outside area [C].
+    -- Keep the existing host restriction to outside field areas.
     if not ctx.game.is_outside_area() then
         st.gated = true
         return wait(MM.SAVE_OUTSIDE_ONLY,
                     "Save/Load only works in an outside area.")
-    end
-    if ctx.game.in_combat() then        -- 0xEFE6: tst.w FFDF84 [C]
-        st.gated = true
-        return wait(MM.SAVE_IN_COMBAT,
-                    "Save and load are unavailable during an encounter.")
     end
     ctx.redraw(R.SUBMENU)
 end

@@ -465,15 +465,16 @@ do
           "Contacts return row restores the first page")
 end
 
--- save/load 0xEFB4 [C] -- srx host JSON saves (screens/save_load.lua): combat gate FFDF84 [C 0xEFE6], two slots.
--- ROM 0xEFC4 gates first on FFDF40 ("outside only", text 0xC26C3) [C].
-section('save/load 0xEFB4 [C]', function()
+-- ROM 0x59092 selects Save/Load at 0x59142; 0x59172 enters the menu and
+-- dispatches the chosen slot through 0x59360. This path does not test FFDF84;
+-- its world-activity timer is scheduled/cleared at 0x1DBAA/0x1DBF0 [C].
+section('save/load 0x59172 [C]', function()
 local function sl(o) local r, l, g = mk(o); r:frame(P.A); r:frame(P.UP); r:frame(P.A); return r, l, g end
-local r9, l9, g9 = sl({ combat = true }); check(top(r9) == S.MESSAGE and st(r9).message == MM.SAVE_IN_COMBAT, "gate FFDF84 [C 0xEFE6]")
-r9:frame(P.A); check(top(r9) == S.POCKET_SECRETARY, "gate -> PS rebuild")
-r9 = sl({ outside_area = false }); check(top(r9) == S.MESSAGE and st(r9).message == MM.SAVE_OUTSIDE_ONLY, "inside areas are gated [C 0xEFC4]")
+local r9, l9, g9 = sl({ combat = true }); check(top(r9) == S.SAVE_LOAD, "an active FFDF84 world timer does not block the ROM Save/Load path [C 0x59092/0x59172/0x59360]")
+r9:frame(P.A); check(top(r9) == S.SAVE_SLOT, "Save opens its slot list while FFDF84 is active [C]")
+r9 = sl({ outside_area = false }); check(top(r9) == S.MESSAGE and st(r9).message == MM.SAVE_OUTSIDE_ONLY, "the existing host outside-area restriction remains")
 r9:frame(P.A); check(top(r9) == S.POCKET_SECRETARY, "outside gate -> PS rebuild")
-r9 = sl({ outside_area = false, combat = true }); check(st(r9).message == MM.SAVE_OUTSIDE_ONLY, "outside-area gate precedes the combat gate [C 0xEFC4 < 0xEFE6]")
+r9 = sl({ outside_area = false, combat = true }); check(st(r9).message == MM.SAVE_OUTSIDE_ONLY, "outside-area restriction still applies while the world timer is active")
 r9, l9, g9 = sl({ save_status = { [0] = 1 } }); check(top(r9) == S.SAVE_LOAD and st(r9).title == "" and st(r9).labels[1] == "save_game" and st(r9).labels[2] == "load_game", "Save/Load uses its ROM text IDs without a title [C]"); local s9 = #l9.sounds
 check(st(r9).layout.label_x == 96 and st(r9).layout.label_y == 80 and st(r9).layout.cursor_x == 80 and st(r9).layout.cursor_y == 80 and st(r9).layout.row_spacing == 16, "Save/Load option rows use ROM C518/C514 coordinates [C]")
 r9:frame(P.UP); check(st(r9).row == 1 and #l9.sounds == s9, "2 rows, silent wrap"); r9:frame(P.UP)
