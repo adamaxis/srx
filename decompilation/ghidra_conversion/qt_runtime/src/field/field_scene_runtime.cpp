@@ -11919,7 +11919,7 @@ FieldSceneRuntime::heartbeat_field_player(
                         route.primary_fallback_slot,
                         route.secondary_fallback_slot};
                 };
-            actor_context.movement_collision_recovery =
+            actor_context.movement_mode_transition =
                 [this](const std::uint16_t x, const std::uint16_t y,
                        const std::int16_t collision_code,
                        const std::uint8_t direction_slot) {

@@ -1990,6 +1990,9 @@ using ScriptMovementRouteLookup =
 using ScriptMovementCollisionRecovery =
     std::function<ScriptMovementCollisionRecoveryResult(
         std::uint16_t, std::uint16_t, std::int16_t, std::uint8_t)>;
+using ScriptMovementModeTransition =
+    std::function<ScriptMovementCollisionRecoveryResult(
+        std::uint16_t, std::uint16_t, std::int16_t, std::uint8_t)>;
 
 // Clip length is read from the loaded host image sequence; the asset identity
 // remains private to the field renderer and is never passed through Lua.
@@ -2243,6 +2246,10 @@ struct ScriptActorBehaviorContext {
     ScriptMovementCollisionQuery movement_collision;
     ScriptMovementRouteLookup movement_route_lookup;
     ScriptMovementCollisionRecovery movement_collision_recovery;
+    // The field-player B7B8 path dispatches mode/map events before BADE's
+    // later B732 route-fallback policy. Generic actor probes need not provide
+    // this field-state service.
+    ScriptMovementModeTransition movement_mode_transition;
     // Dynamic combat profiles carry source entity coordinates and measured
     // target facts from the native geometry query. Lua chooses behavior; the
     // host does not infer a target from screen proximity. This includes

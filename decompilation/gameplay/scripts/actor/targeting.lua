@@ -145,8 +145,7 @@ local function dynamic_encounter_profile(context)
     local source_actor_profile = ActorProfileCatalog.dynamic(
         visual_profile_id, action_kind, action_id)
     return {
-        package_id = "world_actor." .. visual_profile_id ..
-                     ".source_target_motion",
+        package_id = source_actor_profile.package_id,
         visual_profile_id = source_actor_profile.visual_profile_id,
         action_kind = source_actor_profile.action_kind,
         action_id = source_actor_profile.action_id,

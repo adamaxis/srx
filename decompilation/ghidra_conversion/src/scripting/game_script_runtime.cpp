@@ -5780,9 +5780,15 @@ struct GameScriptRuntime::Impl {
                                      context.movement_scene_id,
                                      context.movement_collision_mode});
             const char* kind = "blocked";
-            if (route_code == 0) {
+            // ROM 0xBADE handles the initial 0xB77E result before invoking
+            // 0xB732 for a later route-fallback probe. Preserve that order:
+            // Lua needs the raw B77E outcome here, while the separate
+            // blocks_route_fallback fact carries B732's policy result [C].
+            if (probe_code == 0) {
                 kind = "clear";
-            } else if (route_code < 0) {
+            } else if (probe_code < 0 &&
+                       (route_code < 0 ||
+                        static_cast<bool>(context.movement_mode_transition))) {
                 kind = "requires_recovery";
                 if (direction_ordinal.has_value()) {
                     self->last_actor_movement_recovery_probe =
@@ -6007,7 +6013,8 @@ struct GameScriptRuntime::Impl {
         std::uint32_t x = 0U;
         std::uint32_t y = 0U;
         if (self == nullptr || self->active_actor_context == nullptr ||
-            !self->active_actor_context->movement_collision_recovery ||
+            (!self->active_actor_context->movement_collision_recovery &&
+             !self->active_actor_context->movement_mode_transition) ||
             !read_integer(lua, 1, 0xFFFFU, x) ||
             !read_integer(lua, 2, 0xFFFFU, y) ||
             lua_type(lua, 3) != LUA_TSTRING ||
@@ -6042,14 +6049,17 @@ struct GameScriptRuntime::Impl {
             // ROM 0xB77E writes twice the compass ordinal to its vector-table
             // slot. Convert the semantic direction only at this native edge [C].
             constexpr std::uint8_t kSourceDirectionSlotScale = 2U;
-            const auto recovery =
-                self->active_actor_context->movement_collision_recovery(
-                    static_cast<std::uint16_t>(x),
-                    static_cast<std::uint16_t>(y),
-                    pending_probe.collision_code,
-                    static_cast<std::uint8_t>(
-                        pending_probe.direction_ordinal *
-                        kSourceDirectionSlotScale));
+            const auto direction_slot = static_cast<std::uint8_t>(
+                pending_probe.direction_ordinal *
+                kSourceDirectionSlotScale);
+            const auto& context = *self->active_actor_context;
+            const auto& transition = context.movement_mode_transition
+                ? context.movement_mode_transition
+                : context.movement_collision_recovery;
+            const auto recovery = transition(
+                static_cast<std::uint16_t>(x),
+                static_cast<std::uint16_t>(y),
+                pending_probe.collision_code, direction_slot);
             lua_pushboolean(lua, recovery.movement_recovered);
             lua_pushboolean(lua, (recovery.route_flags & 0x20U) != 0U);
             return 2;
@@ -12398,7 +12408,8 @@ GameScriptRuntime::actor_heartbeat(
         context.movement_services_available &&
             static_cast<bool>(context.movement_collision) &&
             static_cast<bool>(context.movement_route_lookup) &&
-            static_cast<bool>(context.movement_collision_recovery));
+            (static_cast<bool>(context.movement_collision_recovery) ||
+             static_cast<bool>(context.movement_mode_transition)));
     lua_setfield(state, -2, "movement_services_available");
     lua_pushinteger(state, context.movement_default_step_distance);
     lua_setfield(state, -2, "movement_default_step_distance");

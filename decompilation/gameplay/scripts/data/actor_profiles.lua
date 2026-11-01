@@ -8,6 +8,25 @@
 local E = require("enums")
 local VisualProfile = E.ActorVisualProfile
 
+-- Stable host package names retained across the semantic visual-profile
+-- migration. The source sprite-type translations for these profiles are
+-- listed in game_script_runtime.cpp beside the 0x44BC actor-template read.
+local DynamicPackageIdByVisualProfile = {
+    [VisualProfile.FIELD_RUNNER] = "world_actor.kind_3.source_target_motion",
+    [VisualProfile.ORK_BANDERSNATCH] = "world_actor.kind_4.source_target_motion",
+    [VisualProfile.HUMAN_GUARD] = "world_actor.kind_5.source_target_motion",
+    [VisualProfile.ELVEN_MAGE] = "world_actor.kind_6.source_target_motion",
+    [VisualProfile.GHOUL_EYE_FIVER] = "world_actor.kind_7.source_target_motion",
+    [VisualProfile.YAKUZA_WEENR] = "world_actor.kind_8.source_target_motion",
+    [VisualProfile.VAMPIRE_GATOR_SHAMAN] = "world_actor.kind_9.source_target_motion",
+    [VisualProfile.LONE_STAR_MAGE] = "world_actor.kind_10.source_target_motion",
+    [VisualProfile.PEDESTRIAN_RAT_SHAMAN] = "world_actor.kind_11.source_target_motion",
+    [VisualProfile.HELL_HOUND] = "world_actor.kind_12.source_target_motion",
+    [VisualProfile.GARGOYLE] = "world_actor.kind_13.source_target_motion",
+    [VisualProfile.WENDIGO] = "world_actor.kind_14.source_target_motion",
+    [VisualProfile.THON] = "world_actor.kind_15.source_target_motion",
+}
+
 ---@class ActorProfile
 local ActorProfile = {}
 ActorProfile.__index = ActorProfile
@@ -29,6 +48,7 @@ local M = { ActorProfile = ActorProfile, by_id = {
 function M.dynamic(visual_profile_id, action_kind, action_id)
     local identity = action_id or "none"
     return ActorProfile{ id = "dynamic." .. visual_profile_id .. "." .. action_kind .. "." .. identity,
+        package_id = DynamicPackageIdByVisualProfile[visual_profile_id],
         visual_profile_id = visual_profile_id, action_kind = action_kind, action_id = action_id,
         weapon = action_kind == "item" and action_id or nil,
         controls_movement = visual_profile_id ~= VisualProfile.THON,
