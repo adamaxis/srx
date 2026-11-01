@@ -786,8 +786,19 @@ void FieldSceneRuntime::suppress_field_modal_close_input() {
 void FieldSceneRuntime::dispatch_field_map_scene_entry(
     const std::uint16_t scene_id) {
     // A saved same-map service return point belongs to the scene it was
-    // recorded in; a later unrelated close must not reuse it.
-    if (!field_door_return_active_) {
+    // recorded in. The service route's normal same-scene refresh can happen
+    // between door contact and service close, so keep that point through the
+    // refresh; discard it on a different scene or an unrelated route.
+    const bool pending_same_scene_service_return =
+        field_door_return_point_.valid &&
+        field_door_return_point_.scene_id == scene_id &&
+        active_field_script_route_.has_value() &&
+        active_field_script_route_->kind ==
+            FieldScriptRouteKind::field_service &&
+        active_field_script_route_->return_anchor !=
+            FieldLocationReturnAnchor::none;
+    if (!field_door_return_active_ &&
+        !pending_same_scene_service_return) {
         field_door_return_point_.valid = false;
     }
     field_map_event_system_.begin_scene_visit(scene_id);
@@ -964,6 +975,8 @@ void FieldSceneRuntime::save_field_door_return_point() {
         return;
     }
     field_door_return_point_.valid = true;
+    field_door_return_point_.scene_id = static_cast<std::uint16_t>(
+        state_.field_scene_buffers.scene_reference);
     for (std::size_t index = 0U;
          index < field_door_return_point_.party.size(); ++index) {
         field_door_return_point_.party[index] = SceneRunnerPosition{

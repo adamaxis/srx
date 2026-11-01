@@ -59,6 +59,78 @@ check(D.return_offsets.south[1].y == 0x140 and
       D.return_offsets.north[1].y == -0x140, "north/south formations")
 check(D.return_offsets.east[1].x == 0x1E0 and
       D.return_offsets.west[1].x == -0x1E0, "east/west formations")
+
+-- Sweep every outdoor link that enters a building or same-map service. ROM
+-- 0xBC36 selects one of the four 0xBD34 banks and copies its three pairs to
+-- FFDF44..4E; expected values below are decoded from that ROM table, not from
+-- the runtime Lua data. 0x09B8 supplies heading $8000 on service return.
+local ROM_RETURN_BANKS = {
+    north = { { 0, -0x140 }, { -0x140, -0x140 }, { 0x140, -0x140 } },
+    east = { { 0x1E0, 0 }, { 0x140, 0x140 }, { 0x140, -0x140 } },
+    south = { { 0, 0x140 }, { 0x140, 0x140 }, { -0x140, 0x140 } },
+    west = { { -0x1E0, 0 }, { -0x100, 0x140 }, { -0x100, -0x100 } },
+}
+local building_service_routes = 0
+for scene_id = 0, 55 do
+    local scene = D.scenes[scene_id]
+    if scene.mode == "street" then
+        for link_index, link in ipairs(scene.links) do
+            local transition = link.transition
+            local destination = transition.kind == "scene_change" and
+                D.scenes[transition.destination_scene_id] or nil
+            if transition.kind == "same_map_service" or
+               (destination ~= nil and destination.mode == "building") then
+                building_service_routes = building_service_routes + 1
+                local expected_bank = ROM_RETURN_BANKS[link.return_side]
+                check(expected_bank ~= nil,
+                      "route " .. scene_id .. "." .. link_index ..
+                          " has a ROM return bank")
+                local lead_x = math.floor(
+                    (link.bounds.left + link.bounds.right) / 2)
+                local lead_y = math.floor(
+                    (link.bounds.top + link.bounds.bottom) / 2)
+                local result = W.door_contact{
+                    outdoor_field = true,
+                    return_side = link.return_side,
+                    lead = { x = lead_x, y = lead_y },
+                    camera = { x = 0, y = 0 },
+                }
+                check(result.saved, "route " .. scene_id .. "." ..
+                      link_index .. " saves the source return point")
+                local first = result.party[1]
+                for runner = 1, 3 do
+                    local expected = expected_bank[runner]
+                    local actual = result.party[runner]
+                    check(actual.x == lead_x + expected[1] and
+                          actual.y == lead_y + expected[2],
+                          "route " .. scene_id .. "." .. link_index ..
+                              " runner " .. runner .. " matches 0xBD34")
+                end
+                local entry_bearing = link.return_side == "south" and 0 or
+                    link.return_side == "north" and 180 or
+                    link.return_side == "east" and 270 or 90
+                local returned_bearing = W.exit_bearing{
+                    facing_policy =
+                        E.FieldLocationReturnFacing.FACE_AWAY_FROM_ENTRY,
+                    entry_bearing_degrees = entry_bearing,
+                }.bearing_degrees
+                check(returned_bearing == 180,
+                      "route " .. scene_id .. "." .. link_index ..
+                          " returns at ROM heading $8000")
+                print(string.format(
+                    "field_exit_return_sweep scene=%d link=%d side=%s " ..
+                    "contact=%d,%d return=%d,%d heading=0x%04X",
+                    scene_id, link_index, link.return_side, lead_x, lead_y,
+                    first.x, first.y,
+                    math.floor(returned_bearing * 65536 / 360)))
+            end
+        end
+    end
+end
+check(building_service_routes == 30,
+      "30 outdoor building/service links receive a measured return, got " ..
+          building_service_routes)
+
 local function contact(x, y, side)
     return W.door_contact{
         outdoor_field = true,

@@ -8459,9 +8459,18 @@ int run_field_ares_collision_shop_qa(
         field_scene.field_entity_world_position();
     const auto ares_trigger_heading =
         field_scene.field_entity_heading_for_dump();
+    const auto ares_return_probe =
+        field_scene.field_collision_probe_state_for_dump();
     const auto ares_trigger_dispatches =
         field_scene.field_map_event_system_for_dump()
             .collision_dispatch_count();
+    std::cout << "ares_exit_measurement phase=door_contact position="
+              << ares_trigger_position.x << ',' << ares_trigger_position.y
+              << " heading=0x" << std::hex << ares_trigger_heading << std::dec
+              << " bank=" << static_cast<unsigned>(
+                     ares_return_probe.selected_offset_bank)
+              << " rom_probe0=" << ares_return_probe.points[0U].x << ','
+              << ares_return_probe.points[0U].y << '\n';
     if (!save("doorway-contact")) {
         return 3;
     }
@@ -8721,14 +8730,42 @@ int run_field_ares_collision_shop_qa(
 
     const auto ares_return_position =
         field_scene.field_entity_world_position();
+    const auto ares_return_heading =
+        field_scene.field_entity_heading_for_dump();
+    std::cout << "ares_exit_measurement phase=service_return position="
+              << ares_return_position.x << ',' << ares_return_position.y
+              << " heading=0x" << std::hex << ares_return_heading << std::dec
+              << " expected_probe0=" << ares_return_probe.points[0U].x << ','
+              << ares_return_probe.points[0U].y << '\n';
+    // Scene 2 record 92 is approached from the south with ordinary Up. ROM
+    // 0xBC36 selects bank 2 of 0xBD34 (lead +0x0140 Y); its same-map service
+    // exit at 0x09B8 writes $8000 to the current and target headings.
     if (ares_return_position.x != ares_trigger_position.x ||
-        ares_return_position.y != ares_trigger_position.y ||
-        field_scene.field_entity_heading_for_dump() != ares_trigger_heading ||
+        !ares_return_probe.initialized ||
+        ares_return_probe.selected_offset_bank != 2U ||
+        ares_return_position.x != ares_return_probe.points[0U].x ||
+        ares_return_position.y != ares_return_probe.points[0U].y ||
+        ares_return_heading != 0x8000U ||
         field_scene.field_map_event_system_for_dump()
                 .collision_dispatch_count() != ares_trigger_dispatches ||
         (field_scene.field_movement_route_flags_for_dump() & 0x20U) == 0U) {
-        std::cerr << "Ares collision QA: Start changed the source contact "
-                     "position/facing or lost the one-shot retry state\n";
+        std::cerr << "Ares collision QA: Start did not restore the ROM door "
+                     "probe and outward heading, or lost the one-shot retry "
+                     "state (contact=" << ares_trigger_position.x << ','
+                  << ares_trigger_position.y << " probe="
+                  << ares_return_probe.points[0U].x << ','
+                  << ares_return_probe.points[0U].y << " return="
+                  << ares_return_position.x << ',' << ares_return_position.y
+                  << " entry_heading=0x" << std::hex << ares_trigger_heading
+                  << " return_heading=0x" << ares_return_heading << std::dec
+                  << ")\n";
+        for (auto boundary = source_boundaries.rbegin();
+             boundary != source_boundaries.rend(); ++boundary) {
+            if (boundary->find("field.door.") != std::string::npos ||
+                boundary->find("field.exit.") != std::string::npos) {
+                std::cerr << "  source_boundary=" << *boundary << '\n';
+            }
+        }
         return 3;
     }
     std::ofstream exit_trace(output / "ares-held-and-fresh-direction.tsv",

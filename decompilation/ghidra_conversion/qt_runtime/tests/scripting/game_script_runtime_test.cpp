@@ -4942,7 +4942,11 @@ int main() {
                 ares_route->script == FieldScriptId::host_field_service &&
                 ares_route->field_service_id == "ares_weapon_emporium" &&
                 ares_route->return_anchor ==
-                    FieldLocationReturnAnchor::none &&
+                    FieldLocationReturnAnchor::collision_probe_lead &&
+                // ROM 0xBC36/0xBD34 prepares the shared return point and
+                // 0x09B8 restores outward heading for same-map service exits.
+                ares_route->return_facing ==
+                    FieldLocationReturnFacing::face_away_from_entry &&
                 scene20_route.has_value() &&
                 scene20_route->kind == FieldScriptRouteKind::area_event &&
                 scene20_route->area_event_target == 20U &&

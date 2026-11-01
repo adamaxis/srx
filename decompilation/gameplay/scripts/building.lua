@@ -327,11 +327,23 @@ end
 -- A source-suppressed field service may inherit the return policy from the
 -- matching source-route row. This keeps the service route authoritative while
 -- carrying the doorway placement selected by its authored Lua link data.
+local function complete_service_return_fields(fields)
+    -- Same-map service exits restore the 0xBC36/0xBD34 collision-probe lead;
+    -- the nonzero exit result follows 0x09B8 and faces outward. Keep this
+    -- shared default in Lua so every service route carries the typed policy.
+    return {
+        return_anchor = fields.return_anchor or
+            E.FieldLocationReturnAnchor.COLLISION_PROBE_LEAD,
+        return_facing = fields.return_facing or
+            E.FieldLocationReturnFacing.FACE_AWAY_FROM_ENTRY,
+    }
+end
+
 local function service_return_fields(link, links, context)
     local direct = return_fields(link)
     if direct.return_anchor ~= nil or direct.return_facing ~= nil or
        link.source_route_policy ~= "suppress_source_route" then
-        return direct
+        return complete_service_return_fields(direct)
     end
 
     local destination = selected_scene_destination(context)
@@ -389,7 +401,7 @@ local function service_return_fields(link, links, context)
             (link.entity_id or "location") .. "." ..
             (link.link_id or link.id or "unnamed")
     end
-    return selected_fields or direct
+    return complete_service_return_fields(selected_fields or direct)
 end
 
 function Building.resolve_field_location_route(context)

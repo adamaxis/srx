@@ -2776,6 +2776,7 @@ private:
     // triplet (FFDF44..4F) and camera snapshot (FFDF50/52).
     struct FieldDoorReturnPoint {
         bool valid = false;
+        std::uint16_t scene_id = 0U;
         SceneRunnerPosition lead{};
         // FFDF44..4E: lead, runner 2, runner 3.
         std::array<SceneRunnerPosition, 3> party{};

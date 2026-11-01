@@ -1502,6 +1502,14 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
     active_field_script_route_ = event_route;
     pending_field_return_anchor_ = event_route.return_anchor;
     pending_field_return_facing_ = event_route.return_facing;
+    if (event_route.kind == FieldScriptRouteKind::field_service &&
+        event_route.script == FieldScriptId::host_field_service &&
+        event_route.return_anchor != FieldLocationReturnAnchor::none) {
+        // The host-owned service route still consumes Lua's typed return
+        // policy. ROM 0xB834 -> 0xBC36 prepares FFDF44 before the service;
+        // 0x09B8/0x2FA4 restore that point when the same-map service closes.
+        save_field_door_return_point();
+    }
     if (event_route.kind == FieldScriptRouteKind::area_event &&
         event_route.area_event_target.has_value()) {
         const auto selected_route_boundary =

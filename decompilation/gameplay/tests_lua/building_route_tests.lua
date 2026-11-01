@@ -411,6 +411,7 @@ game.modules.world_content_data.entities.source_test.links = {
         location_speaker_id = inn_location.location_speaker_id,
     },
 }
+local inn_route_links = game.modules.world_content_data.entities.source_test.links
 game.state.motel_bill_paid = true
 game.state.tarislar_asked_shale = false
 local inn_service = Building.resolve_field_location_route(inn_context)
@@ -420,7 +421,46 @@ assert(inn_service.kind == "field_service" and
        inn_service.indexed_title_service.function_name ==
            "present_indexed_title_service" and
        inn_service.indexed_title_service.location_id ==
-           inn_location.location_id)
+           inn_location.location_id and
+       inn_service.return_anchor ==
+           E.FieldLocationReturnAnchor.COLLISION_PROBE_LEAD and
+       inn_service.return_facing ==
+           E.FieldLocationReturnFacing.FACE_AWAY_FROM_ENTRY)
+
+-- Host-owned shop services use the same ROM door-return policy as Lua-owned
+-- field services even when their entity route has no explicit return fields.
+local host_service_context = {
+    scene_id = 2,
+    building_interaction_mode = false,
+    event_code = "event_11",
+    event_index = 11,
+    event_table_available = true,
+    event_table = {},
+    package_run_status = "none",
+}
+game.modules.world_content_data.entities.source_test.links = {
+    {
+        source_scene = 2,
+        source_event = "event_11",
+        route_kind = "field_service",
+        script = "host_field_service",
+        field_service_id = "ares_weapon_emporium",
+        route_priority = 0,
+    },
+}
+game.modules.world_content_data.areas[2] = {
+    { entity_id = "source_test" },
+}
+local host_shop_service =
+    Building.resolve_field_location_route(host_service_context)
+assert(host_shop_service.kind == "field_service" and
+       host_shop_service.script == "host_field_service" and
+       host_shop_service.field_service_id == "ares_weapon_emporium" and
+       host_shop_service.return_anchor ==
+           E.FieldLocationReturnAnchor.COLLISION_PROBE_LEAD and
+       host_shop_service.return_facing ==
+           E.FieldLocationReturnFacing.FACE_AWAY_FROM_ENTRY)
+game.modules.world_content_data.entities.source_test.links = inn_route_links
 
 game.state.tarislar_asked_shale = true
 local inn_generic_prompt = Building.resolve_field_location_route(inn_context)
