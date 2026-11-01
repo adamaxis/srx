@@ -463,9 +463,19 @@ public:
         std::string return_anchor;
         std::string return_facing;
         std::string exception_rom_address;
+        std::uint16_t expected_music_id = 0U;
+        std::optional<std::uint16_t> music_id_after_return;
+        std::uint8_t attenuation_after_return = 0U;
+        std::string backend_events;
+    };
+    struct FieldBuildingServiceExitAudioSnapshot {
+        std::optional<std::uint16_t> music_id;
+        std::uint8_t attenuation = 0U;
+        std::string backend_events;
     };
     std::optional<std::vector<FieldBuildingServiceExitSweepRow>>
-    perform_building_service_exit_sweep_for_dump();
+    perform_building_service_exit_sweep_for_dump(
+        std::function<FieldBuildingServiceExitAudioSnapshot()> audio_probe);
     std::optional<std::vector<std::string>>
     building_service_exit_exceptions_for_dump();
     bool schedule_default_actor_world_activity_for_dump(
@@ -2742,6 +2752,8 @@ private:
         FieldLocationReturnAnchor::none;
     FieldLocationReturnFacing pending_field_return_facing_ =
         FieldLocationReturnFacing::preserve_entry_heading;
+    FieldLocationMusicReturnPolicy pending_field_return_music_policy_ =
+        FieldLocationMusicReturnPolicy::none;
     // The ROM blocks inside selected area-event entry dialogues. The Qt modal
     // yields across frames, so retain the typed destination and resume its
     // scene-entry tail only after the player dismisses the entry page.
@@ -2801,6 +2813,8 @@ private:
             FieldLocationReturnAnchor::none;
         FieldLocationReturnFacing return_facing =
             FieldLocationReturnFacing::preserve_entry_heading;
+        FieldLocationMusicReturnPolicy return_music_policy =
+            FieldLocationMusicReturnPolicy::none;
         std::uint16_t camera_x = 0U;
         std::uint16_t camera_y = 0U;
     };

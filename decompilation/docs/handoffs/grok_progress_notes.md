@@ -3,7 +3,7 @@
 This file is kept in the repo so the notes survive if the box is wiped. The box's /workspace/shadowrun/out was lost on 2026-10-31.
 Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 
-## Current state (2026-11-01 15:04 CST)
+## Current state (2026-11-01 16:37 CST)
 - Remote port-fixes: see latest Fixes entry. QA_GREEN (ctest all pass, Lua suites pass). Working playtest_2026-11-01 items one Luna run at a time.
 - In progress: Luna (codex exec, gpt-6-luna, max effort, fast tier off) is fixing aa3b2cb7 forward. Brief is /workspace/briefs/aa3b.md, the earlier partial work is /workspace/briefs/aa3b_wip.diff and stash 'aa3b-wip'.
 - Box toolchain: `. /workspace/tcenv.sh` (conda env /workspace/mamba/envs/srx). Build dirs are /workspace/b2 (Qt) and /workspace/b2n (non-Qt). Full QA is /workspace/qa.sh, which prints QA_GREEN.
@@ -42,6 +42,7 @@ Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 - playtest #9: Restore ROM return anchor and outward heading on all building exits. Evidence: ROM 0xBC36/0xBD34 offset banks, 0x09B8 heading; headless exit sweep matches
 - playtest #13: Stop treating the world-activity timer as a save-blocking combat lock. Evidence: ROM 0x59092..0x59360 save gate ignores FFDF84; headless save allowed with off-screen Weenrs
 - playtest #9: Route every building exit through one generic return placement. Evidence: ROM 0xBC36/0xBD34 banks + 0x09B8 heading; headless exit sweep QA 30/30, exception 0x15BDB0 documented
+- playtest #20: Resume the area music after building and service exits. Evidence: ROM fade 0x53126..0x53156 then stop-same/start 0x2900..0x2916/0x530EA; headless backend sweep: track playing, atten 0 after all 30 exits
 
 ## Open work, in order
 1. Get ctest green again by fixing aa3b2cb7 forward.

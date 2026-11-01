@@ -129,6 +129,11 @@ enum class FieldLocationReturnFacing {
     face_away_from_entry,
 };
 
+enum class FieldLocationMusicReturnPolicy {
+    none,
+    resume_scene_profile,
+};
+
 // Some ROM title services select a particular resource entry and marker
 // after their gated dialogue completes. Entity link data names the typed
 // effect; the field host applies it at the shared resource-activity boundary.
@@ -173,6 +178,8 @@ struct FieldScriptRoute {
         FieldLocationReturnAnchor::none;
     FieldLocationReturnFacing return_facing =
         FieldLocationReturnFacing::preserve_entry_heading;
+    FieldLocationMusicReturnPolicy return_music_policy =
+        FieldLocationMusicReturnPolicy::none;
     // Optional entity-authored dialogue that must run before the selected
     // area-event destination is prepared. Lua owns the content and gates;
     // the host retains the typed area destination while the task is open.

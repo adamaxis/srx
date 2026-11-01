@@ -2,8 +2,10 @@
 #include <cstdio>
 #include "ghidra_conversion_qt_window.hpp"
 #include "enums.hpp"
+#include "audio_playback.hpp"
 #include "field_map_composition.hpp"
 #include "genesis_image_compositor.hpp"
+#include "shadowrun_ghidra/core/asset_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/random_conversion.hpp"
 #include "shadowrun_ghidra/field/vid_phone_service_conversion.hpp"
@@ -27215,9 +27217,69 @@ int run_field_jump_house_entry_qa(
 }
 
 int run_field_building_service_exit_sweep_qa(
-    FieldSceneRuntime& field_scene) {
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root) {
+    const auto loaded_assets =
+        shadowrun::ghidra_conversion::load_conversion_asset_catalog(
+            asset_root);
+    if (!loaded_assets.complete()) {
+        std::cerr << "Building/service exit sweep QA: asset catalog is "
+                     "incomplete for backend audio measurement\n";
+        return 3;
+    }
+    const auto resolver = [&loaded_assets](const std::string_view alias) {
+        const auto* record = loaded_assets.catalog.find(std::string(alias));
+        return record == nullptr ? std::filesystem::path{}
+                                 : record->absolute_path;
+    };
+    shadowrun::ghidra_conversion::qt_runtime::AudioPlaybackService playback(
+        resolver,
+        shadowrun::ghidra_conversion::qt_runtime::AudioPlaybackService::Output::null);
+    if (!playback.manifest_error().empty()) {
+        std::cerr << "Building/service exit sweep QA: audio manifest: "
+                  << playback.manifest_error() << '\n';
+        return 3;
+    }
+    field_scene.set_audio_host_callbacks(
+        [&playback](const std::uint16_t id) { playback.play_music(id); },
+        [&playback](const std::uint8_t level) { playback.attenuate(level); },
+        [&playback] {
+            playback.fade_out();
+            // 0x53126 performs six attenuation transactions, each after
+            // three VBlanks. Advancing this null backend keeps the fade and
+            // stop-all timing identical without decoding or playing audio.
+            for (std::uint8_t frame = 0U; frame < 18U; ++frame) {
+                playback.advance_frame();
+            }
+        });
+
+    std::size_t last_backend_event = 0U;
     const auto rows =
-        field_scene.perform_building_service_exit_sweep_for_dump();
+        field_scene.perform_building_service_exit_sweep_for_dump(
+            [&playback, &last_backend_event] {
+                FieldSceneRuntime::FieldBuildingServiceExitAudioSnapshot result{};
+                // A stop-all release tail is still reported as active until
+                // its 1323 samples have drained. Measure the completed
+                // return after two 735-sample frames so a stale voice cannot
+                // masquerade as the restored field track.
+                playback.advance_frame();
+                playback.advance_frame();
+                result.music_id = playback.mixer().music_id();
+                result.attenuation = playback.mixer().attenuation();
+                const auto& events = playback.events();
+                std::ostringstream summary;
+                for (std::size_t index = last_backend_event;
+                     index < events.size(); ++index) {
+                    const auto& event = events[index];
+                    if (summary.tellp() > 0) summary << ',';
+                    summary << event.frame << ":0x" << std::hex
+                            << static_cast<unsigned>(event.op) << "/0x"
+                            << event.id << std::dec;
+                }
+                last_backend_event = events.size();
+                result.backend_events = summary.str();
+                return result;
+            });
     const auto exceptions =
         field_scene.building_service_exit_exceptions_for_dump();
     if (!rows.has_value() || !exceptions.has_value()) {
@@ -27244,6 +27306,7 @@ int run_field_building_service_exit_sweep_qa(
         return std::nullopt;
     };
     std::size_t passed = 0U;
+    std::size_t audio_passed = 0U;
     bool failed = false;
     for (const auto& row : *rows) {
         const auto bank = rom_return_banks.find(row.return_side);
@@ -27286,6 +27349,11 @@ int run_field_building_service_exit_sweep_qa(
         }
         if (row_passed) ++passed;
         else failed = true;
+        const bool row_audio_passed = row.music_id_after_return ==
+                std::optional<std::uint16_t>{row.expected_music_id} &&
+            row.attenuation_after_return == 0U;
+        if (row_audio_passed) ++audio_passed;
+        else failed = true;
 
         std::cout << "building_service_exit_sweep exit=" << row.exit_id
                   << " side=" << row.return_side << " contact="
@@ -27308,7 +27376,19 @@ int run_field_building_service_exit_sweep_qa(
         if (!row.exception_rom_address.empty()) {
             std::cout << " exception_rom=" << row.exception_rom_address;
         }
-        std::cout << " result=" << (row_passed ? "PASS" : "FAIL") << '\n';
+        std::cout << " audio_expected=0x" << std::hex
+                  << row.expected_music_id << " audio_playing=";
+        if (row.music_id_after_return.has_value()) {
+            std::cout << "0x" << *row.music_id_after_return;
+        } else {
+            std::cout << "none";
+        }
+        std::cout << " attenuation=0x"
+                  << static_cast<unsigned>(row.attenuation_after_return)
+                  << std::dec << " backend_events=" << row.backend_events
+                  << " result="
+                  << (row_passed && row_audio_passed ? "PASS" : "FAIL")
+                  << '\n';
     }
     for (const auto& exception : *exceptions) {
         std::cout << "building_service_exit_exception " << exception << '\n';
@@ -27318,11 +27398,15 @@ int run_field_building_service_exit_sweep_qa(
     }
     std::cout << "building_service_exit_sweep_counts exits_swept="
               << rows->size() << " passed=" << passed
+              << " audio_passed=" << audio_passed
               << " exceptions=" << exceptions->size() << '\n';
-    if (rows->size() != 30U || passed != rows->size() || failed) {
+    if (rows->size() != 30U || passed != rows->size() ||
+        audio_passed != rows->size() || failed) {
         std::cerr << "Building/service exit sweep QA: expected all 30 exits "
-                     "to match their ROM bank and Lua outward policy"
+                     "to match their ROM bank and Lua outward policy, with "
+                     "the scene-profile track active at attenuation 0"
                   << " (exits=" << rows->size() << ", passed=" << passed
+                  << ", audio_passed=" << audio_passed
                   << ", exceptions=" << exceptions->size()
                   << ", documented=" << exceptions->size() << ")\n";
         return 3;
@@ -40551,7 +40635,8 @@ int main(int argc, char** argv) {
                 return 3;
             }
             if (field_building_service_exit_sweep_qa) {
-                return run_field_building_service_exit_sweep_qa(field_scene);
+                return run_field_building_service_exit_sweep_qa(
+                    field_scene, asset_root);
             }
             if (field_crime_mall_ilene_gate_qa_path.has_value() ||
                 field_riannons_magic_shop_entry_qa_path.has_value() ||

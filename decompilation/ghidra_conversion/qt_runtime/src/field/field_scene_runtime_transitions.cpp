@@ -451,6 +451,8 @@ void FieldSceneRuntime::snapshot_world_activity_source_scene() {
     pending_field_return_anchor_ = FieldLocationReturnAnchor::none;
     pending_field_return_facing_ =
         FieldLocationReturnFacing::preserve_entry_heading;
+    pending_field_return_music_policy_ =
+        FieldLocationMusicReturnPolicy::none;
 
     // ROM 0x2934's frame path when FFDF8A != 0 calls 0x4B6C [C].
     // ROM 0x16E30 retires pending entity effects and clears effect-slot
@@ -990,6 +992,8 @@ void FieldSceneRuntime::save_field_door_return_point() {
     field_door_return_point_.entry_heading = field_movement_state_.heading;
     field_door_return_point_.return_anchor = pending_field_return_anchor_;
     field_door_return_point_.return_facing = pending_field_return_facing_;
+    field_door_return_point_.return_music_policy =
+        pending_field_return_music_policy_;
     field_door_return_point_.camera_x =
         field_collision_probe_state_.camera_x;
     field_door_return_point_.camera_y =
@@ -1032,6 +1036,11 @@ void FieldSceneRuntime::place_party_at_field_door_return_point() {
             {"entry_bearing_degrees", script_number_value(entry_bearing)},
             {"return_anchor", script_text_value(return_anchor)},
             {"return_facing", script_text_value(facing_policy)},
+            {"return_music_policy", script_text_value(
+                point.return_music_policy ==
+                        FieldLocationMusicReturnPolicy::resume_scene_profile
+                    ? "resume_scene_profile"
+                    : "none")},
         })});
     const auto* returned_party_value = result.has_value()
         ? script_member(*result, "party") : nullptr;
@@ -1110,8 +1119,16 @@ bool FieldSceneRuntime::apply_field_door_exit_return() {
     if (!field_door_return_point_.valid) {
         return false;
     }
+    const bool resume_scene_music =
+        field_door_return_point_.return_music_policy ==
+        FieldLocationMusicReturnPolicy::resume_scene_profile;
     place_party_at_field_door_return_point();
     field_door_return_point_.valid = false;
+    if (resume_scene_music) {
+        // Lua's typed exit policy requests the source field profile through
+        // the same latch serviced at ROM 0x2900.
+        scene_music_latch_ = true;
+    }
     field_entity_animation_.redraw_requested = true;
     source_boundary("field.door.service_close_return");
     return true;
@@ -1120,7 +1137,13 @@ bool FieldSceneRuntime::apply_field_door_exit_return() {
 #ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<std::vector<
     FieldSceneRuntime::FieldBuildingServiceExitSweepRow>>
-FieldSceneRuntime::perform_building_service_exit_sweep_for_dump() {
+FieldSceneRuntime::perform_building_service_exit_sweep_for_dump(
+    std::function<FieldBuildingServiceExitAudioSnapshot()> audio_probe) {
+    if (!field_session_source_assets_ || !audio_probe) {
+        failure_ = "building/service exit audio sweep needs source profiles "
+                   "and a backend probe";
+        return std::nullopt;
+    }
     const auto cases_result = game_scripts_.call_value(
         "world_links", "building_service_exit_cases", {});
     const auto* cases = cases_result.has_value()
@@ -1134,6 +1157,8 @@ FieldSceneRuntime::perform_building_service_exit_sweep_for_dump() {
 
     const auto original_scene = static_cast<std::uint16_t>(
         state_.field_scene_buffers.scene_reference);
+    const auto original_profile = state_.field_scene_buffers.profile;
+    constexpr std::size_t kSceneProfileMusicWord = 0x40U / 2U;
     std::vector<FieldBuildingServiceExitSweepRow> rows;
     rows.reserve(cases->size());
     for (const auto& exit_case : *cases) {
@@ -1182,6 +1207,18 @@ FieldSceneRuntime::perform_building_service_exit_sweep_for_dump() {
 
         state_.field_scene_buffers.scene_reference =
             static_cast<std::uint16_t>(*scene_id);
+        const auto& source_profile =
+            field_session_source_assets_->scene_profile_table_source[
+                static_cast<std::size_t>(*scene_id)];
+        state_.field_scene_buffers.profile = source_profile;
+
+        // The #9 route sweep now runs the shared return close with the
+        // source scene's profile. Seed its area track, execute the ROM
+        // 0x53126 mode-entry fade, then measure the returned field state.
+        scene_music_latch_ = true;
+        service_scene_music_latch();
+        request_audio_fade();
+
         set_field_entity_world_position_for_dump(
             static_cast<std::uint16_t>(*contact_x),
             static_cast<std::uint16_t>(*contact_y));
@@ -1211,12 +1248,16 @@ FieldSceneRuntime::perform_building_service_exit_sweep_for_dump() {
             script_member(*policy_result, "return_anchor"));
         const auto facing = script_text(
             script_member(*policy_result, "return_facing"));
+        const auto music_policy = script_text(
+            script_member(*policy_result, "return_music_policy"));
         const auto exception_rom = script_text(
             script_member(*policy_result, "rom_address"));
         if (!anchor.has_value() || !facing.has_value() ||
+            !music_policy.has_value() ||
             *anchor != "collision_probe_lead" ||
             (*facing != "face_away_from_entry" &&
-             *facing != "preserve_entry")) {
+             *facing != "preserve_entry") ||
+            *music_policy != "resume_scene_profile") {
             failure_ = "world_links.building_service_exit_policy returned an invalid policy";
             state_.field_scene_buffers.scene_reference = original_scene;
             return std::nullopt;
@@ -1226,12 +1267,17 @@ FieldSceneRuntime::perform_building_service_exit_sweep_for_dump() {
         pending_field_return_facing_ = *facing == "face_away_from_entry"
             ? FieldLocationReturnFacing::face_away_from_entry
             : FieldLocationReturnFacing::preserve_entry_heading;
+        pending_field_return_music_policy_ =
+            FieldLocationMusicReturnPolicy::resume_scene_profile;
         save_field_door_return_point();
         if (!field_door_return_point_.valid ||
             !apply_field_door_exit_return()) {
             state_.field_scene_buffers.scene_reference = original_scene;
+            state_.field_scene_buffers.profile = original_profile;
             return std::nullopt;
         }
+        // 0x2900 is serviced at the start of the next field frame.
+        advance_frame();
 
         FieldBuildingServiceExitSweepRow row{};
         row.exit_id = std::string(*exit_id);
@@ -1252,9 +1298,15 @@ FieldSceneRuntime::perform_building_service_exit_sweep_for_dump() {
         if (exception_rom.has_value()) {
             row.exception_rom_address = std::string(*exception_rom);
         }
+        row.expected_music_id = source_profile[kSceneProfileMusicWord];
+        const auto audio = audio_probe();
+        row.music_id_after_return = audio.music_id;
+        row.attenuation_after_return = audio.attenuation;
+        row.backend_events = audio.backend_events;
         rows.push_back(std::move(row));
     }
     state_.field_scene_buffers.scene_reference = original_scene;
+    state_.field_scene_buffers.profile = original_profile;
     return rows;
 }
 

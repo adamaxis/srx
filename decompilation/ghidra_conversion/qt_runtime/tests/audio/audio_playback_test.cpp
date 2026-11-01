@@ -5,12 +5,17 @@
 
 #include <QCoreApplication>
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
+#include <iterator>
+#include <cstddef>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace {
 
@@ -131,17 +136,52 @@ int main(int argc, char** argv) {
     check(!playback.mixer().music_id().has_value() && playback.mixer().attenuation() == 0U,
           "0x53126 fade stops everything and restores level 0");
 
-    // WAV render.
-    const auto wav = std::filesystem::temp_directory_path() / "srx_audio_playback_test.wav";
+    // PCM-enabled backend regression: stop-all and start the same track in
+    // the same game frame. QtAudioSink receives only the final mixed PCM
+    // frames, so a source-level stop cannot asynchronously cancel this start.
+    const auto wav = std::filesystem::temp_directory_path() /
+        "srx_audio_playback_test.wav";
+    constexpr std::uint16_t kSameFrameTrack = 0x06U;
     {
         AudioPlaybackService render(resolver, AudioPlaybackService::Output::wav, wav);
-        render.play_music(0x06U);
-        render.play_sfx(0x25U);
-        for (int i = 0; i < 30; ++i) render.advance_frame();
+        render.play_music(kSameFrameTrack);
+        render.advance_frame();
+        render.stop_all();
+        render.play_music(kSameFrameTrack);
+        check(render.mixer().music_id() == kSameFrameTrack,
+              "same-frame stop-all/start leaves the requested track active");
+        check(render.mixer().position(kSameFrameTrack) == 0U,
+              "same-frame restart begins at the track start");
+        render.advance_frame();
+        const auto& events = render.events();
+        check(events.size() == 5U &&
+                  events[2U].op == AudioOp::stop_all &&
+                  events[3U].op == AudioOp::stop &&
+                  events[4U].op == AudioOp::start &&
+                  events[2U].frame == events[3U].frame &&
+                  events[3U].frame == events[4U].frame,
+              "same-frame stop-all, same-id stop, and start stay ordered");
         render.finish_output();
     }
-    check(std::filesystem::file_size(wav) == 44U + 30U * kAudioSamplesPerFrame * 4U,
-          "WAV render size");
+    constexpr std::size_t kPcmFrameBytes = kAudioSamplesPerFrame * 4U;
+    check(std::filesystem::file_size(wav) == 44U + 2U * kPcmFrameBytes,
+          "same-frame restart WAV render size");
+    std::vector<char> wav_bytes;
+    {
+        std::ifstream input(wav, std::ios::binary);
+        wav_bytes.assign(std::istreambuf_iterator<char>(input),
+                         std::istreambuf_iterator<char>());
+    }
+    bool restarted_frame_matches_fresh_start =
+        wav_bytes.size() == 44U + 2U * kPcmFrameBytes;
+    if (restarted_frame_matches_fresh_start) {
+        restarted_frame_matches_fresh_start = std::equal(
+            wav_bytes.begin() + 44,
+            wav_bytes.begin() + 44 + static_cast<std::ptrdiff_t>(kPcmFrameBytes),
+            wav_bytes.begin() + 44 + static_cast<std::ptrdiff_t>(kPcmFrameBytes));
+    }
+    check(restarted_frame_matches_fresh_start,
+          "PCM after same-frame stop-all/start matches a fresh track frame");
     std::filesystem::remove(wav);
 
     if (failures != 0) {

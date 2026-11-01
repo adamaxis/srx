@@ -16,6 +16,16 @@ local EXIT_RETURN_EXCEPTIONS = {
         rom_address = "0x15BDB0",
         return_anchor = E.FieldLocationReturnAnchor.NONE,
         return_facing = E.FieldLocationReturnFacing.PRESERVE_ENTRY,
+        return_music_policy = E.FieldLocationMusicReturnPolicy.NONE,
+    },
+    -- Scene 18 record 9 reaches movement/mode handler 0xB7B8; its branch at
+    -- 0xB88A stores 0x20990 as the same-map dialogue continuation.
+    -- Dismissing it does not restore a building doorway.
+    ["julius_strouther_booth.rom_event_30"] = {
+        rom_address = "0x1D5E38",
+        return_anchor = E.FieldLocationReturnAnchor.NONE,
+        return_facing = E.FieldLocationReturnFacing.PRESERVE_ENTRY,
+        return_music_policy = E.FieldLocationMusicReturnPolicy.NONE,
     },
 }
 
@@ -96,6 +106,10 @@ local function validate_exit_return_policy(policy)
            policy.return_facing ==
                E.FieldLocationReturnFacing.PRESERVE_ENTRY,
         "world_links.exit_return: unsupported return facing")
+    assert(policy.return_music_policy ==
+               E.FieldLocationMusicReturnPolicy.RESUME_SCENE_PROFILE or
+           policy.return_music_policy == E.FieldLocationMusicReturnPolicy.NONE,
+        "world_links.exit_return: unsupported return music policy")
     return policy
 end
 
@@ -107,6 +121,8 @@ function WorldLinks.building_service_exit_policy(context)
                 E.FieldLocationReturnAnchor.COLLISION_PROBE_LEAD,
             return_facing =
                 E.FieldLocationReturnFacing.FACE_AWAY_FROM_ENTRY,
+            return_music_policy =
+                E.FieldLocationMusicReturnPolicy.RESUME_SCENE_PROFILE,
         }
     end
     assert(type(exception.rom_address) == "string" and
@@ -116,6 +132,7 @@ function WorldLinks.building_service_exit_policy(context)
     return {
         return_anchor = policy.return_anchor,
         return_facing = policy.return_facing,
+        return_music_policy = policy.return_music_policy,
         rom_address = exception.rom_address,
     }
 end
@@ -128,6 +145,7 @@ function WorldLinks.building_service_exit_exceptions()
             rom_address = exception.rom_address,
             return_anchor = exception.return_anchor,
             return_facing = exception.return_facing,
+            return_music_policy = exception.return_music_policy,
         }
     end
     table.sort(result, function(left, right)
@@ -183,6 +201,8 @@ function WorldLinks.building_service_exit_return(context)
             E.FieldLocationReturnAnchor.COLLISION_PROBE_LEAD,
         return_facing = context.return_facing or
             E.FieldLocationReturnFacing.FACE_AWAY_FROM_ENTRY,
+        return_music_policy = context.return_music_policy or
+            E.FieldLocationMusicReturnPolicy.RESUME_SCENE_PROFILE,
     }
     local point = context.point
     assert(type(point) == "table" and type(point.party) == "table" and
@@ -198,6 +218,7 @@ function WorldLinks.building_service_exit_return(context)
         bearing_degrees = bearing.bearing_degrees,
         return_anchor = policy.return_anchor,
         return_facing = policy.return_facing,
+        return_music_policy = policy.return_music_policy,
         rom_address = context.exception_rom_address,
     }
 end

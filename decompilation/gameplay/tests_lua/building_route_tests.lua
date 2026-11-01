@@ -674,4 +674,47 @@ assert(jump_house_exit_with_table.kind == "source_boundary" and
        jump_house_exit_with_table.boundary_reason:match(
            "source_activity_return_context_mismatch") ~= nil)
 
+-- ROM Scene-18 record 9 at 0x1D5E38 dispatches event 30 through
+-- 0xB88A -> 0x20990 for Julius's in-place dialogue. It must not inherit the
+-- generic building-exit probe, facing, or music policy.
+game.modules.world_content_data.entities.julius_strouther_booth = {
+    id = "julius_strouther_booth",
+    links = {
+        {
+            id = "rom_event_30",
+            source_scene = 18,
+            source_event = "event_30",
+            route_kind = "dialogue",
+            script = "lua_dialogue",
+            route_priority = 0,
+            entry_dialogue_module = "johnson",
+            entry_dialogue_function = "interaction",
+            entry_location_type = "building",
+            entry_location_id = "julius_strouther_booth",
+            entry_text_profile = "matchstick.julius_strouther",
+            entry_speaker_id = "julius_strouther",
+        },
+    },
+}
+game.modules.world_content_data.areas[18] = {
+    { entity_id = "julius_strouther_booth" },
+}
+local in_place_dialogue = Building.resolve_field_location_route({
+    scene_id = 18,
+    building_interaction_mode = false,
+    event_code = "event_30",
+    event_index = 30,
+    event_table_available = false,
+    event_table = {},
+    package_run_status = "none",
+    transition = { kind = "none" },
+})
+assert(in_place_dialogue.kind == "dialogue" and
+       in_place_dialogue.entry_dialogue_module == "johnson" and
+       in_place_dialogue.return_anchor == E.FieldLocationReturnAnchor.NONE and
+       in_place_dialogue.return_facing ==
+           E.FieldLocationReturnFacing.PRESERVE_ENTRY and
+       in_place_dialogue.return_music_policy ==
+           E.FieldLocationMusicReturnPolicy.NONE)
+
 print("building route tests passed: conditional variants and entry tasks")

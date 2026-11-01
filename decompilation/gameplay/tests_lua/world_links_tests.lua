@@ -94,6 +94,7 @@ for _, exit_case in ipairs(building_service_exits) do
         entry_bearing_degrees = entry_bearing,
         return_anchor = policy.return_anchor,
         return_facing = policy.return_facing,
+        return_music_policy = policy.return_music_policy,
     }
     for runner = 1, 3 do
         local expected = expected_bank[runner]
@@ -109,8 +110,13 @@ for _, exit_case in ipairs(building_service_exits) do
     check(returned.return_anchor ==
               E.FieldLocationReturnAnchor.COLLISION_PROBE_LEAD and
           returned.return_facing ==
-              E.FieldLocationReturnFacing.FACE_AWAY_FROM_ENTRY,
+              E.FieldLocationReturnFacing.FACE_AWAY_FROM_ENTRY and
+          returned.return_music_policy ==
+              E.FieldLocationMusicReturnPolicy.RESUME_SCENE_PROFILE,
           exit_case.exit_id .. " gets the shared typed exit policy")
+    check(policy.return_music_policy ==
+              E.FieldLocationMusicReturnPolicy.RESUME_SCENE_PROFILE,
+          exit_case.exit_id .. " requests source profile music on return")
     print(string.format(
         "field_exit_return_sweep id=%s scene=%d link=%d side=%s " ..
         "contact=%d,%d return=%d,%d heading=0x%04X",
@@ -128,15 +134,33 @@ for _, exception in ipairs(exit_exceptions) do
         "facing=%s", exception.exit_id, exception.rom_address,
         exception.return_anchor, exception.return_facing))
 end
-check(#exit_exceptions == 1 and
-      exit_exceptions[1].exit_id ==
-          "council_medicine_lodge.rom_event_06" and
-      exit_exceptions[1].rom_address == "0x15BDB0" and
-      exit_exceptions[1].return_anchor ==
+local exceptions_by_id = {}
+for _, exception in ipairs(exit_exceptions) do
+    exceptions_by_id[exception.exit_id] = exception
+end
+local medicine_lodge_exception =
+    exceptions_by_id["council_medicine_lodge.rom_event_06"]
+check(#exit_exceptions == 2 and medicine_lodge_exception ~= nil and
+      medicine_lodge_exception.rom_address == "0x15BDB0" and
+      medicine_lodge_exception.return_anchor ==
           E.FieldLocationReturnAnchor.NONE and
-      exit_exceptions[1].return_facing ==
-          E.FieldLocationReturnFacing.PRESERVE_ENTRY,
+      medicine_lodge_exception.return_facing ==
+          E.FieldLocationReturnFacing.PRESERVE_ENTRY and
+      medicine_lodge_exception.return_music_policy ==
+          E.FieldLocationMusicReturnPolicy.NONE,
       "Scene 4/event 6 stays outside the doorway return policy [0x15BDB0]")
+-- [C] Scene-18 record 9 at 0x1D5E38 dispatches Julius's same-map dialogue;
+-- closing that route preserves its live field position and field music.
+local julius_exception =
+    exceptions_by_id["julius_strouther_booth.rom_event_30"]
+check(julius_exception ~= nil and
+      julius_exception.rom_address == "0x1D5E38" and
+      julius_exception.return_anchor == E.FieldLocationReturnAnchor.NONE and
+      julius_exception.return_facing ==
+          E.FieldLocationReturnFacing.PRESERVE_ENTRY and
+      julius_exception.return_music_policy ==
+          E.FieldLocationMusicReturnPolicy.NONE,
+      "Julius's same-map dialogue keeps its live field position [0x1D5E38]")
 
 local function contact(x, y, side)
     return W.door_contact{
@@ -192,7 +216,9 @@ check(generic_exit.party == point.party and
       generic_exit.return_anchor ==
           E.FieldLocationReturnAnchor.COLLISION_PROBE_LEAD and
       generic_exit.return_facing ==
-          E.FieldLocationReturnFacing.FACE_AWAY_FROM_ENTRY,
+          E.FieldLocationReturnFacing.FACE_AWAY_FROM_ENTRY and
+      generic_exit.return_music_policy ==
+          E.FieldLocationMusicReturnPolicy.RESUME_SCENE_PROFILE,
       "generic building/service exit restores the saved point and faces out")
 for _, bearing in ipairs({ 0, 90, 180, 270, 45, 315 }) do
     check(W.exit_bearing({

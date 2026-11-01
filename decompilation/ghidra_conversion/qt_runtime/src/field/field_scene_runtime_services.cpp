@@ -927,6 +927,9 @@ bool FieldSceneRuntime::open_field_location_dialogue(
         }
     }
 
+    pending_field_return_anchor_ = route.return_anchor;
+    pending_field_return_facing_ = route.return_facing;
+    pending_field_return_music_policy_ = route.return_music_policy;
     if (route.return_anchor != FieldLocationReturnAnchor::none) {
         save_field_door_return_point();
     }
@@ -961,6 +964,9 @@ bool FieldSceneRuntime::open_field_johnson_interaction() {
         return false;
     }
     active_field_script_route_ = *route;
+    pending_field_return_anchor_ = route->return_anchor;
+    pending_field_return_facing_ = route->return_facing;
+    pending_field_return_music_policy_ = route->return_music_policy;
     return open_field_location_dialogue(*route);
 }
 

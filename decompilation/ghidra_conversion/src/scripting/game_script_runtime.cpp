@@ -7668,6 +7668,27 @@ GameScriptRuntime::resolve_field_location_route(
         lua_pop(state, 1);
     }
 
+    auto return_music_policy = FieldLocationMusicReturnPolicy::none;
+    lua_getfield(state, result_index, "return_music_policy");
+    if (!lua_isnil(state, -1)) {
+        std::string policy_name;
+        const bool valid = read_string(state, -1, policy_name);
+        lua_pop(state, 1);
+        if (!valid) {
+            return fail("building.lua route has an invalid return music policy");
+        }
+        if (policy_name == "" || policy_name == "none") {
+            return_music_policy = FieldLocationMusicReturnPolicy::none;
+        } else if (policy_name == "resume_scene_profile") {
+            return_music_policy =
+                FieldLocationMusicReturnPolicy::resume_scene_profile;
+        } else {
+            return fail("building.lua route returned an unknown return music policy");
+        }
+    } else {
+        lua_pop(state, 1);
+    }
+
     const auto read_optional_string =
         [state, result_index](const char* name, std::string& value) {
             lua_getfield(state, result_index, name);
@@ -7804,6 +7825,7 @@ GameScriptRuntime::resolve_field_location_route(
     route.area_event_destination_mode = destination_mode;
     route.return_anchor = return_anchor;
     route.return_facing = return_facing;
+    route.return_music_policy = return_music_policy;
     route.resource_scene_entry_placement = resource_scene_entry_placement;
     std::string resource_override_name;
     std::string entry_continue_outcome_type_name;

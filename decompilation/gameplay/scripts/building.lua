@@ -318,6 +318,7 @@ local function attach_building_service_exit_policy(route, link, context)
     }
     route.return_anchor = policy.return_anchor
     route.return_facing = policy.return_facing
+    route.return_music_policy = policy.return_music_policy
     return route
 end
 

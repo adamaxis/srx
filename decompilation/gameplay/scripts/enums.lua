@@ -25,6 +25,10 @@ E.FieldLocationReturnFacing = {
     FACE_AWAY_FROM_ENTRY = "face_away_from_entry",
     PRESERVE_ENTRY = "preserve_entry",
 } -- route policy; the D6!=0 path writes heading $8000 at ROM 0x09B8 [C]
+E.FieldLocationMusicReturnPolicy = {
+    NONE = "none",
+    RESUME_SCENE_PROFILE = "resume_scene_profile",
+} -- 0x2900/0x530EA restarts the returned field profile [C]
 
 E.GhoulBounty = { MAX_DEFEATS = 20 } -- FFFBF0 is capped at twenty (0x559BC) [C]
 

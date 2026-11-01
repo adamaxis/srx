@@ -1502,6 +1502,7 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
     active_field_script_route_ = event_route;
     pending_field_return_anchor_ = event_route.return_anchor;
     pending_field_return_facing_ = event_route.return_facing;
+    pending_field_return_music_policy_ = event_route.return_music_policy;
     if (event_route.return_anchor != FieldLocationReturnAnchor::none) {
         // Every linked building/service route records the source probe triplet
         // once, before its selected content takes control of the field input.
@@ -8184,6 +8185,8 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                         active_field_script_route_ = *route;
                         pending_field_return_anchor_ = route->return_anchor;
                         pending_field_return_facing_ = route->return_facing;
+                        pending_field_return_music_policy_ =
+                            route->return_music_policy;
                         has_authored_area_destination = true;
                         source_boundary(
                             "field.entry.area_event_route_resolved_by_scene_state");
