@@ -3,6 +3,7 @@ package.path = "decompilation/gameplay/scripts/?.lua;" ..
     "decompilation/gameplay/scripts/?/init.lua;" .. package.path
 
 local W = require("world_links")
+local E = require("enums")
 local D = W.data()
 
 local pass, total = 0, 0
@@ -108,12 +109,12 @@ check(not pcall(W.return_placement, point, "unknown", 0),
       "unknown return path rejected")
 for _, bearing in ipairs({ 0, 90, 180, 270, 45, 315 }) do
     check(W.exit_bearing({
-        facing_policy = "face_away_from_entry",
+        facing_policy = E.FieldLocationReturnFacing.FACE_AWAY_FROM_ENTRY,
         entry_bearing_degrees = bearing,
     }).bearing_degrees == (bearing + 180) % 360,
        "face away from " .. bearing .. " degrees")
     check(W.exit_bearing({
-        facing_policy = "preserve_entry",
+        facing_policy = E.FieldLocationReturnFacing.PRESERVE_ENTRY,
         entry_bearing_degrees = bearing,
     }).bearing_degrees == bearing,
        "preserve " .. bearing .. " degrees")

@@ -2,6 +2,7 @@
 -- collision records into named sides, named events, and world-space bounds.
 -- Runtime logic consumes those concepts directly.
 local Data = require("data.world_links_data")
+local E = require("enums")
 
 local WorldLinks = {}
 
@@ -79,9 +80,9 @@ end
 function WorldLinks.exit_bearing(context)
     local facing_policy = context.facing_policy
     local entry_bearing = context.entry_bearing_degrees % 360
-    if facing_policy == "face_away_from_entry" then
+    if facing_policy == E.FieldLocationReturnFacing.FACE_AWAY_FROM_ENTRY then
         return { bearing_degrees = (entry_bearing + 180) % 360 }
-    elseif facing_policy == "preserve_entry" then
+    elseif facing_policy == E.FieldLocationReturnFacing.PRESERVE_ENTRY then
         return { bearing_degrees = entry_bearing }
     end
     error("world_links.exit_bearing: unknown facing policy " ..

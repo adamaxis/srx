@@ -1129,6 +1129,15 @@ bool FieldSceneRuntime::handle_dialogue_continue_in_place(
     field_mode_entry_transition_pending_ = false;
     field_mode_entry_destination_scene_.reset();
     field_mode_entry_run_target_actor_group_.reset();
+    if (active_field_script_route_.has_value() &&
+        active_field_script_route_->kind ==
+            FieldScriptRouteKind::field_service &&
+        active_field_script_route_->script ==
+            FieldScriptId::lua_field_service &&
+        active_field_script_route_->return_anchor !=
+            FieldLocationReturnAnchor::none) {
+        (void)apply_field_service_close_return();
+    }
     source_boundary("field.dialogue.continued_in_place");
     advance_field_scene_transition_after_modal();
     begin_field_modal_return_transition();

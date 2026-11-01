@@ -3,7 +3,7 @@
 This file is kept in the repo so the notes survive if the box is wiped. The box's /workspace/shadowrun/out was lost on 2026-10-31.
 Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 
-## Current state (2026-11-01 13:07 CST)
+## Current state (2026-11-01 13:33 CST)
 - Remote port-fixes: see latest Fixes entry. QA_GREEN (ctest all pass, Lua suites pass). Working playtest_2026-11-01 items one Luna run at a time.
 - In progress: Luna (codex exec, gpt-6-luna, max effort, fast tier off) is fixing aa3b2cb7 forward. Brief is /workspace/briefs/aa3b.md, the earlier partial work is /workspace/briefs/aa3b_wip.diff and stash 'aa3b-wip'.
 - Box toolchain: `. /workspace/tcenv.sh` (conda env /workspace/mamba/envs/srx). Build dirs are /workspace/b2 (Qt) and /workspace/b2n (non-Qt). Full QA is /workspace/qa.sh, which prints QA_GREEN.
@@ -38,6 +38,7 @@ Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 - playtest #7: Decode +0x90 capability flags in player weapon delay. Evidence: ROM 0xABFC/0xD7EA/0xAD1A/0xB39A..0xB3E4, measured headless pistol gate 51 / cast 102
 - playtest #25: Render ROM H-flip for left-facing enemy walk frames. Evidence: ROM 0xB6BA..0xB6DE/C062 lists 0x922C attr 0x0800; headless dir7 flip=1 matches
 - playtest #14: Draw ordinary enemies behind the sidebar window. Evidence: ROM 0xD4A0 VDP window x=272, sprite priority clear at 0x481E/0x622C; headless sidebar pixel check
+- playtest #9: Restore source return anchor and heading on Boris greenhouse exit. Evidence: ROM 0xBC36/0xBD4C offset (0,+0x140), 0x09B8 heading $8000; headless (0x5300,0x0740)/$8000 after fix
 
 ## Open work, in order
 1. Get ctest green again by fixing aa3b2cb7 forward.

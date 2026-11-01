@@ -42,6 +42,9 @@ local area_link = {
     destination_scene = 26,
     destination_mode = "resource_activity",
     route_priority = 0,
+    source_route_policy = "resume_source_route",
+    return_anchor = E.FieldLocationReturnAnchor.COLLISION_PROBE_LEAD,
+    return_facing = E.FieldLocationReturnFacing.FACE_AWAY_FROM_ENTRY,
 }
 local function new_game(choices, flags, funds, package_run_status, inventory)
     local queued_choices = {}
@@ -211,6 +214,10 @@ assert(route.indexed_title_service and
        route.indexed_title_service.module == "boris_greenhouse" and
        route.indexed_title_service.function_name ==
            "present_indexed_title_service")
+assert(route.return_anchor == E.FieldLocationReturnAnchor.COLLISION_PROBE_LEAD and
+       route.return_facing ==
+           E.FieldLocationReturnFacing.FACE_AWAY_FROM_ENTRY,
+       "Boris same-map service preserves its source doorway return policy")
 local mismatched_event_context = {}
 for key, value in pairs(context) do
     mismatched_event_context[key] = value

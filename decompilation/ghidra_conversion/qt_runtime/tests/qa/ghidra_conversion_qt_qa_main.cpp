@@ -27309,6 +27309,21 @@ int run_field_boris_greenhouse_dialogue_qa(
     // balance, ending at zero after all three source charges.
     field_scene.set_field_funds_for_dump(11100U);
     const bool service_opened = walk_into_greenhouse();
+    const auto greenhouse_door_contact =
+        field_scene.field_entity_world_position();
+    const auto greenhouse_contact_heading =
+        field_scene.field_entity_heading_for_dump();
+    const auto greenhouse_contact_probe =
+        field_scene.field_collision_probe_state_for_dump();
+    std::cout << "boris_exit_measurement phase=door_contact position="
+              << greenhouse_door_contact.x << ','
+              << greenhouse_door_contact.y << " heading=0x" << std::hex
+              << greenhouse_contact_heading << std::dec << " probe0="
+              << greenhouse_contact_probe.points[0].x << ','
+              << greenhouse_contact_probe.points[0].y << " offset_bank="
+              << static_cast<unsigned>(
+                     greenhouse_contact_probe.selected_offset_bank)
+              << '\n';
     if (!service_opened ||
         !field_scene.dialogue_open() ||
         field_scene.dialogue_panel().actor_name != "Boris" ||
@@ -27448,6 +27463,40 @@ int run_field_boris_greenhouse_dialogue_qa(
                      "to Scene 2\n";
         return 3;
     }
+    // Same-map service closure applies the saved point during the host's
+    // modal-return frames. Measure only after that frame path has run.
+    for (std::uint8_t settle = 0U; settle < 90U; ++settle) {
+        field_scene.advance_frame();
+    }
+    const auto greenhouse_return_position =
+        field_scene.field_entity_world_position();
+    const auto greenhouse_return_heading =
+        field_scene.field_entity_heading_for_dump();
+    // [C] ROM 0xBC36 builds the saved FFDF44 lead from the collision
+    // direction; Boris's south-side entry selects 0xBD4C (+0x0140 Y), and
+    // 0x09B8 writes heading $8000 after the nonzero D6 service result. The
+    // authored Lua face-away policy reaches that heading through
+    // world_links.exit_bearing.
+    if (greenhouse_return_position.x != greenhouse_contact_probe.points[0].x ||
+        greenhouse_return_position.y != greenhouse_contact_probe.points[0].y ||
+        greenhouse_return_heading != 0x8000U) {
+        std::cerr << "Boris Greenhouse QA: door return did not restore the "
+                     "source anchor and heading (contact="
+                  << greenhouse_door_contact.x << ','
+                  << greenhouse_door_contact.y << " source_anchor="
+                  << greenhouse_contact_probe.points[0].x << ','
+                  << greenhouse_contact_probe.points[0].y << " return="
+                  << greenhouse_return_position.x << ','
+                  << greenhouse_return_position.y << " entry_heading=0x"
+                  << std::hex << greenhouse_contact_heading
+                  << " return_heading=0x" << greenhouse_return_heading
+                  << std::dec << ")\n";
+        return 3;
+    }
+    std::cout << "boris_exit_measurement phase=service_return position="
+              << greenhouse_return_position.x << ','
+              << greenhouse_return_position.y << " heading=0x" << std::hex
+              << greenhouse_return_heading << std::dec << '\n';
 
     const auto has_saved_passkey = [slot = *first_free_inventory_slot](
         const QJsonObject& snapshot) {

@@ -17,6 +17,14 @@ E.FieldModePrompt = {
     ARES_EMPORIUM = "ares_emporium",
 }
 
+E.FieldLocationReturnAnchor = {
+    COLLISION_PROBE_LEAD = "collision_probe_lead",
+} -- ROM 0xBC36 builds FFDF44; 0x2F32 restores it [C]
+E.FieldLocationReturnFacing = {
+    FACE_AWAY_FROM_ENTRY = "face_away_from_entry",
+    PRESERVE_ENTRY = "preserve_entry",
+} -- route policy; the D6!=0 path writes heading $8000 at ROM 0x09B8 [C]
+
 E.GhoulBounty = { MAX_DEFEATS = 20 } -- FFFBF0 is capped at twenty (0x559BC) [C]
 
 -- +0x9E role/AI flags (doc 20 §2); REINFORCEMENT is set by the alarm spawner 0x1E0B8 [C]
