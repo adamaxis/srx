@@ -57,7 +57,7 @@ function Harness.new(contact_id)
     game.party = function()
         return { [self.active_slot] = {
             skills = self.reputation == nil and {} or {
-                [10] = self.reputation,
+                reputation = self.reputation,
             },
         } }
     end

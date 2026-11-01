@@ -218,6 +218,7 @@ assert(result.type == "source_boundary" and
 assert(#pages == 0 and #choices == 0)
 
 game.field.package_run_status = "none"
+game.location = nil
 reset()
 result = outcome(MichaelPackage.present_field_exit_prompt())
 assert(result.type == "source_boundary" and

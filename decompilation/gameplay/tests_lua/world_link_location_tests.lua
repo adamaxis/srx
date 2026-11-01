@@ -165,8 +165,9 @@ check(hospital_service ~= nil and
       "Seattle General scene 0/event_0 uses the hospital service policy")
 check(hospital_source_route == 0x15,
       "Seattle General event-table row 0 at 0x0D54B2 is diagnostic 0x15")
-check(hospital_site ~= nil and hospital_site.mode == 0 and
-      hospital_site.event == 0 and hospital_site.text_root == 0x0B and
+check(hospital_site ~= nil and
+      hospital_site.narrator == "council_island_hospital_narrator" and
+      hospital_site.text_profile == "council_island_hospital" and
       hospital_site.entry_text == "seattle_general_hospital.entry.default",
       "Seattle General uses the scene-0/event-0 0x1F830 prompt profile")
 check(hospital_route.kind == "area_event" and

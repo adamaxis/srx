@@ -127,7 +127,7 @@ local function mk(o)
 end
 local function top(r) return r:top().screen end
 local function st(r) return r:top().state end
-local function page(r, p) while r.stack[1].state.page ~= p do r:frame(P.LEFT) end end
+local function page(r, p) while r.stack[1].state.section ~= p do r:frame(P.LEFT) end end
 
 local function section(name, fn) local ok, err = pcall(fn); if not ok then fails = fails + 1; n = n + 1; print('STALE section [' .. name .. ']: ' .. tostring(err)) end end
 -- Shared fixtures (hoisted: several sections use the same modules / ROM image).
@@ -146,9 +146,9 @@ end
 local function deck(o) o = o or {}; o.deck = true; local r, l, g = mk(o); r:frame(P.A); r:frame(P.DOWN); r:frame(P.DOWN); r:frame(P.A); return r, l, g end
 -- ---- clips (ROM 0x11B58: one-shot, out/menu_sound_sites.txt) ------------------------------------------
 section('clips (ROM 0x11B58: one-shot, ou', function()
-local function clips(o) local r, l, g = mk(o); page(r, E.MenuPage.CLIPS); r:frame(P.A); return r, l, g end
+local function clips(o) local r, l, g = mk(o); page(r, E.CommandSection.CLIPS); r:frame(P.A); return r, l, g end
 local r, log, g = clips(); check(top(r) == S.CLIPS, "clips open")
-r:frame(P.LEFT); check(st(r).selection == E.ClipsCommand.CANCEL and log.sounds[#log.sounds] == 0x25, "L 0x25 wrap [C 0x11BE8]")
+r:frame(P.LEFT); check(st(r).selected_action == E.ClipsAction.CANCEL and log.sounds[#log.sounds] == 0x25, "L 0x25 wrap [C 0x11BE8]")
 r:frame(P.START); check(top(r) == S.CLIPS, "Start ignored in clips [C]")
 r:frame(P.RIGHT); r:frame(P.B)       -- B acts like A; empty magazine reloads without prompt
 check(log.sounds[#log.sounds] == 0x24 and g.party[0].clips == 1 and g.party[0].rounds == 0x26, "B=A 0x24 reload 0x26 [C 0x11C3C]")
@@ -166,13 +166,13 @@ r:frame(P.A); r:frame(P.A); r:frame(P.A); check(st(r).message == MM.FUNCTION_ABO
 r:frame(P.A); local rc = clips(); rc:frame(P.LEFT); rc:frame(P.C); check(st(rc).message == MM.FUNCTION_ABORTED, "Cancel -> Function Aborted [C 0xD1ED8]")
 -- clip trade
 local party = { [0] = runner({ clips = 3 }), [1] = runner({ clips = 0 }) }
-local r2, _, g2 = mk({ party = party }); page(r2, E.MenuPage.CLIPS); r2:frame(P.A); r2:frame(P.RIGHT); r2:frame(P.A)
+local r2, _, g2 = mk({ party = party }); page(r2, E.CommandSection.CLIPS); r2:frame(P.A); r2:frame(P.RIGHT); r2:frame(P.A)
 check(top(r2) == S.CLIP_TRADE and st(r2).quantity == 3, "trade opens with full count [srx]")
 r2:frame(P.A); check(st(r2).quantity == 1, "increase wraps to 1")
 r2:frame(P.RIGHT); r2:frame(P.RIGHT); r2:frame(P.A)
 check(g2.party[0].clips == 2 and g2.party[1].clips == 1 and st(r2).message == MM.EXCHANGE_COMPLETE, "trade transfers")
 r2:frame(P.A); check(top(r2) == S.COMMAND, "trade result exits clips [C 0x11CB6]")
-local r2b = mk({ party = { [0] = runner({ clips = 3 }), [1] = runner() } }); page(r2b, E.MenuPage.CLIPS); r2b:frame(P.A); r2b:frame(P.RIGHT); r2b:frame(P.A)
+local r2b = mk({ party = { [0] = runner({ clips = 3 }), [1] = runner() } }); page(r2b, E.CommandSection.CLIPS); r2b:frame(P.A); r2b:frame(P.RIGHT); r2b:frame(P.A)
 local l2n = #r2b.stack; r2b:frame(P.START); check(st(r2b).message == MM.FUNCTION_ABORTED, "trade Start aborts [C 0x11F7A]")
 
 end)
@@ -180,9 +180,9 @@ end)
 section('item action', function()
 local r3 = mk({ leader = { equipment = {
     equipment_item("mana_zap_focus", 0, 0),
-} } }); page(r3, 0); r3:frame(P.A)
+} } }); page(r3, E.CommandSection.INVENTORY_LEFT); r3:frame(P.A)
 check(top(r3) == S.ITEM_ACTION, "item action open")
-r3:frame(P.LEFT); check(st(r3).selector == E.ItemAction.CANCEL, "action wrap")
+r3:frame(P.LEFT); check(st(r3).selected_action == E.InventoryAction.CANCEL, "action wrap")
 r3:frame(P.A); check(top(r3) == S.COMMAND, "cancel pops")
 r3:frame(P.A); r3:frame(P.C); check(top(r3) == S.ITEM_ACTION, "item row: C no-op [C 0x118A0]")
 r3:frame(P.START); check(top(r3) == S.COMMAND, "item row: Start exits [C 0x118A4]")
@@ -222,7 +222,7 @@ section('inventory uses positioned item records', function()
 end)
 -- ---- attributes ------------------------------------------------------------------------------------------
 section('attributes', function()
-local r4, l4, g4 = mk(); page(r4, E.MenuPage.ATTRIBUTES_SKILLS); r4:frame(P.A)
+local r4, l4, g4 = mk(); page(r4, E.CommandSection.ATTRIBUTES_SKILLS); r4:frame(P.A)
 check(top(r4) == S.ATTRIBUTES_SKILLS and l4.windows[#l4.windows] == E.WindowPlane.OFF, "attr window off [C 0xD024]")
 r4:frame(P.UP); check(st(r4).row == 0, "row clamp")
 for _ = 1, 12 do r4:frame(P.DOWN) end; check(st(r4).row == 9, "row clamp hi")
@@ -260,11 +260,11 @@ r4b:frame(P.B); check(top(r4b) == S.ATTRIBUTES_SKILLS and g4b.party[0].attribute
 end)
 -- ---- magic -----------------------------------------------------------------------------------------------
 section('magic', function()
-local r5 = mk(); page(r5, E.MenuPage.MAGIC); r5:frame(P.A); check(top(r5) == S.MAGICAL_DEFENSE, "non-caster -> defense [srx]")
+local r5 = mk(); page(r5, E.CommandSection.MAGIC); r5:frame(P.A); check(top(r5) == S.MAGICAL_DEFENSE, "non-caster -> defense [srx]")
 local spells = { sp("flame_dart", 4), sp("flame_bolt", 2),
                  sp("hellblast", 6) }
 local r6, _, g6 = mk({ leader = { character_class = E.RunnerClass.MAGE, magic = 3, equipped_weapon_id = false, equipped_weapon_cell = false, selected_spell_id = false }, spells = spells })
-page(r6, E.MenuPage.MAGIC); r6:frame(P.A); check(top(r6) == S.MAGIC, "caster spell grid")
+page(r6, E.CommandSection.MAGIC); r6:frame(P.A); check(top(r6) == S.MAGIC, "caster spell grid")
 local magic_view = st(r6).magic_view
 check(magic_view.title_text_x == 128 and
       magic_view.spell_ids[1] == "flame_dart" and
@@ -290,7 +290,7 @@ check(top(r6) == S.MAGIC and g6.party[0].selected_spell_id == "hellblast" and g6
 local offset_spells = {}
 for _, id in ipairs(SpellIds) do offset_spells[#offset_spells + 1] = sp(id, 1) end
 local r_cursor = mk({ leader = { character_class = E.RunnerClass.MAGE, magic = 3, equipped_weapon_id = false, equipped_weapon_cell = false, selected_spell_id = false }, spells = offset_spells })
-page(r_cursor, E.MenuPage.MAGIC); r_cursor:frame(P.A)
+page(r_cursor, E.CommandSection.MAGIC); r_cursor:frame(P.A)
 r_cursor:frame(P.RIGHT)
 r_cursor:frame(P.DOWN)
 check(st(r_cursor).sel.column == 1 and st(r_cursor).sel.row == 1 and
@@ -303,7 +303,7 @@ check(st(r_cursor).sel.column == 1 and st(r_cursor).sel.row == 1 and
 -- skips menu heartbeats during the 12 blank frames, so heartbeat n after A
 -- is e6 frame 8952 + n.
 local r_phase = mk({ leader = { character_class = E.RunnerClass.MAGE, magic = 3, equipped_weapon_id = false, equipped_weapon_cell = false, selected_spell_id = false }, spells = spells })
-page(r_phase, E.MenuPage.MAGIC); r_phase:frame(P.A)
+page(r_phase, E.CommandSection.MAGIC); r_phase:frame(P.A)
 check(st(r_phase).magic_view.cursor_phase == 1 and st(r_phase).cursor_timer == 5,
       "Magic entry leaves FDFE timer/phase 5/1 (e6 8952) [C]")
 local function run_to(r, from, to) for _ = from + 1, to do r:frame(0) end end
@@ -320,7 +320,7 @@ check(st(r_phase).magic_view.cursor_phase == 1, "Magic cursor phase at e6 9400 [
 -- 9043 + 7k across both transitions, so the clock never resets [C emulator].
 local function phase_trace(with_force)
     local r = mk({ leader = { character_class = E.RunnerClass.MAGE, magic = 3, equipped_weapon_id = false, equipped_weapon_cell = false, selected_spell_id = false }, spells = spells })
-    page(r, E.MenuPage.MAGIC); r:frame(P.A)
+    page(r, E.CommandSection.MAGIC); r:frame(P.A)
     local trace = {}
     for f = 1, 460 do
         local key = 0
@@ -590,7 +590,7 @@ end)
 section('automatic-use item: message only, no', function()
 local ra = mk({ leader = { equipment = {
     equipment_item("flame_dart_focus", 0, 0),
-} } }); page(ra, 0); ra:frame(P.A); ra:frame(P.A)
+} } }); page(ra, E.CommandSection.INVENTORY_LEFT); ra:frame(P.A); ra:frame(P.A)
 check(top(ra) == S.MESSAGE and st(ra).message == MM.AUTOMATIC_USE and ra.stack[1].state and true, "auto-use message")
 ra:frame(P.B); check(top(ra) == S.COMMAND, "auto-use returns")
 end)

@@ -47,7 +47,9 @@ check(W.transition_at(2, 7424, 2304).destination_scene_id == 13,
       "Redmond doorway routes to the Jump House")
 check(W.transition_at(0, 8448, 1792).destination_scene_id == 10,
       "Downtown doorway routes to the destination scene")
-check(W.scene_mode(0x0D) == "building" and
+-- ROM 0x167AE treats 0x0D as a field-scene result; the importer exposes that
+-- field mode as `street` (scene profile 0x1B3C06), not as a resource scene.
+check(W.scene_mode(0x0D) == "street" and
       W.scene_mode(0x2D) == "cave" and W.scene_mode(64) == nil,
       "scene profiles carry semantic location modes")
 

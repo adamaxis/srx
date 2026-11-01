@@ -2,6 +2,7 @@ package.path = "decompilation/gameplay/scripts/?.lua;" ..
     "decompilation/gameplay/scripts/?/init.lua;" .. package.path
 
 local Json = require("json")
+local E = require("enums")
 local function load_json(path)
     local file = assert(io.open("decompilation/gameplay/" .. path .. ".json", "rb"))
     local source = file:read("*a")
@@ -63,6 +64,7 @@ local function new_game(choices, flags, funds, package_run_status, inventory)
         field_mode_flag_bit_6 = true,
         field_mode_flag_bit_7 = true,
         field_mode_flag_bit_20 = false,
+        [E.FieldModeFact.BORIS_FOLLOWUP_PENDING] = false,
         field_mode_effect_flag_bit_0 = false,
     }
     for name, value in pairs(flags or {}) do state[name] = value end
@@ -393,7 +395,7 @@ assert(outcome.type == "continue_in_place" and state.funds == 500 and
        state.state.field_dialogue_flag_bit_1 == true and
        state.state.field_mode_flag_bit_6 == false and
        state.state.field_mode_flag_bit_7 == false and
-       state.state.field_mode_flag_bit_20 == true and
+       state.state[E.FieldModeFact.BORIS_FOLLOWUP_PENDING] == true and
        state.seen_pages[2].text_key == "boris.greenhouse.page.information_prompt" and
        state.seen_pages[3].text_key == "boris.greenhouse.page.paid_information" and
        state.seen_pages[3].choice_ids[1] == "michael" and
@@ -438,7 +440,7 @@ assert(outcome.type == "source_boundary" and
        unavailable_host.sets == 0 and
        state.state.field_mode_flag_bit_6 == false and
        state.state.field_mode_flag_bit_7 == false and
-       state.state.field_mode_flag_bit_20 == true and
+       state.state[E.FieldModeFact.BORIS_FOLLOWUP_PENDING] == true and
        state.seen_pages[2].text_key ==
            "boris.greenhouse.page.paid_information_repeat" and
        state.seen_pages[2].choice_ids[2] == "david" and
@@ -457,7 +459,7 @@ assert(outcome.type == "continue_in_place" and strike_host.sets == 1 and
        strike_host.queued == 1 and
        state.state.field_mode_flag_bit_6 == false and
        state.state.field_mode_flag_bit_7 == false and
-       state.state.field_mode_flag_bit_20 == true and
+       state.state[E.FieldModeFact.BORIS_FOLLOWUP_PENDING] == true and
        state.seen_events[#state.seen_events].id == "david_brother" and
        state.seen_events[#state.seen_events].text_key ==
            "boris.greenhouse.page.david_brother")

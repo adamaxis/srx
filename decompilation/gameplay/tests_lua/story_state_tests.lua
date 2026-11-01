@@ -1,13 +1,16 @@
 -- story_state.lua and the Club Penumbra Mako callback against a host stub
 -- that mirrors FieldSceneRuntime's story.* / field.* primitives.
+local E = require("enums")
 local host
 local function reset(scene, heat, strike, busy)
     host = { scene = scene, heat_level = heat,
              strike_team_stage = strike, busy = busy or false,
              queued = {}, karma = 0, roster = true,
-             facts = { notebook_tip_flag_bit_49 = true,
-                       field_mode_flag_bit_20 = true,
-                       mako_club_lead = true } }
+             facts = {
+                 [E.NotebookTip.RENRAKU_SERPENT_LOCATION] = true,
+                 [E.FieldModeFact.BORIS_FOLLOWUP_PENDING] = true,
+                 [E.StoryFact.MAKO_CLUB_LEAD] = true,
+             } }
 end
 game = {
     state = setmetatable({}, {
@@ -71,16 +74,19 @@ local Club = require("club_penumbra")
 reset(5, 7, 0)
 check(Club.apply_mako_callback() == "applied", "mako applied")
 check(host.heat_level == 8 and host.karma == 2 and
-      host.strike_team_stage == 1 and host.facts.mako_defeated == true and
-      host.facts.mako_club_lead == false and
-      host.facts.field_mode_flag_bit_20 == false and host.facts.field_mode_flag_bit_24 == true and
-      host.facts.notebook_tip_flag_bit_49 == false, "mako effects")
+      host.strike_team_stage == 1 and
+      host.facts[E.StoryFact.MAKO_DEFEATED] == true and
+      host.facts[E.StoryFact.MAKO_CLUB_LEAD] == false and
+      host.facts[E.FieldModeFact.BORIS_FOLLOWUP_PENDING] == false and
+      host.facts[E.FieldModeFact.MAKO_RESULT_CALLBACK_APPLIED] == true and
+      host.facts[E.NotebookTip.RENRAKU_SERPENT_LOCATION] == false,
+      "mako effects")
 -- Missing roster: nothing changes.
 reset(5, 3, 0); host.roster = false
 check(Club.apply_mako_callback() == "service_unavailable" and host.heat_level == 3 and
-      host.facts.mako_defeated == nil, "no roster leaves state")
+      host.facts[E.StoryFact.MAKO_DEFEATED] == nil, "no roster leaves state")
 -- Unresolved facts: unavailable.
-reset(5, 3, 0); host.facts.notebook_tip_flag_bit_49 = nil
+reset(5, 3, 0); host.facts[E.NotebookTip.RENRAKU_SERPENT_LOCATION] = nil
 check(Club.apply_mako_callback() == "service_unavailable" and host.karma == 0, "unresolved facts")
 
 print(("story_state tests passed: %d checks"):format(checks))
@@ -89,12 +95,12 @@ print(("story_state tests passed: %d checks"):format(checks))
 local seen
 game.services.call = function(domain, op) seen = domain .. "." .. op; return "queued" end
 local Routes = require("story_activity_routes")
-assert(Routes.queue("club_penumbra_mako") == "queued" and
+assert(Routes.request("club_penumbra_mako") == "queued" and
        seen == "field.queue_activity_club_penumbra_mako", seen)
-assert(Routes.LISTS.club_penumbra_mako.consume_scene == nil and
-       Routes.LISTS.club_penumbra_mako.source_scene == nil and
-       Routes.LISTS.club_penumbra_mako.list == nil and
-       Routes.LISTS.club_penumbra_mako.transitions == nil,
+assert(Routes.ACTIVITIES.club_penumbra_mako.consume_scene == nil and
+       Routes.ACTIVITIES.club_penumbra_mako.source_scene == nil and
+       Routes.ACTIVITIES.club_penumbra_mako.list == nil and
+       Routes.ACTIVITIES.club_penumbra_mako.transitions == nil,
        "route activity leaked source selectors or a copied transition count")
 assert(type(Routes.complete_club_penumbra_mako) == "function")
 print("story_activity_routes tests passed")

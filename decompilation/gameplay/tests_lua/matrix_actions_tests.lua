@@ -6,7 +6,7 @@ local E = require("enums")
 local n, f = 0, 0
 local function ok(c, m) n = n + 1; if not c then f = f + 1; print("FAIL " .. m) end end
 local st = { alert = 0 }
-ok(NA.cancel_alert(st).redraw and st.alert == -1, "cancel"); ok(NA.cancel_alert(st).text == NA.TEXT.NO_ALERTS, "no alerts")
+ok(NA.cancel_alert(st).redraw and st.alert == -1, "cancel"); ok(NA.cancel_alert(st).message_id == NA.MESSAGE_ID.NO_ALERTS, "no alerts")
 local run = {
     status = E.MatrixRunStatus.ACTIVE,
     objective = { node = "cpu", action = E.MatrixRunAction.CRASH_SYSTEM },
@@ -42,14 +42,14 @@ run = {
     completion_recorded = false,
 }
 local run_node = { class = 5, file_class = "Security Files" }
-ok(NA.erase(run, run_node).text == NA.TEXT.ERASE_OBJECTIVE and
+ok(NA.erase(run, run_node).message_id == NA.MESSAGE_ID.ERASE_OBJECTIVE and
    run.status == E.MatrixRunStatus.COMPLETED, "erase objective")
-ok(NA.erase(run, run_node).text == NA.TEXT.ERASED, "erase plain")
+ok(NA.erase(run, run_node).message_id == NA.MESSAGE_ID.ERASED, "erase plain")
 local seq; local function rand(k) return table.remove(seq, 1) % k end
 seq = { 9 }
 ok(NA.search({ status = E.MatrixRunStatus.INACTIVE }, { class = 2 },
-    { int = 3, computer = 3 }, { sensor = 3 }, nil, rand).text ==
-    NA.TEXT.NOTHING, "nothing")
+    { int = 3, computer = 3 }, { sensor = 3 }, nil, rand).message_id ==
+    NA.MESSAGE_ID.NOTHING, "nothing")
 seq = { 0, 3, 2 }
 local s = NA.search({ status = E.MatrixRunStatus.INACTIVE }, { class = 2 },
     { int = 3, computer = 3 }, { sensor = 3 }, nil, rand)
@@ -58,7 +58,7 @@ local rec = { files = {} }; for i = 0, 4 do rec.files[i] = { id = -1, size = 0, 
 local fs = DECK.free_storage; DECK.free_storage = function() return 100 end
 seq = { 6, 3 }; local k = NA.store(rec, {}, { class = 2, colour = 4 }, s.file, rand)
 ok(k == 0 and rec.files[0].data_value == 40 and rec.files[0].id == 13, "store red: table[9]=8 * 5")
-DECK.free_storage = function() return 10 end; local k2, t2 = NA.store(rec, {}, {}, s.file, rand); ok(k2 == nil and t2 == NA.TEXT.NO_STORAGE, "no storage (sr-refactor API: nil, text 0xE383D)")
+DECK.free_storage = function() return 10 end; local k2, t2 = NA.store(rec, {}, {}, s.file, rand); ok(k2 == nil and t2 == NA.MESSAGE_ID.NO_STORAGE, "no storage (semantic message ID)")
 DECK.free_storage = fs
 local deck = { persona = 4, ratings = { [4] = 3 } }; local tn0
 ok(PR.medic(deck, function(d, tn) tn0 = tn; return 3 end).healed == 3 and deck.persona == 7 and tn0 == 6, "medic")

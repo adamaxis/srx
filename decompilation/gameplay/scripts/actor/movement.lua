@@ -128,6 +128,9 @@ local function projectile_movement_snapshot(context, state)
                 end
                 result.velocity = { x = step.x, y = step.y }
                 result.remaining_flight_range = BURST_FOLLOWUP_RANGE
+                -- ROM 0x14F8E installs selector 0x0014 for the restarted
+                -- finite list, clearing the completed-list bit.
+                result.animation_finished = false
                 result.animation_action = "restart"
                 result.phase = "flying"
                 result.outcome = projectile.outcome.burst_followup_restarted
@@ -173,6 +176,9 @@ local function projectile_movement_snapshot(context, state)
             result.impact_occurred = true
             result.phase = "awaiting_animation"
             result.animation_action = "stop"
+            -- ROM 0x14E32 clears the finite-list selector when it stops a
+            -- projectile, so the semantic completion flag must also reset.
+            result.animation_finished = false
             result.velocity = { x = 0, y = 0 }
             if outside_bounds_marker then
                 result.phase = "inactive"
@@ -217,6 +223,8 @@ local function projectile_movement_snapshot(context, state)
             result.impact_occurred = true
             result.phase = "awaiting_animation"
             result.animation_action = "stop"
+            -- The terminal contact path also clears the selector at 0x14E32.
+            result.animation_finished = false
             result.velocity = { x = 0, y = 0 }
             if outside_bounds_marker then
                 result.phase = "inactive"
