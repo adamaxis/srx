@@ -4714,6 +4714,7 @@ int run_field_barrier_collision_qa(
         return 3;
     }
 
+    std::int16_t last_cast_gate = -1;
     const auto cast_barrier = [&](const std::uint8_t action_code,
                                   const BarrierCenter& center,
                                   const std::uint16_t heading) {
@@ -4746,6 +4747,7 @@ int run_field_barrier_collision_qa(
         field_scene.set_source_random_seed_for_dump(0xFFFFU);
         field_scene.set_controller_port_byte(0x40U); // focused-window A input
         field_scene.advance_frame();
+        last_cast_gate = runner.animation_action_gate;
         const bool started =
             field_scene.field_barrier_collision_overlay_active_for_dump();
         field_scene.set_controller_port_byte(0U);
@@ -4802,6 +4804,62 @@ int run_field_barrier_collision_qa(
         std::cerr << "Field barrier collision QA: Super Barrier cast did not "
                      "install five 0x7F cells and block the centre probe; "
                      "failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    // ROM 0xAF7C/0xAFAE use normal 0xABFC mode. With Quickness 3,
+    // Intelligence 2, and no +0x90 bonus, the gate is 102; 0xAD1A accepts
+    // the next action only after it becomes negative on pass 103. [C]
+    constexpr std::int16_t kExpectedBarrierCastGate = 102;
+    auto& first_cast_runner = field_scene.active_runner_record();
+    if (first_cast_runner.attributes[1U] != 3U ||
+        first_cast_runner.attributes[4U] != 2U ||
+        first_cast_runner.cyberware_flags != 0U ||
+        last_cast_gate != kExpectedBarrierCastGate ||
+        first_cast_runner.animation_action_gate !=
+            kExpectedBarrierCastGate - 1) {
+        std::cerr << "Field barrier collision QA: cast did not install the ROM 102-frame action gate"
+                  << " gate_at_cast=" << last_cast_gate
+                  << " after_release="
+                  << first_cast_runner.animation_action_gate << '\n';
+        return 3;
+    }
+    std::int32_t repeated_cast_after = -1;
+    for (std::int32_t frame = 1;
+         frame <= kExpectedBarrierCastGate; ++frame) {
+        field_scene.set_controller_port_byte(0x40U);
+        field_scene.advance_frame();
+        const auto current_gate = first_cast_runner.animation_action_gate;
+        if (frame < kExpectedBarrierCastGate) {
+            if (current_gate != kExpectedBarrierCastGate - 1 - frame) {
+                std::cerr << "Field barrier collision QA: held cast gate changed before its source expiry"
+                          << " frame=" << frame << " gate="
+                          << current_gate << '\n';
+                return 3;
+            }
+        } else if (current_gate == kExpectedBarrierCastGate) {
+            repeated_cast_after = frame;
+        }
+    }
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    const auto cast_move_start = field_scene.field_entity_world_position();
+    for (std::int32_t frame = 0; frame < 8; ++frame) {
+        field_scene.set_controller_port_byte(0x08U);
+        field_scene.advance_frame();
+    }
+    const auto cast_move_end = field_scene.field_entity_world_position();
+    field_scene.set_controller_port_byte(0U);
+    if (repeated_cast_after != kExpectedBarrierCastGate ||
+        first_cast_runner.animation_action_gate <= 0 ||
+        (cast_move_end.x == cast_move_start.x &&
+         cast_move_end.y == cast_move_start.y)) {
+        std::cerr << "Field barrier collision QA: spell action did not repeat on pass 103 or movement stopped during its gate"
+                  << " repeat_after=" << repeated_cast_after
+                  << " gate=" << first_cast_runner.animation_action_gate
+                  << " from=" << cast_move_start.x << ','
+                  << cast_move_start.y << " to=" << cast_move_end.x << ','
+                  << cast_move_end.y << '\n';
         return 3;
     }
 
@@ -45488,6 +45546,23 @@ int main(int argc, char** argv) {
                     std::cerr << "field player action dump: source Joshua record does not carry the active action flags\n";
                     return 3;
                 }
+                // ROM 0xD7EA reads only +0x90 bits 12-14 for delay bonuses.
+                // This source runner has +0x78/+0x7B=3/2 and +0x90=0x0004,
+                // so 0xABFC computes 102 before item 1's half mode gives 51. [C]
+                constexpr std::int16_t kExpectedPistolActionGate = 51;
+                if (fire_runner.attributes[1U] != 3U ||
+                    fire_runner.attributes[4U] != 2U ||
+                    fire_runner.cyberware_flags != 0x0004U) {
+                    std::cerr << "field player action dump: source Joshua delay inputs changed"
+                              << " +0x78=" << static_cast<unsigned>(
+                                     fire_runner.attributes[1U])
+                              << " +0x7B=" << static_cast<unsigned>(
+                                     fire_runner.attributes[4U])
+                              << " +0x90=0x" << std::hex
+                              << fire_runner.cyberware_flags << std::dec
+                              << '\n';
+                    return 3;
+                }
                 fire_runner.inventory_item_codes[0] = 1U;
                 fire_runner.equipped_inventory_slot = 0;
                 fire_runner.equipped_item_code = 1U;
@@ -45545,7 +45620,8 @@ int main(int argc, char** argv) {
                     weapon_fire_scene.active_runner_record().ammo_clips !=
                         2U ||
                     weapon_fire_scene.active_runner_record()
-                            .animation_action_gate <= 0 ||
+                            .animation_action_gate !=
+                                kExpectedPistolActionGate ||
                     !weapon_fire_scene.field_entity_attack_pose_for_dump() ||
                     weapon_fire_scene.field_entity_animation_selector_for_dump() !=
                         0x0040U ||
@@ -45569,7 +45645,7 @@ int main(int argc, char** argv) {
                     weapon_fire_scene.hotel_menu_open() ||
                     weapon_fire_scene.field_interaction_open() ||
                     !fire_attack_saved) {
-                    std::cerr << "field player action dump: live A input did not consume one loaded round, allocate the source projectile pair, show directional frame 0, select C042, update the HUD, and request source sound 0x1C\n";
+                    std::cerr << "field player action dump: live A input did not fire with the ROM 51-frame gate, allocate the source projectile pair, show directional frame 0, select C042, update the HUD, and request source sound 0x1C\n";
                     return 3;
                 }
                 weapon_fire_scene.set_controller_port_byte(0U);

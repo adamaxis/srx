@@ -75,6 +75,23 @@ assert(Delay.player_weapon_action_delay(0, 0, 0, "roomsweeper",
 assert(Delay.player_weapon_action_delay(0, 0, 0, "streetline",
        use.RELOAD_ACTION) == E.ActionDelay.BASE)
 
+-- The live player bridge passes source +0x90 capability flags. ROM 0xD7EA
+-- ignores unrelated low bits, then gives bits 12/13/14 priority in order.
+local capability = E.ActionDelayCapability
+assert(Delay.player_weapon_action_delay(3, 2, 0x0004, "warhawk",
+           use.ATTACK) == 51,
+       "unrelated +0x90 bits changed the source pistol delay")
+assert(Delay.player_weapon_action_delay(3, 2, capability.FACTOR_BONUS_4,
+           "warhawk", use.ATTACK) == 43)
+assert(Delay.player_weapon_action_delay(3, 2, capability.FACTOR_BONUS_8,
+           "warhawk", use.ATTACK) == 35)
+assert(Delay.player_weapon_action_delay(3, 2, capability.FACTOR_BONUS_12,
+           "warhawk", use.ATTACK) == 27)
+assert(Delay.player_weapon_action_delay(3, 2,
+           capability.FACTOR_BONUS_4 + capability.FACTOR_BONUS_8,
+           "warhawk", use.ATTACK) == 43,
+       "ROM +0x90 capability priority changed")
+
 -- 0x14226 selects D0=2 only for codes 5, 11, 12; the weapon rows are the
 -- single source, so check that exactly those rows carry the double scale. [C]
 local Weapons = require("data.weapons")

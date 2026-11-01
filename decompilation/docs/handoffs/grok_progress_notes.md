@@ -3,7 +3,7 @@
 This file is kept in the repo so the notes survive if the box is wiped. The box's /workspace/shadowrun/out was lost on 2026-10-31.
 Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 
-## Current state (2026-11-01 10:27 CST)
+## Current state (2026-11-01 11:23 CST)
 - Remote port-fixes: see latest Fixes entry. QA_GREEN (ctest all pass, Lua suites pass). Working playtest_2026-11-01 items one Luna run at a time.
 - In progress: Luna (codex exec, gpt-6-luna, max effort, fast tier off) is fixing aa3b2cb7 forward. Brief is /workspace/briefs/aa3b.md, the earlier partial work is /workspace/briefs/aa3b_wip.diff and stash 'aa3b-wip'.
 - Box toolchain: `. /workspace/tcenv.sh` (conda env /workspace/mamba/envs/srx). Build dirs are /workspace/b2 (Qt) and /workspace/b2n (non-Qt). Full QA is /workspace/qa.sh, which prints QA_GREEN.
@@ -35,6 +35,7 @@ Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 - run offers keep the ROM location code beside the semantic location, and active_route_ids expose the selected codes from ROM 0xF3E80..0xF3EBB. Fixes field_dialogue_runtime (2 -> 1), no new.
 - Mitsuhama after-hours QA route takes one more south sample: ROM 0xEBB0..0xEC44 proximity is half-open [p-0x40, p+0x40), so y=0x40C0 vs actor 0x4100 is outside. 1 -> 0 fails.
 - playtest #26: Down the runner when physical or mental reaches zero. ROM 0xA912 tests +0x9C/+0x4C, 0xAA4C->0xB330 down pose, 0xABB6/0x1DDC6 party-wipe timer -> 0xC64C
+- playtest #7: Decode +0x90 capability flags in player weapon delay. Evidence: ROM 0xABFC/0xD7EA/0xAD1A/0xB39A..0xB3E4, measured headless pistol gate 51 / cast 102
 
 ## Open work, in order
 1. Get ctest green again by fixing aa3b2cb7 forward.

@@ -4,6 +4,8 @@ local Weapons = require("data.weapons")
 
 local M = {}
 local Mode = E.ActionDelayMode
+local Modifier = E.ActionDelayModifier
+local Capability = E.ActionDelayCapability
 local Use = {
     ATTACK = "attack",
     RELOAD_ACTION = "reload_action",
@@ -88,16 +90,39 @@ local function weapon_mode(weapon_id, use)
     return nil
 end
 
--- Lua selects the weapon-specific mode from the named runner facts and calculates
--- the action delay from the supplied semantic modifier. [C]
+local function has_delay_capability(capability_flags, flag)
+    return math.floor(capability_flags / flag) % 2 == 1
+end
+
+local function player_delay_modifier(capability_flags)
+    -- ROM 0xD7EA reads +0x90 and checks bits 12, 13, then 14. The player
+    -- bridge supplies that source word, so convert it here before passing a
+    -- semantic modifier to the shared calculation. Lower bits are unrelated
+    -- flags and do not change the action delay. [C]
+    capability_flags = capability_flags or 0
+    if has_delay_capability(capability_flags,
+                             Capability.FACTOR_BONUS_4) then
+        return Modifier.FACTOR_BONUS_4
+    elseif has_delay_capability(capability_flags,
+                                Capability.FACTOR_BONUS_8) then
+        return Modifier.FACTOR_BONUS_8
+    elseif has_delay_capability(capability_flags,
+                                Capability.FACTOR_BONUS_12) then
+        return Modifier.FACTOR_BONUS_12
+    end
+    return Modifier.NONE
+end
+
+-- Lua selects the weapon-specific mode and translates the source capability
+-- flags into the semantic modifier used by the shared calculation. [C]
 function M.player_weapon_action_delay(primary_attribute, secondary_attribute,
-                                      action_delay_modifier, weapon_id, use)
+                                      capability_flags, weapon_id, use)
     local mode = weapon_mode(weapon_id, use)
     if mode == nil then
         return nil
     end
     return M.calculate(primary_attribute, secondary_attribute,
-                       action_delay_modifier, mode)
+                       player_delay_modifier(capability_flags), mode)
 end
 
 return M

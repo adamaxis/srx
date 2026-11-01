@@ -98,6 +98,11 @@ E.ActionDelayModifier = {
     NONE = 0, FACTOR_BONUS_4 = 4, FACTOR_BONUS_8 = 8,
     FACTOR_BONUS_12 = 12,
 }
+E.ActionDelayCapability = {
+    FACTOR_BONUS_4 = 0x1000,
+    FACTOR_BONUS_8 = 0x2000,
+    FACTOR_BONUS_12 = 0x4000,
+} -- +0x90 flags scanned by 0xD7EA in that priority order [C]
 
 -- Stable host presentation-profile IDs. Source sprite selectors are translated
 -- in the native adapter and never become Lua actor state.
