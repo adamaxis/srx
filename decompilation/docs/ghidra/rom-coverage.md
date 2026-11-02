@@ -4,15 +4,15 @@ This is a structural source map, not a claim of behavioral ROM fidelity. A mappe
 
 The 66-entry historical B2 triage is recorded in [rom-coverage-triage.md](rom-coverage-triage.md) and [rom-coverage-triage.tsv](rom-coverage-triage.tsv). That ledger distinguishes port owners, host or asset replacements, and routines filed as missing bugs.
 
-Inventory: the union of `decompilation/docs/ghidra/decompiled-function-status.tsv` and `decompilation/export/functions.tsv`. The status ledger has 1077 rows; after address deduplication and including any export-only entries, the inventory contains **1074 routine entries** (911 unique Ghidra function exports). Ghidra names and sizes take precedence where the export list has the same address.
+Inventory: the union of `decompilation/docs/ghidra/decompiled-function-status.tsv` and `decompilation/export/functions.tsv`. The status ledger has 1083 rows; after address deduplication and including any export-only entries, the inventory contains **1080 routine entries** (911 unique Ghidra function exports). Ghidra names and sizes take precedence where the export list has the same address.
 
-Mapped: **1074**. Unmapped backlog: **0**. Committed mapped-routine baseline: **1074**.
+Mapped: **1080**. Unmapped backlog: **0**. Committed mapped-routine baseline: **1080**.
 
 | Inventory category | Entries | Mapped | Unmapped |
 |---|---:|---:|---:|
 | Ghidra code function exports | 911 | 911 | 0 |
-| Status-ledger-only addresses | 163 | 163 | 0 |
-| Combined unique addresses | 1074 | 1074 | 0 |
+| Status-ledger-only addresses | 169 | 169 | 0 |
+| Combined unique addresses | 1080 | 1080 | 0 |
 
 The `shadowrun_rom_coverage` CTest validates the current mapping references and fails if a routine in the baseline loses its mapping. Existing unmapped entries are reported but do not fail CTest. Run `python3 decompilation/ghidra_conversion/tools/rom_coverage.py --write-report` after updating the map.
 
@@ -21,7 +21,7 @@ The `shadowrun_rom_coverage` CTest validates the current mapping references and 
 | Status | Routines |
 |---|---:|
 | defended | 17 |
-| partial | 1056 |
+| partial | 1062 |
 | unclassified | 1 |
 
 ## Status ledger address conflicts
@@ -203,6 +203,12 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x4E38` | advance_entity_primary_timer | 44 | decompilation/ghidra_conversion/src/entities/entity_timing_conversion.cpp#ghidra_conversion::advance_entity_primary_timer | port |
 | `0x4E64` | advance_entity_secondary_timer | 34 | decompilation/ghidra_conversion/src/entities/entity_timing_conversion.cpp#ghidra_conversion::advance_entity_secondary_timer | port |
 | `0x4E86` | advance_effect_animation | 156 | decompilation/gameplay/scripts/actor/heartbeat.lua#ActorAI.heartbeat | port |
+| `0x4FE2` | spell effect callback code 9 | — | decompilation/gameplay/scripts/magic.lua#actor_effect_profile;decompilation/gameplay/scripts/actor/actions.lua#advance_spell_effect;decompilation/gameplay/scripts/combat.lua#resolve_spell_impact | port |
+| `0x508A` | spell effect callback code 8 | — | decompilation/gameplay/scripts/magic.lua#actor_effect_profile;decompilation/gameplay/scripts/actor/actions.lua#advance_spell_effect;decompilation/gameplay/scripts/combat.lua#resolve_spell_impact | port |
+| `0x5152` | spell effect callback code 2 | — | decompilation/gameplay/scripts/actor/actions.lua#advance_spell_effect;decompilation/gameplay/scripts/combat.lua#resolve_spell_impact | port |
+| `0x521E` | spell effect callback code 1 | — | decompilation/gameplay/scripts/magic.lua#actor_effect_profile;decompilation/gameplay/scripts/actor/actions.lua#advance_spell_effect;decompilation/gameplay/scripts/combat.lua#resolve_spell_impact | port |
+| `0x52BE` | sleep effect callback wrapper | — | decompilation/gameplay/scripts/actor/actions.lua#advance_spell_effect | port |
+| `0x5322` | sleep effect callback code 5 | — | decompilation/gameplay/scripts/actor/actions.lua#advance_spell_effect;decompilation/gameplay/scripts/combat.lua#resolve_spell_impact | port |
 | `0x53C4` | run_effect_variant_a | 164 | decompilation/ghidra_conversion/src/world/world_entity_conversion.cpp#ghidra_conversion::run_effect_variant_a | port |
 | `0x5468` | clone_entity_spawn_variant_a | 44 | decompilation/ghidra_conversion/src/field/field_entity_render_batch_conversion.cpp#ghidra_conversion::clone_entity_spawn_variant_a | port |
 | `0x5494` | advance_jitter_effect | 234 | decompilation/ghidra_conversion/src/world/world_entity_conversion.cpp#ghidra_conversion::advance_jitter_effect | port |

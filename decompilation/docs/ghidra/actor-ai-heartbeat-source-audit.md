@@ -656,19 +656,22 @@ after accepting the slot, then separately calls the setup handler from
 `0x4964`. The render handlers are reached through the `0x490A` table:
 `0x521E` (code 1) reloads the target countdown to 1 and advances four phases;
 `0x5152` (code 2) reloads 4 and advances six phases; `0x52BE` dispatches to
-`0x5322` (code 5), which reloads 6 and advances nine phases; `0x4FE2` (code 9)
-reloads 4 and advances six phases. Codes 1, 2, and 9 call shared delayed
-callback `0x55B78`; code 5 instead uses its terminal handler to advance the
-effect to another record marked by the earlier target scan. From initial phase
-zero, these handlers complete on target render heartbeat 12, 31, 62, and 31
-respectively; their visible phase counts are 11, 30, 61, and 30. These are
-source-service counts, not elapsed seconds.
+`0x5322` (code 5), which reloads 6 and advances nine phases; `0x508A` (code 8)
+reloads 1 and advances three phases; and `0x4FE2` (code 9) reloads 4 and
+advances six phases. From initial phase zero, these handlers complete on
+target render heartbeats 12, 31, 62, 10, and 31 respectively; their visible
+phase counts are 11, 30, 61, 9, and 30. These are source-service counts, not
+elapsed seconds. Codes 1, 2, 8, and 9 call shared delayed callback `0x55B78`;
+code 5 calls it at phase completion and then scans for the next marked target.
 
 The handler phase pointer tables are `0x58B6` for code 1, `0x589E` for code 2,
-`0x5876` for code 5, and `0x512A` for code 9. Their effect palette attributes
-are `0x2000`, `0x2000`, `0x6000`, and `0x4000`. The offline importer resolves
-these source references together with each scene palette and exports stable
-named phase images; runtime rendering does not walk the ROM tables.
+`0x5876` for code 5, `0x5142` for code 8, and `0x512A` for code 9. Their
+effect palette attributes are `0x2000`, `0x2000`, `0x6000`, `0x4000`, and
+`0x4000`. The offline importer resolves these source references together with
+each scene palette and exports stable named phase images; runtime rendering
+does not walk the ROM tables. The current tracked asset set has no `mana-zap`
+phase images, so this callback's new state behavior does not claim visual
+coverage.
 
 ### Scene-55 Thon period path
 
@@ -707,11 +710,33 @@ passes. Script QA checks two in-range targets, strict exclusion at `0x500`,
 inactive/effect-locked records, and order.
 
 Code 2's `0x518E` branch skips `0x55B78` only if current `FFE186` is 3 and the
-caster's current source `+0x10` bit 3 is clear. The typed context now carries
-`FFE186`, and the render target finds the live caster record in its candidate
-facts; if that record is unavailable, Lua retains the source flags captured at
-dispatch. QA exercises both the skipped and called branches. The separate
-setup callback table at `0x4964` remains an explicit boundary.
+target record's `+0x10` bit 3 is clear (`btst #3,+0x10(A0)` at `0x519A`). That
+branch directly clears target physical meter `+0x4C`; `0x51C8..0x51E4` then
+routes `+0x0E==0xF` through `0xAFF2` and otherwise selects `0xB0AC` when the
+physical meter is zero. The host translates the target's source `+0x10` bit 3
+to `combatant.actor_facts.lifecycle.ai_runner`; Lua uses that typed target fact
+to select the direct clear without a random roll and preserves the +0x0E
+death-pose exclusion. If the field-mode or target-bit condition differs, it
+resolves through `0x55B78`. The separate setup callback table at `0x4964`
+remains an explicit boundary.
+
+### E1 callback owners and measured branches
+
+The owner map below separates the source callback branches from their Lua or
+C++ port owners. ROM timings and meters are measured in the seeded emulator
+capture `e1_emulator_callback_capture.tsv`; the code-13 clone sequence is in
+`e1_variant_a_capture.tsv`. The focused Lua regression keeps the matching code
+1/9 paths and checks the missing code 2/5/8 behavior.
+
+| ROM entry | Source branch | Port owner | Measurement / coverage |
+|---|---|---|---|
+| `0x4FE2` code 9 | Six phases; `0x55B78`; physical zero selects `0xB0E4` | `gameplay/scripts/magic.lua::Magic.actor_effect_profile`; `gameplay/scripts/actor/actions.lua::advance_spell_effect`; `gameplay/scripts/combat.lua::Combat.resolve_spell_impact` | 31 heartbeats; physical 3→0, mental 6, final RNG `0x20E6`; Lua regression keeps this branch matched |
+| `0x508A` code 8 | Three phases; `0x55B78`; physical zero selects `0xB0E4` | Same Lua profile/heartbeat/impact owners | 10 heartbeats; physical 3→0, mental 6, final RNG `0x20E6`; profile was absent before E1 |
+| `0x5152` code 2 | Six phases; mode-3/target-bit direct-clear branch or shared result branch; +0x0E exception | `gameplay/scripts/actor/actions.lua::advance_spell_effect`; `gameplay/scripts/combat.lua::Combat.resolve_spell_impact` | Captured direct branch: 31 heartbeats, physical 3→0, mental 6, RNG unchanged at `0x0001`; Lua regression covers direct clear, target bit set, and +0x0E pose exclusion |
+| `0x521E` code 1 | Four phases; `0x55B78`; physical zero selects `0xB0AC` | Lua profile/heartbeat/impact owners above | 12 heartbeats; physical 3→0, mental 6, final RNG `0x3E62`; Lua regression keeps this branch matched |
+| `0x52BE` | Calls code-5 callback then scans ten records in source order | `gameplay/scripts/actor/actions.lua::advance_spell_effect` | Its wrapper owns sequential target transfer and retains the first active unlocked marker |
+| `0x5322` code 5 | Nine phases; `0x55B78`; then clears/advances sleep target marker | `gameplay/scripts/actor/actions.lua::advance_spell_effect`; `gameplay/scripts/combat.lua::Combat.resolve_spell_impact` | 62 heartbeats; physical 3, mental 6→0, next marked actor gets countdown 5; Lua regression now asserts impact and fan-out |
+| `0x53C4` code 13 | Gated jitter phase, scan active unlocked code-13 records, expire or clone auxiliary effect | `ghidra_conversion/src/world/world_entity_conversion.cpp::run_effect_variant_a`; `ghidra_conversion/src/field/field_entity_render_batch_conversion.cpp::clone_entity_spawn_variant_a` | Seeded source capture clones slot 7 on heartbeat 20 with countdown 5, phase 0, slot 3, caster link `FF0100`, and phase gate 4; the conversion test asserts the same state |
 
 The source event bytes at `0x4946` are `0x32`, `0x34`, `0x37`, and `0x35` for
 the four encounter spell profiles. Generic action code 12 selects event

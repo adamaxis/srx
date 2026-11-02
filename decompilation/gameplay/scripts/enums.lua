@@ -254,6 +254,12 @@ E.SpellActionCode = {
     CONFUSION = 13,       -- +0x57=0x0D / 0x1589C [C]
     BARRIER = 14,         -- +0x57=0x0E / 0x15830 [C]
 }
+E.SpellEffectCallbackMode = {
+    DIRECT_PHYSICAL_CLEAR = "direct_physical_clear",
+} -- 0x5152's FFE186==3 target-meter branch bypasses 0x55B78 [C]
+E.SpellEffectCallbackTargetFact = {
+    FLAME_BOLT_DIRECT_CLEAR_SUPPRESS = "ai_runner", -- target +0x10 bit 3 at 0x519A [C]
+}
 E.SpellEffectKind = {
     NONE = 0,              -- 0x00 / 0x1584C returns when +0xA2 is zero [C]
     FIELD_BARRIER = 1,     -- 0x01 / 0x15830 -> 0x49A2 [C]

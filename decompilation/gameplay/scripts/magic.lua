@@ -95,16 +95,19 @@ local action_effect_audio_event_by_id = {
 -- target record countdown to five; these entries describe only the handler
 -- cadence and presentation profile that follow that source handoff.
 local actor_effect_profile_by_id = {
-    flame_dart = { id = "flame-dart", repeat_countdown = 1, phase_count = 4,
-            palette_line = 1 },
-    flame_bolt = { id = "flame-bolt", repeat_countdown = 4, phase_count = 6,
-            palette_line = 1 },
-    sleep = { id = "sleep", repeat_countdown = 6, phase_count = 9,
-            palette_line = 3 },
-    mana_blast = { id = "mana-blast", repeat_countdown = 4, phase_count = 6,
-            palette_line = 2 },
-    heal_wounds = { id = "heal-wounds", repeat_countdown = 4, phase_count = 16,
-             palette_line = 3 },
+    flame_dart = { id = "flame-dart", action_code = E.SpellActionCode.FLAME_DART,
+            repeat_countdown = 1, phase_count = 4, palette_line = 1 },
+    flame_bolt = { id = "flame-bolt", action_code = E.SpellActionCode.FLAME_BOLT,
+            repeat_countdown = 4, phase_count = 6, palette_line = 1 },
+    sleep = { id = "sleep", action_code = E.SpellActionCode.SLEEP,
+            repeat_countdown = 6, phase_count = 9, palette_line = 3 },
+    mana_zap = { id = "mana-zap", action_code = E.SpellActionCode.MANA_ZAP,
+            repeat_countdown = 1, phase_count = 3, palette_line = 1 },
+    mana_blast = { id = "mana-blast", action_code = E.SpellActionCode.MANA_BLAST,
+            repeat_countdown = 4, phase_count = 6, palette_line = 2 },
+    heal_wounds = { id = "heal-wounds",
+            action_code = E.SpellActionCode.HEAL_WOUNDS,
+            repeat_countdown = 4, phase_count = 16, palette_line = 3 },
 }
 
 -- 0x15830 branches to 0x49A2 for these two action codes before it reads
@@ -180,6 +183,7 @@ function Magic.actor_effect_profile(spell_id)
     end
     return {
         id = profile.id,
+        action_code = profile.action_code,
         initial_countdown = 5,
         repeat_countdown = profile.repeat_countdown,
         phase_count = profile.phase_count,

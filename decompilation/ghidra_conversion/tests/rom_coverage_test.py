@@ -165,6 +165,34 @@ class RomCoverageB2OwnerTest(unittest.TestCase):
                 "decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp",
                 "initialize_default_field_actors",
             ),
+            "0x4FE2": (
+                "decompilation/gameplay/scripts/actor/actions.lua",
+                "advance_spell_effect",
+            ),
+            "0x508A": (
+                "decompilation/gameplay/scripts/magic.lua",
+                "actor_effect_profile",
+            ),
+            "0x5152": (
+                "decompilation/gameplay/scripts/combat.lua",
+                "resolve_spell_impact",
+            ),
+            "0x521E": (
+                "decompilation/gameplay/scripts/actor/actions.lua",
+                "advance_spell_effect",
+            ),
+            "0x52BE": (
+                "decompilation/gameplay/scripts/actor/actions.lua",
+                "advance_spell_effect",
+            ),
+            "0x5322": (
+                "decompilation/gameplay/scripts/combat.lua",
+                "resolve_spell_impact",
+            ),
+            "0x53C4": (
+                "decompilation/ghidra_conversion/src/world/world_entity_conversion.cpp",
+                "run_effect_variant_a",
+            ),
         }
         for address, (path, owner) in expected.items():
             with self.subTest(address=address):

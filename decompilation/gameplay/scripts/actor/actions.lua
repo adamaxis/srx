@@ -15,6 +15,7 @@ R.spell_effect_scans_by_actor_id = R.spell_effect_scans_by_actor_id or {}
 local pending_spell_effects_by_actor_id = R.pending_spell_effects_by_actor_id
 local spell_effect_scans_by_actor_id = R.spell_effect_scans_by_actor_id
 local HitSpark = E.HitSpark
+local SpellActionCode = E.SpellActionCode
 local Animator = R.Animator   -- from actor/animator.lua
 
 local source_action_delay = Delay.actor_action_delay
@@ -407,6 +408,7 @@ function R.queue_spell_effect(state, context, target, resolution)
         end
         local pending = {
             spell_id = context.action_spell_id,
+            action_code = effect_profile.action_code,
             successes = resolution.successes,
             target_id = target.id,
             effect_slot = resolution.spell_effect_slot,
@@ -427,7 +429,7 @@ function R.queue_spell_effect(state, context, target, resolution)
         -- ROM 0x1597E's type-5 scan marks every live record under the 0x500
         -- route-cost bound. 0x5322 later consumes those marks one record at
         -- a time as the preceding sleep animation finishes.
-        if context.action_spell_id == "sleep" and
+        if effect_profile.action_code == SpellActionCode.SLEEP and
            type(context.ai_target_candidates) == "table" then
             for _, candidate in ipairs(context.ai_target_candidates) do
                 if type(candidate) == "table" and
@@ -740,23 +742,23 @@ local function advance_spell_effect(state, context)
         state.spell_effect_phase = pending.phase
         if pending.phase >= pending.phase_count then
             local combat = game.modules.combat
-            local caster_is_ai_runner = pending.caster_is_ai_runner
-            if type(context.ai_target_candidates) == "table" then
-                for _, candidate in ipairs(context.ai_target_candidates) do
-                    if type(candidate) == "table" and
-                       candidate.id == pending.caster_actor_id and
-                       type(candidate.actor_facts) == "table" then
-                        caster_is_ai_runner =
-                            candidate.actor_facts.lifecycle.ai_runner == true
-                        break
-                    end
-                end
-            end
-            local skip_delayed_callback = pending.spell_id == "flame_bolt" and
+            local target_lifecycle = type(context.combatant) == "table" and
+                type(context.combatant.actor_facts) == "table" and
+                context.combatant.actor_facts.lifecycle or nil
+            local flame_bolt_direct_clear_suppressed =
+                type(target_lifecycle) == "table" and
+                target_lifecycle[E.SpellEffectCallbackTargetFact.
+                    FLAME_BOLT_DIRECT_CLEAR_SUPPRESS] == true
+            local flame_bolt_direct_clear =
+                pending.action_code == SpellActionCode.FLAME_BOLT and
                 context.final_battle_active == true and
-                not caster_is_ai_runner
-            if pending.spell_id ~= "sleep" and not skip_delayed_callback and
-               type(combat) == "table" and
+                type(target_lifecycle) == "table" and
+                not flame_bolt_direct_clear_suppressed
+            if flame_bolt_direct_clear then
+                pending.callback_mode =
+                    E.SpellEffectCallbackMode.DIRECT_PHYSICAL_CLEAR
+            end
+            if type(combat) == "table" and
                type(combat.resolve_spell_impact) == "function" and
                type(context.combatant) == "table" and
                type(pending.caster_combatant) == "table" then
@@ -782,7 +784,7 @@ local function advance_spell_effect(state, context)
             state.spell_effect_pending = nil
             state.spell_effect_completed = true
 
-            if pending.spell_id == "sleep" then
+            if pending.action_code == SpellActionCode.SLEEP then
                 clear_spell_scan_marker(pending.target_id)
                 local candidates = type(context.ai_target_candidates) == "table"
                     and context.ai_target_candidates or
@@ -800,6 +802,7 @@ local function advance_spell_effect(state, context)
                            marker ~= nil then
                             local next_pending = {
                                 spell_id = pending.spell_id,
+                                action_code = pending.action_code,
                                 successes = pending.successes,
                                 target_id = candidate.id,
                                 effect_slot = pending.effect_slot,

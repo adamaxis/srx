@@ -12786,6 +12786,9 @@ GameScriptRuntime::actor_heartbeat(
         if (spell_id == "flame_bolt" || spell_id == "mana_blast") {
             return std::uint8_t{6U};
         }
+        if (spell_id == "mana_zap") {
+            return std::uint8_t{3U};
+        }
         if (spell_id == "sleep") {
             return std::uint8_t{9U};
         }
@@ -13428,8 +13431,12 @@ GameScriptRuntime::actor_heartbeat(
                 ? context.combatant->source_flags
                 : static_cast<std::uint8_t>(0U));
 
+        const bool target_identity_matches =
+            context.instance_id == resolution.target_id ||
+            (!context.controlled_party_member_id.empty() &&
+             context.controlled_party_member_id == resolution.target_id);
         const bool target_context_matches = context.combatant.has_value() &&
-            context.instance_id == resolution.target_id &&
+            target_identity_matches &&
             context.source_record_slot.has_value() &&
             *context.source_record_slot == resolution.target_record_slot &&
             context.combatant->record_type == resolution.target_record_type &&

@@ -23,28 +23,30 @@ and phase 0 at `+0x03`. It calls the sound service with the event indexed from
 table at `0x490A` selects the target render handler. The delayed callback is
 `0x55B78`.
 
-The four encounter clocks plus the code-12 source clock read directly from ROM
-are:
+The four encounter clocks plus the code-8 and code-12 callback clocks read
+directly from ROM are:
 
 | Action code | Actor profile | Render handler | Reload | Phases | Terminal behavior |
 |---:|---|---:|---:|---:|---:|
 | 1 | Lone Mage | `0x521E` | 1 | 4 | heartbeat 12 |
 | 2 | Gator Shaman | `0x5152` | 4 | 6 | heartbeat 31 |
 | 5 | Rat Shaman | `0x52BE` -> `0x5322` | 6 | 9 | heartbeat 62; serial target fan-out |
+| 8 | Mana Zap | `0x508A` | 1 | 3 | heartbeat 10 |
 | 9 | Elven Mage | `0x4FE2` | 4 | 6 | heartbeat 31 |
 | 12 | Heal Wounds | `0x56DE` | 4 | 16 | heartbeat 81; direct heal callback |
 
-All five start with target countdown 5. Their visible phase counts are 11,
-30, 61, 30, and 80 target render heartbeats respectively; the completion call
+All six start with target countdown 5. Their visible phase counts are 11, 30,
+61, 9, 30, and 80 target render heartbeats respectively; the completion call
 enters the terminal phase and draws no sprite. These counts come from the
 ROM's per-record render service, not a wall-clock timer. Code 12 reloads its
 countdown to four and completes on call 81.
 
 The phase image pointers are sourced from `0x58B6` (code 1), `0x589E` (code 2),
-`0x5876` (code 5), `0x512A` (code 9), and `0x5756` (code 12). Their effect
-palette attributes are `0x2000`, `0x2000`, `0x6000`, `0x4000`, and `0x6000`.
-The offline importer turns those tables and each of the 56 scene palettes
-into individually named RGBA images.
+`0x5876` (code 5), `0x5142` (code 8), `0x512A` (code 9), and `0x5756`
+(code 12). Their effect palette attributes are `0x2000`, `0x2000`, `0x6000`,
+`0x4000`, `0x4000`, and `0x6000`. The offline importer turns available tables
+and each of the 56 scene palettes into individually named RGBA images. The
+tracked asset set has no code-8 Mana Zap phase images.
 The Qt renderer places the target effect at the target actor's projected
 position, above that actor sprite and below the HUD.
 
@@ -67,20 +69,23 @@ playback lifetime remains unverified.
    state with the target source slot, actor ID, scene, action, and effect-slot
    identity. The slot handoff handles the active runner's `party.runner.N` /
    `field_player_runner` behavior-render alias. The target render heartbeat
-   advances the state. Script QA asserts all five cadences, delayed impact,
-   effect-slot ownership, the code-2 callback branch, sequential code-5
+   advances the state. Lua suites assert all six cadences, delayed impacts,
+   effect-slot ownership, both code-2 callback paths, sequential code-5
    fan-out, and code-12's first present wounded runner selection.
 3. **Are the visuals correct?** ROM effect tables, per-scene palettes, and
    directional cast poses are extracted offline. Runtime code loads named
-   images and uses the scene palette result directly. The field QA confirms
+   images and uses the scene palette result directly for covered effects.
+   Code-8 callback state is implemented, but its Mana Zap phase images are not
+   tracked. The field QA confirms
    image size, in-bounds placement, and phase changes. I visually reviewed
    all sixteen code-12 phases in `heal-wounds/phase-*.bmp`; its separate
    full-screen phase-1 capture is `heal-wounds/actual.bmp`. The effect remains
    inside the playfield and leaves the runner HUD clear in every captured
    phase. No independent cast screenshot confirms the exact appearance.
 4. **Is it animated, and when?** The visual sequence advances on the target's
-   ROM render heartbeat. Codes 1/2/5/9/12 complete after 12/31/62/31/81 calls
-   and expose 11/30/61/30/80 visible calls. Adjacent ROM phases may
+   ROM render heartbeat. Codes 1/2/5/8/9/12 complete after
+   12/31/62/10/31/81 calls and expose 11/30/61/9/30/80 visible calls.
+   Adjacent ROM phases may
    intentionally repeat the same image; the capture review and Lua phase trace
    preserve those holds.
 5. **Does it have sound, and how long does it play?** A successful `0x15830`
@@ -98,8 +103,9 @@ playback lifetime remains unverified.
    open check.
 7. **Are there multiple frames to support the interpretation?** Yes. The
    capture set has all four flame-dart, six flame-bolt, nine sleep, six
-   mana-blast, and sixteen heal-wounds source phases. The Lua test also records
-   every timer step through the target callback. No independent longplay cast
+   mana-blast, and sixteen heal-wounds source phases. Mana Zap's callback is
+   covered for timing and state effects, but its phase art is not tracked. The
+   Lua test also records every timer step through the target callback. No independent longplay cast
    sequence matching code 12 was found.
 8. **Are new graphics drawn over stale controls or panels?** This change adds
    a sprite to the field entity pass; it does not add a button, panel, or menu.
@@ -118,20 +124,22 @@ render heartbeat, not the caster's behavior heartbeat.
 
 Code 5's `0x1597E` scan stores markers for active records whose direct route
 cost is below `0x500` and whose source `+0x10` bit 6 is clear. At heartbeat 62,
-`0x5322` clears the completed record and starts the same nine-phase effect on
-the first still-marked active, unlocked record; each terminal pass advances
+`0x5322` applies the delayed mental-meter result, clears the completed record,
+and starts the same nine-phase effect on the first still-marked active,
+unlocked record; each terminal pass advances
 the next record in source order. Lua models the scan marks and pending effect
 by source slot, and QA verifies two eligible records plus the strict range
 edge, inactive, and locked exclusions. Code 2 now reads the current typed
-`FFE186` scene state and the caster's current service flags from the live actor
-candidate list; it skips `0x55B78` only when the scene state is 3 and caster
-`+0x10` bit 3 is clear. Both outcomes are tested. The code-12 lane scan uses
+`FFE186` scene state and target `interaction_flags`; it skips `0x55B78` only
+when the scene state is 3 and target `+0x10` bit 3 is clear, then directly
+clears physical meter. The `+0x0E==0xF` branch suppresses the `0xB0AC` pose.
+Both callback paths and the pose exception are tested. The code-12 lane scan uses
 active party slots and their typed physical meters, selects in source order,
 and suppresses the cast when no present lane is below four. Its `0x55C2C`
 delayed heal callback, effect clock, meter/source-flag persistence, and `0x3A`
 sound route are implemented. The ROM-selected `0x4964` setup-table dispatch
 to `0xB574` remains an explicit boundary. Independent Genesis cast
-pixels/audio, other spell codes, and the Scene 1 map surround remain
+pixels/audio, other spell callbacks, and the Scene 1 map surround remain
 unresolved. See
 [`actor-ai-heartbeat-source-audit.md`](../actor-ai-heartbeat-source-audit.md)
 and [`audio-playback-verification.md`](../visual-analysis/audio-playback-verification.md).

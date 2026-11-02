@@ -1,4 +1,5 @@
 #include "shadowrun_ghidra/world/world_entity_conversion.hpp"
+#include "shadowrun_ghidra/core/random_conversion.hpp"
 
 #include <array>
 #include <vector>
@@ -277,6 +278,44 @@ int main() {
         shared.gate != 0x1E || auxiliary.spawn.auxiliary != 0x0D ||
         auxiliary.spawn.script != 0xD800U) {
         return 24;
+    }
+
+    // Seeded source capture for callback code 13 / ROM 0x53C4: with the
+    // shared jitter remaining at zero, the live callback advances phases at
+    // render heartbeats 6, 13, and 20, then clones the first eligible +0xDE
+    // record with the source slot, heading, and caster link.
+    self = {};
+    neighbors = {};
+    auxiliary = {};
+    shared = {};
+    source_random_seed() = 1U;
+    self.spawn.auxiliary = 0x0DU;
+    self.spawn.countdown = 5U;
+    self.spawn.slot = 3U;
+    self.spawn.attribute = 0x4000;
+    self.spawn.script = 0x00FF0100U;
+    neighbors[0].kind = 0;
+    neighbors[0].discriminator = 0x0DU;
+    neighbors[0].flags = 0x01U;
+    shared.gate = -1;
+    shared.delay = -1;
+    for (int heartbeat = 1; heartbeat < 20; ++heartbeat) {
+        scan = run_effect_variant_a(
+            self, neighbors, auxiliary, shared, 0U);
+        if (scan.result != EffectVariantScanResult::jitter_live) {
+            return 25;
+        }
+    }
+    scan = run_effect_variant_a(self, neighbors, auxiliary, shared, 0U);
+    if (scan.result != EffectVariantScanResult::child_cloned ||
+        scan.cloned_index != 0U || source_random_seed() != 1U ||
+        neighbors[0].spawn.auxiliary != 0x0DU ||
+        neighbors[0].spawn.countdown != 5U ||
+        neighbors[0].spawn.phase != 0U || neighbors[0].spawn.slot != 3U ||
+        neighbors[0].spawn.attribute != 0x4000 ||
+        neighbors[0].spawn.script != 0x00FF0100U ||
+        shared.phase_gate != 4) {
+        return 26;
     }
 
     self = {};

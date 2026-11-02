@@ -501,7 +501,8 @@ local function lifecycle_equal(left, right)
 end
 
 local function commit_combatant_meters(target, defender, physical_meter,
-                                      mental_meter, lifecycle, spell_death)
+                                      mental_meter, lifecycle, spell_death,
+                                      force_received_hit_reaction)
     if type(lifecycle) == "table" then
         defender.actor_facts.lifecycle = lifecycle
     end
@@ -509,7 +510,7 @@ local function commit_combatant_meters(target, defender, physical_meter,
                     mental_meter ~= defender.mental_meter or
                     not lifecycle_equal(defender.actor_facts.lifecycle,
                                         target.combatant.actor_facts.lifecycle)
-    if not changed then
+    if not changed and force_received_hit_reaction ~= true then
         return false
     end
     local state = game.actors[target.id]
@@ -536,7 +537,7 @@ local function commit_combatant_meters(target, defender, physical_meter,
     end
     publish_player_hurt_event(
         target, defender, physical_meter, mental_meter)
-    return true
+    return changed
 end
 
 local function consume_fetish_residual(record, residual)
@@ -796,6 +797,25 @@ function Combat.resolve_spell_impact(context, pending, target)
         actor_lifecycle_changed = false,
         changed = false,
     }
+
+    if pending.callback_mode == E.SpellEffectCallbackMode.
+            DIRECT_PHYSICAL_CLEAR then
+        if spell.spell_id ~= "flame_bolt" then
+            result.outcome = "source_data_unresolved"
+            return result
+        end
+        -- ROM 0x5152's FFE186==3 / target +0x10 bit-3-clear path writes
+        -- +0x4C directly and bypasses the shared 0x55B78 resistance roll.
+        result.effect_value = defender.physical_meter
+        result.physical_meter = 0
+        result.mental_meter = defender.mental_meter
+        result.changed = commit_combatant_meters(
+            target, defender, result.physical_meter, result.mental_meter,
+            nil, SpellDeath[pending.spell_id], true)
+        result.outcome = result.changed and
+            "effect_applied" or "effect_no_change"
+        return result
+    end
 
     if spell.spell_id == "heal_wounds" then
         -- ROM 0x56DE ends by calling 0x55C2C. That callback heals directly

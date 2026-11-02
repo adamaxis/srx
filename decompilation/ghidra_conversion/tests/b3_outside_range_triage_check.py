@@ -107,9 +107,12 @@ def check() -> list[str]:
 
     if sum(row[3] for row in rows) != analysis.outside_bytes:
         errors.append("triage byte total does not match the ROM walk")
-    if len(rows) != 171 or analysis.outside_bytes != 33_576:
+    # Six ROM-confirmed effect callback entry instructions are now recorded in
+    # the status ledger. Their entry bytes are excluded from the outside-range
+    # walk, splitting two former spans into four additional intervals.
+    if len(rows) != 175 or analysis.outside_bytes != 33_562:
         errors.append(
-            f"B3 snapshot changed: expected 171 ranges / 33,576 bytes, "
+            f"B3 snapshot changed: expected 175 ranges / 33,562 bytes, "
             f"found {len(rows)} / {analysis.outside_bytes}"
         )
     if false_data != [(2, "[C] DATA (string; false code candidate)")]:
@@ -130,7 +133,7 @@ def main() -> int:
         for error in errors:
             print(f"B3 range triage check failed: {error}", file=sys.stderr)
         return 1
-    print(f"Checked {REPORT}: 171 ranges / 33,576 bytes; 170 code ranges, one data false positive.")
+    print(f"Checked {REPORT}: 175 ranges / 33,562 bytes; 174 code ranges, one data false positive.")
     return 0
 
 

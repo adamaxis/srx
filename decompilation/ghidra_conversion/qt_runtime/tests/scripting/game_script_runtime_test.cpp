@@ -6633,6 +6633,7 @@ int main() {
                         ? 12U
                         : action_code == 2U || action_code == 9U
                               ? 31U
+                              : action_code == 8U ? 10U
                               : action_code == 5U ? 62U
                               : action_code == 12U ? 81U : 0U;
                     result.effect_completed_early =
@@ -6654,10 +6655,19 @@ int main() {
                     auto followup = actor_context(
                         "field_runner_k03_none00", candidate.id, 3U,
                         ScriptActorActionKind::none, 0U, 0U, true);
+                    followup.dynamic_world_encounter_actor =
+                        candidate.world_activity_actor;
+                    followup.source_record_slot = candidate.source_record_slot;
+                    set_actor_facts_from_fixture_record(
+                        followup, candidate.service_flags,
+                        candidate.interaction_flags,
+                        candidate.behavior_flags,
+                        candidate.spawn_state_flags);
                     followup.spawn = true;
                     followup.phase = ScriptActorHeartbeatPhase::render;
                     followup.movement_scene_id = 2U;
                     followup.world_scene_state = world_scene_state;
+                    followup.ai_random_bound = context.ai_random_bound;
                     followup.ai_target_candidates =
                         effect_target_context.ai_target_candidates;
                     followup.combatant = candidate.combatant.value_or(
@@ -6791,6 +6801,9 @@ int main() {
     const auto sleep_cast = drive_spell_refresh(
         "rat_shaman_k0b_spell05", "spell_sleep_resolved", 11U, 5U, 0,
         true, spell_line_true, &spell_caster, &spell_target);
+    const auto mana_zap_cast = drive_spell_refresh(
+        "lonemage_k0a_spell08", "spell_mana_zap_resolved", 10U, 8U, 0,
+        true, spell_line_true, &spell_caster, &spell_target);
     const auto mana_blast_cast = drive_spell_refresh(
         "elven_mage_k06_spell09", "spell_mana_blast_resolved", 6U, 9U, 0,
         true, spell_line_true, &spell_caster, &spell_target);
@@ -6841,13 +6854,19 @@ int main() {
         std::nullopt, &no_wounded_lanes);
     auto code2_spell_caster = spell_caster;
     code2_spell_caster.equipped_action_code = 2U;
-    const auto code2_scene_state_skip = drive_spell_refresh(
+    // ROM 0x5152 tests target +0x10 bit 3 at 0x519A. The clear-bit branch
+    // directly clears +0x4C; the set-bit branch uses the shared roll at
+    // 0x55B78. Caster flags do not select this branch.
+    const auto code2_direct_clear = drive_spell_refresh(
         "gator_shaman_k09_spell02", "spell_code2_scene_skip", 9U, 2U, 0,
         true, spell_line_true, &code2_spell_caster, &spell_target, false, 3U,
         0x01U);
+    auto code2_target_callback = spell_target;
+    code2_target_callback.source_flags |= 0x08U;
     const auto code2_scene_state_callback = drive_spell_refresh(
         "gator_shaman_k09_spell02", "spell_code2_scene_callback", 9U, 2U,
-        0, true, spell_line_true, &code2_spell_caster, &spell_target, false,
+        0, true, spell_line_true, &code2_spell_caster,
+        &code2_target_callback, false,
         3U, 0x09U);
     std::vector<ScriptActorTargetCandidate> sleep_scan_candidates;
     const auto add_sleep_candidate = [&sleep_scan_candidates](
@@ -6858,6 +6877,17 @@ int main() {
         candidate.id = id;
         candidate.service_flags = flags;
         candidate.direct_route_step_cost = route_cost;
+        candidate.world_activity_actor = id == "sleep_near_world_actor";
+        candidate.source_record_slot = candidate.world_activity_actor
+            ? std::optional<std::uint8_t>{3U}
+            : std::optional<std::uint8_t>{static_cast<std::uint8_t>(
+                  sleep_scan_candidates.size() % 3U)};
+        ScriptCombatantFacts combatant{};
+        combatant.record_type = candidate.world_activity_actor ? 7U : 0U;
+        combatant.source_flags = flags;
+        combatant.physical_meter = 3U;
+        combatant.mental_meter = 6U;
+        candidate.combatant = combatant;
         sleep_scan_candidates.push_back(std::move(candidate));
     };
     add_sleep_candidate("sleep_near", 0x01U, 0x04FFU);
@@ -6881,6 +6911,8 @@ int main() {
                   ? std::optional<std::uint16_t>{0x0034U}
             : action_code == 5U
                   ? std::optional<std::uint16_t>{0x0037U}
+            : action_code == 8U
+                  ? std::optional<std::uint16_t>{0x0033U}
             : action_code == 9U
                   ? std::optional<std::uint16_t>{0x0035U}
             : action_code == 12U
@@ -7045,17 +7077,27 @@ int main() {
         !heal_without_wounded_lane.refresh->audio_event.has_value() &&
         !heal_without_wounded_lane.completed_effect.has_value();
     const bool code2_scene_callback_gate_matches =
-        code2_scene_state_skip.completed_effect.has_value() &&
-        code2_scene_state_skip.completed_effect->spell_effect_completed &&
-        code2_scene_state_skip.completed_effect->spell_effect_slot_released ==
+        code2_direct_clear.completed_effect.has_value() &&
+        code2_direct_clear.completed_effect->spell_effect_completed &&
+        code2_direct_clear.completed_effect->spell_effect_slot_released ==
             std::optional<std::uint8_t>{0U} &&
-        !code2_scene_state_skip.completed_effect->spell_effect_resolution &&
-        !code2_scene_state_skip.completed_effect->combat_meter_update &&
+        code2_direct_clear.completed_effect->spell_effect_resolution &&
+        code2_direct_clear.completed_effect->spell_effect_resolution->
+                outcome == "effect_applied" &&
+        code2_direct_clear.completed_effect->spell_effect_resolution->
+                physical_meter == 0U &&
+        code2_direct_clear.completed_effect->spell_effect_resolution->
+                mental_meter == spell_target.mental_meter &&
+        code2_direct_clear.completed_effect->spell_effect_resolution->
+                target_trial_count == 0U &&
+        code2_direct_clear.completed_effect->combat_meter_update &&
         code2_scene_state_callback.completed_effect.has_value() &&
         code2_scene_state_callback.completed_effect->spell_effect_completed &&
         code2_scene_state_callback.completed_effect->spell_effect_resolution &&
         code2_scene_state_callback.completed_effect->spell_effect_resolution->
-                spell_id == "flame_bolt";
+                spell_id == "flame_bolt" &&
+        code2_scene_state_callback.completed_effect->spell_effect_resolution->
+                target_trial_count == 8U;
     const bool sleep_scan_fanout_matches =
         sleep_fanout_cast.completed_effect.has_value() &&
         sleep_fanout_cast.completed_effect->spell_effect_completed &&
@@ -7206,6 +7248,7 @@ int main() {
                                      11U) &&
         spell_effect_profile_matches(flame_bolt_cast, 2U, 31U, 6U, 30U) &&
         spell_effect_profile_matches(sleep_cast, 5U, 62U, 9U, 61U) &&
+        spell_effect_profile_matches(mana_zap_cast, 8U, 10U, 3U, 9U) &&
         spell_effect_profile_matches(mana_blast_cast, 9U, 31U, 6U, 30U) &&
         spell_effect_profile_matches(heal_wounds_cast, 12U, 81U, 16U,
                                      80U) &&
@@ -7287,8 +7330,10 @@ int main() {
                          ? heal_action_result->target_id : "missing")
                   << " heal_outcome=" << (heal_effect_result.has_value()
                          ? heal_effect_result->outcome : "missing")
-                  << " code2skip=" << (code2_scene_state_skip.completed_effect.has_value() &&
-                         code2_scene_state_skip.completed_effect->spell_effect_resolution.has_value())
+                  << " mana_zap=" << spell_effect_profile_matches(
+                         mana_zap_cast, 8U, 10U, 3U, 9U)
+                  << " code2direct=" << (code2_direct_clear.completed_effect.has_value() &&
+                         code2_direct_clear.completed_effect->spell_effect_resolution.has_value())
                   << " code2callback=" << (code2_scene_state_callback.completed_effect.has_value() &&
                          code2_scene_state_callback.completed_effect->spell_effect_resolution.has_value())
                   << " sleepfan=" << sleep_scan_fanout_matches
@@ -7297,6 +7342,37 @@ int main() {
                           ? " outcome=" + spell_effect_result->outcome
                           : std::string{})
                   << '\n';
+        const auto dump_effect_result = [](const char* name,
+                                           const SpellRefresh& driven) {
+            std::cerr << name << " completed="
+                      << driven.completed_effect.has_value();
+            if (driven.completed_effect.has_value()) {
+                const auto& completion = *driven.completed_effect;
+                std::cerr << " phase=" << static_cast<unsigned>(
+                                 completion.spell_effect_phase)
+                          << " released="
+                          << completion.spell_effect_slot_released.has_value()
+                          << " result="
+                          << completion.spell_effect_resolution.has_value();
+                if (completion.spell_effect_resolution.has_value()) {
+                    const auto& result =
+                        *completion.spell_effect_resolution;
+                    std::cerr << " outcome=" << result.outcome
+                              << " trials=" << static_cast<unsigned>(
+                                     result.target_trial_count)
+                              << " effect=" << result.effect_value
+                              << " physical=" << static_cast<unsigned>(
+                                     result.physical_meter)
+                              << " mental=" << static_cast<unsigned>(
+                                     result.mental_meter)
+                              << " changed=" << result.changed;
+                }
+            }
+            std::cerr << '\n';
+        };
+        dump_effect_result("code2 direct", code2_direct_clear);
+        dump_effect_result("code2 callback", code2_scene_state_callback);
+        dump_effect_result("sleep", sleep_fanout_cast);
         std::cerr << scripts.failure() << '\n';
         return 30;
     }
