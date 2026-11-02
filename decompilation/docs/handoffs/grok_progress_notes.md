@@ -3,7 +3,7 @@
 This file is kept in the repo so the notes survive if the box is wiped. The box's /workspace/shadowrun/out was lost on 2026-10-31.
 Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 
-## Current state (2026-11-02 11:04 CST)
+## Current state (2026-11-02 12:16 CST)
 - Remote port-fixes: see latest Fixes entry. QA_GREEN (ctest all pass, Lua suites pass). Working playtest_2026-11-01 items one Luna run at a time.
 - In progress: Luna (codex exec, gpt-6-luna, max effort, fast tier off) is fixing aa3b2cb7 forward. Brief is /workspace/briefs/aa3b.md, the earlier partial work is /workspace/briefs/aa3b_wip.diff and stash 'aa3b-wip'.
 - Box toolchain: `. /workspace/tcenv.sh` (conda env /workspace/mamba/envs/srx). Build dirs are /workspace/b2 (Qt) and /workspace/b2n (non-Qt). Full QA is /workspace/qa.sh, which prints QA_GREEN.
@@ -67,6 +67,7 @@ Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 - playtest #E1: E1: effect callback timing/impact corrections per 0x46F6 table. Evidence [C]: dispatch 0x46F6/0x490A -> 0x4FE2/0x508A/0x5152/0x521E/0x52BE/0x5322/0x53C4; e1 Lua test 6/9 fail pre-fix, 9/9 after
 - playtest #22: #22b: Stoker ambush uses ROM map-derived placement, emulator-captured. Evidence [C]: 0x249C4 loads D0=1 -> 0x1E216 -> 0x1E40C (port used 0x1E302, x=0x2B00); GPGX capture jh3.state 3/3 positions, 60/60 0xA8EA services
 - playtest #28: #28: Jackal's Lantern booth return no longer restores stale doorway probe. Evidence [C]: Scene19 record 12 0x1D5F50 -> 0xB7B8/0x20990/0x20C78 same-map no-choice prompt; port reset player to (256,840) and froze
+- playtest #28: #28c: generic same-scene prompt return keeps player in place. Evidence [C]: 0xB34/0xB52 callback return skips 0x2F32/0x2FA4; census 32 prompt routes (31 preserve, Stoker 0x173138->0x1F65A/0xBC36 restores door); also commits measure_bump_contact_rom.py (0xECCC/0x21174)
 
 ## Open work, in order
 1. Get ctest green again by fixing aa3b2cb7 forward.

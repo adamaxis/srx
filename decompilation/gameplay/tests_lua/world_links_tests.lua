@@ -161,19 +161,36 @@ check(julius_exception ~= nil and
       julius_exception.return_music_policy ==
           E.FieldLocationMusicReturnPolicy.NONE,
       "Julius's same-map dialogue keeps its live field position [0x1D5E38]")
--- [C] Scene-19 record 12/event 30 at 0x1D5F50 reaches the default
--- same-map prompt 0x20C78; it is not a building-door return.
-local jackals_old_man_exception =
-    exceptions_by_id["jackals_lantern_old_man_contact.rom_event_30"]
-check(#exit_exceptions == 3 and jackals_old_man_exception ~= nil and
-      jackals_old_man_exception.rom_address == "0x1D5F50" and
-      jackals_old_man_exception.return_anchor ==
-          E.FieldLocationReturnAnchor.NONE and
-      jackals_old_man_exception.return_facing ==
+local same_scene_policy = W.building_service_exit_policy{
+    exit_id = "jackals_lantern_old_man_contact.rom_event_30",
+    scene_outcome = E.FieldLocationSceneOutcome.SAME_SCENE,
+}
+local changed_scene_policy = W.building_service_exit_policy{
+    scene_outcome = E.FieldLocationSceneOutcome.SCENE_CHANGE,
+}
+local source_door_return_policy = W.building_service_exit_policy{
+    scene_outcome = E.FieldLocationSceneOutcome.SOURCE_DOOR_RETURN,
+}
+check(#exit_exceptions == 2 and
+      exceptions_by_id["jackals_lantern_old_man_contact.rom_event_30"] == nil and
+      same_scene_policy.return_anchor == E.FieldLocationReturnAnchor.NONE and
+      same_scene_policy.return_facing ==
           E.FieldLocationReturnFacing.PRESERVE_ENTRY and
-      jackals_old_man_exception.return_music_policy ==
-          E.FieldLocationMusicReturnPolicy.NONE,
-      "Jackal's Lantern old-man dialogue preserves the live field state [0x1D5F50]")
+      same_scene_policy.return_music_policy ==
+          E.FieldLocationMusicReturnPolicy.NONE and
+      changed_scene_policy.return_anchor ==
+          E.FieldLocationReturnAnchor.COLLISION_PROBE_LEAD and
+      changed_scene_policy.return_facing ==
+          E.FieldLocationReturnFacing.FACE_AWAY_FROM_ENTRY and
+      changed_scene_policy.return_music_policy ==
+          E.FieldLocationMusicReturnPolicy.RESUME_SCENE_PROFILE and
+      source_door_return_policy.return_anchor ==
+          E.FieldLocationReturnAnchor.COLLISION_PROBE_LEAD and
+      source_door_return_policy.return_facing ==
+          E.FieldLocationReturnFacing.FACE_AWAY_FROM_ENTRY and
+      source_door_return_policy.return_music_policy ==
+          E.FieldLocationMusicReturnPolicy.RESUME_SCENE_PROFILE,
+      "same-scene dialogue uses the generic Lua return policy [0xB34/0xB52]")
 
 local function contact(x, y, side)
     return W.door_contact{

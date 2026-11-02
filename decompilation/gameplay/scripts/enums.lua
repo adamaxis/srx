@@ -21,6 +21,11 @@ E.FieldLocationReturnAnchor = {
     NONE = "none",
     COLLISION_PROBE_LEAD = "collision_probe_lead",
 } -- ROM 0xBC36 builds FFDF44; 0x2F32 restores it [C]
+E.FieldLocationSceneOutcome = {
+    SAME_SCENE = "same_scene",
+    SOURCE_DOOR_RETURN = "source_door_return",
+    SCENE_CHANGE = "scene_change",
+} -- field callback return at 0xB34 resumes redraw without 0x2F32/0x2FA4 [C]
 E.FieldLocationReturnFacing = {
     FACE_AWAY_FROM_ENTRY = "face_away_from_entry",
     PRESERVE_ENTRY = "preserve_entry",

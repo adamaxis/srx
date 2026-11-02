@@ -124,6 +124,7 @@ local function normalize_entity_interaction(entity, interaction)
         route_priority = route.priority or 0,
         route_condition_id = route.conditionId,
         source_route_policy = route.sourceRoutePolicy,
+        same_scene_return_policy = route.sameSceneReturnPolicy,
         expected_destination_scene = route.sourceTableDestination,
         destination_scene = route.destinationScene,
         destination_mode = route.destinationMode,

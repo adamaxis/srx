@@ -27,15 +27,6 @@ local EXIT_RETURN_EXCEPTIONS = {
         return_facing = E.FieldLocationReturnFacing.PRESERVE_ENTRY,
         return_music_policy = E.FieldLocationMusicReturnPolicy.NONE,
     },
-    -- Scene 19 record 12 at 0x1D5F50 dispatches through 0x20990 to the
-    -- same-map, no-choice prompt at 0x20C78. Returning must keep the live
-    -- field position instead of restoring a stale building probe.
-    ["jackals_lantern_old_man_contact.rom_event_30"] = {
-        rom_address = "0x1D5F50",
-        return_anchor = E.FieldLocationReturnAnchor.NONE,
-        return_facing = E.FieldLocationReturnFacing.PRESERVE_ENTRY,
-        return_music_policy = E.FieldLocationMusicReturnPolicy.NONE,
-    },
 }
 
 function WorldLinks.data() return Data end
@@ -123,6 +114,28 @@ local function validate_exit_return_policy(policy)
 end
 
 function WorldLinks.building_service_exit_policy(context)
+    local scene_outcome = context.scene_outcome
+    if scene_outcome ~= nil then
+        assert(scene_outcome == E.FieldLocationSceneOutcome.SAME_SCENE or
+               scene_outcome == E.FieldLocationSceneOutcome.SOURCE_DOOR_RETURN or
+               scene_outcome == E.FieldLocationSceneOutcome.SCENE_CHANGE,
+            "world_links.exit_return: unknown scene outcome " ..
+                tostring(scene_outcome))
+        if scene_outcome == E.FieldLocationSceneOutcome.SAME_SCENE then
+            -- ROM 0xB34 calls the prompt callback, clears it at 0xB52, then
+            -- resumes the live field redraw at 0x2BD2. Only a true scene
+            -- entry runs 0x2F32/0x2FA4 and restores a saved doorway point.
+            return {
+                return_anchor = E.FieldLocationReturnAnchor.NONE,
+                return_facing = E.FieldLocationReturnFacing.PRESERVE_ENTRY,
+                return_music_policy = E.FieldLocationMusicReturnPolicy.NONE,
+            }
+        end
+        -- A source service may refresh the same map and then restore its
+        -- recorded doorway. Stoker's mode-2 route does this at 0x1F65A;
+        -- 0xBC36/0xBD4C select the probe and 0x09B8 restores the bearing.
+        -- Keep this distinct from a same-scene dialogue continuation.
+    end
     local exception = EXIT_RETURN_EXCEPTIONS[context.exit_id]
     if exception == nil then
         return {
@@ -143,6 +156,12 @@ function WorldLinks.building_service_exit_policy(context)
         return_facing = policy.return_facing,
         return_music_policy = policy.return_music_policy,
         rom_address = exception.rom_address,
+    }
+end
+
+function WorldLinks.same_scene_return_policy()
+    return WorldLinks.building_service_exit_policy{
+        scene_outcome = E.FieldLocationSceneOutcome.SAME_SCENE,
     }
 end
 

@@ -313,12 +313,39 @@ local function attach_building_service_exit_policy(route, link, context)
          (link.link_id or link.id or "unnamed")) or
         ("scene_" .. tostring(context.scene_id) .. "." ..
          tostring(context.event_code))
+    local transition = context.transition
+    local scene_outcome
+    if link ~= nil and link.same_scene_return_policy ~= nil then
+        assert(link.same_scene_return_policy == "source_door_return",
+            "unsupported same-scene return policy: " ..
+                tostring(link.same_scene_return_policy))
+        scene_outcome = E.FieldLocationSceneOutcome.SOURCE_DOOR_RETURN
+    elseif route.kind == route_kind.field_service then
+        -- These services have their own source close-return lifecycle. Their
+        -- doorway point is restored after the service, even when the source
+        -- refreshes the same map (ROM 0xBC36/0xBD34 -> 0x2FA4).
+        scene_outcome = nil
+    elseif transition.kind == "enter_scene" then
+        scene_outcome = transition.destination_scene_id == context.scene_id and
+            E.FieldLocationSceneOutcome.SAME_SCENE or
+            E.FieldLocationSceneOutcome.SCENE_CHANGE
+    elseif transition.kind == "none" or
+           transition.kind == "no_destination" or
+           transition.kind == "same_map_service" then
+        scene_outcome = E.FieldLocationSceneOutcome.SAME_SCENE
+    elseif route.kind == route_kind.dialogue then
+        scene_outcome = E.FieldLocationSceneOutcome.SAME_SCENE
+    else
+        scene_outcome = E.FieldLocationSceneOutcome.SCENE_CHANGE
+    end
     local policy = WorldLinks.building_service_exit_policy{
         exit_id = identity,
+        scene_outcome = scene_outcome,
     }
     route.return_anchor = policy.return_anchor
     route.return_facing = policy.return_facing
     route.return_music_policy = policy.return_music_policy
+    route.scene_outcome = scene_outcome
     return route
 end
 

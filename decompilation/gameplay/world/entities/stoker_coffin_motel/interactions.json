@@ -12,7 +12,8 @@
         "kind": "dialogue",
         "script": "lua_dialogue",
         "priority": 0,
-        "conditionId": "stoker_coffin_motel.rom_event_02.route"
+        "conditionId": "stoker_coffin_motel.rom_event_02.route",
+        "sameSceneReturnPolicy": "source_door_return"
       },
       "entryDialogue": {
         "task": {
@@ -29,7 +30,7 @@
         "continueResultId": "continue"
       },
       "provenance": {
-        "evidence": "ROM scene 2 collision record 91 at 0x173138, raw 0x00C2; 0xB7B8 -> 0x1F5CA -> 0x1F65A selects Stoker's same-map dialogue while FFFC1E bit 0 is clear and FFF0D5 is zero; event-table row 2 is not followed while this service is active."
+        "evidence": "ROM scene 2 collision record 91 at 0x173138, raw 0x00C2; 0xB7B8 -> 0x1F5CA -> 0x1F65A selects Stoker's same-map dialogue while FFFC1E bit 0 is clear and FFF0D5 is zero; event-table row 2 is not followed while this service is active. The service return restores the saved south doorway probe through 0xBC36/0xBD4C and the outward heading at 0x09B8."
       }
     }
   ]
