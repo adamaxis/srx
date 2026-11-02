@@ -453,6 +453,8 @@ def build_report(coverage: Coverage, export_count: int) -> str:
         "",
         "This is a structural source map, not a claim of behavioral ROM fidelity. A mapped row has an explicit Lua/C++ source file or symbol in the committed mapping table, or a documented replacement entry. Runtime equivalence still requires behavior-specific ROM traces and measurements.",
         "",
+        "The 66-entry historical B2 triage is recorded in [rom-coverage-triage.md](rom-coverage-triage.md) and [rom-coverage-triage.tsv](rom-coverage-triage.tsv). That ledger distinguishes port owners, host or asset replacements, and routines filed as missing bugs.",
+        "",
         f"Inventory: the union of `{STATUS_PATH.as_posix()}` and `{FUNCTIONS_PATH.as_posix()}`. The status ledger has {coverage.status_rows} rows; after address deduplication and including any export-only entries, the inventory contains **{total} routine entries** ({export_count} unique Ghidra function exports). Ghidra names and sizes take precedence where the export list has the same address.",
         "",
         f"Mapped: **{mapped}**. Unmapped backlog: **{unmapped}**. Committed mapped-routine baseline: **{len(coverage.baseline)}**.",

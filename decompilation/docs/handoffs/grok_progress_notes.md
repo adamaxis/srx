@@ -3,7 +3,7 @@
 This file is kept in the repo so the notes survive if the box is wiped. The box's /workspace/shadowrun/out was lost on 2026-10-31.
 Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 
-## Current state (2026-11-02 02:18 CST)
+## Current state (2026-11-02 03:04 CST)
 - Remote port-fixes: see latest Fixes entry. QA_GREEN (ctest all pass, Lua suites pass). Working playtest_2026-11-01 items one Luna run at a time.
 - In progress: Luna (codex exec, gpt-6-luna, max effort, fast tier off) is fixing aa3b2cb7 forward. Brief is /workspace/briefs/aa3b.md, the earlier partial work is /workspace/briefs/aa3b_wip.diff and stash 'aa3b-wip'.
 - Box toolchain: `. /workspace/tcenv.sh` (conda env /workspace/mamba/envs/srx). Build dirs are /workspace/b2 (Qt) and /workspace/b2n (non-Qt). Full QA is /workspace/qa.sh, which prints QA_GREEN.
@@ -56,6 +56,7 @@ Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 - playtest #A2: Tests: combat suite party profile, meters, downed state, turn order. party Decker 0x72A1A vs Weenr2 0x1D66A4 seed 0x0001 dmg 1 measured; meter branch 0x55A1E; order 0xA8EA; distributions [H]
 - playtest #1: Coverage: map pre-title phase 0x5D996 and title setup 0x1D7A (#1 reveal measured). 0x5D996 phases 1/2/3 at updates 94/98/102 every 4; 0x1D7A/0x1E4E/0x1C6A 38 columns updates 91-165; longplay f337-f374
 - playtest #4: Extractor: generate tail-rotor phase PNGs from ROM, with temp-dir ctest. map 0x1E87BA, palette 0x5B6B2, rotation 0x5B08E; pixel-equal to committed PNGs; extraction only into temp dir
+- playtest #B2: Coverage: triage 66 unmapped routines (48 port, 16 replaced, 2 missing). camera 0x3B1E/0x3BAC, template 0x44BC, HUD 0x1728 mapped with headless samples; missing purchase handlers 0x24A1E/0x24A56
 
 ## Open work, in order
 1. Get ctest green again by fixing aa3b2cb7 forward.

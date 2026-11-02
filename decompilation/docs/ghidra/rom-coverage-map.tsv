@@ -1,8 +1,22 @@
 rom_entry	mapping_kind	implementation	evidence
+0x0200	replaced	decompilation/ghidra_conversion/qt_runtime/src/app/ghidra_conversion_qt_main.cpp	decompilation/export/disassembly.s:0x0200; Qt application event loop replaces unused ROM stop stub
+0x0208	replaced	decompilation/ghidra_conversion/qt_runtime/src/app/ghidra_conversion_qt_main.cpp	decompilation/export/disassembly.s:0x0208; Qt application event loop replaces unused ROM stop stub
+0x0210	replaced	decompilation/ghidra_conversion/qt_runtime/src/app/ghidra_conversion_qt_main.cpp	decompilation/export/disassembly.s:0x0210; Qt application event loop replaces unused ROM stop stub
+0x0218	replaced	decompilation/ghidra_conversion/qt_runtime/src/app/ghidra_conversion_qt_main.cpp	decompilation/export/disassembly.s:0x0218; Qt application event loop replaces unused ROM stop stub
+0x0220	replaced	decompilation/ghidra_conversion/qt_runtime/src/app/ghidra_conversion_qt_main.cpp	decompilation/export/disassembly.s:0x0220; Qt application event loop replaces unused ROM stop stub
+0x0228	replaced	decompilation/ghidra_conversion/qt_runtime/src/app/ghidra_conversion_qt_main.cpp	decompilation/export/disassembly.s:0x0228; Qt host frame service replaces ROM interrupt callback dispatch
+0x022E	replaced	decompilation/ghidra_conversion/qt_runtime/src/app/ghidra_conversion_qt_main.cpp	decompilation/export/disassembly.s:0x022E; Qt host frame service replaces ROM interrupt callback dispatch
+0x0234	replaced	decompilation/ghidra_conversion/qt_runtime/src/app/ghidra_conversion_qt_main.cpp	decompilation/export/disassembly.s:0x0234; Qt host frame service replaces ROM interrupt return
+0x0236	port	decompilation/ghidra_conversion/src/title_intro/boot_sequence_conversion.cpp	decompilation/export/disassembly.s:0x0236; Typed boot startup sequence owns reset-to-title flow; TMSS/region detection remains the known limitation
+0x0330	replaced	decompilation/ghidra_conversion/qt_runtime/src/app/ghidra_conversion_qt_window.hpp	decompilation/export/disassembly.s:0x0330; Qt startup presentation initializes the authored display layout
+0x0436	port	decompilation/ghidra_conversion/src/rendering/startup_vdp_conversion.cpp	decompilation/export/disassembly.s:0x0436; Startup text transfer helper emits the source text rows
+0x073A	port	decompilation/ghidra_conversion/src/core/timing_conversion.cpp	decompilation/export/disassembly.s:0x073A; Typed VDP-ready timing boundary
 0x075E	port	decompilation/ghidra_conversion/src/integration/field_session_bootstrap_conversion.cpp#ghidra_conversion::integration::bootstrap_field_session	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x0BB6	port	decompilation/ghidra_conversion/src/core/timing_conversion.cpp#ghidra_conversion::wait_for_even_frame	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x0BD2	port	decompilation/ghidra_conversion/src/core/timing_conversion.cpp	decompilation/export/disassembly.s:0x0BD2; Typed host frame-boundary wait
 0x0BF2	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#ghidra_conversion::latch_controller_events	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x0C24	port	decompilation/ghidra_conversion/src/audio/audio_command_batch_conversion.cpp#ghidra_conversion::wait_for_vblank_frames	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x0C2C	port	decompilation/ghidra_conversion/src/rendering/startup_vdp_conversion.cpp	decompilation/export/disassembly.s:0x0C2C; Typed cold/warm session reset and startup display preparation
 0x0CEC	port	decompilation/ghidra_conversion/src/rendering/startup_vdp_conversion.cpp#ghidra_conversion::install_startup_vdp_table	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x0D3A	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_interaction_runtime.cpp#ghidra_conversion::sample_source_random_bound	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x0D44	port	decompilation/ghidra_conversion/src/title_intro/boot_sequence_conversion.cpp#ghidra_conversion::advance_source_prng	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
@@ -32,6 +46,7 @@ rom_entry	mapping_kind	implementation	evidence
 0x1232	port	decompilation/ghidra_conversion/src/core/word_transfer_conversion.cpp#ghidra_conversion::write_vdp_grid	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x12F6	port	decompilation/ghidra_conversion/src/integration/field_session_bootstrap_conversion.cpp#ghidra_conversion::advance_title_palette_fade	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x131C	port	decompilation/ghidra_conversion/src/title_intro/title_loop_conversion.cpp#ghidra_conversion::run_palette_transition	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x1342	port	decompilation/ghidra_conversion/src/core/timing_conversion.cpp	decompilation/export/disassembly.s:0x1342; Palette-frame wait boundary used by title setup
 0x1358	port	decompilation/ghidra_conversion/src/core/source_buffer_conversion.cpp#ghidra_conversion::copy_source_word_block	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x1368	port	decompilation/ghidra_conversion/src/title_intro/title_intro_orchestrator_conversion.cpp#ghidra_conversion::copy_target_palette	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x1378	port	decompilation/ghidra_conversion/src/field/field_entity_render_batch_conversion.cpp#ghidra_conversion::build_title_sprite_records	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
@@ -42,6 +57,7 @@ rom_entry	mapping_kind	implementation	evidence
 0x1530	port	decompilation/ghidra_conversion/src/core/compressed_data_conversion.cpp#ghidra_conversion::decode_source_byte_stream	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x1610	port	decompilation/ghidra_conversion/src/core/compressed_data_conversion.cpp#ghidra_conversion::decode_source_byte_stream	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x167C	port	decompilation/ghidra_conversion/src/core/coordinate_data_conversion.cpp#ghidra_conversion::decode_source_coordinate_stream	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x1728	port	decompilation/ghidra_conversion/src/core/remaining_field_conversion.cpp#ghidra_conversion::render_hud_sprite_stream	decompilation/export/disassembly.s:00001728..0000186A; decompilation/ghidra_conversion/tests/core/remaining_field_conversion_test.cpp; shadowrun_genesis_1728_sprite
 0x1872	port	decompilation/ghidra_conversion/src/rendering/display_service_batch_conversion.cpp#ghidra_conversion::service_display_frame	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x1910	port	decompilation/ghidra_conversion/src/core/alternating_word_transfer_conversion.cpp#ghidra_conversion::write_alternating_word_pair	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x195C	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#ghidra_conversion::sample_controller_input	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
@@ -54,6 +70,9 @@ rom_entry	mapping_kind	implementation	evidence
 0x1CFC	port	decompilation/ghidra_conversion/src/title_intro/title_resource_sequence_conversion.cpp#ghidra_conversion::load_title_resources	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x1D58	port	decompilation/ghidra_conversion/src/title_intro/title_resource_sequence_conversion.cpp#ghidra_conversion::prepare_title_sprite_list	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x1D7A	port	decompilation/ghidra_conversion/src/title_intro/title_setup_conversion.cpp#ghidra_conversion::setup_title_state	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x1DCA	port	decompilation/ghidra_conversion/src/title_intro/title_setup_conversion.cpp	decompilation/export/disassembly.s:0x1DCA; Title prompt variant A selects the named text asset
+0x1DE0	port	decompilation/ghidra_conversion/src/title_intro/title_setup_conversion.cpp	decompilation/export/disassembly.s:0x1DE0; Title prompt variant B selects the named text asset
+0x1DF6	port	decompilation/ghidra_conversion/src/title_intro/title_setup_conversion.cpp	decompilation/export/disassembly.s:0x1DF6; Copyright rows select named text assets
 0x1E4E	port	decompilation/ghidra_conversion/src/title_intro/title_loop_conversion.cpp#ghidra_conversion::advance_title_logo_column	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x2634	port	decompilation/gameplay/scripts/startup.lua#advance_title_circuit_lights	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x26D0	port	decompilation/ghidra_conversion/src/title_intro/title_loop_conversion.cpp#ghidra_conversion::advance_title_animation_timer	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
@@ -77,6 +96,7 @@ rom_entry	mapping_kind	implementation	evidence
 0x301E	port	decompilation/ghidra_conversion/src/core/word_transfer_conversion.cpp#ghidra_conversion::upload_scene_profile_block	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x3032	port	decompilation/ghidra_conversion/src/field/scene_profile_conversion.cpp#ghidra_conversion::scene_uses_alternate_profile	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x3074	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime_transitions.cpp#ghidra_conversion::prepare_field_scene_buffers	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x3084	port	decompilation/ghidra_conversion/src/integration/field_session_source_assets_conversion.cpp;decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime_transitions.cpp	decompilation/export/disassembly.s:0x3084; Typed scene-profile/resource loading feeds the runtime scene transition
 0x313A	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime_transitions.cpp#ghidra_conversion::prepare_field_scene_buffers	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x3168	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#ghidra_conversion::toggle_field_scene_variant	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x334C	port	decompilation/ghidra_conversion/src/field/field_hud_conversion.cpp#ghidra_conversion::upload_field_asset_sequence	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
@@ -96,6 +116,8 @@ rom_entry	mapping_kind	implementation	evidence
 0x39F2	port	decompilation/ghidra_conversion/src/entities/entity_combat_conversion.cpp#ghidra_conversion::refresh_field_animation_assets	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x3A1C	port	decompilation/ghidra_conversion/src/core/remaining_field_conversion.cpp#ghidra_conversion::update_field_camera	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x3A90	port	decompilation/ghidra_conversion/src/core/remaining_field_conversion.cpp#ghidra_conversion::accept_camera_delta	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x3B1E	port	decompilation/ghidra_conversion/src/field/field_camera_conversion.cpp#ghidra_conversion::classify_field_camera_axis_step	decompilation/export/disassembly.s:00003B1E..00003BAA; decompilation/ghidra_conversion/tests/field/field_camera_conversion_test.cpp
+0x3BAC	port	decompilation/ghidra_conversion/src/field/field_camera_conversion.cpp#ghidra_conversion::follow_field_camera	decompilation/export/disassembly.s:00003BAC..00003D16; decompilation/ghidra_conversion/tests/field/field_camera_conversion_test.cpp
 0x3D18	port	decompilation/ghidra_conversion/src/rendering/display_service_batch_conversion.cpp#ghidra_conversion::render_field_tile_rows	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x3D4A	port	decompilation/ghidra_conversion/src/rendering/display_service_batch_conversion.cpp#ghidra_conversion::render_field_tile_column	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x3D80	port	decompilation/ghidra_conversion/qt_runtime/src/rendering/plane_streamer.cpp#ghidra_conversion::emit_field_tile_column_words	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
@@ -113,14 +135,17 @@ rom_entry	mapping_kind	implementation	evidence
 0x4216	port	decompilation/ghidra_conversion/src/field/field_coordinate_conversion.cpp#ghidra_conversion::offset_field_coordinate	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x423C	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#ghidra_conversion::quantize_field_delta	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x42B0	port	decompilation/ghidra_conversion/src/entities/entity_template_conversion.cpp#ghidra_conversion::initialize_joshua_archetype_selection	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x42E6	port	decompilation/ghidra_conversion/src/session/recruited_runner_service_conversion.cpp	decompilation/export/disassembly.s:0x42E6; Runner service payment initializes the selected primary or secondary live slot
 0x42F2	port	decompilation/ghidra_conversion/src/session/recruited_runner_service_conversion.cpp#ghidra_conversion::initialize_primary_roster_template	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x431C	port	decompilation/ghidra_conversion/src/session/recruited_runner_service_conversion.cpp#ghidra_conversion::initialize_secondary_roster_template	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x4388	port	decompilation/ghidra_conversion/src/entities/entity_template_conversion.cpp#ghidra_conversion::finalize_pending_entity_template_update	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x43B6	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#FieldSceneRuntime::configure_runtime_coordinator_callbacks	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x4466	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#FieldSceneRuntime::publish_pending_world_activity_script_actors	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x44BC	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#FieldSceneRuntime::initialize_default_field_actors;decompilation/ghidra_conversion/src/entities/entity_template_conversion.cpp#ghidra_conversion::initialize_entity_record_from_template;decompilation/gameplay/scripts/actor/think.lua#apply_patrol	decompilation/export/disassembly.s:000044BC..00004616; decompilation/docs/ghidra/actor-ai-heartbeat-source-audit.md; decompilation/ghidra_conversion/tests/entities/entity_template_conversion_test.cpp; decompilation/gameplay/tests_lua/ai_think_tests.lua
 0x4618	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#ghidra_conversion::update_entity_render_pass	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x4658	port	decompilation/ghidra_conversion/src/world/world_entity_conversion.cpp#ghidra_conversion::update_entity_frame	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x481E	port	decompilation/ghidra_conversion/src/world/world_entity_conversion.cpp#ghidra_conversion::refresh_projected_entity_sprites	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x49A0	replaced	decompilation/ghidra_conversion/src/world/world_effect_controller_conversion.cpp	decompilation/export/disassembly.s:0x49A0; ROM callback is a no-op; the host omits the empty callback side effect
 0x49A2	port	decompilation/ghidra_conversion/src/entities/entity_action_math_conversion.cpp#ghidra_conversion::spawn_entity_effect	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x4ADC	port	decompilation/ghidra_conversion/src/world/world_entity_conversion.cpp#ghidra_conversion::advance_entity_effect_timer	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x4B6C	port	decompilation/ghidra_conversion/src/field/field_entity_render_batch_conversion.cpp#ghidra_conversion::reset_effect_record	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
@@ -183,6 +208,7 @@ rom_entry	mapping_kind	implementation	evidence
 0xB530	port	decompilation/ghidra_conversion/src/entities/entity_coordinate_conversion.cpp#ghidra_conversion::approach_entity_fixed_point_target	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0xB574	port	decompilation/gameplay/scripts/actor/heartbeat.lua#ActorAI.heartbeat	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0xB6E4	port	decompilation/ghidra_conversion/src/entities/animation_table_conversion.cpp#ghidra_conversion::select_entity_animation_table	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0xB732	port	decompilation/gameplay/scripts/actor/movement.lua	decompilation/export/disassembly.s:0xB732; Lua movement policy consumes the structured host collision result
 0xB77E	port	decompilation/gameplay/scripts/actor/movement.lua#probe_movement	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0xB7B8	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#ghidra_conversion::advance_entity_movement_and_mode_transition	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0xBADE	port	decompilation/gameplay/scripts/actor/movement.lua#advance_entity_movement	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
@@ -269,6 +295,7 @@ rom_entry	mapping_kind	implementation	evidence
 0x102D4	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime_command_overview.cpp#ghidra_conversion::prepare_magic_action_details	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x1033E	port	decompilation/gameplay/scripts/combat.lua#resolve_spell_action	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x1047E	port	decompilation/ghidra_conversion/src/entities/entity_action_math_conversion.cpp#ghidra_conversion::calculate_ready_entity_action_bonus	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x104C8	port	decompilation/ghidra_conversion/src/menus/menu_transfer_batch_conversion.cpp	decompilation/export/disassembly.s:0x104C8; Typed menu metric resolver preserves source byte-index arithmetic
 0x104F6	port	decompilation/ghidra_conversion/src/entities/entity_action_math_conversion.cpp#ghidra_conversion::apply_action_item_phase_modifiers	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x1055E	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#ghidra_conversion::refresh_magic_menu_success_or_defense_values	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x105E6	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#ghidra_conversion::refresh_magic_action_effect_value	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
@@ -297,6 +324,7 @@ rom_entry	mapping_kind	implementation	evidence
 0x110E8	port	decompilation/ghidra_conversion/src/menus/menu_service_sequence_conversion.cpp#ghidra_conversion::draw_active_runner_hud_panel	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x110EC	port	decompilation/ghidra_conversion/src/menus/menu_service_sequence_conversion.cpp#ghidra_conversion::draw_active_runner_hud_panel	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x1111A	port	decompilation/ghidra_conversion/src/menus/menu_service_sequence_conversion.cpp#ghidra_conversion::render_active_runner_name_text	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x11136	replaced	decompilation/ghidra_conversion/qt_runtime/src/app/ghidra_conversion_qt_window.hpp	decompilation/export/disassembly.s:0x11136; Qt presents menu rows from typed state instead of a runtime tile-row writer
 0x11190	port	decompilation/ghidra_conversion/src/field/field_entity_render_batch_conversion.cpp#ghidra_conversion::transfer_menu_glyph_triple	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x111D0	port	decompilation/ghidra_conversion/src/menus/menu_service_sequence_conversion.cpp#ghidra_conversion::upload_menu_tile_block	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x111E8	port	decompilation/ghidra_conversion/src/menus/equipment_combat_bar_conversion.cpp#ghidra_conversion::render_equipment_details	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
@@ -418,6 +446,7 @@ rom_entry	mapping_kind	implementation	evidence
 0x15118	port	decompilation/ghidra_conversion/src/entities/entity_effect_spawn_conversion.cpp#ghidra_conversion::initialize_entity_behavior_record	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x1514E	port	decompilation/gameplay/scripts/actor/actions.lua;decompilation/gameplay/scripts/actor/heartbeat.lua	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x152FA	port	decompilation/ghidra_conversion/src/entities/entity_transition_conversion.cpp#ghidra_conversion::prepare_special_spawn_record	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x15354	port	decompilation/ghidra_conversion/src/audio/audio_service_conversion.cpp	decompilation/export/disassembly.s:0x15354; Typed thrown-projectile launch state requests audio through the host service
 0x15554	port	decompilation/ghidra_conversion/src/entities/entity_auxiliary_proximity_conversion.cpp#ghidra_conversion::service_nearby_entity_auxiliary_behavior	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x1562E	port	decompilation/ghidra_conversion/src/entities/behavior_animation_conversion.cpp#ghidra_conversion::service_entity_auxiliary_behavior	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x15646	port	decompilation/ghidra_conversion/src/entities/entity_behavior_action_service_conversion.cpp#ghidra_conversion::spawn_entity_effect_record	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
@@ -500,6 +529,7 @@ rom_entry	mapping_kind	implementation	evidence
 0x181F8	port	decompilation/ghidra_conversion/src/cyberspace/matrix_entry_conversion.cpp#ghidra_conversion::prepare_matrix_session_entry	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x1822C	port	decompilation/ghidra_conversion/src/cyberspace/matrix_interaction_conversion.cpp#ghidra_conversion::run_matrix_interaction_loop	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x18408	port	decompilation/ghidra_conversion/src/cyberspace/matrix_interaction_conversion.cpp#ghidra_conversion::apply_matrix_action_input	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x18450	port	decompilation/gameplay/scripts/menu/screens/cyberdeck.lua;decompilation/gameplay/scripts/menu/rules/matrix.lua	decompilation/export/disassembly.s:0x18450; Lua owns Pull Plug confirmation and logout transition
 0x186FA	port	decompilation/ghidra_conversion/src/menus/menu_hud_service_conversion.cpp#ghidra_conversion::refresh_field_hud_assets	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x18776	port	decompilation/ghidra_conversion/src/menus/menu_hud_service_conversion.cpp#ghidra_conversion::advance_hud_fade_service	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x187AA	port	decompilation/ghidra_conversion/src/menus/menu_hud_service_conversion.cpp#ghidra_conversion::render_hud_indicator_grids	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
@@ -606,6 +636,7 @@ rom_entry	mapping_kind	implementation	evidence
 0x1BA6E	port	decompilation/ghidra_conversion/src/title_intro/title_world_helpers_conversion.cpp#ghidra_conversion::advance_title_burst_animation	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x1BB6A	port	decompilation/ghidra_conversion/src/title_intro/title_noise_effect_conversion.cpp#ghidra_conversion::advance_title_noise_effect	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x1BCE8	port	decompilation/ghidra_conversion/src/title_intro/title_profile_motion_conversion.cpp#ghidra_conversion::advance_title_profile_motion	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x1BEBA	port	decompilation/gameplay/scripts/menu/screens/matrix_node_action.lua;decompilation/gameplay/scripts/menu/matrix_session.lua	decompilation/export/disassembly.s:0x1BEBA; Lua owns Analyze transition state and source countdown
 0x1BF5C	port	decompilation/ghidra_conversion/src/title_intro/title_effect_animation_batch_conversion.cpp#ghidra_conversion::copy_title_profile	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x1BF7A	port	decompilation/ghidra_conversion/src/title_intro/title_profile_transition_conversion.cpp#ghidra_conversion::advance_profile_copy_timer	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x1C012	port	decompilation/ghidra_conversion/src/world/world_effect_batch_conversion.cpp#ghidra_conversion::copy_seven_words	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
@@ -680,6 +711,7 @@ rom_entry	mapping_kind	implementation	evidence
 0x1F146	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#FieldSceneRuntime::resolve_default_actor_proximity	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x1F16A	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#FieldSceneRuntime	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x1F1E0	port	decompilation/ghidra_conversion/src/world/world_effect_batch_conversion.cpp#ghidra_conversion::advance_eight_step_counter	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x1F1FC	port	decompilation/gameplay/scripts/run_registry.lua	decompilation/export/disassembly.s:0x1F1FC; Run registry owns Ghoul bounty objective readiness
 0x1F246	port	decompilation/ghidra_conversion/src/field/field_exit_prompt_conversion.cpp#ghidra_conversion::run_mode_exit_services	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x1F292	port	decompilation/ghidra_conversion/src/field/mode_exit_conversion.cpp#ghidra_conversion::prepare_mode_exit_resources	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x1F32E	port	decompilation/ghidra_conversion/src/field/mode_optional_resource_conversion.cpp#ghidra_conversion::clear_optional_mode_resource	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
@@ -702,16 +734,21 @@ rom_entry	mapping_kind	implementation	evidence
 0x208A8	port	decompilation/gameplay/scripts/taxi_cabbie.lua;decompilation/gameplay/scripts/data/taxi_destinations.lua	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x208FE	port	decompilation/gameplay/scripts/taxi_cabbie.lua	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x20990	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#FieldSceneRuntime	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x20A12	port	decompilation/gameplay/scripts/run_registry.lua;decompilation/gameplay/scripts/johnson.lua	decompilation/export/disassembly.s:0x20A12; Run registry and Johnson flow settle matching active-run results
 0x20E48	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_interaction_runtime.cpp#FieldInteractionRuntime	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x20E7A	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_interaction_runtime.cpp#FieldInteractionRuntime	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x20E92	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_interaction_runtime.cpp#FieldInteractionRuntime	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x20EC2	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_interaction_runtime.cpp#FieldInteractionRuntime	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x211E8	port	decompilation/ghidra_conversion/src/integration/recruited_runner_conversation_conversion.cpp#ghidra_conversion::select_recruited_runner_conversation_prompt	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x21226	port	decompilation/ghidra_conversion/src/integration/recruited_runner_conversation_conversion.cpp#ghidra_conversion::prepare_recruited_runner_service_offer	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x21318	port	decompilation/ghidra_conversion/src/session/recruited_runner_service_conversion.cpp	decompilation/export/disassembly.s:0x21318; Typed service payment handles free permanent hire
+0x21326	port	decompilation/ghidra_conversion/src/session/recruited_runner_service_conversion.cpp	decompilation/export/disassembly.s:0x21326; Typed service payment handles short-term hire and slot initialization
+0x21332	port	decompilation/ghidra_conversion/src/session/recruited_runner_service_conversion.cpp	decompilation/export/disassembly.s:0x21332; Typed service payment handles permanent hire and slot initialization
 0x213CA	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#ghidra_conversion::resolve_stoker_motel_followup_command	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x213E2	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#ghidra_conversion::resolve_stoker_motel_followup_command	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x213FA	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#ghidra_conversion::resolve_stoker_motel_debt_payment	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x21458	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#ghidra_conversion::resolve_stoker_motel_room_payment	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x215DA	port	decompilation/gameplay/scripts/johnson.lua;decompilation/gameplay/scripts/run_registry.lua	decompilation/export/disassembly.s:0x215DA; Lua Johnson offer route and shared run registry cover the work-choice callback
 0x21616	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_interaction_runtime.cpp#FieldInteractionRuntime	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x21628	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_interaction_runtime.cpp#FieldInteractionRuntime::dispatch_command	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x21692	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_interaction_runtime.cpp#FieldInteractionRuntime::dispatch_command	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
@@ -724,8 +761,14 @@ rom_entry	mapping_kind	implementation	evidence
 0x21C0C	port	decompilation/gameplay/scripts/dialogue_actions.lua#DialogueActions	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x21C38	port	decompilation/gameplay/scripts/dialogue_actions.lua#DialogueActions	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x21C72	port	decompilation/gameplay/scripts/dialogue_actions.lua#DialogueActions	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x21CE4	port	decompilation/gameplay/scripts/salish_sinsearach_gate.lua;decompilation/gameplay/scripts/dialogue_graph.lua	decompilation/export/disassembly.s:0x21CE4; Lua and dialogue graph select the Sinsearach state-dependent root
 0x21E66	port	decompilation/gameplay/scripts/salish_sinsearach_gate.lua	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x21E8C	port	decompilation/gameplay/scripts/salish_sinsearach_gate.lua;decompilation/gameplay/scripts/dialogue_graph.lua	decompilation/export/disassembly.s:0x21E8C; Lua and dialogue graph own the gate-return command
 0x21E9E	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#FieldSceneRuntime	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x21FD0	port	decompilation/gameplay/scripts/salish_sinsearach_gate.lua;decompilation/gameplay/scripts/dialogue_graph.lua	decompilation/export/disassembly.s:0x21FD0; Lua and dialogue graph apply the Frosty handoff command
+0x22018	port	decompilation/gameplay/scripts/harlequin_dialogue.lua	decompilation/export/disassembly.s:0x22018; Lua map-information graph owns the branch
+0x22072	port	decompilation/gameplay/scripts/harlequin_dialogue.lua	decompilation/export/disassembly.s:0x22072; Lua map-information graph owns the branch
+0x220EA	port	decompilation/gameplay/scripts/salish_sinsearach_gate.lua;decompilation/gameplay/scripts/dialogue_graph.lua	decompilation/export/disassembly.s:0x220EA; Lua dialogue action applies the Frosty conversation command
 0x22112	port	decompilation/gameplay/scripts/run_support.lua#tarislar_city_inn	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x22124	port	decompilation/gameplay/scripts/run_support.lua#tarislar_city_inn	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x22136	port	decompilation/ghidra_conversion/qt_runtime/src/dialogue/field_dialogue_runtime.cpp#FieldDialogueRuntime	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
@@ -734,6 +777,7 @@ rom_entry	mapping_kind	implementation	evidence
 0x22934	port	decompilation/gameplay/scripts/vid_phone/alesandro_hobbs.lua	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x22C98	port	decompilation/gameplay/scripts/vid_phone/affiliations.lua	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x22CE8	port	decompilation/gameplay/scripts/vid_phone/affiliations.lua	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x22F90	port	decompilation/gameplay/scripts/johnson.lua	decompilation/export/disassembly.s:0x22F90; Lua selects contextual Johnson questions and response menus
 0x23750	port	decompilation/ghidra_conversion/src/world/world_resource_batch_conversion.cpp#ghidra_conversion::count_active_entities	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x2401C	port	decompilation/ghidra_conversion/src/integration/recruited_runner_conversation_conversion.cpp#ghidra_conversion::select_recruited_runner_information_prompt	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x24034	port	decompilation/ghidra_conversion/src/integration/recruited_runner_conversation_conversion.cpp#ghidra_conversion::select_recruited_runner_information_prompt	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
@@ -782,6 +826,7 @@ rom_entry	mapping_kind	implementation	evidence
 0x53094	port	decompilation/ghidra_conversion/src/audio/audio_command_batch_conversion.cpp#ghidra_conversion::begin_bus_then_flush_append_pair	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x530A0	port	decompilation/ghidra_conversion/src/audio/audio_command_batch_conversion.cpp#ghidra_conversion::controller_access_pair	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x530D2	port	decompilation/ghidra_conversion/src/audio/audio_command_batch_conversion.cpp#ghidra_conversion::service_audio_if_enabled_variant	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x530DE	port	decompilation/ghidra_conversion/src/audio/audio_service_conversion.cpp	decompilation/export/disassembly.s:0x530DE; Audio service gates the sound request on the host sound-enable fact
 0x530EA	port	decompilation/ghidra_conversion/src/audio/audio_command_batch_conversion.cpp#ghidra_conversion::service_audio_command_frame_variant	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x53112	port	decompilation/ghidra_conversion/src/audio/audio_command_batch_conversion.cpp#ghidra_conversion::service_audio_command_wrapper	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x53126	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#ghidra_conversion::prepare_audio_mode_entry	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
@@ -795,6 +840,7 @@ rom_entry	mapping_kind	implementation	evidence
 0x53216	port	decompilation/ghidra_conversion/src/session/runner_record_selection_conversion.cpp#ghidra_conversion::select_secondary_runner_record_table	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x5322C	port	decompilation/ghidra_conversion/src/audio/audio_service_batch_conversion.cpp#ghidra_conversion::prepare_audio_title	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x53248	port	decompilation/ghidra_conversion/src/audio/audio_service_batch_conversion.cpp#ghidra_conversion::build_title_sprite_once	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x53290	port	decompilation/ghidra_conversion/src/audio/audio_service_batch_conversion.cpp;decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp	decompilation/export/disassembly.s:0x53290; Typed audio arrays and Matrix map knowledge reset with their owning scene state
 0x532A8	port	decompilation/ghidra_conversion/src/cyberspace/matrix_node_action_loop_conversion.cpp#ghidra_conversion::fill_matrix_node_auxiliary_sentinel	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x532BC	port	decompilation/ghidra_conversion/src/session/runner_selection_conversion.cpp#ghidra_conversion::initialize_runner_selection_screen	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x533EE	port	decompilation/ghidra_conversion/src/session/runner_animation_grid_conversion.cpp#ghidra_conversion::initialize_runner_animation_grid	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
@@ -823,6 +869,12 @@ rom_entry	mapping_kind	implementation	evidence
 0x549E4	port	decompilation/ghidra_conversion/src/cyberspace/matrix_node_action_loop_conversion.cpp#ghidra_conversion::redraw_matrix_node_action_grid_service	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x549F6	port	decompilation/ghidra_conversion/src/cyberspace/matrix_node_action_loop_conversion.cpp#ghidra_conversion::select_matrix_alert_display	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x54A28	port	decompilation/ghidra_conversion/src/cyberspace/matrix_node_action_loop_conversion.cpp#ghidra_conversion::render_matrix_node_status_summary	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x54A8E	port	decompilation/gameplay/scripts/menu/rules/node_actions.lua;decompilation/gameplay/scripts/menu/screens/matrix_node_action.lua	decompilation/export/disassembly.s:0x54A8E; Lua Matrix node action advances random alerts
+0x54B34	port	decompilation/gameplay/scripts/menu/rules/node_actions.lua;decompilation/gameplay/scripts/menu/screens/matrix_node_action.lua	decompilation/export/disassembly.s:0x54B34; Lua Matrix node action handles Crash System
+0x54BD2	port	decompilation/gameplay/scripts/menu/rules/node_actions.lua;decompilation/gameplay/scripts/menu/screens/matrix_node_action.lua	decompilation/export/disassembly.s:0x54BD2; Lua Matrix node action handles Turn Off Node
+0x54C5E	port	decompilation/gameplay/scripts/menu/rules/node_actions.lua;decompilation/gameplay/scripts/menu/screens/matrix_node_action.lua	decompilation/export/disassembly.s:0x54C5E; Lua Matrix node action handles Transfer Data
+0x55058	port	decompilation/gameplay/scripts/menu/rules/node_actions.lua;decompilation/ghidra_conversion/src/scripting/cyberdeck_menu_bindings.cpp	decompilation/export/disassembly.s:0x55058; Lua datastore action uses the typed story-file facts bridge
+0x5559E	port	decompilation/gameplay/scripts/menu/rules/node_actions.lua;decompilation/gameplay/scripts/menu/screens/matrix_node_action.lua	decompilation/export/disassembly.s:0x5559E; Lua Matrix node action handles Erase datastore
 0x55640	port	decompilation/ghidra_conversion/src/entities/entity_action_math_conversion.cpp#ghidra_conversion::resolve_entity_action_pair	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x556C6	port	decompilation/ghidra_conversion/src/entities/entity_action_math_conversion.cpp#ghidra_conversion::check_entity_action_eligibility	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x55740	port	decompilation/ghidra_conversion/src/entities/entity_action_math_conversion.cpp#ghidra_conversion::apply_target_condition_modifier	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
@@ -851,6 +903,7 @@ rom_entry	mapping_kind	implementation	evidence
 0x563CC	port	decompilation/ghidra_conversion/src/world/world_effect_pending_roll_conversion.cpp#ghidra_conversion::advance_primary_world_effect_pending_roll	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x56434	port	decompilation/ghidra_conversion/src/field/field_menu_state_batch_conversion.cpp#ghidra_conversion::advance_menu_selection_service_timer	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x56482	port	decompilation/ghidra_conversion/src/field/field_menu_state_batch_conversion.cpp#ghidra_conversion::advance_menu_selection_variant_timer	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x564D6	port	decompilation/gameplay/scripts/menu/rules/matrix_combat.lua;decompilation/gameplay/scripts/menu/screens/matrix_node_action.lua	decompilation/export/disassembly.s:0x564D6; Lua MatrixCombat degradation owns selected-node security progression
 0x56506	port	decompilation/ghidra_conversion/src/menus/menu_hud_meter_conversion.cpp#ghidra_conversion::calculate_menu_hud_row_meter	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x56632	port	decompilation/ghidra_conversion/src/menus/menu_hud_meter_conversion.cpp#ghidra_conversion::scale_menu_hud_value_by_difficulty	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x5668C	port	decompilation/ghidra_conversion/src/menus/menu_selection_timing_conversion.cpp#ghidra_conversion::advance_menu_selection_service_and_refresh	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
@@ -923,6 +976,7 @@ rom_entry	mapping_kind	implementation	evidence
 0x59BCC	port	decompilation/ghidra_conversion/src/field/field_mode_finalizer_conversion.cpp#ghidra_conversion::reset_runner_status_triplet	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x59C34	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#ghidra_conversion::award_party_karma	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x59C5E	port	decompilation/ghidra_conversion/src/title_intro/title_intro_stages_conversion.cpp#ghidra_conversion::run_title_intro_stages	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x59D12	port	decompilation/ghidra_conversion/src/integration/opening_intro_conversion.cpp;decompilation/ghidra_conversion/src/title_intro/title_intro_stages_conversion.cpp	decompilation/export/disassembly.s:0x59D12; Typed callback boundary enters post-intro mode after the opening sequence
 0x59D7C	port	decompilation/ghidra_conversion/src/title_intro/title_intro_stage2_conversion.cpp#ghidra_conversion::run_title_intro_stage2	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x59F7A	port	decompilation/ghidra_conversion/src/integration/opening_intro_conversion.cpp#ghidra_conversion::reset_title_intro_overlay_schedule	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x59F8E	port	decompilation/ghidra_conversion/src/integration/opening_intro_conversion.cpp#ghidra_conversion::advance_title_intro_overlay	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
@@ -976,12 +1030,15 @@ rom_entry	mapping_kind	implementation	evidence
 0x5B2C2	port	decompilation/ghidra_conversion/src/integration/opening_intro_conversion.cpp#ghidra_conversion::set_title_intro_entity_color_words	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x5B2E2	port	decompilation/ghidra_conversion/src/integration/opening_intro_conversion.cpp#ghidra_conversion::step_title_intro_entity_color_words	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x5B32C	port	decompilation/ghidra_conversion/src/integration/opening_intro_conversion.cpp#ghidra_conversion::fill_title_intro_word_block	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x5BA4C	replaced	decompilation/ghidra_conversion/src/integration/field_session_source_assets_conversion.cpp;decompilation/ghidra_conversion/src/integration/startup_integration_conversion.cpp	decompilation/export/disassembly.s:0x5BA4C; Scene resource thunk is replaced by loading named host assets and typed scene records
 0x5BA50	port	decompilation/ghidra_conversion/src/field/scene_resource_conversion.cpp#ghidra_conversion::load_scene_resources	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x5BA66	port	decompilation/ghidra_conversion/src/field/scene_resource_conversion.cpp#ghidra_conversion::install_scene_resource_index_entries	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x5BA98	port	decompilation/ghidra_conversion/src/entities/entity_template_conversion.cpp#ghidra_conversion::select_pending_entity_template_list	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x5BAC4	port	decompilation/gameplay/scripts/dialogue_graph.lua#DialogueGraph	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x5C8C6	port	decompilation/ghidra_conversion/src/core/word_transfer_conversion.cpp#ghidra_conversion::upload_title_or_field_word_stream	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x5D130	port	decompilation/gameplay/scripts/dialogue_actions.lua#DialogueActions	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x5D172	port	decompilation/ghidra_conversion/src/audio/audio_service_batch_conversion.cpp;decompilation/ghidra_conversion/src/title_intro/boot_sequence_conversion.cpp	decompilation/export/disassembly.s:0x5D172; Pre-title startup prepares the host audio assets through the typed boot sequence
+0x5D1B4	port	decompilation/ghidra_conversion/src/audio/audio_service_batch_conversion.cpp;decompilation/ghidra_conversion/src/title_intro/boot_sequence_conversion.cpp	decompilation/export/disassembly.s:0x5D1B4; Pre-title startup prepares the host audio assets through the typed boot sequence
 0x5D260	port	decompilation/ghidra_conversion/src/title_intro/title_intro_transfer_conversion.cpp#ghidra_conversion::reset_world_frame_service_state	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x5D29C	port	decompilation/ghidra_conversion/src/title_intro/title_intro_transfer_conversion.cpp#ghidra_conversion::advance_world_scene_entity_effect	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x5D3E6	port	decompilation/ghidra_conversion/src/title_intro/title_intro_transfer_conversion.cpp#ghidra_conversion::spawn_world_scene_secondary_effect	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
@@ -999,6 +1056,8 @@ rom_entry	mapping_kind	implementation	evidence
 0x5D996	port	decompilation/ghidra_conversion/src/title_intro/boot_sequence_conversion.cpp#ghidra_conversion::advance_pre_title_animation	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x5DA50	port	decompilation/ghidra_conversion/src/title_intro/boot_sequence_conversion.cpp#ghidra_conversion::setup_pre_title_resources	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x5DAC4	port	decompilation/ghidra_conversion/src/title_intro/boot_sequence_conversion.cpp#ghidra_conversion::fill_pre_title_horizontal_scroll	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x5DAE8	replaced	decompilation/ghidra_conversion/src/title_intro/title_resource_sequence_conversion.cpp;decompilation/ghidra_conversion/src/integration/startup_integration_conversion.cpp	decompilation/export/disassembly.s:0x5DAE8; Pre-title workspace clear is replaced by host asset and startup state initialization
+0x5DAFC	replaced	decompilation/ghidra_conversion/src/title_intro/title_resource_sequence_conversion.cpp;decompilation/ghidra_conversion/src/integration/startup_integration_conversion.cpp	decompilation/export/disassembly.s:0x5DAFC; Pre-title stream write is replaced by named title assets and their host loader
 0x1096B6	port	decompilation/gameplay/scripts/vid_phone/capt_quinton_jaymes.lua	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x10A7F2	port	decompilation/gameplay/scripts/vid_phone/sharkey.lua;decompilation/gameplay/scripts/data/vid_phone_passages.lua	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x10AD8A	port	decompilation/gameplay/scripts/vid_phone/kipp_david.lua	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
@@ -1009,3 +1068,6 @@ rom_entry	mapping_kind	implementation	evidence
 0x10E400	port	decompilation/gameplay/scripts/vid_phone/max.lua	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x10E9DE	port	decompilation/gameplay/scripts/vid_phone/chillicut.lua	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x10F0D4	port	decompilation/gameplay/scripts/vid_phone/professor_jefferson.lua	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x121FA0	replaced	decompilation/ghidra_conversion/tools/rom_research/graphics_extract.cpp;decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp	decompilation/export/disassembly.s:0x121FA0; Portrait profile table is consumed by offline extraction and named runtime image assets
+0x122420	replaced	decompilation/ghidra_conversion/tools/rom_research/graphics_extract.cpp;decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp	decompilation/export/disassembly.s:0x122420; Portrait stream is decoded offline; runtime presents the extracted image asset
+0x172CDC	port	decompilation/ghidra_conversion/src/integration/field_session_source_assets_conversion.cpp;decompilation/gameplay/scripts/field_events.lua	decompilation/export/disassembly.s:0x172CDC; Typed source event-table loading feeds Lua-owned field event behavior

@@ -2,15 +2,17 @@
 
 This is a structural source map, not a claim of behavioral ROM fidelity. A mapped row has an explicit Lua/C++ source file or symbol in the committed mapping table, or a documented replacement entry. Runtime equivalence still requires behavior-specific ROM traces and measurements.
 
+The 66-entry historical B2 triage is recorded in [rom-coverage-triage.md](rom-coverage-triage.md) and [rom-coverage-triage.tsv](rom-coverage-triage.tsv). That ledger distinguishes port owners, host or asset replacements, and routines filed as missing bugs.
+
 Inventory: the union of `decompilation/docs/ghidra/decompiled-function-status.tsv` and `decompilation/export/functions.tsv`. The status ledger has 1077 rows; after address deduplication and including any export-only entries, the inventory contains **1074 routine entries** (911 unique Ghidra function exports). Ghidra names and sizes take precedence where the export list has the same address.
 
-Mapped: **1010**. Unmapped backlog: **64**. Committed mapped-routine baseline: **1010**.
+Mapped: **1072**. Unmapped backlog: **2**. Committed mapped-routine baseline: **1072**.
 
 | Inventory category | Entries | Mapped | Unmapped |
 |---|---:|---:|---:|
-| Ghidra code function exports | 911 | 873 | 38 |
-| Status-ledger-only addresses | 163 | 137 | 26 |
-| Combined unique addresses | 1074 | 1010 | 64 |
+| Ghidra code function exports | 911 | 911 | 0 |
+| Status-ledger-only addresses | 163 | 161 | 2 |
+| Combined unique addresses | 1074 | 1072 | 2 |
 
 The `shadowrun_rom_coverage` CTest validates the current mapping references and fails if a routine in the baseline loses its mapping. Existing unmapped entries are reported but do not fail CTest. Run `python3 decompilation/ghidra_conversion/tools/rom_coverage.py --write-report` after updating the map.
 
@@ -33,30 +35,7 @@ These duplicate labels are retained as provenance warnings. Where a Ghidra funct
 
 ## Largest unmapped routines
 
-Code size comes from the Ghidra export list; only exported routines have a size here.
-
-| ROM entry | Ghidra name | Size (bytes) | Subsystem |
-|---|---|---:|---|
-| `0x0236` | reset_and_enter_boot | 520 | reset / boot |
-| `0x3BAC` | advance_field_camera_scroll | 364 | advance_field_camera_scroll |
-| `0x44BC` | initialize_entity_record_from_template | 348 | entity template initialization |
-| `0x1728` | render_hud_sprite_stream | 322 | HUD sprite stream |
-| `0x0C2C` | clear_runtime_memory_and_vdp | 192 | runtime memory/display initialization |
-| `0x3084` | load_field_scene_profile_and_terrain | 182 | field scene resource loop |
-| `0x1BEBA` | advance_title_profile_transition | 162 | Analyze profile transition |
-| `0x3B1E` | classify_field_camera_vertical_delta | 142 | classify_field_camera_vertical_delta |
-| `0x54A8E` | advance_random_mode_event | 92 | random Matrix alert advance |
-| `0x11136` | render_menu_tile_rows | 90 | menu tile-row renderer |
-| `0x1DF6` | draw_title_copyright | 88 | title copyright text |
-| `0xB732` | apply_movement_result_policy | 76 | movement result policy |
-| `0x15354` | activate_entity_audio_state | 60 | entity audio state activation |
-| `0x0436` | write_startup_text_to_vdp | 54 | startup text transfer |
-| `0x564D6` | reduce_menu_progression_timing | 48 | selected Matrix node security helper |
-| `0x104C8` | find_matching_menu_metric | 46 | matching menu metric scan |
-| `0x5D1B4` | prepare_pre_title_audio_variant_b | 46 | prepare_pre_title_audio_variant_b |
-| `0x59D12` | enter_post_intro_mode | 44 | enter post-intro mode |
-| `0x073A` | wait_for_vdp_ready | 36 | VDP-ready wait |
-| `0x0BD2` | wait_for_vblank | 32 | frame/vblank wait |
+No unmapped routine with a Ghidra size entry.
 
 ## Largest unmapped subsystem groups
 
@@ -64,31 +43,34 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 
 | Group | Unmapped entries (combined) |
 |---|---:|
-| Core and shared | 21 |
-| Menus and dialogue | 14 |
-| Opening and story | 11 |
-| Actors and movement | 7 |
-| Field and world | 5 |
-| Presentation and audio | 5 |
 | Combat and magic | 1 |
+| Core and shared | 1 |
 
 | Group | Unmapped Ghidra code routines |
 |---|---:|
-| Core and shared | 11 |
-| Opening and story | 10 |
-| Menus and dialogue | 5 |
-| Presentation and audio | 5 |
-| Field and world | 4 |
-| Actors and movement | 3 |
 
 ## Mapped routines
 
 | ROM entry | Routine | Size (bytes) | Port implementation | Mapping kind |
 |---|---|---:|---|---|
+| `0x0200` | unused_stop_stub_2702 | 8 | decompilation/ghidra_conversion/qt_runtime/src/app/ghidra_conversion_qt_main.cpp | replaced |
+| `0x0208` | unused_stop_stub_2703 | 8 | decompilation/ghidra_conversion/qt_runtime/src/app/ghidra_conversion_qt_main.cpp | replaced |
+| `0x0210` | unused_stop_stub_2704 | 8 | decompilation/ghidra_conversion/qt_runtime/src/app/ghidra_conversion_qt_main.cpp | replaced |
+| `0x0218` | unused_stop_stub_2705 | 8 | decompilation/ghidra_conversion/qt_runtime/src/app/ghidra_conversion_qt_main.cpp | replaced |
+| `0x0220` | unused_stop_stub_2700 | 8 | decompilation/ghidra_conversion/qt_runtime/src/app/ghidra_conversion_qt_main.cpp | replaced |
+| `0x0228` | interrupt_stub_write_alternating_word_pair | 6 | decompilation/ghidra_conversion/qt_runtime/src/app/ghidra_conversion_qt_main.cpp | replaced |
+| `0x022E` | interrupt_stub_service_display_frame | 6 | decompilation/ghidra_conversion/qt_runtime/src/app/ghidra_conversion_qt_main.cpp | replaced |
+| `0x0234` | return_from_interrupt | 2 | decompilation/ghidra_conversion/qt_runtime/src/app/ghidra_conversion_qt_main.cpp | replaced |
+| `0x0236` | reset_and_enter_boot | 520 | decompilation/ghidra_conversion/src/title_intro/boot_sequence_conversion.cpp | port |
+| `0x0330` | reset display setup | — | decompilation/ghidra_conversion/qt_runtime/src/app/ghidra_conversion_qt_window.hpp | replaced |
+| `0x0436` | write_startup_text_to_vdp | 54 | decompilation/ghidra_conversion/src/rendering/startup_vdp_conversion.cpp | port |
+| `0x073A` | wait_for_vdp_ready | 36 | decompilation/ghidra_conversion/src/core/timing_conversion.cpp | port |
 | `0x075E` | run_game_loop | 1106 | decompilation/ghidra_conversion/src/integration/field_session_bootstrap_conversion.cpp#ghidra_conversion::integration::bootstrap_field_session | port |
 | `0x0BB6` | wait_for_even_frame | 28 | decompilation/ghidra_conversion/src/core/timing_conversion.cpp#ghidra_conversion::wait_for_even_frame | port |
+| `0x0BD2` | wait_for_vblank | 32 | decompilation/ghidra_conversion/src/core/timing_conversion.cpp | port |
 | `0x0BF2` | latch_controller_events | 50 | decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#ghidra_conversion::latch_controller_events | port |
 | `0x0C24` | wait_for_vblank_frames | 8 | decompilation/ghidra_conversion/src/audio/audio_command_batch_conversion.cpp#ghidra_conversion::wait_for_vblank_frames | port |
+| `0x0C2C` | clear_runtime_memory_and_vdp | 192 | decompilation/ghidra_conversion/src/rendering/startup_vdp_conversion.cpp | port |
 | `0x0CEC` | install_startup_vdp_table | 40 | decompilation/ghidra_conversion/src/rendering/startup_vdp_conversion.cpp#ghidra_conversion::install_startup_vdp_table | port |
 | `0x0D3A` | sample_source_random_bound | 10 | decompilation/ghidra_conversion/qt_runtime/src/field/field_interaction_runtime.cpp#ghidra_conversion::sample_source_random_bound | port |
 | `0x0D44` | advance_source_prng | 22 | decompilation/ghidra_conversion/src/title_intro/boot_sequence_conversion.cpp#ghidra_conversion::advance_source_prng | port |
@@ -118,6 +100,7 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x1232` | write_vdp_grid | 54 | decompilation/ghidra_conversion/src/core/word_transfer_conversion.cpp#ghidra_conversion::write_vdp_grid | port |
 | `0x12F6` | advance_title_palette_fade | 38 | decompilation/ghidra_conversion/src/integration/field_session_bootstrap_conversion.cpp#ghidra_conversion::advance_title_palette_fade | port |
 | `0x131C` | step_palette_transition | 38 | decompilation/ghidra_conversion/src/title_intro/title_loop_conversion.cpp#ghidra_conversion::run_palette_transition | port |
+| `0x1342` | wait_for_palette_frame | 22 | decompilation/ghidra_conversion/src/core/timing_conversion.cpp | port |
 | `0x1358` | copy_source_word_block | 16 | decompilation/ghidra_conversion/src/core/source_buffer_conversion.cpp#ghidra_conversion::copy_source_word_block | port |
 | `0x1368` | copy_target_palette | 16 | decompilation/ghidra_conversion/src/title_intro/title_intro_orchestrator_conversion.cpp#ghidra_conversion::copy_target_palette | port |
 | `0x1378` | build_title_sprite_records | 70 | decompilation/ghidra_conversion/src/field/field_entity_render_batch_conversion.cpp#ghidra_conversion::build_title_sprite_records | port |
@@ -128,6 +111,7 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x1530` | decode_and_upload_source_stream | 224 | decompilation/ghidra_conversion/src/core/compressed_data_conversion.cpp#ghidra_conversion::decode_source_byte_stream | port |
 | `0x1610` | decode_source_byte_stream | 108 | decompilation/ghidra_conversion/src/core/compressed_data_conversion.cpp#ghidra_conversion::decode_source_byte_stream | port |
 | `0x167C` | decode_source_coordinate_stream | 164 | decompilation/ghidra_conversion/src/core/coordinate_data_conversion.cpp#ghidra_conversion::decode_source_coordinate_stream | port |
+| `0x1728` | render_hud_sprite_stream | 322 | decompilation/ghidra_conversion/src/core/remaining_field_conversion.cpp#ghidra_conversion::render_hud_sprite_stream | port |
 | `0x1872` | service_display_frame | 158 | decompilation/ghidra_conversion/src/rendering/display_service_batch_conversion.cpp#ghidra_conversion::service_display_frame | port |
 | `0x1910` | write_alternating_word_pair | 76 | decompilation/ghidra_conversion/src/core/alternating_word_transfer_conversion.cpp#ghidra_conversion::write_alternating_word_pair | port |
 | `0x195C` | sample_controller_input | 64 | decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#ghidra_conversion::sample_controller_input | port |
@@ -140,6 +124,9 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x1CFC` | load_title_resources | 92 | decompilation/ghidra_conversion/src/title_intro/title_resource_sequence_conversion.cpp#ghidra_conversion::load_title_resources | port |
 | `0x1D58` | prepare_title_sprite_list | 34 | decompilation/ghidra_conversion/src/title_intro/title_resource_sequence_conversion.cpp#ghidra_conversion::prepare_title_sprite_list | port |
 | `0x1D7A` | setup_title_state | 80 | decompilation/ghidra_conversion/src/title_intro/title_setup_conversion.cpp#ghidra_conversion::setup_title_state | port |
+| `0x1DCA` | draw_title_prompt_variant_a | 22 | decompilation/ghidra_conversion/src/title_intro/title_setup_conversion.cpp | port |
+| `0x1DE0` | draw_title_prompt_variant_b | 22 | decompilation/ghidra_conversion/src/title_intro/title_setup_conversion.cpp | port |
+| `0x1DF6` | draw_title_copyright | 88 | decompilation/ghidra_conversion/src/title_intro/title_setup_conversion.cpp | port |
 | `0x1E4E` | reveal_title_logo_column | 124 | decompilation/ghidra_conversion/src/title_intro/title_loop_conversion.cpp#ghidra_conversion::advance_title_logo_column | port |
 | `0x2634` | cycle_title_circuit_lights | 156 | decompilation/gameplay/scripts/startup.lua#advance_title_circuit_lights | port |
 | `0x26D0` | advance_title_animation_timer | 34 | decompilation/ghidra_conversion/src/title_intro/title_loop_conversion.cpp#ghidra_conversion::advance_title_animation_timer | port |
@@ -163,6 +150,7 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x301E` | upload_scene_profile_block | 20 | decompilation/ghidra_conversion/src/core/word_transfer_conversion.cpp#ghidra_conversion::upload_scene_profile_block | port |
 | `0x3032` | scene_uses_alternate_profile | 66 | decompilation/ghidra_conversion/src/field/scene_profile_conversion.cpp#ghidra_conversion::scene_uses_alternate_profile | port |
 | `0x3074` | prepare_field_scene_buffers | 16 | decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime_transitions.cpp#ghidra_conversion::prepare_field_scene_buffers | port |
+| `0x3084` | load_field_scene_profile_and_terrain | 182 | decompilation/ghidra_conversion/src/integration/field_session_source_assets_conversion.cpp;decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime_transitions.cpp | port |
 | `0x313A` | copy_terrain_layers | 46 | decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime_transitions.cpp#ghidra_conversion::prepare_field_scene_buffers | port |
 | `0x3168` | toggle_field_scene_variant | 138 | decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#ghidra_conversion::toggle_field_scene_variant | port |
 | `0x334C` | upload_field_asset_sequence | 94 | decompilation/ghidra_conversion/src/field/field_hud_conversion.cpp#ghidra_conversion::upload_field_asset_sequence | port |
@@ -182,6 +170,8 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x39F2` | refresh_field_animation_assets | 42 | decompilation/ghidra_conversion/src/entities/entity_combat_conversion.cpp#ghidra_conversion::refresh_field_animation_assets | port |
 | `0x3A1C` | update_field_camera | 116 | decompilation/ghidra_conversion/src/core/remaining_field_conversion.cpp#ghidra_conversion::update_field_camera | port |
 | `0x3A90` | accept_camera_delta | 142 | decompilation/ghidra_conversion/src/core/remaining_field_conversion.cpp#ghidra_conversion::accept_camera_delta | port |
+| `0x3B1E` | classify_field_camera_vertical_delta | 142 | decompilation/ghidra_conversion/src/field/field_camera_conversion.cpp#ghidra_conversion::classify_field_camera_axis_step | port |
+| `0x3BAC` | advance_field_camera_scroll | 364 | decompilation/ghidra_conversion/src/field/field_camera_conversion.cpp#ghidra_conversion::follow_field_camera | port |
 | `0x3D18` | render_field_tile_rows | 50 | decompilation/ghidra_conversion/src/rendering/display_service_batch_conversion.cpp#ghidra_conversion::render_field_tile_rows | port |
 | `0x3D4A` | render_field_tile_column | 54 | decompilation/ghidra_conversion/src/rendering/display_service_batch_conversion.cpp#ghidra_conversion::render_field_tile_column | port |
 | `0x3D80` | emit_field_tile_column_words | 94 | decompilation/ghidra_conversion/qt_runtime/src/rendering/plane_streamer.cpp#ghidra_conversion::emit_field_tile_column_words | port |
@@ -199,14 +189,17 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x4216` | offset_field_coordinate | 38 | decompilation/ghidra_conversion/src/field/field_coordinate_conversion.cpp#ghidra_conversion::offset_field_coordinate | port |
 | `0x423C` | quantize_field_delta | 84 | decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#ghidra_conversion::quantize_field_delta | port |
 | `0x42B0` | initialize_joshua_archetype_selection | 54 | decompilation/ghidra_conversion/src/entities/entity_template_conversion.cpp#ghidra_conversion::initialize_joshua_archetype_selection | port |
+| `0x42E6` | recruited runner live-slot initializer | — | decompilation/ghidra_conversion/src/session/recruited_runner_service_conversion.cpp | port |
 | `0x42F2` | initialize_primary_roster_template | 42 | decompilation/ghidra_conversion/src/session/recruited_runner_service_conversion.cpp#ghidra_conversion::initialize_primary_roster_template | port |
 | `0x431C` | initialize_secondary_roster_template | 108 | decompilation/ghidra_conversion/src/session/recruited_runner_service_conversion.cpp#ghidra_conversion::initialize_secondary_roster_template | port |
 | `0x4388` | finalize_pending_entity_template_update | 46 | decompilation/ghidra_conversion/src/entities/entity_template_conversion.cpp#ghidra_conversion::finalize_pending_entity_template_update | port |
 | `0x43B6` | process_pending_entity_template_lists | 176 | decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#FieldSceneRuntime::configure_runtime_coordinator_callbacks | port |
 | `0x4466` | spawn_entity_template_list | 86 | decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#FieldSceneRuntime::publish_pending_world_activity_script_actors | port |
+| `0x44BC` | initialize_entity_record_from_template | 348 | decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#FieldSceneRuntime::initialize_default_field_actors;decompilation/ghidra_conversion/src/entities/entity_template_conversion.cpp#ghidra_conversion::initialize_entity_record_from_template;decompilation/gameplay/scripts/actor/think.lua#apply_patrol | port |
 | `0x4618` | update_entity_render_pass | 64 | decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#ghidra_conversion::update_entity_render_pass | port |
 | `0x4658` | update_entity_frame | 454 | decompilation/ghidra_conversion/src/world/world_entity_conversion.cpp#ghidra_conversion::update_entity_frame | port |
 | `0x481E` | refresh_projected_entity_sprites | 148 | decompilation/ghidra_conversion/src/world/world_entity_conversion.cpp#ghidra_conversion::refresh_projected_entity_sprites | port |
+| `0x49A0` | noop_effect_callback | 2 | decompilation/ghidra_conversion/src/world/world_effect_controller_conversion.cpp | replaced |
 | `0x49A2` | spawn_entity_effect | 266 | decompilation/ghidra_conversion/src/entities/entity_action_math_conversion.cpp#ghidra_conversion::spawn_entity_effect | port |
 | `0x4ADC` | advance_entity_effect_timer | 144 | decompilation/ghidra_conversion/src/world/world_entity_conversion.cpp#ghidra_conversion::advance_entity_effect_timer | port |
 | `0x4B6C` | reset_effect_record | 68 | decompilation/ghidra_conversion/src/field/field_entity_render_batch_conversion.cpp#ghidra_conversion::reset_effect_record | port |
@@ -269,6 +262,7 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0xB530` | approach_entity_fixed_point_target | 58 | decompilation/ghidra_conversion/src/entities/entity_coordinate_conversion.cpp#ghidra_conversion::approach_entity_fixed_point_target | port |
 | `0xB574` | entity movement continuation | — | decompilation/gameplay/scripts/actor/heartbeat.lua#ActorAI.heartbeat | port |
 | `0xB6E4` | select_entity_animation_table | 78 | decompilation/ghidra_conversion/src/entities/animation_table_conversion.cpp#ghidra_conversion::select_entity_animation_table | port |
+| `0xB732` | apply_movement_result_policy | 76 | decompilation/gameplay/scripts/actor/movement.lua | port |
 | `0xB77E` | probe_entity_directional_collision | 58 | decompilation/gameplay/scripts/actor/movement.lua#probe_movement | port |
 | `0xB7B8` | advance_entity_movement_and_mode_transition | 772 | decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#ghidra_conversion::advance_entity_movement_and_mode_transition | port |
 | `0xBADE` | advance_entity_movement_step | 168 | decompilation/gameplay/scripts/actor/movement.lua#advance_entity_movement | port |
@@ -355,6 +349,7 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x102D4` | prepare_magic_action_details | 106 | decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime_command_overview.cpp#ghidra_conversion::prepare_magic_action_details | port |
 | `0x1033E` | resolve_first_aid_item_use | 320 | decompilation/gameplay/scripts/combat.lua#resolve_spell_action | port |
 | `0x1047E` | refresh_ready_entity_animations | 74 | decompilation/ghidra_conversion/src/entities/entity_action_math_conversion.cpp#ghidra_conversion::calculate_ready_entity_action_bonus | port |
+| `0x104C8` | find_matching_menu_metric | 46 | decompilation/ghidra_conversion/src/menus/menu_transfer_batch_conversion.cpp | port |
 | `0x104F6` | apply_action_item_phase_modifiers | 104 | decompilation/ghidra_conversion/src/entities/entity_action_math_conversion.cpp#ghidra_conversion::apply_action_item_phase_modifiers | port |
 | `0x1055E` | refresh_equipment_combat_values | 136 | decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#ghidra_conversion::refresh_magic_menu_success_or_defense_values | port |
 | `0x105E6` | refresh_equipment_action_metric | 122 | decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#ghidra_conversion::refresh_magic_action_effect_value | port |
@@ -383,6 +378,7 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x110E8` | enter_active_runner_hud_panel | 4 | decompilation/ghidra_conversion/src/menus/menu_service_sequence_conversion.cpp#ghidra_conversion::draw_active_runner_hud_panel | port |
 | `0x110EC` | draw_active_runner_hud_panel | 46 | decompilation/ghidra_conversion/src/menus/menu_service_sequence_conversion.cpp#ghidra_conversion::draw_active_runner_hud_panel | port |
 | `0x1111A` | render_active_runner_name_text | 28 | decompilation/ghidra_conversion/src/menus/menu_service_sequence_conversion.cpp#ghidra_conversion::render_active_runner_name_text | port |
+| `0x11136` | render_menu_tile_rows | 90 | decompilation/ghidra_conversion/qt_runtime/src/app/ghidra_conversion_qt_window.hpp | replaced |
 | `0x11190` | transfer_menu_glyph_triple | 64 | decompilation/ghidra_conversion/src/field/field_entity_render_batch_conversion.cpp#ghidra_conversion::transfer_menu_glyph_triple | port |
 | `0x111D0` | upload_menu_tile_block | 24 | decompilation/ghidra_conversion/src/menus/menu_service_sequence_conversion.cpp#ghidra_conversion::upload_menu_tile_block | port |
 | `0x111E8` | render_equipment_details | 362 | decompilation/ghidra_conversion/src/menus/equipment_combat_bar_conversion.cpp#ghidra_conversion::render_equipment_details | port |
@@ -504,6 +500,7 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x15118` | initialize_entity_behavior_record | 54 | decompilation/ghidra_conversion/src/entities/entity_effect_spawn_conversion.cpp#ghidra_conversion::initialize_entity_behavior_record | port |
 | `0x1514E` | process_entity_spawn_cycle | 428 | decompilation/gameplay/scripts/actor/actions.lua;decompilation/gameplay/scripts/actor/heartbeat.lua | port |
 | `0x152FA` | prepare_special_spawn_record | 30 | decompilation/ghidra_conversion/src/entities/entity_transition_conversion.cpp#ghidra_conversion::prepare_special_spawn_record | port |
+| `0x15354` | activate_entity_audio_state | 60 | decompilation/ghidra_conversion/src/audio/audio_service_conversion.cpp | port |
 | `0x15554` | service_nearby_entity_auxiliary_behavior | 218 | decompilation/ghidra_conversion/src/entities/entity_auxiliary_proximity_conversion.cpp#ghidra_conversion::service_nearby_entity_auxiliary_behavior | port |
 | `0x1562E` | service_entity_auxiliary_behavior | 24 | decompilation/ghidra_conversion/src/entities/behavior_animation_conversion.cpp#ghidra_conversion::service_entity_auxiliary_behavior | port |
 | `0x15646` | spawn_entity_effect_record | 484 | decompilation/ghidra_conversion/src/entities/entity_behavior_action_service_conversion.cpp#ghidra_conversion::spawn_entity_effect_record | port |
@@ -586,6 +583,7 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x181F8` | run_matrix_session_entry | 52 | decompilation/ghidra_conversion/src/cyberspace/matrix_entry_conversion.cpp#ghidra_conversion::prepare_matrix_session_entry | port |
 | `0x1822C` | run_matrix_interaction_loop | 1230 | decompilation/ghidra_conversion/src/cyberspace/matrix_interaction_conversion.cpp#ghidra_conversion::run_matrix_interaction_loop | port |
 | `0x18408` | Matrix action branch | — | decompilation/ghidra_conversion/src/cyberspace/matrix_interaction_conversion.cpp#ghidra_conversion::apply_matrix_action_input | port |
+| `0x18450` | Pull Plug confirmation and logout | — | decompilation/gameplay/scripts/menu/screens/cyberdeck.lua;decompilation/gameplay/scripts/menu/rules/matrix.lua | port |
 | `0x186FA` | refresh_field_hud_assets | 124 | decompilation/ghidra_conversion/src/menus/menu_hud_service_conversion.cpp#ghidra_conversion::refresh_field_hud_assets | port |
 | `0x18776` | advance_hud_fade_service | 52 | decompilation/ghidra_conversion/src/menus/menu_hud_service_conversion.cpp#ghidra_conversion::advance_hud_fade_service | port |
 | `0x187AA` | render_hud_indicator_grids | 132 | decompilation/ghidra_conversion/src/menus/menu_hud_service_conversion.cpp#ghidra_conversion::render_hud_indicator_grids | port |
@@ -692,6 +690,7 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x1BA6E` | advance_title_burst_animation | 102 | decompilation/ghidra_conversion/src/title_intro/title_world_helpers_conversion.cpp#ghidra_conversion::advance_title_burst_animation | port |
 | `0x1BB6A` | advance_title_noise_effect | 264 | decompilation/ghidra_conversion/src/title_intro/title_noise_effect_conversion.cpp#ghidra_conversion::advance_title_noise_effect | port |
 | `0x1BCE8` | advance_title_profile_motion | 342 | decompilation/ghidra_conversion/src/title_intro/title_profile_motion_conversion.cpp#ghidra_conversion::advance_title_profile_motion | port |
+| `0x1BEBA` | advance_title_profile_transition | 162 | decompilation/gameplay/scripts/menu/screens/matrix_node_action.lua;decompilation/gameplay/scripts/menu/matrix_session.lua | port |
 | `0x1BF5C` | copy_title_profile | 30 | decompilation/ghidra_conversion/src/title_intro/title_effect_animation_batch_conversion.cpp#ghidra_conversion::copy_title_profile | port |
 | `0x1BF7A` | advance_profile_copy_timer | 130 | decompilation/ghidra_conversion/src/title_intro/title_profile_transition_conversion.cpp#ghidra_conversion::advance_profile_copy_timer | port |
 | `0x1C012` | copy_seven_words | 16 | decompilation/ghidra_conversion/src/world/world_effect_batch_conversion.cpp#ghidra_conversion::copy_seven_words | port |
@@ -766,6 +765,7 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x1F146` | Employee-recruitment random-contact page | — | decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#FieldSceneRuntime::resolve_default_actor_proximity | port |
 | `0x1F16A` | World-activity extraction result callback | — | decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#FieldSceneRuntime | port |
 | `0x1F1E0` | advance_eight_step_counter | 14 | decompilation/ghidra_conversion/src/world/world_effect_batch_conversion.cpp#ghidra_conversion::advance_eight_step_counter | port |
+| `0x1F1FC` | Ghoul bounty objective-ready gate | — | decompilation/gameplay/scripts/run_registry.lua | port |
 | `0x1F246` | run_mode_exit_services | 76 | decompilation/ghidra_conversion/src/field/field_exit_prompt_conversion.cpp#ghidra_conversion::run_mode_exit_services | port |
 | `0x1F292` | prepare_mode_exit_resources | 156 | decompilation/ghidra_conversion/src/field/mode_exit_conversion.cpp#ghidra_conversion::prepare_mode_exit_resources | port |
 | `0x1F32E` | prepare_optional_mode_resource | 28 | decompilation/ghidra_conversion/src/field/mode_optional_resource_conversion.cpp#ghidra_conversion::clear_optional_mode_resource | port |
@@ -788,16 +788,21 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x208A8` | confirm taxi fare and check funds | — | decompilation/gameplay/scripts/taxi_cabbie.lua;decompilation/gameplay/scripts/data/taxi_destinations.lua | port |
 | `0x208FE` | accept taxi destination and consume visa | — | decompilation/gameplay/scripts/taxi_cabbie.lua | port |
 | `0x20990` | Scene-specific field activity dialogue dispatcher | — | decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#FieldSceneRuntime | port |
+| `0x20A12` | Matching-context run settlement service | — | decompilation/gameplay/scripts/run_registry.lua;decompilation/gameplay/scripts/johnson.lua | port |
 | `0x20E48` | field electromagnetic-lock interaction continuation | — | decompilation/ghidra_conversion/qt_runtime/src/field/field_interaction_runtime.cpp#FieldInteractionRuntime | port |
 | `0x20E7A` | electromagnetic-lock prompt setup | — | decompilation/ghidra_conversion/qt_runtime/src/field/field_interaction_runtime.cpp#FieldInteractionRuntime | port |
 | `0x20E92` | electromagnetic-lock choice-grid writer | — | decompilation/ghidra_conversion/qt_runtime/src/field/field_interaction_runtime.cpp#FieldInteractionRuntime | port |
 | `0x20EC2` | building Security Terminal continuation | — | decompilation/ghidra_conversion/qt_runtime/src/field/field_interaction_runtime.cpp#FieldInteractionRuntime | port |
 | `0x211E8` | recruited runner conversation opener | — | decompilation/ghidra_conversion/src/integration/recruited_runner_conversation_conversion.cpp#ghidra_conversion::select_recruited_runner_conversation_prompt | port |
 | `0x21226` | recruited runner service offer preparation | — | decompilation/ghidra_conversion/src/integration/recruited_runner_conversation_conversion.cpp#ghidra_conversion::prepare_recruited_runner_service_offer | port |
+| `0x21318` | recruited runner free permanent-hire dispatch | — | decompilation/ghidra_conversion/src/session/recruited_runner_service_conversion.cpp | port |
+| `0x21326` | recruited runner short-term payment dispatch | — | decompilation/ghidra_conversion/src/session/recruited_runner_service_conversion.cpp | port |
+| `0x21332` | recruited runner permanent payment dispatch | — | decompilation/ghidra_conversion/src/session/recruited_runner_service_conversion.cpp | port |
 | `0x213CA` | Stoker debt-collection follow-up command | — | decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#ghidra_conversion::resolve_stoker_motel_followup_command | port |
 | `0x213E2` | Stoker Jump House referral command | — | decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#ghidra_conversion::resolve_stoker_motel_followup_command | port |
 | `0x213FA` | Stoker motel debt-payment command | — | decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#ghidra_conversion::resolve_stoker_motel_debt_payment | port |
 | `0x21458` | Stoker motel room payment command | — | decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#ghidra_conversion::resolve_stoker_motel_room_payment | port |
+| `0x215DA` | Big Rhino Johnson work-choice callback | — | decompilation/gameplay/scripts/johnson.lua;decompilation/gameplay/scripts/run_registry.lua | port |
 | `0x21616` | electromagnetic-lock resolution resource callback | — | decompilation/ghidra_conversion/qt_runtime/src/field/field_interaction_runtime.cpp#FieldInteractionRuntime | port |
 | `0x21628` | Maglock Passkey quality and use handler | — | decompilation/ghidra_conversion/qt_runtime/src/field/field_interaction_runtime.cpp#FieldInteractionRuntime::dispatch_command | port |
 | `0x21692` | Electronics skill check and no-skill result | — | decompilation/ghidra_conversion/qt_runtime/src/field/field_interaction_runtime.cpp#FieldInteractionRuntime::dispatch_command | port |
@@ -810,8 +815,14 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x21C0C` | Boris Greenhouse Indian Lands Visa command 0x2D | — | decompilation/gameplay/scripts/dialogue_actions.lua#DialogueActions | port |
 | `0x21C38` | Boris Greenhouse Maglock Passkey command 0x2E | — | decompilation/gameplay/scripts/dialogue_actions.lua#DialogueActions | port |
 | `0x21C72` | Boris Greenhouse Mach 22 command 0x2F | — | decompilation/gameplay/scripts/dialogue_actions.lua#DialogueActions | port |
+| `0x21CE4` | Sinsearach state-selected dialogue root selector command 0x34 | — | decompilation/gameplay/scripts/salish_sinsearach_gate.lua;decompilation/gameplay/scripts/dialogue_graph.lua | port |
 | `0x21E66` | Sinsearach copt fare payment command 0x38 | — | decompilation/gameplay/scripts/salish_sinsearach_gate.lua | port |
+| `0x21E8C` | Sinsearach gate-return command 0x39 | — | decompilation/gameplay/scripts/salish_sinsearach_gate.lua;decompilation/gameplay/scripts/dialogue_graph.lua | port |
 | `0x21E9E` | Sinsearach copt-fare prompt command 0x3A | — | decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#FieldSceneRuntime | port |
+| `0x21FD0` | Frosty handoff dialogue command 0x44 | — | decompilation/gameplay/scripts/salish_sinsearach_gate.lua;decompilation/gameplay/scripts/dialogue_graph.lua | port |
+| `0x22018` | dialogue-state choice branch 0x46 | — | decompilation/gameplay/scripts/harlequin_dialogue.lua | port |
+| `0x22072` | dialogue-state choice branch 0x47 | — | decompilation/gameplay/scripts/harlequin_dialogue.lua | port |
+| `0x220EA` | Frosty conversation command 0x49 handler | — | decompilation/gameplay/scripts/salish_sinsearach_gate.lua;decompilation/gameplay/scripts/dialogue_graph.lua | port |
 | `0x22112` | Tarislar City Inn aftermath command 0x4B | — | decompilation/gameplay/scripts/run_support.lua#tarislar_city_inn | port |
 | `0x22124` | Tarislar City Inn aftermath command 0x4C | — | decompilation/gameplay/scripts/run_support.lua#tarislar_city_inn | port |
 | `0x22136` | Gunderson Decker contact purchase command 0x4D | — | decompilation/ghidra_conversion/qt_runtime/src/dialogue/field_dialogue_runtime.cpp#FieldDialogueRuntime | port |
@@ -820,6 +831,7 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x22934` | Alesandro Vid-Phone passkey handler and service graph | — | decompilation/gameplay/scripts/vid_phone/alesandro_hobbs.lua | port |
 | `0x22C98` | Mr. Faradouchi Vid-Phone first/repeat affiliation handler | — | decompilation/gameplay/scripts/vid_phone/affiliations.lua | port |
 | `0x22CE8` | Agira Tetsumi Vid-Phone first/repeat affiliation handler | — | decompilation/gameplay/scripts/vid_phone/affiliations.lua | port |
+| `0x22F90` | mode-command conditional dialogue menu builder | — | decompilation/gameplay/scripts/johnson.lua | port |
 | `0x23750` | count_active_entities | 20 | decompilation/ghidra_conversion/src/world/world_resource_batch_conversion.cpp#ghidra_conversion::count_active_entities | port |
 | `0x2401C` | recruited runner Ricky information branch | — | decompilation/ghidra_conversion/src/integration/recruited_runner_conversation_conversion.cpp#ghidra_conversion::select_recruited_runner_information_prompt | port |
 | `0x24034` | recruited runner Winston Marrs information branch | — | decompilation/ghidra_conversion/src/integration/recruited_runner_conversation_conversion.cpp#ghidra_conversion::select_recruited_runner_information_prompt | port |
@@ -868,6 +880,7 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x53094` | begin_bus_then_flush_append_pair | 12 | decompilation/ghidra_conversion/src/audio/audio_command_batch_conversion.cpp#ghidra_conversion::begin_bus_then_flush_append_pair | port |
 | `0x530A0` | controller_access_pair | 38 | decompilation/ghidra_conversion/src/audio/audio_command_batch_conversion.cpp#ghidra_conversion::controller_access_pair | port |
 | `0x530D2` | service_audio_if_enabled_variant | 12 | decompilation/ghidra_conversion/src/audio/audio_command_batch_conversion.cpp#ghidra_conversion::service_audio_if_enabled_variant | port |
+| `0x530DE` | service_audio_if_enabled | 12 | decompilation/ghidra_conversion/src/audio/audio_service_conversion.cpp | port |
 | `0x530EA` | service_audio_command_frame | 40 | decompilation/ghidra_conversion/src/audio/audio_command_batch_conversion.cpp#ghidra_conversion::service_audio_command_frame_variant | port |
 | `0x53112` | service_audio_command_wrapper | 20 | decompilation/ghidra_conversion/src/audio/audio_command_batch_conversion.cpp#ghidra_conversion::service_audio_command_wrapper | port |
 | `0x53126` | prepare_mode_entry_service | 48 | decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#ghidra_conversion::prepare_audio_mode_entry | port |
@@ -881,6 +894,7 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x53216` | select_secondary_runner_record_table | 22 | decompilation/ghidra_conversion/src/session/runner_record_selection_conversion.cpp#ghidra_conversion::select_secondary_runner_record_table | port |
 | `0x5322C` | prepare_audio_title | 10 | decompilation/ghidra_conversion/src/audio/audio_service_batch_conversion.cpp#ghidra_conversion::prepare_audio_title | port |
 | `0x53248` | build_title_sprite_once | 72 | decompilation/ghidra_conversion/src/audio/audio_service_batch_conversion.cpp#ghidra_conversion::build_title_sprite_once | port |
+| `0x53290` | reset_audio_menu_arrays | 24 | decompilation/ghidra_conversion/src/audio/audio_service_batch_conversion.cpp;decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp | port |
 | `0x532A8` | fill_mode_auxiliary_sentinel | 20 | decompilation/ghidra_conversion/src/cyberspace/matrix_node_action_loop_conversion.cpp#ghidra_conversion::fill_matrix_node_auxiliary_sentinel | port |
 | `0x532BC` | initialize_runner_selection_screen | 306 | decompilation/ghidra_conversion/src/session/runner_selection_conversion.cpp#ghidra_conversion::initialize_runner_selection_screen | port |
 | `0x533EE` | initialize_runner_animation_grid | 70 | decompilation/ghidra_conversion/src/session/runner_animation_grid_conversion.cpp#ghidra_conversion::initialize_runner_animation_grid | port |
@@ -909,6 +923,12 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x549E4` | write_mode_repeated_grid_service | 18 | decompilation/ghidra_conversion/src/cyberspace/matrix_node_action_loop_conversion.cpp#ghidra_conversion::redraw_matrix_node_action_grid_service | port |
 | `0x549F6` | select_mode_display_status | 50 | decompilation/ghidra_conversion/src/cyberspace/matrix_node_action_loop_conversion.cpp#ghidra_conversion::select_matrix_alert_display | port |
 | `0x54A28` | render_mode_status_summary | 102 | decompilation/ghidra_conversion/src/cyberspace/matrix_node_action_loop_conversion.cpp#ghidra_conversion::render_matrix_node_status_summary | port |
+| `0x54A8E` | advance_random_mode_event | 92 | decompilation/gameplay/scripts/menu/rules/node_actions.lua;decompilation/gameplay/scripts/menu/screens/matrix_node_action.lua | port |
+| `0x54B34` | Matrix Crash System | — | decompilation/gameplay/scripts/menu/rules/node_actions.lua;decompilation/gameplay/scripts/menu/screens/matrix_node_action.lua | port |
+| `0x54BD2` | Turn Off Node | — | decompilation/gameplay/scripts/menu/rules/node_actions.lua;decompilation/gameplay/scripts/menu/screens/matrix_node_action.lua | port |
+| `0x54C5E` | Transfer Data datastore | — | decompilation/gameplay/scripts/menu/rules/node_actions.lua;decompilation/gameplay/scripts/menu/screens/matrix_node_action.lua | port |
+| `0x55058` | Special datastore story-file handler | — | decompilation/gameplay/scripts/menu/rules/node_actions.lua;decompilation/ghidra_conversion/src/scripting/cyberdeck_menu_bindings.cpp | port |
+| `0x5559E` | Erase datastore | — | decompilation/gameplay/scripts/menu/rules/node_actions.lua;decompilation/gameplay/scripts/menu/screens/matrix_node_action.lua | port |
 | `0x55640` | resolve_entity_action_pair | 134 | decompilation/ghidra_conversion/src/entities/entity_action_math_conversion.cpp#ghidra_conversion::resolve_entity_action_pair | port |
 | `0x556C6` | check_entity_action_eligibility | 122 | decompilation/ghidra_conversion/src/entities/entity_action_math_conversion.cpp#ghidra_conversion::check_entity_action_eligibility | port |
 | `0x55740` | apply_target_condition_modifier | 70 | decompilation/ghidra_conversion/src/entities/entity_action_math_conversion.cpp#ghidra_conversion::apply_target_condition_modifier | port |
@@ -937,6 +957,7 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x563CC` | advance_primary_world_effect_pending_roll | 104 | decompilation/ghidra_conversion/src/world/world_effect_pending_roll_conversion.cpp#ghidra_conversion::advance_primary_world_effect_pending_roll | port |
 | `0x56434` | advance_menu_selection_service_timer | 78 | decompilation/ghidra_conversion/src/field/field_menu_state_batch_conversion.cpp#ghidra_conversion::advance_menu_selection_service_timer | port |
 | `0x56482` | advance_menu_selection_variant_timer | 84 | decompilation/ghidra_conversion/src/field/field_menu_state_batch_conversion.cpp#ghidra_conversion::advance_menu_selection_variant_timer | port |
+| `0x564D6` | reduce_menu_progression_timing | 48 | decompilation/gameplay/scripts/menu/rules/matrix_combat.lua;decompilation/gameplay/scripts/menu/screens/matrix_node_action.lua | port |
 | `0x56506` | calculate_menu_hud_row_meter | 300 | decompilation/ghidra_conversion/src/menus/menu_hud_meter_conversion.cpp#ghidra_conversion::calculate_menu_hud_row_meter | port |
 | `0x56632` | scale_menu_hud_value_by_difficulty | 38 | decompilation/ghidra_conversion/src/menus/menu_hud_meter_conversion.cpp#ghidra_conversion::scale_menu_hud_value_by_difficulty | port |
 | `0x5668C` | advance_menu_selection_service_and_refresh | 22 | decompilation/ghidra_conversion/src/menus/menu_selection_timing_conversion.cpp#ghidra_conversion::advance_menu_selection_service_and_refresh | port |
@@ -1009,6 +1030,7 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x59BCC` | reset_runner_status_triplet | 94 | decompilation/ghidra_conversion/src/field/field_mode_finalizer_conversion.cpp#ghidra_conversion::reset_runner_status_triplet | port |
 | `0x59C34` | adjust_runner_source_byte_triplet | 20 | decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#ghidra_conversion::award_party_karma | port |
 | `0x59C5E` | run_title_intro_stages | 180 | decompilation/ghidra_conversion/src/title_intro/title_intro_stages_conversion.cpp#ghidra_conversion::run_title_intro_stages | port |
+| `0x59D12` | enter_post_intro_mode | 44 | decompilation/ghidra_conversion/src/integration/opening_intro_conversion.cpp;decompilation/ghidra_conversion/src/title_intro/title_intro_stages_conversion.cpp | port |
 | `0x59D7C` | run_title_intro_stage2 | 510 | decompilation/ghidra_conversion/src/title_intro/title_intro_stage2_conversion.cpp#ghidra_conversion::run_title_intro_stage2 | port |
 | `0x59F7A` | reset_title_intro_overlay_schedule | 20 | decompilation/ghidra_conversion/src/integration/opening_intro_conversion.cpp#ghidra_conversion::reset_title_intro_overlay_schedule | port |
 | `0x59F8E` | advance_title_intro_overlay | 242 | decompilation/ghidra_conversion/src/integration/opening_intro_conversion.cpp#ghidra_conversion::advance_title_intro_overlay | port |
@@ -1062,12 +1084,15 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x5B2C2` | set_title_intro_entity_color_words | 32 | decompilation/ghidra_conversion/src/integration/opening_intro_conversion.cpp#ghidra_conversion::set_title_intro_entity_color_words | port |
 | `0x5B2E2` | step_title_intro_entity_color_words | 74 | decompilation/ghidra_conversion/src/integration/opening_intro_conversion.cpp#ghidra_conversion::step_title_intro_entity_color_words | port |
 | `0x5B32C` | fill_title_intro_word_block | 56 | decompilation/ghidra_conversion/src/integration/opening_intro_conversion.cpp#ghidra_conversion::fill_title_intro_word_block | port |
+| `0x5BA4C` | load_scene_resources_thunk | 4 | decompilation/ghidra_conversion/src/integration/field_session_source_assets_conversion.cpp;decompilation/ghidra_conversion/src/integration/startup_integration_conversion.cpp | replaced |
 | `0x5BA50` | load_scene_resources | 22 | decompilation/ghidra_conversion/src/field/scene_resource_conversion.cpp#ghidra_conversion::load_scene_resources | port |
 | `0x5BA66` | install_scene_resource_index_entries | 50 | decompilation/ghidra_conversion/src/field/scene_resource_conversion.cpp#ghidra_conversion::install_scene_resource_index_entries | port |
 | `0x5BA98` | select_pending_entity_template_list | 44 | decompilation/ghidra_conversion/src/entities/entity_template_conversion.cpp#ghidra_conversion::select_pending_entity_template_list | port |
 | `0x5BAC4` | Scene-55 credits callback | — | decompilation/gameplay/scripts/dialogue_graph.lua#DialogueGraph | port |
 | `0x5C8C6` | upload_title_or_field_word_stream | 52 | decompilation/ghidra_conversion/src/core/word_transfer_conversion.cpp#ghidra_conversion::upload_title_or_field_word_stream | port |
 | `0x5D130` | Frosty command 0x49 mode-entry sequence | — | decompilation/gameplay/scripts/dialogue_actions.lua#DialogueActions | port |
+| `0x5D172` | prepare_pre_title_audio_variant_a | 16 | decompilation/ghidra_conversion/src/audio/audio_service_batch_conversion.cpp;decompilation/ghidra_conversion/src/title_intro/boot_sequence_conversion.cpp | port |
+| `0x5D1B4` | prepare_pre_title_audio_variant_b | 46 | decompilation/ghidra_conversion/src/audio/audio_service_batch_conversion.cpp;decompilation/ghidra_conversion/src/title_intro/boot_sequence_conversion.cpp | port |
 | `0x5D260` | reset_world_frame_service_state | 46 | decompilation/ghidra_conversion/src/title_intro/title_intro_transfer_conversion.cpp#ghidra_conversion::reset_world_frame_service_state | port |
 | `0x5D29C` | advance_world_scene_entity_effect | 344 | decompilation/ghidra_conversion/src/title_intro/title_intro_transfer_conversion.cpp#ghidra_conversion::advance_world_scene_entity_effect | port |
 | `0x5D3E6` | spawn_world_scene_secondary_effect | 34 | decompilation/ghidra_conversion/src/title_intro/title_intro_transfer_conversion.cpp#ghidra_conversion::spawn_world_scene_secondary_effect | port |
@@ -1085,6 +1110,8 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x5D996` | advance_pre_title_animation_phase | 138 | decompilation/ghidra_conversion/src/title_intro/boot_sequence_conversion.cpp#ghidra_conversion::advance_pre_title_animation | port |
 | `0x5DA50` | setup_pre_title_resources | 116 | decompilation/ghidra_conversion/src/title_intro/boot_sequence_conversion.cpp#ghidra_conversion::setup_pre_title_resources | port |
 | `0x5DAC4` | fill_boot_horizontal_scroll | 36 | decompilation/ghidra_conversion/src/title_intro/boot_sequence_conversion.cpp#ghidra_conversion::fill_pre_title_horizontal_scroll | port |
+| `0x5DAE8` | clear_pre_title_resource_workspace | 20 | decompilation/ghidra_conversion/src/title_intro/title_resource_sequence_conversion.cpp;decompilation/ghidra_conversion/src/integration/startup_integration_conversion.cpp | replaced |
+| `0x5DAFC` | write_pre_title_resource_stream | 20 | decompilation/ghidra_conversion/src/title_intro/title_resource_sequence_conversion.cpp;decompilation/ghidra_conversion/src/integration/startup_integration_conversion.cpp | replaced |
 | `0x1096B6` | Vid-Phone contact record 0 and call graph | — | decompilation/gameplay/scripts/vid_phone/capt_quinton_jaymes.lua | port |
 | `0x10A7F2` | Sharkey Vid-Phone contact record and services | — | decompilation/gameplay/scripts/vid_phone/sharkey.lua;decompilation/gameplay/scripts/data/vid_phone_passages.lua | port |
 | `0x10AD8A` | Kipp David Vid-Phone contact record and services | — | decompilation/gameplay/scripts/vid_phone/kipp_david.lua | port |
@@ -1095,72 +1122,13 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x10E400` | Max Vid-Phone call and hardware services | — | decompilation/gameplay/scripts/vid_phone/max.lua | port |
 | `0x10E9DE` | Sgt. Chillicut Vid-Phone call and services | — | decompilation/gameplay/scripts/vid_phone/chillicut.lua | port |
 | `0x10F0D4` | Professor Jefferson Vid-Phone lesson and services | — | decompilation/gameplay/scripts/vid_phone/professor_jefferson.lua | port |
+| `0x121FA0` | field dialogue profile table | — | decompilation/ghidra_conversion/tools/rom_research/graphics_extract.cpp;decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp | replaced |
+| `0x122420` | Stoker field dialogue portrait stream | — | decompilation/ghidra_conversion/tools/rom_research/graphics_extract.cpp;decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp | replaced |
+| `0x172CDC` | mode-2 field event table | — | decompilation/ghidra_conversion/src/integration/field_session_source_assets_conversion.cpp;decompilation/gameplay/scripts/field_events.lua | port |
 
 ## Unmapped routines
 
 | ROM entry | Routine | Size (bytes) | Subsystem | Status |
 |---|---|---:|---|---|
-| `0x0200` | unused_stop_stub_2702 | 8 | unused_stop_stub_2702 | partial |
-| `0x0208` | unused_stop_stub_2703 | 8 | unused_stop_stub_2703 | partial |
-| `0x0210` | unused_stop_stub_2704 | 8 | unused_stop_stub_2704 | partial |
-| `0x0218` | unused_stop_stub_2705 | 8 | unused_stop_stub_2705 | partial |
-| `0x0220` | unused_stop_stub_2700 | 8 | unused_stop_stub_2700 | partial |
-| `0x0228` | interrupt_stub_write_alternating_word_pair | 6 | interrupt_stub_write_alternating_word_pair | partial |
-| `0x022E` | interrupt_stub_service_display_frame | 6 | interrupt_stub_service_display_frame | partial |
-| `0x0234` | return_from_interrupt | 2 | return_from_interrupt | partial |
-| `0x0236` | reset_and_enter_boot | 520 | reset / boot | partial |
-| `0x0330` | reset display setup | — | reset display setup | partial |
-| `0x0436` | write_startup_text_to_vdp | 54 | startup text transfer | partial |
-| `0x073A` | wait_for_vdp_ready | 36 | VDP-ready wait | partial |
-| `0x0BD2` | wait_for_vblank | 32 | frame/vblank wait | partial |
-| `0x0C2C` | clear_runtime_memory_and_vdp | 192 | runtime memory/display initialization | partial |
-| `0x1342` | wait_for_palette_frame | 22 | palette frame wait | partial |
-| `0x1728` | render_hud_sprite_stream | 322 | HUD sprite stream | partial |
-| `0x1DCA` | draw_title_prompt_variant_a | 22 | PRESS START text variant A | partial |
-| `0x1DE0` | draw_title_prompt_variant_b | 22 | title prompt text variant B | partial |
-| `0x1DF6` | draw_title_copyright | 88 | title copyright text | partial |
-| `0x3084` | load_field_scene_profile_and_terrain | 182 | field scene resource loop | unclassified |
-| `0x3B1E` | classify_field_camera_vertical_delta | 142 | classify_field_camera_vertical_delta | partial |
-| `0x3BAC` | advance_field_camera_scroll | 364 | advance_field_camera_scroll | partial |
-| `0x42E6` | recruited runner live-slot initializer | — | recruited runner live-slot initializer | partial |
-| `0x44BC` | initialize_entity_record_from_template | 348 | entity template initialization | partial |
-| `0x49A0` | noop_effect_callback | 2 | noop_effect_callback | partial |
-| `0xB732` | apply_movement_result_policy | 76 | movement result policy | partial |
-| `0x104C8` | find_matching_menu_metric | 46 | matching menu metric scan | partial |
-| `0x11136` | render_menu_tile_rows | 90 | menu tile-row renderer | partial |
-| `0x15354` | activate_entity_audio_state | 60 | entity audio state activation | partial |
-| `0x18450` | Pull Plug confirmation and logout | — | Pull Plug confirmation and logout | partial |
-| `0x1BEBA` | advance_title_profile_transition | 162 | Analyze profile transition | partial |
-| `0x1F1FC` | Ghoul bounty objective-ready gate | — | Ghoul bounty objective-ready gate | partial |
-| `0x20A12` | Matching-context run settlement service | — | Matching-context run settlement service | partial |
-| `0x21318` | recruited runner free permanent-hire dispatch | — | recruited runner free permanent-hire dispatch | partial |
-| `0x21326` | recruited runner short-term payment dispatch | — | recruited runner short-term payment dispatch | partial |
-| `0x21332` | recruited runner permanent payment dispatch | — | recruited runner permanent payment dispatch | partial |
-| `0x215DA` | Big Rhino Johnson work-choice callback | — | Big Rhino Johnson work-choice callback | partial |
-| `0x21CE4` | Sinsearach state-selected dialogue root selector command 0x34 | — | Sinsearach state-selected dialogue root selector command 0x34 | partial |
-| `0x21E8C` | Sinsearach gate-return command 0x39 | — | Sinsearach gate-return command 0x39 | partial |
-| `0x21FD0` | Frosty handoff dialogue command 0x44 | — | Frosty handoff dialogue command 0x44 | partial |
-| `0x22018` | dialogue-state choice branch 0x46 | — | dialogue-state choice branch 0x46 | partial |
-| `0x22072` | dialogue-state choice branch 0x47 | — | dialogue-state choice branch 0x47 | partial |
-| `0x220EA` | Frosty conversation command 0x49 handler | — | Frosty conversation command 0x49 handler | partial |
-| `0x22F90` | mode-command conditional dialogue menu builder | — | mode-command conditional dialogue menu builder | partial |
 | `0x24A1E` | ROM command 0xEB Heavy Combat Armor purchase handler | — | ROM command 0xEB Heavy Combat Armor purchase handler | pending |
 | `0x24A56` | ROM command 0xEC Power Focus phase-4 purchase handler | — | ROM command 0xEC Power Focus phase-4 purchase handler | pending |
-| `0x530DE` | service_audio_if_enabled | 12 | Z80/audio | partial |
-| `0x53290` | reset_audio_menu_arrays | 24 | Matrix discovery reset | partial |
-| `0x54A8E` | advance_random_mode_event | 92 | random Matrix alert advance | partial |
-| `0x54B34` | Matrix Crash System | — | Matrix Crash System | partial |
-| `0x54BD2` | Turn Off Node | — | Turn Off Node | partial |
-| `0x54C5E` | Transfer Data datastore | — | Transfer Data datastore | partial |
-| `0x55058` | Special datastore story-file handler | — | Special datastore story-file handler | partial |
-| `0x5559E` | Erase datastore | — | Erase datastore | partial |
-| `0x564D6` | reduce_menu_progression_timing | 48 | selected Matrix node security helper | partial |
-| `0x59D12` | enter_post_intro_mode | 44 | enter post-intro mode | partial |
-| `0x5BA4C` | load_scene_resources_thunk | 4 | load scene resources thunk | partial |
-| `0x5D172` | prepare_pre_title_audio_variant_a | 16 | prepare_pre_title_audio_variant_a | partial |
-| `0x5D1B4` | prepare_pre_title_audio_variant_b | 46 | prepare_pre_title_audio_variant_b | partial |
-| `0x5DAE8` | clear_pre_title_resource_workspace | 20 | clear_pre_title_resource_workspace | partial |
-| `0x5DAFC` | write_pre_title_resource_stream | 20 | write_pre_title_resource_stream | partial |
-| `0x121FA0` | field dialogue profile table | — | field dialogue profile table | partial |
-| `0x122420` | Stoker field dialogue portrait stream | — | Stoker field dialogue portrait stream | partial |
-| `0x172CDC` | mode-2 field event table | — | mode-2 field event table | partial |
