@@ -18,6 +18,7 @@
 #include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
 #include "field_scene_runtime.hpp"
 #include "audio_playback.hpp"
+#include "cab_map_caption_presenter.hpp"
 #include "frame_debug_server.hpp"
 #include "genesis_image_compositor.hpp"
 
@@ -2119,6 +2120,7 @@ private:
             draw_at(tile("right"), x + width - kTile, edge);
         }
         if (state_.opening_intro.post_intro_caption_visible) {
+            paint_cab_map_caption_backing(painter, plan);
             draw_startup_text(painter, plan.caption_x, plan.caption_y,
                               plan.caption, QColor(Qt::white));
         }

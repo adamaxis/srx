@@ -4135,6 +4135,24 @@
                                  "not found\n";
                     return false;
                 }
+                // ROM 0x134D2 overlays 0xD4298 at Plane-A VRAM 0xE208;
+                // 0x13726 writes the 18-cell caption at 0xEA10. Longplay
+                // frame min_001/f_1650 shows a black strip behind the white
+                // text. Redmond's first two and final cells are spaces.
+                for (const auto x : {
+                         caption.caption_x,
+                         caption.caption_x + 8,
+                         caption.caption_x +
+                             static_cast<int>(caption.caption.size() - 1U) * 8}) {
+                    for (int y = 0; y < 8; ++y) {
+                        if (scene.pixelColor(x, caption.caption_y + y) !=
+                            QColor(Qt::black)) {
+                            std::cerr << "startup qa: cab caption backing was "
+                                         "not black in " << name << '\n';
+                            return false;
+                        }
+                    }
+                }
             }
             if (!scene.save(QString::fromStdWString(path.wstring()))) {
                 std::cerr << "startup qa: could not write " << path.string()

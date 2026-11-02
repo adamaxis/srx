@@ -4464,6 +4464,14 @@ struct GameScriptRuntime::Impl {
                         lua_toboolean(state, -1) != 0;
                 }
                 lua_pop(state, 1);
+                std::string caption_presentation;
+                if (read_optional_field_string(
+                        state, screen_state_index, "caption_presentation",
+                        caption_presentation) &&
+                    caption_presentation == "white_on_black") {
+                    menu_route_state.top_caption_presentation =
+                        ScriptTaxiCaptionPresentation::white_on_black;
+                }
                 menu_route_state.top_command =
                     read_optional(screen_state_index, "command");
                 menu_route_state.top_quantity =

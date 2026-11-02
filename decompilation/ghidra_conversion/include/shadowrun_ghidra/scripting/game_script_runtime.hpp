@@ -36,6 +36,10 @@ enum class ScriptFieldRegion : std::uint8_t {
     salish_shidhe,
 };
 
+enum class ScriptTaxiCaptionPresentation : std::uint8_t {
+    white_on_black,
+};
+
 inline constexpr std::string_view script_field_region_id(
     const ScriptFieldRegion region) noexcept {
     switch (region) {
@@ -805,6 +809,8 @@ struct ScriptMenuRouteSnapshot {
     std::optional<bool> top_enter_called;
     std::optional<int> top_enter_transition;
     std::optional<bool> top_caption_visible;
+    std::optional<ScriptTaxiCaptionPresentation>
+        top_caption_presentation;
     std::optional<int> top_command;
     std::optional<int> top_quantity;
     std::optional<int> top_recipient;

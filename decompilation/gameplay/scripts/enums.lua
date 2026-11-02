@@ -595,6 +595,10 @@ E.MenuRegion = { ITEM_PICTURE = 0x0001, ITEM_HEADER = 0x0002, RATING = 0x0004, D
                  COMMAND_LABEL = 0x0200, INVENTORY_CURSOR = 0x0400, POSTURE_LABEL = 0x0800, SIDEBAR_SLOT = 0x1000,
                  MESSAGE = 0x2000, SUBMENU = 0x4000, FULL = 0x8000 }
 E.MenuTransition = { NONE = 0, PUSH = 1, POP = 2, REPLACE = 3, REBUILD = 4, EXIT = 5 }
+-- ROM 0x134D2 overlays the cab map from 0xD4298; 0x13726 writes its
+-- destination caption on palette line 3. Longplay frame min_001/f_1650
+-- shows the resulting white caption over a black strip.
+E.TaxiCaptionPresentation = { WHITE_ON_BLACK = "white_on_black" }
 E.FieldReturnTransitionPhase = {
     NONE = 0, MENU_FADE_OUT = 1, BLACK_HOLD = 2, FIELD_FADE_IN = 3, COMPLETE = 4,
 }

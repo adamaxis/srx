@@ -49,6 +49,7 @@
 #include "field_map_composition.hpp"
 #include "matrix_map_presenter.hpp"
 #include "matrix_datastore_facts.hpp"
+#include "cab_map_caption_presenter.hpp"
 
 #include <QPainter>
 #include <QColor>
@@ -16335,6 +16336,10 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                               field_taxi_cursor_tiles_[4]);
         }
         if (routed_menu.top_caption_visible.value_or(false)) {
+            if (routed_menu.top_caption_presentation ==
+                scripting::ScriptTaxiCaptionPresentation::white_on_black) {
+                paint_cab_map_caption_backing(painter, plan);
+            }
             draw_tinted_field_text(painter, plan.caption_x,
                                    plan.caption_y, plan.caption,
                                    QColor(Qt::white));

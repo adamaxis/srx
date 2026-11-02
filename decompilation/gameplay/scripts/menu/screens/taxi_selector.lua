@@ -22,6 +22,7 @@ function M.new(args)
         page = 0,
         animation_frames = ANIMATION_FRAMES,
         caption_visible = false,
+        caption_presentation = E.TaxiCaptionPresentation.WHITE_ON_BLACK,
         title = "Call Taxi",
         text = "",
         labels = {},

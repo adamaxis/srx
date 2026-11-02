@@ -53737,6 +53737,13 @@ int main(int argc, char** argv) {
                     std::cerr << "field taxi dump: Lua taxi selector did not open\n";
                     return 3;
                 }
+                if (field_scene.field_menu_route_snapshot_for_dump()
+                        .top_caption_presentation !=
+                    scripting::ScriptTaxiCaptionPresentation::white_on_black) {
+                    std::cerr << "field taxi dump: Lua selector did not publish "
+                                 "the source caption treatment\n";
+                    return 3;
+                }
                 const auto taxi_animation_start = capture_field_scene();
                 field_scene.advance_frame();
                 if (capture_field_scene() != taxi_animation_start) {
@@ -53861,6 +53868,27 @@ int main(int argc, char** argv) {
                     std::cerr << "field taxi dump: settled cab caption was not "
                                  "drawn in the ROM's white text color\n";
                     return 3;
+                }
+                // ROM 0x134D2 places overlay stream 0xD4298 at Plane-A
+                // VRAM 0xE208; 0x13726 writes the padded caption at 0xEA10.
+                // Longplay frame min_001/f_1650 shows the reserved caption
+                // cells black behind the white ink.
+                const std::array<int, 3> blank_caption_cells{{
+                    selection_plan.caption_x,
+                    selection_plan.caption_x + 8,
+                    selection_plan.caption_x +
+                        static_cast<int>(selection_plan.caption.size() - 1U) * 8,
+                }};
+                for (const auto x : blank_caption_cells) {
+                    for (int y = 0; y < 8; ++y) {
+                        if (taxi_scene.pixelColor(
+                                x, selection_plan.caption_y + y) !=
+                            QColor(Qt::black)) {
+                            std::cerr << "field taxi dump: Lua cab caption "
+                                         "background was not black\n";
+                            return 3;
+                        }
+                    }
                 }
                 for (int y = 0; y < cab_map.height(); ++y) {
                     for (int x = 0; x < cab_map.width(); ++x) {
@@ -54024,17 +54052,40 @@ int main(int argc, char** argv) {
                         }
                     }
                 }
+                // ROM 0x1F3C4 sends cabbie text to 0xC168 with palette-line
+                // attribute 0x2000 from 0x12CC30. Longplay frame
+                // min_002/f_1729 shows the in-game cabbie text green on black.
+                int green_cabbie_ink_pixels = 0;
+                for (int y = 16; y < 136; ++y) {
+                    for (int x = 88; x < 304; ++x) {
+                        const auto pixel = fare_offer.pixelColor(x, y);
+                        if (pixel.green() > 180 && pixel.red() < 80 &&
+                            pixel.blue() < 80) {
+                            ++green_cabbie_ink_pixels;
+                        }
+                    }
+                }
+                const bool cabbie_wells_are_black =
+                    fare_offer.pixelColor(96, 24) == QColor(Qt::black) &&
+                    fare_offer.pixelColor(300, 128) == QColor(Qt::black) &&
+                    fare_offer.pixelColor(24, 192) == QColor(Qt::black) &&
+                    fare_offer.pixelColor(280, 208) == QColor(Qt::black);
                 auto fare_offer_path = *field_taxi_dump_path;
                 fare_offer_path.replace_filename(
                     "field-taxi-fare-offer-actual.bmp");
                 if (!fare_offer.save(QString::fromStdWString(
                         fare_offer_path.wstring())) ||
                     !taxi_portrait_matches ||
-                    matched_taxi_portrait_pixels < 500U) {
+                    matched_taxi_portrait_pixels < 500U ||
+                    green_cabbie_ink_pixels == 0 ||
+                    !cabbie_wells_are_black) {
                     std::cerr << "field taxi dump: Puyallup fare prompt did "
-                                 "not draw the ROM cabbie portrait at (16,32); "
-                                 "matched="
-                              << matched_taxi_portrait_pixels << '\n';
+                                 "not match the ROM portrait or green-on-black "
+                                 "dialogue style; portrait_pixels="
+                              << matched_taxi_portrait_pixels
+                              << " green_ink=" << green_cabbie_ink_pixels
+                              << " black_wells=" << cabbie_wells_are_black
+                              << '\n';
                     return 3;
                 }
                 tap_qa_controller_button(field_scene, 0x10U); // B: No thanks.
