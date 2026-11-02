@@ -6,13 +6,13 @@ The 66-entry historical B2 triage is recorded in [rom-coverage-triage.md](rom-co
 
 Inventory: the union of `decompilation/docs/ghidra/decompiled-function-status.tsv` and `decompilation/export/functions.tsv`. The status ledger has 1077 rows; after address deduplication and including any export-only entries, the inventory contains **1074 routine entries** (911 unique Ghidra function exports). Ghidra names and sizes take precedence where the export list has the same address.
 
-Mapped: **1072**. Unmapped backlog: **2**. Committed mapped-routine baseline: **1072**.
+Mapped: **1074**. Unmapped backlog: **0**. Committed mapped-routine baseline: **1074**.
 
 | Inventory category | Entries | Mapped | Unmapped |
 |---|---:|---:|---:|
 | Ghidra code function exports | 911 | 911 | 0 |
-| Status-ledger-only addresses | 163 | 161 | 2 |
-| Combined unique addresses | 1074 | 1072 | 2 |
+| Status-ledger-only addresses | 163 | 163 | 0 |
+| Combined unique addresses | 1074 | 1074 | 0 |
 
 The `shadowrun_rom_coverage` CTest validates the current mapping references and fails if a routine in the baseline loses its mapping. Existing unmapped entries are reported but do not fail CTest. Run `python3 decompilation/ghidra_conversion/tools/rom_coverage.py --write-report` after updating the map.
 
@@ -21,8 +21,7 @@ The `shadowrun_rom_coverage` CTest validates the current mapping references and 
 | Status | Routines |
 |---|---:|
 | defended | 17 |
-| partial | 1054 |
-| pending | 2 |
+| partial | 1056 |
 | unclassified | 1 |
 
 ## Status ledger address conflicts
@@ -43,8 +42,6 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 
 | Group | Unmapped entries (combined) |
 |---|---:|
-| Combat and magic | 1 |
-| Core and shared | 1 |
 
 | Group | Unmapped Ghidra code routines |
 |---|---:|
@@ -848,6 +845,8 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x2497C` | Tarislar City Inn Frosty information command 0xE6 | — | decompilation/gameplay/scripts/run_support.lua#tarislar_city_inn | port |
 | `0x249A4` | mode-command action 0xE7 Vigore response | — | decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#FieldSceneRuntime | port |
 | `0x249C4` | Stoker motel arrival command / rare street ambush | — | decompilation/ghidra_conversion/qt_runtime/src/dialogue/field_dialogue_runtime.cpp#ghidra_conversion::resolve_stoker_motel_arrival_command | port |
+| `0x24A1E` | ROM command 0xEB Heavy Combat Armor purchase handler | — | decompilation/gameplay/scripts/dialogue_actions.lua#register_core_building_purchases;decompilation/gameplay/scripts/enums.lua | port |
+| `0x24A56` | ROM command 0xEC Power Focus phase-4 purchase handler | — | decompilation/gameplay/scripts/dialogue_actions.lua#register_core_building_purchases;decompilation/gameplay/scripts/enums.lua | port |
 | `0x24E20` | dispatch_indexed_handler | 26 | decompilation/ghidra_conversion/src/world/world_resource_batch_conversion.cpp#ghidra_conversion::dispatch_indexed_handler | port |
 | `0x26074` | clear_grid_segments | 58 | decompilation/ghidra_conversion/src/world/world_resource_batch_conversion.cpp#ghidra_conversion::clear_grid_segments | port |
 | `0x26610` | write_sequential_asset_grid | 2 | decompilation/ghidra_conversion/src/world/world_resource_batch_conversion.cpp#ghidra_conversion::write_sequential_asset_grid | port |
@@ -1130,5 +1129,3 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 
 | ROM entry | Routine | Size (bytes) | Subsystem | Status |
 |---|---|---:|---|---|
-| `0x24A1E` | ROM command 0xEB Heavy Combat Armor purchase handler | — | ROM command 0xEB Heavy Combat Armor purchase handler | pending |
-| `0x24A56` | ROM command 0xEC Power Focus phase-4 purchase handler | — | ROM command 0xEC Power Focus phase-4 purchase handler | pending |

@@ -1876,9 +1876,14 @@
         "romAddresses": [
           "0xE5E2", "0xE61C", "0x109682", "0x10D676", "0x10D684",
           "0x10D698", "0x10D6A0", "0x10D6A8", "0x10D6C0", "0x10D6D0",
+          "0x10D6E4", "0x10D6F8", "0x10D70C", "0x10D710", "0x10D714",
+          "0x104234", "0x104256", "0x105101", "0x12D060", "0x12D064",
+          "0x21A4E", "0x22874", "0x24A1E", "0x24A56", "0x10D728",
+          "0x10D730", "0x10D738", "0x10DC84", "0x10DCB0", "0x10DCD6",
+          "0x10DD61", "0x10DD9D", "0x110A22", "0x1109B1",
           "0x22CE8", "0x22D18", "0x22CC8", "0x1F246", "0x1F3C4"
         ],
-        "scope": "first_repeat_yakuza_affiliation_and_rival_gate"
+        "scope": "first_repeat_yakuza_affiliation_gate_and_repeat_purchase_offer"
       },
       "nodes": {
         "call_history": {
@@ -1936,6 +1941,70 @@
         "repeat_call": {
           "type": "page",
           "eventId": "repeat_call",
+          "next": "little_chiba_contact"
+        },
+        "little_chiba_contact": {
+          "type": "page",
+          "eventId": "little_chiba_contact",
+          "next": "combat_armor_offer"
+        },
+        "combat_armor_offer": {
+          "type": "page",
+          "eventId": "combat_armor_offer",
+          "next": "purchase_offer"
+        },
+        "purchase_offer": {
+          "type": "choice",
+          "menuId": "agira_purchase_offer",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "heavy_combat_armor", "next": "purchase_heavy_combat_armor" },
+            { "id": "power_focus_phase4", "next": "purchase_power_focus_phase4" },
+            { "id": "decline_purchase", "next": "purchase_declined" }
+          ]
+        },
+        "purchase_heavy_combat_armor": {
+          "type": "action",
+          "actionId": "building.purchase_heavy_combat_armor",
+          "results": {
+            "purchased": "purchase_success",
+            "insufficient": "purchase_insufficient",
+            "inventory_full": "purchase_inventory_full"
+          }
+        },
+        "purchase_power_focus_phase4": {
+          "type": "action",
+          "actionId": "building.purchase_power_focus_phase4",
+          "results": {
+            "purchased": "purchase_success",
+            "insufficient": "purchase_insufficient",
+            "inventory_full": "purchase_inventory_full",
+            "class_restricted": "power_focus_ineligible"
+          }
+        },
+        "purchase_success": {
+          "type": "page",
+          "eventId": "purchase_success",
+          "next": "finished"
+        },
+        "purchase_insufficient": {
+          "type": "page",
+          "eventId": "purchase_insufficient",
+          "next": "finished"
+        },
+        "purchase_inventory_full": {
+          "type": "page",
+          "eventId": "purchase_inventory_full",
+          "next": "finished"
+        },
+        "power_focus_ineligible": {
+          "type": "page",
+          "eventId": "power_focus_ineligible",
+          "next": "finished"
+        },
+        "purchase_declined": {
+          "type": "page",
+          "eventId": "purchase_declined",
           "next": "finished"
         },
         "call_history_boundary": {

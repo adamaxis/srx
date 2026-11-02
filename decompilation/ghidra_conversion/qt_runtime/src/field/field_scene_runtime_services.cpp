@@ -844,6 +844,19 @@ FieldSceneRuntime::advance_stoker_dialogue_for_dump(
     return result;
 }
 
+bool FieldSceneRuntime::open_vid_phone_for_dump() {
+    if (!ready_) {
+        return false;
+    }
+    game_scripts_.set_location_context(
+        "field_map", "scene_0_terminal", "field.vid_phone",
+        "field_narrator", {}, 0U);
+    game_scripts_.set_field_mode_context(scripting::ScriptFieldModeContext{
+        state_.field_scene_buffers.field_resource_mode, 0U, 0,
+        state_.field_scene_buffers.scene_mode, 0});
+    return field_dialogue_.open_gameplay_task("field_activities", "vid_phone");
+}
+
 bool FieldSceneRuntime::dispatch_dialogue_outcome_for_dump() {
     const auto outcome = field_dialogue_.take_gameplay_task_outcome();
     return outcome.has_value() && dispatch_dialogue_outcome(*outcome);

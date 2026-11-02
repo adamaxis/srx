@@ -17,6 +17,67 @@ local function is_integer(value, minimum, maximum)
         value >= minimum and value <= maximum
 end
 
+local function active_runner_class()
+    if type(game) ~= "table" or type(game.party) ~= "function" or
+       type(game.active_slot) ~= "function" then
+        return nil
+    end
+    local ok, character_class = pcall(function()
+        local party = game.party()
+        local active_slot = game.active_slot()
+        local runner = type(party) == "table" and
+            type(active_slot) == "number" and party[active_slot] or nil
+        return type(runner) == "table" and runner.character_class or nil
+    end)
+    return ok and type(character_class) == "string" and
+        character_class or nil
+end
+
+local function request_building_item_purchase(offer)
+    if type(game) ~= "table" or type(game.services) ~= "table" or
+       type(game.services.call) ~= "function" then
+        return E.BuildingPurchaseResult.SERVICE_UNAVAILABLE
+    end
+    local result = game.services.call(
+        "building", "purchase_runner_item_" .. tostring(offer.item_id) ..
+            "_" .. tostring(offer.phase) .. "_" .. tostring(offer.price))
+    if result == E.BuildingPurchaseResult.PURCHASED or
+       result == E.BuildingPurchaseResult.INSUFFICIENT_FUNDS or
+       result == E.BuildingPurchaseResult.INVENTORY_FULL then
+        return result
+    end
+    return E.BuildingPurchaseResult.SERVICE_UNAVAILABLE
+end
+
+local function register_building_purchase(registry, action_id, offer)
+    registry:register(action_id, function()
+        if offer.eligible_classes ~= nil then
+            local character_class = active_runner_class()
+            if character_class == nil then
+                return E.BuildingPurchaseResult.SERVICE_UNAVAILABLE
+            end
+            if not offer.eligible_classes[character_class] then
+                if character_class == E.RunnerClass.SAMURAI or
+                   character_class == E.RunnerClass.DECKER then
+                    return E.BuildingPurchaseResult.CLASS_RESTRICTED
+                end
+                return E.BuildingPurchaseResult.SERVICE_UNAVAILABLE
+            end
+        end
+        return request_building_item_purchase(offer)
+    end)
+end
+
+local function register_core_building_purchases(registry)
+    -- Dispatch table 0x12D060/0x12D064 points to ROM handlers 0x24A1E/0x24A56.
+    register_building_purchase(
+        registry, "building.purchase_heavy_combat_armor",
+        E.BuildingPurchaseOffer.HEAVY_COMBAT_ARMOR)
+    register_building_purchase(
+        registry, "building.purchase_power_focus_phase4",
+        E.BuildingPurchaseOffer.POWER_FOCUS_PHASE_4)
+end
+
 function Registry.new()
     return setmetatable({ operations = {} }, Registry)
 end
@@ -137,6 +198,10 @@ local function register_core_actions(registry)
         end
         return "service_unavailable"
     end)
+
+    -- Lua owns command outcomes and class policy; the host commits the
+    -- slot-before-wallet inventory transaction from the active runner.
+    register_core_building_purchases(registry)
 
     registry:register("field.queue_mako_activity", function()
         local result = require("story_activity_routes").request(

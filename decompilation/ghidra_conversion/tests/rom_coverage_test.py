@@ -106,10 +106,10 @@ class RomCoverageB2OwnerTest(unittest.TestCase):
             for address, row in triage_addresses.items()
             if row["classification"] == "missing bug"
         }
-        self.assertEqual(missing_bug_addresses, {"0x24A1E", "0x24A56"})
+        self.assertEqual(missing_bug_addresses, set())
         self.assertEqual(
             {routine.address for routine in coverage.unmapped},
-            missing_bug_addresses,
+            set(),
         )
 
         for address, row in triage_addresses.items():
@@ -152,6 +152,14 @@ class RomCoverageB2OwnerTest(unittest.TestCase):
             "0x3BAC": (
                 "decompilation/ghidra_conversion/src/field/field_camera_conversion.cpp",
                 "follow_field_camera",
+            ),
+            "0x24A1E": (
+                "decompilation/gameplay/scripts/dialogue_actions.lua",
+                "register_core_building_purchases",
+            ),
+            "0x24A56": (
+                "decompilation/gameplay/scripts/dialogue_actions.lua",
+                "register_core_building_purchases",
             ),
             "0x44BC": (
                 "decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp",

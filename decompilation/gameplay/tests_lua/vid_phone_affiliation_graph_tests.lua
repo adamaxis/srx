@@ -106,17 +106,39 @@ local function test_agira()
     assert(game.state.vid_phone_called_8 == false,
         "unknown affiliation state must not partially write call history")
 
-    reset(test, true, {})
+    -- [C ROM 0x10D676 -> 0x10D6D0 -> 0x10D6E4 -> 0x10D6F8;
+    -- choice 0x105101 is the decline continuation at 0x10D714]
+    reset(test, true, { "decline_purchase" })
     test:expect_finished()
     test:expect_page("repeat_call")
-    assert(#test.menus == 0,
-        "accepted Agira contact should use the repeat stream")
+    test:expect_page("little_chiba_contact")
+    test:expect_page("combat_armor_offer")
+    test:expect_page("purchase_declined")
+    test:expect_menu("agira_purchase_offer")
 
     reset(test, false, {}, "unknown")
     boundary = test:expect_boundary()
     assert(boundary.reason:match("runner.skill.reputation") ~= nil)
 end
 
+local function test_agira_purchase_route()
+    local test = Harness.new("agira_tetsumi")
+    -- [C ROM 0x10D676 -> 0x10D6D0 -> 0x10D6E4 -> 0x10D6F8;
+    -- choices 0x104234/0x104256 dispatch 0xEB/0xEC at 0x10D70C/0x10D710]
+    -- A repeat Agira call must reach the source offer and its building action.
+    test:reset(true, { "heavy_combat_armor" }, {
+        ["purchase_runner_item_50_0_30000"] = "purchased",
+    }, 5)
+    test:expect_finished()
+    test:expect_page("repeat_call")
+    test:expect_page("little_chiba_contact")
+    test:expect_page("combat_armor_offer")
+    test:expect_menu("agira_purchase_offer")
+    test:expect_purchase_transaction("purchase_runner_item_50_0_30000")
+    test:expect_page("purchase_success")
+end
+
 test_faradouchi()
 test_agira()
+test_agira_purchase_route()
 print("Faradouchi and Agira Vid-Phone JSON graph permutations passed")

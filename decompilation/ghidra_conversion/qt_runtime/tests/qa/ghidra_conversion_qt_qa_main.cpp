@@ -36947,6 +36947,264 @@ int run_field_vid_phone_physical_entry_qa(
     return 0;
 }
 
+int run_field_agira_purchase_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) return 3;
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) return 3;
+
+    constexpr std::uint16_t kA = 0x4000U;
+    constexpr std::uint16_t kB = 0x1000U;
+    constexpr std::uint32_t kAgiraContactAndCall =
+        (1U << 8U) | (1U << 21U); // FFFC2C contact 8 and call-history bit 21.
+    const auto panel_contains = [&field_scene](const std::string_view needle) {
+        const auto& panel = field_scene.dialogue_panel();
+        for (std::size_t index = 0U; index < panel.text_segment_count;
+             ++index) {
+            if (panel.text_segments[index].find(needle) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto option_contains = [&field_scene](const std::string_view needle) {
+        const auto& panel = field_scene.dialogue_panel();
+        for (std::size_t index = 0U; index < panel.option_count; ++index) {
+            if (panel.options[index].source_label.find(needle) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto capture = [&field_scene, &output](const std::string_view name) {
+        const auto image = render_qa_field(field_scene);
+        return image.size() == QSize(kSceneWidth, kSceneHeight) &&
+               image.save(QString::fromStdWString(
+                   (output / (std::string(name) + ".bmp")).wstring()));
+    };
+    const auto press = [&field_scene](const std::uint16_t button,
+                                      const std::string_view stage) {
+        const auto result =
+            field_scene.advance_stoker_dialogue_for_dump(button);
+        if (result != FieldDialogueAdvanceResult::prompt_advanced) {
+            std::cerr << "Agira purchase QA: " << stage
+                      << " did not advance (result="
+                      << static_cast<int>(result) << ", failure="
+                      << field_scene.failure() << ")\n";
+            return false;
+        }
+        return true;
+    };
+    const auto open_offer = [&](const std::uint8_t character_class,
+                                const std::uint32_t funds,
+                                const bool full_inventory) {
+        auto& runner = field_scene.active_runner_record();
+        runner.archetype_index = character_class;
+        runner.inventory_item_codes.fill(0U);
+        runner.inventory_phase_bytes.fill(0U);
+        if (full_inventory) {
+            runner.inventory_item_codes.fill(0x0FU); // ROM item 0x0F Medkit.
+        } else {
+            runner.inventory_item_codes[0U] = 0x03U; // American L36.
+            runner.inventory_item_codes[1U] = 0x2DU; // Armor Clothing.
+            runner.inventory_phase_bytes[0U] = 7U;
+            runner.inventory_phase_bytes[1U] = 6U;
+        }
+        field_scene.set_field_funds_for_dump(funds);
+        field_scene.seed_notebook_contact_flags_for_qa(
+            kAgiraContactAndCall);
+        field_scene.seed_runner_feature_flags_for_qa(0x02U); // Yakuza bit 1.
+        if (!field_scene.open_vid_phone_for_dump() ||
+            !field_scene.dialogue_open() ||
+            !field_scene.dialogue_panel().cursor_selection ||
+            field_scene.dialogue_panel().option_count != 1U ||
+            field_scene.dialogue_panel().options[0U].source_label.find(
+                "Agira") == std::string::npos) {
+            std::cerr << "Agira purchase QA: could not start the real contact "
+                         "list/Agira conversation (failure="
+                      << field_scene.failure() << ")\n";
+            return false;
+        }
+        // The Lua contact selector, conversation pages, and offer choice all
+        // run through FieldDialogueRuntime; actions use its production host
+        // service callback into FieldSceneRuntime::service_call.
+        if (!press(kA, "Agira contact selection") ||
+            !panel_contains("Arigato, Joshua-san") ||
+            !press(kA, "Agira repeat-call page") ||
+            !panel_contains("Little Chiba in the Redmond Barrens") ||
+            !press(kA, "Little Chiba page") ||
+            !panel_contains("military-issue combat armor") ||
+            !press(kA, "Combat Armor page") ||
+            field_scene.dialogue_panel().option_count != 3U ||
+            !panel_contains("80,000$") ||
+            !option_contains("Combat Armor") ||
+            !option_contains("Power Focus") ||
+            !option_contains("Neg on that")) {
+            std::cerr << "Agira purchase QA: ROM repeat-call offer path did "
+                         "not reach its three choices\n";
+            return false;
+        }
+        return true;
+    };
+    const auto close_result = [&field_scene](const std::string_view stage) {
+        const auto result = field_scene.advance_stoker_dialogue_for_dump(kA);
+        if (result != FieldDialogueAdvanceResult::returned_to_field ||
+            field_scene.dialogue_open()) {
+            std::cerr << "Agira purchase QA: could not close " << stage
+                      << " (result=" << static_cast<int>(result) << ")\n";
+            return false;
+        }
+        return true;
+    };
+    const auto verify_untouched = [&field_scene](
+        const std::uint32_t funds,
+        const std::array<std::uint8_t, 8U>& items,
+        const std::array<std::uint8_t, 8U>& phases) {
+        const auto& runner = field_scene.active_runner_record();
+        return field_scene.field_funds_for_dump() ==
+                   std::optional<std::uint32_t>{funds} &&
+               runner.inventory_item_codes == items &&
+               runner.inventory_phase_bytes == phases;
+    };
+
+    // ROM 0x24A1E accepts all classes, charges 0x7530, and writes item 0x32
+    // at the lowest free slot with its phase byte cleared.
+    if (!open_offer(2U, 30000U, false) || !capture("offer-heavy-armor") ||
+        !press(kA, "0xEB Heavy Combat Armor purchase") ||
+        field_scene.field_funds_for_dump() !=
+            std::optional<std::uint32_t>{0U} ||
+        field_scene.active_runner_record().inventory_item_codes[2U] != 0x32U ||
+        field_scene.active_runner_record().inventory_phase_bytes[2U] != 0U ||
+        !panel_contains("The item you have requested is on its way.") ||
+        !panel_contains("May the Yakuza guide you, Joshua-san.") ||
+        !capture("heavy-armor-success") || !close_result("0xEB success")) {
+        std::cerr << "Agira purchase QA: 0xEB success transaction/message "
+                     "mismatch (funds="
+                  << field_scene.field_funds_for_dump().value_or(0xFFFFFFFFU)
+                  << ")\n";
+        return 3;
+    }
+
+    // ROM 0x24A56 admits classes 0/1, charges 0x13880, and stores item 0x18
+    // at phase 4. The Mage success and Shaman funds case cover both allowed classes.
+    if (!open_offer(0U, 80000U, false) ||
+        !press(kB, "0xEC Power Focus purchase") ||
+        field_scene.field_funds_for_dump() !=
+            std::optional<std::uint32_t>{0U} ||
+        field_scene.active_runner_record().inventory_item_codes[2U] != 0x18U ||
+        field_scene.active_runner_record().inventory_phase_bytes[2U] != 4U ||
+        !panel_contains("The item you have requested is on its way.") ||
+        !panel_contains("May the Yakuza guide you, Joshua-san.") ||
+        !capture("power-focus-success") || !close_result("0xEC success")) {
+        std::cerr << "Agira purchase QA: 0xEC success transaction/message mismatch\n";
+        return 3;
+    }
+
+    // The source wallet helper returns insufficient only after a free slot is
+    // found; each failed transaction leaves all item and phase bytes intact.
+    if (!open_offer(3U, 29999U, false)) return 3;
+    const auto armor_items =
+        field_scene.active_runner_record().inventory_item_codes;
+    const auto armor_phases =
+        field_scene.active_runner_record().inventory_phase_bytes;
+    if (!press(kA, "0xEB insufficient funds") ||
+        !panel_contains("You cannot buy what you desire with something you do not have.") ||
+        !verify_untouched(29999U, armor_items, armor_phases) ||
+        !close_result("0xEB insufficient funds")) {
+        std::cerr << "Agira purchase QA: 0xEB insufficient-funds branch mismatch\n";
+        return 3;
+    }
+    if (!open_offer(0U, 79999U, false)) return 3;
+    const auto focus_items =
+        field_scene.active_runner_record().inventory_item_codes;
+    const auto focus_phases =
+        field_scene.active_runner_record().inventory_phase_bytes;
+    if (!press(kB, "0xEC insufficient funds") ||
+        !panel_contains("You cannot buy what you desire with something you do not have.") ||
+        !verify_untouched(79999U, focus_items, focus_phases) ||
+        !close_result("0xEC insufficient funds")) {
+        std::cerr << "Agira purchase QA: 0xEC insufficient-funds branch mismatch\n";
+        return 3;
+    }
+
+    // ROM 0x22874 scans inventory before the wallet check. Both offers show
+    // the full-bag message without changing wallet/items/phases.
+    if (!open_offer(0U, 0U, true)) return 3;
+    const auto full_items =
+        field_scene.active_runner_record().inventory_item_codes;
+    const auto full_phases =
+        field_scene.active_runner_record().inventory_phase_bytes;
+    if (!press(kA, "0xEB full inventory") ||
+        !panel_contains("this transaction must wait") ||
+        !panel_contains("May the Yakuza guide you, Joshua-san.") ||
+        !verify_untouched(0U, full_items, full_phases) ||
+        !close_result("0xEB inventory full")) {
+        std::cerr << "Agira purchase QA: 0xEB inventory-full branch mismatch\n";
+        return 3;
+    }
+    if (!open_offer(0U, 0U, true)) return 3;
+    const auto focus_full_items =
+        field_scene.active_runner_record().inventory_item_codes;
+    const auto focus_full_phases =
+        field_scene.active_runner_record().inventory_phase_bytes;
+    if (!press(kB, "0xEC full inventory") ||
+        !panel_contains("this transaction must wait") ||
+        !panel_contains("May the Yakuza guide you, Joshua-san.") ||
+        !verify_untouched(0U, focus_full_items, focus_full_phases) ||
+        !close_result("0xEC inventory full")) {
+        std::cerr << "Agira purchase QA: 0xEC inventory-full branch mismatch\n";
+        return 3;
+    }
+
+    // The source class gate runs before slot/funds checks or the host service.
+    for (const auto character_class : {2U, 3U}) {
+        if (!open_offer(static_cast<std::uint8_t>(character_class),
+                        80000U, false)) return 3;
+        const auto restricted_items =
+            field_scene.active_runner_record().inventory_item_codes;
+        const auto restricted_phases =
+            field_scene.active_runner_record().inventory_phase_bytes;
+        if (!press(kB, "0xEC restricted class gate") ||
+            !panel_contains("This little item isn't going to do you any good.") ||
+            !panel_contains("magically inclined chums could call me back") ||
+            !verify_untouched(80000U, restricted_items, restricted_phases) ||
+            (character_class == 2U &&
+             !capture("power-focus-class-restricted")) ||
+            !close_result("0xEC class restriction")) {
+            std::cerr << "Agira purchase QA: 0xEC class-restriction branch mismatch "
+                         "for class " << character_class << '\n';
+            return 3;
+        }
+    }
+
+    // Source choice 0x105101 follows 0x10D714 to 0x10D740/0x10DCB0.
+    if (!open_offer(3U, 30000U, false)) return 3;
+    const auto declined_items =
+        field_scene.active_runner_record().inventory_item_codes;
+    const auto declined_phases =
+        field_scene.active_runner_record().inventory_phase_bytes;
+    if (!press(0x2000U, "Agira offer decline") ||
+        !panel_contains("May the Yakuza guide you, Joshua-san.") ||
+        !verify_untouched(30000U, declined_items, declined_phases) ||
+        !close_result("Agira offer decline")) {
+        std::cerr << "Agira purchase QA: decline branch changed state or lost "
+                     "its ROM message\n";
+        return 3;
+    }
+
+    std::cout << "field_agira_purchase_qa=passed conversation=Agira "
+                 "ROM=0x10D676/0x10D6F8 commands=0xEB/0xEC "
+                 "host=building.purchase_runner_item "
+                 "charges=30000/80000 branches=success,funds,class,inventory "
+                 "captures=" << output.string() << '\n';
+    return 0;
+}
+
 int run_field_tarislar_guarded_entry_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -38342,6 +38600,8 @@ int main(int argc, char** argv) {
         bool field_red_buffalo_no_gift_more_qa = false;
         std::optional<std::filesystem::path>
             field_vid_phone_physical_entry_qa_path;
+        std::optional<std::filesystem::path>
+            field_agira_purchase_qa_path;
         std::optional<std::string> field_mode_text_dump_variant;
         std::optional<std::filesystem::path> field_mode_text_dump_path;
         std::optional<std::string> field_interaction_dump_variant;
@@ -39679,6 +39939,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_vid_phone_physical_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-agira-purchase-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_agira_purchase_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-mode-text-dump" &&
@@ -44560,6 +44827,10 @@ int main(int argc, char** argv) {
                 return run_field_vid_phone_physical_entry_qa(
                     field_scene, asset_root,
                     *field_vid_phone_physical_entry_qa_path);
+            }
+            if (field_agira_purchase_qa_path.has_value()) {
+                return run_field_agira_purchase_qa(
+                    field_scene, *field_agira_purchase_qa_path);
             }
             if (field_tarislar_repeat_service_qa_path.has_value()) {
                 return run_field_tarislar_repeat_service_qa(

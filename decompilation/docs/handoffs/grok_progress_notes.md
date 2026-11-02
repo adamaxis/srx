@@ -3,7 +3,7 @@
 This file is kept in the repo so the notes survive if the box is wiped. The box's /workspace/shadowrun/out was lost on 2026-10-31.
 Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 
-## Current state (2026-11-02 04:14 CST)
+## Current state (2026-11-02 05:28 CST)
 - Remote port-fixes: see latest Fixes entry. QA_GREEN (ctest all pass, Lua suites pass). Working playtest_2026-11-01 items one Luna run at a time.
 - In progress: Luna (codex exec, gpt-6-luna, max effort, fast tier off) is fixing aa3b2cb7 forward. Brief is /workspace/briefs/aa3b.md, the earlier partial work is /workspace/briefs/aa3b_wip.diff and stash 'aa3b-wip'.
 - Box toolchain: `. /workspace/tcenv.sh` (conda env /workspace/mamba/envs/srx). Build dirs are /workspace/b2 (Qt) and /workspace/b2n (non-Qt). Full QA is /workspace/qa.sh, which prints QA_GREEN.
@@ -58,6 +58,7 @@ Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 - playtest #4: Extractor: generate tail-rotor phase PNGs from ROM, with temp-dir ctest. map 0x1E87BA, palette 0x5B6B2, rotation 0x5B08E; pixel-equal to committed PNGs; extraction only into temp dir
 - playtest #B2: Coverage: triage 66 unmapped routines (48 port, 16 replaced, 2 missing). camera 0x3B1E/0x3BAC, template 0x44BC, HUD 0x1728 mapped with headless samples; missing purchase handlers 0x24A1E/0x24A56
 - playtest #8: AI: downed actors reach the ROM off-screen retirement check. 0x13904/0x13962 retirement before think dispatch, 0x1E514; corpses skip at 0xA91C after 0xAB02; 129/129 incl. pose/position/action guards
+- playtest #PURCH: Shops: implement ROM purchase handlers 0xEB Heavy Combat Armor and 0xEC Power Focus. 0x12D060->0x24A1E 30000 item 0x32; 0x12D064->0x24A56 80000 item 0x18 phase 4 Mage/Shaman; Agira text extractor-generated; measured headless
 
 ## Open work, in order
 1. Get ctest green again by fixing aa3b2cb7 forward.

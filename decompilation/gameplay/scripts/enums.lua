@@ -630,6 +630,26 @@ E.RunnerClass = {
 E.RunnerClass.CASTERS = {
     [E.RunnerClass.MAGE] = true, [E.RunnerClass.SHAMAN] = true,
 } -- class-specific gameplay set; source caster gate is +0x9B < 2 at 0xFBA6 [C]
+E.BuildingPurchaseResult = {
+    PURCHASED = "purchased", -- 0x10D728 -> 0x10DC84: “The item you have requested is on its way.”; “May the Yakuza guide you, Joshua-san.” follows [C 0x24A4E/0x24A9E]
+    INSUFFICIENT_FUNDS = "insufficient", -- 0x10D730 -> 0x10DCD6, “You cannot buy what you desire with something you do not have.” [C]
+    INVENTORY_FULL = "inventory_full", -- 0x10D738 -> 0x10DD61, “I am so sorry, Joshua-san, but this transaction must wait.” [C]
+    CLASS_RESTRICTED = "class_restricted", -- 0x110A22 -> 0x1109B1: “This little item isn't going to do you any good. Maybe one of your magically inclined chums could call me back.” [C 0x24A68]
+    SERVICE_UNAVAILABLE = "service_unavailable",
+}
+E.BuildingPurchaseOffer = {
+    HEAVY_COMBAT_ARMOR = {
+        item_id = E.ItemId.HEAVY_COMBAT_ARMOR,
+        phase = 0,
+        price = 0x7530,
+    }, -- 0xEB: choice 0x104234; no class gate; slot 0x22874 precedes 0x21A4E funds gate; full/poor/success -> 0x10D738/0x10D730/0x10D728; write item 0x32 and clear +8 at 0x24A4A/0x24A50; no flags [C 0x12D060/0x24A1E]
+    POWER_FOCUS_PHASE_4 = {
+        item_id = E.ItemId.POWER_FOCUS,
+        phase = 4,
+        price = 0x13880,
+        eligible_classes = E.RunnerClass.CASTERS,
+    }, -- 0xEC: offer 0x10DBAD names Power Focus/$80,000; BMI 0x24A62 after compare 0x24A5C admits class 0/1, other classes -> 0x110A22; slot 0x22874 precedes 0x21A4E funds; full/poor/success -> 0x10D738/0x10D730/0x10D728; write item 0x18/phase 4 at 0x24A9A/0x24AA0; no flags [C 0x12D064/0x24A56]
+} -- Offer choice strings at 0x104234/0x104256; decline string at 0x105101 [C]
 E.RunnerAttribute = {
     BODY = "body", QUICKNESS = "quickness", STRENGTH = "strength",
     CHARISMA = "charisma", INTELLIGENCE = "intelligence", WILLPOWER = "willpower",

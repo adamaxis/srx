@@ -35,6 +35,8 @@ function Harness.new(contact_id)
         menus = {},
         pages = {},
         operations = {},
+        purchase_operations = {},
+        purchase_results = {},
         choices = {},
         service_results = {},
         active_slot = 0,
@@ -106,6 +108,11 @@ function Harness.new(contact_id)
         return true
     end
     game.services.call = function(domain, operation)
+        if domain == "building" then
+            self.purchase_operations[#self.purchase_operations + 1] =
+                operation
+            return self.purchase_results[operation]
+        end
         assert(domain == "vid_phone")
         self.operations[#self.operations + 1] = operation
         return self.service_results[operation]
@@ -120,6 +127,8 @@ function Harness:reset(called, choices, service_results, reputation,
     self.menus = {}
     self.pages = {}
     self.operations = {}
+    self.purchase_operations = {}
+    self.purchase_results = service_results or {}
     self.choices = choices or {}
     self.service_results = service_results or {}
     if reputation == "unknown" then
@@ -177,6 +186,12 @@ end
 function Harness:expect_transaction(operation)
     assert(#self.operations == 1 and self.operations[1] == operation,
         "Vid-Phone graph requested the wrong transaction")
+end
+
+function Harness:expect_purchase_transaction(operation)
+    assert(#self.purchase_operations == 1 and
+           self.purchase_operations[1] == operation,
+        "Agira graph requested the wrong building purchase transaction")
 end
 
 return Harness

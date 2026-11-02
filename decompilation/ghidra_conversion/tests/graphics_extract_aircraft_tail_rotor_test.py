@@ -4,10 +4,56 @@
 from __future__ import annotations
 
 import pathlib
+import json
 import subprocess
 import sys
 import tempfile
 import zlib
+
+
+AGIRA_PURCHASE_TEXT = {
+    "vid_phone.agira_tetsumi.little_chiba_offer": (
+        'There is a place called Little Chiba in the Redmond Barrens.||'
+        'They are under our "protection" and will give you extraordinary '
+        "service at a discounted rate."
+    ),
+    "vid_phone.agira_tetsumi.combat_armor_offer": (
+        "I also have acquired a supply of military-issue combat armor.||"
+        "I spent a lot of time and money to get them, but I will sell you one "
+        "for 30,000$."
+    ),
+    "vid_phone.agira_tetsumi.purchase_offer": (
+        "Lastly, I have many powerful mages in my employ.||"
+        "They have created an item that will increase the magical abilities "
+        "of the one who holds it.||"
+        "I will sell this power focus for 80,000$.||"
+        "Do you have anything to say?"
+    ),
+    "vid_phone.agira_tetsumi.option.heavy_combat_armor":
+        "I'd like to buy the Combat Armor.",
+    "vid_phone.agira_tetsumi.option.power_focus_phase4":
+        "I'd like to buy the Power Focus.",
+    "vid_phone.agira_tetsumi.option.decline_purchase": "Neg on that, chum.",
+    "vid_phone.agira_tetsumi.purchase_success": (
+        "The item you have requested is on its way.||"
+        "May the Yakuza guide you, Joshua-san."
+    ),
+    "vid_phone.agira_tetsumi.purchase_insufficient": (
+        "You cannot buy what you desire with something you do not have.||"
+        "The Yakuza will guide you, Joshua-san, but you must build your own "
+        "empire."
+    ),
+    "vid_phone.agira_tetsumi.purchase_inventory_full": (
+        "I am so sorry, Joshua-san, but this transaction must wait.||"
+        "May the Yakuza guide you, Joshua-san."
+    ),
+    "vid_phone.agira_tetsumi.power_focus_ineligible": (
+        "This little item isn't going to do you any good.||"
+        "Maybe one of your magically inclined chums could call me back."
+    ),
+    "vid_phone.agira_tetsumi.purchase_declined":
+        "May the Yakuza guide you, Joshua-san.",
+}
 
 
 def decode_rgba_png(path: pathlib.Path) -> tuple[int, int, bytes]:
@@ -127,6 +173,15 @@ def main() -> int:
             expected_pixels = decode_rgba_png(expected)
             if generated_pixels != expected_pixels:
                 raise AssertionError(f"ROM extraction differs from committed pixels: {relative}")
+
+        generated_text_path = output_root / "dialogue" / "script-text.json"
+        generated_text = json.loads(generated_text_path.read_text())["texts"]
+        for key, expected in AGIRA_PURCHASE_TEXT.items():
+            if generated_text.get(key) != expected:
+                raise AssertionError(
+                    f"extractor dialogue text mismatch for {key}: "
+                    f"{generated_text.get(key)!r}"
+                )
 
     print("graphics_extract_aircraft_tail_rotor: 3 ROM phases pixel-identical")
     return 0

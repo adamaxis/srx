@@ -2015,6 +2015,13 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_vid_phone_physical
                  --field-vid-phone-physical-entry-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-vid-phone-physical-entry-qa")
 
+# Run Agira Tetsumi's actual repeat-call Lua graph through the production
+# FieldSceneRuntime building purchase service for ROM commands 0xEB/0xEC.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_agira_purchase_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-agira-purchase-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-agira-purchase-qa")
+
 # The Ares title-only mode-text prompt is a separate presenter from the
 # Stoker/NPC route. This diagnostic dump exercises its source-selected text,
 # shared text wells, and no-button composition without fabricating a live

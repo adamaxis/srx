@@ -29,22 +29,47 @@ behavior identified for a future focused fix.
   does not claim that the helper is a runtime decoder or that its fixture
   alone proves visual equivalence.
 
-## Missing bugs
+## Purchase handler ports
 
 ### `0x24A1E` — ROM command `0xEB`, Heavy Combat Armor purchase
 
-The source branch at `0x24A1E` checks for an available inventory slot, charges
-30,000 nuyen, and writes item `0x32` at phase 0. The choice text is present at
-`0x10D70C`, but the purchase handler and caller path have no port owner. This
-is recorded as a missing bug, not implemented as part of B2 triage.
+The dispatch-table entry at `0x12D060` reaches `0x24A1E`. There is no class
+gate. The handler asks the shared slot scan at `0x22874` before calling wallet
+helper `0x21A4E` to charge `0x7530` (30,000) from `FFFBFE`; a full inventory
+returns descriptor `0x10D738` (text `0x10DD61`), while insufficient funds
+returns `0x10D730` (text `0x10DCD6`: “You cannot buy what you desire with
+something you do not have.”). Success returns `0x10D728` (text `0x10DC84`:
+“The item you have requested is on its way.” followed by “May the Yakuza
+guide you, Joshua-san.”), writes item `0x32` at the selected slot, and clears
+its phase byte at slot `+8` (`0x24A4A`/`0x24A50`). The source choice at
+`0x104234` reads “I'd like to buy the Combat Armor.” No story flag is written
+by this handler. These rules are represented by
+`E.BuildingPurchaseOffer.HEAVY_COMBAT_ARMOR` and
+`building.purchase_heavy_combat_armor`; the typed host service applies the
+slot/funds/item transaction. The choice's caller path remains unproven.
 
 ### `0x24A56` — ROM command `0xEC`, Power Focus phase-4 purchase
 
-The source branch at `0x24A56` requires class 0 or 1, an available inventory
-slot, and 80,000 nuyen, then writes item `0x18` at phase 4. The choice text is
-present at `0x10D70C`, but the purchase handler and caller path have no port
-owner. This is recorded as a missing bug, not implemented as part of B2
-triage.
+The dispatch-table entry at `0x12D064` reaches `0x24A56`. After comparing the
+active runner class to 2 at `0x24A5C`, the `BMI` at `0x24A62` admits classes 0
+and 1 (Mage/Shaman); classes 2 and 3 return `0x110A22` (text `0x1109B1`,
+“This little item isn't going to do you any good. Maybe one of your magically
+inclined chums could call me back.”). Eligible classes then use the shared
+slot scan at `0x22874` before wallet helper `0x21A4E` charges `0x13880`
+(80,000) from `FFFBFE`. Full inventory returns `0x10D738`/`0x10DD61` (“I am
+so sorry, Joshua-san, but this transaction must wait.”); insufficient funds
+returns `0x10D730`/`0x10DCD6` (“You cannot buy what you desire with something
+you do not have.”). Success returns
+`0x10D728`/`0x10DC84`, writes item `0x18`, and writes phase 4 at the selected
+slot's `+8` (`0x24A9A`/`0x24AA0`). The offer record at `0x10DBAD` names Power
+Focus and its $80,000 price; the choice at `0x104256` reads “I'd like to buy
+the Power Focus.” The available decline choice at `0x105101` reads “Neg on
+that, chum.” No story flag is written by this handler. The Lua offer and class
+gate are `E.BuildingPurchaseOffer.POWER_FOCUS_PHASE_4` and
+`building.purchase_power_focus_phase4`; the typed host service applies the
+slot/funds/item transaction. The choice's caller path remains unproven.
 
-Both source traces and the missing-handler finding are also recorded in the
-B2 section of `/workspace/shadowrun/out/progress_notes.md`.
+Headless `purchase_handlers_tests.lua` covers successful item/phase/wallet
+writes, insufficient funds, inventory-full priority, class rejection, and
+unchanged unrelated flags. The ROM source trace and before/after registry
+measurement are recorded in `/workspace/shadowrun/out/progress_notes.md`.

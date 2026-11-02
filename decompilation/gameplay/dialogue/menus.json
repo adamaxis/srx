@@ -355,6 +355,14 @@
         },
         "title_key": "vid_phone.alesandro_hobbs.services"
       },
+      "agira_purchase_offer": {
+        "choice_label_keys": {
+          "heavy_combat_armor": "vid_phone.agira_tetsumi.option.heavy_combat_armor",
+          "power_focus_phase4": "vid_phone.agira_tetsumi.option.power_focus_phase4",
+          "decline_purchase": "vid_phone.agira_tetsumi.option.decline_purchase"
+        },
+        "title_key": "vid_phone.agira_tetsumi.purchase_offer"
+      },
       "call_agira_tetsumi_yakuza_pledge": {
         "choice_label_keys": {
           "no": "vid_phone.option.no",

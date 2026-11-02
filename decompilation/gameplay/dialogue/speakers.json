@@ -955,9 +955,37 @@
           "continuation_key": "shared.more",
           "title_key": "vid_phone.contact.agira_tetsumi.first_call"
         },
+        "little_chiba_contact": {
+          "continuation_key": "shared.more",
+          "title_key": "vid_phone.agira_tetsumi.little_chiba_offer"
+        },
         "low_reputation": {
           "continuation_key": "",
           "title_key": "vid_phone.agira_tetsumi.unknown_name"
+        },
+        "combat_armor_offer": {
+          "continuation_key": "shared.more",
+          "title_key": "vid_phone.agira_tetsumi.combat_armor_offer"
+        },
+        "purchase_success": {
+          "continuation_key": "",
+          "title_key": "vid_phone.agira_tetsumi.purchase_success"
+        },
+        "purchase_insufficient": {
+          "continuation_key": "",
+          "title_key": "vid_phone.agira_tetsumi.purchase_insufficient"
+        },
+        "purchase_inventory_full": {
+          "continuation_key": "",
+          "title_key": "vid_phone.agira_tetsumi.purchase_inventory_full"
+        },
+        "purchase_declined": {
+          "continuation_key": "",
+          "title_key": "vid_phone.agira_tetsumi.purchase_declined"
+        },
+        "power_focus_ineligible": {
+          "continuation_key": "",
+          "title_key": "vid_phone.agira_tetsumi.power_focus_ineligible"
         },
         "mafia_rejection": {
           "continuation_key": "",

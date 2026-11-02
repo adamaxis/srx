@@ -1976,6 +1976,26 @@ void write_dialogue_text_catalog(const std::vector<std::uint8_t>& rom,
         {"vid_phone.agira_tetsumi.yakuza_offer", 0x10D8BBU},
         {"vid_phone.agira_tetsumi.mafia_rejection", 0x10D98FU},
         {"vid_phone.agira_tetsumi.pledge_accepted", 0x10DDC3U},
+        // Repeat stream 0x10D6D0 -> 0x10D6E4 -> 0x10D6F8 -> 0x10D70C
+        // supplies the three Little Chiba/Combat Armor/Power Focus pages.
+        // Choice pointers are stored at 0x10D710; 0x10D714 continues to the
+        // decline result. Command 0xEB/0xEC result pointers are 0x10D728,
+        // 0x10D730, 0x10D738, and 0x10D740. These are contiguous ROM text
+        // streams; paired 0x80 row delimiters become `||` in the catalog, so
+        // the text is not assembled from separate keys. 0x10DCB0 is the
+        // second row of success stream 0x10DC84 and the standalone decline
+        // pointer returned by 0x10D740.
+        {"vid_phone.agira_tetsumi.little_chiba_offer", 0x10DA80U},
+        {"vid_phone.agira_tetsumi.combat_armor_offer", 0x10DB1CU},
+        {"vid_phone.agira_tetsumi.purchase_offer", 0x10DBADU},
+        {"vid_phone.agira_tetsumi.option.heavy_combat_armor", 0x104234U},
+        {"vid_phone.agira_tetsumi.option.power_focus_phase4", 0x104256U},
+        {"vid_phone.agira_tetsumi.option.decline_purchase", 0x105101U},
+        {"vid_phone.agira_tetsumi.purchase_success", 0x10DC84U},
+        {"vid_phone.agira_tetsumi.purchase_insufficient", 0x10DCD6U},
+        {"vid_phone.agira_tetsumi.purchase_inventory_full", 0x10DD61U},
+        {"vid_phone.agira_tetsumi.power_focus_ineligible", 0x1109B1U},
+        {"vid_phone.agira_tetsumi.purchase_declined", 0x10DCB0U},
         {"vid_phone.contact.henry_j_culver.first_call", 0x10DF12U},
         {"vid_phone.contact.henry_j_culver.repeat_call", 0x10DF92U},
         {"vid_phone.contact.max.first_call", 0x10E54EU},

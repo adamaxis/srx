@@ -256,7 +256,8 @@ bool test_affiliation_graph(GameScriptRuntime& scripts,
                             const std::string_view offer_menu,
                             const std::string_view rival_event,
                             const unsigned rival_affiliation_bit,
-                            const unsigned own_affiliation_bit) {
+                            const unsigned own_affiliation_bit,
+                            const bool repeat_opens_purchase_offer = false) {
     const auto availability = static_cast<std::uint32_t>(1U << contact_index);
     const auto history = static_cast<std::uint32_t>(
         1U << (contact_index + 13U));
@@ -335,6 +336,29 @@ bool test_affiliation_graph(GameScriptRuntime& scripts,
         return false;
     }
     task = scripts.complete_native_operation(true);
+    if (repeat_opens_purchase_offer) {
+        // [C ROM 0x10D676 -> 0x10D6D0 -> 0x10D6E4 -> 0x10D6F8;
+        // command choices 0x104234/0x104256 and decline 0x105101 dispatch
+        // at 0x10D70C/0x10D710/0x10D714. Agira's repeat call continues into
+        // the purchase offer, unlike Faradouchi's terminal repeat page.]
+        task = complete_page(scripts, task, "little_chiba_contact", speaker_id);
+        if (!expect(is_say(task, "combat_armor_offer", speaker_id),
+                    "Agira Little Chiba page did not reach the armor offer")) {
+            return false;
+        }
+        task = complete_page(scripts, task, "combat_armor_offer", speaker_id);
+        if (!menu_resolves(scripts, task, "agira_purchase_offer", 3U)) {
+            return false;
+        }
+        task = scripts.complete_native_menu_choice("decline_purchase");
+        if (!expect(is_say(task, "purchase_declined", speaker_id),
+                    "Agira purchase decline did not show the ROM farewell")) {
+            return false;
+        }
+        task = scripts.complete_native_operation(true);
+        return expect(task.status == ScriptTaskStep::Status::completed,
+                      "Agira purchase decline did not return to the phonebook");
+    }
     return expect(task.status == ScriptTaskStep::Status::completed,
                   "Affiliation repeat stream did not return to the phonebook");
 }
@@ -355,7 +379,7 @@ bool test_affiliation_graphs(GameScriptRuntime& scripts,
     return test_affiliation_graph(
         scripts, contact_flags, runner_flags, party, active_slot, 8U,
         "vid_phone_agira_tetsumi", "call_agira_tetsumi_yakuza_pledge",
-        "mafia_rejection", 2U, 1U);
+        "mafia_rejection", 2U, 1U, true);
 }
 
 } // namespace

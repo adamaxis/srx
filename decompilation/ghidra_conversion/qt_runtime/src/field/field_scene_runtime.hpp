@@ -676,6 +676,13 @@ public:
     FieldDialogueAdvanceResult advance_stoker_dialogue_for_dump(
         std::uint16_t event_word);
     bool dispatch_dialogue_outcome_for_dump();
+#ifdef SHADOWRUN_QT_QA_DRIVER
+    // Start the production Vid-Phone activity through its real Lua graph.
+    bool open_vid_phone_for_dump();
+    void seed_runner_feature_flags_for_qa(std::uint8_t flags) noexcept {
+        field_runner_feature_flags_ = flags;
+    }
+#endif
     bool hotel_menu_open() const noexcept { return hotel_menu_.open(); }
     bool hotel_karma_screen_loading() const noexcept {
         return hotel_karma_skills_.is_open() && hotel_karma_load_frames_ > 0U;

@@ -794,6 +794,8 @@ rom_entry	mapping_kind	implementation	evidence
 0x2497C	port	decompilation/gameplay/scripts/run_support.lua#tarislar_city_inn	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x249A4	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#FieldSceneRuntime	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x249C4	port	decompilation/ghidra_conversion/qt_runtime/src/dialogue/field_dialogue_runtime.cpp#ghidra_conversion::resolve_stoker_motel_arrival_command	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x24A1E	port	decompilation/gameplay/scripts/dialogue_actions.lua#register_core_building_purchases;decompilation/gameplay/scripts/enums.lua	decompilation/export/disassembly.s:0x24A1E/0x12D060;building.purchase_heavy_combat_armor;purchase_handlers_tests
+0x24A56	port	decompilation/gameplay/scripts/dialogue_actions.lua#register_core_building_purchases;decompilation/gameplay/scripts/enums.lua	decompilation/export/disassembly.s:0x24A56/0x12D064;building.purchase_power_focus_phase4;purchase_handlers_tests
 0x24E20	port	decompilation/ghidra_conversion/src/world/world_resource_batch_conversion.cpp#ghidra_conversion::dispatch_indexed_handler	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x26074	port	decompilation/ghidra_conversion/src/world/world_resource_batch_conversion.cpp#ghidra_conversion::clear_grid_segments	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x26610	port	decompilation/ghidra_conversion/src/world/world_resource_batch_conversion.cpp#ghidra_conversion::write_sequential_asset_grid	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
