@@ -38364,6 +38364,7 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> opening_start_skip_qa_path;
         std::optional<std::filesystem::path> opening_wilderness_pan_qa_path;
         std::optional<std::filesystem::path> opening_ambush_flash_qa_path;
+        std::optional<std::filesystem::path> opening_orc_timeline_qa_path;
         std::optional<std::filesystem::path> opening_death_layer_qa_path;
         std::optional<std::filesystem::path> opening_trivid_layer_qa_path;
         std::optional<std::uint32_t> opening_dump_selection;
@@ -39756,6 +39757,11 @@ int main(int argc, char** argv) {
             if (std::string(argv[index]) == "--opening-ambush-flash-qa" &&
                 index + 1 < argc) {
                 opening_ambush_flash_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--opening-orc-timeline-qa" &&
+                index + 1 < argc) {
+                opening_orc_timeline_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--opening-death-layer-qa" &&
@@ -66348,6 +66354,10 @@ int main(int argc, char** argv) {
         if (opening_ambush_flash_qa_path.has_value()) {
             return window.run_opening_ambush_flash_qa(
                 *opening_ambush_flash_qa_path);
+        }
+        if (opening_orc_timeline_qa_path.has_value()) {
+            return window.run_opening_orc_timeline_qa(
+                *opening_orc_timeline_qa_path);
         }
         if (opening_death_layer_qa_path.has_value()) {
             return window.run_opening_death_layer_qa(

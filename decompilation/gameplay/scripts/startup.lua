@@ -28,6 +28,23 @@ function Startup.advance_title_circuit_lights(completion_state)
     return { title_circuit_lights.phase, title_circuit_lights.countdown }
 end
 
+-- ROM 0x5A0B2 advances the four orc map patches before 0x5A146 installs the
+-- white hit palette. Stages 5..11 own the nine-update palette fade; 0x5A1BE
+-- clears the center block at stage 12. The host asks this typed policy which
+-- palette state to present; source artwork remains untouched before the hit.
+function Startup.opening_orc_palette_mode(sequence_stage)
+    if sequence_stage >= E.OpeningOrcSequence.CENTER_CLEAR_STAGE then
+        return { E.OpeningOrcPaletteMode.CLEARED }
+    end
+    if sequence_stage >= E.OpeningOrcSequence.FIRST_FADE_STAGE then
+        return { E.OpeningOrcPaletteMode.FADE }
+    end
+    if sequence_stage >= E.OpeningOrcSequence.HIT_PALETTE_STAGE then
+        return { E.OpeningOrcPaletteMode.HIT_WHITE }
+    end
+    return { E.OpeningOrcPaletteMode.SOURCE }
+end
+
 function Startup.options()
     return { "new_game", "load_game" }, "startup.options.title", {
         "startup.option.new_game",

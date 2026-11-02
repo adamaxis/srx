@@ -306,6 +306,17 @@ E.TitleCircuitLight = {
     COUNTDOWN_RELOAD = 4,
 } -- 0x5D8BA cycles FFDF92 modulo 8; 0x2634 reloads 4 and cycles modulo 7
   -- under DD5A=2. At 0x1D7A, the US ROM trace preserves FFDF90=2 / phase 6 [C]
+E.OpeningOrcSequence = {
+    HIT_PALETTE_STAGE = 5,       -- 0x5A124/0x5A146 writes white after four patch records [C]
+    FIRST_FADE_STAGE = 6,        -- 0x5A16E steps line 0 every nine source updates [C]
+    CENTER_CLEAR_STAGE = 12,     -- 0x5A1B4/0x5A1BE clears the center map [C]
+}
+E.OpeningOrcPaletteMode = {
+    SOURCE = 0,
+    HIT_WHITE = 1,
+    FADE = 2,
+    CLEARED = 3,
+}
 -- Music sequence ids, same GEMS id space as E.SoundId; started through
 -- play_music 0x530EA (stop same id, then start; gated by FFFC08) [C].
 E.MusicId = {

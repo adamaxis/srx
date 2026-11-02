@@ -776,8 +776,9 @@ void install_stage2_scene(OpeningIntroState& state,
     state.stage2.y_offset = -0x0020;
     state.stage2.x_phase = 0x0138;
     state.stage2.y_phase = 0x00F1;
-    set_title_intro_entity_color_words(state.entity_colors, 0U, 0x0EEEU);
-    set_title_intro_entity_color_words(state.entity_colors, 1U, 0x0EEEU);
+    // The loaded wilderness palette remains in force through the four
+    // 0x5A0B2 patch records. 0x5A146 and 0x5A2D0 install each white hit
+    // palette only when its source sequence reaches the hit transition.
     source_boundary(callbacks, "0x59D7C.prepare_title_resources");
 
     advance_title_intro_schedule(

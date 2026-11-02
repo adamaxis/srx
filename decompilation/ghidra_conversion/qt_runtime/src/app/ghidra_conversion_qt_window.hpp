@@ -765,6 +765,7 @@ private:
             startup_scripts_.string_map("startup", "opening_intro_timeline"));
         load_opening_audio_waits(
             startup_scripts_.string_map("startup", "opening_audio_waits"));
+        load_opening_orc_palette_modes();
         const auto fixed_text_count = [](const auto& lines) {
             std::size_t count = 0U;
             for (const auto& line : lines) {
@@ -1275,6 +1276,9 @@ private:
         };
         startup_callbacks_.opening_intro.clear_wilderness_center_map = [this] {
             opening_wilderness_map_center_.reset();
+            // 0x5A1BE clears the center name-table region after the final
+            // orc palette step; the patches were drawn into that same region.
+            opening_wilderness_patch_.reset();
         };
         startup_callbacks_.opening_intro.clear_wilderness_left_region =
             [this] {
@@ -2137,15 +2141,6 @@ private:
                         layer = recolor_genesis_image_to_cram_word(
                             image->second,
                             opening_entity_palette_color_word(0U));
-                    } else if (uses_entity_palette_line) {
-                        // ROM 0x5B2C2 fills all 15 visible entries on entity
-                        // palette line 0 with one CRAM word. 0x5B2E2 steps
-                        // each channel, called every nine frames at 0x5A16E.
-                        // Render that word directly instead of applying the
-                        // former linear RGB weight [C].
-                        layer = recolor_genesis_image_to_cram_word(
-                            image->second,
-                            opening_entity_palette_color_word(0U));
                     }
                     painter.drawImage(record.origin_x, record.origin_y,
                                       layer);
@@ -2201,16 +2196,16 @@ private:
     bool opening_entity_palette_flash_active(
         const std::size_t entity_index) const {
         const auto& opening = state_.opening_intro;
-        // The scene-entry conversion initializes the palette snapshot to
-        // 0xEEE while the scene fades in. Only the corresponding source
-        // sequence event enables the visible palette effect.
+        // The wilderness palette is drawn directly until the Lua policy
+        // reaches the source hit transition at 0x5A146/0x5A2D0.
         if (state_.phase != StartupIntegrationPhase::opening_intro ||
             opening.scene != OpeningIntroScene::wilderness) {
             return false;
         }
         if (entity_index == 0U) {
-            return opening.sequence.stage >= 5U &&
-                   opening.sequence.stage < 12U;
+            const auto mode = opening_orc_palette_mode();
+            return mode == OpeningOrcPaletteMode::hit_white ||
+                   mode == OpeningOrcPaletteMode::fade;
         }
         if (entity_index == 1U) {
             // The 0x5A34E fall-through clears the right map and still submits
@@ -2609,6 +2604,15 @@ private:
         std::uint16_t frames = 0U;
         std::uint16_t elapsed = 0U;
     };
+    enum class OpeningOrcPaletteMode : std::uint8_t {
+        source = 0,
+        hit_white = 1,
+        fade = 2,
+        cleared = 3,
+    };
+    static constexpr std::size_t kOpeningOrcPaletteStageCount = 13U;
+    std::array<OpeningOrcPaletteMode, kOpeningOrcPaletteStageCount>
+        opening_orc_palette_modes_{};
     std::unordered_map<std::string, OpeningPresentationHold>
         opening_presentation_hold_table_;
     std::deque<OpeningPresentationHold> opening_presentation_holds_;
@@ -2619,6 +2623,34 @@ private:
     // host-only holds off; the timeline itself is verified against the
     // emulator trace (docs/ghidra/visual-audits/opening-intro-timeline.md).
     bool opening_presentation_holds_enabled_ = true;
+
+    void load_opening_orc_palette_modes() {
+        for (std::size_t stage = 0U;
+             stage < opening_orc_palette_modes_.size(); ++stage) {
+            const auto result = startup_scripts_.call_integers(
+                "startup", "opening_orc_palette_mode",
+                {static_cast<std::int64_t>(stage)});
+            if (!result.has_value() || result->size() != 1U ||
+                (*result)[0] < static_cast<std::int64_t>(
+                                   OpeningOrcPaletteMode::source) ||
+                (*result)[0] > static_cast<std::int64_t>(
+                                   OpeningOrcPaletteMode::cleared)) {
+                throw std::runtime_error(
+                    "startup Lua opening_orc_palette_mode failed at stage " +
+                    std::to_string(stage) + ": " +
+                    startup_scripts_.failure());
+            }
+            opening_orc_palette_modes_[stage] =
+                static_cast<OpeningOrcPaletteMode>((*result)[0]);
+        }
+    }
+
+    OpeningOrcPaletteMode opening_orc_palette_mode() const {
+        const auto stage = static_cast<std::size_t>(
+            state_.opening_intro.sequence.stage);
+        return opening_orc_palette_modes_[
+            std::min(stage, opening_orc_palette_modes_.size() - 1U)];
+    }
 
     void load_opening_presentation_holds(
         const std::optional<scripting::ScriptStringMap>& table) {

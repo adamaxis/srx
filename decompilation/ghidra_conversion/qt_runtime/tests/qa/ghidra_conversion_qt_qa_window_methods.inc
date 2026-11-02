@@ -1730,11 +1730,12 @@
                 }
             }
         }
-        // ROM 0x5B2C2 fills entity palette line 1 with CRAM word 0x0EEE
-        // before the flash sequence steps it. Verify that source word
-        // directly instead of its removed linear RGB weight [C].
-        if (colored_body_pixels < kMinimumBodyPixelMatches ||
-            opening_entity_palette_color_word(1U) != 0x0EEEU) {
+        // The persistent sequence at 0x5A252 first consumes its four records
+        // from 0x5A398; only its stage-4 event at 0x5A2D0 writes line 1 to
+        // 0xEEE. This first-loop pan check precedes that event, so validate
+        // the source body pixels here and leave hit-palette timing to the
+        // dedicated ambush-flash QA [C].
+        if (colored_body_pixels < kMinimumBodyPixelMatches) {
             return fail("the source body art is not fully visible for pixel checks");
         }
 
@@ -2219,6 +2220,290 @@
                   << " body_white_pixels=" << white_body_pixels
                   << " effect_frames=" << effect_frames.size() << " actual="
                   << (output_directory / "actual.bmp").string() << '\n';
+        return 0;
+    }
+
+    int run_opening_orc_timeline_qa(
+        const std::filesystem::path& output_directory) {
+        constexpr std::uint32_t kSelection = 2U;
+        constexpr std::uint32_t kMaximumFrames = 4000U;
+        constexpr std::string_view kCenterAlias =
+            "intro.sprites.ambush.map.center.1.0";
+        constexpr std::array<std::uint16_t, 5> kStageOffsets{{
+            0U, 12U, 36U, 96U, 108U,
+        }};
+        constexpr std::array<std::uint16_t, 5> kExpectedStages{{
+            1U, 2U, 3U, 4U, 5U,
+        }};
+        constexpr std::array<std::uint8_t, 5> kPatchVariants{{
+            0U, 1U, 2U, 3U, 3U,
+        }};
+        constexpr std::array<std::string_view, 5> kCheckpointNames{{
+            "orc-patch-0.bmp", "orc-patch-1.bmp", "orc-patch-2.bmp",
+            "orc-patch-3.bmp", "orc-hit-white.bmp",
+        }};
+
+        if (prepare_opening_dump(kSelection) != 0) {
+            return 3;
+        }
+        std::filesystem::create_directories(output_directory);
+        std::ofstream trace(output_directory / "opening-orc-timeline-qa.tsv");
+        if (!trace) {
+            std::cerr << "opening orc timeline QA: could not write trace in "
+                      << output_directory.string() << '\n';
+            return 3;
+        }
+        trace << "checkpoint\tsource_frame\tsequence_stage\tpatch_variant\t"
+                 "palette_word\tbody_variant\tbody_x\tbody_y\n";
+        const auto fail = [](const std::string_view reason) {
+            std::cerr << "opening orc timeline QA: " << reason << '\n';
+            return 3;
+        };
+        const auto record = [&](const std::string_view checkpoint) {
+            const auto& opening = state_.opening_intro;
+            const auto patch = opening_wilderness_patch_
+                                   ? opening_intro_sprite_group(
+                                         opening_wilderness_patch_->sprite_descriptor)
+                                   : OpeningIntroSpriteGroup{};
+            const auto body = opening.timed.current_sprite_descriptor != 0U
+                                  ? opening_intro_sprite_group(
+                                        opening.timed.current_sprite_descriptor)
+                                  : OpeningIntroSpriteGroup{};
+            trace << checkpoint << '\t' << opening.sequence.current_frame
+                  << '\t' << opening.sequence.stage << '\t'
+                  << (patch.family ==
+                              OpeningIntroSpriteFamily::background_patch
+                          ? static_cast<unsigned>(patch.variant)
+                          : -1)
+                  << '\t' << std::hex
+                  << opening.entity_colors.words[0U][0U] << std::dec << '\t'
+                  << (body.family == OpeningIntroSpriteFamily::ambush_body
+                          ? static_cast<unsigned>(body.variant)
+                          : -1)
+                  << '\t' << opening.timed.x << '\t' << opening.timed.y
+                  << '\n';
+        };
+        const auto save_checkpoint = [&](const std::string_view name) {
+            const auto scene = render_scene();
+            if (scene.size() != QSize(kSceneWidth, kSceneHeight) ||
+                !scene.save(QString::fromStdWString(
+                    (output_directory / std::string(name)).wstring()))) {
+                return false;
+            }
+            record(name);
+            return true;
+        };
+
+        std::uint32_t frames = 0U;
+        while (state_.phase == StartupIntegrationPhase::opening_intro &&
+               (state_.opening_intro.scene != OpeningIntroScene::wilderness ||
+                state_.opening_intro.stage !=
+                    OpeningIntroStage::stage2_first_loop)) {
+            if (frames++ >= kMaximumFrames) {
+                return fail("did not reach the first wilderness loop");
+            }
+            advance_one_source_frame();
+        }
+        const auto* center_record = state_.asset_catalog.catalog.find(
+            std::string(kCenterAlias));
+        const auto center_image =
+            draw_asset_cache_.find(std::string(kCenterAlias));
+        if (state_.phase != StartupIntegrationPhase::opening_intro ||
+            center_record == nullptr || center_image == draw_asset_cache_.end() ||
+            center_image->second.isNull() || !opening_wilderness_map_center_ ||
+            opening_intro_sprite_group(
+                opening_wilderness_map_center_->sprite_descriptor)
+                    .family != OpeningIntroSpriteFamily::wilderness_map_center ||
+            opening_orc_palette_mode() != OpeningOrcPaletteMode::source) {
+            return fail("the first-loop source map layer or palette state is missing");
+        }
+
+        const auto initial_scene = render_scene();
+        const int center_x = center_record->origin_x +
+                             state_.opening_intro.stage2.x_offset;
+        const int center_y = center_record->origin_y -
+                             state_.opening_intro.stage2.y_offset;
+        std::size_t source_colored_pixels = 0U;
+        std::size_t source_color_matches = 0U;
+        for (int y = 0; y < center_image->second.height(); ++y) {
+            for (int x = 0; x < center_image->second.width(); ++x) {
+                const auto source = center_image->second.pixelColor(x, y);
+                if (source.alpha() == 0 ||
+                    (source.red() == 0 && source.green() == 0 &&
+                     source.blue() == 0)) {
+                    continue;
+                }
+                const int screen_x = center_x + x;
+                const int screen_y = center_y + y;
+                if (screen_x < 0 || screen_x >= initial_scene.width() ||
+                    screen_y < 0 || screen_y >= initial_scene.height()) {
+                    continue;
+                }
+                ++source_colored_pixels;
+                if (initial_scene.pixelColor(screen_x, screen_y) == source) {
+                    ++source_color_matches;
+                }
+            }
+        }
+        if (!initial_scene.save(QString::fromStdWString(
+                (output_directory / "orc-initial-source-palette.bmp")
+                    .wstring()))) {
+            return fail("could not save the first source-palette frame");
+        }
+        record("first-loop-source-palette");
+        if (source_colored_pixels < 1000U || source_color_matches < 1000U) {
+            std::cerr << "opening orc timeline QA: source color matches="
+                      << source_color_matches << '/' << source_colored_pixels
+                      << " map origin=" << center_x << ',' << center_y << '\n';
+            return fail("the initial orc map lost its source palette");
+        }
+
+        while (state_.phase == StartupIntegrationPhase::opening_intro &&
+               state_.opening_intro.stage !=
+                   OpeningIntroStage::stage2_second_loop) {
+            if (frames++ >= kMaximumFrames) {
+                return fail("did not reach the second wilderness loop");
+            }
+            advance_one_source_frame();
+        }
+        while (state_.phase == StartupIntegrationPhase::opening_intro &&
+               state_.opening_intro.sequence.stage < 1U) {
+            if (frames++ >= kMaximumFrames) {
+                return fail("the first orc patch did not start");
+            }
+            advance_one_source_frame();
+        }
+        if (state_.phase != StartupIntegrationPhase::opening_intro ||
+            state_.opening_intro.sequence.stage != 1U ||
+            !opening_wilderness_patch_ ||
+            opening_intro_sprite_group(
+                opening_wilderness_patch_->sprite_descriptor).variant != 0U) {
+            return fail("the source patch 0 was not selected first");
+        }
+        const auto first_patch_frame =
+            state_.opening_intro.sequence.current_frame;
+
+        for (std::size_t index = 0U; index < kExpectedStages.size(); ++index) {
+            while (state_.phase == StartupIntegrationPhase::opening_intro &&
+                   state_.opening_intro.sequence.stage <
+                       kExpectedStages[index]) {
+                if (frames++ >= kMaximumFrames) {
+                    return fail("the orc patch/palette sequence stalled");
+                }
+                advance_one_source_frame();
+            }
+            const auto& opening = state_.opening_intro;
+            const auto expected_frame = static_cast<std::uint16_t>(
+                first_patch_frame + kStageOffsets[index]);
+            if (state_.phase != StartupIntegrationPhase::opening_intro ||
+                opening.sequence.stage != kExpectedStages[index] ||
+                opening.sequence.current_frame != expected_frame ||
+                !opening_wilderness_patch_ ||
+                opening_intro_sprite_group(
+                    opening_wilderness_patch_->sprite_descriptor)
+                        .variant != kPatchVariants[index]) {
+                return fail("patch or palette event missed its ROM update deadline");
+            }
+            if (index < 4U) {
+                if (opening_orc_palette_mode() !=
+                        OpeningOrcPaletteMode::source ||
+                    !save_checkpoint(kCheckpointNames[index])) {
+                    return fail("a pre-hit patch lost the source palette");
+                }
+            } else {
+                const auto& colors = opening.entity_colors.words[0U];
+                if (opening_orc_palette_mode() !=
+                        OpeningOrcPaletteMode::hit_white ||
+                    !opening_entity_palette_flash_active(0U) ||
+                    !std::all_of(colors.begin(), colors.end(),
+                                 [](const std::uint16_t word) {
+                                     return word == 0x0EEEU;
+                                 }) ||
+                    !save_checkpoint(kCheckpointNames[index]) ||
+                    !save_checkpoint("actual.bmp")) {
+                    return fail("0x5A146 did not begin the uniform 0xEEE hit flash");
+                }
+            }
+        }
+
+        const auto advance_to_stage = [&](const std::uint16_t stage,
+                                          const std::uint16_t expected_offset) {
+            while (state_.phase == StartupIntegrationPhase::opening_intro &&
+                   state_.opening_intro.sequence.stage < stage) {
+                if (frames++ >= kMaximumFrames) {
+                    return false;
+                }
+                advance_one_source_frame();
+            }
+            const auto& opening = state_.opening_intro;
+            return state_.phase == StartupIntegrationPhase::opening_intro &&
+                   opening.sequence.stage == stage &&
+                   opening.sequence.current_frame ==
+                       static_cast<std::uint16_t>(first_patch_frame +
+                                                  expected_offset);
+        };
+        if (!advance_to_stage(6U, 117U) ||
+            opening_orc_palette_mode() != OpeningOrcPaletteMode::fade ||
+            !std::all_of(state_.opening_intro.entity_colors.words[0U].begin(),
+                         state_.opening_intro.entity_colors.words[0U].end(),
+                         [](const std::uint16_t word) {
+                             return word == 0x0CCCU;
+                         }) ||
+            !save_checkpoint("orc-hit-fade-step-1.bmp")) {
+            return fail("the first nine-update fade step was not 0xCCC");
+        }
+        if (!advance_to_stage(9U, 144U) ||
+            !std::all_of(state_.opening_intro.entity_colors.words[0U].begin(),
+                         state_.opening_intro.entity_colors.words[0U].end(),
+                         [](const std::uint16_t word) {
+                             return word == 0x0666U;
+                         }) ||
+            opening_intro_sprite_group(
+                state_.opening_intro.timed.current_sprite_descriptor)
+                    .family != OpeningIntroSpriteFamily::ambush_body ||
+            opening_intro_sprite_group(
+                state_.opening_intro.timed.current_sprite_descriptor)
+                    .variant != 0U ||
+            state_.opening_intro.timed.x != 0x013DU ||
+            state_.opening_intro.timed.y != 0x0139U ||
+            !save_checkpoint("orc-timed-body-0.bmp")) {
+            return fail("stage 9 did not start the first timed body metasprite at 0x13D/0x139");
+        }
+        const auto first_body_frame = state_.opening_intro.timed.current_frame;
+        frames = 0U;
+        while (state_.phase == StartupIntegrationPhase::opening_intro &&
+               state_.opening_intro.timed.descriptor_index < 2U) {
+            if (frames++ >= 16U) {
+                return fail("the second timed body metasprite did not appear");
+            }
+            advance_one_source_frame();
+        }
+        if (state_.phase != StartupIntegrationPhase::opening_intro ||
+            state_.opening_intro.timed.descriptor_index != 2U ||
+            static_cast<std::uint16_t>(
+                state_.opening_intro.timed.current_frame - first_body_frame) !=
+                8U ||
+            opening_intro_sprite_group(
+                state_.opening_intro.timed.current_sprite_descriptor)
+                    .variant != 1U ||
+            !save_checkpoint("orc-timed-body-1.bmp")) {
+            return fail("timed body metasprites did not keep the eight-update cadence");
+        }
+
+        if (!advance_to_stage(12U, 171U) ||
+            opening_orc_palette_mode() != OpeningOrcPaletteMode::cleared ||
+            opening_wilderness_map_center_ || opening_wilderness_patch_ ||
+            !std::all_of(state_.opening_intro.entity_colors.words[0U].begin(),
+                         state_.opening_intro.entity_colors.words[0U].end(),
+                         [](const std::uint16_t word) { return word == 0U; }) ||
+            !save_checkpoint("orc-after-center-clear.bmp")) {
+            return fail("the stage-12 center clear or terminal palette was missed");
+        }
+        std::cout << "opening_orc_timeline_qa=passed source_matches="
+                  << source_color_matches << '/' << source_colored_pixels
+                  << " patch_offsets=0,12,36,96 hit=108 fade=9 clear=171"
+                  << " actual=" << (output_directory / "actual.bmp").string()
+                  << '\n';
         return 0;
     }
 

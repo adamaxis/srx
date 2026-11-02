@@ -544,6 +544,13 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_opening_ambush_flash_qa
                  --opening-ambush-flash-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/opening-ambush-flash-qa")
 
+# The orc's four source map patches, delayed white hit palette, nine-update
+# fade, timed body records, and center clear must stay aligned with 0x5A0B2.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_opening_orc_timeline_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --opening-orc-timeline-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/opening-orc-timeline-qa")
+
 add_executable(shadowrun_ghidra_conversion_qt_title_intro_motion_test
     ../tests/title_intro/title_intro_motion_conversion_test.cpp)
 target_link_libraries(shadowrun_ghidra_conversion_qt_title_intro_motion_test
