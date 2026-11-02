@@ -4,6 +4,7 @@
 local Combat = require("combat")
 local E = require("enums")
 local Karma = require("karma")
+local Items = require("items")
 local postures = {
     E.Posture.FULL_DEFENSE,
     E.Posture.MEDIUM_DEFENSE,
@@ -250,6 +251,24 @@ for meter = 0, 10 do
     check(hit ~= nil and hit.physical_meter == math.max(0, meter - 6),
           "six damage did not produce the semantic remaining meter from " ..
               meter)
+end
+
+-- ROM 0x55E92/0x55EB4 index D4D50 by equipped armor ordinal. Verify every
+-- source row so the combat resolver cannot silently collapse armor tiers.
+local source_armor_rows = {
+    { "armor_vest", 2, 1 },
+    { "armor_clothing", 1, 2 },
+    { "armor_jacket", 5, 3 },
+    { "vest_with_plates", 4, 3 },
+    { "lined_duster", 3, 2 },
+    { "light_combat_armor", 6, 4 },
+    { "heavy_combat_armor", 8, 6 },
+}
+for _, row in ipairs(source_armor_rows) do
+    local armor = Items.by_id[row[1]].armor
+    check(armor.primary_modifier == row[2] and
+          armor.secondary_modifier == row[3],
+          row[1] .. " primary/secondary modifiers disagree with D4D50")
 end
 
 print(string.format("combat_skill_policy_tests: %d/%d passed", passed, total))

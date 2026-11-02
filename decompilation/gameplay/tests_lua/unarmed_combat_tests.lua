@@ -262,6 +262,12 @@ for key, value in pairs(joshua) do
 end
 bare_fist_joshua.hand_razors = false
 
+local spurs_joshua = {}
+for key, value in pairs(bare_fist_joshua) do
+    spurs_joshua[key] = value
+end
+spurs_joshua.spurs = true
+
 local function run_sweep(label, attacker, seed, expected_hits,
                          expected_damage, expected_meter)
     local port_random = source_rng(seed)
@@ -339,6 +345,115 @@ end
 run_sweep("bare-fist stun", bare_fist_joshua, 0x0437, 3, 5, "stun")
 -- The default-Hand-Razor seed contains one physical hit after the ROM's -2.
 run_sweep("default Hand-Razor", joshua, 0x0004, 1, 1, "physical")
+-- ROM 0x55DA2..0x55DBC sends Spurs directly to physical with no Hand-Razor -2.
+run_sweep("Spurs physical", spurs_joshua, 0x0437, 3, 5, "physical")
+
+local function copy_source_profile(source)
+    local copy = {}
+    for key, value in pairs(source) do
+        copy[key] = value
+    end
+    return copy
+end
+
+local function probe_combat_cyberware(label, strength_bonus,
+                                      defense_bonus, seed)
+    local attacker = copy_source_profile(bare_fist_joshua)
+    local defender = copy_source_profile(halloweeners_contract_target)
+    -- Use the source's no-armor branch for these modifier-tier probes so
+    -- differing resistance TNs remain visible after the damage calculation.
+    defender.armor_id = nil
+    defender.secondary_armor = 0
+    defender.body = 1
+    defender.quickness = 1
+    defender.intelligence = 1
+    defender.willpower = 1
+    defender.melee = 0
+    defender.cybereyes = false
+    attacker.melee_strength_bonus = strength_bonus
+    defender.melee_defense_bonus = defense_bonus
+    local expected_damage, expected_meter = source_unarmed_reaction(
+        source_rng(seed), attacker, defender)
+    local target = {
+        id = "cyberware-" .. label,
+        combatant = make_combatant(defender),
+    }
+    game.actors[target.id] = nil
+    local result = Combat.resolve_reaction({
+        combatant = make_combatant(attacker),
+        ai_target_candidates = {},
+        ai_random_bound = source_rng(seed),
+    }, target)
+    local actual_damage = 0
+    local actual_meter = expected_meter
+    if result ~= nil then
+        actual_meter = result.physical and "physical" or "stun"
+        actual_damage = result.physical and
+            (10 - result.physical_meter) or (10 - result.mental_meter)
+    end
+    check(actual_damage == expected_damage and
+          actual_meter == expected_meter,
+          string.format("%s derived unarmed result differs from ROM 0x55D2C..0x55E60 (seed %04X): %d/%s vs %d/%s",
+                        label, seed, actual_damage, actual_meter,
+                        expected_damage, expected_meter))
+    print(string.format("  %s ROM seed %04X => %d %s", label, seed,
+                        expected_damage, expected_meter))
+    return expected_damage
+end
+
+local function source_damage_for_ware(strength_bonus, defense_bonus, seed)
+    local attacker = copy_source_profile(bare_fist_joshua)
+    local defender = copy_source_profile(halloweeners_contract_target)
+    defender.armor_id = nil
+    defender.secondary_armor = 0
+    defender.body = 1
+    defender.quickness = 1
+    defender.intelligence = 1
+    defender.willpower = 1
+    defender.melee = 0
+    defender.cybereyes = false
+    attacker.melee_strength_bonus = strength_bonus
+    defender.melee_defense_bonus = defense_bonus
+    return source_unarmed_reaction(source_rng(seed), attacker, defender)
+end
+
+local function sensitive_seed(strength_bonus, defense_bonus)
+    for seed = 0, 4095 do
+        local baseline_damage, baseline_meter =
+            source_damage_for_ware(0, 0, seed)
+        local damage, meter = source_damage_for_ware(
+            strength_bonus, defense_bonus, seed)
+        if damage ~= baseline_damage or meter ~= baseline_meter then
+            return seed
+        end
+    end
+    return nil
+end
+
+-- ROM 0x55D2C..0x55D66 maps the first set bits 5..8 to muscle-replacement
+-- strength bonuses +1..+4. Each source-seeded test feeds that bonus into the
+-- final resistance target at 0x55D4E..0x55D9E and compares the Lua resolver.
+for bonus = 1, 4 do
+    local seed = sensitive_seed(bonus, 0)
+    check(seed ~= nil, "ROM seed search found no muscle replacement " .. bonus ..
+          " result that changes the derived attack")
+    if seed ~= nil then
+        probe_combat_cyberware("muscle replacement " .. bonus,
+                               bonus, 0, seed)
+    end
+end
+
+-- ROM 0x55D66..0x55D86 maps the first set bits 9..11 to Dermal Plating
+-- defense bonuses +1..+3, added to the defender pool at 0x55D4E..0x55D9E.
+for bonus = 1, 3 do
+    local seed = sensitive_seed(0, bonus)
+    check(seed ~= nil, "ROM seed search found no Dermal Plating " .. bonus ..
+          " result that changes the derived attack")
+    if seed ~= nil then
+        probe_combat_cyberware("Dermal Plating " .. bonus,
+                               0, bonus, seed)
+    end
+end
 
 print(string.format("unarmed_combat_tests: %d/%d passed", passed, total))
 if passed ~= total then

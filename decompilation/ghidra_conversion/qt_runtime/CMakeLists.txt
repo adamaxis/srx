@@ -2553,9 +2553,15 @@ foreach(SHADOWRUN_GHIDRA_ENTITY_TEST IN ITEMS
     add_executable(shadowrun_ghidra_${SHADOWRUN_GHIDRA_ENTITY_TEST}_test
         ../tests/entities/${SHADOWRUN_GHIDRA_ENTITY_TEST}_conversion_test.cpp
     )
-    target_link_libraries(
-        shadowrun_ghidra_${SHADOWRUN_GHIDRA_ENTITY_TEST}_test
-        PRIVATE shadowrun_ghidra_conversion_modules)
+    if(SHADOWRUN_GHIDRA_ENTITY_TEST STREQUAL "entity_combat")
+        target_link_libraries(
+            shadowrun_ghidra_${SHADOWRUN_GHIDRA_ENTITY_TEST}_test
+            PRIVATE shadowrun_gameplay_script_runtime)
+    else()
+        target_link_libraries(
+            shadowrun_ghidra_${SHADOWRUN_GHIDRA_ENTITY_TEST}_test
+            PRIVATE shadowrun_ghidra_conversion_modules)
+    endif()
     if(SHADOWRUN_GHIDRA_ENTITY_TEST STREQUAL "movement_metric")
         target_compile_definitions(
             shadowrun_ghidra_${SHADOWRUN_GHIDRA_ENTITY_TEST}_test

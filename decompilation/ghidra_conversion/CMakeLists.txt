@@ -101,6 +101,16 @@ add_test(NAME shadowrun_ghidra_conversion_runner
          COMMAND shadowrun_ghidra_conversion_runner
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../assets")
 
+# Keep the authoritative Lua gameplay and combat suites in CTest alongside
+# the native conversion checks. The shell runner supplies Lua paths and the
+# required headless/null-audio environment.
+add_test(NAME shadowrun_gameplay_lua_suites
+         COMMAND bash
+                 "${CMAKE_CURRENT_SOURCE_DIR}/../gameplay/tests_lua/run_lua_suites.sh")
+set_tests_properties(shadowrun_gameplay_lua_suites PROPERTIES
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../.."
+    ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy")
+
 # Offline extraction helper for the source records consumed by the converted
 # startup/session code. It is intentionally not linked into the Qt frontend or
 # any native runtime target.
@@ -192,7 +202,8 @@ if (NOT SHADOWRUN_GHIDRA_QT_FRONTEND)
         target_include_directories(${test_target} PRIVATE
             "${CMAKE_CURRENT_SOURCE_DIR}/qt_runtime/src/srx_refactor")
         if(test_name STREQUAL "gameplay_script_menu_route" OR
-           test_name STREQUAL "matrix_lua_rules")
+           test_name STREQUAL "matrix_lua_rules" OR
+           test_name STREQUAL "entity_combat")
             target_link_libraries(${test_target}
                 PRIVATE shadowrun_gameplay_script_runtime)
         elseif(test_name STREQUAL "conversion_workbench" OR
