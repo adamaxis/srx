@@ -5863,6 +5863,115 @@ void write_catalog_asset(const std::filesystem::path& root,
     ++written;
 }
 
+std::array<shadowrun::graphics::RgbaImage, 3U>
+extract_intro_aircraft_tail_rotor_phases(
+    const std::vector<std::uint8_t>& rom) {
+    // Airport setup 0x5B528 loads the first 0x1530 pattern block at VRAM $4420.
+    // Map 0x1E87BA places the fan in the twelve unflipped line-1 tiles below;
+    // palette words 0x5B6B2+0x22..0x26 are the three values rotated by 0x5B08E.
+    constexpr std::size_t kPatternList = 0x5B538U;
+    constexpr std::uint32_t kExpectedTaggedSource = 0x1E6957U;
+    constexpr std::uint32_t kExpectedVramDestination = 0x4420U;
+    constexpr std::uint32_t kExpectedPatternBytes = 0x4660U;
+    constexpr std::size_t kVramSize = 0x10000U;
+    constexpr std::size_t kTileBytes = 32U;
+    constexpr std::size_t kFirstMapRow = 3U;
+    constexpr std::size_t kFirstMapColumn = 22U;
+    constexpr std::size_t kSourceX = 183U;
+    constexpr std::size_t kSourceY = 30U;
+    constexpr std::size_t kFanWidth = 20U;
+    constexpr std::size_t kFanHeight = 17U;
+    constexpr std::array<std::size_t, 3U> kTileRowBases{{
+        0x260U, 0x27BU, 0x295U}};
+    constexpr std::size_t kTileColumns = 4U;
+    constexpr std::size_t kPaletteLineOneOffset = 16U;
+    constexpr std::size_t kPaletteEntryCount = 3U;
+    constexpr std::array<std::size_t, 4U> kExpectedPixelIndexCounts{{
+        0U, 42U, 30U, 32U}};
+
+    const auto tagged_source = read_big_endian_long(rom, kPatternList);
+    const auto vram_destination = read_big_endian_long(rom, kPatternList + 4U);
+    const auto pattern_bytes = read_big_endian_long(rom, kPatternList + 8U);
+    if (tagged_source != kExpectedTaggedSource ||
+        vram_destination != kExpectedVramDestination ||
+        pattern_bytes != kExpectedPatternBytes ||
+        (tagged_source & 1U) == 0U) {
+        throw std::runtime_error(
+            "airport Plane-A tail-fan pattern upload changed");
+    }
+    const auto decoded_patterns =
+        shadowrun::graphics::decode_genesis_resource_stream(
+            rom, static_cast<std::size_t>(tagged_source & ~1U));
+    if (decoded_patterns.size() != pattern_bytes ||
+        vram_destination > kVramSize ||
+        decoded_patterns.size() > kVramSize - vram_destination) {
+        throw std::runtime_error(
+            "airport Plane-A tail-fan pattern upload is truncated");
+    }
+    std::array<std::uint8_t, kVramSize> pattern_vram{};
+    std::copy(decoded_patterns.begin(), decoded_patterns.end(),
+              pattern_vram.begin() + vram_destination);
+
+    std::array<shadowrun::graphics::IndexedTile,
+               kTileRowBases.size() * kTileColumns> fan_tiles{};
+    for (std::size_t row = 0U; row < kTileRowBases.size(); ++row) {
+        for (std::size_t column = 0U; column < kTileColumns; ++column) {
+            const auto tile_index = kTileRowBases[row] + column;
+            const auto tile_offset = tile_index * kTileBytes;
+            if (tile_offset > pattern_vram.size() ||
+                kTileBytes > pattern_vram.size() - tile_offset) {
+                throw std::runtime_error(
+                    "airport Plane-A tail-fan tile exceeds decoded patterns");
+            }
+            fan_tiles[row * kTileColumns + column] =
+                shadowrun::graphics::decode_genesis_tile(
+                    pattern_vram.data() + tile_offset, kTileBytes);
+        }
+    }
+
+    const auto palette = shadowrun::graphics::read_genesis_palette_set(
+        rom, 0x5B6B2U);
+    std::array<shadowrun::graphics::RgbaImage, kPaletteEntryCount> phases{};
+    std::array<std::size_t, 4U> pixel_index_counts{};
+    for (auto& phase : phases) {
+        phase.width = static_cast<std::uint16_t>(kFanWidth);
+        phase.height = static_cast<std::uint16_t>(kFanHeight);
+        phase.pixels.assign(
+            kFanWidth * kFanHeight,
+            shadowrun::native::Rgba8{0U, 0U, 0U, 0U});
+    }
+
+    for (std::size_t y = 0U; y < kFanHeight; ++y) {
+        const auto source_y = kSourceY + y;
+        const auto tile_row = source_y / 8U - kFirstMapRow;
+        for (std::size_t x = 0U; x < kFanWidth; ++x) {
+            const auto source_x = kSourceX + x;
+            const auto tile_column = source_x / 8U - kFirstMapColumn;
+            const auto tile_index = tile_row * kTileColumns + tile_column;
+            const auto pixel_offset = (source_y % 8U) * 8U + source_x % 8U;
+            const auto color_index = fan_tiles[tile_index].pixels[pixel_offset];
+            if (color_index == 0U || color_index > kPaletteEntryCount) {
+                continue;
+            }
+            ++pixel_index_counts[color_index];
+            for (std::size_t phase_index = 0U;
+                 phase_index < phases.size(); ++phase_index) {
+                const auto rotated_index =
+                    1U + (color_index - 1U + phase_index) %
+                             kPaletteEntryCount;
+                auto pixel = palette[kPaletteLineOneOffset + rotated_index];
+                pixel.alpha = 255U;
+                phases[phase_index].pixels[y * kFanWidth + x] = pixel;
+            }
+        }
+    }
+    if (pixel_index_counts != kExpectedPixelIndexCounts) {
+        throw std::runtime_error(
+            "airport Plane-A tail-fan ROM pixel mask changed");
+    }
+    return phases;
+}
+
 struct ExtractedSpriteListFrame {
     shadowrun::graphics::RgbaImage image;
     std::int32_t origin_x = 0;
@@ -6512,6 +6621,20 @@ constexpr std::array<StoryPageProfile, 2U> kStoryPageProfiles{{
      "cinematic.salish.spirit_eyes.ritual_of_binding.art", 0x1FE6C2U},
 }};
 
+struct ExplicitAssetAlias {
+    std::string_view relative_name;
+    std::string_view alias;
+};
+
+constexpr std::array<ExplicitAssetAlias, 3U> kTailRotorPhaseAliases{{
+    {"intro/aircraft-tail-rotor-phase-0.png",
+     "intro.aircraft.tail_rotor.phase.0"},
+    {"intro/aircraft-tail-rotor-phase-1.png",
+     "intro.aircraft.tail_rotor.phase.1"},
+    {"intro/aircraft-tail-rotor-phase-2.png",
+     "intro.aircraft.tail_rotor.phase.2"},
+}};
+
 std::vector<std::uint8_t> decode_story_page_1530_stream(
     const std::vector<std::uint8_t>& rom, const std::size_t source_offset,
     std::uint16_t& counter_out) {
@@ -6949,6 +7072,12 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
             continue;
         }
         auto alias = shadowrun::resources::alias_for_path(relative);
+        for (const auto& tail_rotor_phase : kTailRotorPhaseAliases) {
+            if (relative == tail_rotor_phase.relative_name) {
+                alias = std::string(tail_rotor_phase.alias);
+                break;
+            }
+        }
         for (const auto& story_page : kStoryPageProfiles) {
             if (relative == story_page.relative_name) {
                 // Lua cinematic pages name these by their story role.
@@ -7582,6 +7711,21 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     write("menu/startup/cursor.bmp", assets.startup_cursor, "sprite", "0xD29F6", true);
     write("intro/aircraft-plane-a.bmp", assets.intro_aircraft_plane_a, "sprite",
           "0x5B528/0x5B7D8", true);
+    const auto tail_rotor_phases =
+        extract_intro_aircraft_tail_rotor_phases(rom);
+    for (std::size_t phase = 0U; phase < tail_rotor_phases.size(); ++phase) {
+        const auto relative_name =
+            "intro/aircraft-tail-rotor-phase-" + std::to_string(phase) +
+            ".png";
+        const auto provenance =
+            "0x5B528 pattern upload 0x1E6956; map 0x1E87BA tiles "
+            "0x260..0x263/0x27B..0x27E/0x295..0x298; palette 0x5B6B2 "
+            "entries 17..19, rotated by 0x5B08E phase " +
+            std::to_string(phase);
+        write_catalog_asset(root, relative_name, tail_rotor_phases[phase],
+                            "sprite", provenance, false, manifest, written,
+                            missing, blank);
+    }
     write("intro/trivid-background.bmp", assets.intro_trivid_background,
           "background", "0x5AA96", false);
     const auto intro_backgrounds =

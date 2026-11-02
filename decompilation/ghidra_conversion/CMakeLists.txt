@@ -176,6 +176,12 @@ target_include_directories(shadowrun_graphics_extract PRIVATE
 target_link_libraries(shadowrun_graphics_extract PRIVATE
     shadowrun_ghidra_asset_import shadowrun_ghidra_asset_import_support
     ZLIB::ZLIB)
+add_test(NAME shadowrun_graphics_extract_aircraft_tail_rotor
+         COMMAND "${Python3_EXECUTABLE}"
+                 "${CMAKE_CURRENT_SOURCE_DIR}/tests/graphics_extract_aircraft_tail_rotor_test.py"
+                 "$<TARGET_FILE:shadowrun_graphics_extract>"
+                 "${CMAKE_CURRENT_SOURCE_DIR}/../input/shadowrun_genesis_us.bin"
+                 "${CMAKE_CURRENT_SOURCE_DIR}/../assets")
 
 add_executable(shadowrun_genesis_1728_sprite_test
     tools/rom_research/tests/field_mode_profile_import_test.cpp
