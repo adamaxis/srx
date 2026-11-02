@@ -1805,6 +1805,7 @@ private:
     bool open_gunderson_interaction();
     bool open_field_johnson_interaction();
     bool open_field_location_dialogue(
+        scripting::ScriptDialogueSource source,
         const FieldScriptRoute& route);
     bool project_field_world_interaction();
     void update_source_field_camera();

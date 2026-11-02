@@ -234,6 +234,7 @@ int main(int argc, char** argv) {
         "field_map", "scene_2", "field.main_menu", "");
     scripts.set_story_state({{"vid_phone_contacts_resolved", true}});
     if (!expect(runtime.open_gameplay_task(
+                    scripting::ScriptDialogueSource::field_menu,
                     "field_activities", "ordinary_field_terminal"),
                 "ordinary field terminal did not open") ||
         !expect(runtime.panel().option_count == 4U,
@@ -705,6 +706,7 @@ int main(int argc, char** argv) {
     }
 
     if (!expect(runtime.open_gameplay_task(
+                    scripting::ScriptDialogueSource::vid_phone,
                     "field_activities", "vid_phone"),
                 "could not reopen the phonebook for Sharkey QA")) {
         std::cerr << runtime.failure() << '\n';
@@ -776,6 +778,7 @@ int main(int argc, char** argv) {
     }
 
     if (!expect(runtime.open_gameplay_task(
+                    scripting::ScriptDialogueSource::field_menu,
                     "field_activities", "ordinary_field_terminal"),
                 "could not restore the field terminal after travel QA")) {
         std::cerr << runtime.failure() << '\n';

@@ -1382,8 +1382,9 @@ bool FieldSceneRuntime::begin_hospital_menu_task(
         hospital_service_session_active_ = true;
     }
     field_palette_fade_steps_ = 0U;
-    if (!field_dialogue_.open_gameplay_task("council_island_hospital",
-                                            function)) {
+    if (!field_dialogue_.open_gameplay_task(
+            scripting::ScriptDialogueSource::building_service,
+            "council_island_hospital", function)) {
         hospital_service_session_active_ = false;
         failure_ = "Council Island Hospital Lua menu task could not open";
         source_boundary("field.hospital.lua_menu_task_failed");

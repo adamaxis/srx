@@ -1639,6 +1639,7 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                     "field_map", "johnson_run_target", "field.world_event",
                     "field_narrator");
                 if (!field_dialogue_.open_gameplay_task(
+                        scripting::ScriptDialogueSource::run_target,
                         run_event->dialogue_module,
                         run_event->dialogue_function)) {
                     source_boundary("field.run.entry_dialogue_open_failed");
@@ -1734,7 +1735,10 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                     task.location_type, task.location_id,
                     task.text_profile, task.speaker_id);
                 if (!field_dialogue_.open_gameplay_task(
-                        task.module, task.function)) {
+                        scripting::ScriptDialogueSource::building_service,
+                        task.module, task.function,
+                        field_scene_detail::dialogue_open_route_data(
+                            event_route))) {
                     source_boundary(
                         "field.location.indexed_title_service_open_failed");
                     state.caller_exit_status = -1;
@@ -1774,8 +1778,11 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                     event_route.entry_event_id,
                     runtime_state.scene_id);
                 if (!field_dialogue_.open_gameplay_task(
+                        scripting::ScriptDialogueSource::building_entry,
                         event_route.entry_dialogue_module,
-                        event_route.entry_dialogue_function)) {
+                        event_route.entry_dialogue_function,
+                        field_scene_detail::dialogue_open_route_data(
+                            event_route))) {
                     source_boundary(
                         "field.entry.location_dialogue_open_failed");
                     state.caller_exit_status = -1;
@@ -1818,6 +1825,7 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                     // redmond_barrens.run_vigore_search records the named
                     // landmark_map_taken fact after its closing page.
                     if (!field_dialogue_.open_gameplay_task(
+                            scripting::ScriptDialogueSource::field_event,
                             "redmond_barrens", "run_vigore_search")) {
                         source_boundary(
                             "field.event.redmond_vigore_search_open_failed");
@@ -1862,8 +1870,11 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                 event_route.entry_speaker_id,
                 event_route.entry_event_id);
             if (!field_dialogue_.open_gameplay_task(
+                    scripting::ScriptDialogueSource::field_npc_contact,
                     event_route.entry_dialogue_module,
-                    event_route.entry_dialogue_function)) {
+                    event_route.entry_dialogue_function,
+                    field_scene_detail::dialogue_open_route_data(
+                        event_route))) {
                 source_boundary("field.location.dialogue_task_open_failed");
                 state.caller_exit_status = -1;
                 return true;
@@ -1889,7 +1900,10 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                     task.location_type, task.location_id,
                     task.text_profile, task.speaker_id);
                 if (!field_dialogue_.open_gameplay_task(
-                        task.module, task.function)) {
+                        scripting::ScriptDialogueSource::building_exit,
+                        task.module, task.function,
+                        field_scene_detail::dialogue_open_route_data(
+                            event_route))) {
                     source_boundary(
                         "field.location.exit_prompt_open_failed");
                     state.caller_exit_status = -1;
@@ -5512,7 +5526,9 @@ void FieldSceneRuntime::advance_default_field_actors(
         const auto name = std::move(*field_pending_activity_completion_);
         field_pending_activity_completion_.reset();
         // story_activity_routes.lua maps complete_<name> to the list's callback.
-        if (field_dialogue_.open_gameplay_task("story_activity_routes",
+        if (field_dialogue_.open_gameplay_task(
+                scripting::ScriptDialogueSource::story_activity,
+                "story_activity_routes",
                                                "complete_" + name)) {
             source_boundary("field.world_activity." + name +
                             "_callback_dispatched");
@@ -5687,6 +5703,7 @@ void FieldSceneRuntime::resolve_default_actor_proximity(
                           *response_id,
                           static_cast<std::uint8_t>(scene_reference));
                       if (!field_dialogue_.open_gameplay_task(
+                              scripting::ScriptDialogueSource::field_npc_contact,
                               "field_generic_contacts", "present")) {
                           failure_ = !field_dialogue_.failure().empty()
                               ? field_dialogue_.failure()
@@ -5779,6 +5796,8 @@ void FieldSceneRuntime::resolve_default_actor_proximity(
                       std::string_view speaker;
                       std::string_view text_profile = "field.world_event";
                       std::string_view opened_boundary;
+                      auto dialogue_source = scripting::ScriptDialogueSource::
+                          story_activity;
                       if (*contact_task == scripting::
                               ScriptFieldActorContactAction::aragorn_contact) {
                           module = "salish_owlfeather";
@@ -5814,6 +5833,8 @@ void FieldSceneRuntime::resolve_default_actor_proximity(
                           location = "employee_recruitment_contact";
                           speaker = "mortimer_reed";
                           text_profile = "big-rhino.mortimer_reed";
+                          dialogue_source = scripting::ScriptDialogueSource::
+                              random_encounter;
                           opened_boundary =
                               "field.world_activity.employee_recruitment_contact_opened";
                       } else {
@@ -5824,7 +5845,8 @@ void FieldSceneRuntime::resolve_default_actor_proximity(
                       }
                       game_scripts_.set_location_context(
                           "field_map", location, text_profile, speaker);
-                      if (!field_dialogue_.open_gameplay_task(module, task)) {
+                      if (!field_dialogue_.open_gameplay_task(
+                              dialogue_source, module, task)) {
                           failure_ = !field_dialogue_.failure().empty()
                               ? field_dialogue_.failure()
                               : !game_scripts_.failure().empty()
@@ -8656,6 +8678,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                     state_.field_scene_buffers.scene_mode,
                     field_movement_transition_state_.field_transition_context});
             const bool opened = field_dialogue_.open_gameplay_task(
+                scripting::ScriptDialogueSource::scripted_encounter,
                 "salish_spirit_eyes", "present_renraku_ambush");
             field_activity_continuation_ =
                 MovementModeTransitionContinuation::none;
@@ -8706,6 +8729,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 "field_map", "employee_recruitment_contact",
                 "big-rhino.mortimer_reed", "mortimer_reed");
             if (!field_dialogue_.open_gameplay_task(
+                    scripting::ScriptDialogueSource::story_activity,
                     "field_world_activity_results", task)) {
                 source_boundary(
                     extraction_succeeded
@@ -8758,6 +8782,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                     static_cast<std::uint8_t>(
                         state_.field_scene_buffers.scene_reference));
                 if (!field_dialogue_.open_gameplay_task(
+                        scripting::ScriptDialogueSource::story_reward,
                         "fuchi_offices",
                         "present_cyberheart_safe_found")) {
                     source_boundary(
@@ -8796,6 +8821,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 "tarislar.tomb.antechamber", "tarislar_apartments_narrator",
                 "antechamber_arrival", 55U);
             const bool opened = field_dialogue_.open_gameplay_task(
+                scripting::ScriptDialogueSource::cinematic,
                 "tarislar_apartments",
                 "present_tomb_antechamber_arrival");
             if (!opened) {
@@ -8826,6 +8852,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 "tarislar.tomb.ending_warning", "licourtrix",
                 "tomb_ending_warning", 55U);
             const bool opened = field_dialogue_.open_gameplay_task(
+                scripting::ScriptDialogueSource::cinematic,
                 "tarislar_tomb_credits", "present_ending_warning");
             if (!opened) {
                 std::string reason =
@@ -8862,7 +8889,8 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 return integration::PendingFieldSceneHandlerResult::resumed_field;
             }
             active_field_script_route_ = *route;
-            if (!open_field_location_dialogue(*route)) {
+            if (!open_field_location_dialogue(
+                    scripting::ScriptDialogueSource::field_activity, *route)) {
                 source_boundary(
                     "field.activity.event30_location_dialogue_failed");
             }
@@ -8880,6 +8908,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 game_scripts_.set_location_context(
                     "activity", "field_terminal", "field.main_menu");
                 if (!field_dialogue_.open_gameplay_task(
+                        scripting::ScriptDialogueSource::field_menu,
                         "field_activities", "ordinary_field_terminal")) {
                     source_boundary(
                         "field.activity.ordinary_terminal_open_failed");
@@ -8898,6 +8927,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 "activity", "resource_scene", "field.activity", "", "",
                 static_cast<std::uint8_t>(scene_reference));
             if (!field_dialogue_.open_gameplay_task(
+                    scripting::ScriptDialogueSource::field_menu,
                     "field_activities", "resource_scene_main_menu")) {
                 source_boundary(
                     "field.activity.resource_main_menu_open_failed");
@@ -8934,7 +8964,8 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 return integration::PendingFieldSceneHandlerResult::resumed_field;
             }
             active_field_script_route_ = *route;
-            if (!open_field_location_dialogue(*route)) {
+            if (!open_field_location_dialogue(
+                    scripting::ScriptDialogueSource::field_activity, *route)) {
                 source_boundary(continuation ==
                         MovementModeTransitionContinuation::event_27_world_activity
                     ? "field.activity.event27_location_dialogue_failed"
@@ -10157,7 +10188,9 @@ void FieldSceneRuntime::advance_field_menu_route() {
         context.taxi_current_region = current_region;
         context.taxi_destination_region = destination;
         game_scripts_.set_field_mode_context(std::move(context));
-        if (!field_dialogue_.open_gameplay_task("taxi_cabbie", "present")) {
+        if (!field_dialogue_.open_gameplay_task(
+                scripting::ScriptDialogueSource::taxi,
+                "taxi_cabbie", "present")) {
             field_taxi_cabbie_destination_.reset();
             source_boundary("field.taxi.cabbie_dialogue_open_failed");
         } else {

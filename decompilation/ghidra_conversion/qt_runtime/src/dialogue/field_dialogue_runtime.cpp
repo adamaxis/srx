@@ -147,7 +147,8 @@ bool FieldDialogueRuntime::open_field_exit_prompt(
         "motel", "stoker_motel", "stoker.motel", "stoker");
     // 0x1F65A's typed selection is carried as field mode/event/result facts;
     // the JSON graph resolves the signed branch and the prompt commands.
-    return open_gameplay_task("michael_package",
+    return open_gameplay_task(scripting::ScriptDialogueSource::building_exit,
+                              "michael_package",
                               "present_field_exit_prompt");
 }
 
@@ -175,17 +176,21 @@ bool FieldDialogueRuntime::open_stoker_interaction() {
         script_runtime_->set_location_context(
             "motel", "stoker_motel", "stoker.motel", "stoker");
     }
-    return start_script_task("michael_package", "stoker_interaction",
+    return start_script_task(scripting::ScriptDialogueSource::building_service,
+                             "michael_package", "stoker_interaction",
                              StokerMotelPromptId::manager_greeting);
 }
 
 bool FieldDialogueRuntime::open_gameplay_task(
-    const std::string_view module, const std::string_view function) {
+    const scripting::ScriptDialogueSource source,
+    const std::string_view module, const std::string_view function,
+    const scripting::ScriptDialogueOpenRouteData& route_data) {
     if (open()) {
         return false;
     }
-    return start_script_task(module, function,
-                             StokerMotelPromptId::source_boundary);
+    return start_script_task(source, module, function,
+                             StokerMotelPromptId::source_boundary,
+                             route_data);
 }
 
 bool FieldDialogueRuntime::present_source_boundary_for_host(
@@ -268,7 +273,9 @@ bool FieldDialogueRuntime::open_stoker_prompt(
         }
         script_runtime_->set_location_context(
             "motel", "stoker_motel", "stoker.motel", "stoker");
-        return start_script_task("motel", "manager_interaction", prompt);
+        return start_script_task(
+            scripting::ScriptDialogueSource::building_service,
+            "motel", "manager_interaction", prompt);
     } else {
         source_view = make_stoker_motel_prompt(prompt);
     }
@@ -342,18 +349,23 @@ bool FieldDialogueRuntime::open_stoker_prompt(
 }
 
 bool FieldDialogueRuntime::start_script_task(
+    const scripting::ScriptDialogueSource source,
     const std::string_view module, const std::string_view function,
-    const StokerMotelPromptId prompt) {
+    const StokerMotelPromptId prompt,
+    const scripting::ScriptDialogueOpenRouteData& route_data) {
     clear_retained_credits_page_for_title_return();
     closed_credits_page_asset_alias_.clear();
     closed_credits_page_id_.clear();
     last_gameplay_task_result_id_.reset();
     last_gameplay_task_outcome_.reset();
+    opening_descriptor_.reset();
     if (script_runtime_ == nullptr) {
         return open_source_boundary(
             "dialogue script has no gameplay script runtime");
     }
-    const auto task = script_runtime_->start_task(module, function);
+    const auto task = script_runtime_->start_dialogue_task(
+        source, module, function, route_data);
+    opening_descriptor_ = task.dialogue_open;
     if (task.status == scripting::ScriptTaskStep::Status::completed &&
         task.dialogue_outcome.has_value()) {
         if (const auto* boundary = std::get_if<

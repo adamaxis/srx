@@ -284,6 +284,7 @@ bool FieldSceneRuntime::open_ordinary_field_terminal_for_dump(
     game_scripts_.set_location_context(
         "activity", "field_terminal", "field.main_menu");
     return field_dialogue_.open_gameplay_task(
+        scripting::ScriptDialogueSource::field_menu,
         "field_activities", "ordinary_field_terminal");
 }
 
@@ -307,6 +308,7 @@ bool FieldSceneRuntime::open_spirit_eyes_ritual_for_dump() {
         state_.field_scene_buffers.scene_mode,
         field_movement_transition_state_.field_transition_context});
     return field_dialogue_.open_gameplay_task(
+        scripting::ScriptDialogueSource::scripted_encounter,
         "salish_spirit_eyes", "present");
 }
 
@@ -317,6 +319,7 @@ bool FieldSceneRuntime::open_tarislar_tomb_credits_for_dump() {
     // This hook exercises only the recovered panel sequence. It does not
     // synthesize Scene-55 fight completion or the title-screen return.
     return field_dialogue_.open_gameplay_task(
+        scripting::ScriptDialogueSource::cinematic,
         "tarislar_tomb_credits", "present");
 }
 
@@ -854,7 +857,9 @@ bool FieldSceneRuntime::open_vid_phone_for_dump() {
     game_scripts_.set_field_mode_context(scripting::ScriptFieldModeContext{
         state_.field_scene_buffers.field_resource_mode, 0U, 0,
         state_.field_scene_buffers.scene_mode, 0});
-    return field_dialogue_.open_gameplay_task("field_activities", "vid_phone");
+    return field_dialogue_.open_gameplay_task(
+        scripting::ScriptDialogueSource::vid_phone,
+        "field_activities", "vid_phone");
 }
 
 bool FieldSceneRuntime::dispatch_dialogue_outcome_for_dump() {
@@ -872,6 +877,7 @@ bool FieldSceneRuntime::open_gunderson_interaction() {
 }
 
 bool FieldSceneRuntime::open_field_location_dialogue(
+    const scripting::ScriptDialogueSource source,
     const FieldScriptRoute& route) {
     if (route.kind == FieldScriptRouteKind::source_boundary) {
         source_boundary(route.boundary_reason);
@@ -947,8 +953,10 @@ bool FieldSceneRuntime::open_field_location_dialogue(
         save_field_door_return_point();
     }
     if (!field_dialogue_.open_gameplay_task(
+            source,
             route.entry_dialogue_module,
-            route.entry_dialogue_function)) {
+            route.entry_dialogue_function,
+            field_scene_detail::dialogue_open_route_data(route))) {
         source_boundary("field.location.dialogue_task_open_failed");
         return false;
     }
@@ -980,7 +988,8 @@ bool FieldSceneRuntime::open_field_johnson_interaction() {
     pending_field_return_anchor_ = route->return_anchor;
     pending_field_return_facing_ = route->return_facing;
     pending_field_return_music_policy_ = route->return_music_policy;
-    return open_field_location_dialogue(*route);
+    return open_field_location_dialogue(
+        scripting::ScriptDialogueSource::field_npc_contact, *route);
 }
 
 #ifdef SHADOWRUN_QT_QA_DRIVER

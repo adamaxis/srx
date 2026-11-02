@@ -2878,6 +2878,7 @@ struct GameScriptRuntime::Impl {
     std::size_t loaded_module_count = 0U;
     std::optional<ScriptNativeOperation> pending_task_operation;
     std::optional<ScriptNativeOperation> active_native_operation;
+    std::optional<ScriptDialogueOpenDescriptor> active_dialogue_open;
     StoryFacts story_facts;
     std::vector<ScriptConditionalActorCandidate> conditional_actor_catalog;
     std::vector<ScriptActivitySelectorBinding> activity_selector_bindings;
@@ -6686,6 +6687,7 @@ struct GameScriptRuntime::Impl {
         task_waiting = false;
         pending_task_operation.reset();
         active_native_operation.reset();
+        active_dialogue_open.reset();
         bridge_failure.clear();
         if (task_state != nullptr) {
             lua_settop(task_state, 0);
@@ -6703,6 +6705,94 @@ struct GameScriptRuntime::Impl {
         return {ScriptTaskStep::Status::failed, std::nullopt};
     }
 
+    std::optional<ScriptDialogueOpenDescriptor>
+    read_active_dialogue_open() const {
+        if (task_state == nullptr) return std::nullopt;
+        lua_getglobal(task_state, "game");
+        if (!lua_istable(task_state, -1)) {
+            lua_pop(task_state, 1);
+            return std::nullopt;
+        }
+        lua_getfield(task_state, -1, "dialogue");
+        if (!lua_istable(task_state, -1)) {
+            lua_pop(task_state, 2);
+            return std::nullopt;
+        }
+        lua_getfield(task_state, -1, "active");
+        if (!lua_istable(task_state, -1)) {
+            lua_pop(task_state, 3);
+            return std::nullopt;
+        }
+        const auto descriptor_index = lua_absindex(task_state, -1);
+        ScriptDialogueOpenDescriptor descriptor{};
+        const auto read_optional = [this, descriptor_index](
+            const char* field, std::string& value) {
+            lua_getfield(task_state, descriptor_index, field);
+            const bool valid = lua_isnil(task_state, -1) ||
+                read_string(task_state, -1, value);
+            lua_pop(task_state, 1);
+            return valid;
+        };
+        const bool valid =
+            read_field_string(task_state, descriptor_index, "source",
+                              descriptor.source) &&
+            read_field_string(task_state, descriptor_index, "route_id",
+                              descriptor.route_id) &&
+            read_field_string(task_state, descriptor_index, "scene_outcome",
+                              descriptor.scene_outcome) &&
+            read_field_string(task_state, descriptor_index, "exit_behavior",
+                              descriptor.exit_behavior) &&
+            read_field_string(task_state, descriptor_index, "transition",
+                              descriptor.transition) &&
+            read_optional("return_anchor", descriptor.return_anchor) &&
+            read_optional("return_facing", descriptor.return_facing) &&
+            read_optional("music_return_policy",
+                          descriptor.music_return_policy) &&
+            read_optional("input_lock", descriptor.input_lock);
+        lua_pop(task_state, 3);
+        if (!valid) return std::nullopt;
+        return descriptor;
+    }
+
+    ScriptTaskStep start_task(
+        const std::string_view module, const std::string_view function,
+        const std::vector<std::string_view>& arguments) {
+        if (state == nullptr) {
+            failure = "gameplay Lua state is not available";
+            return {ScriptTaskStep::Status::failed, std::nullopt};
+        }
+        if (task_state != nullptr) {
+            failure = "a gameplay script task is already active";
+            return {ScriptTaskStep::Status::failed, std::nullopt};
+        }
+        if (!valid_identifier(function)) {
+            failure = "invalid gameplay script task id";
+            return {ScriptTaskStep::Status::failed, std::nullopt};
+        }
+        if (!push_module(module)) {
+            failure = "gameplay script module is missing: " +
+                      std::string(module);
+            return {ScriptTaskStep::Status::failed, std::nullopt};
+        }
+        lua_getfield(state, -1, std::string(function).c_str());
+        if (!lua_isfunction(state, -1)) {
+            lua_pop(state, 2);
+            failure = "script task handler is missing: " +
+                      std::string(module) + "." + std::string(function);
+            return {ScriptTaskStep::Status::failed, std::nullopt};
+        }
+        lua_remove(state, -2);
+        task_state = lua_newthread(state);
+        task_reference = luaL_ref(state, LUA_REGISTRYINDEX);
+        lua_xmove(state, task_state, 1);
+        for (const auto argument : arguments) {
+            lua_pushlstring(state, argument.data(), argument.size());
+            lua_xmove(state, task_state, 1);
+        }
+        active_dialogue_open.reset();
+        return resume_task(static_cast<int>(arguments.size()));
+    }
+
     ScriptTaskStep resume_task(const int argument_count) {
         if (state == nullptr || task_state == nullptr) {
             return failed_task("no active gameplay script task");
@@ -6714,6 +6804,10 @@ struct GameScriptRuntime::Impl {
             ScopedInstructionBudget instruction_budget(task_state);
             status = lua_resume(task_state, state, argument_count,
                                 &result_count);
+        }
+        const auto active_dialogue = read_active_dialogue_open();
+        if (active_dialogue.has_value()) {
+            active_dialogue_open = active_dialogue;
         }
         if (!bridge_failure.empty()) {
             return failed_task(bridge_failure);
@@ -6729,6 +6823,7 @@ struct GameScriptRuntime::Impl {
             active_native_operation = std::move(pending_task_operation);
             pending_task_operation.reset();
             step.operation = active_native_operation;
+            step.dialogue_open = active_dialogue_open;
             failure.clear();
             return step;
         }
@@ -6737,6 +6832,7 @@ struct GameScriptRuntime::Impl {
         }
         ScriptTaskStep step{};
         step.status = ScriptTaskStep::Status::completed;
+        step.dialogue_open = active_dialogue_open;
         if (result_count == 1 && lua_type(task_state, -1) == LUA_TSTRING) {
             std::string result_id;
             if (!read_string(task_state, -1, result_id) ||
@@ -15484,37 +15580,25 @@ std::optional<std::vector<std::string>> GameScriptRuntime::string_list(
 
 ScriptTaskStep GameScriptRuntime::start_task(
     const std::string_view module, const std::string_view function) {
-    auto* state = impl_->state;
-    if (state == nullptr) {
-        impl_->failure = "gameplay Lua state is not available";
-        return {ScriptTaskStep::Status::failed, std::nullopt};
-    }
-    if (impl_->task_state != nullptr) {
-        impl_->failure = "a gameplay script task is already active";
-        return {ScriptTaskStep::Status::failed, std::nullopt};
-    }
-    if (!valid_identifier(function)) {
-        impl_->failure = "invalid gameplay script task id";
-        return {ScriptTaskStep::Status::failed, std::nullopt};
-    }
-    if (!impl_->push_module(module)) {
-        impl_->failure = "gameplay script module is missing: " +
-                         std::string(module);
-        return {ScriptTaskStep::Status::failed, std::nullopt};
-    }
-    lua_getfield(state, -1, std::string(function).c_str());
-    if (!lua_isfunction(state, -1)) {
-        lua_pop(state, 2);
-        impl_->failure = "script task handler is missing: " +
-                         std::string(module) + "." + std::string(function);
-        return {ScriptTaskStep::Status::failed, std::nullopt};
-    }
-    lua_remove(state, -2);
+    return impl_->start_task(module, function, {});
+}
 
-    impl_->task_state = lua_newthread(state);
-    impl_->task_reference = luaL_ref(state, LUA_REGISTRYINDEX);
-    lua_xmove(state, impl_->task_state, 1);
-    return impl_->resume_task(0);
+ScriptTaskStep GameScriptRuntime::start_dialogue_task(
+    const ScriptDialogueSource source, const std::string_view module,
+    const std::string_view function,
+    const ScriptDialogueOpenRouteData& route_data) {
+    const auto source_id = script_dialogue_source_id(source);
+    if (source_id.empty()) {
+        impl_->failure = "invalid typed dialogue source";
+        return {ScriptTaskStep::Status::failed, std::nullopt};
+    }
+    const std::array<std::string_view, 10> arguments{
+        source_id, module, function, route_data.scene_outcome,
+        route_data.exit_behavior, route_data.transition,
+        route_data.return_anchor, route_data.return_facing,
+        route_data.music_return_policy, route_data.input_lock};
+    return impl_->start_task("dialogue_framework", "open", {
+        arguments[0], arguments[1], arguments[2]});
 }
 
 ScriptTaskStep GameScriptRuntime::complete_native_operation(

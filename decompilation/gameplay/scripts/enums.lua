@@ -22,10 +22,44 @@ E.FieldLocationReturnAnchor = {
     COLLISION_PROBE_LEAD = "collision_probe_lead",
 } -- ROM 0xBC36 builds FFDF44; 0x2F32 restores it [C]
 E.FieldLocationSceneOutcome = {
+    NONE = "none",
     SAME_SCENE = "same_scene",
     SOURCE_DOOR_RETURN = "source_door_return",
     SCENE_CHANGE = "scene_change",
 } -- field callback return at 0xB34 resumes redraw without 0x2F32/0x2FA4 [C]
+E.DialogueSource = {
+    BUILDING_ENTRY = "building_entry",
+    BUILDING_SERVICE = "building_service",
+    BUILDING_EXIT = "building_exit",
+    FIELD_NPC_CONTACT = "field_npc_contact",
+    FIELD_EVENT = "field_event",
+    FIELD_ACTIVITY = "field_activity",
+    RANDOM_ENCOUNTER = "random_encounter",
+    SCRIPTED_ENCOUNTER = "scripted_encounter",
+    VID_PHONE = "vid_phone",
+    RECRUITED_RUNNER = "recruited_runner",
+    RUN_TARGET = "run_target",
+    STORY_ACTIVITY = "story_activity",
+    STORY_REWARD = "story_reward",
+    PARTY_RECOVERY = "party_recovery",
+    FIELD_MENU = "field_menu",
+    TAXI = "taxi",
+    CINEMATIC = "cinematic",
+} -- Source identity for the common Lua dialogue opening framework.
+E.DialogueTransition = {
+    NONE = "none",
+    FADE = "fade",
+}
+E.DialogueExitBehavior = {
+    NONE = "none",
+    STAY = "stay",
+    SOURCE_DOOR_RETURN = "source_door_return",
+    SCENE_CHANGE = "scene_change",
+}
+E.DialogueInputLock = {
+    NONE = "none",
+    WORLD_ACTIVITY_FFE11C = "world_activity_ffe11c",
+} -- ROM 0x1E2E0/0x1E2EC; same-pass decrement at 0x1DD94 [C]
 E.FieldLocationReturnFacing = {
     FACE_AWAY_FROM_ENTRY = "face_away_from_entry",
     PRESERVE_ENTRY = "preserve_entry",

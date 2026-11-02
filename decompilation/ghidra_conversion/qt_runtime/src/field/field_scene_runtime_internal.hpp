@@ -16,6 +16,69 @@
 
 namespace shadowrun::ghidra_conversion::qt_runtime::field_scene_detail {
 
+inline scripting::ScriptDialogueOpenRouteData dialogue_open_route_data(
+    const FieldScriptRoute& route) {
+    scripting::ScriptDialogueOpenRouteData data{};
+    if (route.kind == FieldScriptRouteKind::field_service) {
+        // Lua's field-service policy leaves scene_outcome unset because its
+        // host service has a separate close lifecycle. Its typed return
+        // anchor still distinguishes restoring the source door from staying
+        // at the service location.
+        if (route.return_anchor ==
+            FieldLocationReturnAnchor::collision_probe_lead) {
+            data.scene_outcome = "source_door_return";
+            data.exit_behavior = "source_door_return";
+        } else {
+            data.scene_outcome = "same_scene";
+            data.exit_behavior = "stay";
+        }
+        data.transition = "none";
+    } else {
+        switch (route.scene_outcome) {
+        case FieldLocationSceneOutcome::same_scene:
+            data.scene_outcome = "same_scene";
+            data.exit_behavior = "stay";
+            data.transition = "none";
+            break;
+        case FieldLocationSceneOutcome::source_door_return:
+            data.scene_outcome = "source_door_return";
+            data.exit_behavior = "source_door_return";
+            data.transition = "fade";
+            break;
+        case FieldLocationSceneOutcome::scene_change:
+            data.scene_outcome = "scene_change";
+            data.exit_behavior = "scene_change";
+            data.transition = "fade";
+            break;
+        }
+    }
+    switch (route.return_anchor) {
+    case FieldLocationReturnAnchor::none:
+        data.return_anchor = "none";
+        break;
+    case FieldLocationReturnAnchor::collision_probe_lead:
+        data.return_anchor = "collision_probe_lead";
+        break;
+    }
+    switch (route.return_facing) {
+    case FieldLocationReturnFacing::preserve_entry_heading:
+        data.return_facing = "preserve_entry";
+        break;
+    case FieldLocationReturnFacing::face_away_from_entry:
+        data.return_facing = "face_away_from_entry";
+        break;
+    }
+    switch (route.return_music_policy) {
+    case FieldLocationMusicReturnPolicy::none:
+        data.music_return_policy = "none";
+        break;
+    case FieldLocationMusicReturnPolicy::resume_scene_profile:
+        data.music_return_policy = "resume_scene_profile";
+        break;
+    }
+    return data;
+}
+
 // The game loop seeds FFDDC4 with scene 2 before 0x03084. Loaded saves replace
 // that scene reference with the saved row; both paths use the same typed scene
 // resource selection below.

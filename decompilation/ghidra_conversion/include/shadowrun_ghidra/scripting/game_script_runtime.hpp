@@ -1099,6 +1099,76 @@ enum class ScriptDialoguePresentation : std::uint8_t {
     field_mode_text,
 };
 
+// Mirrors the public E.DialogueSource identities in Lua. Native field entry
+// points choose a source; dialogue_framework.lua resolves its route policy.
+enum class ScriptDialogueSource : std::uint8_t {
+    building_entry,
+    building_service,
+    building_exit,
+    field_npc_contact,
+    field_event,
+    field_activity,
+    random_encounter,
+    scripted_encounter,
+    vid_phone,
+    recruited_runner,
+    run_target,
+    story_activity,
+    story_reward,
+    party_recovery,
+    field_menu,
+    taxi,
+    cinematic,
+};
+
+constexpr std::string_view script_dialogue_source_id(
+    const ScriptDialogueSource source) noexcept {
+    switch (source) {
+    case ScriptDialogueSource::building_entry: return "building_entry";
+    case ScriptDialogueSource::building_service: return "building_service";
+    case ScriptDialogueSource::building_exit: return "building_exit";
+    case ScriptDialogueSource::field_npc_contact: return "field_npc_contact";
+    case ScriptDialogueSource::field_event: return "field_event";
+    case ScriptDialogueSource::field_activity: return "field_activity";
+    case ScriptDialogueSource::random_encounter: return "random_encounter";
+    case ScriptDialogueSource::scripted_encounter: return "scripted_encounter";
+    case ScriptDialogueSource::vid_phone: return "vid_phone";
+    case ScriptDialogueSource::recruited_runner: return "recruited_runner";
+    case ScriptDialogueSource::run_target: return "run_target";
+    case ScriptDialogueSource::story_activity: return "story_activity";
+    case ScriptDialogueSource::story_reward: return "story_reward";
+    case ScriptDialogueSource::party_recovery: return "party_recovery";
+    case ScriptDialogueSource::field_menu: return "field_menu";
+    case ScriptDialogueSource::taxi: return "taxi";
+    case ScriptDialogueSource::cinematic: return "cinematic";
+    }
+    return {};
+}
+
+struct ScriptDialogueOpenDescriptor {
+    std::string source;
+    std::string route_id;
+    std::string scene_outcome;
+    std::string exit_behavior;
+    std::string transition;
+    std::string return_anchor;
+    std::string return_facing;
+    std::string music_return_policy;
+    std::string input_lock;
+};
+
+// A resolved field route may refine a source default without changing the
+// source identity. Empty fields inherit the E.DialogueSource defaults.
+struct ScriptDialogueOpenRouteData {
+    std::string scene_outcome;
+    std::string exit_behavior;
+    std::string transition;
+    std::string return_anchor;
+    std::string return_facing;
+    std::string music_return_policy;
+    std::string input_lock;
+};
+
 struct ScriptDialogueRequest {
     std::string speaker_id;
     std::string text_profile;
@@ -2513,6 +2583,7 @@ struct ScriptTaskStep {
     std::optional<ScriptNativeOperation> operation;
     std::optional<std::string> result_id;
     std::optional<DialogueOutcome> dialogue_outcome;
+    std::optional<ScriptDialogueOpenDescriptor> dialogue_open;
 };
 
 // Lua modules use the global game facade. game.state reads and writes the
@@ -2703,6 +2774,10 @@ public:
     std::optional<ScriptItemCatalog> item_catalog();
     ScriptTaskStep start_task(
         std::string_view module, std::string_view function);
+    ScriptTaskStep start_dialogue_task(
+        ScriptDialogueSource source, std::string_view module,
+        std::string_view function,
+        const ScriptDialogueOpenRouteData& route_data = {});
     ScriptTaskStep complete_native_operation(bool succeeded);
     ScriptTaskStep complete_native_menu_choice(std::string_view choice_id);
     ScriptTaskStep complete_native_menu_input(std::string_view input_id);

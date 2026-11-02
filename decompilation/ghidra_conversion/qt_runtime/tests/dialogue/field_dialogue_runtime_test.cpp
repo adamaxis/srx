@@ -179,7 +179,8 @@ int main() {
     gameplay_scripts.set_field_mode_context(
         scripting::ScriptFieldModeContext{0U, 3U, 0});
     if (!expect(runtime.open_gameplay_task(
-                    "gates_undersound", "present_ogami_departure")) ||
+            scripting::ScriptDialogueSource::field_npc_contact,
+            "gates_undersound", "present_ogami_departure")) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
                 FieldDialogueAdvanceResult::typed_outcome_requested)) {
         std::cerr << "Gates graph did not complete as continue_in_place\n";
@@ -203,7 +204,8 @@ int main() {
     gameplay_scripts.set_field_mode_context(
         scripting::ScriptFieldModeContext{0U, 6U, 0});
     if (!expect(runtime.open_gameplay_task(
-                    "renraku_offices", "present_map_overlay_entry")) ||
+            scripting::ScriptDialogueSource::building_entry,
+            "renraku_offices", "present_map_overlay_entry")) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
                 FieldDialogueAdvanceResult::typed_outcome_requested)) {
         std::cerr << "Renraku graph did not complete as resume_source_route\n";
@@ -237,7 +239,8 @@ int main() {
     gameplay_scripts.set_field_mode_context(
         scripting::ScriptFieldModeContext{0U, 2U, 0});
     const bool fuchi_opened = runtime.open_gameplay_task(
-        "fuchi_offices", "present_cyberheart_entry");
+            scripting::ScriptDialogueSource::building_entry,
+            "fuchi_offices", "present_cyberheart_entry");
     const auto fuchi_advance = fuchi_opened
         ? runtime.advance_controller_events(0x4000U)
         : FieldDialogueAdvanceResult::waiting_for_controller;
@@ -269,7 +272,8 @@ int main() {
     gameplay_scripts.set_location_context(
         "activity", "resource_scene", "field.activity", "", "", 26U);
     if (!expect(runtime.open_gameplay_task(
-                    "field_activities", "resource_scene_main_menu")) ||
+            scripting::ScriptDialogueSource::field_menu,
+            "field_activities", "resource_scene_main_menu")) ||
         !expect(runtime.panel().cursor_selection) ||
         !expect(runtime.panel().option_count == 2U) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
@@ -470,7 +474,8 @@ int main() {
         "building", "puyallup_site_03_tarislar_city_inn",
         "tarislar.city_inn", "tarislar_city_inn_manager");
     if (!expect(runtime.open_gameplay_task(
-                    "tarislar_city_inn", "present_indexed_title_service")) ||
+            scripting::ScriptDialogueSource::building_service,
+            "tarislar_city_inn", "present_indexed_title_service")) ||
         !expect(runtime.panel().source_complete) ||
         !expect(runtime.panel().text_segments[0].find("Tarislar City Inn") !=
                 std::string_view::npos) ||
@@ -531,8 +536,8 @@ int main() {
         return false;
     };
     if (!expect(runtime.open_gameplay_task(
-                    "council_island_hospital",
-                    "present_field_exit_prompt")) ||
+            scripting::ScriptDialogueSource::building_exit,
+            "council_island_hospital", "present_field_exit_prompt")) ||
         !expect(runtime.panel().source_complete) ||
         !expect(runtime.panel().text_segments[0].find(
                     "Council Island Hospital") != std::string_view::npos) ||
@@ -553,7 +558,8 @@ int main() {
     }
 
     if (!expect(runtime.open_gameplay_task(
-                    "council_island_hospital", "present_options")) ||
+            scripting::ScriptDialogueSource::building_service,
+            "council_island_hospital", "present_options")) ||
         !expect(runtime.uses_hospital_menu_layout()) ||
         !expect(runtime.panel().cursor_selection) ||
         !expect(runtime.panel().selected_option == 0U) ||
@@ -571,6 +577,7 @@ int main() {
         return 124;
     }
     if (!runtime.open_gameplay_task(
+            scripting::ScriptDialogueSource::building_service,
             "council_island_hospital", "present_options")) {
         std::cerr << "Hospital Options could not reopen before Exit\n";
         return 124;
@@ -600,7 +607,8 @@ int main() {
         return 124;
     }
     const bool hospital_leave_open = runtime.open_gameplay_task(
-        "council_island_hospital", "present_leave_confirmation");
+            scripting::ScriptDialogueSource::building_service,
+            "council_island_hospital", "present_leave_confirmation");
     if (!hospital_leave_open || !runtime.uses_hospital_menu_layout() ||
         runtime.panel().selected_option != 1U ||
         runtime.panel().text_segments[0] != "Do you wish to" ||
@@ -645,8 +653,8 @@ int main() {
         return 124;
     }
     if (!expect(runtime.open_gameplay_task(
-                    "council_island_hospital",
-                    "present_leave_confirmation")) ||
+            scripting::ScriptDialogueSource::building_service,
+            "council_island_hospital", "present_leave_confirmation")) ||
         !expect(runtime.advance_controller_events(0x0100U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
         !expect(runtime.advance_controller_events(0x1000U) ==
@@ -660,8 +668,8 @@ int main() {
     gameplay_scripts.set_field_mode_context(
         scripting::ScriptFieldModeContext{4U, 4U, -1});
     if (!expect(runtime.open_gameplay_task(
-                    "council_island_hospital",
-                    "present_field_exit_prompt")) ||
+            scripting::ScriptDialogueSource::building_exit,
+            "council_island_hospital", "present_field_exit_prompt")) ||
         !expect(hospital_panel_contains("Here, take it")) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
                 FieldDialogueAdvanceResult::returned_to_field) ||
@@ -673,8 +681,8 @@ int main() {
     gameplay_scripts.set_field_mode_context(
         scripting::ScriptFieldModeContext{4U, 4U, 1});
     if (!expect(runtime.open_gameplay_task(
-                    "council_island_hospital",
-                    "present_field_exit_prompt")) ||
+            scripting::ScriptDialogueSource::building_exit,
+            "council_island_hospital", "present_field_exit_prompt")) ||
         !expect(hospital_panel_contains("Thank you for the delivery")) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
                 FieldDialogueAdvanceResult::returned_to_field) ||
@@ -694,8 +702,8 @@ int main() {
         {"runner_information_bit_4", false},
     });
     if (!expect(runtime.open_gameplay_task(
-                    "council_medicine_lodge",
-                    "present_field_exit_prompt")) ||
+            scripting::ScriptDialogueSource::building_exit,
+            "council_medicine_lodge", "present_field_exit_prompt")) ||
         !expect(runtime.panel().source_complete) ||
         !expect(hospital_panel_contains("Chief Running Stream")) ||
         !expect(runtime.panel().option_count == 3U) ||
@@ -723,8 +731,8 @@ int main() {
     gameplay_scripts.set_field_mode_context(
         scripting::ScriptFieldModeContext{4U, 3U, -1});
     if (!expect(runtime.open_gameplay_task(
-                    "council_medicine_lodge",
-                    "present_field_exit_prompt")) ||
+            scripting::ScriptDialogueSource::building_exit,
+            "council_medicine_lodge", "present_field_exit_prompt")) ||
         !expect(hospital_panel_contains("hands you a package")) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
                 FieldDialogueAdvanceResult::returned_to_field) ||
@@ -736,8 +744,8 @@ int main() {
     gameplay_scripts.set_field_mode_context(
         scripting::ScriptFieldModeContext{4U, 3U, 1});
     if (!expect(runtime.open_gameplay_task(
-                    "council_medicine_lodge",
-                    "present_field_exit_prompt")) ||
+            scripting::ScriptDialogueSource::building_exit,
+            "council_medicine_lodge", "present_field_exit_prompt")) ||
         !expect(hospital_panel_contains("exchanges the package for nuyen")) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
                 FieldDialogueAdvanceResult::returned_to_field) ||
@@ -760,6 +768,7 @@ int main() {
     gameplay_scripts.set_field_mode_context(
         scripting::ScriptFieldModeContext{1U, 1U, 0});
     if (!runtime.open_gameplay_task(
+            scripting::ScriptDialogueSource::building_service,
             "tarislar_city_inn", "present_indexed_title_service")) {
         std::cerr << "Tarislar City Inn could not open its insufficient-funds route: "
                   << runtime.panel().source_boundary_reason << '\n';
@@ -838,7 +847,8 @@ int main() {
         return result;
     };
     if (!expect(runtime.open_gameplay_task(
-                    "tarislar_city_inn", "present_indexed_title_service")) ||
+            scripting::ScriptDialogueSource::building_service,
+            "tarislar_city_inn", "present_indexed_title_service")) ||
         !expect(runtime.panel().actor_name == "Inn Manager") ||
         !expect(runtime.panel().portrait_alias ==
                 "dialogue.portraits.tarislar.city.inn.manager") ||
@@ -966,6 +976,7 @@ int main() {
     gameplay_scripts.set_location_context(
         "building", "jump_house", "jump_house.entry", "jump_house_entry");
     if (!expect(runtime.open_gameplay_task(
+            scripting::ScriptDialogueSource::building_entry,
             "building", "present_entry_description")) ||
         !expect(runtime.panel().source_complete) ||
         !expect(runtime.panel().portrait_alias ==
@@ -991,7 +1002,9 @@ int main() {
 
     gameplay_scripts.set_location_context(
         "building", "jump_house", "gunderson.jump_house", "gunderson");
-    if (!expect(runtime.open_gameplay_task("johnson", "interaction")) ||
+    if (!expect(runtime.open_gameplay_task(
+            scripting::ScriptDialogueSource::run_target,
+            "johnson", "interaction")) ||
         !expect(runtime.panel().source_complete) ||
         !expect(runtime.panel().portrait_alias ==
                 "dialogue.portraits.gunderson.jump.house") ||
@@ -1095,7 +1108,9 @@ int main() {
         {"vigore_search_pending", false},
         {"errascoe_question_available", false},
     });
-    if (!expect(runtime.open_gameplay_task("johnson", "interaction")) ||
+    if (!expect(runtime.open_gameplay_task(
+            scripting::ScriptDialogueSource::run_target,
+            "johnson", "interaction")) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
@@ -1138,7 +1153,9 @@ int main() {
         {"vigore_search_pending", false},
         {"errascoe_question_available", false},
     });
-    if (!expect(runtime.open_gameplay_task("johnson", "interaction")) ||
+    if (!expect(runtime.open_gameplay_task(
+            scripting::ScriptDialogueSource::run_target,
+            "johnson", "interaction")) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
@@ -1186,7 +1203,9 @@ int main() {
         {"vigore_search_pending", false},
         {"errascoe_question_available", true},
     });
-    if (!expect(runtime.open_gameplay_task("johnson", "interaction")) ||
+    if (!expect(runtime.open_gameplay_task(
+            scripting::ScriptDialogueSource::run_target,
+            "johnson", "interaction")) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
@@ -1218,7 +1237,9 @@ int main() {
     // paid descriptor and its low-funds branch have no matching longplay
     // capture, so these are functional/full-screen regression checks only.
     const auto reach_decker_offer = [&runtime, &capture_jump_house]() {
-        if (!runtime.open_gameplay_task("johnson", "interaction") ||
+        if (!runtime.open_gameplay_task(
+            scripting::ScriptDialogueSource::run_target,
+            "johnson", "interaction") ||
             runtime.advance_controller_events(0x4000U) !=
                 FieldDialogueAdvanceResult::prompt_advanced ||
             runtime.advance_controller_events(0x4000U) !=
@@ -1340,7 +1361,9 @@ int main() {
     gameplay_scripts.set_location_context(
         "building", "julius_strouther_booth",
         "matchstick.julius_strouther", "julius_strouther");
-    if (!expect(runtime.open_gameplay_task("johnson", "interaction")) ||
+    if (!expect(runtime.open_gameplay_task(
+            scripting::ScriptDialogueSource::run_target,
+            "johnson", "interaction")) ||
         !expect(runtime.panel().portrait_alias ==
                 "dialogue.portraits.jump.house.entry") ||
         !expect(runtime.panel().text_segments[0].find("You enter the booth") !=
@@ -1426,7 +1449,9 @@ int main() {
     }
 
     julius_contact_funds = 999U;
-    if (!expect(runtime.open_gameplay_task("johnson", "interaction")) ||
+    if (!expect(runtime.open_gameplay_task(
+            scripting::ScriptDialogueSource::run_target,
+            "johnson", "interaction")) ||
         !expect(runtime.panel().text_segments[0].find(
                     "looks up from his pocket computer") != std::string_view::npos) ||
         !expect(capture_julius("repeat-visit")) ||
@@ -1497,7 +1522,9 @@ int main() {
         "mortimer_reed");
     gameplay_scripts.set_field_mode_context(
         scripting::ScriptFieldModeContext{11U, 30U, 0});
-    if (!expect(runtime.open_gameplay_task("johnson", "interaction")) ||
+    if (!expect(runtime.open_gameplay_task(
+            scripting::ScriptDialogueSource::run_target,
+            "johnson", "interaction")) ||
         !expect(runtime.panel().portrait_alias ==
                 "dialogue.portraits.mortimer.reed") ||
         !expect(runtime.panel().text_segments[0].find(
@@ -1586,7 +1613,9 @@ int main() {
         std::cerr << "Mortimer's $1,500 Alesandro purchase did not set FFFC2C bit 1 and return cleanly\n";
         return 116;
     }
-    if (!expect(runtime.open_gameplay_task("johnson", "interaction")) ||
+    if (!expect(runtime.open_gameplay_task(
+            scripting::ScriptDialogueSource::run_target,
+            "johnson", "interaction")) ||
         !expect(mortimer_panel_contains("Long time no-see")) ||
         !expect(capture_big_rhino("repeat-booth-entry")) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
@@ -1623,7 +1652,9 @@ int main() {
     run_random_results = {{
         "roll_4", "skill_3", "roll_3", "roll_9", "roll_0", "roll_5"}};
     run_random_call = 0U;
-    if (!expect(runtime.open_gameplay_task("johnson", "interaction")) ||
+    if (!expect(runtime.open_gameplay_task(
+            scripting::ScriptDialogueSource::run_target,
+            "johnson", "interaction")) ||
         !expect(runtime.advance_controller_events(0x1000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
         !expect(runtime.panel().text_segments[2].find("beauty for you") !=
@@ -1727,7 +1758,9 @@ int main() {
     run_random_results = {{
         "roll_0", "skill_3", "roll_2", "roll_0", "roll_0", "roll_0"}};
     run_random_call = 0U;
-    if (!expect(runtime.open_gameplay_task("johnson", "interaction")) ||
+    if (!expect(runtime.open_gameplay_task(
+            scripting::ScriptDialogueSource::run_target,
+            "johnson", "interaction")) ||
         !expect(runtime.advance_controller_events(0x1000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
@@ -1779,7 +1812,9 @@ int main() {
     run_random_results = {{
         "roll_1", "skill_3", "roll_3", "roll_4", "roll_6", "roll_5"}};
     run_random_call = 0U;
-    if (!expect(runtime.open_gameplay_task("johnson", "interaction")) ||
+    if (!expect(runtime.open_gameplay_task(
+            scripting::ScriptDialogueSource::run_target,
+            "johnson", "interaction")) ||
         !expect(runtime.advance_controller_events(0x1000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
         !expect(runtime.advance_controller_events(0x4000U) ==

@@ -102,8 +102,10 @@ public:
     // supplies a source-default trigger context.
     bool open_stoker_interaction();
     bool open_stoker_interaction_for_dump();
-    bool open_gameplay_task(std::string_view module,
-                            std::string_view function);
+    bool open_gameplay_task(scripting::ScriptDialogueSource source,
+                            std::string_view module,
+                            std::string_view function,
+                            const scripting::ScriptDialogueOpenRouteData& route_data = {});
     bool present_source_boundary_for_host(std::string reason);
 
     FieldDialogueAdvanceResult advance_controller_events(
@@ -136,6 +138,8 @@ public:
         return panel_.open || story_page_open_ || credits_page_open_;
     }
     const DialoguePanelView& panel() const noexcept { return panel_; }
+    const std::optional<scripting::ScriptDialogueOpenDescriptor>&
+    opening_descriptor() const noexcept { return opening_descriptor_; }
     const std::string& failure() const noexcept { return failure_; }
 #ifdef SHADOWRUN_QT_QA_DRIVER
     std::string_view story_page_text_for_dump() const noexcept {
@@ -163,9 +167,11 @@ public:
 private:
     bool open_stoker_prompt(StokerMotelPromptId prompt);
     bool open_source_boundary(std::string reason);
-    bool start_script_task(std::string_view module,
+    bool start_script_task(scripting::ScriptDialogueSource source,
+                           std::string_view module,
                            std::string_view function,
-                           StokerMotelPromptId prompt);
+                           StokerMotelPromptId prompt,
+                           const scripting::ScriptDialogueOpenRouteData& route_data = {});
     std::optional<FieldDialogueAdvanceResult> resolve_typed_outcome(
         const scripting::ScriptTaskStep& task);
     bool present_script_operation(
@@ -204,6 +210,8 @@ private:
     std::optional<std::uint8_t> pending_matrix_entry_node_id_;
     std::optional<std::string> last_gameplay_task_result_id_;
     std::optional<scripting::DialogueOutcome> last_gameplay_task_outcome_;
+    std::optional<scripting::ScriptDialogueOpenDescriptor>
+        opening_descriptor_;
     std::optional<FieldDialogueAdvanceResult> inline_task_advance_result_;
     StokerMotelArrivalCommandCallbacks arrival_command_callbacks_;
     std::function<std::optional<StokerMotelRoomPaymentOutcome>()>

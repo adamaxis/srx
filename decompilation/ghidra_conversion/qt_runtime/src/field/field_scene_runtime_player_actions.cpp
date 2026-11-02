@@ -403,6 +403,7 @@ void FieldSceneRuntime::resolve_field_party_wipe() {
         field_party_wipe_dialogue_stage_ =
             FieldPartyWipeDialogueStage::run_failure;
         if (!field_dialogue_.open_gameplay_task(
+                scripting::ScriptDialogueSource::party_recovery,
                 "party_down", "present_run_failure")) {
             field_party_wipe_dialogue_stage_ =
                 FieldPartyWipeDialogueStage::inactive;
@@ -590,7 +591,9 @@ void FieldSceneRuntime::complete_field_party_wipe() {
     game_scripts_.set_location_context("field_map", "party_wipe",
                                        "field.world_event", "field_narrator");
     field_party_wipe_dialogue_stage_ = FieldPartyWipeDialogueStage::wake;
-    if (!field_dialogue_.open_gameplay_task("party_down", "present_wake")) {
+    if (!field_dialogue_.open_gameplay_task(
+            scripting::ScriptDialogueSource::party_recovery,
+            "party_down", "present_wake")) {
         field_party_wipe_dialogue_stage_ =
             FieldPartyWipeDialogueStage::inactive;
         source_boundary("field.party_wipe.wake_text_open_failed");

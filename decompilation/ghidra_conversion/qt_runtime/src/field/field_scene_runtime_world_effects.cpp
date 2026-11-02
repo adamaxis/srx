@@ -509,6 +509,7 @@ bool FieldSceneRuntime::present_field_dialogue_event() {
         "field_map", "random_field_event", "field.world_event",
         "field_narrator", event_id, scene_id);
     if (!field_dialogue_.open_gameplay_task(
+            scripting::ScriptDialogueSource::random_encounter,
             "field_random_events", "present_hidden_camera")) {
         failure_ = "could not open hidden-camera field event: " +
             field_dialogue_.failure();
