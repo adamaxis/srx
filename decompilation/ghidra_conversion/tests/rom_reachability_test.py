@@ -77,6 +77,9 @@ class RomReachabilityTest(unittest.TestCase):
             self.assertEqual(analysis.resolved_indirect[0].target, 0x120)
             self.assertEqual(len(analysis.unresolved_jumps), 1)
             self.assertFalse(analysis.unresolved_jumps[0].reached)
+            self.assertEqual(analysis.known_function_bytes_total, 10)
+            self.assertEqual(analysis.known_function_bytes_reached, 10)
+            self.assertEqual(analysis.unreached_functions, [])
 
     def test_absolute_pointer_jump_table_seeds_all_candidates(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -171,6 +174,78 @@ class RomReachabilityTest(unittest.TestCase):
             self.assertEqual(analysis.dispatch_tables[0].targets, targets)
             self.assertTrue(set(targets).issubset(analysis.instructions))
             self.assertEqual(analysis.unresolved_jumps, [])
+
+    def test_runtime_indexed_struct_callback_field_uses_stride_and_offset(self) -> None:
+        rom = bytearray(0x200)
+        for index, target in enumerate((0x180, 0x190, 0x1A0)):
+            rom[0x140 + 8 * index + 4:0x140 + 8 * index + 8] = target.to_bytes(4, "big")
+            rom[target:target + 2] = bytes.fromhex("4e75")
+
+        # This block is present in raw ROM but absent from the Ghidra listing.
+        # It indexes the callback at +4 in eight-byte records.
+        instructions = {
+            0x100: rom_reachability.Instruction(0x100, 6, "lea.l", "$140.l, a0"),
+            0x106: rom_reachability.Instruction(0x106, 2, "lsl.w", "#$3, d0"),
+            0x108: rom_reachability.Instruction(0x108, 2, "addq.l", "#$4, d0"),
+            0x10A: rom_reachability.Instruction(0x10A, 4, "movea.l", "(a0, d0.w), a0"),
+            0x10E: rom_reachability.Instruction(0x10E, 2, "jsr", "(a0)"),
+        }
+        listing = [
+            rom_reachability.ListingInstruction(0x100, "lea.l", "(0x140).l, a0"),
+            rom_reachability.ListingInstruction(0x112, "lea.l", "(0x158).l, a1"),
+        ]
+
+        dispatch = rom_reachability.discover_runtime_pointer_table(
+            bytes(rom), instructions, 0x10E, listing
+        )
+
+        self.assertIsNotNone(dispatch)
+        assert dispatch is not None
+        self.assertEqual(dispatch.base, 0x140)
+        self.assertEqual(dispatch.kind, "jsr runtime record-field dispatch (stride 8, offset 4)")
+        self.assertEqual(dispatch.targets, (0x180, 0x190, 0x1A0))
+        self.assertTrue(dispatch.bounded)
+
+    def test_us_rom_dialogue_and_computed_dispatch_tables_are_reported(self) -> None:
+        analysis = rom_reachability.analyze_rom(
+            rom_reachability.DEFAULT_ROM.read_bytes(),
+            rom_reachability.DEFAULT_FUNCTIONS,
+            rom_reachability.DEFAULT_STATUS,
+            rom_reachability.DEFAULT_CALL_SITES,
+            rom_reachability.DEFAULT_DISASSEMBLY,
+        )
+
+        dialogue = next(
+            table for table in analysis.dispatch_tables
+            if table.site == 0x1F58A and table.base == 0x12CCB4
+        )
+        self.assertIn(0x24A1E, dialogue.targets)
+        self.assertIn(0x24A56, dialogue.targets)
+        self.assertEqual(len(dialogue.targets), 250)
+
+        shared_dispatch_tables = {
+            table.base for table in analysis.dispatch_tables if table.site == 0xC444
+        }
+        self.assertEqual(shared_dispatch_tables, {0xC1400, 0xC14C8, 0xC1558, 0x1D90C0})
+
+        word_dispatch = next(
+            table for table in analysis.dispatch_tables
+            if table.site == 0x24E32 and table.base == 0x24E3A
+        )
+        self.assertEqual(word_dispatch.targets, (0x24E44, 0x24E84, 0x24EAC, 0x24F28, 0x24F16))
+
+        inline = next(table for table in analysis.dispatch_tables if table.site == 0x2510A)
+        self.assertEqual(len(inline.targets), 160)
+        self.assertFalse(inline.bounded)
+        self.assertTrue(any(site.address == 0x2510A for site in analysis.unresolved_jumps))
+        callback_field = next(table for table in analysis.dispatch_tables if table.site == 0x214EC)
+        self.assertEqual(callback_field.base, 0xF3E1E)
+        self.assertEqual(callback_field.targets, (0x1EB32, 0x1E9AC))
+        self.assertNotIn(0x214EC, {call.address for call in analysis.unresolved_calls})
+        self.assertEqual(analysis.known_function_bytes_total, 111_098)
+        self.assertGreaterEqual(analysis.known_function_bytes_reached, 109_300)
+        self.assertEqual(len(analysis.unreached_functions), 26)
+        self.assertEqual(analysis.unreached_functions[0].address, 0xBB6)
 
 
 if __name__ == "__main__":

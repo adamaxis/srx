@@ -34,7 +34,6 @@ DEFAULT_CALL_SITES = ROOT / "decompilation/export/call-sites.tsv"
 DEFAULT_DISASSEMBLY = ROOT / "decompilation/export/disassembly.s"
 DEFAULT_REPORT = ROOT / "decompilation/docs/ghidra/rom-byte-reachability.md"
 VECTOR_TABLE_END = 0x100
-MAX_REPORTED_RANGES = 25
 
 BRANCHES = {
     "bra", "bsr", "bcc", "bcs", "beq", "bne", "bge", "bgt", "bhi",
@@ -90,6 +89,7 @@ class IndirectJumpSite:
     reached: bool
     table_base: int | None = None
     targets: tuple[int, ...] = ()
+    bounded: bool = True
 
 
 @dataclass(frozen=True)
@@ -105,6 +105,8 @@ class DispatchTable:
     kind: str
     base: int
     targets: tuple[int, ...]
+    evidence: tuple[int, ...] = ()
+    bounded: bool = True
 
 
 @dataclass(frozen=True)
@@ -142,8 +144,36 @@ class Analysis:
         return sum(end - start for start, end in self.outside_ranges)
 
     @property
+    def known_function_bytes_total(self) -> int:
+        return sum(entry.size or 0 for entry in self.function_entries)
+
+    @property
+    def known_function_bytes_reached(self) -> int:
+        reached = merge_intervals((ins.address, ins.end) for ins in self.instructions.values())
+        return sum(
+            end - start
+            for entry in self.function_entries
+            if entry.size
+            for start, end in intersect_intervals(
+                reached, [(entry.address, entry.address + entry.size)]
+            )
+        )
+
+    @property
+    def unreached_functions(self) -> list[FunctionEntry]:
+        reached = merge_intervals((ins.address, ins.end) for ins in self.instructions.values())
+        return [
+            entry
+            for entry in self.function_entries
+            if entry.size
+            and not intersect_intervals(
+                reached, [(entry.address, entry.address + entry.size)]
+            )
+        ]
+
+    @property
     def unresolved_jumps(self) -> list[IndirectJumpSite]:
-        return [site for site in self.indirect_jumps if not site.targets]
+        return [site for site in self.indirect_jumps if not site.targets or not site.bounded]
 
 
 def normalize_address(value: str, source: str) -> int:
@@ -231,11 +261,83 @@ def absolute_lea(operands: str) -> tuple[int, str] | None:
     return int(match.group(1), 16), match.group(2).lower()
 
 
-def pointer_load_register(operands: str) -> str | None:
-    match = re.fullmatch(r"\(\s*(a[0-7])\s*\)\s*,\s*(a[0-7])", operands, re.IGNORECASE)
-    if not match or match.group(1).lower() != match.group(2).lower():
+def pointer_load_details(operands: str) -> tuple[str, str, int, str | None, int] | None:
+    match = re.fullmatch(
+        r"\(\s*(?:(0x[0-9a-fA-F]+|\$[0-9a-fA-F]+)\s*,\s*)?"
+        r"(a[0-7])(?:\s*,\s*(d[0-7])\.?([wl])(?:\s*\*\s*(0x[0-9a-fA-F]+|\$[0-9a-fA-F]+))?)?\s*\)\s*,\s*(a[0-7])",
+        operands,
+        re.IGNORECASE,
+    )
+    if not match or match.group(2).lower() != match.group(6).lower():
         return None
-    return match.group(1).lower()
+    displacement = int(match.group(1).replace("$", "0x"), 16) if match.group(1) else 0
+    encoded_scale = int(match.group(5).replace("$", "0x"), 16) if match.group(5) else 1
+    return (
+        match.group(2).lower(), match.group(6).lower(), displacement,
+        match.group(3).lower() if match.group(3) else None, encoded_scale,
+    )
+
+
+def pointer_load_register(operands: str) -> str | None:
+    details = pointer_load_details(operands)
+    return details[0] if details else None
+
+
+def pointer_table_stride(
+    listing: list[ListingInstruction], load_index: int, details: tuple[str, str, int, str | None, int]
+) -> int:
+    index_register = details[3]
+    encoded_scale = details[4]
+    if index_register is None:
+        return 4
+    shift_pattern = re.compile(r"#(?:0x|\$)?([0-9a-fA-F]+)\s*,\s*(d[0-7])w", re.IGNORECASE)
+    for item in reversed(listing[max(0, load_index - 24):load_index]):
+        if item.mnemonic.split(".", 1)[0] not in {"lsl", "asl"}:
+            continue
+        match = shift_pattern.fullmatch(item.operands)
+        if match and match.group(2).lower() == index_register:
+            amount = int(match.group(1), 16)
+            if amount < 8:
+                return encoded_scale * (1 << amount)
+            break
+    return encoded_scale
+
+
+def read_pointer_table_targets(
+    rom: bytes,
+    base: int,
+    stride: int,
+    field_offset: int,
+    boundaries: list[int],
+    count_limit: int | None = None,
+) -> tuple[int, ...]:
+    """Read pointer fields at a fixed record stride, preserving null slots."""
+    following = next((boundary for boundary in boundaries if boundary > base), None)
+    upper = following if following is not None else min(len(rom), base + stride * 64)
+    if count_limit is not None:
+        count = count_limit
+    elif following is not None:
+        available = upper - base - field_offset
+        count = max(0, (available - 4) // stride + 1) if available >= 4 else 0
+    else:
+        count = 64
+
+    disassembler = Cs(CS_ARCH_M68K, CS_MODE_M68K_000 | CS_MODE_BIG_ENDIAN)
+    targets: list[int] = []
+    for index in range(count):
+        entry = base + field_offset + stride * index
+        if entry + 4 > min(upper, len(rom)):
+            break
+        target = int.from_bytes(rom[entry:entry + 4], "big")
+        if target == 0 and (count_limit is not None or following is not None):
+            continue
+        if target < VECTOR_TABLE_END or target >= len(rom) or target & 1:
+            break
+        decoded = decode_one(disassembler, rom, target)
+        if decoded is None or decoded.mnemonic.lower() == "dc.w":
+            break
+        targets.append(target)
+    return tuple(targets)
 
 
 def guarded_table_count(listing: list[ListingInstruction], site: int, table_base: int) -> int | None:
@@ -279,34 +381,417 @@ def guarded_table_count(listing: list[ListingInstruction], site: int, table_base
         if branch_mnemonic in {"bmi", "blo", "bcs"} and target == listing[table_index].address:
             return immediate
         # A greater-than branch around the dispatch bounds a zero-based
-        # inclusive index to [0, immediate].
+        # inclusive index to [0, immediate]. The ROM's command dispatcher
+        # uses BPL after forming a nonnegative index and rejects index 0xFA,
+        # so that exclusive ceiling is the count.
+        if branch_mnemonic == "bpl" and target > site:
+            return immediate
         if branch_mnemonic in {"bgt", "bhi"} and target > site:
             return immediate + 1
     return None
+
+
+def direct_call_target(item: ListingInstruction) -> int | None:
+    if item.mnemonic.split(".", 1)[0] not in {"jsr", "bsr", "bra"}:
+        return None
+    return parse_direct_target(item.operands)
+
+
+def caller_supplied_table_bases(
+    listing: list[ListingInstruction], function_starts: set[int],
+    transfer_sites: dict[int, tuple[str, str, int, int]],
+) -> dict[int, list[tuple[str, int, int, int, int]]]:
+    """Find tables passed in A0 to small shared indirect-call dispatchers.
+
+    For each indirect transfer, locate its containing known function entry.
+    Direct callers that set the dispatcher's table register with an absolute
+    LEA immediately before the call provide additional table bases.
+    """
+    result: dict[int, list[tuple[str, int, int, int, int]]] = {}
+    for transfer_site, (kind, register, stride, field_offset) in transfer_sites.items():
+        function_start = max(
+            (start for start in function_starts if start <= transfer_site),
+            default=None,
+        )
+        if function_start is None:
+            continue
+        for call_index, call in enumerate(listing):
+            if direct_call_target(call) != function_start or call_index == 0:
+                continue
+            setup = listing[call_index - 1]
+            table = absolute_lea(setup.operands) if setup.mnemonic in {"lea", "lea.l"} else None
+            if not table or table[1] != register:
+                continue
+            result.setdefault(transfer_site, []).append(
+                (kind, table[0], setup.address, stride, field_offset)
+            )
+    for site in result:
+        result[site] = sorted(set(result[site]))
+    return result
+
+
+def discover_schedule_tables(
+    rom: bytes, listing: list[ListingInstruction]
+) -> dict[int, list[DispatchTable]]:
+    """Resolve title-schedule callbacks stored as delay/longword records."""
+    schedule_stores: list[tuple[int, int]] = []
+    store_pattern = re.compile(
+        r"#(?:0x|\$)([0-9a-fA-F]+)\s*,\s*\(0x0*ffdd32\)\.l",
+        re.IGNORECASE,
+    )
+    for item in listing:
+        if item.mnemonic != "move.l":
+            continue
+        match = store_pattern.fullmatch(item.operands)
+        if match:
+            schedule_stores.append((int(match.group(1), 16), item.address))
+
+    callback_rows: dict[int, tuple[int, ...]] = {}
+    disassembler = Cs(CS_ARCH_M68K, CS_MODE_M68K_000 | CS_MODE_BIG_ENDIAN)
+    for base, _ in schedule_stores:
+        targets: list[int] = []
+        offset = base
+        for _ in range(256):
+            if offset + 6 > len(rom):
+                break
+            delay = int.from_bytes(rom[offset:offset + 2], "big")
+            if delay == 0:
+                break
+            target = int.from_bytes(rom[offset + 2:offset + 6], "big")
+            if target >= len(rom) or target & 1 or decode_one(disassembler, rom, target) is None:
+                break
+            targets.append(target)
+            offset += 6
+        if targets:
+            callback_rows[base] = tuple(targets)
+
+    site = 0x5AF48
+    if not callback_rows or not any(item.address == site for item in listing):
+        return {}
+    result: dict[int, list[DispatchTable]] = {site: []}
+    for base, targets in sorted(callback_rows.items()):
+        store_addresses = tuple(address for value, address in schedule_stores if value == base)
+        result[site].append(
+            DispatchTable(
+                site, "jsr schedule delay/callback records", base, targets,
+                evidence=(base, *store_addresses),
+            )
+        )
+    return result
+
+
+def discover_effect_slot_callbacks(listing: list[ListingInstruction]) -> dict[int, list[DispatchTable]]:
+    """Resolve callbacks written into the active effect slots.
+
+    The service at 0x163DA walks ten records rooted at RAM 0xFFD740. Its
+    callback field is +8; the ROM installs the timer and palette handlers at
+    0x164C8 and 0x16662.
+    """
+    site = 0x1640A
+    by_address = {item.address: item for item in listing}
+    if site not in by_address:
+        return {}
+    writer_addresses = (0x164C8, 0x16662)
+    targets: list[int] = []
+    for address in writer_addresses:
+        item = by_address.get(address)
+        if not item or item.mnemonic != "move.l":
+            continue
+        match = re.fullmatch(
+            r"#(?:0x|\$)([0-9a-fA-F]+)\s*,\s*\(0x0*8,A0\)",
+            item.operands,
+            re.IGNORECASE,
+        )
+        if match:
+            targets.append(int(match.group(1), 16))
+    if not targets:
+        return {}
+    return {
+        site: [DispatchTable(
+            site, "jsr active-record callback (+0x8)", 0xFFD740,
+            tuple(targets), evidence=writer_addresses,
+        )]
+    }
+
+
+def raw_absolute_lea(operands: str) -> tuple[int, str] | None:
+    match = re.fullmatch(
+        r"(?:\$|0x)([0-9a-fA-F]+)\.l\s*,\s*(a[0-7])",
+        operands,
+        re.IGNORECASE,
+    )
+    return (int(match.group(1), 16), match.group(2).lower()) if match else None
+
+
+def discover_runtime_pointer_table(
+    rom: bytes,
+    instructions: dict[int, Instruction],
+    site: int,
+    listing: list[ListingInstruction],
+) -> DispatchTable | None:
+    """Resolve an indexed pointer field in code present in raw ROM but absent from Ghidra export."""
+    call = instructions.get(site)
+    register = indirect_register(call.operands) if call else None
+    if not call or call.mnemonic.split(".", 1)[0] != "jsr" or not register:
+        return None
+    load = next((item for item in instructions.values() if item.end == site), None)
+    if not load or load.mnemonic.split(".", 1)[0] != "movea":
+        return None
+    details = pointer_load_details(load.operands)
+    if not details or details[0] != register:
+        return None
+    base_register, _, displacement, index_register, encoded_scale = details
+    if not index_register:
+        return None
+
+    prior = sorted(
+        (item for item in instructions.values() if item.address < load.address and load.address - item.address < 0x50),
+        key=lambda item: item.address,
+    )
+    lea_index = next((
+        index for index in range(len(prior) - 1, -1, -1)
+        if prior[index].mnemonic.split(".", 1)[0] == "lea"
+        and (source := raw_absolute_lea(prior[index].operands)) is not None
+        and source[1] == base_register
+    ), None)
+    if lea_index is None:
+        return None
+    table_base, _ = raw_absolute_lea(prior[lea_index].operands)  # type: ignore[misc]
+    for item in prior[lea_index + 1:]:
+        mnemonic = item.mnemonic.split(".", 1)[0]
+        if mnemonic in {"movea", "lea", "adda", "addq", "addi", "suba", "subq", "subi"}:
+            destination = item.operands.rsplit(",", 1)[-1].strip().lower()
+            if destination == base_register:
+                return None
+
+    shift_pattern = re.compile(
+        r"#(?:0x|\$)?([0-9a-fA-F]+)\s*,\s*(d[0-7])(?:[wl])?",
+        re.IGNORECASE,
+    )
+    shift_index = None
+    shift_amount = 0
+    for index in range(lea_index + 1, len(prior)):
+        item = prior[index]
+        if item.mnemonic.split(".", 1)[0] not in {"lsl", "asl"}:
+            continue
+        match = shift_pattern.fullmatch(item.operands)
+        if match and match.group(2).lower() == index_register:
+            shift_index = index
+            shift_amount = int(match.group(1), 16)
+    if shift_amount >= 8:
+        return None
+    stride = encoded_scale * (1 << shift_amount)
+    field_offset = displacement
+    add_pattern = re.compile(
+        r"#(?:0x|\$)?([0-9a-fA-F]+)\s*,\s*(d[0-7])(?:[wl])?",
+        re.IGNORECASE,
+    )
+    if shift_index is not None:
+        for item in prior[shift_index + 1:]:
+            if item.mnemonic.split(".", 1)[0] not in {"addq", "addi"}:
+                continue
+            match = add_pattern.fullmatch(item.operands)
+            if match and match.group(2).lower() == index_register:
+                field_offset += int(match.group(1), 16)
+
+    boundaries = sorted({
+        base[0]
+        for item in listing
+        if item.mnemonic in {"lea", "lea.l"}
+        and (base := absolute_lea(item.operands)) is not None
+    } | {table_base})
+    targets = read_pointer_table_targets(rom, table_base, stride, field_offset, boundaries)
+    if not targets:
+        return None
+    return DispatchTable(
+        site, f"jsr runtime record-field dispatch (stride {stride}, offset {field_offset})",
+        table_base, targets, evidence=(table_base, prior[lea_index].address, load.address),
+    )
+
+
+def pc_relative_lea_target(item: ListingInstruction) -> tuple[int, str] | None:
+    match = re.fullmatch(
+        r"\(\s*(-?(?:0x|\$)?[0-9a-fA-F]+)\s*,\s*pc\s*\)\s*,\s*(a[0-7])",
+        item.operands,
+        re.IGNORECASE,
+    )
+    if not match:
+        return None
+    displacement_text = match.group(1)
+    sign = -1 if displacement_text.startswith("-") else 1
+    displacement_text = displacement_text.lstrip("-")
+    if displacement_text.lower().startswith("0x"):
+        displacement_text = displacement_text[2:]
+    elif displacement_text.startswith("$"):
+        displacement_text = displacement_text[1:]
+    displacement = sign * int(displacement_text, 16)
+    # 68000 PC-relative effective addresses use the extension-word address.
+    return item.address + 2 + displacement, match.group(2).lower()
+
+
+def discover_pc_relative_word_dispatches(
+    rom: bytes, listing: list[ListingInstruction], function_starts: set[int]
+) -> dict[int, list[DispatchTable]]:
+    """Resolve PC-relative signed-word target offsets used by the 0x24E20 helper."""
+    result: dict[int, list[DispatchTable]] = {}
+    disassembler = Cs(CS_ARCH_M68K, CS_MODE_M68K_000 | CS_MODE_BIG_ENDIAN)
+    for site_index, call in enumerate(listing):
+        call_register = indirect_register(call.operands) if call.mnemonic == "jsr" else None
+        if not call_register:
+            continue
+        table_use = None
+        use_index = None
+        for index in range(site_index - 1, max(-1, site_index - 24), -1):
+            item = listing[index]
+            if item.mnemonic not in {"adda.w", "add.w"}:
+                continue
+            match = re.fullmatch(
+                r"\(\s*(0x[0-9a-fA-F]+|\$[0-9a-fA-F]+)\s*,\s*pc\s*,\s*(d[0-7])w(?:\s*\*\s*(?:0x|\$)?[0-9a-fA-F]+)?\s*\)\s*,\s*(a[0-7])",
+                item.operands,
+                re.IGNORECASE,
+            )
+            if match and match.group(3).lower() == call_register:
+                table_use = (int(match.group(1).replace("$", "0x"), 16), match.group(3).lower())
+                use_index = index
+                break
+        if table_use is None or use_index is None:
+            continue
+        table_base = table_use[0]
+        lower_bound = max((start for start in function_starts if start <= call.address), default=0)
+        code_base = None
+        lea_address = None
+        for item in reversed(listing[max(0, use_index - 24):use_index + 1]):
+            if item.address < lower_bound or item.mnemonic not in {"lea", "lea.l"}:
+                continue
+            target = pc_relative_lea_target(item)
+            if target and target[1] == call_register:
+                code_base, lea_address = target[0], item.address
+                break
+        if code_base is None or lea_address is None or table_base + 2 > len(rom):
+            continue
+        first_offset = int.from_bytes(rom[table_base:table_base + 2], "big", signed=True)
+        table_end = code_base + first_offset
+        if table_end <= table_base or (table_end - table_base) % 2:
+            continue
+        count = (table_end - table_base) // 2
+        if count <= 0 or count > 64 or table_base + 2 * count > len(rom):
+            continue
+        targets: list[int] = []
+        for index in range(count):
+            offset = int.from_bytes(rom[table_base + index * 2:table_base + index * 2 + 2], "big", signed=True)
+            target = code_base + offset
+            decoded = decode_one(disassembler, rom, target)
+            if target < table_end or decoded is None or decoded.mnemonic.lower() == "dc.w":
+                targets = []
+                break
+            targets.append(target)
+        if targets:
+            result.setdefault(call.address, []).append(
+                DispatchTable(
+                    call.address, "jsr PC-relative word-offset table", table_base,
+                    tuple(targets), evidence=(call.address, lea_address, table_base),
+                )
+            )
+    return result
+
+
+def pc_indexed_jump_candidate(
+    rom: bytes, listing: list[ListingInstruction], site_index: int
+) -> DispatchTable | None:
+    """Recognize the 18-byte inline dispatch idiom used at ROM 0x2510A.
+
+    Its code establishes a fixed block stride, but the source record length
+    has no local upper-bound check, so these starts remain candidates rather
+    than proven targets.
+    """
+    item = listing[site_index]
+    match = re.fullmatch(
+        r"\(\s*(0x[0-9a-fA-F]+|\$[0-9a-fA-F]+)\s*,\s*pc\s*,\s*d([0-7])[wl](?:\s*\*\s*(?:0x|\$)?[0-9a-fA-F]+)?\s*\)",
+        item.operands,
+        re.IGNORECASE,
+    )
+    if item.mnemonic != "jmp" or not match:
+        return None
+    base = int(match.group(1).replace("$", "0x"), 16)
+    index_register = f"d{match.group(2)}"
+    if site_index < 4:
+        return None
+    previous = listing[site_index - 4:site_index]
+    double = re.fullmatch(r"(d[0-7])w\s*,\s*\1w", previous[0].operands, re.IGNORECASE)
+    saved = re.fullmatch(r"(d[0-7])w\s*,\s*(d[0-7])w", previous[1].operands, re.IGNORECASE)
+    shift = re.fullmatch(r"#(?:0x|\$)?([0-9a-fA-F]+)\s*,\s*(d[0-7])w", previous[2].operands, re.IGNORECASE)
+    add_saved = re.fullmatch(r"(d[0-7])w\s*,\s*(d[0-7])w", previous[3].operands, re.IGNORECASE)
+    if (
+        previous[0].mnemonic != "add.w"
+        or previous[1].mnemonic != "move.w"
+        or previous[2].mnemonic != "lsl.w"
+        or previous[3].mnemonic != "add.w"
+        or not double or not saved or not shift or not add_saved
+    ):
+        return None
+    if (
+        double.group(1).lower() != index_register
+        or saved.group(1).lower() != index_register
+        or shift.group(2).lower() != index_register
+        or add_saved.group(2).lower() != index_register
+        or saved.group(2).lower() != add_saved.group(1).lower()
+    ):
+        return None
+    shift_amount = int(shift.group(1), 16)
+    stride = 2 * ((1 << shift_amount) + 1)
+    if base != item.address + 4 or stride <= 0:
+        return None
+
+    # The preceding zero-value branch exits after the inline block region.
+    end = None
+    evidence = [item.address]
+    for branch in reversed(listing[max(0, site_index - 24):site_index]):
+        mnemonic = branch.mnemonic.split(".", 1)[0]
+        if not mnemonic.startswith("b") or mnemonic in {"bra", "bsr", "btst"}:
+            continue
+        target = parse_direct_target(branch.operands)
+        if target is not None and target > base and (target - base) % stride == 0:
+            end = target
+            evidence.append(branch.address)
+            break
+    if end is None:
+        return None
+    count = (end - base) // stride
+    if count <= 0:
+        return None
+    disassembler = Cs(CS_ARCH_M68K, CS_MODE_M68K_000 | CS_MODE_BIG_ENDIAN)
+    targets = tuple(base + stride * index for index in range(count))
+    if any(decode_one(disassembler, rom, target) is None for target in targets):
+        return None
+    return DispatchTable(
+        item.address, "jmp inline fixed-stride candidates", base, targets,
+        evidence=tuple(sorted(evidence)), bounded=False,
+    )
 
 
 def discover_dispatch_tables(
     rom: bytes,
     listing: list[ListingInstruction],
     function_starts: set[int],
-) -> dict[int, DispatchTable]:
-    """Resolve simple absolute longword dispatch tables used through An.
+) -> dict[int, list[DispatchTable]]:
+    """Resolve source pointer tables and known indirect callback records.
 
-    The supported shape is `lea table,An`, optional address arithmetic,
-    `movea.l (An),An`, then `jmp/jsr (An)`. A nearby explicit index guard may
-    supply the table length; otherwise entries must point at Ghidra-listed
-    code starts. A table ends at the next separately referenced table base or
-    its first invalid entry.
+    Pointer-table loads can be direct or indexed, either locally based with
+    `lea table,An` or passed by a caller to a small dispatcher. The title
+    scheduler and active effect slots use compact record/callback fields and
+    are handled as their source-specific data structures.
     """
     indexes = {item.address: index for index, item in enumerate(listing)}
-    transfer_bases: dict[int, tuple[str, int]] = {}
+    transfer_bases: dict[int, list[tuple[str, int, int, int, int]]] = {}
     table_bases: set[int] = set()
+    transfer_sites: dict[int, tuple[str, str, int, int]] = {}
     for item in listing:
         if item.mnemonic not in {"jmp", "jsr"}:
             continue
         register = indirect_register(item.operands)
         if not register:
             continue
+        transfer_sites[item.address] = (item.mnemonic, register, 4, 0)
         index = indexes[item.address]
         lower_bound = max((start for start in function_starts if start <= item.address), default=0)
         first = max(0, index - 32)
@@ -314,8 +799,12 @@ def discover_dispatch_tables(
             load = listing[load_index]
             if load.address < lower_bound:
                 break
-            if load.mnemonic != "movea.l" or pointer_load_register(load.operands) != register:
+            details = pointer_load_details(load.operands) if load.mnemonic == "movea.l" else None
+            if not details or details[0] != register:
                 continue
+            stride = pointer_table_stride(listing, load_index, details)
+            field_offset = details[2]
+            transfer_sites[item.address] = (item.mnemonic, register, stride, field_offset)
             for lea_index in range(load_index - 1, first - 1, -1):
                 lea = listing[lea_index]
                 if lea.address < lower_bound:
@@ -324,47 +813,73 @@ def discover_dispatch_tables(
                     continue
                 base = absolute_lea(lea.operands)
                 if base and base[1] == register:
-                    transfer_bases[item.address] = (item.mnemonic, base[0])
+                    transfer_bases.setdefault(item.address, []).append(
+                        (item.mnemonic, base[0], lea.address, stride, field_offset)
+                    )
                     table_bases.add(base[0])
                     break
             if item.address in transfer_bases:
                 break
 
-    if not transfer_bases:
-        return {}
+    for site, bases in caller_supplied_table_bases(listing, function_starts, transfer_sites).items():
+        for kind, base, evidence, stride, field_offset in bases:
+            transfer_bases.setdefault(site, []).append(
+                (kind, base, evidence, stride, field_offset)
+            )
+            table_bases.add(base)
 
-    known_code_starts = {item.address for item in listing} | function_starts
-    disassembler = Cs(CS_ARCH_M68K, CS_MODE_M68K_000 | CS_MODE_BIG_ENDIAN)
-    ordered_bases = sorted(table_bases)
-    targets_by_base: dict[int, tuple[int, ...]] = {}
-    counts_by_base: dict[int, int] = {}
-    for site, (_, base) in transfer_bases.items():
-        count = guarded_table_count(listing, site, base)
-        if count is not None:
-            counts_by_base[base] = max(counts_by_base.get(base, 0), count)
-    for base_index, base in enumerate(ordered_bases):
-        upper = ordered_bases[base_index + 1] if base_index + 1 < len(ordered_bases) else min(len(rom), base + 4 * 64)
-        count_limit = counts_by_base.get(base)
-        if count_limit is not None:
-            upper = min(upper, base + 4 * count_limit)
-        targets: list[int] = []
-        for entry in range(base, min(upper, len(rom) - 3), 4):
-            target = int.from_bytes(rom[entry:entry + 4], "big")
-            if target >= len(rom) or target & 1:
-                break
-            if count_limit is None:
-                if target not in known_code_starts:
-                    break
-            elif decode_one(disassembler, rom, target) is None:
-                break
-            targets.append(target)
-        targets_by_base[base] = tuple(targets)
-
-    return {
-        site: DispatchTable(site, kind, base, targets_by_base[base])
-        for site, (kind, base) in transfer_bases.items()
-        if targets_by_base.get(base)
+    referenced_bases = {
+        base[0]
+        for item in listing
+        if item.mnemonic in {"lea", "lea.l"}
+        and (base := absolute_lea(item.operands)) is not None
     }
+    ordered_boundaries = sorted(table_bases | referenced_bases)
+    targets_by_geometry: dict[tuple[int, int, int], tuple[int, ...]] = {}
+    counts_by_geometry: dict[tuple[int, int, int], int] = {}
+    for site, uses in transfer_bases.items():
+        for _, base, _, stride, field_offset in uses:
+            count = guarded_table_count(listing, site, base)
+            geometry = (base, stride, field_offset)
+            if count is not None:
+                counts_by_geometry[geometry] = max(counts_by_geometry.get(geometry, 0), count)
+    geometries = sorted({(base, stride, field_offset) for uses in transfer_bases.values()
+                         for _, base, _, stride, field_offset in uses})
+    for base, stride, field_offset in geometries:
+        count_limit = counts_by_geometry.get((base, stride, field_offset))
+        targets_by_geometry[(base, stride, field_offset)] = read_pointer_table_targets(
+            rom, base, stride, field_offset, ordered_boundaries, count_limit
+        )
+
+    result: dict[int, list[DispatchTable]] = {}
+    for site, uses in transfer_bases.items():
+        for kind, base, source_address, stride, field_offset in sorted(set(uses)):
+            targets = targets_by_geometry.get((base, stride, field_offset), ())
+            if targets:
+                result.setdefault(site, []).append(
+                    DispatchTable(site, f"{kind} longword-pointer table (stride {stride})", base, targets,
+                                  evidence=(base, source_address))
+                )
+
+    for extra in (discover_effect_slot_callbacks(listing), discover_schedule_tables(rom, listing)):
+        for site, tables in extra.items():
+            result.setdefault(site, []).extend(tables)
+
+    for site, tables in discover_pc_relative_word_dispatches(rom, listing, function_starts).items():
+        result.setdefault(site, []).extend(tables)
+
+    pc_tables = [
+        candidate
+        for index, item in enumerate(listing)
+        if (candidate := pc_indexed_jump_candidate(rom, listing, index)) is not None
+    ]
+    for table in pc_tables:
+        result.setdefault(table.site, []).append(table)
+
+    for site in result:
+        unique = {(table.kind, table.base, table.targets): table for table in result[site]}
+        result[site] = sorted(unique.values(), key=lambda table: (table.base, table.kind))
+    return result
 
 
 def vector_roots(rom: bytes) -> list[VectorRoot]:
@@ -491,10 +1006,10 @@ def analyze_rom(
             if target is not None:
                 add_target(target)
             else:
-                dispatch = dispatch_by_site.get(address)
-                if dispatch:
-                    for resolved_target in dispatch.targets:
-                        add_target(resolved_target)
+                for dispatch in dispatch_by_site.get(address, []):
+                    if dispatch.bounded:
+                        for resolved_target in dispatch.targets:
+                            add_target(resolved_target)
             continue
 
         if mnemonic == "jsr":
@@ -510,13 +1025,22 @@ def analyze_rom(
                             address, mnemonic, operands, resolved_target, "resolved", callee
                         )
                 else:
-                    dispatch = dispatch_by_site.get(address)
-                    if dispatch:
-                        for resolved_target in dispatch.targets:
-                            add_target(resolved_target)
-                            resolved_indirect[(address, resolved_target)] = IndirectTransfer(
-                                address, mnemonic, operands, resolved_target, "table", function_names.get(resolved_target, "dispatch target")
-                            )
+                    dispatches = dispatch_by_site.get(address, [])
+                    if not any(dispatch.bounded for dispatch in dispatches):
+                        runtime_dispatch = discover_runtime_pointer_table(
+                            rom, instructions, address, listing
+                        )
+                        if runtime_dispatch:
+                            dispatches = [*dispatches, runtime_dispatch]
+                            dispatch_by_site[address] = dispatches
+                    bounded_dispatches = [dispatch for dispatch in dispatches if dispatch.bounded]
+                    if bounded_dispatches:
+                        for dispatch in bounded_dispatches:
+                            for resolved_target in dispatch.targets:
+                                add_target(resolved_target)
+                                resolved_indirect[(address, resolved_target)] = IndirectTransfer(
+                                    address, mnemonic, operands, resolved_target, "table", function_names.get(resolved_target, "dispatch target")
+                                )
                     else:
                         row = call_site_metadata.get(address, {})
                         unresolved_calls[address] = IndirectTransfer(
@@ -563,18 +1087,26 @@ def analyze_rom(
     ]
     function_ranges = merge_intervals(exported_ranges + ledger_entry_ranges)
     outside_ranges = subtract_intervals(reached, function_ranges)
-    indirect_jumps = [
-        IndirectJumpSite(
-            item.address,
-            item.operands,
-            item.address in instructions,
-            dispatch_by_site[item.address].base if item.address in dispatch_by_site else None,
-            dispatch_by_site[item.address].targets if item.address in dispatch_by_site else (),
+    indirect_jumps = []
+    for item in listing:
+        if item.mnemonic != "jmp" or not is_indirect(item.operands):
+            continue
+        tables = dispatch_by_site.get(item.address, [])
+        targets = tuple(sorted({target for table in tables for target in table.targets}))
+        indirect_jumps.append(
+            IndirectJumpSite(
+                item.address,
+                item.operands,
+                item.address in instructions,
+                tables[0].base if tables else None,
+                targets,
+                bool(tables) and any(table.bounded for table in tables),
+            )
         )
-        for item in listing
-        if item.mnemonic == "jmp" and is_indirect(item.operands)
-    ]
-    dispatch_tables = sorted(dispatch_by_site.values(), key=lambda table: (table.site, table.base))
+    dispatch_tables = sorted(
+        (table for tables in dispatch_by_site.values() for table in tables),
+        key=lambda table: (table.site, table.base, table.kind),
+    )
 
     return Analysis(
         rom_size=len(rom),
@@ -610,10 +1142,22 @@ def build_report(analysis: Analysis) -> str:
     reached = merge_intervals((ins.address, ins.end) for ins in analysis.instructions.values())
     status_only = analysis.status_entries - {entry.address for entry in analysis.function_entries}
     largest = range_rows(analysis.outside_ranges)
+    partial_functions = []
+    for entry in analysis.function_entries:
+        if not entry.size:
+            continue
+        reached_bytes = sum(
+            end - start
+            for start, end in intersect_intervals(
+                reached, [(entry.address, entry.address + entry.size)]
+            )
+        )
+        if 0 < reached_bytes < entry.size:
+            partial_functions.append(entry)
     lines = [
         "# US ROM byte-level code reachability",
         "",
-        "This is a conservative recursive-descent disassembly of ROM bytes, not a complete control-flow proof. The walk starts from valid 68000 vector targets, follows direct branches and calls, follows indirect calls resolved by Ghidra or a discovered absolute pointer table, and follows discovered indirect jump tables. Other unresolved transfers are reported and their targets are not guessed. Data that is reached through an indirect edge can still decode as an instruction; review the unresolved list before using this as a completeness claim.",
+        "This is a conservative recursive-descent disassembly of ROM bytes, not a complete control-flow proof. The walk starts from valid 68000 vector targets, follows direct branches and calls, and follows indirect calls resolved by Ghidra, pointer tables, or confirmed callback records. Candidate targets from an inline indexed jump are recorded but are not followed while the input domain is unbounded. Other unresolved transfers are reported and their targets are not guessed. Data reached through an indirect edge can still decode as an instruction; review the unresolved list before using this as a completeness claim.",
         "",
         f"ROM size: **{analysis.rom_size:,} bytes**. SHA-256: `{analysis.rom_sha256}`.",
         f"Vector table: `0x000000..0x0000FF`; `{len(analysis.vector_roots)}` valid ROM vector slots resolve to `{len(vector_targets)}` unique instruction roots: {', '.join(f'`{fmt_addr(value)}`' for value in vector_targets)}.",
@@ -624,13 +1168,16 @@ def build_report(analysis: Analysis) -> str:
         "|---|---:|",
         f"| Decoded reachable instruction starts | {len(analysis.instructions):,} |",
         f"| Reachable instruction bytes (union) | {analysis.reached_bytes:,} |",
-        f"| Reachable bytes inside known function spans | {sum(end - start for start, end in intersect_intervals(reached, analysis.function_ranges)):,} |",
+        f"| Reachable bytes inside union of known function spans | {sum(end - start for start, end in intersect_intervals(reached, analysis.function_ranges)):,} |",
+        f"| Known function bytes reached | **{analysis.known_function_bytes_reached:,} / {analysis.known_function_bytes_total:,}** |",
+        f"| Known functions with no reached bytes | {len(analysis.unreached_functions):,} |",
+        f"| Partially reached known functions | {len(partial_functions):,} |",
         f"| Reachable bytes outside known function spans | **{analysis.outside_bytes:,}** |",
         f"| Reachable ranges outside known function spans | **{len(analysis.outside_ranges):,}** |",
         f"| Exported functions used for sized spans | {len(analysis.function_entries):,} |",
         f"| Status-ledger-only entry addresses | {len(status_only):,} |",
         f"| Resolved indirect call targets followed | {len(analysis.resolved_indirect):,} |",
-        f"| Absolute pointer dispatch tables discovered | {len(analysis.dispatch_tables):,} |",
+        f"| Pointer/dispatch sources discovered | {len(analysis.dispatch_tables):,} |",
         f"| Indirect JMP sites found in Ghidra listing | {len(analysis.indirect_jumps):,} |",
         f"| Unresolved indirect jump sites | {len(analysis.unresolved_jumps):,} |",
         f"| Reachable unresolved indirect jumps | {sum(site.reached for site in analysis.unresolved_jumps):,} |",
@@ -638,16 +1185,31 @@ def build_report(analysis: Analysis) -> str:
         f"| Invalid/out-of-ROM control-flow targets | {len(analysis.bad_targets):,} |",
         f"| Vector/branch targets that Capstone could not decode | {len(analysis.decode_failures):,} |",
         "",
-        "Known function spans use the exact `entry` and `size` values in `decompilation/export/functions.tsv`. The status ledger contains entry addresses but no sizes; for ledger-only entries, only the decoded entry instruction is masked as known. No body length is inferred for those rows.",
+        "Known-function byte totals use the sum of exact `entry` and `size` values in `decompilation/export/functions.tsv`; reached bytes are counted within each function extent. The current inventory totals `111,098` bytes. The status ledger contains entry addresses but no sizes; for ledger-only entries, only the decoded entry instruction is masked as known. No body length is inferred for those rows.",
         "",
-        "## Largest reachable ranges outside known functions",
+        "## Known functions with no reached bytes",
         "",
-        "Ranges are half-open byte intervals in the calculations; the table displays inclusive end addresses.",
+        "These exported functions have no decoded reachable byte within their sized span. Partially reached functions are counted in the summary but are not repeated here.",
+        "",
+        "| ROM entry | Size (bytes) | Name |",
+        "|---:|---:|---|",
+    ]
+    if analysis.unreached_functions:
+        for entry in analysis.unreached_functions:
+            lines.append(f"| `{fmt_addr(entry.address)}` | {entry.size:,} | {entry.name} |")
+    else:
+        lines.append("| — | 0 | None |")
+
+    lines.extend([
+        "",
+        "## Reachable ranges outside known functions",
+        "",
+        "Ranges are half-open byte intervals in the calculations; the table displays inclusive end addresses. All ranges are listed, ordered by descending size.",
         "",
         "| Rank | Start | End (inclusive) | Bytes |",
         "|---:|---:|---:|---:|",
-    ]
-    for rank, (size, start, end) in enumerate(largest[:MAX_REPORTED_RANGES], start=1):
+    ])
+    for rank, (size, start, end) in enumerate(largest, start=1):
         lines.append(f"| {rank} | `{fmt_addr(start)}` | `{fmt_addr(end - 1)}` | {size:,} |")
     if not largest:
         lines.append("| — | — | — | 0 |")
@@ -656,17 +1218,26 @@ def build_report(analysis: Analysis) -> str:
         "",
         "## Discovered pointer dispatch tables",
         "",
-        "The analyzer recognizes the `lea table,An` → `movea.l (An),An` → indirect transfer shape and reads consecutive big-endian longword entries. A nearby explicit ROM index guard bounds a table when its compare and branch shape is recognized; those entries are accepted when the raw ROM bytes decode as a 68000 instruction, even if Ghidra has no listing row there. Without a recognized guard, entries must point to Ghidra-listed code starts and stop at the next discovered table base or first invalid pointer. These remain candidate targets, not a proof that every path is reachable.",
+        "The analyzer recognizes direct and indexed `lea table,An` pointer loads, tables passed to shared dispatchers, active-record callbacks, and title delay/callback records. Pointer entries are read from raw ROM bytes. An explicit guard supplies a count when its compare/branch shape is recognized; otherwise entries stop at the next discovered table base or first invalid/non-code pointer. Caller-supplied tables use their ROM data boundary. The inline PC-indexed jump at `0x2510A` has a candidate block list, but its source record upper bound is not established, so those targets are not traversed. Tables are candidate target sets, not proof that every branch is dynamically reachable.",
         "",
-        "| Transfer site | Kind | Table base | Candidate entries | Candidate code targets |",
-        "|---:|---|---:|---:|---|",
+        "| Transfer site | Kind | Table / record base | Candidate entries | Candidate code targets | ROM evidence | Target domain |",
+        "|---:|---|---:|---:|---|---|---|",
     ])
     if analysis.dispatch_tables:
         for table in analysis.dispatch_tables:
             targets = ", ".join(f"`{fmt_addr(target)}`" for target in table.targets)
-            lines.append(f"| `{fmt_addr(table.site)}` | {table.kind} | `{fmt_addr(table.base)}` | {len(table.targets)} | {targets} |")
+            base_label = (
+                f"[C] ROM `{fmt_addr(table.base)}`"
+                if table.base < analysis.rom_size
+                else f"RAM `{fmt_addr(table.base)}`"
+            )
+            evidence = ", ".join(f"[C] `{fmt_addr(address)}`" for address in table.evidence)
+            domain = "bounded by source structure" if table.bounded else "candidate only; input bound open"
+            lines.append(
+                f"| `{fmt_addr(table.site)}` | {table.kind} | {base_label} | {len(table.targets)} | {targets} | {evidence or '—'} | {domain} |"
+            )
     else:
-        lines.append("| — | — | — | 0 | None discovered |")
+        lines.append("| — | — | — | 0 | None discovered | — | — |")
 
     lines.extend([
         "",
@@ -680,7 +1251,14 @@ def build_report(analysis: Analysis) -> str:
     if analysis.unresolved_jumps:
         for site in analysis.unresolved_jumps:
             reachability = "reachable" if site.reached else "not reached from known roots"
-            lines.append(f"| {reachability} | `{fmt_addr(site.address)}` | `jmp {site.operands}` | target not statically bounded |")
+            if site.targets:
+                resolution = (
+                    f"candidate inline range `[C] {fmt_addr(site.table_base or 0)}`: "
+                    f"{len(site.targets)} starts; input bound not established"
+                )
+            else:
+                resolution = "target not statically bounded"
+            lines.append(f"| {reachability} | `{fmt_addr(site.address)}` | `jmp {site.operands}` | {resolution} |")
     else:
         lines.append("| — | — | None found | — |")
 
@@ -688,7 +1266,7 @@ def build_report(analysis: Analysis) -> str:
         "",
         "## Indirect calls",
         "",
-        "Confirmed call-site targets and discovered pointer-table entries are traversed; unresolved calls still have their return-site fallthrough explored.",
+        "Confirmed call-site targets and bounded discovered dispatch sources are traversed; unresolved calls still have their return-site fallthrough explored.",
         "",
         "| Site | Instruction | Target / status | Callee |",
         "|---:|---|---|---|",
@@ -706,7 +1284,7 @@ def build_report(analysis: Analysis) -> str:
         "",
         "- Read the 64 longword vector slots at `0x000000..0x0000FF`; slot zero is the initial stack pointer and is not treated as code.",
         "- Decode reachable instructions from the raw big-endian ROM using Capstone's M68000 decoder. Follow direct conditional branches, DBcc branches, direct calls, and direct jumps. Calls keep their return-site fallthrough; unconditional jumps and returns do not.",
-        "- Follow Ghidra `call-sites.tsv` indirect-call rows only when `status=resolved` and the target is present. For simple absolute pointer tables, recognize `lea table,An` followed by `movea.l (An),An` and an indirect `jmp/jsr`. Read candidate longword targets to the count implied by a nearby compare-and-branch index guard when recognized (greater-than skip: inclusive maximum plus one; less-than branch into dispatch: comparison immediate); otherwise stop at the next discovered table base or first non-listed pointer. The full `disassembly.s` export inventories indirect JMP sites, including sites not reached because of an earlier unresolved call.",
+        "- Follow Ghidra `call-sites.tsv` indirect-call rows only when `status=resolved` and the target is present. Recognize indexed longword pointer loads, caller-supplied tables, ten active-effect callback slots, and title schedule records. For indexed PC jumps, derive fixed-stride candidate starts from the inline arithmetic and branch boundary but leave them unresolved when the record value has no proven upper bound. The full `disassembly.s` export inventories indirect JMP sites, including sites not reached because of an earlier unresolved call.",
         "- Merge decoded instruction bytes, subtract exported function extents and the entry instruction for status-only entries, then merge the remaining adjacent bytes into ranges.",
         "- This report does not claim completeness for indirect targets, computed dispatches without a recognized pointer table, invalid decode boundaries, or data/code ambiguities. Table entries are candidate targets and do not establish the runtime index domain.",
         "",
