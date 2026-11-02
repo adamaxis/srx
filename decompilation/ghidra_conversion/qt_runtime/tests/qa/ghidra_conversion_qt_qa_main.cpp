@@ -40879,7 +40879,9 @@ int main(int argc, char** argv) {
                  field_employee_recruitment_renraku_pedestrian_qa_path
                      .has_value())
                     ? field_scene.bootstrap_for_scene_dump(smoke_state, 1U)
-                    : field_scene2_pedestrians_qa_path.has_value()
+                    : ((field_dialogue_dump_prompt.has_value() &&
+                        *field_dialogue_dump_prompt == "arrival-ambush") ||
+                       field_scene2_pedestrians_qa_path.has_value())
                     ? field_scene.bootstrap_for_scene_dump(smoke_state, 2U)
                     : field_default_yakuza_actors_qa_path.has_value()
                     ? field_scene.bootstrap_for_scene_dump(smoke_state, 2U)
@@ -48109,6 +48111,8 @@ int main(int argc, char** argv) {
                 field_dialogue_dump_path.has_value()) {
                 const bool arrival_result =
                     *field_dialogue_dump_prompt == "arrival-manager";
+                const bool arrival_ambush_result =
+                    *field_dialogue_dump_prompt == "arrival-ambush";
                 const bool room_paid_result =
                     *field_dialogue_dump_prompt == "room-paid";
                 const bool room_insufficient_result =
@@ -48136,13 +48140,14 @@ int main(int argc, char** argv) {
                 }
                 const bool room_payment_result = room_paid_result ||
                                                  room_insufficient_result;
-                const auto prompt = arrival_result || room_payment_result
-                                            || followup_result
+                const auto prompt = arrival_result || arrival_ambush_result ||
+                                            room_payment_result || followup_result
                                         ? std::optional<StokerMotelPromptId>{}
                                         : parse_stoker_dialogue_prompt(
                                               *field_dialogue_dump_prompt);
-                if (!arrival_result && !room_payment_result &&
-                    !followup_result && !prompt.has_value()) {
+                if (!arrival_result && !arrival_ambush_result &&
+                    !room_payment_result && !followup_result &&
+                    !prompt.has_value()) {
                     std::cerr << "field dialogue dump: unknown Stoker prompt '"
                               << *field_dialogue_dump_prompt << "'\n";
                     return 3;
@@ -48226,9 +48231,10 @@ int main(int argc, char** argv) {
                         std::cerr << "field dialogue dump: low-funds debt payment changed the wallet\n";
                         return 3;
                     }
-                } else if (arrival_result) {
+                } else if (arrival_result || arrival_ambush_result) {
                     prompt_opened =
-                        field_scene.open_stoker_arrival_result_for_dump(79U);
+                        field_scene.open_stoker_arrival_result_for_dump(
+                            arrival_ambush_result ? 80U : 79U);
                 } else if (room_payment_result) {
                     prompt_opened = field_scene.open_stoker_room_payment_for_dump(
                         room_paid_result ? 20U : 19U);
@@ -48237,7 +48243,11 @@ int main(int argc, char** argv) {
                         field_scene.open_stoker_dialogue_for_dump(*prompt);
                 }
                 if (!prompt_opened) {
-                    std::cerr << "field dialogue dump: prompt did not open\n";
+                    std::cerr << "field dialogue dump: prompt did not open"
+                              << " reason="
+                              << field_scene.dialogue_panel()
+                                     .source_boundary_reason
+                              << " failure=" << field_scene.failure() << '\n';
                     return 3;
                 }
                 if ((room_paid_result &&
@@ -48247,6 +48257,124 @@ int main(int argc, char** argv) {
                     std::cerr
                         << "field dialogue dump: room-payment wallet result mismatch\n";
                     return 3;
+                }
+                if (arrival_ambush_result) {
+                    const auto& panel = field_scene.dialogue_panel();
+                    if (!field_scene.dialogue_open() ||
+                        !panel.source_complete ||
+                        panel.text_segments[0].find(
+                            "leap from the shadows") == std::string_view::npos) {
+                        std::cerr << "Stoker arrival ambush QA: ROM 0x249C4 roll 80 did not select the ambush dialogue page\n";
+                        return 3;
+                    }
+                    const auto fields = field_scene.debug_inspection_fields();
+                    struct AmbushActorObservation {
+                        int order = -1;
+                        int slot = -1;
+                        int x = -1;
+                        int y = -1;
+                        int action = -1;
+                        int special_flags = 0;
+                        std::string profile;
+                        std::string package;
+                        std::string animation;
+                    };
+                    std::vector<AmbushActorObservation> observations;
+                    for (const auto& key : fields.keys()) {
+                        if (!key.startsWith(QStringLiteral("actor.")) ||
+                            !key.endsWith(QStringLiteral(".profile"))) {
+                            continue;
+                        }
+                        const auto profile = fields.value(key).toString();
+                        if (profile != QStringLiteral("weenr2_k08_item01") &&
+                            profile != QStringLiteral("weenr1_k08_none00")) {
+                            continue;
+                        }
+                        const auto prefix = key.left(
+                            key.size() - QStringLiteral("profile").size());
+                        observations.push_back(AmbushActorObservation{
+                            fields.value(prefix + QStringLiteral("source_order"))
+                                .toInt(-1),
+                            fields.value(prefix + QStringLiteral("record_slot"))
+                                .toInt(-1),
+                            fields.value(prefix + QStringLiteral("x"))
+                                .toInt(-1),
+                            fields.value(prefix + QStringLiteral("y"))
+                                .toInt(-1),
+                            fields.value(prefix + QStringLiteral("action"))
+                                .toInt(-1),
+                            fields.value(prefix + QStringLiteral("special_flags"))
+                                .toInt(),
+                            profile.toStdString(),
+                            fields.value(prefix + QStringLiteral("ai_package"))
+                                .toString().toStdString(),
+                            fields.value(prefix + QStringLiteral("animation"))
+                                .toString().toStdString()});
+                    }
+                    std::sort(observations.begin(), observations.end(),
+                              [](const auto& left, const auto& right) {
+                                  return left.order < right.order;
+                              });
+                    const std::array<std::string_view, 3U> expected_profiles{
+                        "weenr2_k08_item01", "weenr1_k08_none00",
+                        "weenr1_k08_none00"};
+                    std::vector<int> occupied_slots;
+                    std::vector<std::pair<int, int>> occupied_positions;
+                    bool actors_match = observations.size() ==
+                                        expected_profiles.size() &&
+                        field_scene.dynamic_world_actor_count_for_dump() == 3U;
+                    for (std::size_t index = 0U;
+                         actors_match && index < observations.size(); ++index) {
+                        const auto& actor = observations[index];
+                        const bool expected_item = index == 0U;
+                        const bool slot_valid = actor.slot >= 3 && actor.slot <= 9 &&
+                            std::find(occupied_slots.begin(), occupied_slots.end(),
+                                      actor.slot) == occupied_slots.end();
+                        const std::pair<int, int> position{actor.x, actor.y};
+                        const bool position_valid = actor.x >= 0 && actor.y >= 0 &&
+                            std::find(occupied_positions.begin(),
+                                      occupied_positions.end(), position) ==
+                                occupied_positions.end();
+                        actors_match = actor.order == static_cast<int>(index) &&
+                            actor.profile == expected_profiles[index] &&
+                            actor.action == static_cast<int>(
+                                expected_item
+                                    ? scripting::ScriptActorActionKind::item
+                                    : scripting::ScriptActorActionKind::none) &&
+                            slot_valid && position_valid &&
+                            (actor.special_flags &
+                             static_cast<int>(srx::v(srx::ActorFlag::HOSTILE))) != 0 &&
+                            actor.package ==
+                                "world_actor.kind_8.source_target_motion" &&
+                            !actor.animation.empty();
+                        if (actors_match) {
+                            occupied_slots.push_back(actor.slot);
+                            occupied_positions.push_back(position);
+                        }
+                    }
+                    if (!actors_match) {
+                        std::cerr << "Stoker arrival ambush QA: expected the 0x1D6E2A three-actor hostile sequence with Lua AI packages; actors="
+                                  << observations.size() << " active="
+                                  << field_scene.dynamic_world_actor_count_for_dump()
+                                  << '\n';
+                        for (const auto& actor : observations) {
+                            std::cerr << actor.order << '\t' << actor.profile
+                                      << '\t' << actor.slot << '\t' << actor.x
+                                      << '\t' << actor.y << '\t' << actor.action
+                                      << '\t' << actor.package << '\t'
+                                      << actor.animation << '\n';
+                        }
+                        return 3;
+                    }
+                    std::cout << "stoker_arrival_ambush_qa=passed source=0x1D6E2A actors="
+                              << observations.size() << '\n';
+                    for (const auto& actor : observations) {
+                        std::cout << "stoker_ambush_actor=" << actor.order
+                                  << '\t' << actor.profile << '\t'
+                                  << actor.slot << '\t' << actor.x << '\t'
+                                  << actor.y << '\t' << actor.package << '\t'
+                                  << actor.animation << '\n';
+                    }
                 }
                 QImage dialogue_scene(kSceneWidth, kSceneHeight,
                                       QImage::Format_RGB32);

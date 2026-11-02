@@ -109,7 +109,8 @@
       "provenance": {
         "romAddresses": [
           "0x1F65A", "0xF4AA0", "0xF4AF4", "0xF4AEC",
-          "0x249C4", "0x0D3A", "0x1E1FC", "0xF4AB4", "0x21458"
+          "0x249C4", "0x0D3A", "0x1E1FC", "0x1D6E2A",
+          "0x1E25A", "0xF4AB4", "0x21458"
         ],
         "scope": "signed_prompt_selection_and_arrival_command"
       },
@@ -133,7 +134,7 @@
             "street_ambush": "street_ambush",
             "service_unavailable": "arrival_command_boundary"
           },
-          "evidence": "ROM 0x249C4 samples 0..99; values 80..99 pass through the unresolved 0x1E1FC effect callback."
+          "evidence": "ROM 0x249C4 samples 0..99; values 80..99 attempt the ordered actor list at 0x1D6E2A through 0x1E1FC and select the ambush page only when the effect creates an actor."
         },
         "arrival_manager": {
           "type": "choice",
@@ -166,10 +167,9 @@
         "room_paid": { "type": "page", "eventId": "room.paid", "next": "hotel_options" },
         "room_insufficient": { "type": "page", "eventId": "room.insufficient", "next": "stay_on_map" },
         "farewell": { "type": "page", "eventId": "leave", "next": "stay_on_map" },
-        "street_ambush": { "type": "page", "eventId": "street-ambush", "next": "ambush_boundary" },
+        "street_ambush": { "type": "page", "eventId": "street-ambush", "next": "stay_on_map" },
         "room_payment_boundary": { "type": "source_boundary", "reason": "ROM room payment did not return a recognized wallet result." },
         "arrival_command_boundary": { "type": "source_boundary", "reason": "ROM arrival command 0xE9 or its random service is unresolved." },
-        "ambush_boundary": { "type": "source_boundary", "reason": "ROM 0x1E1FC selects a street encounter whose actor/effect handoff is not converted." },
         "hotel_options": {
           "type": "terminal",
           "outcome": { "type": "open_service", "serviceId": "hotel.options", "returnPolicy": "origin" }

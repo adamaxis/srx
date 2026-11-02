@@ -331,6 +331,10 @@ int main() {
                 }
                 return std::string(run_random_results[run_random_call++]);
             }
+            if (service_id ==
+                "stoker_motel.spawn_sequence_scene2.world_effect.weenr2.then.weenr1.then.weenr1") {
+                return "spawned";
+            }
             if (service_id == "building.charge_20") {
                 StokerMotelRoomPaymentState state{};
                 state.funds = room_payment_funds;
@@ -2157,44 +2161,26 @@ int main() {
     runtime.close();
     boundary = {};
 
-    // An 80..99 roll without the source effect callback remains unresolved;
-    // the graph stops before it claims which encounter page was selected.
+    // ROM 0x249C4 routes rolls 80..99 through actor list 0x1D6E2A;
+    // this test adapter reports the host spawn result to the Lua graph.
     if (!expect(runtime.open_field_exit_prompt(arrival))) {
         return 54;
     }
     arrival_roll = 80U;
-    const auto unresolved_arrival_result =
+    const auto ambush_arrival_result =
         runtime.advance_controller_events(0x4000U);
-    if (!expect(unresolved_arrival_result ==
-                FieldDialogueAdvanceResult::source_boundary) ||
-        !expect(runtime.panel().kind == DialoguePanelKind::source_boundary) ||
-        !expect(boundary.find("arrival command") !=
-                std::string_view::npos)) {
-        std::cerr << "unresolved arrival: result="
-                  << static_cast<int>(unresolved_arrival_result)
+    if (!expect(ambush_arrival_result ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.open()) ||
+        !expect(runtime.panel().source_complete) ||
+        !expect(runtime.panel().text_segments[0].find(
+                    "leap from the shadows") != std::string_view::npos)) {
+        std::cerr << "spawned Stoker ambush: result="
+                  << static_cast<int>(ambush_arrival_result)
                   << " kind=" << static_cast<int>(runtime.panel().kind)
                   << " text=" << runtime.panel().text_segments[0]
-                  << " panel_reason=" << runtime.panel().source_boundary_reason
                   << " boundary=" << boundary << '\n';
         return 55;
-    }
-    runtime.close();
-    boundary = {};
-
-    // When the source effect callback selects the rare encounter, the JSON
-    // graph presents that page and then preserves its unresolved actor edge.
-    arrival_callbacks.forward_ambush_effect_sequence = [] { return true; };
-    runtime.set_arrival_command_callbacks(arrival_callbacks);
-    if (!expect(runtime.open_field_exit_prompt(arrival)) ||
-        !expect(runtime.advance_controller_events(0x4000U) ==
-                FieldDialogueAdvanceResult::prompt_advanced) ||
-        !expect(runtime.panel().text_segments[0].find(
-                    "leap from the shadows") != std::string_view::npos) ||
-        !expect(runtime.advance_controller_events(0x4000U) ==
-                FieldDialogueAdvanceResult::source_boundary) ||
-        !expect(boundary.find("actor/effect handoff") !=
-                std::string_view::npos)) {
-        return 57;
     }
     runtime.close();
     boundary = {};

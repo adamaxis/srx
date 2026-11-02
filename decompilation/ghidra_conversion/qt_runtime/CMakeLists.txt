@@ -1811,6 +1811,11 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_dialogue_arrival_m
                  --field-dialogue-dump arrival-manager
                  "${CMAKE_CURRENT_BINARY_DIR}/field-dialogue-qa/arrival-manager/actual.bmp")
 
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_dialogue_arrival_ambush_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-dialogue-dump arrival-ambush
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-dialogue-qa/arrival-ambush/actual.bmp")
+
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_dialogue_room_paid_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-dialogue-dump room-paid

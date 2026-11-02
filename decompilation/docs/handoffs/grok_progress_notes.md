@@ -3,7 +3,7 @@
 This file is kept in the repo so the notes survive if the box is wiped. The box's /workspace/shadowrun/out was lost on 2026-10-31.
 Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 
-## Current state (2026-11-02 08:19 CST)
+## Current state (2026-11-02 09:01 CST)
 - Remote port-fixes: see latest Fixes entry. QA_GREEN (ctest all pass, Lua suites pass). Working playtest_2026-11-01 items one Luna run at a time.
 - In progress: Luna (codex exec, gpt-6-luna, max effort, fast tier off) is fixing aa3b2cb7 forward. Brief is /workspace/briefs/aa3b.md, the earlier partial work is /workspace/briefs/aa3b_wip.diff and stash 'aa3b-wip'.
 - Box toolchain: `. /workspace/tcenv.sh` (conda env /workspace/mamba/envs/srx). Build dirs are /workspace/b2 (Qt) and /workspace/b2n (non-Qt). Full QA is /workspace/qa.sh, which prints QA_GREEN.
@@ -63,6 +63,7 @@ Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 - playtest #B3b: Reachability: dialogue table, shared dispatch, callbacks. Evidence [C]: tables 0x12D060/0x12D064, 0x24E3A, 0x214EC; 0x2510A candidates (160) unbounded, not traversed; 33,576 outside bytes in 171 ranges
 - playtest #B3c: B3c: triage 171 outside-function ranges. Evidence [C]: 0x166514 ASCII via false candidate at 0x054960; dialogue bank 0x01F58A/table 0x12CCB4; open: 0x004FE2..0x005129, 0x025D0E/0x02611C
 - playtest #A3: A3: emulator-captured fights asserted against Lua resolver. Evidence [C]: 64-seed emulator capture, 0x55640/0x556C6/0x55740/0x55948..0x559BC/0xA8EA; Decker/Weenr2 30/16/18, Weenr2/Yakuza 0/64/0
+- playtest #22: #22: Stoker arrival ambush spawns ROM actor list. Evidence [C]: 0x249C4 roll<100, >=0x50 -> list 0x1D6E2A (0x1D66A4,0x1D665A x2) via 0x1E1FC/0x1E40C edge placement; A800 scenes 0x15-0x2B 46/46 matched
 
 ## Open work, in order
 1. Get ctest green again by fixing aa3b2cb7 forward.

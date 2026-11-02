@@ -1095,6 +1095,70 @@ FieldSceneRuntime::FieldSceneRuntime(
                 return "roll_" +
                        std::to_string(static_cast<std::uint16_t>(roll));
             }
+            constexpr std::string_view kStokerArrivalSpawnPrefix =
+                "stoker_motel.spawn_sequence_";
+            if (service_id.rfind(kStokerArrivalSpawnPrefix, 0U) == 0U) {
+                constexpr std::uint16_t kStokerMotelScene = 2U; // 0x249C4
+                constexpr std::string_view kStokerAmbushSequence =
+                    "scene2.world_effect.weenr2.then.weenr1.then.weenr1";
+                const auto sequence_id = service_id.substr(
+                    kStokerArrivalSpawnPrefix.size());
+                if (state_.field_scene_buffers.scene_reference !=
+                        kStokerMotelScene ||
+                    sequence_id != kStokerAmbushSequence ||
+                    field_pending_story_world_effect_.has_value() ||
+                    pending_field_encounter_outcome_.has_value()) {
+                    return std::nullopt;
+                }
+                auto outcome = game_scripts_.resolve_field_actor_sequence(
+                    kStokerMotelScene, sequence_id);
+                if (!outcome.has_value() ||
+                    outcome->kind != scripting::
+                        ScriptFieldEncounterOutcomeKind::
+                            dynamic_world_effect_sequence ||
+                    outcome->scene_id != kStokerMotelScene ||
+                    outcome->sequence_id != sequence_id ||
+                    outcome->placement_policy != scripting::
+                        ScriptFieldEncounterPlacementPolicy::
+                            screen_edge_candidates ||
+                    outcome->actors.size() != 3U ||
+                    std::any_of(
+                        outcome->actors.begin(), outcome->actors.end(),
+                        [sequence_id](const auto& actor) {
+                            return actor.sequence_id != sequence_id;
+                        })) {
+                    failure_ = game_scripts_.failure().empty()
+                        ? "Stoker's ROM actor list did not resolve its three screen-edge actors"
+                        : game_scripts_.failure();
+                    this->source_boundary(
+                        "field.stoker_motel.ambush_sequence_unresolved");
+                    return std::nullopt;
+                }
+                const auto spawned_before = static_cast<std::size_t>(
+                    std::count_if(
+                        field_default_actors_.begin(),
+                        field_default_actors_.end(),
+                        [kStokerMotelScene](const auto& actor) {
+                            return actor.active &&
+                                   actor.temporary_world_encounter &&
+                                   actor.scene_reference ==
+                                       kStokerMotelScene;
+                        }));
+                pending_field_encounter_outcome_ = std::move(*outcome);
+                spawn_field_world_effect_sequence();
+                const auto spawned_after = static_cast<std::size_t>(
+                    std::count_if(
+                        field_default_actors_.begin(),
+                        field_default_actors_.end(),
+                        [kStokerMotelScene](const auto& actor) {
+                            return actor.active &&
+                                   actor.temporary_world_encounter &&
+                                   actor.scene_reference ==
+                                       kStokerMotelScene;
+                        }));
+                return spawned_after > spawned_before ? "spawned"
+                                                     : "no_effect";
+            }
             if (service_id == "runner.negotiation_skill") {
                 if (!field_party_roster_.available()) {
                     return std::nullopt;

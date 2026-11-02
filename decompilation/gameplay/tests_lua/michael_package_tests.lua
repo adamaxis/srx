@@ -10,6 +10,7 @@ local function load_json(path)
 end
 
 local MichaelPackage = require("michael_package")
+local E = require("enums")
 local content = {
     speakers = load_json("dialogue/speakers"),
     menus = load_json("dialogue/menus"),
@@ -52,6 +53,7 @@ local function menu(menu_id, available, speaker_id, text_profile)
 end
 
 game = {
+    modules = {world_content_data = {dynamic_world_activity_actors = {}}},
     content = content,
     state = { motel_bill_paid = false },
     location = { type = "motel", id = "stoker_motel" },
@@ -80,6 +82,31 @@ game = {
         end,
     },
 }
+
+for index, profile_id in ipairs(E.StokerMotelArrival.AMBUSH_PROFILE_IDS) do
+    game.modules.world_content_data.dynamic_world_activity_actors[index] = {
+        scene_id = E.Scene.STOKER_MOTEL,
+        sequence_order = index - 1,
+        sequence_id = E.WorldEffectSequence.STOKER_MOTEL_AMBUSH,
+        selection_kind = "weighted_encounter",
+        placement_rule =
+            "open screen-edge candidates based on the current viewport and terrain",
+        actor_name = index == 1 and "weenr2" or "weenr1",
+        profile_id = profile_id,
+        visual_profile_id = E.ActorVisualProfile.YAKUZA_WEENR,
+        action_kind = index == 1 and "item" or "none",
+        action_id = index == 1 and "streetline_special" or nil,
+        actor_facts = {interaction = {}},
+        physical_meter = index == 1 and 4 or 3,
+        palette_line = 1,
+        sprite_stem = "yakuza_weenr_k08_item0a",
+        activity_probe_enabled = true,
+        action_delay_modifier = 0,
+        combat_cyberware = {},
+        combat_mental_meter = 10,
+        posture_reduction_percent = 0,
+    }
+end
 
 local function outcome(result)
     assert(result.type == "continue_in_place" or
@@ -187,7 +214,7 @@ assert(result.type == "continue_in_place" and #choices == 0)
 expect_page(1, "package-handoff")
 
 game.field.package_run_status = "none"
-service_results["stoker_motel.resolve_arrival"] = "manager"
+service_results["random.bounded_100"] = "roll_79"
 reset("leave")
 result = outcome(MichaelPackage.present_field_exit_prompt())
 assert(result.type == "continue_in_place")
@@ -196,14 +223,30 @@ assert(choices[1].id == "arrival_manager" and
        #choices[1].options == 2)
 expect_page(2, "leave")
 
-service_results["stoker_motel.resolve_arrival"] = "street_ambush"
+service_results["random.bounded_100"] = "roll_80"
+service_results["stoker_motel.spawn_sequence_" ..
+                E.WorldEffectSequence.STOKER_MOTEL_AMBUSH] = "spawned"
 reset()
 result = outcome(MichaelPackage.present_field_exit_prompt())
-assert(result.type == "source_boundary" and
-       result.reason:find("actor/effect handoff", 1, true))
+assert(result.type == "continue_in_place")
 expect_page(2, "street-ambush")
+assert(services[1].domain == "random" and
+       services[1].operation == "bounded_100" and
+       services[2].domain == "stoker_motel" and
+       services[2].operation == "spawn_sequence_" ..
+           E.WorldEffectSequence.STOKER_MOTEL_AMBUSH)
 
-service_results["stoker_motel.resolve_arrival"] = nil
+service_results["random.bounded_100"] = "roll_99"
+service_results["stoker_motel.spawn_sequence_" ..
+                E.WorldEffectSequence.STOKER_MOTEL_AMBUSH] = "no_effect"
+reset("leave")
+result = outcome(MichaelPackage.present_field_exit_prompt())
+assert(result.type == "continue_in_place")
+expect_page(1, "arrival")
+assert(choices[1].id == "arrival_manager")
+expect_page(2, "leave")
+
+service_results["random.bounded_100"] = nil
 reset()
 result = outcome(MichaelPackage.present_field_exit_prompt())
 assert(result.type == "source_boundary" and

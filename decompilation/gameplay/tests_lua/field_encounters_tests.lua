@@ -198,6 +198,21 @@ game = {
     },
 }
 
+for order, profile_id in ipairs(E.StokerMotelArrival.AMBUSH_PROFILE_IDS) do
+    local actor = actor_row(
+        order - 1, E.WorldEffectSequence.STOKER_MOTEL_AMBUSH,
+        "open screen-edge candidates based on the current viewport and terrain",
+        E.Scene.STOKER_MOTEL, "weighted_encounter")
+    actor.actor_name = order == 1 and "weenr2" or "weenr1"
+    actor.profile_id = profile_id
+    actor.visual_profile_id = E.ActorVisualProfile.YAKUZA_WEENR
+    actor.action_kind = order == 1 and "item" or "none"
+    actor.action_id = order == 1 and "streetline_special" or nil
+    actor.sprite_stem = "yakuza_weenr_k08_item0a"
+    local actors = game.modules.world_content_data.dynamic_world_activity_actors
+    actors[#actors + 1] = actor
+end
+
 eq(Encounters.trigger_attempt(context()), "sample_probability",
    "eligible cadence requests a probability draw")
 eq(Encounters.trigger_attempt(context({
@@ -323,5 +338,27 @@ eq(map_sequence.sequence_id, "boris_strike_team",
    "Boris sequence resolves by semantic identity")
 eq(#map_sequence.actors, 2,
    "named map-derived source list retains both actor rows")
+
+local stoker_ambush = Encounters.resolve_sequence(
+    E.Scene.STOKER_MOTEL, E.WorldEffectSequence.STOKER_MOTEL_AMBUSH)
+eq(stoker_ambush.kind, "dynamic_world_effect_sequence",
+   "Stoker's direct ROM call resolves the shared actor list")
+eq(stoker_ambush.sequence_id,
+   E.WorldEffectSequence.STOKER_MOTEL_AMBUSH,
+   "Stoker ambush uses its semantic source-list identity")
+eq(stoker_ambush.placement_policy,
+   E.WorldEffectPlacementPolicy.SCREEN_EDGE_CANDIDATES,
+   "Stoker ambush uses source screen-edge placement")
+eq(#stoker_ambush.actors, E.StokerMotelArrival.AMBUSH_ACTOR_COUNT,
+   "Stoker list preserves all three ordered actor records")
+for index, profile_id in ipairs(E.StokerMotelArrival.AMBUSH_PROFILE_IDS) do
+    eq(stoker_ambush.actors[index].sequence_order, index - 1,
+       "Stoker actor keeps its ROM list order " .. index)
+    eq(stoker_ambush.actors[index].profile_id, profile_id,
+       "Stoker actor keeps its ROM template profile " .. index)
+    eq(stoker_ambush.actors[index].action_kind,
+       index == 1 and "item" or "none",
+       "Stoker actor keeps its ROM action template " .. index)
+end
 
 print(("field encounter tests passed (%d checks)"):format(checks))

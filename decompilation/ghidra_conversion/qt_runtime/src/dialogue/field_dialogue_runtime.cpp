@@ -222,7 +222,17 @@ bool FieldDialogueRuntime::open_stoker_arrival_result_for_dump(
     };
     arrival_command_callbacks_.forward_ambush_effect_sequence = {};
 
-    const bool arrival_opened = open_stoker_prompt(StokerMotelPromptId::arrival);
+    if (script_runtime_ != nullptr) {
+        script_runtime_->set_story_state({{"motel_bill_paid", false}});
+        script_runtime_->set_location_context(
+            "motel", "stoker_motel", "stoker.motel", "stoker");
+        script_runtime_->set_field_mode_context(
+            scripting::ScriptFieldModeContext{2U, 0x14U, 0});
+    }
+    const bool arrival_opened = open_field_exit_prompt(
+        FieldExitPromptSelection{
+            FieldExitResourceProfile::stoker_motel,
+            FieldExitPromptAsset::stoker_motel_arrival, 0x14U});
     const bool result_opened =
         arrival_opened &&
         advance_controller_events(kControllerAEvent) ==
@@ -700,6 +710,14 @@ bool FieldDialogueRuntime::present_script_operation(
 
 std::optional<std::string> FieldDialogueRuntime::invoke_script_service(
     const std::string_view service_id) {
+    if (service_id == "random.bounded_100" &&
+        arrival_command_callbacks_.sample_random_bound) {
+        const auto roll = arrival_command_callbacks_.sample_random_bound(100U);
+        if (!roll.has_value() || *roll >= 100U) {
+            return std::nullopt;
+        }
+        return "roll_" + std::to_string(*roll);
+    }
     if (service_id == "stoker_motel.resolve_arrival") {
         const auto result = resolve_stoker_motel_arrival_command(
             arrival_command_callbacks_);

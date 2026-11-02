@@ -82,6 +82,7 @@ E.MovementBearingDegrees = {
     [E.MovementDirection.NORTH_WEST] = 315,
 } -- degrees clockwise from north; native boundary converts to field angles [C]
 E.Scene = {
+    STOKER_MOTEL = 2, -- Scene 2 trigger record 91 at 0x173138; prompt 0x1F65A [C]
     JUMP_HOUSE = 13, WANDERER = 14, -- 0x1B3C06 / 0x1D5B52 scene profiles [C]
     RESOURCE_ACTIVITY_FIRST = 21, RESOURCE_ACTIVITY_LAST = 43,
     RESOURCE_ACTIVITY_21 = 21, RESOURCE_ACTIVITY_22 = 22,
@@ -98,6 +99,21 @@ E.Scene = {
     RESOURCE_ACTIVITY_43 = 43,
     LAST_ID = 55,
 } -- 0x3232 scene table; resource placements 0x15..0x2B; 0x37 is last ROM scene [C]
+E.StokerMotelArrival = {
+    RANDOM_BOUND = 100, -- 0x249C4 calls 0x0D3A with D1=100 [C]
+    AMBUSH_MINIMUM_ROLL = 0x50, -- 0x249CE..0x249D2 [C]
+    AMBUSH_ACTOR_COUNT = 3, -- ordered templates at 0x1D6E2A [C]
+    AMBUSH_PROFILE_IDS = {
+        "weenr2_k08_item01", "weenr1_k08_none00", "weenr1_k08_none00",
+    }, -- 0x1D6E2A -> 0x1D66A4, 0x1D665A, 0x1D665A [C]
+}
+E.WorldEffectSequence = {
+    -- This weighted encounter list is also called directly by 0x249C4.
+    STOKER_MOTEL_AMBUSH = "scene2.world_effect.weenr2.then.weenr1.then.weenr1",
+} -- ROM list 0x1D6E2A, weighted selector cell 0x1D71DC [C]
+E.WorldEffectPlacementPolicy = {
+    SCREEN_EDGE_CANDIDATES = "screen_edge_candidates",
+} -- ROM 0x1E1FC -> 0x1E40C [C]
 E.FieldSafe = {
     PROJECTED_EVENT = 0x1A, -- 0xB7B8 routes event 0x1A through 0x16760/0x20C90 [C]
     RENRAKU_SCENE = 0x28, -- 0x540D6 safe handler checks FFFBF8 [C]

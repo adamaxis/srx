@@ -5,6 +5,11 @@
 -- offline evidence table and never enter this runtime state.
 local Encounters = {}
 local E = require("enums")
+local direct_weighted_sequences = {
+    -- ROM 0x249C4 calls the same source list selected by the weighted cell
+    -- 0x1D71DC; retain one semantic list instead of duplicating its actors.
+    [E.WorldEffectSequence.STOKER_MOTEL_AMBUSH] = true,
+}
 
 local function integer(value, minimum, maximum)
     return type(value) == "number" and value % 1 == 0 and
@@ -294,7 +299,9 @@ function Encounters.resolve_sequence(scene_id, sequence_id)
                row.sequence_id == sequence_id and
                (row.selection_kind == "named_sequence" or
                 (row.selection_kind == "run_target_group" and
-                 row.run_target_group_id == sequence_id))
+                 row.run_target_group_id == sequence_id) or
+                (direct_weighted_sequences[sequence_id] == true and
+                 row.selection_kind == "weighted_encounter"))
     end)
     if #actors == 0 then
         return nil
