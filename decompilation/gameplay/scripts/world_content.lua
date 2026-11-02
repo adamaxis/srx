@@ -7,7 +7,6 @@ local selected_recruitment_pedestrian_variant = nil
 local E = require("enums")
 local mode_one_activities =
     require("data.mode_one_activities")
-local field_actor_contacts = require("data.field_actor_contacts")
 local imported_field_contacts =
     require("data.field_contact_dialogue_rows")
 local valid_field_scene_modes = {
@@ -501,8 +500,7 @@ function World.field_actor_contact_task(
         error("field actor contact needs semantic actor and handler facts")
     end
 
-    local activity_route = field_actor_contacts[activity_id] or
-        imported_field_contacts.by_activity_id[activity_id]
+    local activity_route = imported_field_contacts.by_activity_id[activity_id]
     if activity_route ~= nil then
         if activity_route.handler ~= handler then
             return ContactAction.START_ACTIVITY
@@ -522,15 +520,6 @@ function World.field_actor_contact_task(
         return ContactAction.START_ACTIVITY
     end
 
-    -- The A800 selector gives reachable random pedestrians a stable
-    -- candidate identity. This handles its ordinary contact response through
-    -- the same stable ID used by the encounter catalog.
-    for _, candidate in ipairs(
-        World.conditional_actor_candidates_for_scene(scene_id)) do
-        if candidate.candidate_id == activity_id then
-            return ContactAction.RANDOM_PEDESTRIAN_CONTACT
-        end
-    end
     return ContactAction.START_ACTIVITY
 end
 
@@ -560,8 +549,7 @@ function World.generic_field_contact_dialogue(
        type(row_variant) ~= "number" or row_variant % 1 ~= 0 then
         error("generic field contact needs scene, actor, and row facts")
     end
-    local activity_route = field_actor_contacts[activity_id] or
-        imported_field_contacts.by_activity_id[activity_id]
+    local activity_route = imported_field_contacts.by_activity_id[activity_id]
     local generic_dialogue = type(activity_route) == "table" and
         activity_route.generic_dialogue or nil
     if activity_route == nil or generic_dialogue == nil or

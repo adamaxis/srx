@@ -655,8 +655,8 @@ add_shadowrun_qt_qa_case(
     "${CMAKE_CURRENT_BINARY_DIR}/field-scene10-northwest-contact-qa")
 
 # Scene 10's authored default actor is the confirmed generic +0x9E bit-4
-# contact. Verify the production proximity path opens its ROM-selected text
-# on the first overlap service update and decrements the shared 60-frame lock.
+# contact. Verify the typed Lua descriptor delays its ROM-selected text until
+# the measured first-visible update and decrements the shared 60-frame lock.
 add_shadowrun_qt_qa_case(
     shadowrun_ghidra_conversion_qt_field_scene10_generic_contact_qa
     --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
@@ -664,8 +664,8 @@ add_shadowrun_qt_qa_case(
     "${CMAKE_CURRENT_BINARY_DIR}/field-scene10-generic-contact-qa")
 
 # The bulk ROM importer supplies generic dialogue routes for Ricky and the
-# hireable runner Marrs. Verify both contacts on their first headless overlap
-# update and save the resulting dialogue frame per scene.
+# hireable runner Marrs. Verify both first-visible updates and save the
+# resulting dialogue frame per scene.
 add_shadowrun_qt_qa_case(
     shadowrun_ghidra_conversion_qt_field_bulk_generic_contacts_qa
     --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"

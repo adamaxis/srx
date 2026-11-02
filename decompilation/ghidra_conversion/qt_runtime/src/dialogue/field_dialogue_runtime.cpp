@@ -185,7 +185,7 @@ bool FieldDialogueRuntime::open_gameplay_task(
     const scripting::ScriptDialogueSource source,
     const std::string_view module, const std::string_view function,
     const scripting::ScriptDialogueOpenRouteData& route_data) {
-    if (open()) {
+    if (open() || delayed_script_operation_.has_value()) {
         return false;
     }
     return start_script_task(source, module, function,
@@ -359,6 +359,9 @@ bool FieldDialogueRuntime::start_script_task(
     last_gameplay_task_result_id_.reset();
     last_gameplay_task_outcome_.reset();
     opening_descriptor_.reset();
+    delayed_script_operation_.reset();
+    first_text_delay_frames_remaining_ = 0U;
+    first_text_delay_started_ = false;
     if (script_runtime_ == nullptr) {
         return open_source_boundary(
             "dialogue script has no gameplay script runtime");
@@ -403,6 +406,19 @@ FieldDialogueRuntime::resolve_typed_outcome(
 bool FieldDialogueRuntime::present_script_operation(
     const scripting::ScriptNativeOperation& operation,
     const StokerMotelPromptId prompt, const std::size_t service_depth) {
+    // Apply the Lua route's first-text delay at the first rendered say page,
+    // even when a task makes native service calls before yielding that page.
+    if (!first_text_delay_started_ && opening_descriptor_.has_value() &&
+        opening_descriptor_->text_delay_frames != 0U &&
+        operation.type == scripting::ScriptNativeOperation::Type::ui_say) {
+        first_text_delay_started_ = true;
+        delayed_script_operation_ = operation;
+        delayed_prompt_ = prompt;
+        first_text_delay_frames_remaining_ =
+            opening_descriptor_->text_delay_frames;
+        script_task_waiting_ = true;
+        return true;
+    }
     active_prompt_ = prompt;
     active_script_operation_ = operation;
     active_script_menu_.reset();
@@ -821,6 +837,10 @@ bool FieldDialogueRuntime::open_source_boundary(std::string reason) {
     }
     boundary_reason_ = std::move(reason);
     input_lockout_frames_ = 0U;
+    first_text_delay_frames_remaining_ = 0U;
+    first_text_delay_started_ = false;
+    delayed_script_operation_.reset();
+    delayed_prompt_ = StokerMotelPromptId::source_boundary;
     panel_ = DialoguePanelView{};
     panel_.open = true;
     panel_.actor_kind = DialoguePanelActorKind::field_npc;
@@ -857,6 +877,23 @@ bool FieldDialogueRuntime::consume_input_lockout_frame() noexcept {
         return false;
     }
     --input_lockout_frames_;
+    return true;
+}
+
+bool FieldDialogueRuntime::advance_first_text_delay_frame() {
+    if (!delayed_script_operation_.has_value() ||
+        first_text_delay_frames_remaining_ == 0U) {
+        return false;
+    }
+    --first_text_delay_frames_remaining_;
+    if (first_text_delay_frames_remaining_ != 0U) {
+        return true;
+    }
+    const auto operation = std::move(*delayed_script_operation_);
+    const auto prompt = delayed_prompt_;
+    delayed_script_operation_.reset();
+    delayed_prompt_ = StokerMotelPromptId::source_boundary;
+    (void)present_script_operation(operation, prompt);
     return true;
 }
 
@@ -1483,6 +1520,10 @@ void FieldDialogueRuntime::close() noexcept {
     }
     panel_ = DialoguePanelView{};
     input_lockout_frames_ = 0U;
+    first_text_delay_frames_remaining_ = 0U;
+    first_text_delay_started_ = false;
+    delayed_script_operation_.reset();
+    delayed_prompt_ = StokerMotelPromptId::source_boundary;
     active_prompt_ = StokerMotelPromptId::source_boundary;
     active_speaker_profile_.reset();
     active_script_operation_.reset();

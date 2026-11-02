@@ -13336,6 +13336,12 @@ void FieldSceneRuntime::advance_frame() {
         source_boundary("field.vdp_mirror.vblank_stream_failed");
     }
     service_scene_music_latch();
+    // Contact timing is selected by the Lua dialogue descriptor. Hold the
+    // field update until its first page becomes visible on the measured
+    // source frame; the interaction itself is already in the Lua task.
+    if (field_dialogue_.advance_first_text_delay_frame()) {
+        return;
+    }
     if (command_overview_return_transition_active_) {
         advance_command_overview_return_transition();
         return;

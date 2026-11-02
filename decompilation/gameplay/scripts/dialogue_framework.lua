@@ -30,7 +30,7 @@ local SOURCE_DEFAULTS = {
         scene_outcome = E.FieldLocationSceneOutcome.SAME_SCENE,
         exit_behavior = E.DialogueExitBehavior.STAY,
         transition = E.DialogueTransition.NONE,
-    }, -- Actor dispatch 0xEB92 -> 0xECCC [C]; lock is route-specific.
+    }, -- Actor dispatch 0xEB92 -> 0xECCC [C]; route timing is explicit below.
     [E.DialogueSource.FIELD_EVENT] = {
         scene_outcome = E.FieldLocationSceneOutcome.NONE,
         exit_behavior = E.DialogueExitBehavior.NONE,
@@ -106,12 +106,21 @@ local ROUTE_OVERRIDES = {
         exit_behavior = E.DialogueExitBehavior.STAY,
         transition = E.DialogueTransition.NONE,
         input_lock = E.DialogueInputLock.WORLD_ACTIVITY_FFE11C,
+        text_delay_frames = E.DialogueTextDelay.CONTACT_FIRST_TEXT_FRAME_23,
     },
     ["ilene.complete_scene_20_activity"] = {
         scene_outcome = E.FieldLocationSceneOutcome.SAME_SCENE,
         exit_behavior = E.DialogueExitBehavior.STAY,
         transition = E.DialogueTransition.NONE,
         input_lock = E.DialogueInputLock.WORLD_ACTIVITY_FFE11C,
+        text_delay_frames = E.DialogueTextDelay.ILENE_FIRST_TEXT_FRAME_24,
+    },
+    ["salish_owlfeather.present_mitsuhama_contact"] = {
+        text_delay_frames = E.DialogueTextDelay.CONTACT_FIRST_TEXT_FRAME_23,
+    },
+    ["run_employee_recruitment.present_random_contact"] = {
+        text_delay_frames =
+            E.DialogueTextDelay.PEDESTRIAN_FIRST_TEXT_FRAME_22,
     },
     ["michael_package.stoker_interaction"] = {
         scene_outcome = E.FieldLocationSceneOutcome.SAME_SCENE,
@@ -134,7 +143,7 @@ local function merge(target, values)
         assert(key == "scene_outcome" or key == "exit_behavior" or
                key == "transition" or key == "return_anchor" or
                key == "return_facing" or key == "music_return_policy" or
-               key == "input_lock",
+               key == "input_lock" or key == "text_delay_frames",
             "dialogue route data has an unsupported field: " .. tostring(key))
         target[key] = value
     end
@@ -151,6 +160,8 @@ function DialogueFramework.describe(source, route_id, route_data)
     merge(descriptor, ROUTE_OVERRIDES[route_id])
     merge(descriptor, route_data)
     descriptor.input_lock = descriptor.input_lock or E.DialogueInputLock.NONE
+    descriptor.text_delay_frames = descriptor.text_delay_frames or
+        E.DialogueTextDelay.NONE
     descriptor.return_anchor = descriptor.return_anchor or
         E.FieldLocationReturnAnchor.NONE
     descriptor.return_facing = descriptor.return_facing or
@@ -176,6 +187,8 @@ function DialogueFramework.describe(source, route_id, route_data)
     assert(descriptor.input_lock == nil or
            valid_member(descriptor.input_lock, E.DialogueInputLock),
         "dialogue descriptor has an invalid input lock")
+    assert(valid_member(descriptor.text_delay_frames, E.DialogueTextDelay),
+        "dialogue descriptor has an invalid first-text delay")
     descriptor.source = source
     descriptor.route_id = route_id
     return descriptor
@@ -184,7 +197,8 @@ end
 function DialogueFramework.open(source, module_name, function_name,
                                 scene_outcome, exit_behavior, transition,
                                 return_anchor, return_facing,
-                                music_return_policy, input_lock)
+                                music_return_policy, input_lock,
+                                text_delay_frames)
     assert(type(module_name) == "string" and
            module_name:match("^[%a_][%w_]*$") ~= nil and
            type(function_name) == "string" and
@@ -200,6 +214,7 @@ function DialogueFramework.open(source, module_name, function_name,
         return_facing = return_facing,
         music_return_policy = music_return_policy,
         input_lock = input_lock,
+        text_delay_frames = text_delay_frames,
     }) do
         if value ~= "" then route_data[key] = value end
     end

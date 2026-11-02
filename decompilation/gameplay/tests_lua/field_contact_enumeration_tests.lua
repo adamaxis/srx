@@ -3,6 +3,7 @@ package.path = "decompilation/gameplay/scripts/?.lua;" ..
 
 local E = require("enums")
 local generated = require("data.field_contact_dialogue_rows")
+local DialogueFramework = require("dialogue_framework")
 local World = require("world_content")
 
 local function check(condition, message)
@@ -12,10 +13,42 @@ end
 check(generated.counts.total_spawn_records == 1102 and
       generated.counts.bit4_records == 198 and
       generated.counts.bit3_records == 71 and
-      generated.counts.resolved_talkable_records == 30 and
-      generated.counts.unresolved_records == 253 and
-      generated.counts.generated_activity_routes == 20,
+      generated.counts.resolved_talkable_records == 78 and
+      generated.counts.unresolved_records == 182 and
+      generated.counts.generated_activity_routes == 68 and
+      generated.counts.original_unresolved_census_records == 253 and
+      generated.counts.resolved_from_unresolved_records == 48 and
+      generated.counts.still_unresolved_with_reason == 182 and
+      generated.counts.non_talkable_records == 23,
       "ROM field contact enumeration counts changed")
+local category_counts = generated.counts.classification_counts
+check(category_counts.ENEMY == 182 and category_counts.PEDESTRIAN == 0 and
+      category_counts.SCRIPTED == 2 and category_counts.OTHER_ROUTE == 46 and
+      category_counts.NON_TALKABLE == 23,
+      "original unresolved contact categories changed")
+local role_counts = generated.counts.actor_role_counts
+check(role_counts.CORP_GUARD == 168 and role_counts.PEDESTRIAN == 69 and
+      role_counts.RUN_TARGET_ENCOUNTER == 14,
+      "source actor roles in unresolved census changed")
+
+local generic_delay = DialogueFramework.describe(
+    E.DialogueSource.FIELD_NPC_CONTACT, "field_generic_contacts.present")
+local ilene_delay = DialogueFramework.describe(
+    E.DialogueSource.STORY_ACTIVITY, "ilene.complete_scene_20_activity")
+local pedestrian_delay = DialogueFramework.describe(
+    E.DialogueSource.RANDOM_ENCOUNTER,
+    "run_employee_recruitment.present_random_contact")
+check(generic_delay.text_delay_frames ==
+          E.DialogueTextDelay.CONTACT_FIRST_TEXT_FRAME_23 and
+      E.DialogueTextDelay.CONTACT_FIRST_TEXT_FRAME_23 == 22 and
+      ilene_delay.text_delay_frames ==
+          E.DialogueTextDelay.ILENE_FIRST_TEXT_FRAME_24 and
+      E.DialogueTextDelay.ILENE_FIRST_TEXT_FRAME_24 == 23,
+      "typed dialogue descriptor lost the measured contact first-text frames")
+check(pedestrian_delay.text_delay_frames ==
+          E.DialogueTextDelay.PEDESTRIAN_FIRST_TEXT_FRAME_22 and
+      E.DialogueTextDelay.PEDESTRIAN_FIRST_TEXT_FRAME_22 == 21,
+      "typed dialogue descriptor lost the pedestrian first-text frame")
 
 local flagged_records = 0
 local unknown_flag_records = 0
@@ -36,6 +69,23 @@ end
 check(#generated.records == 283 and flagged_records == 269 and
       unknown_flag_records == 14 and scene_total == 1102,
       "generated contact report lost flagged or unresolved source records")
+local classified_total = 0
+local unresolved_with_reason = 0
+for _, record in ipairs(generated.records) do
+    if record.contact_resolution ~= "resolved_21174" then
+        check(record.classification ~= nil and record.classification ~= "",
+              "unresolved census record has no ROM classification")
+        classified_total = classified_total + 1
+    end
+    if record.contact_resolution:find("^unresolved_") then
+        check(record.unresolved_reason ~= nil and
+              record.unresolved_reason ~= "",
+              "still-unresolved source record has no reason")
+        unresolved_with_reason = unresolved_with_reason + 1
+    end
+end
+check(classified_total == 253 and unresolved_with_reason == 182,
+      "generated unresolved/unknown records are not fully classified")
 
 local ricky_route = generated.by_activity_id.scene_19_script
 local ricky_action = World.field_actor_contact_task(
@@ -95,10 +145,12 @@ for _, record in ipairs(generated.records) do
     end
 end
 check(ilene_record ~= nil and ilene_record.bit3 == true and
-      ilene_record.contact_resolution == "alternate_source_handler" and
-      ilene_record.unresolved_reason:find("0x54402") and
-      generated.by_activity_id.scene_20_ilene_activity == nil,
-      "Ilene's extraction contact was incorrectly treated as a 0x21174 row")
+      ilene_record.contact_resolution == "resolved_scripted_route" and
+      ilene_record.classification == "SCRIPTED" and
+      ilene_record.classification_reason:find("0x54402") and
+      generated.by_activity_id.scene_20_ilene_activity.callback_address ==
+          "0x54402",
+      "Ilene's extraction callback was not imported as a scripted route")
 
 game = {
     modules = { world_content_data = { conditional_actor_candidates = {} } },
@@ -117,6 +169,53 @@ local extraction_action = World.field_actor_contact_task(
     E.FieldActorContactHandler.PENDING_WORLD_EFFECT)
 check(extraction_action == E.FieldActorContactAction.ILENE_ACTIVITY,
       "Ilene's bit-3 extraction contact did not select its ROM callback route")
+
+local aragorn_route = generated.by_activity_id.scene_34_story_contact
+game.actors.aragorn_contact = {
+    scene_id = 34,
+    actor_facts = {
+        lifecycle = { active = true },
+        behavior = {},
+    },
+}
+local aragorn_action = World.field_actor_contact_task(
+    34, "aragorn_contact", "scene_34_story_contact",
+    E.FieldActorContactHandler.WORLD_EFFECT)
+check(aragorn_route ~= nil and aragorn_route.callback_address == "0x53C90" and
+      aragorn_route.action == E.FieldActorContactAction.ARAGORN_CONTACT and
+      aragorn_route.classification == "SCRIPTED" and
+      aragorn_action == E.FieldActorContactAction.ARAGORN_CONTACT and
+      game.actors.aragorn_contact.actor_facts.behavior.escort == true,
+      "Aragorn's bit-3 contact was not imported through its scripted route")
+
+local pedestrian_first = generated.by_activity_id.scene_21_pedestrian_first
+local pedestrian_second = generated.by_activity_id.scene_21_pedestrian_second
+local pedestrian_unreachable
+for _, record in ipairs(generated.records) do
+    if record.activity_id == "scene_21_pedestrian_unreachable" then
+        pedestrian_unreachable = record
+        break
+    end
+end
+check(pedestrian_first ~= nil and pedestrian_second ~= nil and
+      pedestrian_first.classification == "OTHER_ROUTE" and
+      pedestrian_first.callback_address == "0x1F146" and
+      pedestrian_second.action ==
+          E.FieldActorContactAction.RANDOM_PEDESTRIAN_CONTACT and
+      generated.by_activity_id.scene_21_pedestrian_unreachable == nil and
+      pedestrian_unreachable ~= nil and
+      pedestrian_unreachable.classification == "NON_TALKABLE" and
+      pedestrian_unreachable.classification_reason:find("0x0D3A"),
+      "conditional pedestrian routes or the source-unreachable third option changed")
+check(World.field_actor_contact_task(
+          21, "pedestrian_first", "scene_21_pedestrian_first",
+          E.FieldActorContactHandler.ORDINARY) ==
+          E.FieldActorContactAction.RANDOM_PEDESTRIAN_CONTACT and
+      World.field_actor_contact_task(
+          21, "pedestrian_second", "scene_21_pedestrian_second",
+          E.FieldActorContactHandler.ORDINARY) ==
+          E.FieldActorContactAction.RANDOM_PEDESTRIAN_CONTACT,
+      "reachable pedestrian contact was not resolved by the generated table")
 
 local shown_text
 game.location = { type = "field_map", id = "scene_20_ilene" }
@@ -141,4 +240,5 @@ check(Ilene.complete_scene_20_activity() == "completed" and
       shown_text:find("homemade pistol"),
       "Ilene's extraction callback did not show its source-backed dialogue")
 
-print("field contact enumeration tests passed: 1102 records, 30 resolved")
+print("field contact enumeration tests passed: 1102 records, 78 resolved, " ..
+      "253 classified (48 newly resolved, 182 unresolved, 23 non-talkable)")

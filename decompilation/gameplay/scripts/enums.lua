@@ -60,6 +60,12 @@ E.DialogueInputLock = {
     NONE = "none",
     WORLD_ACTIVITY_FFE11C = "world_activity_ffe11c",
 } -- ROM 0x1E2E0/0x1E2EC; same-pass decrement at 0x1DD94 [C]
+E.DialogueTextDelay = {
+    NONE = 0,
+    PEDESTRIAN_FIRST_TEXT_FRAME_22 = 21,
+    CONTACT_FIRST_TEXT_FRAME_23 = 22,
+    ILENE_FIRST_TEXT_FRAME_24 = 23,
+} -- Measured contact-to-first-text offsets; evidence in progress_notes.md [C]
 E.FieldLocationReturnFacing = {
     FACE_AWAY_FROM_ENTRY = "face_away_from_entry",
     PRESERVE_ENTRY = "preserve_entry",

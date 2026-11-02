@@ -9888,6 +9888,22 @@ int run_field_scene20_physical_entry_qa(
             field_scene.advance_frame();
             ++frame;
             ++contact_updates;
+            if (contact_updates < 24U && field_scene.dialogue_open()) {
+                field_scene.set_controller_port_byte(0U);
+                std::cerr << "Scene-20 Ilene QA: contact text appeared before "
+                             "measured update 24 (update=" << contact_updates
+                          << ", descriptor_delay="
+                          << static_cast<unsigned>(
+                                 field_scene.field_dialogue_first_text_delay_for_dump())
+                          << ")\n";
+                return 3;
+            }
+            if (contact_updates == 23U &&
+                !save_image("ilene-pretext-update-23", render())) {
+                std::cerr << "Scene-20 Ilene QA: pre-text frame 23 could not "
+                             "be saved\n";
+                return 3;
+            }
         }
         const auto panel = field_scene.dialogue_panel();
         const auto contact_records = field_scene.field_party_records_for_dump();
@@ -9916,7 +9932,9 @@ int run_field_scene20_physical_entry_qa(
         constexpr auto kFieldModeEffectBit1 = std::uint32_t{1U} << 1U;
         constexpr auto kAuxiliaryBit12 = std::uint32_t{1U} << 12U;
         constexpr auto kAuxiliaryBit13 = std::uint32_t{1U} << 13U;
-        if (!field_scene.dialogue_open() || !dialogue_matches ||
+        if (!field_scene.dialogue_open() || contact_updates != 24U ||
+            field_scene.field_dialogue_first_text_delay_for_dump() != 23U ||
+            !dialogue_matches ||
             field_scene.pending_world_effect_for_dump() ||
             !contact_actor_flags.has_value() ||
             (*contact_actor_flags & 0x80U) == 0U || !karma_matches ||
@@ -9992,9 +10010,7 @@ int run_field_scene20_physical_entry_qa(
                   << "scene=20 service=19 marker=FFE182 "
                   << "contact=ROM_pair_window activity=0x54402 "
                   << "contact_updates=" << contact_updates
-                  << " dialogue_open_update=" << contact_updates
-                  << " delta_updates="
-                  << (contact_updates > 0U ? contact_updates - 1U : 0U)
+                  << " dialogue_open_update=24 delta_updates=23"
                   << " text_rows=" << panel.text_segment_count
                   << " text_shown=" << dialogue_matches
                   << " karma_delta=2 one_shot=+0xB0.bit7 "
@@ -15073,6 +15089,22 @@ int run_scene10_default_generic_contact_qa(
         actor->world_position.x, actor->world_position.y);
     field_scene.set_controller_port_byte(0U);
     field_scene.advance_frame();
+    if (field_scene.dialogue_open()) {
+        std::cerr << "Scene-10 generic-contact QA: first text appeared before "
+                     "the measured frame 23\n";
+        return 3;
+    }
+    std::uint16_t dialogue_update = 1U;
+    for (std::uint16_t update = 2U; update <= 23U; ++update) {
+        field_scene.advance_frame();
+        dialogue_update = update;
+        if (update < 23U && field_scene.dialogue_open()) {
+            std::cerr << "Scene-10 generic-contact QA: first text appeared "
+                         "before measured update 23 (update=" << update
+                      << ")\n";
+            return 3;
+        }
+    }
 
     const auto& dialogue = field_scene.dialogue_panel();
     bool has_first_line = false;
@@ -15099,12 +15131,13 @@ int run_scene10_default_generic_contact_qa(
     const bool actual_saved = !actual.isNull() &&
         actual.save(QString::fromStdString(
             (output / "actual.bmp").string()));
-    if (!field_scene.dialogue_open() || !dialogue.source_complete ||
+    if (!field_scene.dialogue_open() || dialogue_update != 23U ||
+        !dialogue.source_complete ||
         !has_first_line || !has_question ||
         generic_opened == boundaries.end() || timeout != 59U ||
         resource_countdown != 59U || !actual_saved) {
-        std::cerr << "Scene-10 generic-contact QA: first overlap did not "
-                     "open the selected response on the same field update; "
+        std::cerr << "Scene-10 generic-contact QA: contact text did not first "
+                     "appear on measured update 23; "
                   << "dialogue=" << field_scene.dialogue_open()
                   << " complete=" << dialogue.source_complete
                   << " line=" << has_first_line
@@ -15115,7 +15148,7 @@ int run_scene10_default_generic_contact_qa(
         return 3;
     }
     std::cout << "scene10_generic_contact=passed first_overlap_update=1 "
-              << "dialogue_update=1 delta=0 timeout="
+              << "dialogue_update=" << dialogue_update << " delta=22 timeout="
               << static_cast<unsigned>(timeout)
               << " resource_countdown=" << resource_countdown
               << " response=scene_10_default_neutral\n";
@@ -15205,6 +15238,24 @@ int run_bulk_generic_field_contacts_qa(
             actor->world_position.x, actor->world_position.y);
         field_scene.set_controller_port_byte(0U);
         field_scene.advance_frame();
+        if (field_scene.dialogue_open()) {
+            std::cerr << "Bulk generic-contact QA: Scene "
+                      << test_case.scene
+                      << " showed text before measured frame 23\n";
+            return 3;
+        }
+        std::uint16_t dialogue_update = 1U;
+        for (std::uint16_t update = 2U; update <= 23U; ++update) {
+            field_scene.advance_frame();
+            dialogue_update = update;
+            if (update < 23U && field_scene.dialogue_open()) {
+                std::cerr << "Bulk generic-contact QA: Scene "
+                          << test_case.scene
+                          << " showed text before measured update 23 (update="
+                          << update << ")\n";
+                return 3;
+            }
+        }
 
         const auto& dialogue = field_scene.dialogue_panel();
         bool expected_text_shown = false;
@@ -15225,7 +15276,8 @@ int run_bulk_generic_field_contacts_qa(
         const bool actual_saved = !actual.isNull() &&
             actual.save(QString::fromStdString(
                 (case_output / "actual.bmp").string()));
-        if (!field_scene.dialogue_open() || !dialogue.source_complete ||
+        if (!field_scene.dialogue_open() || dialogue_update != 23U ||
+            !dialogue.source_complete ||
             !expected_text_shown || generic_open_count != 1 ||
             timeout != 59U || resource_countdown != 59U || !actual_saved) {
             std::cerr << "Bulk generic-contact QA: Scene "
@@ -15243,7 +15295,8 @@ int run_bulk_generic_field_contacts_qa(
         std::cout << "bulk_generic_contact=passed scene="
                   << test_case.scene << " activity="
                   << test_case.activity_id
-                  << " first_overlap_update=1 dialogue_update=1 delta=0"
+                  << " first_overlap_update=1 dialogue_update="
+                  << dialogue_update << " delta=22"
                   << " timeout=" << static_cast<unsigned>(timeout)
                   << " resource_countdown=" << resource_countdown
                   << " text_pointer=" << test_case.row_evidence
@@ -22364,6 +22417,12 @@ bool verify_random_pedestrian_contact_qa(
     }
     field_scene.set_controller_nibble(0U);
     field_scene.advance_frame();
+    std::uint8_t pedestrian_post_contact_updates = 1U;
+    while (!field_scene.dialogue_open() &&
+           pedestrian_post_contact_updates < 21U) {
+        field_scene.advance_frame();
+        ++pedestrian_post_contact_updates;
+    }
     trace.close();
 
     const auto contact_position =
@@ -22409,7 +22468,10 @@ bool verify_random_pedestrian_contact_qa(
         guard_action !=
             WorldEffectPlayerSpawnGuardAction::existing_effect_found ||
         field_scene.world_activity_script_actor_count_for_dump() != 1U ||
-        !field_scene.dialogue_open() || !contact_page.source_complete ||
+        !field_scene.dialogue_open() ||
+        pedestrian_post_contact_updates != 21U ||
+        field_scene.field_dialogue_first_text_delay_for_dump() != 21U ||
+        !contact_page.source_complete ||
         contact_page.actor_name != "Mortimer Reed" ||
         contact_page.portrait_alias !=
             "dialogue.portraits.mortimer.reed" ||
@@ -22436,6 +22498,8 @@ bool verify_random_pedestrian_contact_qa(
                   << ", active_escort=" << contact_escort_is_active
                   << ", guard=" << static_cast<unsigned>(guard_action)
                   << ", dialogue=" << field_scene.dialogue_open()
+                  << ", post_contact_updates="
+                  << static_cast<unsigned>(pedestrian_post_contact_updates)
                   << ", speaker=" << contact_page.actor_name
                   << ", portrait=" << contact_page.portrait_alias
                   << ", text=" << page_contains("Hey! There you are.")
@@ -22443,10 +22507,9 @@ bool verify_random_pedestrian_contact_qa(
         return false;
     }
 
-    // ROM 0x1F3C4 takes the no-options path for this prompt, waits 0x1E
-    // VBlanks, then returns on a controller event. The release frame above
-    // samples the first neutral event; 30 more neutral updates clear the
-    // host's measured closing-page lockout before the next press.
+    // The 0x1F146 contact reaches first text on GPGX frame 22 after contact;
+    // the first release frame plus 20 neutral field passes above reproduce
+    // that delay. ROM 0x1F3C4 then waits 0x1E VBlanks before controller input.
     for (std::uint8_t frame = 0U; frame < 30U; ++frame) {
         field_scene.set_controller_port_byte(0U);
         field_scene.advance_frame();
@@ -22455,6 +22518,15 @@ bool verify_random_pedestrian_contact_qa(
                          "before its 30-frame input wait\n";
             return false;
         }
+    }
+    // The first ordinary input sample follows the completed 30-frame source
+    // wait. The pre-text upload and wait above deliberately did not sample it.
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    if (!field_scene.dialogue_open() || field_scene.dialogue_input_locked()) {
+        std::cerr << "Pedestrian scenes QA: page did not reach its input wait "
+                     "after 30 source frames\n";
+        return false;
     }
     field_scene.set_controller_port_byte(dismissal_port_byte);
     field_scene.advance_frame();
@@ -26170,7 +26242,9 @@ int run_field_mitsuhama_after_hours_entry_qa(
     const auto contact_mode_flags = field_scene.field_mode_flags_for_dump();
     const auto& contact_page = field_scene.dialogue_panel();
     const bool contact_opened =
-        contact_updates < 180U && field_scene.dialogue_open() &&
+        contact_updates == 21U &&
+        field_scene.field_dialogue_first_text_delay_for_dump() == 22U &&
+        field_scene.dialogue_open() &&
         contact_page.source_complete && contact_page.option_count == 1U &&
         contact_page.options[0U].source_label.find("MORE") !=
             std::string_view::npos &&
@@ -26198,6 +26272,9 @@ int run_field_mitsuhama_after_hours_entry_qa(
                      "(updates=" << contact_updates << ", dialogue="
                   << field_scene.dialogue_open() << ", text="
                   << page_contains("Walking into the room")
+                  << ", descriptor_delay="
+                  << static_cast<unsigned>(
+                         field_scene.field_dialogue_first_text_delay_for_dump())
                   << ", portrait=" << contact_page.portrait_alias
                   << ", world_effect="
                   << field_scene.world_effect_active_for_dump()

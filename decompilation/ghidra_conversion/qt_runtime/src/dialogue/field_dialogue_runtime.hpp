@@ -114,6 +114,10 @@ public:
     // call, so a button still held afterwards is a new edge). Returns true
     // and counts one frame while that wait lasts.
     bool consume_input_lockout_frame() noexcept;
+    // A Lua dialogue descriptor may delay its first contact page by a
+    // source-measured number of field updates. Returns true when a delayed
+    // update was consumed, including the update that presents the page.
+    bool advance_first_text_delay_frame();
     bool input_lockout_active() const noexcept {
         return panel_.open && input_lockout_frames_ != 0U;
     }
@@ -190,6 +194,8 @@ private:
     std::optional<scripting::ScriptSpeakerProfile> active_speaker_profile_;
     std::optional<scripting::ScriptNativeOperation>
         active_script_operation_;
+    std::optional<scripting::ScriptNativeOperation>
+        delayed_script_operation_;
     std::optional<scripting::ScriptMenuDefinition> active_script_menu_;
     // A button-choice menu with more rows than button_choice_limit: the host
     // moves a cursor over the rows and A/B/C confirm the highlighted row.
@@ -206,6 +212,10 @@ private:
     std::string retained_credits_page_asset_alias_;
     std::string retained_credits_page_id_;
     std::uint8_t input_lockout_frames_ = 0U;
+    std::uint8_t first_text_delay_frames_remaining_ = 0U;
+    bool first_text_delay_started_ = false;
+    StokerMotelPromptId delayed_prompt_ =
+        StokerMotelPromptId::source_boundary;
     std::optional<std::uint8_t> pending_matrix_entry_system_id_;
     std::optional<std::uint8_t> pending_matrix_entry_node_id_;
     std::optional<std::string> last_gameplay_task_result_id_;

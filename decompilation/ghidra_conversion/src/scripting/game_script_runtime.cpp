@@ -6725,6 +6725,7 @@ struct GameScriptRuntime::Impl {
         }
         const auto descriptor_index = lua_absindex(task_state, -1);
         ScriptDialogueOpenDescriptor descriptor{};
+        std::uint32_t text_delay_frames = 0U;
         const auto read_optional = [this, descriptor_index](
             const char* field, std::string& value) {
             lua_getfield(task_state, descriptor_index, field);
@@ -6748,9 +6749,14 @@ struct GameScriptRuntime::Impl {
             read_optional("return_facing", descriptor.return_facing) &&
             read_optional("music_return_policy",
                           descriptor.music_return_policy) &&
-            read_optional("input_lock", descriptor.input_lock);
+            read_optional("input_lock", descriptor.input_lock) &&
+            read_field_integer(task_state, descriptor_index,
+                               "text_delay_frames", 255U,
+                               text_delay_frames);
         lua_pop(task_state, 3);
         if (!valid) return std::nullopt;
+        descriptor.text_delay_frames =
+            static_cast<std::uint8_t>(text_delay_frames);
         return descriptor;
     }
 

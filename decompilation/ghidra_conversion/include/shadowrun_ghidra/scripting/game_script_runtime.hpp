@@ -1155,6 +1155,7 @@ struct ScriptDialogueOpenDescriptor {
     std::string return_facing;
     std::string music_return_policy;
     std::string input_lock;
+    std::uint8_t text_delay_frames = 0U;
 };
 
 // A resolved field route may refine a source default without changing the

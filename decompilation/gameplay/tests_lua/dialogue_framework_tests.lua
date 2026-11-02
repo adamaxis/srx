@@ -25,6 +25,30 @@ equal(contact.exit_behavior, E.DialogueExitBehavior.STAY,
     "NPC contact has a stay-in-place close")
 equal(contact.input_lock, E.DialogueInputLock.WORLD_ACTIVITY_FFE11C,
     "generic contact declares the shared input lock")
+equal(contact.text_delay_frames,
+    E.DialogueTextDelay.CONTACT_FIRST_TEXT_FRAME_23,
+    "generic contact follows its measured first-text frame")
+
+local ilene_contact = DialogueFramework.describe(
+    E.DialogueSource.STORY_ACTIVITY,
+    "ilene.complete_scene_20_activity")
+equal(ilene_contact.text_delay_frames,
+    E.DialogueTextDelay.ILENE_FIRST_TEXT_FRAME_24,
+    "Ilene contact follows its measured first-text frame")
+
+local pedestrian_contact = DialogueFramework.describe(
+    E.DialogueSource.RANDOM_ENCOUNTER,
+    "run_employee_recruitment.present_random_contact")
+equal(pedestrian_contact.text_delay_frames,
+    E.DialogueTextDelay.PEDESTRIAN_FIRST_TEXT_FRAME_22,
+    "random pedestrian contact uses its measured first-text frame")
+
+local aragorn_contact = DialogueFramework.describe(
+    E.DialogueSource.STORY_ACTIVITY,
+    "salish_owlfeather.present_mitsuhama_contact")
+equal(aragorn_contact.text_delay_frames,
+    E.DialogueTextDelay.CONTACT_FIRST_TEXT_FRAME_23,
+    "Aragorn's story contact uses the common measured first-text frame")
 
 local exit = DialogueFramework.describe(
     E.DialogueSource.BUILDING_EXIT, "michael_package.present_field_exit_prompt")
@@ -50,6 +74,12 @@ local unlocked = DialogueFramework.describe(
     E.DialogueSource.SCRIPTED_ENCOUNTER, "fixture.unlocked")
 equal(unlocked.input_lock, E.DialogueInputLock.NONE,
     "a dialogue declares an explicit no-lock policy")
+equal(unlocked.text_delay_frames, E.DialogueTextDelay.NONE,
+    "unrelated dialogues do not inherit contact presentation delay")
+local unrelated_field_route = DialogueFramework.describe(
+    E.DialogueSource.FIELD_NPC_CONTACT, "fixture.field_service")
+equal(unrelated_field_route.text_delay_frames, E.DialogueTextDelay.NONE,
+    "unrelated field services do not inherit actor-contact presentation delay")
 equal(unlocked.return_anchor, E.FieldLocationReturnAnchor.NONE,
     "a dialogue declares no source-door return by default")
 equal(unlocked.music_return_policy, E.FieldLocationMusicReturnPolicy.NONE,

@@ -658,6 +658,12 @@ public:
         return command_overview_.view().source_state.primary_page;
     }
     bool dialogue_open() const noexcept { return field_dialogue_.open(); }
+    std::uint8_t field_dialogue_first_text_delay_for_dump() const noexcept {
+        const auto& descriptor = field_dialogue_.opening_descriptor();
+        return descriptor.has_value()
+                   ? descriptor->text_delay_frames
+                   : std::uint8_t{0U};
+    }
     bool dialogue_input_locked() const noexcept {
         return field_dialogue_.input_lockout_active();
     }

@@ -68,7 +68,7 @@ WORLD_ACTIVITY_LISTS = (
     (17, 7, 0x170D8, "scene_17_script"),
     (18, 8, 0x170F4, "scene_18_script"),
     (19, 9, 0x16FFC, "scene_19_script"),
-    (20, -1, 0xA8CC, "scene_20_ilene_pending_list"),
+    (20, -1, 0xA8CC, "scene_20_ilene_activity"),
     (34, -1, 0xA8AE, "scene_34_story_contact"),
     (47, -1, 0x1E552, "mode_13_entry"),
     (47, -1, 0x1E5C4, "pending_list_1e5c4"),
@@ -99,6 +99,9 @@ class SpawnRecord:
     flag_source: str
     contact_resolution: str = "not_contact_flagged"
     unresolved_reason: str = ""
+    classification_reason: str = ""
+    classification: str = ""
+    actor_role: str = ""
     contact_variants: dict[int, dict[int, dict[str, Any]]] = field(
         default_factory=dict
     )
@@ -309,6 +312,13 @@ def parse_pointer_only_list(
                 flags=None,
                 flag_source=flag_source,
                 contact_resolution="unresolved_flag_source",
+                classification="ENEMY",
+                actor_role="RUN_TARGET_ENCOUNTER",
+                classification_reason=(
+                    f"encounter actor selected from pointer-only list "
+                    f"0x{list_offset:X} through "
+                    f"{'0x1F086 run-target dispatch' if category == 'run_target_gang_actor' else '0x21BE4 -> 0x1E216 strike-team dispatch'}"
+                ),
                 unresolved_reason=(
                     "pointer-only actor list does not provide the final live "
                     "+0x9E byte; contact bits remain unresolved"
@@ -405,18 +415,45 @@ def mark_contact_rows(rom: bytes, records: list[SpawnRecord]) -> None:
         if not (record.bit4 or record.bit3) and record.flags is not None:
             continue
         if record.bit3:
-            record.contact_resolution = "alternate_source_handler"
             if record.source_list == 0xA8CC:
-                record.unresolved_reason = (
+                record.contact_resolution = "resolved_scripted_route"
+                record.classification = "SCRIPTED"
+                record.actor_role = "scene_20_ilene_activity"
+                record.classification_reason = (
                     "bit 3 dispatches the Scene-20 pending world-effect "
                     "callback 0x54402; no 0x21174/0xFE640 row"
                 )
             elif record.source_list == 0xA8AE:
-                record.unresolved_reason = (
+                record.contact_resolution = "resolved_scripted_route"
+                record.classification = "SCRIPTED"
+                record.actor_role = "scene_34_story_contact"
+                record.classification_reason = (
                     "bit 3 dispatches the Scene-34 active world-effect "
                     "callback 0x53C90; no 0x21174/0xFE640 row"
                 )
+            elif record.category == "conditional_pedestrian_candidate":
+                record.actor_role = "PEDESTRIAN"
+                if record.activity_id and record.activity_id.endswith(
+                    "_unreachable"
+                ):
+                    record.contact_resolution = "non_talkable_source_gate"
+                    record.classification = "NON_TALKABLE"
+                    record.classification_reason = (
+                        "choice 3 is not reachable: 0xA84C requires "
+                        "FFF BED=5 and FFDF40=2; 0xA86E supplies random "
+                        "bound 2 to 0x0D3A and 0xA878 adds 1, so only "
+                        "choices 1/2 spawn"
+                    )
+                else:
+                    record.contact_resolution = "resolved_other_route"
+                    record.classification = "OTHER_ROUTE"
+                    record.classification_reason = (
+                        "reachable bit-3 pedestrian uses the ordinary "
+                        "0x1F146 callback, not the generic 0x21174 row path"
+                    )
             else:
+                record.contact_resolution = "unresolved_alternate_route"
+                record.classification = "OTHER_ROUTE"
                 record.unresolved_reason = (
                     "bit 3 dispatches the 0xECCC one-shot activity path "
                     "(0x1F146 or selected world-effect callback), not 0x21174"
@@ -428,6 +465,13 @@ def mark_contact_rows(rom: bytes, records: list[SpawnRecord]) -> None:
         variants = generic_variants_for_record(rom, record)
         if variants is None:
             record.contact_resolution = "unresolved_generic_row"
+            record.classification = "ENEMY"
+            record.actor_role = "CORP_GUARD"
+            record.classification_reason = (
+                "ROM actor name is corp guard; the record is in an alarm "
+                "reinforcement or 0x1E20A sequence; its generic row is not "
+                "safely resolved for this scene"
+            )
             record.unresolved_reason = (
                 "0xECCC only has a documented row-group table for scenes "
                 "10..19 (0xEEFE..0xEF07); this scene indexes outside that span"
@@ -435,6 +479,13 @@ def mark_contact_rows(rom: bytes, records: list[SpawnRecord]) -> None:
             continue
         if any(variant > 9 for variant in variants):
             record.contact_resolution = "unresolved_generic_row"
+            record.classification = "ENEMY"
+            record.actor_role = "CORP_GUARD"
+            record.classification_reason = (
+                "ROM actor name is corp guard; the record is in an alarm "
+                "reinforcement or 0x1E20A sequence; its generic row is not "
+                "safely resolved for this scene"
+            )
             record.unresolved_reason = (
                 "0xECCC supplies a scene byte outside the ten 0xFE640 row "
                 "groups; no safe dialogue-row resolution"
@@ -451,9 +502,18 @@ def mark_contact_rows(rom: bytes, records: list[SpawnRecord]) -> None:
                 }
             record.contact_variants = resolved
             record.contact_resolution = "resolved_21174"
+            record.classification = "GENERIC_CONTACT"
+            record.actor_role = "FIELD_CONTACT"
             record.unresolved_reason = ""
         except ValueError as error:
             record.contact_resolution = "unresolved_generic_row"
+            record.classification = "ENEMY"
+            record.actor_role = "CORP_GUARD"
+            record.classification_reason = (
+                "ROM actor name is corp guard; the record is in an alarm "
+                "reinforcement or 0x1E20A sequence; its generic row is not "
+                "safely resolved for this scene"
+            )
             record.unresolved_reason = str(error)
 
 
@@ -674,22 +734,48 @@ def build_lua_model(records: list[SpawnRecord], summary: dict[str, Any]) -> dict
             "flag_source": record.flag_source,
             "bit4": record.bit4,
             "bit3": record.bit3,
+            "classification": record.classification,
+            "actor_role": record.actor_role,
+            "classification_reason": record.classification_reason,
             "contact_resolution": record.contact_resolution,
             "unresolved_reason": record.unresolved_reason,
         }
         report_records.append(entry)
-        if record.contact_resolution != "resolved_21174" or not record.activity_id:
+        if not record.activity_id:
             continue
-        activity = by_activity.setdefault(
-            record.activity_id,
-            {
+        if record.contact_resolution == "resolved_21174":
+            route = {
                 "scene_id": record.scene,
                 "handler": "ordinary",
                 "action": "generic_dialogue",
+                "classification": record.classification,
+                "callback_address": "0x21174",
                 "source_records": [],
                 "rows_by_variant": {},
-            },
-        )
+            }
+        elif record.contact_resolution == "resolved_other_route":
+            route = {
+                "scene_id": record.scene,
+                "handler": "ordinary",
+                "action": "random_pedestrian_contact",
+                "classification": record.classification,
+                "callback_address": "0x1F146",
+                "source_records": [],
+            }
+        elif record.contact_resolution == "resolved_scripted_route":
+            is_ilene = record.source_list == 0xA8CC
+            route = {
+                "scene_id": record.scene,
+                "handler": "pending_world_effect" if is_ilene else "world_effect",
+                "action": "ilene_activity" if is_ilene else "aragorn_contact",
+                "classification": record.classification,
+                "callback_address": "0x54402" if is_ilene else "0x53C90",
+                "mark_escort": True,
+                "source_records": [],
+            }
+        else:
+            continue
+        activity = by_activity.setdefault(record.activity_id, route)
         if activity["scene_id"] != record.scene:
             raise ValueError(
                 f"activity ID {record.activity_id!r} is reused in multiple scenes"
@@ -701,8 +787,12 @@ def build_lua_model(records: list[SpawnRecord], summary: dict[str, Any]) -> dict
                 "source_record": f"0x{record.source_record:X}",
                 "template_offset": f"0x{record.template:X}",
                 "actor_name": record.actor_name,
+                "classification": record.classification,
+                "contact_resolution": record.contact_resolution,
             }
         )
+        if record.contact_resolution != "resolved_21174":
+            continue
         for variant, rows in record.contact_variants.items():
             variant_rows = activity["rows_by_variant"].setdefault(variant, {})
             for offset, response in rows.items():
@@ -725,19 +815,57 @@ def build_lua_model(records: list[SpawnRecord], summary: dict[str, Any]) -> dict
                     ],
                 }
 
+    target_records = [
+        record for record in records
+        if (record.flags is None or record.bit4 or record.bit3)
+        and record.contact_resolution != "resolved_21174"
+    ]
+    classification_counts: dict[str, int] = {
+        name: 0
+        for name in ("ENEMY", "PEDESTRIAN", "SCRIPTED", "OTHER_ROUTE", "NON_TALKABLE")
+    }
+    actor_role_counts: dict[str, int] = defaultdict(int)
+    for record in target_records:
+        if record.classification:
+            classification_counts[record.classification] += 1
+        if record.actor_role:
+            actor_role_counts[record.actor_role] += 1
+    resolved_target_records = sum(
+        record.contact_resolution in {
+            "resolved_other_route", "resolved_scripted_route"
+        }
+        for record in target_records
+    )
+    unresolved_target_records = sum(
+        record.contact_resolution.startswith("unresolved_")
+        for record in target_records
+    )
+    non_talkable_target_records = sum(
+        record.contact_resolution == "non_talkable_source_gate"
+        for record in target_records
+    )
     counts = {
         "total_spawn_records": summary["total_spawn_records"],
         "bit4_records": sum(record.bit4 for record in records),
         "bit3_records": sum(record.bit3 for record in records),
         "resolved_talkable_records": sum(
-            record.contact_resolution == "resolved_21174" for record in records
+            record.contact_resolution in {
+                "resolved_21174", "resolved_other_route", "resolved_scripted_route"
+            }
+            for record in records
         ),
         "unresolved_records": sum(
-            record.contact_resolution != "resolved_21174"
+            record.contact_resolution.startswith("unresolved_")
             and (record.flags is None or record.bit4 or record.bit3)
             for record in records
         ),
         "generated_activity_routes": len(by_activity),
+        "original_unresolved_census_records": len(target_records),
+        "resolved_from_unresolved_records": resolved_target_records,
+        "still_unresolved_with_reason": unresolved_target_records,
+        "non_talkable_records": non_talkable_target_records,
+        "classification_counts": classification_counts,
+        "actor_role_counts": dict(sorted(actor_role_counts.items())),
     }
     per_scene: dict[int, dict[str, int]] = {
         scene: {
@@ -756,7 +884,9 @@ def build_lua_model(records: list[SpawnRecord], summary: dict[str, Any]) -> dict
         scene["bit3_records"] += int(record.bit3)
         if record.contact_resolution == "resolved_21174":
             scene["resolved_talkable_records"] += 1
-        elif record.flags is None or record.bit4 or record.bit3:
+        elif record.contact_resolution.startswith("unresolved_") and (
+            record.flags is None or record.bit4 or record.bit3
+        ):
             scene["unresolved_records"] += 1
 
     return {
@@ -821,42 +951,57 @@ def render_lua(model: dict[str, Any]) -> str:
         "    by_activity_id = {",
     ]
     for activity_id, route in sorted(model["by_activity_id"].items()):
+        handler_enum = {
+            "ordinary": "ORDINARY",
+            "world_effect": "WORLD_EFFECT",
+            "pending_world_effect": "PENDING_WORLD_EFFECT",
+        }[route["handler"]]
+        action_enum = {
+            "generic_dialogue": "GENERIC_DIALOGUE",
+            "random_pedestrian_contact": "RANDOM_PEDESTRIAN_CONTACT",
+            "aragorn_contact": "ARAGORN_CONTACT",
+            "ilene_activity": "ILENE_ACTIVITY",
+        }[route["action"]]
         lines.extend(
             [
                 f"        [{json.dumps(activity_id)}] = {{",
                 f"            scene_id = {route['scene_id']},",
-                "            handler = E.FieldActorContactHandler.ORDINARY,",
-                "            action = E.FieldActorContactAction.GENERIC_DIALOGUE,",
+                f"            handler = E.FieldActorContactHandler.{handler_enum},",
+                f"            action = E.FieldActorContactAction.{action_enum},",
+                f"            classification = {json.dumps(route['classification'])},",
+                f"            callback_address = {json.dumps(route['callback_address'])},",
                 "            source_records = "
                 + lua_literal(route["source_records"], level=3)
                 + ",",
-                "            generic_dialogue = {",
-                "                signed_selector = E.GenericFieldContact.SIGNED_SELECTOR_NEUTRAL,",
-                "                rows_by_variant = {",
             ]
         )
-        for variant, rows in sorted(route["rows_by_variant"].items()):
-            lines.append(
-                f"                    [E.GenericFieldContactVariant.GROUP_{variant}] = {{"
+        if route.get("mark_escort"):
+            lines.append("            mark_escort = true,")
+        if route["action"] == "generic_dialogue":
+            lines.extend(
+                [
+                    "            generic_dialogue = {",
+                    "                signed_selector = E.GenericFieldContact.SIGNED_SELECTOR_NEUTRAL,",
+                    "                rows_by_variant = {",
+                ]
             )
-            for offset, content_id in sorted(rows.items()):
-                row_constant = {
-                    0: "ROW_OFFSET_DEFAULT",
-                    8: "ROW_OFFSET_HIGH",
-                    12: "ROW_OFFSET_NEGATIVE",
-                }[offset]
+            for variant, rows in sorted(route["rows_by_variant"].items()):
                 lines.append(
-                    f"                        [E.GenericFieldContact.{row_constant}] = "
-                    f"{json.dumps(content_id)},"
+                    f"                    [E.GenericFieldContactVariant.GROUP_{variant}] = {{"
                 )
-            lines.append("                    },")
-        lines.extend(
-            [
-                "                },",
-                "            },",
-                "        },",
-            ]
-        )
+                for offset, content_id in sorted(rows.items()):
+                    row_constant = {
+                        0: "ROW_OFFSET_DEFAULT",
+                        8: "ROW_OFFSET_HIGH",
+                        12: "ROW_OFFSET_NEGATIVE",
+                    }[offset]
+                    lines.append(
+                        f"                        [E.GenericFieldContact.{row_constant}] = "
+                        f"{json.dumps(content_id)},"
+                    )
+                lines.append("                    },")
+            lines.extend(["                },", "            },"])
+        lines.append("        },")
     lines.extend(["    },", "    responses = {"])
     for content_id, response in sorted(model["responses"].items()):
         lines.extend(
@@ -891,6 +1036,9 @@ REPORT_FIELDS = (
     "flag_source",
     "bit4",
     "bit3",
+    "classification",
+    "actor_role",
+    "classification_reason",
     "contact_resolution",
     "unresolved_reason",
     "resolved_variants",
@@ -925,9 +1073,12 @@ def render_report(records: list[SpawnRecord]) -> str:
                 "flag_source": record.flag_source,
                 "bit4": "" if record.flags is None else str(int(record.bit4)),
                 "bit3": "" if record.flags is None else str(int(record.bit3)),
+                "classification": record.classification,
+                "actor_role": record.actor_role,
+                "classification_reason": record.classification_reason,
                 "contact_resolution": record.contact_resolution,
                 "unresolved_reason": record.unresolved_reason,
-                "resolved_variants": variants,
+                "resolved_variants": variants or "none",
             }
         )
     from io import StringIO
@@ -951,6 +1102,16 @@ def summary_text(model: dict[str, Any]) -> str:
         "field contact enumeration (US ROM)",
         "counts: "
         + ", ".join(f"{name}={value}" for name, value in counts.items()),
+        "classification counts for the original 253 unresolved records: "
+        + ", ".join(
+            f"{name}={value}"
+            for name, value in counts["classification_counts"].items()
+        ),
+        "source actor roles in that census: "
+        + ", ".join(
+            f"{name}={value}"
+            for name, value in counts["actor_role_counts"].items()
+        ),
         "per scene: scene total bit4 bit3 resolved unresolved",
     ]
     for scene, row in model["per_scene"].items():
@@ -1006,7 +1167,7 @@ def main() -> int:
             return 1
         print(
             f"verified {model['counts']['total_spawn_records']} spawn records; "
-            f"{model['counts']['resolved_talkable_records']} generic rows"
+            f"{model['counts']['resolved_talkable_records']} talkable contact routes"
         )
         return 0
 
