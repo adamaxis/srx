@@ -139,6 +139,10 @@ if(SRX_CAPSTONE_IMPORT_RESULT EQUAL 0)
     add_test(NAME shadowrun_rom_byte_reachability_semantics
              COMMAND "${Python3_EXECUTABLE}"
                      "${CMAKE_CURRENT_SOURCE_DIR}/tests/rom_reachability_test.py")
+    add_test(NAME shadowrun_b3_outside_range_triage_check
+             COMMAND "${Python3_EXECUTABLE}"
+                     "${CMAKE_CURRENT_SOURCE_DIR}/tests/b3_outside_range_triage_check.py"
+                     --check)
 endif()
 
 # Offline extraction helper for the source records consumed by the converted
