@@ -1687,7 +1687,7 @@ local function datastore(system_key, facts)
     return result
 end
 local function set_story_flag(flag, value)
-    game.state["story_flag_bit_" .. flag] = value
+    game.state[flag] = value
 end
 local function set_story_flags(values)
     game = { state = {} }
@@ -1770,7 +1770,7 @@ local gates_financial = datastore("gates_undersound", {
 })
 eq(SpecialDatastore.can_match(gates_financial, "Financial Data"), false,
     "Gates financial report waits for the Mako story fact")
-set_story_flags({ [E.StoryFlag.MAKO_DEFEATED] = true })
+set_story_flags({ [E.StoryFact.MAKO_DEFEATED] = true })
 eq(SpecialDatastore.matches(gates_financial, "Financial Data"), true,
     "Gates financial report appears after Mako is defeated")
 local aztechnology = datastore("aztechnology", {
@@ -1779,7 +1779,7 @@ local aztechnology = datastore("aztechnology", {
 eq(SpecialDatastore.matches(aztechnology, "Confidntl Data"), true,
     "Aztechnology confidential report records its collection fact")
 
-set_story_flags({ [E.StoryFlag.HEART_DELIVERED] = false })
+set_story_flags({ [E.StoryFact.HEART_DELIVERED] = false })
 local fuchi = datastore("fuchi", {
     fuchi_management_file_collected = false,
     fuchi_security_file_collected = false,
@@ -1812,7 +1812,7 @@ eq(SpecialDatastore.matches(mitsuhama, "Confidntl Data"), true,
 eq(SpecialDatastore.can_match(mitsuhama, "Security Files"), false,
     "Mitsuhama security report waits for the Aragorn story fact")
 -- [C] ROM 0x55204..0x55220 requires Aragorn-unfound and an uncollected file.
-set_story_flag(E.StoryFlag.ARAGORN_FOUND, false)
+set_story_flag(E.StoryFact.ARAGORN_FOUND, false)
 eq(SpecialDatastore.matches(mitsuhama, "Security Files"), true,
     "Mitsuhama security report requires Aragorn to remain undiscovered")
 
@@ -1824,7 +1824,7 @@ local hollywood = datastore("hollywood", {
 })
 eq(SpecialDatastore.can_match(hollywood, "Prisoner Files"), false,
     "Hollywood prisoner file waits for the Ilene story fact")
-set_story_flag(E.StoryFlag.ILENE_MET, false)
+set_story_flag(E.StoryFact.ILENE_MET, false)
 eq(SpecialDatastore.matches(hollywood, "Prisoner Files"), true,
     "Hollywood prisoner file follows the Ilene condition")
 eq(SpecialDatastore.matches(hollywood, "Outdated Files"), true,
@@ -1832,7 +1832,7 @@ eq(SpecialDatastore.matches(hollywood, "Outdated Files"), true,
 
 -- [C] ROM 0x553B2..0x55490 checks Renraku's ordered project outcomes.
 set_story_flags({
-    [E.StoryFlag.MAKO_DEFEATED] = true,
+    [E.StoryFact.MAKO_DEFEATED] = true,
 })
 local renraku = datastore("renraku", {
     renraku_confidential_file_collected = false,
@@ -1846,9 +1846,9 @@ local renraku = datastore("renraku", {
 })
 eq(SpecialDatastore.can_match(renraku, "Project Files"), false,
     "unknown earlier Renraku story facts block later ordered reports")
-set_story_flag(E.StoryFlag.SHAMAN_PELT_GIVEN, true)
-set_story_flag(E.StoryFlag.SERPENT_SCALE_TAKEN, false)
-set_story_flag(E.StoryFlag.MICHAEL_ALIAS_LEARNED, true)
+set_story_flag(E.StoryFact.SHAMAN_PELT_GIVEN, true)
+set_story_flag(E.StoryFact.SERPENT_SCALE_TAKEN, false)
+set_story_flag(E.StoryFact.MICHAEL_ALIAS_LEARNED, true)
 eq(SpecialDatastore.matches(renraku, "Project Files"), true,
     "Renraku project search selects the shaman report first")
 eq(renraku.renraku_shaman_project_report_collected, true,
@@ -1863,19 +1863,19 @@ eq(SpecialDatastore.can_match(renraku, "Project Files"), false,
     "all four Renraku project outcomes prevent further story matches")
 eq(SpecialDatastore.matches(renraku, "Mngmnt Files"), true,
     "Renraku management report follows Michael's alias")
-set_story_flag(E.StoryFlag.MAKO_DEFEATED, false)
-set_story_flag(E.StoryFlag.MICHAEL_MISSION_TOLD, false)
+set_story_flag(E.StoryFact.MAKO_DEFEATED, false)
+set_story_flag(E.StoryFact.MICHAEL_MISSION_TOLD, false)
 eq(SpecialDatastore.matches(renraku, "Confidntl Data"), true,
     "Renraku confidential report records its first outcome")
 eq(SpecialDatastore.can_match(renraku, "Confidntl Data"), false,
     "Renraku confidential follow-up stays gated when neither mission fact is set")
-set_story_flag(E.StoryFlag.MAKO_DEFEATED, true)
+set_story_flag(E.StoryFact.MAKO_DEFEATED, true)
 eq(SpecialDatastore.matches(renraku, "Confidntl Data"), true,
     "Renraku confidential report exposes its Mako follow-up")
 eq(SpecialDatastore.can_match(renraku, "Security Files"), false,
     "Renraku security path stays gated while its source prerequisites are absent")
 
-set_story_flags({ [E.StoryFlag.HEART_DELIVERED] = false })
+set_story_flags({ [E.StoryFact.HEART_DELIVERED] = false })
 local lone_star = datastore("lone_star", {
     lone_star_financial_file_collected = false,
     lone_star_prisoner_file_collected = false,
@@ -1888,7 +1888,7 @@ eq(SpecialDatastore.matches(lone_star, "Prisoner Files"), true,
 eq(SpecialDatastore.can_match(lone_star, "Case Files"), false,
     "Lone Star case file remains gated without its source state")
 
-set_story_flags({ [E.StoryFlag.ILENE_MET] = false })
+set_story_flags({ [E.StoryFact.ILENE_MET] = false })
 local ares = datastore("ares", {
     ares_confidential_file_collected = false,
     ares_confidential_followup_collected = false,

@@ -15,8 +15,9 @@ int main() {
         MovementDirection::south,
         std::nullopt,
         MovementDirection::west,
-        MovementDirection::south_west,
+        // 0x19D2[5]=0xE000 (Up+Left), [6]=0xA000 (Down+Left).
         MovementDirection::north_west,
+        MovementDirection::south_west,
         std::nullopt,
         MovementDirection::east,
         MovementDirection::north_east,

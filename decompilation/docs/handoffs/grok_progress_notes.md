@@ -3,7 +3,7 @@
 This file is kept in the repo so the notes survive if the box is wiped. The box's /workspace/shadowrun/out was lost on 2026-10-31.
 Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 
-## Current state (2026-11-01 18:32 CST)
+## Current state (2026-11-01 18:38 CST)
 - Remote port-fixes: see latest Fixes entry. QA_GREEN (ctest all pass, Lua suites pass). Working playtest_2026-11-01 items one Luna run at a time.
 - In progress: Luna (codex exec, gpt-6-luna, max effort, fast tier off) is fixing aa3b2cb7 forward. Brief is /workspace/briefs/aa3b.md, the earlier partial work is /workspace/briefs/aa3b_wip.diff and stash 'aa3b-wip'.
 - Box toolchain: `. /workspace/tcenv.sh` (conda env /workspace/mamba/envs/srx). Build dirs are /workspace/b2 (Qt) and /workspace/b2n (non-Qt). Full QA is /workspace/qa.sh, which prints QA_GREEN.
@@ -45,6 +45,7 @@ Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 - playtest #20: Resume the area music after building and service exits. Evidence: ROM fade 0x53126..0x53156 then stop-same/start 0x2900..0x2916/0x530EA; headless backend sweep: track playing, atten 0 after all 30 exits
 - playtest #18: Match ROM staging for unarmed and Hand Razor attacks. Evidence: ROM 0x55C76..0x55E60, 0x15C58..0x15C7E; headless 200-attack runs match ROM formula row-for-row
 - playtest #17: Play the weapon action pose through instead of latching on held input. Evidence: ROM 0x784C/0x5FDC/0x600E/0xB39A, gate 0xABFC/0xD7EA; headless tap/hold: pose 0-31, neutral 32, repeat 52
+- playtest #11: Non-Qt tests: ROM D-pad diagonals and StoryFact names; #11 measured ROM-correct. 0x19D2[5]=0xE000 NW,[6]=0xA000 SW (matches 0ad99223); E.StoryFlag->E.StoryFact per 7e6d767a; #11 headless 24/24 screens; qa.sh now runs non-Qt ctest 295/295
 
 ## Open work, in order
 1. Get ctest green again by fixing aa3b2cb7 forward.
