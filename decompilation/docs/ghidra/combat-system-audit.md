@@ -124,3 +124,17 @@ Existing QA checks many deterministic internal transitions and full-screen frame
 7. **Expand controlled cases, then use independent references.** Cover every firearm class, player spells, item effects, NPC weapon/spell actions, party and world targets, zero-meter transitions, and simultaneous actors. Compare full-screen Genesis frames/audio where the longplay or a fresh capture provides a matching event; report internal QA and independent fidelity evidence separately.
 
 Until these steps are complete, the accurate description is: **a partially connected firearm/creature combat slice with a real Scene 2 hit route, plus incomplete spell, item, player-damage, and actor-lifecycle paths.**
+
+### A3 capture reproduction
+
+[C] The A3 emulator driver is reconstructed as `gameplay/tests_lua/tools/capture_a3_emulator_fights.py`. Its temporary harness ROM is byte-identical to the A3 session's (hooks at 0x0D3A → 0x1FFE36 and 0xA8EA → 0x1FFE80, placed in 0xFF padding). Run headless:
+
+```
+GPGX_CORE=<genesis_plus_gx_libretro.so> python3 decompilation/gameplay/tests_lua/tools/capture_a3_emulator_fights.py \
+  --rom decompilation/input/shadowrun_genesis_us.bin --state <emu>/doors/hw2.state --emu-dir <dir with retro.py> \
+  --raw /tmp/a3/raw.tsv --out /tmp/a3/capture.tsv
+python3 decompilation/gameplay/tests_lua/tools/build_a3_emulator_fixture.py --capture /tmp/a3/capture.tsv \
+  --rom decompilation/input/shadowrun_genesis_us.bin --output /tmp/a3/fixture.tsv
+```
+
+Verified 2026-11-02: raw capture SHA-256 `d09d505c…e246`, compact capture `b8aa5bdd…dbe` (the hash pinned in the fixture), and the regenerated fixture is byte-identical to `gameplay/tests_lua/fixtures/a3_emulator_fight_summary.tsv` (SHA-256 `3d088cbb…9a73`). Inputs not in the repo: the Genesis Plus GX libretro core, `retro.py`, and savestate `hw2.state` (SHA-256 `b9bc8cfb…5019`; the script warns on a different state).
