@@ -3,7 +3,7 @@
 This file is kept in the repo so the notes survive if the box is wiped. The box's /workspace/shadowrun/out was lost on 2026-10-31.
 Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 
-## Current state (2026-11-02 13:11 CST)
+## Current state (2026-11-02 13:35 CST)
 - Remote port-fixes: see latest Fixes entry. QA_GREEN (ctest all pass, Lua suites pass). Working playtest_2026-11-01 items one Luna run at a time.
 - In progress: Luna (codex exec, gpt-6-luna, max effort, fast tier off) is fixing aa3b2cb7 forward. Brief is /workspace/briefs/aa3b.md, the earlier partial work is /workspace/briefs/aa3b_wip.diff and stash 'aa3b-wip'.
 - Box toolchain: `. /workspace/tcenv.sh` (conda env /workspace/mamba/envs/srx). Build dirs are /workspace/b2 (Qt) and /workspace/b2n (non-Qt). Full QA is /workspace/qa.sh, which prints QA_GREEN.
@@ -69,6 +69,7 @@ Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 - playtest #28: #28: Jackal's Lantern booth return no longer restores stale doorway probe. Evidence [C]: Scene19 record 12 0x1D5F50 -> 0xB7B8/0x20990/0x20C78 same-map no-choice prompt; port reset player to (256,840) and froze
 - playtest #28: #28c: generic same-scene prompt return keeps player in place. Evidence [C]: 0xB34/0xB52 callback return skips 0x2F32/0x2FA4; census 32 prompt routes (31 preserve, Stoker 0x173138->0x1F65A/0xBC36 restores door); also commits measure_bump_contact_rom.py (0xECCC/0x21174)
 - playtest #28: #28b-2: generic bit-4 NPC contact dialogue per 0xECCC/0x21174. Evidence [C]: 0xEB92->0xECCC bit4 -> 0x1E2E0/FFE11C gate -> 0x21174 row 0xFE640; Ilene 0x17034/0x17236/0xFE680->0xFF12C->0x102424; GPGX forced contact frame1 lock59 = port delta0 lock59; [H] natural contact uncaptured
+- playtest #29: docs: #29 startup pacing measured ROM-correct headless. Evidence [C]: 0x07F0->0x59C5E->0x5AF62->0x59D7C->0x5AA96->0x5AD1A->0x59D12/0x134D2; first field port 3627 vs ROM 3628, arrival text 3735 vs 3737
 
 ## Open work, in order
 1. Get ctest green again by fixing aa3b2cb7 forward.
