@@ -113,7 +113,8 @@ E.WorldEffectSequence = {
 } -- ROM list 0x1D6E2A, weighted selector cell 0x1D71DC [C]
 E.WorldEffectPlacementPolicy = {
     SCREEN_EDGE_CANDIDATES = "screen_edge_candidates",
-} -- ROM 0x1E1FC -> 0x1E40C [C]
+    MAP_DERIVED_CANDIDATES = "map_derived_candidates",
+} -- 0x1E216 dispatches D0=0 to 0x1E302 and nonzero D0 to 0x1E40C [C]
 E.FieldSafe = {
     PROJECTED_EVENT = 0x1A, -- 0xB7B8 routes event 0x1A through 0x16760/0x20C90 [C]
     RENRAKU_SCENE = 0x28, -- 0x540D6 safe handler checks FFFBF8 [C]

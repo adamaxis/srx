@@ -3,7 +3,7 @@
 This file is kept in the repo so the notes survive if the box is wiped. The box's /workspace/shadowrun/out was lost on 2026-10-31.
 Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 
-## Current state (2026-11-02 09:56 CST)
+## Current state (2026-11-02 10:30 CST)
 - Remote port-fixes: see latest Fixes entry. QA_GREEN (ctest all pass, Lua suites pass). Working playtest_2026-11-01 items one Luna run at a time.
 - In progress: Luna (codex exec, gpt-6-luna, max effort, fast tier off) is fixing aa3b2cb7 forward. Brief is /workspace/briefs/aa3b.md, the earlier partial work is /workspace/briefs/aa3b_wip.diff and stash 'aa3b-wip'.
 - Box toolchain: `. /workspace/tcenv.sh` (conda env /workspace/mamba/envs/srx). Build dirs are /workspace/b2 (Qt) and /workspace/b2n (non-Qt). Full QA is /workspace/qa.sh, which prints QA_GREEN.
@@ -65,6 +65,7 @@ Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 - playtest #A3: A3: emulator-captured fights asserted against Lua resolver. Evidence [C]: 64-seed emulator capture, 0x55640/0x556C6/0x55740/0x55948..0x559BC/0xA8EA; Decker/Weenr2 30/16/18, Weenr2/Yakuza 0/64/0
 - playtest #22: #22: Stoker arrival ambush spawns ROM actor list. Evidence [C]: 0x249C4 roll<100, >=0x50 -> list 0x1D6E2A (0x1D66A4,0x1D665A x2) via 0x1E1FC/0x1E40C edge placement; A800 scenes 0x15-0x2B 46/46 matched
 - playtest #E1: E1: effect callback timing/impact corrections per 0x46F6 table. Evidence [C]: dispatch 0x46F6/0x490A -> 0x4FE2/0x508A/0x5152/0x521E/0x52BE/0x5322/0x53C4; e1 Lua test 6/9 fail pre-fix, 9/9 after
+- playtest #22: #22b: Stoker ambush uses ROM map-derived placement, emulator-captured. Evidence [C]: 0x249C4 loads D0=1 -> 0x1E216 -> 0x1E40C (port used 0x1E302, x=0x2B00); GPGX capture jh3.state 3/3 positions, 60/60 0xA8EA services
 
 ## Open work, in order
 1. Get ctest green again by fixing aa3b2cb7 forward.

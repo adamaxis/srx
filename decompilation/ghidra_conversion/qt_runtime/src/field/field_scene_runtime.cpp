@@ -1120,7 +1120,7 @@ FieldSceneRuntime::FieldSceneRuntime(
                     outcome->sequence_id != sequence_id ||
                     outcome->placement_policy != scripting::
                         ScriptFieldEncounterPlacementPolicy::
-                            screen_edge_candidates ||
+                            map_derived_candidates ||
                     outcome->actors.size() != 3U ||
                     std::any_of(
                         outcome->actors.begin(), outcome->actors.end(),
@@ -1128,7 +1128,7 @@ FieldSceneRuntime::FieldSceneRuntime(
                             return actor.sequence_id != sequence_id;
                         })) {
                     failure_ = game_scripts_.failure().empty()
-                        ? "Stoker's ROM actor list did not resolve its three screen-edge actors"
+                        ? "Stoker's ROM actor list did not resolve its three map-derived actors"
                         : game_scripts_.failure();
                     this->source_boundary(
                         "field.stoker_motel.ambush_sequence_unresolved");

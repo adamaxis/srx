@@ -48113,6 +48113,14 @@ int main(int argc, char** argv) {
                     *field_dialogue_dump_prompt == "arrival-manager";
                 const bool arrival_ambush_result =
                     *field_dialogue_dump_prompt == "arrival-ambush";
+                if (arrival_ambush_result) {
+                    // Match the GPGX #22b Scene-2 capture setup; ROM 0x249C4
+                    // enters 0x1E1FC with D0=1 and uses map-derived 0x1E40C.
+                    field_scene.set_field_entity_world_position_for_dump(
+                        0x1CB0U, 0x0BB8U);
+                    field_scene.set_field_camera_world_position_for_dump(
+                        0x2D20U, 0x09E0U);
+                }
                 const bool room_paid_result =
                     *field_dialogue_dump_prompt == "room-paid";
                 const bool room_insufficient_result =
@@ -48318,6 +48326,12 @@ int main(int argc, char** argv) {
                     const std::array<std::string_view, 3U> expected_profiles{
                         "weenr2_k08_item01", "weenr1_k08_none00",
                         "weenr1_k08_none00"};
+                    const std::array<std::pair<int, int>, 3U>
+                        expected_positions{{
+                            {0x3300, 0x1100},
+                            {0x3300, 0x1300},
+                            {0x3300, 0x1500},
+                        }};
                     std::vector<int> occupied_slots;
                     std::vector<std::pair<int, int>> occupied_positions;
                     bool actors_match = observations.size() ==
@@ -48337,6 +48351,7 @@ int main(int argc, char** argv) {
                                 occupied_positions.end();
                         actors_match = actor.order == static_cast<int>(index) &&
                             actor.profile == expected_profiles[index] &&
+                            position == expected_positions[index] &&
                             actor.action == static_cast<int>(
                                 expected_item
                                     ? scripting::ScriptActorActionKind::item

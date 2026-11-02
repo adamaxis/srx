@@ -38,7 +38,7 @@ local function resolve_arrival()
        sequence.scene_id ~= E.Scene.STOKER_MOTEL or
        sequence.sequence_id ~= sequence_id or
        sequence.placement_policy ~=
-           E.WorldEffectPlacementPolicy.SCREEN_EDGE_CANDIDATES or
+           E.WorldEffectPlacementPolicy.MAP_DERIVED_CANDIDATES or
        #sequence.actors ~= E.StokerMotelArrival.AMBUSH_ACTOR_COUNT then
         return "service_unavailable"
     end

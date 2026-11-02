@@ -347,8 +347,8 @@ eq(stoker_ambush.sequence_id,
    E.WorldEffectSequence.STOKER_MOTEL_AMBUSH,
    "Stoker ambush uses its semantic source-list identity")
 eq(stoker_ambush.placement_policy,
-   E.WorldEffectPlacementPolicy.SCREEN_EDGE_CANDIDATES,
-   "Stoker ambush uses source screen-edge placement")
+   E.WorldEffectPlacementPolicy.MAP_DERIVED_CANDIDATES,
+   "Stoker's direct 0x249C4 call passes D0=1 into the 0x1E40C map-derived path")
 eq(#stoker_ambush.actors, E.StokerMotelArrival.AMBUSH_ACTOR_COUNT,
    "Stoker list preserves all three ordered actor records")
 for index, profile_id in ipairs(E.StokerMotelArrival.AMBUSH_PROFILE_IDS) do
@@ -360,5 +360,21 @@ for index, profile_id in ipairs(E.StokerMotelArrival.AMBUSH_PROFILE_IDS) do
        index == 1 and "item" or "none",
        "Stoker actor keeps its ROM action template " .. index)
 end
+
+-- Isolate the generic weighted resolver with a full-weight fixture row; the
+-- fixture tests caller-specific placement and makes no claim about ROM odds.
+game.modules.world_content_data.world_activity_outcomes[#
+    game.modules.world_content_data.world_activity_outcomes + 1] = {
+        scene_id = E.Scene.STOKER_MOTEL,
+        chance_weight = 25,
+        outcome_kind = "dynamic_world_effect_sequence",
+        outcome_id = E.WorldEffectSequence.STOKER_MOTEL_AMBUSH,
+    }
+local weighted_stoker_ambush = Encounters.resolve(E.Scene.STOKER_MOTEL, 8 / 25)
+eq(weighted_stoker_ambush.kind, "dynamic_world_effect_sequence",
+   "weighted Scene-2 selector still resolves the shared Stoker list")
+eq(weighted_stoker_ambush.placement_policy,
+   E.WorldEffectPlacementPolicy.SCREEN_EDGE_CANDIDATES,
+   "ordinary weighted encounter uses the D0=0 0x1E302 screen-edge path")
 
 print(("field encounter tests passed (%d checks)"):format(checks))

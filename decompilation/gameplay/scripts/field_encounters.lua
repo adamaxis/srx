@@ -10,6 +10,12 @@ local direct_weighted_sequences = {
     -- 0x1D71DC; retain one semantic list instead of duplicating its actors.
     [E.WorldEffectSequence.STOKER_MOTEL_AMBUSH] = true,
 }
+local direct_sequence_placement_policies = {
+    -- The ordinary weighted selector calls this list with D0=0, but Stoker's
+    -- direct 0x249C4 path loads D0=1 before 0x1E1FC [C].
+    [E.WorldEffectSequence.STOKER_MOTEL_AMBUSH] =
+        E.WorldEffectPlacementPolicy.MAP_DERIVED_CANDIDATES,
+}
 
 local function integer(value, minimum, maximum)
     return type(value) == "number" and value % 1 == 0 and
@@ -113,13 +119,19 @@ local function placement_policy_for_rule(placement_rule)
     end
     if placement_rule ==
        "open screen-edge candidates based on the current viewport and terrain" then
-        return "screen_edge_candidates"
+        return E.WorldEffectPlacementPolicy.SCREEN_EDGE_CANDIDATES
     end
     if placement_rule ==
        "map-derived candidates around camera-relative map anchors" then
-        return "map_derived_candidates"
+        return E.WorldEffectPlacementPolicy.MAP_DERIVED_CANDIDATES
     end
     return nil
+end
+
+local function placement_policy_for_direct_sequence(
+    placement_rule, sequence_id)
+    return direct_sequence_placement_policies[sequence_id] or
+        placement_policy_for_rule(placement_rule)
 end
 
 -- ROM 0x1E166 owns the encounter attempt policy. The host supplies semantic
@@ -312,7 +324,8 @@ function Encounters.resolve_sequence(scene_id, sequence_id)
             return nil
         end
     end
-    local placement_policy = placement_policy_for_rule(placement_rule)
+    local placement_policy = placement_policy_for_direct_sequence(
+        placement_rule, sequence_id)
     if placement_policy == nil then
         return nil
     end
