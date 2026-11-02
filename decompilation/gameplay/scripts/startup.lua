@@ -8,6 +8,23 @@ local E = require("enums")
 -- values needed to render the current circuit frame; Lua owns the cadence.
 local title_circuit_lights = { phase = 0, countdown = 0 }
 
+-- 0x5B08E rotates Plane-A palette entries 17..19 every eight source VBlanks.
+-- The host stores only the selected named tail-fan overlay; Lua owns its phase.
+local opening_tail_rotor = { phase = E.OpeningTailRotor.INITIAL_PHASE }
+
+function Startup.reset_opening_tail_rotor()
+    opening_tail_rotor.phase = E.OpeningTailRotor.INITIAL_PHASE
+    return { opening_tail_rotor.phase }
+end
+
+function Startup.advance_opening_tail_rotor(source_frame)
+    if source_frame % E.OpeningTailRotor.ROTATE_INTERVAL == 0 then
+        opening_tail_rotor.phase =
+            (opening_tail_rotor.phase + 1) % E.OpeningTailRotor.PHASE_COUNT
+    end
+    return { opening_tail_rotor.phase }
+end
+
 function Startup.reset_title_circuit_lights(strobe_phase)
     title_circuit_lights.phase = strobe_phase % E.TitleCircuitLight.PRE_TITLE_PHASE_COUNT
     title_circuit_lights.countdown = E.TitleCircuitLight.TITLE_ENTRY_COUNTDOWN

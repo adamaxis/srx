@@ -38360,6 +38360,7 @@ int main(int argc, char** argv) {
         std::optional<std::uint32_t> full_intro_capture_title_frames;
         std::optional<std::filesystem::path> full_intro_capture_path;
         std::optional<std::filesystem::path> opening_rotor_qa_path;
+        std::optional<std::filesystem::path> opening_tail_rotor_qa_path;
         std::optional<std::filesystem::path> opening_landing_qa_path;
         std::optional<std::filesystem::path> opening_start_skip_qa_path;
         std::optional<std::filesystem::path> opening_wilderness_pan_qa_path;
@@ -39738,6 +39739,11 @@ int main(int argc, char** argv) {
             if (std::string(argv[index]) == "--opening-rotor-qa" &&
                 index + 1 < argc) {
                 opening_rotor_qa_path = std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--opening-tail-rotor-qa" &&
+                index + 1 < argc) {
+                opening_tail_rotor_qa_path =
+                    std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--opening-landing-qa" &&
                 index + 1 < argc) {
@@ -66339,6 +66345,10 @@ int main(int argc, char** argv) {
         }
         if (opening_rotor_qa_path.has_value()) {
             return window.run_opening_rotor_qa(*opening_rotor_qa_path);
+        }
+        if (opening_tail_rotor_qa_path.has_value()) {
+            return window.run_opening_tail_rotor_qa(
+                *opening_tail_rotor_qa_path);
         }
         if (opening_landing_qa_path.has_value()) {
             return window.run_opening_landing_qa(*opening_landing_qa_path);

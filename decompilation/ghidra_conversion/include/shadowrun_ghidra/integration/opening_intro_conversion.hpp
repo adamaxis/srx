@@ -91,6 +91,9 @@ constexpr std::uint16_t kStage2PaletteTransitionVblanks = 34U;
 // 0x5AB96 calls 0x5B2E2 for palette lines 0..3; each call lowers every
 // 3-bit colour component of the line one level [C].
 constexpr std::uint8_t kTrividColorStepsToBlack = 7U;
+// 0x5B08E rotates the three airport tail-fan CRAM words every eight VBlanks.
+constexpr std::uint8_t kOpeningTailRotorInitialPhase = 0U;
+constexpr std::uint8_t kOpeningTailRotorPalettePhaseCount = 3U;
 
 struct OpeningIntroOutlinePlan {
     int x = 0;
@@ -255,6 +258,8 @@ struct OpeningIntroCallbacks {
     // palette toward that target for the source's initial reveal.
     std::function<void()> advance_palette_fade;
     std::function<void()> enter_post_intro_mode;
+    // Lua returns the source-selected tail-fan palette overlay each pass.
+    std::function<std::uint8_t(std::uint32_t)> advance_tail_rotor_palette_phase;
 
     // Host presentation boundaries. These consume direct assets and never
     // expose VDP/name-table operations to the Qt runtime.

@@ -3,7 +3,7 @@
 This file is kept in the repo so the notes survive if the box is wiped. The box's /workspace/shadowrun/out was lost on 2026-10-31.
 Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 
-## Current state (2026-11-01 20:49 CST)
+## Current state (2026-11-01 21:58 CST)
 - Remote port-fixes: see latest Fixes entry. QA_GREEN (ctest all pass, Lua suites pass). Working playtest_2026-11-01 items one Luna run at a time.
 - In progress: Luna (codex exec, gpt-6-luna, max effort, fast tier off) is fixing aa3b2cb7 forward. Brief is /workspace/briefs/aa3b.md, the earlier partial work is /workspace/briefs/aa3b_wip.diff and stash 'aa3b-wip'.
 - Box toolchain: `. /workspace/tcenv.sh` (conda env /workspace/mamba/envs/srx). Build dirs are /workspace/b2 (Qt) and /workspace/b2n (non-Qt). Full QA is /workspace/qa.sh, which prints QA_GREEN.
@@ -48,6 +48,7 @@ Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 - playtest #11: Non-Qt tests: ROM D-pad diagonals and StoryFact names; #11 measured ROM-correct. 0x19D2[5]=0xE000 NW,[6]=0xA000 SW (matches 0ad99223); E.StoryFlag->E.StoryFact per 7e6d767a; #11 headless 24/24 screens; qa.sh now runs non-Qt ctest 295/295
 - playtest #1: Intro: ROM post-circuit title shimmer carry and cadence. 0x1D7A/0x5D8BA/0x2634, trace frames 788-789,1043-1060; title-shimmer QA 421/421; also #2 table: fades measured ROM-correct
 - playtest #3: Intro: ROM opening orc palette/hit/fade timeline. 0x5A0B2/0x5A146/0x5A16E/0x5A1BE/0x5A2D0; orc timeline QA 2133/2133 px, Lua 15/15
+- playtest #4: Intro: ROM chopper tail-rotor palette cycle. 0x5AD1A->0x5B528, 0x5B08E rotates pal 17-19 every 8 VBlanks; rotor QA 104px/step; Lua 27/27
 
 ## Open work, in order
 1. Get ctest green again by fixing aa3b2cb7 forward.

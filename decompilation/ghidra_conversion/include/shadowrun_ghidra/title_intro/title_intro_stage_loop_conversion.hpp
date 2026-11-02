@@ -20,7 +20,8 @@ struct TitleIntroStageLoopState {
     std::uint16_t animation_start_frame = 0;
     std::uint16_t loop_frame = 0;
     TitleIntroScrollState scroll{};
-    TitleIntroTripletState triplet{};
+    // Lua's 0x5B08E policy selects one of three direct tail-fan overlays.
+    std::uint8_t tail_rotor_palette_phase = 0;
     TitleIntroAnimationServiceState animation_service{};
     TitleIntroPulseState pulse{};
     TitleIntroLandingState landing{};

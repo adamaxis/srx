@@ -1148,8 +1148,10 @@ void advance_stage_loop_frame(OpeningIntroState& state,
         static_cast<std::uint16_t>(state.source_frame);
     state.stage_loop.landing.current_frame =
         static_cast<std::uint16_t>(state.source_frame);
-    advance_title_intro_triplet(state.stage_loop.triplet,
-                                static_cast<std::uint16_t>(state.source_frame));
+    if (callbacks.advance_tail_rotor_palette_phase) {
+        state.stage_loop.tail_rotor_palette_phase =
+            callbacks.advance_tail_rotor_palette_phase(state.source_frame);
+    }
     advance_title_intro_scroll(
         state.stage_loop.scroll,
         [&callbacks](const auto& request) { emit_scroll_fill(callbacks, request); });

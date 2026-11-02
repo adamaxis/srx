@@ -512,6 +512,13 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_opening_rotor_qa
                  --opening-rotor-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/opening-rotor-qa")
 
+# The separate Plane-A tail fan cycles three palette overlays every eight
+# source VBlanks. Check the rendered pixels and the 24-frame repeat.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_opening_tail_rotor_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --opening-tail-rotor-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/opening-tail-rotor-qa")
+
 # The landing path uses the ROM-selected movement art until the computed Y
 # enters its narrow special-image window. Save whole-screen frames at every
 # landing event and across entry/exit from that window.

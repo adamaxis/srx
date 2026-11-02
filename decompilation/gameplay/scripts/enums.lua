@@ -317,6 +317,12 @@ E.OpeningOrcPaletteMode = {
     FADE = 2,
     CLEARED = 3,
 }
+E.OpeningTailRotor = {
+    FIRST_PALETTE_ENTRY = 17,
+    PHASE_COUNT = 3,
+    ROTATE_INTERVAL = 8,
+    INITIAL_PHASE = 0,
+} -- 0x5B08E rotates palette words 17..19 when FFDF88 & 7 == 0 [C]
 -- Music sequence ids, same GEMS id space as E.SoundId; started through
 -- play_music 0x530EA (stop same id, then start; gated by FFFC08) [C].
 E.MusicId = {

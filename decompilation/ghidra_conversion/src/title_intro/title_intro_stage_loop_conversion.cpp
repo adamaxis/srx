@@ -58,7 +58,6 @@ TitleIntroStageLoopStopReason run_title_intro_stage_loop(
 
         state.pulse.current_frame = state.current_frame;
         state.landing.current_frame = state.current_frame;
-        advance_title_intro_triplet(state.triplet, state.current_frame);
         advance_title_intro_scroll(state.scroll, callbacks.fill_transition_tiles);
         advance_title_intro_scroll_fade(state.scroll,
                                         callbacks.render_transition_text);

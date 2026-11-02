@@ -6,6 +6,9 @@
                StartupIntegrationPhase::joshua_archetype_exit_fade) {
             advance_startup_archetype_exit_fade_frame(state_,
                                                       startup_callbacks_);
+            if (opening_tail_rotor_source_clock_override_.has_value()) {
+                ++*opening_tail_rotor_source_clock_override_;
+            }
         }
     }
 
@@ -1006,6 +1009,12 @@
             std::cerr << "startup dump: selection must be 0, 1, or 2\n";
             return 3;
         }
+        const auto advance_menu_input = [this](const std::uint8_t input) {
+            advance_startup_integration(state_, input, startup_callbacks_);
+            if (opening_tail_rotor_source_clock_override_.has_value()) {
+                ++*opening_tail_rotor_source_clock_override_;
+            }
+        };
         constexpr std::uint32_t kMaxSetupFrames = 10000U;
         std::uint32_t setup_frames = 0U;
         while (state_.phase == StartupIntegrationPhase::pre_title) {
@@ -1036,16 +1045,15 @@
             return 3;
         }
 
-        advance_startup_integration(state_, kStartupMenuA, startup_callbacks_);
+        advance_menu_input(kStartupMenuA);
         if (state_.phase != StartupIntegrationPhase::joshua_archetype) {
             std::cerr << "startup dump: New Game did not reach archetype menu\n";
             return 3;
         }
         for (std::uint32_t index = 0U; index < selection; ++index) {
-            advance_startup_integration(
-                state_, kStartupMenuDown, startup_callbacks_);
+            advance_menu_input(kStartupMenuDown);
         }
-        advance_startup_integration(state_, kStartupMenuA, startup_callbacks_);
+        advance_menu_input(kStartupMenuA);
         qa_finish_archetype_exit_fade();
         if (state_.phase != StartupIntegrationPhase::opening_intro) {
             std::cerr << "startup dump: archetype did not start opening\n";
@@ -1532,6 +1540,272 @@
                   << " actual="
                   << actual_path.string()
                   << '\n';
+        return 0;
+    }
+
+    int run_opening_tail_rotor_qa(
+        const std::filesystem::path& output_directory) {
+        constexpr std::uint32_t kSelection = 2U;
+        constexpr int kTailWidth = 20;
+        constexpr int kTailHeight = 17;
+        constexpr int kTailImageX = 182;
+        constexpr int kTailImageY = 30;
+        constexpr int kDynamicPixels = 104;
+        constexpr std::size_t kSamples = 5U;
+
+        opening_tail_rotor_source_clock_override_ = source_frame_index_;
+        if (prepare_opening_dump(kSelection) != 0) {
+            return 3;
+        }
+        const auto fail = [](const std::string_view reason) {
+            std::cerr << "opening tail rotor QA: " << reason << '\n';
+            return 3;
+        };
+        std::uint32_t setup_frames = 0U;
+        while (state_.phase == StartupIntegrationPhase::opening_intro &&
+               (state_.opening_intro.scene != OpeningIntroScene::airport ||
+                state_.opening_intro.stage != OpeningIntroStage::stage_loop)) {
+            if (setup_frames++ >= 10000U) {
+                return fail("airport stage loop did not begin");
+            }
+            advance_one_source_frame();
+        }
+        if (state_.phase != StartupIntegrationPhase::opening_intro ||
+            state_.opening_intro.scene != OpeningIntroScene::airport ||
+            state_.opening_intro.stage != OpeningIntroStage::stage_loop) {
+            return fail("tail rotor QA did not reach the airport stage loop");
+        }
+
+        std::filesystem::create_directories(output_directory);
+        std::ofstream trace(output_directory / "opening-tail-rotor-qa.tsv");
+        if (!trace) {
+            return fail("could not write the frame trace");
+        }
+        trace << "sample\tglobal_source_frame\topening_source_frame\t"
+                 "phase\tscroll_x\troi_x\troi_y\tchanged_pixels\timage\n";
+
+        struct Sample {
+            QImage image;
+            std::uint32_t source_frame = 0U;
+            std::uint64_t global_source_frame = 0U;
+            std::uint8_t phase = 0U;
+            std::int16_t scroll_x = 0;
+            int roi_x = 0;
+            int roi_y = 0;
+            std::string filename;
+        };
+        std::array<Sample, kSamples> samples{};
+        const auto* plane_record =
+            state_.asset_catalog.catalog.find("intro.aircraft.plane.a");
+        if (plane_record == nullptr) {
+            return fail("Plane-A catalog origin is missing");
+        }
+        constexpr std::array<QRgb, 3U> kTailPaletteColors{{
+            qRgb(0, 0, 0), qRgb(0, 0, 73), qRgb(0, 0, 36)}};
+        constexpr std::array<std::array<int, 3U>, 3U> kPhaseColorCounts{{
+            {{42, 30, 32}}, {{32, 42, 30}}, {{30, 32, 42}}}};
+        for (std::size_t phase = 0U;
+             phase < kOpeningTailRotorPalettePhaseCount; ++phase) {
+            const auto alias = "intro.aircraft.tail_rotor.phase." +
+                               std::to_string(phase);
+            const auto asset = draw_asset_cache_.find(alias);
+            if (asset == draw_asset_cache_.end() ||
+                asset->second.size() != QSize(kTailWidth, kTailHeight)) {
+                return fail("a named 20x17 tail-fan phase asset is missing");
+            }
+            std::array<int, 3U> color_counts{};
+            int opaque_pixels = 0;
+            for (int y = 0; y < kTailHeight; ++y) {
+                for (int x = 0; x < kTailWidth; ++x) {
+                    const auto pixel = asset->second.pixel(x, y);
+                    if (qAlpha(pixel) == 0) {
+                        continue;
+                    }
+                    ++opaque_pixels;
+                    const auto color = qRgb(qRed(pixel), qGreen(pixel),
+                                            qBlue(pixel));
+                    const auto found = std::find(kTailPaletteColors.begin(),
+                                                 kTailPaletteColors.end(),
+                                                 color);
+                    if (found == kTailPaletteColors.end()) {
+                        return fail("tail-fan asset color is outside ROM CRAM words 17..19");
+                    }
+                    ++color_counts[static_cast<std::size_t>(
+                        found - kTailPaletteColors.begin())];
+                }
+            }
+            if (opaque_pixels != kDynamicPixels ||
+                color_counts != kPhaseColorCounts[phase]) {
+                return fail("tail-fan asset pixels do not match the ROM palette phase");
+            }
+        }
+        const auto tail_roi_on_screen = [&] {
+            const auto point = opening_intro_aircraft_plane_draw_point(
+                state_.opening_intro.stage_loop.scroll.x_offset);
+            const auto left = point.x + plane_record->origin_x + kTailImageX;
+            const auto top = point.y + plane_record->origin_y + kTailImageY;
+            return left >= 0 && top >= 0 && left + kTailWidth <= kSceneWidth &&
+                   top + kTailHeight <= kSceneHeight;
+        };
+        setup_frames = 0U;
+        while (!tail_roi_on_screen()) {
+            if (setup_frames++ >= 1000U ||
+                state_.phase != StartupIntegrationPhase::opening_intro ||
+                state_.opening_intro.scene != OpeningIntroScene::airport ||
+                state_.opening_intro.stage != OpeningIntroStage::stage_loop) {
+                const auto point = opening_intro_aircraft_plane_draw_point(
+                    state_.opening_intro.stage_loop.scroll.x_offset);
+                std::cerr << "opening tail rotor QA: source_frame="
+                          << state_.opening_intro.source_frame
+                          << " stage_frame=" << state_.opening_intro.stage_loop_frame
+                          << " scroll_x="
+                          << state_.opening_intro.stage_loop.scroll.x_offset
+                          << " fan_left="
+                          << point.x + plane_record->origin_x + kTailImageX
+                          << '\n';
+                return fail("tail-fan crop did not enter the viewport");
+            }
+            advance_one_source_frame();
+        }
+        const auto initial_phase = state_.opening_intro.stage_loop
+                                       .tail_rotor_palette_phase;
+        const auto capture = [&](const std::size_t index,
+                                 const std::string& filename) {
+            auto& sample = samples[index];
+            sample.image = render_scene();
+            if (sample.image.size() != QSize(kSceneWidth, kSceneHeight)) {
+                return false;
+            }
+            const auto& opening = state_.opening_intro;
+            const auto plane = opening_intro_aircraft_plane_draw_point(
+                opening.stage_loop.scroll.x_offset);
+            sample.source_frame = opening.source_frame;
+            sample.global_source_frame =
+                opening_tail_rotor_source_clock_override_.value_or(
+                    source_frame_index_);
+            sample.phase =
+                opening.stage_loop.tail_rotor_palette_phase;
+            sample.scroll_x = opening.stage_loop.scroll.x_offset;
+            sample.roi_x = plane.x + plane_record->origin_x + kTailImageX;
+            sample.roi_y = plane.y + plane_record->origin_y + kTailImageY;
+            sample.filename = filename;
+            if (sample.roi_x < 0 || sample.roi_y < 0 ||
+                sample.roi_x + kTailWidth > sample.image.width() ||
+                sample.roi_y + kTailHeight > sample.image.height()) {
+                return false;
+            }
+            const auto path = output_directory / filename;
+            return sample.image.save(
+                QString::fromStdWString(path.wstring()));
+        };
+        const auto initial_filename =
+            "tail-phase-" + std::to_string(initial_phase) + "-entry.bmp";
+        if (!capture(0U, initial_filename)) {
+            return fail("could not capture a full-screen tail-fan phase");
+        }
+
+        std::array<std::uint64_t, 4U> transition_frames{};
+        for (std::size_t transition = 0U; transition < 4U; ++transition) {
+            const auto prior_phase = state_.opening_intro.stage_loop
+                                         .tail_rotor_palette_phase;
+            const auto expected_phase = static_cast<std::uint8_t>(
+                (prior_phase + 1U) % kOpeningTailRotorPalettePhaseCount);
+            bool advanced = false;
+            for (std::uint32_t elapsed = 0U; elapsed < 8U; ++elapsed) {
+                advance_one_source_frame();
+                if (state_.phase != StartupIntegrationPhase::opening_intro ||
+                    state_.opening_intro.scene != OpeningIntroScene::airport ||
+                    state_.opening_intro.stage != OpeningIntroStage::stage_loop) {
+                    return fail("airport stage ended before a full palette cycle");
+                }
+                if (state_.opening_intro.stage_loop.tail_rotor_palette_phase !=
+                    prior_phase) {
+                    advanced = true;
+                    break;
+                }
+            }
+            if (!advanced || state_.opening_intro.stage_loop
+                                 .tail_rotor_palette_phase != expected_phase) {
+                return fail("Lua phase did not advance within eight source frames");
+            }
+            const auto source_frame =
+                opening_tail_rotor_source_clock_override_.value_or(
+                    source_frame_index_);
+            if ((source_frame & 7U) != 0U) {
+                return fail("palette phase changed away from FFDF88 & 7 == 0");
+            }
+            transition_frames[transition] = source_frame;
+            if (transition > 0U &&
+                transition_frames[transition] -
+                        transition_frames[transition - 1U] != 8U) {
+                return fail("three-color phases did not hold for eight VBlanks");
+            }
+            const auto name = "tail-phase-" +
+                              std::to_string(expected_phase) + "-transition-" +
+                              std::to_string(transition + 1U) + ".bmp";
+            if (!capture(transition + 1U, name)) {
+                return fail("could not save a full-screen palette checkpoint");
+            }
+        }
+        if (transition_frames[3] - transition_frames[0] != 24U ||
+            samples[0].phase != initial_phase ||
+            samples[1].phase != static_cast<std::uint8_t>(
+                (initial_phase + 1U) % kOpeningTailRotorPalettePhaseCount) ||
+            samples[2].phase != static_cast<std::uint8_t>(
+                (initial_phase + 2U) % kOpeningTailRotorPalettePhaseCount) ||
+            samples[3].phase != initial_phase ||
+            samples[4].phase != samples[1].phase) {
+            return fail("three palette phases did not repeat after 24 VBlanks");
+        }
+
+        const auto roi_differences = [&](const Sample& first,
+                                         const Sample& later) {
+            int differences = 0;
+            for (int y = 0; y < kTailHeight; ++y) {
+                for (int x = 0; x < kTailWidth; ++x) {
+                    if (first.image.pixel(first.roi_x + x,
+                                          first.roi_y + y) !=
+                        later.image.pixel(later.roi_x + x,
+                                          later.roi_y + y)) {
+                        ++differences;
+                    }
+                }
+            }
+            return differences;
+        };
+        for (std::size_t index = 1U; index < kSamples; ++index) {
+            const auto changed = roi_differences(samples[index - 1U],
+                                                 samples[index]);
+            trace << index << '\t' << samples[index].global_source_frame
+                  << '\t' << samples[index].source_frame << '\t'
+                  << static_cast<unsigned>(samples[index].phase) << '\t'
+                  << samples[index].scroll_x << '\t' << samples[index].roi_x
+                  << '\t' << samples[index].roi_y << '\t' << changed << '\t'
+                  << samples[index].filename << '\n';
+            if (changed != kDynamicPixels) {
+                return fail("each palette step must change exactly 104 fan pixels");
+            }
+        }
+        if (roi_differences(samples[0], samples[3]) != 0 ||
+            roi_differences(samples[1], samples[4]) != 0) {
+            return fail("tail-fan pixels did not return exactly with their phase");
+        }
+        trace << "0\t" << samples[0].global_source_frame << '\t'
+              << samples[0].source_frame << '\t'
+              << static_cast<unsigned>(samples[0].phase) << '\t'
+              << samples[0].scroll_x << '\t' << samples[0].roi_x << '\t'
+              << samples[0].roi_y << "\t0\t" << samples[0].filename << '\n';
+
+        const auto actual_path = output_directory / "actual.bmp";
+        if (!samples[0].image.save(
+                QString::fromStdWString(actual_path.wstring())) ||
+            QImage(QString::fromStdWString(actual_path.wstring())) !=
+                samples[0].image) {
+            return fail("could not write the representative actual.bmp scene dump");
+        }
+        std::cout << "opening_tail_rotor_qa=passed phases=3 cadence=8"
+                     " cycle=24 changed_pixels=104 actual="
+                  << actual_path.string() << '\n';
         return 0;
     }
 

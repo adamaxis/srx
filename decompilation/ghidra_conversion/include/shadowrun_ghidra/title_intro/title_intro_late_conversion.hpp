@@ -74,8 +74,10 @@ struct TitleIntroTripletState {
     bool dirty = false;
 };
 
-// ROM 0x5B08E: rotate the three-word stage triplet every eight source frames.
-// The return value preserves the source's frame/rotated-value result.
+// Historical standalone triplet helper retained for its isolated conversion
+// test. The airport tail-fan behavior is implemented in Lua; this helper has
+// no active stage-loop caller and is not a ROM model. Its return value is kept
+// only for the legacy isolated unit test.
 std::uint16_t advance_title_intro_triplet(
     TitleIntroTripletState& state,
     std::uint16_t current_frame);

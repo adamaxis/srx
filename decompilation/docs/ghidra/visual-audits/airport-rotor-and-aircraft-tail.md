@@ -114,3 +114,35 @@ runtime review, not an independent Genesis reference.
 - **Reported defect resolved:** **Yes.** The reported propeller is the animated
   six-group sprite sequence, not the static circular hub. The earlier
   “ambiguous” disposition was incorrect.
+
+## Playtest #4: Plane-A tail fan palette cycle
+
+The playtest report distinguishes the small fan at the rear of the full-screen
+Plane-A craft. It is a second mechanism from the six-group sprite strip above:
+the `0x5B100` groups animate the main/top rotor, while `0x5B08E` rotates the
+three live CRAM words used by the Plane-A tail-fan pixels.
+
+- **Source trace [C]:** airport resources enter at `0x5AD1A -> 0x5B528`; the
+  Plane-A map is `0x1E87BA` and its palette is `0x5B6B2`. In the VBlank loop
+  `0x5AD7C..0x5ADCA`, `0x5B08E` is called once per pass. It rotates palette
+  words at `FFD8A0/A2/A4` when `(FFDF88 & 7) == 0`. These are palette entries
+  17–19. The affected source pixels occupy tiles `0x260..0x263`,
+  `0x27B..0x27E`, and `0x295..0x298` (row 3–5, columns 22–25; palette line 1).
+  ROM pattern pixels contain 42/30/32 occurrences of indices 1/2/3 in the
+  20x17 crop. Their phase colors are black/blue-73/blue-36, then
+  blue-73/blue-36/black, then blue-36/black/blue-73. The phase holds eight
+  VBlanks and repeats every 24.
+- **Longplay at 30 fps [H]:** `/workspace/shadowrun/out/bug4_chopper_30fps_reference.tsv`
+  enumerates every local video frame `0934..1017` (global `2734..2817`) with
+  craft position, approximate fan crop, and a nominal phase relative to frame
+  0940. The source tile IDs remain the same in every frame; only their three
+  palette entries rotate. With two VBlanks per captured frame, the ROM cadence
+  implies a phase span of about four video frames. Compression/capture timing
+  does not establish the absolute phase origin.
+- **Headless QA:** `shadowrun_ghidra_conversion_qt_opening_tail_rotor_qa`
+  writes `actual.bmp`, three phase checkpoints, and a source-frame TSV. It
+  verifies each 20x17 phase asset has exactly 104 pixels in the three ROM
+  colors with counts 42/30/32 rotated by phase, every eight-VBlank transition
+  changes exactly those 104 rendered pixels, and the rendered crop repeats
+  exactly after 24 VBlanks. Lua owns the phase; the host draws an individually
+  named phase asset over the ROM-derived map crop.

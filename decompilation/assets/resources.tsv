@@ -9163,3 +9163,6 @@ field.entities.effects.barrier.frame.0	field/entities/effects/barrier-frame-0.pn
 field.entities.effects.barrier.frame.1	field/entities/effects/barrier-frame-1.png	image	-16	-16
 field.entities.effects.barrier.frame.2	field/entities/effects/barrier-frame-2.png	image	-16	-16
 field.entities.effects.barrier.frame.3	field/entities/effects/barrier-frame-3.png	image	-16	-16
+intro.aircraft.tail_rotor.phase.0	intro/aircraft-tail-rotor-phase-0.png	image	0	0
+intro.aircraft.tail_rotor.phase.1	intro/aircraft-tail-rotor-phase-1.png	image	0	0
+intro.aircraft.tail_rotor.phase.2	intro/aircraft-tail-rotor-phase-2.png	image	0	0

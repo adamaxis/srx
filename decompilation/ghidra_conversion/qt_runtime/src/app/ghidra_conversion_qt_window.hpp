@@ -1324,6 +1324,36 @@ private:
             [this](const std::string_view boundary) {
                 record_debug_source_event(boundary);
                 queue_opening_presentation_hold(boundary);
+                if (boundary == "0x5AD1A.prepare_airport_resources") {
+                    const auto phase = startup_scripts_.call_integers(
+                        "startup", "reset_opening_tail_rotor", {});
+                    if (!phase.has_value() || phase->size() != 1U ||
+                        (*phase)[0] != kOpeningTailRotorInitialPhase) {
+                        throw std::runtime_error(
+                            "startup Lua could not reset the airport tail rotor: " +
+                            startup_scripts_.failure());
+                    }
+                }
+            };
+        startup_callbacks_.opening_intro
+            .advance_tail_rotor_palette_phase =
+            [this](const std::uint32_t) {
+                const auto current_source_frame =
+                    opening_tail_rotor_source_clock_override_.value_or(
+                        source_frame_index_);
+                const auto next_source_frame = current_source_frame + 1U;
+                const auto phase = startup_scripts_.call_integers(
+                    "startup", "advance_opening_tail_rotor",
+                    {static_cast<std::int64_t>(next_source_frame)});
+                if (!phase.has_value() || phase->size() != 1U ||
+                    (*phase)[0] < 0 ||
+                    (*phase)[0] >=
+                        kOpeningTailRotorPalettePhaseCount) {
+                    throw std::runtime_error(
+                        "startup Lua could not advance the airport tail rotor: " +
+                        startup_scripts_.failure());
+                }
+                return static_cast<std::uint8_t>((*phase)[0]);
             };
         startup_callbacks_.opening_intro.stop_requested = [this] {
             return opening_start_event_latched_;
@@ -1561,6 +1591,9 @@ private:
         advance_source_frame_logic();
         if (audio_playback_) {
             audio_playback_->advance_frame();
+        }
+        if (opening_tail_rotor_source_clock_override_.has_value()) {
+            ++*opening_tail_rotor_source_clock_override_;
         }
     }
 
@@ -2166,6 +2199,24 @@ private:
                     point.x + (record == nullptr ? 0 : record->origin_x),
                     point.y + (record == nullptr ? 0 : record->origin_y),
                     image->second);
+                const auto phase_alias =
+                    "intro.aircraft.tail_rotor.phase." +
+                    std::to_string(
+                        state_.opening_intro.stage_loop
+                            .tail_rotor_palette_phase);
+                const auto phase_image = draw_asset_cache_.find(phase_alias);
+                if (phase_image != draw_asset_cache_.end()) {
+                    // Source x=183..202,y=30..46 within map 0x1E87BA
+                    // (tiles 0x260..0x263/0x27B..0x27E/0x295..0x298).
+                    // The extracted plane crop has origin x=1, so overlay
+                    // its 20x17 alpha mask at image pixel x=182,y=30.
+                    painter.drawImage(
+                        point.x + (record == nullptr ? 0 : record->origin_x) +
+                            182,
+                        point.y + (record == nullptr ? 0 : record->origin_y) +
+                            30,
+                        phase_image->second);
+                }
             }
             return;
         }
@@ -2555,6 +2606,9 @@ private:
     debug::KeyboardInputLog input_log_;
     debug::FrameStepper frame_stepper_;
     std::uint64_t source_frame_index_ = 0;
+    // Deterministic opening QA advances source frames directly instead of
+    // through the host timer. Keep its global FFDF88 clock aligned as well.
+    std::optional<std::uint64_t> opening_tail_rotor_source_clock_override_;
     bool replaying_input_ = false;
     bool replay_diverged_ = false;
     StartupIntegrationState state_;
