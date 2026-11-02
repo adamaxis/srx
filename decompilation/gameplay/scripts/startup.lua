@@ -1,6 +1,32 @@
 -- Stable choice identifiers for the three title-screen cursor menus.
 -- The native startup controller owns selection, input timing, and transitions.
 local Startup = {}
+local E = require("enums")
+
+-- 0x1D7A leaves the phase/countdown used by the pre-title strobe intact;
+-- 0x2634 then advances that state while DD5A is 2. The host keeps only the
+-- values needed to render the current circuit frame; Lua owns the cadence.
+local title_circuit_lights = { phase = 0, countdown = 0 }
+
+function Startup.reset_title_circuit_lights(strobe_phase)
+    title_circuit_lights.phase = strobe_phase % E.TitleCircuitLight.PRE_TITLE_PHASE_COUNT
+    title_circuit_lights.countdown = E.TitleCircuitLight.TITLE_ENTRY_COUNTDOWN
+    return { title_circuit_lights.phase, title_circuit_lights.countdown }
+end
+
+function Startup.advance_title_circuit_lights(completion_state)
+    if completion_state == E.TitleCircuitLight.ACTIVE_COMPLETION_STATE then
+        title_circuit_lights.countdown = title_circuit_lights.countdown - 1
+        if title_circuit_lights.countdown < 0 then
+            title_circuit_lights.countdown = E.TitleCircuitLight.COUNTDOWN_RELOAD
+            title_circuit_lights.phase = title_circuit_lights.phase + 1
+            if title_circuit_lights.phase >= E.TitleCircuitLight.PHASE_COUNT then
+                title_circuit_lights.phase = 0
+            end
+        end
+    end
+    return { title_circuit_lights.phase, title_circuit_lights.countdown }
+end
 
 function Startup.options()
     return { "new_game", "load_game" }, "startup.options.title", {

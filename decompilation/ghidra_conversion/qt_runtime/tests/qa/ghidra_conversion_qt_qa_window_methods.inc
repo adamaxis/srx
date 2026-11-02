@@ -3012,6 +3012,18 @@
         title_scroll_trace
             << "label\ttitle_frame\tbackground_scroll\tcircuit_phase\n";
 
+        std::ofstream title_shimmer_trace(
+            output_directory / "title-shimmer-qa.tsv");
+        if (!title_shimmer_trace) {
+            std::cerr << "startup qa: could not open title shimmer trace in "
+                      << output_directory.string() << '\n';
+            return 3;
+        }
+        title_shimmer_trace
+            << "title_frame\tpaired_video_frame_30fps\tcompletion_state\t"
+               "light_countdown\tlight_phase\trom_countdown\trom_phase\t"
+               "matches\n";
+
         std::ofstream title_circuit_palette_trace(
             output_directory / "title-circuit-palette-qa.tsv");
         if (!title_circuit_palette_trace) {
@@ -3616,6 +3628,56 @@
                     << '\n';
                 return true;
             };
+        // The US ROM trace at 0x1D7A leaves FFDF90=2 / FFDF92=6 for the
+        // circuit title. 0x2634 is gated by DD5A=2: runtime frames 1043..1045
+        // measure (countdown, phase) (1,6), (0,6), (4,0), then the phase
+        // advances once every five 60 Hz updates.
+        const auto verify_title_shimmer_frame = [&] {
+            int rom_countdown = 2;
+            int rom_phase = 6;
+            int expected_completion = 1;
+            if (title_frame >= 254) {
+                expected_completion = 2;
+                if (title_frame < 256) {
+                    rom_countdown = 255 - title_frame;
+                } else {
+                    const auto elapsed = title_frame - 256;
+                    rom_phase = (elapsed / 5) % 7;
+                    rom_countdown = 4 - (elapsed % 5);
+                }
+            }
+            const bool matches =
+                title_loop_.text.completion_state == expected_completion &&
+                title_loop_.circuit_lights.countdown == rom_countdown &&
+                title_loop_.circuit_lights.phase == rom_phase;
+            const int paired_video_frame =
+                title_frame >= 198 && (title_frame - 198) % 2 == 0
+                    ? 390 + (title_frame - 198) / 2
+                    : -1;
+            title_shimmer_trace
+                << title_frame << '\t' << paired_video_frame << '\t'
+                << title_loop_.text.completion_state << '\t'
+                << title_loop_.circuit_lights.countdown << '\t'
+                << static_cast<unsigned>(title_loop_.circuit_lights.phase)
+                << '\t' << rom_countdown << '\t' << rom_phase << '\t'
+                << (matches ? "yes" : "no") << '\n';
+            if (!matches) {
+                std::cerr << "startup qa: ROM title shimmer mismatch at "
+                          << "title frame " << title_frame
+                          << " (completion="
+                          << title_loop_.text.completion_state
+                          << ", countdown="
+                          << title_loop_.circuit_lights.countdown
+                          << ", phase="
+                          << static_cast<unsigned>(
+                                 title_loop_.circuit_lights.phase)
+                          << "; expected completion=" << expected_completion
+                          << ", countdown=" << rom_countdown
+                          << ", phase=" << rom_phase << ")\n";
+                return false;
+            }
+            return true;
+        };
         const auto save_title_circuit_palette_checkpoint =
             [&](const std::string& name, const int expected_palette_steps,
                 const std::int16_t expected_countdown) {
@@ -3769,6 +3831,11 @@
                     return fail("title reference checkpoint did not advance");
                 }
                 ++title_frame;
+                if (title_frame >= 198 && title_frame <= 318 &&
+                    !verify_title_shimmer_frame()) {
+                    return fail("post-circuit shimmer diverged from the ROM "
+                                "phase/countdown timeline");
+                }
             }
             if (state_.phase != StartupIntegrationPhase::title_ready ||
                 title_frame != checkpoint) {
@@ -3804,6 +3871,18 @@
             record("title.reference." + std::to_string(checkpoint));
         }
 
+        while (title_frame < 421 &&
+               state_.phase == StartupIntegrationPhase::title_ready) {
+            if (!pump()) {
+                return fail("title shimmer did not reach the copyright cycle");
+            }
+            ++title_frame;
+            if (!verify_title_shimmer_frame()) {
+                return fail("post-circuit shimmer diverged from the ROM "
+                            "phase/countdown timeline");
+            }
+        }
+
         // The prompt record is selected from the low six bits of D7 after
         // the initial 0x0E10 countdown crosses 0x0C6C. Variant B is the blank
         // record for ten VBlanks; A remains visible for the rest of each
@@ -3834,6 +3913,10 @@
                     return fail("title prompt schedule did not advance");
                 }
                 ++title_frame;
+                if (!verify_title_shimmer_frame()) {
+                    return fail("title shimmer drifted while the prompt "
+                                "continued to animate");
+                }
             }
             if (state_.phase != StartupIntegrationPhase::title_ready ||
                 title_frame != checkpoint.frame ||
@@ -3841,6 +3924,17 @@
                     checkpoint.label, checkpoint.variant,
                     checkpoint.frames_remaining)) {
                 return fail("title prompt visibility or cadence mismatch");
+            }
+        }
+
+        while (title_frame < 618 &&
+               state_.phase == StartupIntegrationPhase::title_ready) {
+            if (!pump()) {
+                return fail("title shimmer did not reach the frame-600 sample");
+            }
+            ++title_frame;
+            if (!verify_title_shimmer_frame()) {
+                return fail("title shimmer drifted after the prompt appeared");
             }
         }
 

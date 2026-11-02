@@ -298,6 +298,14 @@ E.SoundId = {   -- played through 0x530DE (doc 10) [C]
     SEGA_LOGO_SHOCK = 0x5C,          -- 0x5D832 [C]
     SHADOWRUN_LOGO_REVEAL = 0x5D,    -- 0x1E60 [C]
 }
+E.TitleCircuitLight = {
+    PRE_TITLE_PHASE_COUNT = 8,
+    PHASE_COUNT = 7,
+    ACTIVE_COMPLETION_STATE = 2,
+    TITLE_ENTRY_COUNTDOWN = 2,
+    COUNTDOWN_RELOAD = 4,
+} -- 0x5D8BA cycles FFDF92 modulo 8; 0x2634 reloads 4 and cycles modulo 7
+  -- under DD5A=2. At 0x1D7A, the US ROM trace preserves FFDF90=2 / phase 6 [C]
 -- Music sequence ids, same GEMS id space as E.SoundId; started through
 -- play_music 0x530EA (stop same id, then start; gated by FFFC08) [C].
 E.MusicId = {

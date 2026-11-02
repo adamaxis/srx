@@ -205,12 +205,6 @@ struct TitleCircuitLightState {
     std::uint8_t phase;
 };
 
-// ROM 0x2634: only the completed-title state cycles the seven light phases.
-// The initial countdown/phase are caller-provided because setup occurs in a
-// separate source path; no invented initial register values are used here.
-std::optional<std::uint8_t> advance_title_circuit_lights(
-    TitleCircuitLightState& state, std::uint16_t completion_state);
-
 enum class TitleLoopFrameResult {
     running,
     start_requested,
@@ -273,6 +267,10 @@ struct TitleLoopCallbacks {
     // ROM 0x1C1E and 0x1E4E: publish source audio requests before their
     // adjacent text or logo presentation operations.
     std::function<void(TitleAudioCommand)> request_audio_command;
+    // Lua owns the carried 0x5D8BA -> 0x2634 shimmer state. The returned
+    // values are a typed rendering view for the Qt presenter.
+    std::function<std::optional<TitleCircuitLightState>(std::uint16_t)>
+        advance_circuit_lights;
     std::function<void(std::uint8_t)> publish_circuit_light_phase;
     std::function<void(std::uint16_t)> publish_animation_offset;
 

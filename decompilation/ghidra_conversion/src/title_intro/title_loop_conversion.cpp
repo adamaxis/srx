@@ -261,20 +261,6 @@ bool advance_title_animation_timer(TitleAnimationTimer& timer) {
     return true;
 }
 
-std::optional<std::uint8_t> advance_title_circuit_lights(
-    TitleCircuitLightState& state, std::uint16_t completion_state) {
-    if (completion_state != 2U) {
-        return std::nullopt;
-    }
-    --state.countdown;
-    if (state.countdown >= 0) {
-        return std::nullopt;
-    }
-    state.countdown = 4;
-    state.phase = static_cast<std::uint8_t>((state.phase + 1U) % 7U);
-    return state.phase;
-}
-
 TitleLoopFrameResult advance_title_loop_frame(
     TitleLoopState& state, const TitleLoopCallbacks& callbacks) {
     // Once ROM 0x1A9E leaves its interactive loop, it does not run the title
@@ -338,10 +324,18 @@ TitleLoopFrameResult advance_title_loop_frame(
         callbacks.apply_text_action(text_action);
     }
 
-    if (const auto phase = advance_title_circuit_lights(
-            state.circuit_lights, state.text.completion_state);
-        phase.has_value() && callbacks.publish_circuit_light_phase) {
-        callbacks.publish_circuit_light_phase(*phase);
+    if (callbacks.advance_circuit_lights) {
+        const auto previous_phase = state.circuit_lights.phase;
+        if (const auto lights = callbacks.advance_circuit_lights(
+                state.text.completion_state);
+            lights.has_value()) {
+            state.circuit_lights = *lights;
+            if (state.circuit_lights.phase != previous_phase &&
+                callbacks.publish_circuit_light_phase) {
+                callbacks.publish_circuit_light_phase(
+                    state.circuit_lights.phase);
+            }
+        }
     }
 
     if (advance_title_animation_timer(state.animation_timer) &&

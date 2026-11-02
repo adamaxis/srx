@@ -389,12 +389,40 @@ int main() {
         return 1;
     }
 
-    TitleCircuitLightState lights{0, 0};
-    if (!expect(!advance_title_circuit_lights(lights, 1U).has_value())) {
-        return 1;
+    // The source phase/cadence now comes from Lua. ROM runtime frames
+    // 1043..1045 keep phase 6 for countdown 1 -> 0, then publish phase 0.
+    TitleLoopState delegated_lights;
+    delegated_lights.text.completion_state = 1U;
+    delegated_lights.text.countdown = 0;
+    delegated_lights.circuit_lights = TitleCircuitLightState{2, 6U};
+    std::array<TitleCircuitLightState, 3> lua_light_steps{{
+        {1, 6U}, {0, 6U}, {4, 0U}}};
+    std::size_t lua_light_step = 0U;
+    std::vector<std::uint8_t> published_light_phases;
+    std::vector<std::uint16_t> light_completion_states;
+    TitleLoopCallbacks light_callbacks{};
+    light_callbacks.advance_circuit_lights =
+        [&](const std::uint16_t completion_state)
+        -> std::optional<TitleCircuitLightState> {
+        light_completion_states.push_back(completion_state);
+        if (lua_light_step >= lua_light_steps.size()) {
+            return std::nullopt;
+        }
+        return lua_light_steps[lua_light_step++];
+    };
+    light_callbacks.publish_circuit_light_phase =
+        [&](const std::uint8_t phase) {
+            published_light_phases.push_back(phase);
+        };
+    for (std::size_t frame = 0U; frame < lua_light_steps.size(); ++frame) {
+        advance_title_loop_frame(delegated_lights, light_callbacks);
     }
-    const auto phase = advance_title_circuit_lights(lights, 2U);
-    if (!expect(phase.has_value() && *phase == 1U && lights.countdown == 4)) {
+    if (!expect(lua_light_step == lua_light_steps.size() &&
+                light_completion_states ==
+                    std::vector<std::uint16_t>{2U, 2U, 2U} &&
+                delegated_lights.circuit_lights.countdown == 4 &&
+                delegated_lights.circuit_lights.phase == 0U &&
+                published_light_phases == std::vector<std::uint8_t>{0U})) {
         return 1;
     }
 

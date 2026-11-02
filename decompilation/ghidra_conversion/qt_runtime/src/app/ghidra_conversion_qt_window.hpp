@@ -1339,6 +1339,26 @@ private:
                     // The host runs 0x1D7A in one frame; the Lua timeline
                     // holds its 0x1406/0x12F6 VBlanks.
                     queue_opening_presentation_hold("boot.title_setup");
+                    const auto initial_lights =
+                        startup_scripts_.call_integers(
+                            "startup", "reset_title_circuit_lights",
+                            {state_.pre_title.strobe_phase});
+                    if (!initial_lights.has_value() ||
+                        initial_lights->size() != 2U ||
+                        (*initial_lights)[0] < 0 ||
+                        (*initial_lights)[0] >= 8 ||
+                        (*initial_lights)[1] <
+                            std::numeric_limits<std::int16_t>::min() ||
+                        (*initial_lights)[1] >
+                            std::numeric_limits<std::int16_t>::max()) {
+                        throw std::runtime_error(
+                            "startup Lua could not inherit the title light "
+                            "phase: " + startup_scripts_.failure());
+                    }
+                    title_loop_.circuit_lights.phase =
+                        static_cast<std::uint8_t>((*initial_lights)[0]);
+                    title_loop_.circuit_lights.countdown =
+                        static_cast<std::int16_t>((*initial_lights)[1]);
                 }
                 setWindowTitle(phase_title(phase));
             };
@@ -1390,6 +1410,27 @@ private:
             };
         title_loop_callbacks_.publish_circuit_light_phase =
             [this](const std::uint8_t phase) { title_circuit_phase_ = phase; };
+        title_loop_callbacks_.advance_circuit_lights =
+            [this](const std::uint16_t completion_state)
+                -> std::optional<TitleCircuitLightState> {
+                const auto lights = startup_scripts_.call_integers(
+                    "startup", "advance_title_circuit_lights",
+                    {completion_state});
+                if (!lights.has_value() || lights->size() != 2U ||
+                    (*lights)[0] < 0 || (*lights)[0] >= 8 ||
+                    (*lights)[1] <
+                        std::numeric_limits<std::int16_t>::min() ||
+                    (*lights)[1] >
+                        std::numeric_limits<std::int16_t>::max()) {
+                    throw std::runtime_error(
+                        "startup Lua title circuit lights failed: " +
+                        startup_scripts_.failure());
+                }
+                return TitleCircuitLightState{
+                    static_cast<std::int16_t>((*lights)[1]),
+                    static_cast<std::uint8_t>((*lights)[0]),
+                };
+            };
         title_loop_callbacks_.publish_animation_offset = no_op;
         title_loop_callbacks_.draw_prompt_variant =
             [this](const TitlePromptVariant variant) {
