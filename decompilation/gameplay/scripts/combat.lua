@@ -218,11 +218,17 @@ local function condition_modifier(difficulty, attacker, target)
         return difficulty + 2
     end
     if has_cyberware or
-       attacker_traits.ignores_cover_condition_penalty or
-       not target.actor_facts.interaction.no_coverage_difficulty_bonus then
+       attacker_traits.ignores_cover_condition_penalty then
         return difficulty
     end
-    return difficulty + 4
+    -- ROM 0x55774..0x55780 adds four when the linked target's +0x11.7 is
+    -- set. The extracted byte exposes that bit as unseen and as the semantic
+    -- no-coverage modifier; either source fact preserves the set bit.
+    local interaction = target.actor_facts.interaction
+    if interaction.no_coverage_difficulty_bonus or interaction.unseen then
+        return difficulty + 4
+    end
+    return difficulty
 end
 
 local function unlinked_spell_condition_modifier(difficulty, attacker)
@@ -336,14 +342,6 @@ local function defense_modifier(value, attacker)
         return value - math.floor((talisman.rating or 0) / 2)
     end
     return value
-end
-
-local function minimum_plus_attribute(value, attribute, add_attribute)
-    local result = math.min(value, attribute)
-    if add_attribute then
-        result = result + attribute
-    end
-    return result == 0 and 1 or result
 end
 
 local function adjusted_meters(record, physical, damage, context)
@@ -1008,26 +1006,28 @@ function Combat.resolve_reaction(context, target)
     local attacker_average = command_average(attacker)
     local attacker_reduction = posture_reduction(attacker_average,
         attacker.posture_reduction_percent)
-    local first_count = math.min(attacker_reduction,
+    -- ROM 0x55C7C..0x55C96 keeps the larger of the posture share and melee
+    -- skill, then adds the skill again. 0x0DBA supplies one trial for zero.
+    local first_count = math.max(attacker_reduction,
                                  attacker.skills.melee_combat) +
                         attacker.skills.melee_combat
-    if first_count == 0 then
-        first_count = 1
-    end
-    local difficulty = condition_modifier(4, attacker, defender)
+    local difficulty = condition_modifier(
+        E.CombatTuning.DEFAULT_ACTION_DIFFICULTY, attacker, defender)
     difficulty = dynamic_status_modifier(difficulty, attacker, defender,
                                          context)
     if difficulty == nil then
         return nil
     end
-    difficulty = math.max(difficulty, 2)
+    difficulty = math.max(
+        difficulty, E.CombatTuning.MINIMUM_ACTION_DIFFICULTY)
     local first_successes = thresholded_rolls(first_count, difficulty,
                                                context.ai_random_bound)
     if first_successes == nil or first_successes == 0 then
         return nil
     end
 
-    local remaining = first_successes + 3
+    -- ROM 0x55CBE seeds D5 at attack successes + three before armor.
+    local remaining = first_successes + E.CombatTuning.MELEE_BASE_DAMAGE
     remaining = remaining - secondary_armor_modifier(defender)
     if remaining <= 0 then
         return nil
@@ -1040,17 +1040,22 @@ function Combat.resolve_reaction(context, target)
     local defender_average = command_average(defender)
     local defender_reduction = posture_reduction(defender_average,
         defender.posture_reduction_percent)
-    local second_count = minimum_plus_attribute(
-        defender_average - defender_reduction,
-        defender.skills.melee_combat,
-        defender.equipped_action_id == nil)
-    local second_difficulty = condition_modifier(4, defender, attacker)
+    -- ROM 0x55CD0..0x55D00 uses max(posture share, melee skill); it adds
+    -- the skill only when the defending actor's action code (+0x57) is zero.
+    local second_count = math.max(defender_reduction,
+                                  defender.skills.melee_combat)
+    if defender.equipped_action_id == nil then
+        second_count = second_count + defender.skills.melee_combat
+    end
+    local second_difficulty = condition_modifier(
+        E.CombatTuning.DEFAULT_ACTION_DIFFICULTY, defender, attacker)
     second_difficulty = dynamic_status_modifier(
         second_difficulty, defender, attacker, context)
     if second_difficulty == nil then
         return nil
     end
-    second_difficulty = math.max(second_difficulty, 2)
+    second_difficulty = math.max(
+        second_difficulty, E.CombatTuning.MINIMUM_ACTION_DIFFICULTY)
     local second_successes = thresholded_rolls(
         second_count, second_difficulty, context.ai_random_bound)
     if second_successes == nil then
@@ -1063,10 +1068,14 @@ function Combat.resolve_reaction(context, target)
 
     local final_difficulty = attacker.attributes.strength +
         (combat_cyberware(attacker).melee_strength_bonus or 0)
-    local final_count = second_count + defender.attributes.body
-    final_count = final_count +
+    -- ROM 0x55D4E..0x55D9E builds body resistance from the defender's
+    -- reduced command average, Body, and melee-defense cyberware. This pool is
+    -- independent of the preceding defense pool.
+    local final_count = defender_average - defender_reduction +
+        defender.attributes.body +
         (combat_cyberware(defender).melee_defense_bonus or 0)
-    final_difficulty = math.max(final_difficulty, 2)
+    final_difficulty = math.max(
+        final_difficulty, E.CombatTuning.MINIMUM_ACTION_DIFFICULTY)
     local final_successes = thresholded_rolls(
         final_count, final_difficulty, context.ai_random_bound)
     if final_successes == nil then

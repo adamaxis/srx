@@ -165,7 +165,10 @@ end
 
 local baseline_reaction = reaction_with_profile(false)
 local profile_reaction = reaction_with_profile(true)
-check(baseline_reaction ~= nil and baseline_reaction.mental_meter == 8 and
+-- ROM 0x55C76..0x55D9E gives pools 2, 2, and 5 here. The face-4 stub
+-- succeeds twice in each first pool, then fails all five Body trials at
+-- Strength 5, leaving three stun damage after the +3 base.
+check(baseline_reaction ~= nil and baseline_reaction.mental_meter == 7 and
       profile_reaction == nil,
       "linked named profile data was not applied to the primary action rule")
 

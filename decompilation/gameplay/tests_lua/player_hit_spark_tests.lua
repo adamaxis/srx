@@ -151,6 +151,14 @@ check(strike_out_of_range ~= nil and
       strike_out_of_range.hit_spark_spawn_request == nil,
       "out-of-range player swing does not request a spark")
 
+-- ROM 0x15C58 uses `cmpi.w #0x200` followed by carry rejection, so 0x1FF is
+-- still in contact and only distance 0x200 is outside the strike reach.
+target.distance = E.HitSpark.RANGE_LIMIT - 1
+local strike_inside_boundary = ActorAI.heartbeat(context)
+check(strike_inside_boundary ~= nil and
+      strike_inside_boundary.source_action_dispatch == "player_melee_hit",
+      "distance one unit below the ROM melee limit reaches the hit routine")
+
 target.distance = 256
 target.actor_facts.lifecycle.dead = true
 local strike_dead_target = ActorAI.heartbeat(context)

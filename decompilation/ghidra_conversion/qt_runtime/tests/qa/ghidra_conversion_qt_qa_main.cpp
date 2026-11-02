@@ -2949,8 +2949,13 @@ int run_field_random_encounter_spawn_qa(
     }
     const auto unarmed_audio_start = field_audio_events.size();
     const auto unarmed_boundary_start = source_boundaries.size();
-    // This New Game profile, the live Weenr template, and seed 0x000C make
-    // the source reaction resolve to a two-point physical-meter reduction.
+    // ROM Samurai template 0x7291A carries Hand Razors (+0x90 bit 2), and
+    // Weenr1 template 0x1D665A has Body 4, Quickness 3, Intelligence 1,
+    // Willpower 1, melee 3, posture 3, no armor, and no cybereyes. Starting
+    // at seed 0x000C, ROM 0x55C76's six dice at difficulty 4 yield 5
+    // successes; 0x55D00's six dice yield 2; 0x55D4E's five Body dice yield
+    // 0. The staged result is 5 + 3 - 0 armor - 2 defense - 0 Body - 2 for
+    // Hand Razors = 4 physical damage (meter 10 -> 6).
     field_scene.set_source_random_seed_for_dump(0x000CU);
     field_scene.set_controller_port_byte(0x40U);
     field_scene.advance_frame();
@@ -2974,7 +2979,7 @@ int run_field_random_encounter_spawn_qa(
     if (!field_scene.field_entity_attack_pose_for_dump() ||
         !unarmed_target_meter_after.has_value() ||
         *unarmed_target_meter_before != 10U ||
-        *unarmed_target_meter_after != 8U ||
+        *unarmed_target_meter_after != 6U ||
         swing_audio == field_audio_events.end() ||
         in_range_audio == field_audio_events.end() ||
         damage_boundary == source_boundaries.end() ||

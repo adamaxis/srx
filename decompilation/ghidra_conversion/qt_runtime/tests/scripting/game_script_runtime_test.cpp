@@ -8016,7 +8016,11 @@ int main() {
                         decision->movement_heading == 0x2000U;
                 } else {
                     // Zero delay attributes, mode 1: floor(0x6A / 2) == 53.
-                    // Meter 7 is the shared dice stub, not the template row.
+                    // The fixture attacker has Spurs (+0x90 bit 3), so this
+                    // is physical damage. ROM 0x55C76..0x55E60 resolves six
+                    // attack successes, one defense success (the zero-die
+                    // pool still gets one trial at 0x0DBA), and seven Body
+                    // successes: 6 + 3 - 0 armor - 1 - 7 = 1 point.
                     row_ok =
                         decision->animation_id == "action" &&
                         decision->ai_target_engaged &&
@@ -8031,7 +8035,7 @@ int main() {
                         decision->combat_meter_update->record_type == 0U &&
                         decision->combat_meter_update->physical &&
                         decision->combat_meter_update->changed &&
-                        decision->combat_meter_update->physical_meter == 7U &&
+                        decision->combat_meter_update->physical_meter == 9U &&
                         decision->combat_meter_update->mental_meter == 10U;
                 }
             }
@@ -8146,7 +8150,7 @@ int main() {
                 combat_probe_action->combat_meter_update->record_type == 0U &&
                 combat_probe_action->combat_meter_update->physical &&
                 combat_probe_action->combat_meter_update->changed &&
-                combat_probe_action->combat_meter_update->physical_meter == 7U &&
+                combat_probe_action->combat_meter_update->physical_meter == 9U &&
                 combat_probe_action->combat_meter_update->mental_meter == 10U &&
                 combat_probe_action->hit_spark_spawn_request.has_value() &&
                 combat_probe_action->hit_spark_spawn_request->target_id ==

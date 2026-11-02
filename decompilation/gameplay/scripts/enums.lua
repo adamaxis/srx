@@ -173,6 +173,8 @@ E.CombatTuning = {
     DEFAULT_ACTION_CONTINUATION_DIFFICULTY = 6, -- 0x55B54 -> 0x559BC [C]
     DEFAULT_ACTION_VALUE = 2, -- 0x55B54 seeds the 0x559BC continuation [C]
     ACTION_VALUE_MAX = 10, -- 0x559F0 clamp [C]
+    MINIMUM_ACTION_DIFFICULTY = 2, -- 0x55CAA/0x55D12 clamp [C]
+    MELEE_BASE_DAMAGE = 3, -- 0x55CBE adds three before armor [C]
 }
 E.CyberwareMask = {
     CYBEREYES = 0x0002, -- raw 0x0002: cyberware word bit 1 [C]
