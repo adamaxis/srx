@@ -12,6 +12,9 @@ game = { actors = {}, modules = {
     items = Items,
     magic = Magic,
 } }
+require("actor.init")
+local ActorAnim = require("actor.anim")
+local PartyDown = require("party_down")
 
 local passed, total = 0, 0
 local function check(condition, label)
@@ -406,6 +409,33 @@ local function spell_target(id)
     }) }
 end
 
+-- D4EA0 row 8 is Mana Blast (+0x57 code 9); 0x55B78 leaves FFF0CC clear
+-- for that row, so 0x559BC reaches the physical write at 0x55A90. Sleep is
+-- D4EA0 row 4 (+0x57 code 5), which sets FFF0CC and uses mental +0x9C at
+-- 0x55A78. The H target-resistance labels are not checked here.
+local function apply_spell_meter_path(spell_id, target_id)
+    game.actors = {}
+    local target = spell_target(target_id)
+    local result = Combat.resolve_spell_impact({
+        combatant = spell_caster(0, {}),
+        ai_random_bound = function(bound) return bound == 6 and 0 or nil end,
+    }, {
+        spell_id = spell_id,
+        successes = 30,
+        target_id = target_id,
+    }, target)
+    return result
+end
+local mana_blast_impact = apply_spell_meter_path("mana_blast", "mana-meter")
+check(E.SpellActionCode.MANA_BLAST == 9 and
+      mana_blast_impact ~= nil and mana_blast_impact.physical_meter < 10 and
+      mana_blast_impact.mental_meter == 10,
+      "Mana Blast must damage physical +0x4C per 0x55B78/0x55A90")
+local sleep_impact = apply_spell_meter_path("sleep", "sleep-meter")
+check(E.SpellActionCode.SLEEP == 5 and sleep_impact ~= nil and
+      sleep_impact.physical_meter == 10 and sleep_impact.mental_meter < 10,
+      "Sleep must damage mental +0x9C per 0x55B78/0x55A78")
+
 local mana_storm = ROM_SPELLS.mana_storm
 for _, case in ipairs({
     { force = 2, inventory = {}, trials = 6, residual = 2 },
@@ -444,49 +474,201 @@ check(pistol_gate == 51 and cast_gate == 102 and
       pistol_gate + 1 == 52 and cast_gate + 1 == 103,
       "source action timing changed from 51/52 and 102/103 pass gates")
 
+-- These fixtures are normalized from ROM records, not invented fighters.
+-- Runner source fields are read from 0x72A1A; 0x42B0 copies that selected
+-- 0x100-byte profile. World-actor combat fields are copied by 0x44BC from the
+-- templates at 0x1D66A4 and 0x1D66EE; dynamic-world-activity-actors.tsv keeps
+-- those decoded records and source addresses together.
+local COMBAT_RECORDS = {
+    joshua_decker = {
+        rom_record = 0x72A1A, party = true,
+        action = "american_l36", item_code = E.ItemId.AMERICAN_L36,
+        armor = "armor_clothing", posture_steps = 2,
+        physical_meter = 10, mental_meter = 10,
+        body = 2, quickness = 5, strength = 2,
+        intelligence = 4, willpower = 3,
+        firearms = 2, pistols = 0, smgs = 0, shotguns = 0,
+        datajack = true,
+    },
+    weenr2 = {
+        rom_record = 0x1D66A4, party = false,
+        action = "streetline", item_code = E.ItemId.STREETLINE_SPECIAL,
+        armor = "armor_vest", posture_steps = 2,
+        physical_meter = 10, mental_meter = 10,
+        body = 5, quickness = 4, strength = 4,
+        intelligence = 2, willpower = 2,
+        firearms = 2, pistols = 0, smgs = 0, shotguns = 0,
+        cyberware_flags = 0x0004, hand_razors = true,
+    },
+    yakuza_weenr = {
+        rom_record = 0x1D66EE, party = false,
+        action = "mach_22", item_code = E.ItemId.MACH22,
+        armor = "armor_jacket", posture_steps = 2,
+        physical_meter = 10, mental_meter = 10,
+        body = 5, quickness = 5, strength = 4,
+        intelligence = 4, willpower = 3,
+        firearms = 5, pistols = 0, smgs = 0, shotguns = 0,
+        cyberware_flags = 0x0026, cybereyes = true, hand_razors = true,
+    },
+}
+
+local function source_combatant(profile, source_record_slot)
+    local combatant = make_combatant({
+        party = profile.party, action = profile.action,
+        armor = profile.armor,
+        firearms = profile.firearms, pistols = profile.pistols,
+        smgs = profile.smgs, shotguns = profile.shotguns,
+        body = profile.body, quickness = profile.quickness,
+        strength = profile.strength, intelligence = profile.intelligence,
+        willpower = profile.willpower,
+        physical_meter = profile.physical_meter,
+        mental_meter = profile.mental_meter,
+        posture_reduction_percent = profile.posture_steps * 25,
+        datajack = profile.datajack, cybereyes = profile.cybereyes,
+        hand_razors = profile.hand_razors,
+    })
+    combatant.source_rom_record = profile.rom_record
+    combatant.source_item_code = profile.item_code
+    combatant.source_record_slot = source_record_slot
+    return combatant
+end
+
+check(COMBAT_RECORDS.joshua_decker.rom_record == 0x72A1A and
+      COMBAT_RECORDS.joshua_decker.item_code == E.ItemId.AMERICAN_L36 and
+      COMBAT_RECORDS.weenr2.rom_record == 0x1D66A4 and
+      COMBAT_RECORDS.weenr2.item_code == E.ItemId.STREETLINE_SPECIAL and
+      COMBAT_RECORDS.yakuza_weenr.rom_record == 0x1D66EE and
+      COMBAT_RECORDS.yakuza_weenr.item_code == E.ItemId.MACH22,
+      "combat fixtures must retain distinct source profile and item records")
+
+-- 0xA8EA scans active actor records from FF0100 in ascending 0x100-byte
+-- strides. Party slot 0 therefore services before world slot 6; world slots
+-- 6 and 7 service in that order. The source has record order, not a separate
+-- randomized initiative roll.
+local party_world_order = {
+    source_combatant(COMBAT_RECORDS.weenr2, 6),
+    source_combatant(COMBAT_RECORDS.joshua_decker, 0),
+}
+table.sort(party_world_order, function(left, right)
+    return left.source_record_slot < right.source_record_slot
+end)
+check(party_world_order[1].source_record_slot == 0 and
+      party_world_order[1].source_rom_record == 0x72A1A and
+      party_world_order[2].source_record_slot == 6 and
+      party_world_order[2].source_rom_record == 0x1D66A4,
+      "0xA8EA turn service must visit FF0100 before FF0700")
+
+-- A real-profile measured anchor validates the formula oracle independently
+-- against the live Lua resolver. Headless seed 0x0001 measured 2 attack
+-- successes, 0 defense successes, one physical damage, mental unchanged.
+do
+    game.actors = {}
+    local party = source_combatant(COMBAT_RECORDS.joshua_decker, 0)
+    local enemy = source_combatant(COMBAT_RECORDS.weenr2, 6)
+    local target = { id = "measured-source-hit", combatant = enemy }
+    local rom_rng, port_rng = source_rng(0x0001), source_rng(0x0001)
+    local expected_attack = source_weapon_attack(
+        party, "american_l36", rom_rng)
+    local expected_damage = source_weapon_damage(
+        enemy, "american_l36", expected_attack, rom_rng)
+    local context = {
+        combatant = party, projectile_action_id = "american_l36",
+        ai_target_candidates = {}, ai_random_bound = port_rng,
+    }
+    local attack = Combat.resolve_weapon_attack_seed(context)
+    local hit = Combat.resolve_weapon_hit(
+        context, { attack_successes = attack }, target)
+    check(expected_attack == 2 and attack == 2 and expected_damage == 1 and
+          hit ~= nil and hit.physical_meter == 9 and hit.mental_meter == 10,
+          "seed 0001 Joshua Decker 0x72A1A -> Weenr2 0x1D66A4 differs from measured 2/0/1, 10->9 physical")
+end
+
+local function source_lifecycle_downed(target, physical_meter, mental_meter)
+    if target.combatant.is_party_member then
+        local down_result = PartyDown.enter_runner_down_state({
+            target_role = "leader",
+            target_meters = {
+                [E.RunnerMeter.PHYSICAL] = physical_meter,
+                [E.RunnerMeter.MENTAL] = mental_meter,
+            },
+            party = {
+                leader = { active = true, dead = false },
+                companion_one = { active = true, dead = false },
+                companion_two = { active = true, dead = false },
+            },
+        })
+        return down_result.lifecycle.downed, false
+    end
+
+    local visual_profile = E.ActorVisualProfile.HUMAN_GUARD
+    local actor_state = {
+        visual_profile_id = visual_profile,
+        direction = 0,
+        actor_facts = { lifecycle = {
+            active = true, ai_runner = false, downed = false, dead = false,
+        } },
+        incoming_hit = {
+            physical_meter = physical_meter,
+            mental_meter = mental_meter,
+        },
+    }
+    ActorAnim.begin_received_hit_reaction(actor_state, {
+        visual_profile_id = visual_profile,
+    })
+    return actor_state.actor_facts.lifecycle.downed,
+           actor_state.actor_facts.lifecycle.dead == true
+end
+
 local function run_fight(kind, seed)
     game.actors = {}
-    local party_a = kind == "party_enemy"
-    local port_a = make_combatant({
-        party = party_a, action = "warhawk", armor = "armor_vest",
-        firearms = 6, pistols = 6, smgs = 6,
-        body = 4, quickness = 5, strength = 4,
-        intelligence = 5, willpower = 5,
-        posture_reduction_percent = 50,
-    })
-    local rom_a = make_combatant({
-        party = party_a, action = "warhawk", armor = "armor_vest",
-        firearms = 6, pistols = 6, smgs = 6,
-        body = 4, quickness = 5, strength = 4,
-        intelligence = 5, willpower = 5,
-        posture_reduction_percent = 50,
-    })
-    local port_b = make_combatant({
-        action = "mach_22", armor = "vest_with_plates",
-        firearms = 5, pistols = 5, smgs = 5,
-        body = 5, quickness = 5, strength = 4,
-        intelligence = 4, willpower = 4,
-        posture_reduction_percent = 50,
-    })
-    local rom_b = make_combatant({
-        action = "mach_22", armor = "vest_with_plates",
-        firearms = 5, pistols = 5, smgs = 5,
-        body = 5, quickness = 5, strength = 4,
-        intelligence = 4, willpower = 4,
-        posture_reduction_percent = 50,
-    })
-    local port_actor_a = { id = "port-a-" .. kind .. seed,
-                           combatant = port_a }
-    local port_actor_b = { id = "port-b-" .. kind .. seed,
-                           combatant = port_b }
+    local profile_a, profile_b, slot_a, slot_b
+    if kind == "party_enemy" then
+        profile_a, profile_b = COMBAT_RECORDS.joshua_decker,
+                              COMBAT_RECORDS.weenr2
+        slot_a, slot_b = 0, 6
+    else
+        profile_a, profile_b = COMBAT_RECORDS.weenr2,
+                              COMBAT_RECORDS.yakuza_weenr
+        slot_a, slot_b = 6, 7
+    end
+    local fighter_a = {
+        id = "fighter-a-" .. kind .. seed,
+        profile = profile_a,
+        source_record_slot = slot_a,
+        port_actor = { id = "port-a-" .. kind .. seed,
+                       combatant = source_combatant(profile_a, slot_a) },
+        rom_combatant = source_combatant(profile_a, slot_a),
+    }
+    local fighter_b = {
+        id = "fighter-b-" .. kind .. seed,
+        profile = profile_b,
+        source_record_slot = slot_b,
+        port_actor = { id = "port-b-" .. kind .. seed,
+                       combatant = source_combatant(profile_b, slot_b) },
+        rom_combatant = source_combatant(profile_b, slot_b),
+    }
+    local turn_order = { fighter_a, fighter_b }
+    table.sort(turn_order, function(left, right)
+        return left.source_record_slot < right.source_record_slot
+    end)
+    local first_slot, second_slot = kind == "party_enemy" and 0 or 6,
+                                    kind == "party_enemy" and 6 or 7
+    local source_order_matches =
+        turn_order[1].source_record_slot == first_slot and
+        turn_order[2].source_record_slot == second_slot
     local rom_rng, port_rng = source_rng(seed), source_rng(seed)
-    local mismatches, invariant_failures, actions = 0, 0, 0
+    local mismatches, actions = 0, {}
+    local party_hurt_pending = false
 
-    local function attack(port_from, port_to, rom_from, rom_to, action)
-        actions = actions + 1
-        local rom_attack = source_weapon_attack(rom_from, action, rom_rng)
+    local function attack(from, to)
+        actions[#actions + 1] = from.source_record_slot
+        local action = from.profile.action
+        local old_physical = to.port_actor.combatant.physical_meter
+        local old_mental = to.port_actor.combatant.mental_meter
+        local rom_attack = source_weapon_attack(
+            from.rom_combatant, action, rom_rng)
         local context = {
-            combatant = port_from.combatant,
+            combatant = from.port_actor.combatant,
             projectile_action_id = action,
             ai_target_candidates = {},
             ai_random_bound = port_rng,
@@ -496,77 +678,115 @@ local function run_fight(kind, seed)
             mismatches = mismatches + 1
         end
         local rom_damage = source_weapon_damage(
-            rom_to, action, rom_attack, rom_rng)
-        local expected_meter = math.max(0, rom_to.physical_meter - rom_damage)
-        rom_to.physical_meter = expected_meter
+            to.rom_combatant, action, rom_attack, rom_rng)
+        local expected_meter = math.max(
+            0, to.rom_combatant.physical_meter - rom_damage)
+        to.rom_combatant.physical_meter = expected_meter
 
-        local old_mental = port_to.combatant.mental_meter
         local result = Combat.resolve_weapon_hit(
-            context, { attack_successes = port_attack }, port_to)
+            context, { attack_successes = port_attack }, to.port_actor)
         if result == nil or result.physical_meter ~= expected_meter or
            result.mental_meter ~= old_mental or result.physical ~= true then
             mismatches = mismatches + 1
         elseif result.changed then
-            port_to.combatant = game.actors[port_to.id].combatant
+            to.port_actor.combatant = game.actors[to.port_actor.id].combatant
         end
-        if result == nil or result.physical_meter < 0 or
-           result.mental_meter < 0 then
-            invariant_failures = invariant_failures + 1
-        end
-        if expected_meter == 0 and rom_damage > 0 and
-           (result == nil or result.physical_meter ~= 0) then
-            invariant_failures = invariant_failures + 1
+
+        local meters_nonnegative = result ~= nil and
+            result.physical_meter >= 0 and result.mental_meter >= 0 and
+            expected_meter >= 0
+        check(meters_nonnegative,
+              string.format("0x55948 weapon hit made a negative meter (%s, slot %d)",
+                            kind, from.source_record_slot))
+        check(result ~= nil and result.mental_meter == old_mental and
+              to.port_actor.combatant.mental_meter == old_mental,
+              string.format("0x55948/0x55A90 conventional hit changed mental +0x9C (%s)",
+                            kind))
+
+        local downed, dead = source_lifecycle_downed(
+            to.port_actor, result and result.physical_meter or -1,
+            result and result.mental_meter or -1)
+        check(result ~= nil and downed == (expected_meter == 0) and
+              (expected_meter ~= 0 or not dead),
+              string.format("0xAFF2/0xB330 down gate disagrees with physical zero (%s, slot %d)",
+                            kind, to.source_record_slot))
+
+        if to.port_actor.combatant.is_party_member then
+            local pending = game.player_hurt_pending_by_actor_id
+            if expected_meter == 0 then
+                party_hurt_pending = false
+            elseif expected_meter < old_physical then
+                party_hurt_pending = true
+            end
+            check((type(pending) == "table" and
+                   pending[to.port_actor.id] == true) ==
+                      party_hurt_pending,
+                  string.format("0x55A1E party meter branch disagrees with down/hurt state (%s)",
+                                kind))
         end
     end
 
     local rounds = 0
-    while rom_a.physical_meter > 0 and rom_b.physical_meter > 0 and
-          rounds < 40 do
+    while fighter_a.rom_combatant.physical_meter > 0 and
+          fighter_b.rom_combatant.physical_meter > 0 and rounds < 40 do
         rounds = rounds + 1
-        attack(port_actor_a, port_actor_b, rom_a, rom_b, "warhawk")
-        if rom_b.physical_meter > 0 then
-            attack(port_actor_b, port_actor_a, rom_b, rom_a, "mach_22")
+        for _, from in ipairs(turn_order) do
+            local to = from == fighter_a and fighter_b or fighter_a
+            if from.rom_combatant.physical_meter > 0 and
+               to.rom_combatant.physical_meter > 0 then
+                attack(from, to)
+            end
         end
     end
-    local port_a_meter = port_actor_a.combatant.physical_meter
-    local port_b_meter = port_actor_b.combatant.physical_meter
-    local rom_winner = rom_a.physical_meter == 0 and "B" or
-        (rom_b.physical_meter == 0 and "A" or "draw")
+
+    local turn_order_matches = true
+    for index, slot in ipairs(actions) do
+        local expected_slot = index % 2 == 1 and first_slot or second_slot
+        if slot ~= expected_slot then
+            turn_order_matches = false
+            break
+        end
+    end
+    local port_a_meter = fighter_a.port_actor.combatant.physical_meter
+    local port_b_meter = fighter_b.port_actor.combatant.physical_meter
+    local rom_winner = fighter_a.rom_combatant.physical_meter == 0 and "B" or
+        (fighter_b.rom_combatant.physical_meter == 0 and "A" or "draw")
     local port_winner = port_a_meter == 0 and "B" or
         (port_b_meter == 0 and "A" or "draw")
-    return rom_winner, port_winner, mismatches, invariant_failures, actions,
-           rounds
+    return rom_winner, port_winner, mismatches, #actions, rounds,
+           source_order_matches and turn_order_matches
 end
 
--- 0x55948/0x559BC/0x55A90: 64 independent source seeds per combat mode.
--- The two source weapons decode from D4540/166AD4; each hit is checked before
--- the deterministic outcome distribution is counted.
+-- 0x55640 is shared by the party 0x1514E and world actor 0x14FF8 callers;
+-- source record type selects the party/world meter branch at 0x55A1E. The
+-- alternating seeded result distribution below is [H] regression-only: it
+-- omits source delay clocks and has no emulator-wide distribution anchor.
 for _, kind in ipairs({ "enemy_enemy", "party_enemy" }) do
     local rom_outcomes = { A = 0, B = 0, draw = 0 }
     local port_outcomes = { A = 0, B = 0, draw = 0 }
-    local mismatches, invariant_failures, actions = 0, 0, 0
+    local mismatches, actions, rounds = 0, 0, 0
+    local source_order_matches = true
     for seed = 1, 64 do
-        local rom_winner, port_winner, row_mismatches, row_invariants,
-              row_actions = run_fight(kind, seed)
+        local rom_winner, port_winner, row_mismatches, row_actions,
+              row_rounds, row_order_matches = run_fight(kind, seed)
         rom_outcomes[rom_winner] = rom_outcomes[rom_winner] + 1
         port_outcomes[port_winner] = port_outcomes[port_winner] + 1
         mismatches = mismatches + row_mismatches
-        invariant_failures = invariant_failures + row_invariants
         actions = actions + row_actions
+        rounds = rounds + row_rounds
+        source_order_matches = source_order_matches and row_order_matches
     end
-    check(rom_outcomes.A == 25 and rom_outcomes.B == 39 and
-          rom_outcomes.draw == 0,
-          kind .. " source-seed distribution changed from formula oracle")
     check(port_outcomes.A == rom_outcomes.A and
           port_outcomes.B == rom_outcomes.B and
-          port_outcomes.draw == rom_outcomes.draw and
-          mismatches == 0,
-          kind .. " 64 seeded fights differ from ROM oracle")
-    check(invariant_failures == 0,
-          kind .. " fight produced negative meters or failed zero-meter death gate")
+          port_outcomes.draw == rom_outcomes.draw and mismatches == 0,
+          kind .. " source-profile seeded fights differ from the formula model")
+    check(source_order_matches,
+          kind .. " action sequence violates 0xA8EA source record order")
     print(string.format(
-        "%s: 64 seeded fights, %d source actions, A/B/draw %d/%d/%d",
-        kind, actions, rom_outcomes.A, rom_outcomes.B, rom_outcomes.draw))
+        "%s [H regression-only]: 64 formula-seeded fights, %d actions, " ..
+        "%d passes, A/B/draw %d/%d/%d",
+        kind, actions, rounds, rom_outcomes.A, rom_outcomes.B,
+        rom_outcomes.draw))
 end
 
 print(string.format("combat_engine_tests: %d/%d passed", passed, total))
