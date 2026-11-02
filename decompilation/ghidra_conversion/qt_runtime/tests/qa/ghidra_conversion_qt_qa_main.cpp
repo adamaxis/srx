@@ -9,6 +9,7 @@
 #include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/random_conversion.hpp"
 #include "shadowrun_ghidra/field/vid_phone_service_conversion.hpp"
+#include "shadowrun_ghidra/integration/recruited_runner_conversation_conversion.hpp"
 #include "shadowrun_ghidra/session/runner_record_access_conversion.hpp"
 #include "shadowrun_ghidra/session/startup_record_assets_conversion.hpp"
 #include "shadowrun_ghidra/scripting/run_location_catalog.hpp"
@@ -14540,13 +14541,18 @@ int run_scene19_old_man_contact_qa(
         }
     }
     const auto returned = render();
+    const auto returned_position = field_scene.field_entity_world_position();
     if (field_scene.dialogue_open() ||
         field_scene.field_scene_reference_for_dump() != 19U ||
         field_scene.field_modal_return_transition_frames_for_dump() != 0U ||
         field_scene.field_palette_fade_steps_for_dump() != 0U ||
+        field_scene.dialogue_input_locked() ||
+        field_scene.field_interaction_open() ||
+        !field_scene.field_entity_visible_for_dump() ||
+        returned_position.x != contact_position.x ||
+        returned_position.y != contact_position.y ||
         !field_hud_chrome_survives(returned, asset_root) ||
-        count_playfield_lit(returned) < 100U ||
-        !save("actual.bmp", returned) || !audio_events.empty()) {
+        count_playfield_lit(returned) < 100U || !audio_events.empty()) {
         std::cerr << "Scene-19 old-man QA: completed return did not redraw the "
                      "same field scene cleanly (dialogue="
                   << field_scene.dialogue_open() << ", scene="
@@ -14557,19 +14563,82 @@ int run_scene19_old_man_contact_qa(
                   << ", palette_steps="
                   << static_cast<unsigned>(
                          field_scene.field_palette_fade_steps_for_dump())
+                  << ", input_locked=" << field_scene.dialogue_input_locked()
+                  << ", interaction_open=" << field_scene.field_interaction_open()
+                  << ", player_visible=" << field_scene.field_entity_visible_for_dump()
+                  << ", contact=" << contact_position.x << ','
+                  << contact_position.y << ", returned="
+                  << returned_position.x << ',' << returned_position.y
                   << ", audio_events=" << audio_events.size() << ")\n";
         return 3;
     }
+
+    // [C] Scene 19 event 30 at 0x1D5F50 reaches the no-choice, same-map
+    // continuation 0x20C78 through 0xB7B8/0x20990. With no building
+    // destination or doorway-return branch, the prompt resumes at contact.
+    const auto movement_start = field_scene.field_entity_world_position();
+    field_scene.set_controller_nibble(0x02U); // ordinary Down, away from contact
+    for (std::uint8_t frame = 0U; frame < 12U; ++frame) {
+        field_scene.advance_frame();
+    }
+    field_scene.set_controller_nibble(0U);
+    const auto movement_end = field_scene.field_entity_world_position();
+    if (movement_end.x == movement_start.x &&
+        movement_end.y == movement_start.y) {
+        std::cerr << "Scene-19 old-man QA: player did not move after the "
+                     "same-map dialogue returned (start="
+                  << movement_start.x << ',' << movement_start.y
+                  << ", end=" << movement_end.x << ',' << movement_end.y
+                  << ")\n";
+        return 3;
+    }
+
+    // [C] ROM 0x211E8 selects the conversation for recruited-runner index 0
+    // (Ricky). Once the booth prompt has returned, that existing prompt must
+    // still be enterable from the recovered field session.
+    shadowrun::ghidra_conversion::integration::RecruitedRunnerConversationState
+        ricky_conversation{};
+    ricky_conversation.service.service_progress_counters.resize(10U, 0U);
+    ricky_conversation.service.selected_runner_template_index = 0U;
+    const auto ricky_prompt =
+        shadowrun::ghidra_conversion::integration::
+            begin_recruited_runner_conversation(ricky_conversation);
+    if (ricky_prompt.screen !=
+            shadowrun::ghidra_conversion::integration::
+                RecruitedRunnerConversationScreen::common_prompt ||
+        ricky_prompt.transition !=
+            shadowrun::ghidra_conversion::integration::
+                RecruitedRunnerConversationTransition::opened ||
+        ricky_prompt.common_prompt.runner !=
+            shadowrun::ghidra_conversion::
+                RecruitedRunnerConversationRunner::ricky) {
+        std::cerr << "Scene-19 old-man QA: Ricky's conversation did not open "
+                     "after returning to the field\n";
+        return 3;
+    }
+
+    const auto actual = render();
+    if (!field_scene.field_entity_visible_for_dump() ||
+        field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 19U ||
+        !field_hud_chrome_survives(actual, asset_root) ||
+        count_playfield_lit(actual) < 100U || !save("actual.bmp", actual)) {
+        std::cerr << "Scene-19 old-man QA: post-booth movement frame failed\n";
+        return 3;
+    }
     trace << "returned-to-field\t" << contact_tick << "\t19\t"
-          << field_scene.field_entity_world_position().x << '\t'
-          << field_scene.field_entity_world_position().y
+          << returned_position.x << '\t' << returned_position.y
           << "\t30\t30\t0\t0\t0\n";
+    trace << "post-booth-movement\t12\t19\t" << movement_end.x << '\t'
+          << movement_end.y << "\t-\t-\t0\t0\t0\n";
     trace.flush();
     std::cout << "scene19_old_man_contact_qa=passed rom=0x" << std::hex
               << kEventRecordAddress << std::dec << " spawn=208,204 contact="
               << contact_position.x << ',' << contact_position.y
-              << " tick=" << contact_tick
-              << " debugger_ready=ordinary-input-field-runtime artifacts="
+              << " tick=" << contact_tick << " return="
+              << returned_position.x << ',' << returned_position.y
+              << " moved=" << movement_end.x << ',' << movement_end.y
+              << " ricky_dialogue=opened debugger_ready=ordinary-input-field-runtime artifacts="
               << output.string() << '\n';
     return 0;
 }

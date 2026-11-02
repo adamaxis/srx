@@ -717,4 +717,48 @@ assert(in_place_dialogue.kind == "dialogue" and
        in_place_dialogue.return_music_policy ==
            E.FieldLocationMusicReturnPolicy.NONE)
 
+-- [C] Scene-19 record 12/event 30 at 0x1D5F50 follows 0xB7B8 ->
+-- 0x20990 -> 0x20C78 and returns to the same map after the no-choice prompt.
+game.modules.world_content_data.entities.jackals_lantern_old_man_contact = {
+    id = "jackals_lantern_old_man_contact",
+    links = {
+        {
+            id = "rom_event_30",
+            source_scene = 19,
+            source_event = "event_30",
+            route_kind = "dialogue",
+            script = "lua_dialogue",
+            route_priority = 0,
+            entry_dialogue_module = "field_events",
+            entry_dialogue_function = "present_location_dialogue",
+            entry_location_type = "building",
+            entry_location_id = "jackals_lantern",
+            entry_text_profile = "jackals_lantern.old_man",
+            entry_speaker_id = "jackals_lantern_old_man",
+            entry_event_id = "opening",
+        },
+    },
+}
+game.modules.world_content_data.areas[19] = {
+    { entity_id = "jackals_lantern_old_man_contact" },
+}
+local jackals_old_man_dialogue = Building.resolve_field_location_route({
+    scene_id = 19,
+    building_interaction_mode = false,
+    event_code = "event_30",
+    event_index = 30,
+    event_table_available = false,
+    event_table = {},
+    package_run_status = "none",
+    transition = { kind = "none" },
+})
+assert(jackals_old_man_dialogue.kind == "dialogue" and
+       jackals_old_man_dialogue.entry_dialogue_module == "field_events" and
+       jackals_old_man_dialogue.return_anchor ==
+           E.FieldLocationReturnAnchor.NONE and
+       jackals_old_man_dialogue.return_facing ==
+           E.FieldLocationReturnFacing.PRESERVE_ENTRY and
+       jackals_old_man_dialogue.return_music_policy ==
+           E.FieldLocationMusicReturnPolicy.NONE)
+
 print("building route tests passed: conditional variants and entry tasks")

@@ -140,7 +140,7 @@ for _, exception in ipairs(exit_exceptions) do
 end
 local medicine_lodge_exception =
     exceptions_by_id["council_medicine_lodge.rom_event_06"]
-check(#exit_exceptions == 2 and medicine_lodge_exception ~= nil and
+check(medicine_lodge_exception ~= nil and
       medicine_lodge_exception.rom_address == "0x15BDB0" and
       medicine_lodge_exception.return_anchor ==
           E.FieldLocationReturnAnchor.NONE and
@@ -161,6 +161,19 @@ check(julius_exception ~= nil and
       julius_exception.return_music_policy ==
           E.FieldLocationMusicReturnPolicy.NONE,
       "Julius's same-map dialogue keeps its live field position [0x1D5E38]")
+-- [C] Scene-19 record 12/event 30 at 0x1D5F50 reaches the default
+-- same-map prompt 0x20C78; it is not a building-door return.
+local jackals_old_man_exception =
+    exceptions_by_id["jackals_lantern_old_man_contact.rom_event_30"]
+check(#exit_exceptions == 3 and jackals_old_man_exception ~= nil and
+      jackals_old_man_exception.rom_address == "0x1D5F50" and
+      jackals_old_man_exception.return_anchor ==
+          E.FieldLocationReturnAnchor.NONE and
+      jackals_old_man_exception.return_facing ==
+          E.FieldLocationReturnFacing.PRESERVE_ENTRY and
+      jackals_old_man_exception.return_music_policy ==
+          E.FieldLocationMusicReturnPolicy.NONE,
+      "Jackal's Lantern old-man dialogue preserves the live field state [0x1D5F50]")
 
 local function contact(x, y, side)
     return W.door_contact{

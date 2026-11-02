@@ -27,6 +27,15 @@ local EXIT_RETURN_EXCEPTIONS = {
         return_facing = E.FieldLocationReturnFacing.PRESERVE_ENTRY,
         return_music_policy = E.FieldLocationMusicReturnPolicy.NONE,
     },
+    -- Scene 19 record 12 at 0x1D5F50 dispatches through 0x20990 to the
+    -- same-map, no-choice prompt at 0x20C78. Returning must keep the live
+    -- field position instead of restoring a stale building probe.
+    ["jackals_lantern_old_man_contact.rom_event_30"] = {
+        rom_address = "0x1D5F50",
+        return_anchor = E.FieldLocationReturnAnchor.NONE,
+        return_facing = E.FieldLocationReturnFacing.PRESERVE_ENTRY,
+        return_music_policy = E.FieldLocationMusicReturnPolicy.NONE,
+    },
 }
 
 function WorldLinks.data() return Data end
