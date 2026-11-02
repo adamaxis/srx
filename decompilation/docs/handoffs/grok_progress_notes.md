@@ -3,7 +3,7 @@
 This file is kept in the repo so the notes survive if the box is wiped. The box's /workspace/shadowrun/out was lost on 2026-10-31.
 Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 
-## Current state (2026-11-02 00:05 CST)
+## Current state (2026-11-02 00:32 CST)
 - Remote port-fixes: see latest Fixes entry. QA_GREEN (ctest all pass, Lua suites pass). Working playtest_2026-11-01 items one Luna run at a time.
 - In progress: Luna (codex exec, gpt-6-luna, max effort, fast tier off) is fixing aa3b2cb7 forward. Brief is /workspace/briefs/aa3b.md, the earlier partial work is /workspace/briefs/aa3b_wip.diff and stash 'aa3b-wip'.
 - Box toolchain: `. /workspace/tcenv.sh` (conda env /workspace/mamba/envs/srx). Build dirs are /workspace/b2 (Qt) and /workspace/b2n (non-Qt). Full QA is /workspace/qa.sh, which prints QA_GREEN.
@@ -52,6 +52,7 @@ Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 - playtest #5: Intro: rooftop rotor keeps ROM palette cycle after landing. 0x5B08E/0x5B1B6/0x5B100; rooftop rotor QA 15px per 8-VBlank step; also .gitignore line for #4 fan PNGs
 - playtest #6: Taxi: ROM white-on-black map caption in intro and gameplay. 0x134D2/0x13726/0xC0DA/0xEA10; caption 898 black/254 white px both paths; taxi presentation Lua 2/2
 - playtest #A: Tests: ROM combat engine suite (rules, seeded fights, progression). 0x55948/0x0DBA RNG 0x0D44/0x0D3A, 0xD4540/0x166AD4, 0xD4D50; L36 sample attack 3/def 1/dmg 3 across 7 armor tiers; combat_engine 77/77, unarmed 23/23, skill policy 4270/4270, karma 22/22; no port bug found
+- playtest #B: Tools: ROM coverage map, report and baseline ctest. 871/911 Ghidra functions, 1008/1074 entries mapped, 66 unmapped; gaps 0x0236/0x3BAC/0x44BC/0x1728/0x0C2C
 
 ## Open work, in order
 1. Get ctest green again by fixing aa3b2cb7 forward.

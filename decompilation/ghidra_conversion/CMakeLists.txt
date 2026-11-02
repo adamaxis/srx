@@ -10,6 +10,8 @@ option(SHADOWRUN_GHIDRA_QT_FRONTEND
 
 enable_testing()
 
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
 # This is an offline source-understanding library, not a game-runtime
 # dependency. The leaf contracts remain traceable, but they are built through
 # the reviewed behavioral modules in conversion_modules.cmake rather than as
@@ -110,6 +112,17 @@ add_test(NAME shadowrun_gameplay_lua_suites
 set_tests_properties(shadowrun_gameplay_lua_suites PROPERTIES
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../.."
     ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy")
+
+# Structural source coverage is deliberately separate from behavioral QA. The
+# checker guards only the committed mapped-routine baseline; the current
+# unmapped backlog remains reportable without making the build fail.
+add_test(NAME shadowrun_rom_coverage
+         COMMAND "${Python3_EXECUTABLE}"
+                 "${CMAKE_CURRENT_SOURCE_DIR}/tools/rom_coverage.py"
+                 --check)
+add_test(NAME shadowrun_rom_coverage_baseline_semantics
+         COMMAND "${Python3_EXECUTABLE}"
+                 "${CMAKE_CURRENT_SOURCE_DIR}/tests/rom_coverage_test.py")
 
 # Offline extraction helper for the source records consumed by the converted
 # startup/session code. It is intentionally not linked into the Qt frontend or
