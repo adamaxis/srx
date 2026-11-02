@@ -75,7 +75,8 @@ std::uint32_t wait_for_palette_frame(
 // wake-up) consumes elapsed time as whole source frames; converted
 // animation periods stay in those frames.
 constexpr std::int64_t kHostFrameNanoseconds = 16666667;
-constexpr int kHostFrameCatchUpLimit = 4;
+constexpr std::int64_t kHostFrameGapResetNanoseconds = 250'000'000LL;
+constexpr int kHostFrameCatchUpLimit = 3;
 
 int consume_host_frames(std::int64_t& deadline_ns, std::int64_t elapsed_ns);
 

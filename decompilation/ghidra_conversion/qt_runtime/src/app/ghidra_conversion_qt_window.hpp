@@ -26,6 +26,7 @@
 #include <unordered_map>
 #include <QApplication>
 #include <QColor>
+#include <QCoreApplication>
 #include <QElapsedTimer>
 #include <QImage>
 #include <QKeyEvent>
@@ -43,6 +44,7 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -60,6 +62,7 @@
 #include <sstream>
 #include <system_error>
 #include <tuple>
+#include <thread>
 #ifdef SHADOWRUN_QT_QA_DRIVER
 #include <type_traits>
 #endif
@@ -445,6 +448,7 @@ protected:
         painter.setCompositionMode(QPainter::CompositionMode_Source);
         painter.setRenderHint(QPainter::SmoothPixmapTransform, false);
         painter.drawImage(rect(), scene);
+        record_debug_pacing_presentation();
     }
 
     void keyPressEvent(QKeyEvent* event) override {
@@ -725,6 +729,11 @@ private:
         }
         const auto events = input_log_.take_events_for_frame(source_frame_index_);
         for (const auto& input : events) {
+            if (qEnvironmentVariableIntValue("SRX_DEBUG_STALL_MS") > 0) {
+                std::cerr << "pacing.input frame=" << input.frame
+                          << " key=" << input.key
+                          << " pressed=" << (input.pressed ? 1 : 0) << '\n';
+            }
             QKeyEvent event(input.pressed ? QEvent::KeyPress : QEvent::KeyRelease,
                             input.key,
                             static_cast<Qt::KeyboardModifiers>(input.modifiers));
@@ -1406,6 +1415,22 @@ private:
             }
             field_scene_runtime_.set_controller_nibble(0U);
             update();
+            const auto stall_ms =
+                qEnvironmentVariableIntValue("SRX_DEBUG_STALL_MS");
+            if (stall_ms > 0 && !debug_stall_injected_) {
+                debug_stall_injected_ = true;
+                std::cerr << "pacing.stall.begin ms=" << stall_ms
+                          << " source_frame=" << source_frame_index_ << '\n';
+                std::this_thread::sleep_for(
+                    std::chrono::milliseconds(stall_ms));
+                pacing_probe_start_ns_ = host_clock_.nsecsElapsed();
+                pacing_window_start_ns_ = pacing_probe_start_ns_;
+                pacing_next_window_ns_ =
+                    pacing_probe_start_ns_ + kDebugPacingWindowNanoseconds;
+                pacing_probe_active_ = true;
+                std::cerr << "pacing.stall.end ms=" << stall_ms
+                          << " source_frame=" << source_frame_index_ << '\n';
+            }
         };
     }
 
@@ -1535,6 +1560,10 @@ private:
             const auto completed_frame = source_frame_index_;
             advance_one_source_frame();
             ++source_frame_index_;
+            if (pacing_probe_active_) {
+                ++pacing_window_logic_ticks_;
+                ++pacing_ticks_since_presentation_;
+            }
             if (input_log_.replaying() && input_log_.has_seed_history()) {
                 const auto expected =
                     input_log_.expected_seed_after_frame(completed_frame);
@@ -1583,6 +1612,77 @@ private:
         }
         if (advanced_frames > 0 || replay_input_applied) {
             update();
+        }
+        if (!debug_stall_injected_ &&
+            qEnvironmentVariableIntValue("SRX_DEBUG_STALL_MS") > 0) {
+            const auto now_ns = host_clock_.nsecsElapsed();
+            if (now_ns >= pacing_next_trace_ns_) {
+                std::cerr << "pacing.wait phase="
+                          << startup_integration_phase_name(state_.phase)
+                          << " source_frame=" << source_frame_index_ << '\n';
+                pacing_next_trace_ns_ = now_ns + kDebugPacingWindowNanoseconds;
+            }
+        }
+    }
+
+    void record_debug_pacing_presentation() {
+        if (!pacing_probe_active_) {
+            return;
+        }
+
+        const auto ticks_for_presentation = pacing_ticks_since_presentation_;
+        pacing_ticks_since_presentation_ = 0U;
+        ++pacing_window_presentations_;
+        pacing_max_ticks_per_presentation_ = std::max(
+            pacing_max_ticks_per_presentation_, ticks_for_presentation);
+        if (ticks_for_presentation > 1U) {
+            ++pacing_multi_tick_presentations_;
+        }
+
+        const auto now_ns = host_clock_.nsecsElapsed();
+        if (now_ns < pacing_next_window_ns_) {
+            return;
+        }
+
+        const auto elapsed_ns = now_ns - pacing_window_start_ns_;
+        const auto elapsed_seconds =
+            static_cast<double>(elapsed_ns) / 1'000'000'000.0;
+        const auto ticks_per_second = elapsed_seconds > 0.0
+            ? static_cast<double>(pacing_window_logic_ticks_) /
+                  elapsed_seconds
+            : 0.0;
+        const auto ticks_per_presentation = pacing_window_presentations_ > 0U
+            ? static_cast<double>(pacing_window_logic_ticks_) /
+                  static_cast<double>(pacing_window_presentations_)
+            : 0.0;
+        std::cerr << std::fixed << std::setprecision(2)
+                  << "pacing.sample elapsed_s="
+                  << static_cast<double>(now_ns - pacing_probe_start_ns_) /
+                         1'000'000'000.0
+                  << " wall_s=" << elapsed_seconds
+                  << " logic_ticks=" << pacing_window_logic_ticks_
+                  << " presented_frames=" << pacing_window_presentations_
+                  << " ticks_per_presented_frame="
+                  << ticks_per_presentation
+                  << " max_ticks_per_presented_frame="
+                  << pacing_max_ticks_per_presentation_
+                  << " multi_tick_presentations="
+                  << pacing_multi_tick_presentations_
+                  << " ticks_per_wall_second=" << ticks_per_second
+                  << " source_frame=" << source_frame_index_ << '\n';
+
+        pacing_window_start_ns_ = now_ns;
+        pacing_next_window_ns_ = now_ns + kDebugPacingWindowNanoseconds;
+        pacing_window_logic_ticks_ = 0U;
+        pacing_window_presentations_ = 0U;
+        pacing_max_ticks_per_presentation_ = 0U;
+        pacing_multi_tick_presentations_ = 0U;
+
+        if (now_ns - pacing_probe_start_ns_ >=
+            5 * kDebugPacingWindowNanoseconds) {
+            pacing_probe_active_ = false;
+            std::cerr << "pacing.probe.complete\n";
+            QCoreApplication::quit();
         }
     }
 
@@ -2693,6 +2793,19 @@ private:
     std::vector<PendingRemoteKey> pending_remote_keys_;
     bool applying_remote_key_ = false;
     std::int64_t host_frame_deadline_ns_ = 0;
+    static constexpr std::int64_t kDebugPacingWindowNanoseconds =
+        1'000'000'000LL;
+    bool debug_stall_injected_ = false;
+    bool pacing_probe_active_ = false;
+    std::int64_t pacing_probe_start_ns_ = 0;
+    std::int64_t pacing_window_start_ns_ = 0;
+    std::int64_t pacing_next_window_ns_ = 0;
+    std::int64_t pacing_next_trace_ns_ = 0;
+    std::uint64_t pacing_window_logic_ticks_ = 0U;
+    std::uint64_t pacing_window_presentations_ = 0U;
+    std::uint64_t pacing_ticks_since_presentation_ = 0U;
+    std::uint64_t pacing_max_ticks_per_presentation_ = 0U;
+    std::uint64_t pacing_multi_tick_presentations_ = 0U;
     std::map<std::string, QImage> draw_asset_cache_;
     std::array<std::array<QImage,
                          kTitleCircuitPaletteRevealPassCount + 1U>,

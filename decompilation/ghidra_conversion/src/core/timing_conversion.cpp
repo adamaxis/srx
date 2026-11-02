@@ -84,6 +84,14 @@ std::uint32_t wait_for_palette_frame(
 
 int consume_host_frames(std::int64_t& deadline_ns,
                         const std::int64_t elapsed_ns) {
+    if (elapsed_ns > deadline_ns &&
+        elapsed_ns - deadline_ns > kHostFrameGapResetNanoseconds) {
+        // ROM 0x0BD2 resumes at the next changed VBlank sample; the field loop
+        // at 0x075E does not replay missed waits as a batch after a host stall.
+        deadline_ns = elapsed_ns;
+        return 1;
+    }
+
     int frames = 0;
     while (deadline_ns < elapsed_ns && frames < kHostFrameCatchUpLimit) {
         deadline_ns += kHostFrameNanoseconds;

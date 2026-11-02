@@ -1,5 +1,6 @@
 #include "shadowrun_ghidra/core/timing_conversion.hpp"
 
+#include <array>
 #include <vector>
 
 namespace {
@@ -122,6 +123,27 @@ int main() {
     }
     if (!expect(consume_host_frames(deadline, deadline - 1) == 0)) {
         return 12;
+    }
+
+    // ROM 0x0BD2 waits for the next changed VBlank sample, and the ordinary
+    // field loop at 0x075E performs one service pass after that wait. A host
+    // stall must discard elapsed VBlanks instead of replaying them as a burst.
+    constexpr std::array<std::int64_t, 3> stall_durations_ns{
+        1'000'000'000LL, 2'000'000'000LL, 3'000'000'000LL};
+    for (const auto stalled_elapsed_ns : stall_durations_ns) {
+        deadline = 0;
+        const auto resumed_ticks =
+            consume_host_frames(deadline, stalled_elapsed_ns);
+        if (!expect(resumed_ticks == 1 && deadline == stalled_elapsed_ns)) {
+            return 13;
+        }
+
+        const auto next_frame_ns =
+            stalled_elapsed_ns + kHostFrameNanoseconds;
+        if (!expect(consume_host_frames(deadline, next_frame_ns) == 1 &&
+                    deadline == next_frame_ns)) {
+            return 14;
+        }
     }
 
     return 0;
