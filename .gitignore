@@ -67,6 +67,7 @@
 !/decompilation/assets/startup/**/*.bmp
 !/decompilation/assets/intro/
 !/decompilation/assets/intro/**/*.bmp
+!/decompilation/assets/intro/aircraft-tail-rotor-phase-*.png
 !/decompilation/assets/cinematics/
 !/decompilation/assets/cinematics/**/*.bmp
 !/decompilation/assets/field/

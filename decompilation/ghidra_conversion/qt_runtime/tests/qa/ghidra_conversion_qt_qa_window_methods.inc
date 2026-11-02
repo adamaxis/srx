@@ -1812,6 +1812,10 @@
     int run_opening_landing_qa(
         const std::filesystem::path& output_directory) {
         constexpr std::uint32_t kSelection = 2U;
+        // The scripted QA advances the opening state directly, so supply the
+        // same deterministic source clock used by the rotor QA instead of
+        // leaving the host's live-window frame counter frozen at zero.
+        opening_tail_rotor_source_clock_override_ = source_frame_index_;
         constexpr std::array<std::uint16_t, 20> kElapsedCheckpoints{{
             225U, 549U, 550U, 585U, 586U, 612U, 675U, 676U, 732U, 747U,
             748U, 765U, 766U, 792U, 801U, 802U, 819U, 820U, 821U, 852U}};
@@ -1934,11 +1938,240 @@
                 (output_directory / "actual.bmp").wstring())) != images.back()) {
             return fail("lead-in clearing or actual.bmp verification failed");
         }
+
+        // [C] 0x5B08E keeps rotating CRAM entries 17..19 every eight VBlanks;
+        // 0x5B1B6 continues to draw the landed 0x1DF3F4 sprite with palette
+        // line 1 (0x2000). Its 24x8 base art uses entries 18/19 in 15 top-row
+        // rotor pixels (nine blue-73 and six blue-36), so all 15 must change
+        // at each phase boundary while the landed body stays in place.
+        constexpr int kRooftopRotorWidth = 24;
+        constexpr int kRooftopRotorHeight = 8;
+        constexpr int kRooftopRotorDynamicPixels = 15;
+        constexpr std::uint32_t kRooftopRotorFramesPerPalettePhase = 8U;
+        const auto* base_movement_record =
+            state_.asset_catalog.catalog.find(
+                "intro.sprites.aircraft.movement.0.0");
+        const auto base_movement_asset = draw_asset_cache_.find(
+            "intro.sprites.aircraft.movement.0.0");
+        const auto& landed_request = requests.back();
+        if (!has_request.back() || base_movement_record == nullptr ||
+            base_movement_asset == draw_asset_cache_.end() ||
+            base_movement_asset->second.size() !=
+                QSize(kRooftopRotorWidth, kRooftopRotorHeight)) {
+            return fail("settled rooftop movement sprite asset is unavailable");
+        }
+        const auto movement_group = opening_intro_sprite_group(
+            landed_request.sprite_descriptor);
+        if (movement_group.family !=
+                OpeningIntroSpriteFamily::aircraft_movement ||
+            movement_group.variant != 0U) {
+            return fail("settled rooftop sprite did not retain the ROM base art");
+        }
+        const auto movement_point = opening_intro_sat_draw_point(
+            landed_request.x, landed_request.y,
+            base_movement_record->origin_x,
+            base_movement_record->origin_y);
+        if (movement_point.x < 0 || movement_point.y < 0 ||
+            movement_point.x + kRooftopRotorWidth > images.back().width() ||
+            movement_point.y + kRooftopRotorHeight > images.back().height()) {
+            return fail("settled rooftop sprite is outside the captured scene");
+        }
+        constexpr std::array<QRgb, 2U> kSourceRotorColors{{
+            qRgb(0, 0, 73), qRgb(0, 0, 36)}};
+        std::array<int, kSourceRotorColors.size()> rotor_color_counts{};
+        for (int y = 0; y < kRooftopRotorHeight; ++y) {
+            for (int x = 0; x < kRooftopRotorWidth; ++x) {
+                const auto color = qRgb(
+                    qRed(base_movement_asset->second.pixel(x, y)),
+                    qGreen(base_movement_asset->second.pixel(x, y)),
+                    qBlue(base_movement_asset->second.pixel(x, y)));
+                const auto found = std::find(kSourceRotorColors.begin(),
+                                             kSourceRotorColors.end(), color);
+                if (found != kSourceRotorColors.end()) {
+                    ++rotor_color_counts[static_cast<std::size_t>(
+                        found - kSourceRotorColors.begin())];
+                }
+            }
+        }
+        if (rotor_color_counts != std::array<int, 2U>{{9, 6}}) {
+            return fail("base rooftop rotor pixels do not match ROM CRAM entries 18/19");
+        }
+        const auto rooftop_palette_matches =
+            [&](const QImage& image, const std::uint8_t phase) {
+                int checked_pixels = 0;
+                for (int y = 0; y < kRooftopRotorHeight; ++y) {
+                    for (int x = 0; x < kRooftopRotorWidth; ++x) {
+                        const auto asset_pixel =
+                            base_movement_asset->second.pixel(x, y);
+                        const auto source_color = qRgb(
+                            qRed(asset_pixel), qGreen(asset_pixel),
+                            qBlue(asset_pixel));
+                        QRgb expected_color = source_color;
+                        if (source_color == kSourceRotorColors[0]) {
+                            expected_color = phase == 0U
+                                ? kSourceRotorColors[0]
+                                : (phase == 1U ? kSourceRotorColors[1]
+                                               : qRgb(0, 0, 0));
+                        } else if (source_color == kSourceRotorColors[1]) {
+                            expected_color = phase == 0U
+                                ? kSourceRotorColors[1]
+                                : (phase == 1U ? qRgb(0, 0, 0)
+                                               : kSourceRotorColors[0]);
+                        } else {
+                            continue;
+                        }
+                        ++checked_pixels;
+                        const auto actual_color = qRgb(
+                            qRed(image.pixel(movement_point.x + x,
+                                             movement_point.y + y)),
+                            qGreen(image.pixel(movement_point.x + x,
+                                               movement_point.y + y)),
+                            qBlue(image.pixel(movement_point.x + x,
+                                              movement_point.y + y)));
+                        if (actual_color != expected_color) {
+                            return false;
+                        }
+                    }
+                }
+                return checked_pixels == kRooftopRotorDynamicPixels;
+            };
+
+        std::ofstream rotor_trace(
+            output_directory / "opening-rooftop-rotor-qa.tsv");
+        if (!rotor_trace) {
+            return fail("could not write the rooftop rotor phase trace");
+        }
+        rotor_trace << "global_source_frame\tphase\tchanged_pixels\timage\n";
+        const auto source_clock = [this] {
+            return opening_tail_rotor_source_clock_override_.value_or(
+                source_frame_index_);
+        };
+        const auto initial_phase = state_.opening_intro.stage_loop
+                                       .tail_rotor_palette_phase;
+        const auto capture_rooftop_rotor_phase =
+            [&](const std::uint8_t phase, QImage& image,
+                std::string& filename) {
+                image = render_scene();
+                filename = "rooftop-rotor-phase-" +
+                           std::to_string(phase) + ".bmp";
+                return image.size() == QSize(kSceneWidth, kSceneHeight) &&
+                       image.save(QString::fromStdWString(
+                           (output_directory / filename).wstring()));
+            };
+        QImage first_rooftop_phase;
+        std::string first_rooftop_filename;
+        if (!capture_rooftop_rotor_phase(
+                initial_phase, first_rooftop_phase,
+                first_rooftop_filename)) {
+            return fail("could not capture the landed rooftop rotor phase");
+        }
+        if (!rooftop_palette_matches(first_rooftop_phase, initial_phase)) {
+            return fail("initial rooftop rotor colors do not match the Lua palette phase");
+        }
+        rotor_trace << source_clock() << '\t'
+                    << static_cast<unsigned>(initial_phase) << "\t0\t"
+                    << first_rooftop_filename << '\n';
+
+        auto prior_phase = initial_phase;
+        auto prior_source_frame = source_clock();
+        auto prior_image = first_rooftop_phase;
+        for (std::size_t transition = 0U; transition <
+             kOpeningTailRotorPalettePhaseCount; ++transition) {
+            bool advanced = false;
+            for (std::uint32_t elapsed = 0U; elapsed <
+                 kRooftopRotorFramesPerPalettePhase; ++elapsed) {
+                advance_one_source_frame();
+                if (state_.phase != StartupIntegrationPhase::opening_intro ||
+                    state_.opening_intro.scene != OpeningIntroScene::airport ||
+                    state_.opening_intro.stage != OpeningIntroStage::stage_loop) {
+                    return fail("airport scene ended before the rooftop rotor cycle");
+                }
+                if (state_.opening_intro.stage_loop.tail_rotor_palette_phase !=
+                    prior_phase) {
+                    advanced = true;
+                    break;
+                }
+            }
+            const auto phase = state_.opening_intro.stage_loop
+                                   .tail_rotor_palette_phase;
+            const auto source_frame = source_clock();
+            const auto expected_interval = transition == 0U
+                ? kRooftopRotorFramesPerPalettePhase -
+                      static_cast<std::uint32_t>(
+                          prior_source_frame %
+                          kRooftopRotorFramesPerPalettePhase)
+                : kRooftopRotorFramesPerPalettePhase;
+            if (!advanced || phase != static_cast<std::uint8_t>(
+                    (prior_phase + 1U) %
+                    kOpeningTailRotorPalettePhaseCount) ||
+                source_frame - prior_source_frame !=
+                    expected_interval) {
+                return fail("landed rotor phase did not advance every eight source frames");
+            }
+            const auto current_request = std::find_if(
+                opening_sprites_.rbegin(), opening_sprites_.rend(),
+                [](const OpeningIntroSpriteRequest& request) {
+                    return opening_intro_sprite_group(
+                               request.sprite_descriptor)
+                               .family ==
+                           OpeningIntroSpriteFamily::aircraft_movement;
+                });
+            if (current_request == opening_sprites_.rend() ||
+                current_request->x != landed_request.x ||
+                current_request->y != landed_request.y) {
+                return fail("landed helicopter moved during its rotor cycle");
+            }
+            QImage current_image;
+            std::string filename;
+            if (!capture_rooftop_rotor_phase(phase, current_image,
+                                             filename)) {
+                return fail("could not capture a rooftop rotor phase image");
+            }
+            if (!rooftop_palette_matches(current_image, phase)) {
+                return fail("rooftop blade colors do not match the rotated ROM CRAM entries");
+            }
+            int changed_pixels = 0;
+            for (int y = 0; y < kRooftopRotorHeight; ++y) {
+                for (int x = 0; x < kRooftopRotorWidth; ++x) {
+                    if (prior_image.pixel(movement_point.x + x,
+                                          movement_point.y + y) !=
+                        current_image.pixel(movement_point.x + x,
+                                            movement_point.y + y)) {
+                        ++changed_pixels;
+                    }
+                }
+            }
+            rotor_trace << source_frame << '\t'
+                        << static_cast<unsigned>(phase) << '\t'
+                        << changed_pixels << '\t' << filename << '\n';
+            if (changed_pixels != kRooftopRotorDynamicPixels) {
+                return fail("each CRAM phase must rotate exactly 15 landed-rotor pixels");
+            }
+            if (transition + 1U ==
+                kOpeningTailRotorPalettePhaseCount &&
+                (phase != initial_phase ||
+                 current_image.copy(movement_point.x, movement_point.y,
+                                    kRooftopRotorWidth,
+                                    kRooftopRotorHeight) !=
+                     first_rooftop_phase.copy(
+                         movement_point.x, movement_point.y,
+                         kRooftopRotorWidth, kRooftopRotorHeight))) {
+                return fail("landed rotor artwork did not repeat after 24 VBlanks");
+            }
+            prior_phase = phase;
+            prior_source_frame = source_frame;
+            prior_image = std::move(current_image);
+        }
         trace << "result\t20 full-screen checkpoints\tROM Y-window variants\t"
-                 "lead-in clear\tactual.bmp readback\n";
+                 "lead-in clear\tactual.bmp readback\t"
+                 "rooftop rotor: 15 pixels/eight VBlanks/24-frame repeat\n";
         std::cout << "opening_landing_qa=passed checkpoints="
                   << kElapsedCheckpoints.size() << " actual="
-                  << (output_directory / "actual.bmp").string() << '\n';
+                  << (output_directory / "actual.bmp").string()
+                  << " rooftop_rotor_pixels="
+                  << kRooftopRotorDynamicPixels << " rotor_trace="
+                  << (output_directory / "opening-rooftop-rotor-qa.tsv").string()
+                  << '\n';
         return 0;
     }
 

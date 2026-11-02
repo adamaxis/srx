@@ -146,3 +146,46 @@ three live CRAM words used by the Plane-A tail-fan pixels.
   changes exactly those 104 rendered pixels, and the rendered crop repeats
   exactly after 24 VBlanks. Lua owns the phase; the host draws an individually
   named phase asset over the ROM-derived map crop.
+
+## Playtest #5: rooftop rotor after landing
+
+The settled roof sprite uses a third presentation of the shared airport rotor
+palette. It is separate from the six SAT groups in `0x5B100` and from the
+Plane-A tail-fan overlay.
+
+- **Source trace [C]:** `0x5AD1A` enters the airport scene and the loop at
+  `0x5AD7C..0x5ADCA` calls `0x5B08E` on every VBlank. The latter rotates live
+  CRAM entries 17–19 at `FFD8A0/A2/A4` whenever `(FFDF88 & 7)==0`, then marks
+  the palette dirty. Routine `0x5B100` stops drawing its six groups once signed
+  `DD08 < -0x1B8`; the landing service `0x5B1B6` continues requesting its
+  settled phase-6 sprite after elapsed frame 820. That SAT list is
+  `0x1DF3F4`, has palette flag `0x2000` (line 1), and therefore uses the same
+  cycling entries. Phase-zero words from palette source `0x5B6B2+0x22..0x26`
+  are black/blue-73/blue-36. The source-derived 24x8 movement image has nine
+  blue-73 and six blue-36 top-row rotor pixels; these 15 pixels change on each
+  eight-VBlank palette step.
+- **Longplay [H]:** `/workspace/shadowrun/longplay/frames/min_001/f_1288..f_1440`
+  is the available 30-fps interval. The rooftop craft is visible in the
+  approach/landing frames and is difficult to separate from the dark skyline
+  in the settled frames. `/workspace/shadowrun/out/bug5_rooftop_rotor_30fps_reference.tsv`
+  lists every frame, its approximate 4-video-frame-per-phase slot, and the
+  frame index/time conversion. The absolute phase and pixel changes are not
+  established by this compressed recording.
+- **Port fix:** Lua `E.OpeningTailRotor` / `Startup.advance_opening_tail_rotor`
+  remains the source of the shared 8-VBlank phase. The Qt presenter now
+  applies that phase to the named landed movement sprite as well as Plane-A's
+  tail-fan overlay. It recolors only the source asset's two palette-derived
+  rotor colors and does not edit tracked assets.
+- **Focused QA:**
+  `shadowrun_ghidra_conversion_qt_opening_landing_qa` now advances a
+  deterministic Lua source clock, captures `actual.bmp` and all three
+  full-screen rooftop rotor phases, checks exact CRAM colors and fixed landing
+  coordinates, requires 15 changed sprite pixels at each phase boundary, and
+  checks the phase/image repeat. The pre-fix clocked baseline reached phase
+  `2 -> 0` at source frames `3617 -> 3624` with zero changed landed-sprite
+  pixels. After the renderer fix the trace is
+  `2 -> 0 -> 1 -> 2` at `3617 -> 3624 -> 3632 -> 3640`, with 15 changed
+  pixels at each boundary and an exact phase-image repeat. Artifacts are under
+  `/workspace/b2/qt_runtime/opening-landing-qa/`, including
+  `opening-rooftop-rotor-qa.tsv` and `rooftop-rotor-phase-0.bmp` through
+  `rooftop-rotor-phase-2.bmp`.

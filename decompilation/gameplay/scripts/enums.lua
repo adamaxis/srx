@@ -322,7 +322,8 @@ E.OpeningTailRotor = {
     PHASE_COUNT = 3,
     ROTATE_INTERVAL = 8,
     INITIAL_PHASE = 0,
-} -- 0x5B08E rotates palette words 17..19 when FFDF88 & 7 == 0 [C]
+} -- [C] 0x5B08E rotates shared airport CRAM entries 17..19 every eight VBlanks.
+-- 0x5B1B6 draws the landed sprite on the same palette line 1.
 -- Music sequence ids, same GEMS id space as E.SoundId; started through
 -- play_music 0x530EA (stop same id, then start; gated by FFFC08) [C].
 E.MusicId = {

@@ -8,8 +8,9 @@ local E = require("enums")
 -- values needed to render the current circuit frame; Lua owns the cadence.
 local title_circuit_lights = { phase = 0, countdown = 0 }
 
--- 0x5B08E rotates Plane-A palette entries 17..19 every eight source VBlanks.
--- The host stores only the selected named tail-fan overlay; Lua owns its phase.
+-- 0x5B08E rotates airport CRAM entries 17..19 every eight source VBlanks.
+-- The same palette line colors Plane-A's tail fan and the rotor on the landed
+-- 0x5B1B6 movement sprite; Lua owns the shared phase for both presentations.
 local opening_tail_rotor = { phase = E.OpeningTailRotor.INITIAL_PHASE }
 
 function Startup.reset_opening_tail_rotor()

@@ -2124,6 +2124,47 @@ private:
         }
     }
 
+    static QImage recolor_opening_landed_rotor(
+        const QImage& source, const std::uint8_t palette_phase) {
+        constexpr QRgb kPaletteEntry18 = qRgb(0, 0, 73);
+        constexpr QRgb kPaletteEntry19 = qRgb(0, 0, 36);
+        constexpr QRgb kBlack = qRgb(0, 0, 0);
+        QRgb entry18 = kPaletteEntry18;
+        QRgb entry19 = kPaletteEntry19;
+        switch (palette_phase) {
+        case 0U:
+            return source;
+        case 1U:
+            entry18 = kPaletteEntry19;
+            entry19 = kBlack;
+            break;
+        case 2U:
+            entry18 = kBlack;
+            entry19 = kPaletteEntry18;
+            break;
+        default:
+            return source;
+        }
+
+        auto recolored = source.convertToFormat(QImage::Format_ARGB32);
+        for (int y = 0; y < recolored.height(); ++y) {
+            for (int x = 0; x < recolored.width(); ++x) {
+                const auto pixel = recolored.pixel(x, y);
+                const auto source_color = qRgb(qRed(pixel), qGreen(pixel),
+                                               qBlue(pixel));
+                const auto target_color = source_color == kPaletteEntry18
+                    ? entry18
+                    : (source_color == kPaletteEntry19 ? entry19 : source_color);
+                if (target_color != source_color) {
+                    recolored.setPixel(
+                        x, y, qRgba(qRed(target_color), qGreen(target_color),
+                                    qBlue(target_color), qAlpha(pixel)));
+                }
+            }
+        }
+        return recolored;
+    }
+
     void draw_opening_sprite(
         QPainter& painter, const OpeningIntroSpriteRequest& request) const {
         const auto group = opening_intro_sprite_group(request.sprite_descriptor);
@@ -2238,6 +2279,18 @@ private:
                     image->second,
                     opening_entity_palette_color_word(1U));
                 painter.drawImage(point.x, point.y, head);
+            } else if (group.family ==
+                       OpeningIntroSpriteFamily::aircraft_movement) {
+                // The source airport CRAM cycle at 0x5B08E also feeds the
+                // settled sprite from 0x5B1B6: D6=0x2000 selects palette
+                // line 1, whose entries 18/19 are the two blue blade colors
+                // in the 24x8 movement art. Lua owns this shared phase; the
+                // host applies its named-RGBA equivalent to these 15 rotor
+                // pixels without changing the source asset.
+                const auto rotor_image = recolor_opening_landed_rotor(
+                    image->second,
+                    state_.opening_intro.stage_loop.tail_rotor_palette_phase);
+                painter.drawImage(point.x, point.y, rotor_image);
             } else {
                 painter.drawImage(point.x, point.y, image->second);
             }
