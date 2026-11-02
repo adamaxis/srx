@@ -107,9 +107,11 @@ holds.
    extracted and replace the actor image. Whole-screen internal QA checks the
    unchanged map, other HUD counters, and UI; this is not an independent
    Genesis firing golden.
-4. **Is it animated?** Damage/Power are static. C042 is a one-frame pose held
-   for all 52 decoded `+0xDC` updates; 30 idle frames after expiry remain
-   stable. Movement returns the actor to its walk/idle selection. Paired
+4. **Is it animated?** Damage/Power are static. Joshua’s C042 one-frame pose
+   lasts 32 render updates (`0x784C`, `0x0080` increment over `0x1000` period),
+   then C052 returns while the 51-count `+0xDC` action delay continues. Headless
+   QA sees idle from update 32 and a held-A restart at update 52 [C: `0xB39A`,
+   `0x5FDC`, `0x600E`, `0xABFC`, `0xAE26..0xAE46`]. Paired
    projectile animation and cadence are still unconnected.
 5. **What sound plays and how long?** C runner selection requests `0x25`, and
    successful reload requests `0x4B` twice (2.134 s and 2.217 s mapped files).

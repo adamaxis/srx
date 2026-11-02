@@ -49,6 +49,9 @@ E.ActorAnimation = {
     FRAME_INCREMENT = 0x0200, -- 0x5FDC advances C0A2/C0B2 +0x1A by 0x0200 [C]
     FRAME_PERIOD = 0x1000, -- C0A2/C0B2 +0x1C period consumed by 0x5FDC/0x600E [C]
 } -- ROM 0xB1DC strike and 0xB330 runner-down selectors [C]
+E.ActorAnimationMode = {
+    ATTACK = "attack",
+} -- typed field-player animation mode; ROM 0xB39A installs the C042 action pose [C]
 
 E.Posture   = { FULL_DEFENSE = 0, MEDIUM_DEFENSE = 1, NEUTRAL = 2, MEDIUM_OFFENSE = 3, FULL_OFFENSE = 4 }  -- +0x4D, names 0xD1A05 [C]
 E.ActorAttribute = { BODY = "body", WILLPOWER = "willpower" } -- semantic attributes used by combat rules; +0x77/+0x7C [C]

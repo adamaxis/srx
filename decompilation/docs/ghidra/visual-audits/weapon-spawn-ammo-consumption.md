@@ -11,8 +11,12 @@ the primary at `0x14FF8`, copies the secondary at `0x15278`, chooses one of the
 `0x62EC`/`0x62FC` animation tables, and submits its selected sound event at
 `0x15238`. The caller then enters `0xB39A`, which chooses the directional
 C042 attack pose, applies the source action delay, and resets animation state.
-The C042 pose is a static one-frame list held during that delay; it is not a
-multi-frame weapon swing.
+For Joshua, C042 selector `0x40` resolves to the one-frame list at `0x784C`
+(`0x8001`, increment `0x0080`). With the `0x1000` period, `0x5FDC`/`0x600E`
+complete that pose after 32 render updates; the following `0xA8EA` service
+selects `0xB45C/C052` while the separate `+0xDC` action delay may still be
+positive. Held A does not hold the C042 pose open [C: `0xB39A`, `0x5FDC`,
+`0x600E`, `0xA8EA`, `0xAE26..0xAE46`].
 
 Action codes 13..15 on a nonnegative equipped slot take the separate
 effect-record path at ROM `0x15646` before `0x1514E`; that path calls asset-meter
@@ -163,8 +167,12 @@ no travel behavior in the traced source path.
    per gun. The primary uses the source movement record and named extracted
    frames; the secondary uses the stationary finite spawn-effect list.
    Independent firing pixels remain unavailable.
-4. **Is it animated, and when?** C042 is one static actor pose held during the
-   source action delay: 52 field updates, followed by 30 stable idle holds. Lua
+4. **Is it animated, and when?** Joshua’s C042 is a one-frame visual that
+   lasts 32 render updates, then returns to C052 while the `+0xDC` action delay
+   continues. The held-A action becomes ready again after the 51-count gate
+   expires, so the next shot reinstalls C042. Headless live QA confirms attack
+   through update 31, idle from update 32, and a held-fire restart at update 52
+   [C: `0xB39A`, `0x784C`, `0x5FDC`, `0x600E`, `0xABFC`, `0xAE26..0xAE46`]. Lua
    advances regular selector 0 from `0 -> 1 -> 2` on the source
    `0x1000`/`0x270F` cadence. Render update 3 marks the list complete while
    retaining frame 2; the following behavior update retires it before drawing.
@@ -190,8 +198,9 @@ no travel behavior in the traced source path.
    CTest; route loopback and independent Genesis audio correlation remain open.
 6. **Were other screen regions checked?** All full-screen output includes the
    map, actor, HUD, selector, and right-side controls. QA captures the before/shot
-   frames, all 52 delay updates, 30 idle holds, the item-2 equip/reload/fire
-   return route, and moving held-A checkpoints through the second cooldown.
+   frames, all 52 cooldown updates (C042 for the first 32, then C052 neutral),
+   30 idle holds, the item-2 equip/reload/fire return route, and moving held-A
+   checkpoints through the second cooldown.
    The map and HUD remain intact as both records move and retire.
 7. **Do multiple frames support this interpretation?** After moving projectile
    behavior into Lua, all 270 Debug and Release screenshots still match by
@@ -202,8 +211,9 @@ no travel behavior in the traced source path.
    pose. Internal native frames prove route consistency, not Genesis visual
    fidelity.
 8. **Are new visuals cleanly redrawn?** Firing opens no page and adds no
-   controls. The stationary C042 pose replaces the actor's field sprite until
-   its action delay expires. While moving, the C062 walk selector remains free
+   controls. The stationary C042 pose replaces the actor's field sprite for
+   32 render updates, then C052 returns while the action delay continues. While
+   moving, the C062 walk selector remains free
    to animate; the cooldown gate stays independent of that selector. Projectile
    images follow the source entity draw order with the player. Both slots are released
    when their own continuations end, and no projectile pixels remain in the

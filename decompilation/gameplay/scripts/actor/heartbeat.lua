@@ -60,6 +60,11 @@ function ActorAI.heartbeat(context)
                 context.combat_confirm_held == true and
                 context.combat_action_ready == true and
                 context.combat_input_blocked ~= true
+            if state.combat_action_requested then
+                -- Latch the successful-action start for the following render
+                -- heartbeat; the finite C042 pose has its own lifetime.
+                state.player_weapon_animation_start_pending = true
+            end
             state.movement_step = nil
             if context.phase == "behavior" then
                 state.movement_bearing_degrees =
@@ -233,6 +238,11 @@ function ActorAI.heartbeat(context)
                 context.combat_confirm_held == true and
                 context.combat_action_ready == true and
                 context.combat_input_blocked ~= true
+            if state.combat_action_requested then
+                -- A held-fire repeat is a new C042 action and resets its
+                -- animation in the next render pass, after the host action.
+                state.player_weapon_animation_start_pending = true
+            end
         end
         if profile.controls_movement and not profile.dynamic_encounter_only then
             local cast_audio = R.begin_player_spell_cast(state, context)

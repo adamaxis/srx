@@ -191,6 +191,65 @@ end
 check(player_clip.animation_frame == 1 and
       player_clip.animation_elapsed_updates == 0,
       "runner strike advances from its named clip duration")
+
+-- ROM 0xB39A selects Joshua's C042 item-action list at 0x784C: one frame,
+-- rate 0x80 over a 0x1000 period, then the following 0xA8EA pass selects
+-- B45C/C052 even while the separate +0xDC action delay remains positive.
+local player_weapon_action = {
+    animation_id = "idle",
+    animation_frame = 0,
+    animation_elapsed_updates = 0,
+    direction = E.ActorFacing.EAST,
+    player_weapon_animation_start_pending = true,
+}
+local player_weapon_clip = A.list(E.ActorVisualProfile.FIELD_RUNNER,
+                                  A.Clip.ITEM)
+check(player_weapon_clip.frame_count == 1 and
+      player_weapon_clip.frame_duration_updates == 32,
+      "runner C042 metadata keeps its source one-frame, 32-update lifetime")
+for _ = 1, 31 do
+    R.advance_player_animation(player_weapon_action, {
+        animation_mode = E.ActorAnimationMode.ATTACK,
+        animation_direction_override = E.ActorFacing.EAST,
+    })
+end
+check(player_weapon_action.animation_id == "attack" and
+      player_weapon_action.animation_frame == 0 and
+      player_weapon_action.animation_elapsed_updates == 31 and
+      player_weapon_action.player_weapon_animation_complete ~= true,
+      "C042 pose stays visible until its 32nd render update")
+R.advance_player_animation(player_weapon_action, {
+    animation_mode = E.ActorAnimationMode.ATTACK,
+    animation_direction_override = E.ActorFacing.EAST,
+})
+check(player_weapon_action.animation_id == "attack" and
+      player_weapon_action.player_weapon_animation_complete == true,
+      "C042 action list completes independently of held attack mode")
+R.advance_player_animation(player_weapon_action, {
+    animation_mode = E.ActorAnimationMode.ATTACK,
+    animation_direction_override = E.ActorFacing.EAST,
+})
+for _ = 1, 20 do
+    R.advance_player_animation(player_weapon_action, {
+        animation_mode = E.ActorAnimationMode.ATTACK,
+        animation_direction_override = E.ActorFacing.EAST,
+    })
+end
+check(player_weapon_action.animation_id == "idle" and
+      player_weapon_action.player_weapon_animation_complete == true,
+      "held attack mode does not pin the runner to the C042 pose")
+player_weapon_action.player_weapon_animation_start_pending = true
+R.advance_player_animation(player_weapon_action, {
+    animation_mode = E.ActorAnimationMode.ATTACK,
+    animation_direction_override = E.ActorFacing.EAST,
+})
+check(player_weapon_action.animation_id == "attack" and
+      player_weapon_action.animation_frame == 0 and
+      player_weapon_action.animation_elapsed_updates == 1 and
+      player_weapon_action.player_weapon_animation_complete ~= true and
+      player_weapon_action.player_weapon_animation_start_pending == nil,
+      "a later held-fire action restarts C042 from its first update")
+
 player_clip = { animation_id = "idle", animation_frame = 0,
     animation_elapsed_updates = 0, direction = 0 }
 for _ = 1, 64 do

@@ -8,6 +8,7 @@ local Animator = R.Animator   -- from actor/animator.lua
 local SoundId, SceneId, EntryDelayMax, AiTuning =
     E.SoundId, E.SceneId, E.EntryDelayMax, E.AiTuning
 local PlayerHurt = E.PlayerHurt
+local ActorAnimationMode = E.ActorAnimationMode
 local ActorFacing, SpriteFlip = E.ActorFacing, E.SpriteFlip
 local FieldSpritePriority = E.FieldSpritePriority
 local VisualProfile = R.VisualProfile -- from actor/tables.lua
@@ -528,14 +529,29 @@ local function advance_player_animation(state, context)
         state.player_hurt_animation_complete_pending = nil
     end
 
-    if context.animation_mode == "attack" then
-        -- C042 (pose 0x40) for kind 3 is one frame; the extracted art is
-        -- attack-<dir>.bmp. Its 0x80 cadence only drives pose bit 15, which
-        -- the C++ attack-pose timer owns [H: not ported here].
-        state.animation_id = "attack"
-        state.animation_frame = 0
-        state.animation_elapsed_updates = 0
-        return
+    if context.animation_mode == ActorAnimationMode.ATTACK then
+        if state.player_weapon_animation_start_pending == true then
+            state.player_weapon_animation_start_pending = nil
+            state.player_weapon_animation_complete = nil
+            state.animation_id = "attack"
+            state.animation_frame = 0
+            state.animation_elapsed_updates = 0
+        end
+        if state.player_weapon_animation_complete ~= true then
+            if state.animation_id ~= "attack" then
+                state.animation_frame = 0
+                state.animation_elapsed_updates = 0
+            end
+            -- ROM 0xB39A installs C042. Joshua's selector 0x40 resolves to
+            -- the one-frame 0x784C list (+0x80 over +0x1000), which returns
+            -- to C052 after 32 render updates. The +0xDC action delay has a
+            -- separate lifetime [C: 0x5FDC/0x600E/0xA8EA/0xAE26].
+            state.animation_id = "attack"
+            if advance_player_finite_clip(state, Animator.Clip.ITEM) then
+                state.player_weapon_animation_complete = true
+            end
+            return
+        end
     end
     if context.animation_mode == "strike" then
         -- C0A2 supplies the runner strike clip. The importer records its

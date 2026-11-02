@@ -46366,6 +46366,46 @@ int main(int argc, char** argv) {
                     weapon_fire_scene.field_weapon_primary_heading_for_dump();
                 const auto fire_attack_saved = save_weapon_fire_scene(
                     "attack", fire_actual);
+                std::ofstream player_animation_trace(
+                    weapon_fire_dump_path / "player-animation.tsv",
+                    std::ios::trunc);
+                if (!player_animation_trace) {
+                    std::cerr << "field player action dump: could not write player-animation.tsv\n";
+                    return 3;
+                }
+                player_animation_trace
+                    << "phase\tframe\tinput\taction_gate\tammo\t"
+                       "animation_id\tattack_pose\tselector\tanimation_frame\n";
+                const auto trace_player_animation =
+                    [&player_animation_trace, &weapon_fire_scene](
+                        const std::string_view phase,
+                        const std::int32_t frame,
+                        const std::uint8_t input) {
+                        player_animation_trace
+                            << phase << '\t' << frame << '\t'
+                            << static_cast<unsigned>(input) << '\t'
+                            << weapon_fire_scene.active_runner_record()
+                                   .animation_action_gate
+                            << '\t'
+                            << static_cast<unsigned>(weapon_fire_scene
+                                   .active_runner_record().ammo_rounds)
+                            << '\t'
+                            << weapon_fire_scene
+                                   .field_entity_animation_id_for_dump()
+                            << '\t'
+                            << (weapon_fire_scene
+                                        .field_entity_attack_pose_for_dump()
+                                    ? 1
+                                    : 0)
+                            << '\t'
+                            << weapon_fire_scene
+                                   .field_entity_animation_selector_for_dump()
+                            << '\t'
+                            << weapon_fire_scene
+                                   .field_entity_animation_frame_for_dump()
+                            << '\n';
+                    };
+                trace_player_animation("tap", 0, 0x40U);
                 if (weapon_fire_scene.active_runner_record().ammo_rounds !=
                         5U ||
                     weapon_fire_scene.active_runner_record().ammo_clips !=
@@ -46376,6 +46416,10 @@ int main(int argc, char** argv) {
                     !weapon_fire_scene.field_entity_attack_pose_for_dump() ||
                     weapon_fire_scene.field_entity_animation_selector_for_dump() !=
                         0x0040U ||
+                    weapon_fire_scene.field_entity_animation_id_for_dump() !=
+                        "attack" ||
+                    weapon_fire_scene.field_entity_animation_frame_for_dump() !=
+                        0U ||
                     weapon_fire_scene.last_field_weapon_spawn_action_for_dump() !=
                         EntitySpawnCycleAction::spawned ||
                     weapon_fire_scene.field_weapon_projectile_count_for_dump() !=
@@ -46396,7 +46440,7 @@ int main(int argc, char** argv) {
                     weapon_fire_scene.hotel_menu_open() ||
                     weapon_fire_scene.field_interaction_open() ||
                     !fire_attack_saved) {
-                    std::cerr << "field player action dump: live A input did not fire with the ROM 51-frame gate, allocate the source projectile pair, show directional frame 0, select C042, update the HUD, and request source sound 0x1C\n";
+                    std::cerr << "field player action dump: live A input did not fire with the ROM 51-frame gate, start the C042 action pose, allocate the source projectile pair, update the HUD, and request source sound 0x1C\n";
                     return 3;
                 }
                 weapon_fire_scene.set_controller_port_byte(0U);
@@ -46433,6 +46477,7 @@ int main(int argc, char** argv) {
                      delay_frame <= 512U && prior_delay >= 0;
                      ++delay_frame) {
                     weapon_fire_scene.advance_frame();
+                    trace_player_animation("tap", delay_frame, 0U);
                     const auto delay_image = render_weapon_fire_scene();
                     const auto next_delay = weapon_fire_scene
                                                 .active_runner_record()
@@ -46457,13 +46502,22 @@ int main(int argc, char** argv) {
                         std::string("action-delay-") +
                         std::to_string(delay_frame);
                     const bool attack_pose_expected = next_delay >= 0;
+                    // ROM C042 selector 0x40 is the one-frame 0x784C list
+                    // (+0x80 against +0x1000): render pass 32 completes it,
+                    // then the next A8EA pass restores B45C/C052 even though
+                    // the separate +0xDC gate has not expired. [C]
+                    const auto expected_animation_id = delay_frame <= 31U
+                        ? "attack"
+                        : "idle";
                     if (next_delay >= prior_delay ||
                         weapon_fire_scene
                                 .field_entity_attack_pose_for_dump() !=
                             attack_pose_expected ||
+                        weapon_fire_scene.field_entity_animation_id_for_dump() !=
+                            expected_animation_id ||
                         !weapon_audio_is_source_valid(weapon_fire_audio) ||
                         !save_weapon_fire_scene(delay_name, delay_image)) {
-                        std::cerr << "field player action dump: C042 pose, action delay, HUD, or source weapon audio changed during the source +0xDC delay\n";
+                        std::cerr << "field player action dump: C042 completion, separate action delay, HUD, or source weapon audio changed during the source +0xDC delay\n";
                         return 3;
                     }
                     if (primary_position.has_value() &&
@@ -47236,10 +47290,11 @@ int main(int argc, char** argv) {
                 }
                 held_fire_trace
                     << "phase\telapsed\tinput\taction_gate\tammo\t"
-                       "attack_pose\taudio_events\n";
+                       "attack_pose\tselector\tanimation_frame\taudio_events\n";
                 weapon_fire_audio.clear();
                 weapon_fire_scene.set_controller_port_byte(0x40U);
                 weapon_fire_scene.advance_frame();
+                trace_player_animation("hold", 0, 0x40U);
                 const auto held_first_shot = render_weapon_fire_scene();
                 const auto held_first_delay =
                     held_fire_runner.animation_action_gate;
@@ -47256,13 +47311,19 @@ int main(int argc, char** argv) {
                 held_fire_trace
                     << "first-shot\t0\t64\t" << held_first_delay << "\t"
                     << static_cast<unsigned>(held_fire_runner.ammo_rounds)
-                    << "\t1\t" << weapon_fire_audio.size() << '\n';
+                    << "\t1\t"
+                    << weapon_fire_scene.field_entity_animation_selector_for_dump()
+                    << '\t'
+                    << weapon_fire_scene.field_entity_animation_frame_for_dump()
+                    << '\t' << weapon_fire_audio.size() << '\n';
                 for (std::int32_t elapsed = 1;
                      elapsed <= static_cast<std::int32_t>(held_first_delay) +
                                     1;
                      ++elapsed) {
                     weapon_fire_scene.set_controller_port_byte(0x40U);
                     weapon_fire_scene.advance_frame();
+                    trace_player_animation(
+                        "hold", elapsed, 0x40U);
                     const auto gate =
                         held_fire_runner.animation_action_gate;
                     const bool repeated = elapsed > held_first_delay;
@@ -47275,9 +47336,13 @@ int main(int argc, char** argv) {
                         ? held_fire_runner.animation_action_gate
                         : static_cast<std::int16_t>(
                               held_first_delay - elapsed);
+                    const auto expected_animation_id =
+                        (repeated || elapsed <= 31) ? "attack" : "idle";
                     if (held_fire_runner.ammo_rounds != expected_rounds ||
                         held_fire_runner.animation_action_gate !=
                             expected_gate ||
+                        weapon_fire_scene.field_entity_animation_id_for_dump() !=
+                            expected_animation_id ||
                         shot_sounds != expected_shot_sounds ||
                         (repeated && gate <= 0) ||
                         !weapon_audio_is_source_valid(weapon_fire_audio)) {
@@ -47301,6 +47366,10 @@ int main(int argc, char** argv) {
                                     .field_entity_attack_pose_for_dump()
                                 ? 1
                                 : 0)
+                        << '\t'
+                        << weapon_fire_scene.field_entity_animation_selector_for_dump()
+                        << '\t'
+                        << weapon_fire_scene.field_entity_animation_frame_for_dump()
                         << '\t' << weapon_fire_audio.size() << '\n';
                 }
                 const auto held_second_shot = render_weapon_fire_scene();
@@ -47338,7 +47407,13 @@ int main(int argc, char** argv) {
                     << "neutral\t" << pose_settle_frames << "\t0\t"
                     << held_fire_runner.animation_action_gate << '\t'
                     << static_cast<unsigned>(held_fire_runner.ammo_rounds)
-                    << "\t0\t" << weapon_fire_audio.size() << '\n';
+                    << "\t0\t"
+                    << weapon_fire_scene.field_entity_animation_selector_for_dump()
+                    << '\t'
+                    << weapon_fire_scene.field_entity_animation_frame_for_dump()
+                    << '\t' << weapon_fire_audio.size() << '\n';
+                trace_player_animation("hold-release", pose_settle_frames,
+                                       0U);
 
                 weapon_fire_audio.clear();
                 const auto moving_start =
