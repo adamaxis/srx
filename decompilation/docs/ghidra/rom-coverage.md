@@ -4,13 +4,13 @@ This is a structural source map, not a claim of behavioral ROM fidelity. A mappe
 
 Inventory: the union of `decompilation/docs/ghidra/decompiled-function-status.tsv` and `decompilation/export/functions.tsv`. The status ledger has 1077 rows; after address deduplication and including any export-only entries, the inventory contains **1074 routine entries** (911 unique Ghidra function exports). Ghidra names and sizes take precedence where the export list has the same address.
 
-Mapped: **1008**. Unmapped backlog: **66**. Committed mapped-routine baseline: **1008**.
+Mapped: **1010**. Unmapped backlog: **64**. Committed mapped-routine baseline: **1010**.
 
 | Inventory category | Entries | Mapped | Unmapped |
 |---|---:|---:|---:|
-| Ghidra code function exports | 911 | 871 | 40 |
+| Ghidra code function exports | 911 | 873 | 38 |
 | Status-ledger-only addresses | 163 | 137 | 26 |
-| Combined unique addresses | 1074 | 1008 | 66 |
+| Combined unique addresses | 1074 | 1010 | 64 |
 
 The `shadowrun_rom_coverage` CTest validates the current mapping references and fails if a routine in the baseline loses its mapping. Existing unmapped entries are reported but do not fail CTest. Run `python3 decompilation/ghidra_conversion/tools/rom_coverage.py --write-report` after updating the map.
 
@@ -45,11 +45,9 @@ Code size comes from the Ghidra export list; only exported routines have a size 
 | `0x3084` | load_field_scene_profile_and_terrain | 182 | field scene resource loop |
 | `0x1BEBA` | advance_title_profile_transition | 162 | Analyze profile transition |
 | `0x3B1E` | classify_field_camera_vertical_delta | 142 | classify_field_camera_vertical_delta |
-| `0x5D996` | advance_pre_title_animation_phase | 138 | advance_pre_title_animation_phase |
 | `0x54A8E` | advance_random_mode_event | 92 | random Matrix alert advance |
 | `0x11136` | render_menu_tile_rows | 90 | menu tile-row renderer |
 | `0x1DF6` | draw_title_copyright | 88 | title copyright text |
-| `0x1D7A` | setup_title_state | 80 | title setup |
 | `0xB732` | apply_movement_result_policy | 76 | movement result policy |
 | `0x15354` | activate_entity_audio_state | 60 | entity audio state activation |
 | `0x0436` | write_startup_text_to_vdp | 54 | startup text transfer |
@@ -57,6 +55,8 @@ Code size comes from the Ghidra export list; only exported routines have a size 
 | `0x104C8` | find_matching_menu_metric | 46 | matching menu metric scan |
 | `0x5D1B4` | prepare_pre_title_audio_variant_b | 46 | prepare_pre_title_audio_variant_b |
 | `0x59D12` | enter_post_intro_mode | 44 | enter post-intro mode |
+| `0x073A` | wait_for_vdp_ready | 36 | VDP-ready wait |
+| `0x0BD2` | wait_for_vblank | 32 | frame/vblank wait |
 
 ## Largest unmapped subsystem groups
 
@@ -66,7 +66,7 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 |---|---:|
 | Core and shared | 21 |
 | Menus and dialogue | 14 |
-| Opening and story | 13 |
+| Opening and story | 11 |
 | Actors and movement | 7 |
 | Field and world | 5 |
 | Presentation and audio | 5 |
@@ -74,8 +74,8 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 
 | Group | Unmapped Ghidra code routines |
 |---|---:|
-| Opening and story | 12 |
 | Core and shared | 11 |
+| Opening and story | 10 |
 | Menus and dialogue | 5 |
 | Presentation and audio | 5 |
 | Field and world | 4 |
@@ -139,6 +139,7 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x1C6A` | advance_title_sprite_state | 122 | decompilation/ghidra_conversion/src/title_intro/title_loop_conversion.cpp#ghidra_conversion::advance_title_sprite_state | port |
 | `0x1CFC` | load_title_resources | 92 | decompilation/ghidra_conversion/src/title_intro/title_resource_sequence_conversion.cpp#ghidra_conversion::load_title_resources | port |
 | `0x1D58` | prepare_title_sprite_list | 34 | decompilation/ghidra_conversion/src/title_intro/title_resource_sequence_conversion.cpp#ghidra_conversion::prepare_title_sprite_list | port |
+| `0x1D7A` | setup_title_state | 80 | decompilation/ghidra_conversion/src/title_intro/title_setup_conversion.cpp#ghidra_conversion::setup_title_state | port |
 | `0x1E4E` | reveal_title_logo_column | 124 | decompilation/ghidra_conversion/src/title_intro/title_loop_conversion.cpp#ghidra_conversion::advance_title_logo_column | port |
 | `0x2634` | cycle_title_circuit_lights | 156 | decompilation/gameplay/scripts/startup.lua#advance_title_circuit_lights | port |
 | `0x26D0` | advance_title_animation_timer | 34 | decompilation/ghidra_conversion/src/title_intro/title_loop_conversion.cpp#ghidra_conversion::advance_title_animation_timer | port |
@@ -1081,6 +1082,7 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x5D886` | finalize_pre_title_display | 52 | decompilation/ghidra_conversion/src/title_intro/boot_sequence_conversion.cpp#ghidra_conversion::finalize_pre_title_display | port |
 | `0x5D8BA` | step_pre_title_logo_strobe | 126 | decompilation/ghidra_conversion/src/title_intro/boot_sequence_conversion.cpp#ghidra_conversion::advance_pre_title_logo_strobe | port |
 | `0x5D938` | advance_pre_title_animation | 94 | decompilation/ghidra_conversion/src/title_intro/boot_sequence_conversion.cpp#ghidra_conversion::advance_pre_title_animation | port |
+| `0x5D996` | advance_pre_title_animation_phase | 138 | decompilation/ghidra_conversion/src/title_intro/boot_sequence_conversion.cpp#ghidra_conversion::advance_pre_title_animation | port |
 | `0x5DA50` | setup_pre_title_resources | 116 | decompilation/ghidra_conversion/src/title_intro/boot_sequence_conversion.cpp#ghidra_conversion::setup_pre_title_resources | port |
 | `0x5DAC4` | fill_boot_horizontal_scroll | 36 | decompilation/ghidra_conversion/src/title_intro/boot_sequence_conversion.cpp#ghidra_conversion::fill_pre_title_horizontal_scroll | port |
 | `0x1096B6` | Vid-Phone contact record 0 and call graph | — | decompilation/gameplay/scripts/vid_phone/capt_quinton_jaymes.lua | port |
@@ -1114,7 +1116,6 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x0C2C` | clear_runtime_memory_and_vdp | 192 | runtime memory/display initialization | partial |
 | `0x1342` | wait_for_palette_frame | 22 | palette frame wait | partial |
 | `0x1728` | render_hud_sprite_stream | 322 | HUD sprite stream | partial |
-| `0x1D7A` | setup_title_state | 80 | title setup | partial |
 | `0x1DCA` | draw_title_prompt_variant_a | 22 | PRESS START text variant A | partial |
 | `0x1DE0` | draw_title_prompt_variant_b | 22 | title prompt text variant B | partial |
 | `0x1DF6` | draw_title_copyright | 88 | title copyright text | partial |
@@ -1158,7 +1159,6 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x5BA4C` | load_scene_resources_thunk | 4 | load scene resources thunk | partial |
 | `0x5D172` | prepare_pre_title_audio_variant_a | 16 | prepare_pre_title_audio_variant_a | partial |
 | `0x5D1B4` | prepare_pre_title_audio_variant_b | 46 | prepare_pre_title_audio_variant_b | partial |
-| `0x5D996` | advance_pre_title_animation_phase | 138 | advance_pre_title_animation_phase | partial |
 | `0x5DAE8` | clear_pre_title_resource_workspace | 20 | clear_pre_title_resource_workspace | partial |
 | `0x5DAFC` | write_pre_title_resource_stream | 20 | write_pre_title_resource_stream | partial |
 | `0x121FA0` | field dialogue profile table | — | field dialogue profile table | partial |

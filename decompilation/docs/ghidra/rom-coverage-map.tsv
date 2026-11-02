@@ -53,6 +53,7 @@ rom_entry	mapping_kind	implementation	evidence
 0x1C6A	port	decompilation/ghidra_conversion/src/title_intro/title_loop_conversion.cpp#ghidra_conversion::advance_title_sprite_state	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x1CFC	port	decompilation/ghidra_conversion/src/title_intro/title_resource_sequence_conversion.cpp#ghidra_conversion::load_title_resources	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x1D58	port	decompilation/ghidra_conversion/src/title_intro/title_resource_sequence_conversion.cpp#ghidra_conversion::prepare_title_sprite_list	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x1D7A	port	decompilation/ghidra_conversion/src/title_intro/title_setup_conversion.cpp#ghidra_conversion::setup_title_state	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x1E4E	port	decompilation/ghidra_conversion/src/title_intro/title_loop_conversion.cpp#ghidra_conversion::advance_title_logo_column	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x2634	port	decompilation/gameplay/scripts/startup.lua#advance_title_circuit_lights	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x26D0	port	decompilation/ghidra_conversion/src/title_intro/title_loop_conversion.cpp#ghidra_conversion::advance_title_animation_timer	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
@@ -995,6 +996,7 @@ rom_entry	mapping_kind	implementation	evidence
 0x5D886	port	decompilation/ghidra_conversion/src/title_intro/boot_sequence_conversion.cpp#ghidra_conversion::finalize_pre_title_display	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x5D8BA	port	decompilation/ghidra_conversion/src/title_intro/boot_sequence_conversion.cpp#ghidra_conversion::advance_pre_title_logo_strobe	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x5D938	port	decompilation/ghidra_conversion/src/title_intro/boot_sequence_conversion.cpp#ghidra_conversion::advance_pre_title_animation	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x5D996	port	decompilation/ghidra_conversion/src/title_intro/boot_sequence_conversion.cpp#ghidra_conversion::advance_pre_title_animation	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x5DA50	port	decompilation/ghidra_conversion/src/title_intro/boot_sequence_conversion.cpp#ghidra_conversion::setup_pre_title_resources	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x5DAC4	port	decompilation/ghidra_conversion/src/title_intro/boot_sequence_conversion.cpp#ghidra_conversion::fill_pre_title_horizontal_scroll	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x1096B6	port	decompilation/gameplay/scripts/vid_phone/capt_quinton_jaymes.lua	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
