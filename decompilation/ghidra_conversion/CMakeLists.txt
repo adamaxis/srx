@@ -123,6 +123,23 @@ add_test(NAME shadowrun_rom_coverage
 add_test(NAME shadowrun_rom_coverage_baseline_semantics
          COMMAND "${Python3_EXECUTABLE}"
                  "${CMAKE_CURRENT_SOURCE_DIR}/tests/rom_coverage_test.py")
+# The byte-level forensic tool is optional for normal builds and uses the
+# Python Capstone package. Register its report and fixture checks when present.
+execute_process(
+    COMMAND "${Python3_EXECUTABLE}" -c "import capstone"
+    RESULT_VARIABLE SRX_CAPSTONE_IMPORT_RESULT
+    OUTPUT_QUIET
+    ERROR_QUIET
+)
+if(SRX_CAPSTONE_IMPORT_RESULT EQUAL 0)
+    add_test(NAME shadowrun_rom_byte_reachability
+             COMMAND "${Python3_EXECUTABLE}"
+                     "${CMAKE_CURRENT_SOURCE_DIR}/tools/rom_reachability.py"
+                     --check)
+    add_test(NAME shadowrun_rom_byte_reachability_semantics
+             COMMAND "${Python3_EXECUTABLE}"
+                     "${CMAKE_CURRENT_SOURCE_DIR}/tests/rom_reachability_test.py")
+endif()
 
 # Offline extraction helper for the source records consumed by the converted
 # startup/session code. It is intentionally not linked into the Qt frontend or
