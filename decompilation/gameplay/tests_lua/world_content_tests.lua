@@ -141,4 +141,62 @@ assert(escorted_actor.pending_lifecycle_event ==
        slot_only_actor.pending_lifecycle_event == nil,
        "escort conclusion relied on a numeric record slot instead of actor facts")
 
+-- ROM 0x17034/0x17236 is the confirmed Scene-10 default +0x9E bit-4 actor.
+-- 0xECCC selects variant 4 in this route; 0x21174 uses signed FFFC12 to
+-- select the 0xFE640 subrow (negative +0xC, >=4 +8, otherwise +0).
+local generic_contact_action = World.field_actor_contact_task(
+    E.Scene.FRIENDSHIP_RESTAURANT,
+    "field_activity_scene_10_default_script_actor_0",
+    "scene_10_default_script", E.FieldActorContactHandler.ORDINARY)
+assert(generic_contact_action ==
+           E.FieldActorContactAction.GENERIC_DIALOGUE,
+       "ROM-confirmed Scene-10 bit-4 contact did not select generic dialogue")
+assert(World.generic_field_contact_row_offset(-1) ==
+           E.GenericFieldContact.ROW_OFFSET_NEGATIVE and
+       World.generic_field_contact_row_offset(4) ==
+           E.GenericFieldContact.ROW_OFFSET_HIGH and
+       World.generic_field_contact_row_offset(0) ==
+           E.GenericFieldContact.ROW_OFFSET_DEFAULT,
+       "generic contact row did not follow the signed FFFC12 bands")
+assert(World.generic_field_contact_dialogue(
+           E.Scene.FRIENDSHIP_RESTAURANT, "scene_10_default_script",
+           E.GenericFieldContact.VARIANT_STANDARD) ==
+           E.GenericFieldContactResponse.SCENE_10_DEFAULT_NEUTRAL,
+       "Scene-10 variant 4 did not resolve its confirmed neutral row")
+assert(World.generic_field_contact_dialogue(
+           E.Scene.FRIENDSHIP_RESTAURANT, "scene_10_default_script",
+           E.GenericFieldContact.VARIANT_ALTERNATE) == nil and
+       World.generic_field_contact_dialogue(
+           E.Scene.FRIENDSHIP_RESTAURANT, "scene_10_event_6_script",
+           E.GenericFieldContact.VARIANT_ALTERNATE) == nil and
+       World.field_actor_contact_task(
+           E.Scene.FRIENDSHIP_RESTAURANT,
+           "field_activity_scene_10_default_script_actor_0",
+           "scene_10_default_script",
+           E.FieldActorContactHandler.WORLD_EFFECT) ==
+               E.FieldActorContactAction.START_ACTIVITY,
+       "generic dialogue escaped its source-confirmed actor/row/handler")
+local generic_text = require("data.field_contact_dialogue_text")
+assert(generic_text[E.GenericFieldContactResponse.SCENE_10_DEFAULT_NEUTRAL] ==
+           "<Ilene Two Fists is here.>||What can I do for you, Joshua.",
+       "Scene-10 neutral text no longer matches ROM 0x102424")
+local presented_contact_text, presented_continuation
+game.location = {
+    type = "field_map",
+    id = E.GenericFieldContact.LOCATION_ID,
+    event_id = E.GenericFieldContactResponse.SCENE_10_DEFAULT_NEUTRAL,
+}
+game.ui = {
+    say_text = function(text, continuation)
+        presented_contact_text = text
+        presented_continuation = continuation
+    end,
+}
+local GenericFieldContacts = require("field_generic_contacts")
+assert(GenericFieldContacts.present() == "presented" and
+       presented_contact_text == generic_text[
+           E.GenericFieldContactResponse.SCENE_10_DEFAULT_NEUTRAL] and
+       presented_continuation == false,
+       "generic contact presentation did not open the selected Lua row")
+
 print("world content tests passed")

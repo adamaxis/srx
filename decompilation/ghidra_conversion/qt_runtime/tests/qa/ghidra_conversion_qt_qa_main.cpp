@@ -14997,6 +14997,121 @@ int run_scene10_northwest_contact_qa(
         startup_state, asset_root, output, route);
 }
 
+int run_scene10_default_generic_contact_qa(
+    const StartupIntegrationState& startup_state,
+    const std::filesystem::path& output) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Scene-10 generic-contact QA: could not clear output: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Scene-10 generic-contact QA: could not create output: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+
+    std::vector<std::string> boundaries;
+    qt_runtime::FieldSceneRuntime field_scene(
+        [&boundaries](const std::string_view boundary) {
+            boundaries.emplace_back(boundary);
+        });
+    if (!field_scene.bootstrap_for_scene_dump(startup_state, 10U)) {
+        std::cerr << "Scene-10 generic-contact QA: bootstrap failed: "
+                  << field_scene.failure() << '\n';
+        return 3;
+    }
+    field_scene.set_compact_runner_markers_for_dump(0xFFU, 0xFFU);
+    if (!field_scene.reenter_field_scene_for_dump(10U)) {
+        std::cerr << "Scene-10 generic-contact QA: default actor list "
+                     "reentry failed: "
+                  << field_scene.failure() << '\n';
+        return 3;
+    }
+    const auto actor =
+        field_scene.world_activity_script_actor_projection_for_dump(0U);
+    if (!actor.has_value() ||
+        actor->activity_id != "scene_10_default_script" ||
+        actor->world_position.x != 0x0700U ||
+        actor->world_position.y != 0x0500U ||
+        (actor->spawn_state_flags & 0x10U) == 0U ||
+        (field_scene.field_entity_behavior_flags_for_dump() & 0x02U) == 0U) {
+        std::cerr << "Scene-10 generic-contact QA: source actor or eligible "
+                     "player facts differ; actor="
+                  << (actor.has_value() ? actor->activity_id : "<missing>")
+                  << " position="
+                  << (actor.has_value() ? actor->world_position.x : 0U)
+                  << ','
+                  << (actor.has_value() ? actor->world_position.y : 0U)
+                  << " flags=0x" << std::hex
+                  << (actor.has_value()
+                          ? static_cast<unsigned>(actor->spawn_state_flags)
+                          : 0U)
+                  << " player_flags=0x"
+                  << static_cast<unsigned>(
+                         field_scene.field_entity_behavior_flags_for_dump())
+                  << std::dec << '\n';
+        return 3;
+    }
+
+    // Put the controlled runner on the ROM-authored NPC position before the
+    // first actor-service update. The first update is therefore the first
+    // overlap service frame; this measures host dispatch latency, not an
+    // emulator-driven/natural approach.
+    field_scene.set_field_entity_world_position_for_dump(
+        actor->world_position.x, actor->world_position.y);
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+
+    const auto& dialogue = field_scene.dialogue_panel();
+    bool has_first_line = false;
+    bool has_question = false;
+    for (std::size_t index = 0U;
+         index < dialogue.text_segment_count; ++index) {
+        has_first_line = has_first_line ||
+            dialogue.text_segments[index].find(
+                "Ilene Two Fists is here.") != std::string_view::npos;
+        has_question = has_question ||
+            dialogue.text_segments[index].find(
+                "What can I do for you, Joshua.") != std::string_view::npos;
+    }
+    const auto generic_opened = std::find(
+        boundaries.begin(), boundaries.end(),
+        "field.world_activity.generic_contact_dialogue_opened");
+    const auto timeout =
+        field_scene.world_activity_request_timeout_for_dump();
+    const auto resource_countdown =
+        field_scene.world_frame_logic_for_dump().resource_countdown;
+    const auto actual = render_qa_field(field_scene);
+    const bool actual_saved = !actual.isNull() &&
+        actual.save(QString::fromStdString(
+            (output / "actual.bmp").string()));
+    if (!field_scene.dialogue_open() || !dialogue.source_complete ||
+        !has_first_line || !has_question ||
+        generic_opened == boundaries.end() || timeout != 59U ||
+        resource_countdown != 59U || !actual_saved) {
+        std::cerr << "Scene-10 generic-contact QA: first overlap did not "
+                     "open the selected response on the same field update; "
+                  << "dialogue=" << field_scene.dialogue_open()
+                  << " complete=" << dialogue.source_complete
+                  << " line=" << has_first_line
+                  << " question=" << has_question
+                  << " timeout=" << static_cast<unsigned>(timeout)
+                  << " countdown=" << resource_countdown
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+    std::cout << "scene10_generic_contact=passed first_overlap_update=1 "
+              << "dialogue_update=1 delta=0 timeout="
+              << static_cast<unsigned>(timeout)
+              << " resource_countdown=" << resource_countdown
+              << " response=scene_10_default_neutral\n";
+    return 0;
+}
+
 int run_scene1_underground93_story_gate_qa(
     const StartupIntegrationState& startup_state,
     const std::filesystem::path& asset_root,
@@ -38383,6 +38498,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_scene10_northwest_contact_qa_path;
         std::optional<std::filesystem::path>
+            field_scene10_generic_contact_qa_path;
+        std::optional<std::filesystem::path>
             field_crime_mall_ilene_gate_qa_path;
         std::optional<std::filesystem::path>
             field_riannons_magic_shop_entry_qa_path;
@@ -38720,6 +38837,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_scene10_northwest_contact_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-scene10-generic-contact-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_scene10_generic_contact_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -40875,6 +40999,10 @@ int main(int argc, char** argv) {
                 return run_scene10_northwest_contact_qa(
                     smoke_state, asset_root,
                     *field_scene10_northwest_contact_qa_path);
+            }
+            if (field_scene10_generic_contact_qa_path.has_value()) {
+                return run_scene10_default_generic_contact_qa(
+                    smoke_state, *field_scene10_generic_contact_qa_path);
             }
             if (field_stoker_collision_qa_path.has_value() ||
                 field_scene2_pedestrians_qa_path.has_value() ||

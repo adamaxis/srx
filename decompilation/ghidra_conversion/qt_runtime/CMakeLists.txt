@@ -654,6 +654,15 @@ add_shadowrun_qt_qa_case(
     --field-scene10-northwest-contact-qa
     "${CMAKE_CURRENT_BINARY_DIR}/field-scene10-northwest-contact-qa")
 
+# Scene 10's authored default actor is the confirmed generic +0x9E bit-4
+# contact. Verify the production proximity path opens its ROM-selected text
+# on the first overlap service update and decrements the shared 60-frame lock.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_scene10_generic_contact_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-scene10-generic-contact-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-scene10-generic-contact-qa")
+
 # Verify the physical Crime Mall route and the post-load ILENE_MET actor gate.
 add_shadowrun_qt_qa_case(
     shadowrun_ghidra_conversion_qt_field_crime_mall_ilene_gate_qa

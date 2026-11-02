@@ -9256,12 +9256,71 @@ GameScriptRuntime::field_actor_contact_task(
         action = ScriptFieldActorContactAction::ilene_activity;
     } else if (action_id == "random_pedestrian_contact") {
         action = ScriptFieldActorContactAction::random_pedestrian_contact;
+    } else if (action_id == "generic_contact_dialogue") {
+        action = ScriptFieldActorContactAction::generic_contact_dialogue;
     } else {
         return fail("field actor contact task returned an unknown action");
     }
     lua_settop(state, stack_base);
     impl_->failure.clear();
     return action;
+}
+
+std::optional<std::string>
+GameScriptRuntime::generic_field_contact_dialogue(
+    const std::uint16_t scene_id, const std::string_view activity_id,
+    const std::uint8_t row_variant,
+    const std::optional<std::int16_t> signed_selector) {
+    auto* state = impl_->state;
+    if (state == nullptr || scene_id > 55U || activity_id.empty() ||
+        activity_id.size() > 128U || !valid_identifier(activity_id)) {
+        impl_->failure = "generic field contact facts are invalid";
+        return std::nullopt;
+    }
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason)
+        -> std::optional<std::string> {
+        lua_settop(state, stack_base);
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (!impl_->push_module("world_content")) {
+        return fail("gameplay script module is missing: world_content");
+    }
+    lua_getfield(state, -1, "generic_field_contact_dialogue");
+    if (!lua_isfunction(state, -1)) {
+        return fail(
+            "world_content.generic_field_contact_dialogue is missing");
+    }
+    lua_remove(state, -2);
+    lua_pushinteger(state, static_cast<lua_Integer>(scene_id));
+    lua_pushlstring(state, activity_id.data(), activity_id.size());
+    lua_pushinteger(state, static_cast<lua_Integer>(row_variant));
+    if (signed_selector.has_value()) {
+        lua_pushinteger(state,
+                        static_cast<lua_Integer>(*signed_selector));
+    } else {
+        lua_pushnil(state);
+    }
+    ScopedInstructionBudget instruction_budget(state);
+    if (lua_pcall(state, 4, 1, 0) != LUA_OK) {
+        return fail("world_content.generic_field_contact_dialogue: " +
+                    stack_error(state));
+    }
+    if (lua_isnil(state, -1)) {
+        lua_settop(state, stack_base);
+        impl_->failure.clear();
+        return std::nullopt;
+    }
+    std::string response_id;
+    if (!read_string(state, -1, response_id) ||
+        !valid_identifier(response_id)) {
+        return fail(
+            "generic field contact dialogue must return a stable response id");
+    }
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return response_id;
 }
 
 std::optional<std::vector<ScriptConditionalActorCandidate>>

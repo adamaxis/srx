@@ -5526,12 +5526,15 @@ void FieldSceneRuntime::advance_default_field_actors(
 void FieldSceneRuntime::resolve_default_actor_proximity(
     DefaultFieldActorPresentation& actor) {
     constexpr std::uint8_t kWorldActivityContactFlag = 0x08U;
+    constexpr std::uint8_t kGenericDialogueContactFlag = 0x10U;
+    constexpr std::uint8_t kContactFlags = static_cast<std::uint8_t>(
+        kWorldActivityContactFlag | kGenericDialogueContactFlag);
     const auto scene_reference = state_.field_scene_buffers.scene_reference;
-    // ROM 0xED60 accepts every active +0x9E bit-3 actor; the A8CC/A8AE
-    // story tasks are Lua mappings layered on top of that shared contact path.
+    // ROM 0xECCC handles +0x9E bit 4 before the existing bit-3 route;
+    // A8CC/A8AE remain Lua mappings layered on that shared contact path.
     if (!actor.active || !actor.world_activity_script_actor ||
         actor.scene_reference != scene_reference ||
-        (actor.source_spawn_state_flags & kWorldActivityContactFlag) == 0U ||
+        (actor.source_spawn_state_flags & kContactFlags) == 0U ||
         !actor.source_record_slot.has_value() || !field_entity_.active ||
         field_dialogue_.open()) {
         return;
@@ -5604,8 +5607,9 @@ void FieldSceneRuntime::resolve_default_actor_proximity(
 
     const auto proximity = resolve_entity_proximity_interactions(
         records, 0U,
-        {[this, &actor, &records, &world, scene_reference](EntityProximityRecord& current,
-                                          EntityProximityRecord& candidate) {
+        {[this, &actor, &records, &record_actors, &world,
+          scene_reference](EntityProximityRecord& current,
+                           EntityProximityRecord& candidate) {
              EntityPairCollisionEntity current_entity{
                  current.special_flags, current.entity_flags,
                  current.activity_flags};
@@ -5614,7 +5618,89 @@ void FieldSceneRuntime::resolve_default_actor_proximity(
                  candidate.activity_flags};
              const auto collision = resolve_entity_pair_collision_event(
                  current_entity, candidate_entity, world,
-                 {{}, [this, &actor, &world, &current_entity,
+                 {[this, &records, &record_actors, &world, scene_reference,
+                   &current, &candidate](const EntityPairActor contact_role) {
+                      if (field_dialogue_.open()) {
+                          return;
+                      }
+                      const auto* current_begin = records.data();
+                      const auto current_index = static_cast<std::size_t>(
+                          &current - current_begin);
+                      const auto candidate_index = static_cast<std::size_t>(
+                          &candidate - current_begin);
+                      const auto actor_index = contact_role ==
+                              EntityPairActor::current
+                          ? current_index
+                          : candidate_index;
+                      if (actor_index >= record_actors.size() ||
+                          record_actors[actor_index] == nullptr) {
+                          return;
+                      }
+                      auto& contact_actor = *record_actors[actor_index];
+                      const auto contact_task =
+                          game_scripts_.field_actor_contact_task(
+                              scene_reference,
+                              contact_actor.actor_instance_id,
+                              contact_actor.world_activity_id,
+                              scripting::ScriptFieldActorContactHandler::
+                                  ordinary);
+                      if (!contact_task.has_value()) {
+                          failure_ = game_scripts_.failure().empty()
+                              ? "Lua generic field contact route is invalid"
+                              : game_scripts_.failure();
+                          source_boundary(
+                              "field.world_activity.generic_contact_route_failed");
+                          return;
+                      }
+                      if (*contact_task != scripting::
+                              ScriptFieldActorContactAction::
+                                  generic_contact_dialogue) {
+                          return;
+                      }
+                      // ROM 0x1E2E0 gates on FFE11C and 0x1E2EC loads 60.
+                      // The frame coordinator advances that shared counter
+                      // after this actor pass, matching 0x1DD94's same-frame
+                      // decrement. No actor-local dwell or break reset is used.
+                      if (!begin_world_activity_if_idle(
+                              field_world_activity_state_, 0U)) {
+                          return;
+                      }
+                      world_frame_logic_state_.resource_countdown =
+                          field_world_activity_state_.timeout;
+                      const auto response_id =
+                          game_scripts_.generic_field_contact_dialogue(
+                              scene_reference,
+                              contact_actor.world_activity_id,
+                              world.activity_variant);
+                      if (!response_id.has_value()) {
+                          if (!game_scripts_.failure().empty()) {
+                              failure_ = game_scripts_.failure();
+                              source_boundary(
+                                  "field.world_activity.generic_contact_selection_failed");
+                          }
+                          return;
+                      }
+                      game_scripts_.set_location_context(
+                          "field_map",
+                          std::string_view("generic_field_contact"),
+                          "field.world_event", "field_narrator",
+                          *response_id,
+                          static_cast<std::uint8_t>(scene_reference));
+                      if (!field_dialogue_.open_gameplay_task(
+                              "field_generic_contacts", "present")) {
+                          failure_ = !field_dialogue_.failure().empty()
+                              ? field_dialogue_.failure()
+                              : !game_scripts_.failure().empty()
+                                  ? game_scripts_.failure()
+                                  : "generic field contact dialogue could not be opened";
+                          source_boundary(
+                              "field.world_activity.generic_contact_open_failed");
+                          return;
+                      }
+                      source_boundary(
+                          "field.world_activity.generic_contact_dialogue_opened");
+                  },
+                  [this, &actor, &world, &current_entity,
                        scene_reference] {
                       if (field_dialogue_.open()) {
                           return;

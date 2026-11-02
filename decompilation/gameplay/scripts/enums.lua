@@ -104,6 +104,35 @@ E.Scene = {
     RESOURCE_ACTIVITY_43 = 43,
     LAST_ID = 55,
 } -- 0x3232 scene table; resource placements 0x15..0x2B; 0x37 is last ROM scene [C]
+E.Scene.FRIENDSHIP_RESTAURANT = 10 -- Scene-4 record 91 at 0x15BDC4 selects Scene 10 [C]
+
+E.FieldActorContactHandler = {
+    ORDINARY = "ordinary",
+    WORLD_EFFECT = "world_effect",
+    PENDING_WORLD_EFFECT = "pending_world_effect",
+}
+E.FieldActorContactAction = {
+    START_ACTIVITY = "start_activity",
+    ARAGORN_CONTACT = "aragorn_contact",
+    ILENE_ACTIVITY = "ilene_activity",
+    RANDOM_PEDESTRIAN_CONTACT = "random_pedestrian_contact",
+    GENERIC_DIALOGUE = "generic_contact_dialogue",
+} -- semantic outcomes for the shared 0xECCC actor-pair route [C]
+
+E.GenericFieldContact = {
+    LOCATION_ID = "generic_field_contact",
+    VARIANT_ALTERNATE = 2, -- Scene 10 with FFFBF9 == 6 [C: 0xED0E..0xED2A]
+    VARIANT_STANDARD = 4, -- Scene 10 otherwise [C: 0xED0E..0xED1E]
+    SIGNED_SELECTOR_NEUTRAL = 0, -- signed FFFC12 selects the base row [C: 0x21174]
+    SIGNED_SELECTOR_HIGH_MINIMUM = 4, -- FFFC12 >= 4 selects row + 8 [C: 0x21174]
+    ROW_OFFSET_DEFAULT = 0, -- FFFC12 in [0,3] [C: 0x21174]
+    ROW_OFFSET_HIGH = 8, -- FFFC12 >= 4 [C: 0x21174]
+    ROW_OFFSET_NEGATIVE = 0x0C, -- FFFC12 < 0 [C: 0x21174]
+} -- data-driven response selector for generic bit-4 contacts
+E.GenericFieldContactResponse = {
+    SCENE_10_DEFAULT_NEUTRAL = "scene_10_default_neutral",
+} -- 0xFE680 -> 0xFF12C -> 0x102424 [C]
+
 E.StokerMotelArrival = {
     RANDOM_BOUND = 100, -- 0x249C4 calls 0x0D3A with D1=100 [C]
     AMBUSH_MINIMUM_ROLL = 0x50, -- 0x249CE..0x249D2 [C]

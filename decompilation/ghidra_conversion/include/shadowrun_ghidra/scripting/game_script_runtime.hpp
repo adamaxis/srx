@@ -1827,6 +1827,7 @@ enum class ScriptFieldActorContactAction : std::uint8_t {
     aragorn_contact,
     ilene_activity,
     random_pedestrian_contact,
+    generic_contact_dialogue,
 };
 
 enum class ScriptWorldActivityKind : std::uint8_t {
@@ -2581,6 +2582,10 @@ public:
         std::uint16_t scene_id, std::string_view actor_instance_id,
         std::string_view activity_id,
         ScriptFieldActorContactHandler handler);
+    std::optional<std::string> generic_field_contact_dialogue(
+        std::uint16_t scene_id, std::string_view activity_id,
+        std::uint8_t row_variant,
+        std::optional<std::int16_t> signed_selector = std::nullopt);
     std::optional<std::vector<ScriptConditionalActorCandidate>>
     conditional_actor_candidates_for_scene(std::uint16_t scene_id);
     bool reset_conditional_actor_selection();

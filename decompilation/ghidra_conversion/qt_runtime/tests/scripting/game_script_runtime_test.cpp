@@ -2610,6 +2610,16 @@ int main() {
             0x15U, "qa_random_pedestrian",
             "scene_21_pedestrian_first",
             ContactHandler::world_effect);
+    const auto generic_scene_10_contact_route =
+        scripts.field_actor_contact_task(
+            10U, "field_activity_scene_10_default_script_actor_0",
+            "scene_10_default_script", ContactHandler::ordinary);
+    const auto generic_scene_10_response =
+        scripts.generic_field_contact_dialogue(
+            10U, "scene_10_default_script", 4U);
+    const auto unsupported_scene_10_response =
+        scripts.generic_field_contact_dialogue(
+            10U, "scene_10_event_6_script", 2U);
     bool conditional_candidate_table_valid = true;
     std::size_t conditional_candidate_count = 0U;
     for (std::uint16_t scene = 0x15U; scene <= 0x2BU; ++scene) {
@@ -3041,6 +3051,12 @@ int main() {
                 random_pedestrian_effect_route.has_value() &&
                 *random_pedestrian_effect_route ==
                     ContactAction::start_activity &&
+                generic_scene_10_contact_route.has_value() &&
+                *generic_scene_10_contact_route ==
+                    ContactAction::generic_contact_dialogue &&
+                generic_scene_10_response ==
+                    std::optional<std::string>{"scene_10_default_neutral"} &&
+                !unsupported_scene_10_response.has_value() &&
                 conditional_candidate_table_valid &&
                 conditional_candidate_count == 69U &&
                 reachable_random_contact_routes_valid &&
@@ -3076,6 +3092,12 @@ int main() {
         print_route("aragorn", aragorn_contact_route);
         print_route("ilene", ilene_contact_route);
         print_route("unrelated", unrelated_contact_route);
+        print_route("generic_scene10", generic_scene_10_contact_route);
+        std::cerr << "generic response="
+                  << (generic_scene_10_response.has_value()
+                          ? *generic_scene_10_response
+                          : std::string("<missing>"))
+                  << ' ';
         std::cerr << "scene script actor lookup: " << scripts.failure()
                   << '\n';
         return 1;

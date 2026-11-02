@@ -4,6 +4,7 @@
 -- game.content.entities; this module joins those records for map scripts.
 local World = {}
 local selected_recruitment_pedestrian_variant = nil
+local E = require("enums")
 local mode_one_activities =
     require("data.mode_one_activities")
 local field_actor_contacts = require("data.field_actor_contacts")
@@ -486,29 +487,36 @@ end
 -- response for that actor. Contact behavior is keyed by stable content IDs.
 function World.field_actor_contact_task(
     scene_id, actor_instance_id, activity_id, handler)
+    local ContactHandler = E.FieldActorContactHandler
+    local ContactAction = E.FieldActorContactAction
     if type(scene_id) ~= "number" or scene_id % 1 ~= 0 or
        scene_id < 0 or scene_id > 55 or
        type(actor_instance_id) ~= "string" or actor_instance_id == "" or
        type(activity_id) ~= "string" or
-       (handler ~= "ordinary" and handler ~= "world_effect" and
-        handler ~= "pending_world_effect") then
+       (handler ~= ContactHandler.ORDINARY and
+        handler ~= ContactHandler.WORLD_EFFECT and
+        handler ~= ContactHandler.PENDING_WORLD_EFFECT) then
         error("field actor contact needs semantic actor and handler facts")
     end
 
     local activity_route = field_actor_contacts[activity_id]
     if activity_route ~= nil then
         if activity_route.handler ~= handler then
-            return "start_activity"
+            return ContactAction.START_ACTIVITY
+        end
+        if activity_route.scene_id ~= nil and
+           activity_route.scene_id ~= scene_id then
+            return ContactAction.START_ACTIVITY
         end
         if activity_route.mark_escort and
            not World.mark_contact_actor_for_escort_cleanup(
                scene_id, actor_instance_id) then
-            return "start_activity"
+            return ContactAction.START_ACTIVITY
         end
         return activity_route.action
     end
-    if handler ~= "ordinary" then
-        return "start_activity"
+    if handler ~= ContactHandler.ORDINARY then
+        return ContactAction.START_ACTIVITY
     end
 
     -- The A800 selector gives reachable random pedestrians a stable
@@ -517,10 +525,60 @@ function World.field_actor_contact_task(
     for _, candidate in ipairs(
         World.conditional_actor_candidates_for_scene(scene_id)) do
         if candidate.candidate_id == activity_id then
-            return "random_pedestrian_contact"
+            return ContactAction.RANDOM_PEDESTRIAN_CONTACT
         end
     end
-    return "start_activity"
+    return ContactAction.START_ACTIVITY
+end
+
+-- ROM 0x21174 chooses one of three subrows from the signed FFFC12 value.
+-- Keep the arithmetic in Lua's named content policy; the host only supplies
+-- the ROM-selected row variant and stable NPC activity id.
+function World.generic_field_contact_row_offset(signed_selector)
+    if type(signed_selector) ~= "number" or
+       signed_selector % 1 ~= 0 or
+       signed_selector < -0x8000 or signed_selector > 0x7FFF then
+        return nil
+    end
+    if signed_selector < 0 then
+        return E.GenericFieldContact.ROW_OFFSET_NEGATIVE
+    end
+    if signed_selector >=
+       E.GenericFieldContact.SIGNED_SELECTOR_HIGH_MINIMUM then
+        return E.GenericFieldContact.ROW_OFFSET_HIGH
+    end
+    return E.GenericFieldContact.ROW_OFFSET_DEFAULT
+end
+
+function World.generic_field_contact_dialogue(
+    scene_id, activity_id, row_variant, signed_selector)
+    if type(scene_id) ~= "number" or scene_id % 1 ~= 0 or
+       type(activity_id) ~= "string" or
+       type(row_variant) ~= "number" or row_variant % 1 ~= 0 then
+        error("generic field contact needs scene, actor, and row facts")
+    end
+    local activity_route = field_actor_contacts[activity_id]
+    local generic_dialogue = type(activity_route) == "table" and
+        activity_route.generic_dialogue or nil
+    if activity_route == nil or generic_dialogue == nil or
+       activity_route.scene_id ~= scene_id or
+       activity_route.handler ~= E.FieldActorContactHandler.ORDINARY or
+       activity_route.action ~= E.FieldActorContactAction.GENERIC_DIALOGUE then
+        return nil
+    end
+    local selector = signed_selector
+    if selector == nil then
+        selector = generic_dialogue.signed_selector
+    end
+    local row_offset = World.generic_field_contact_row_offset(selector)
+    if row_offset == nil then
+        return nil
+    end
+    local variant_rows = generic_dialogue.rows_by_variant[row_variant]
+    if type(variant_rows) ~= "table" then
+        return nil
+    end
+    return variant_rows[row_offset]
 end
 
 function World.mark_contact_actor_for_escort_cleanup(
