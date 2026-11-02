@@ -176,6 +176,11 @@ function ActorAI.heartbeat(context)
         end
         if state.damage_reaction_active and
            state.animation_id == "down" then
+            local death_transition_completed = false
+            if context.phase == "behavior" then
+                state.think_token_claimed = false
+                state.ai_deactivate_requested = false
+            end
             if context.phase == "render" then
                 state.movement_step = nil
                 -- The death list's ROM rate/count for this kind; the art
@@ -186,6 +191,7 @@ function ActorAI.heartbeat(context)
                 end
             elseif state.damage_reaction_animation_complete and
                    not state.actor_facts.lifecycle.dead then
+                death_transition_completed = true
                 -- ROM 0xA93E: the finished C0B2 list sets pose bit 15, so the
                 -- next 0xA8EA service enters 0xAB02 once: drops, FFE177--,
                 -- and bset #6,+0x10 (DEAD, 0x40). The body stays drawn.
@@ -197,6 +203,21 @@ function ActorAI.heartbeat(context)
                 -- same for every kind.
                 if context.visual_profile_id == VisualProfile.WENDIGO or
                    state.spell_death then
+                    deactivate_record(state)
+                end
+            end
+            if context.phase == "behavior" and
+               state.actor_facts.lifecycle.active and
+               not state.actor_facts.lifecycle.dead and
+               not reaction_started and not death_transition_completed then
+                -- A down reaction still reaches the 0x13904 coordinator;
+                -- its 0x13962 retirement check precedes the remaining think
+                -- paths. Completed ordinary corpses skip 0xAC84 at 0xA91C.
+                local _, think_audio_event = R.think(state, context)
+                if think_audio_event ~= nil then
+                    reaction_audio_event = think_audio_event
+                end
+                if state.ai_deactivate_requested then
                     deactivate_record(state)
                 end
             end

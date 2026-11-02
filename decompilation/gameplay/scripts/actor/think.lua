@@ -46,6 +46,12 @@ local function thon_action_path(state, context)
         return "thon_idle"
     end
 
+    if state.damage_reaction_active and state.animation_id == "down" then
+        -- The 0xA8EA transition list owns this pose through completion;
+        -- do not replace it with Thon's C082 action list [C: 0xA93A..0xAA4C].
+        return "thon_busy"
+    end
+
     -- Start the next interval before resolving a target, as the source does.
     state.thon_action_cooldown_remaining = AiTuning.THON_ACTION_INTERVAL
     local target = R.linked_target(context, state)
@@ -106,6 +112,9 @@ local function thon_action_path(state, context)
 end
 
 local function guard_spots_you(state, context, leader)
+    if state.damage_reaction_active and state.animation_id == "down" then
+        return
+    end
     if context.world_activity_active == true then
         return
     end
@@ -268,6 +277,20 @@ local function select_think_path(state, context)
     -- 0x138B8 claims FFE175 before the 0x13904 think gate [C].
     state.behavior_timer = AiTuning.THINK_FRAMES
     state.think_token_claimed = true
+    if state.damage_reaction_active and state.animation_id == "down" and
+       context.visual_profile_id ~= E.ActorVisualProfile.THON and
+       not state.actor_facts.roles.quest and
+       not (state.actor_facts.roles.pedestrian and
+            context.world_activity_active == true) and
+       context.source_projection_active == false and
+       state.actor_facts.roles.despawn_offscreen then
+        -- 0x13962 performs this projection/role check before the normal
+        -- 0x1397A..0x13FFE behavior dispatch. A due off-screen downed record
+        -- can therefore retire without applying a second action state.
+        state.ai_deactivate_requested = true
+        state.ai_think_path = "skip"
+        return state.ai_think_path
+    end
     state.ai_think_path = think_gate(state, context)
     return state.ai_think_path
 end
@@ -622,6 +645,13 @@ local function preserve_offscreen_action_dispatch(state, context)
 end
 
 local function apply_think_result(state, context, path)
+    if state.damage_reaction_active and state.animation_id == "down" then
+        -- Preserve the down pose and movement state while still selecting the
+        -- normal due think path. 0xA8EA owns the transition list; the early
+        -- 0x13962 retirement and the source death-completion branches remain
+        -- responsible for deactivation.
+        return true
+    end
     if path == "wait" or path == "skip" then
         if state.ai_deactivate_requested then
             state.movement_active = false
