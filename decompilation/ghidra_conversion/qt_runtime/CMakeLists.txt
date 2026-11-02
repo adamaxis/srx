@@ -663,6 +663,15 @@ add_shadowrun_qt_qa_case(
     --field-scene10-generic-contact-qa
     "${CMAKE_CURRENT_BINARY_DIR}/field-scene10-generic-contact-qa")
 
+# The bulk ROM importer supplies generic dialogue routes for Ricky and the
+# hireable runner Marrs. Verify both contacts on their first headless overlap
+# update and save the resulting dialogue frame per scene.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_bulk_generic_contacts_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-bulk-generic-contacts-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-bulk-generic-contacts-qa")
+
 # Verify the physical Crime Mall route and the post-load ILENE_MET actor gate.
 add_shadowrun_qt_qa_case(
     shadowrun_ghidra_conversion_qt_field_crime_mall_ilene_gate_qa

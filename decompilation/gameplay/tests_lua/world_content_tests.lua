@@ -168,7 +168,8 @@ assert(World.generic_field_contact_dialogue(
            E.GenericFieldContact.VARIANT_ALTERNATE) == nil and
        World.generic_field_contact_dialogue(
            E.Scene.FRIENDSHIP_RESTAURANT, "scene_10_event_6_script",
-           E.GenericFieldContact.VARIANT_ALTERNATE) == nil and
+           E.GenericFieldContact.VARIANT_ALTERNATE) ==
+               "scene_10_group_2_default" and
        World.field_actor_contact_task(
            E.Scene.FRIENDSHIP_RESTAURANT,
            "field_activity_scene_10_default_script_actor_0",
@@ -178,8 +179,9 @@ assert(World.generic_field_contact_dialogue(
        "generic dialogue escaped its source-confirmed actor/row/handler")
 local generic_text = require("data.field_contact_dialogue_text")
 assert(generic_text[E.GenericFieldContactResponse.SCENE_10_DEFAULT_NEUTRAL] ==
-           "<Ilene Two Fists is here.>||What can I do for you, Joshua.",
-       "Scene-10 neutral text no longer matches ROM 0x102424")
+           "<A huge female ork dressed in AmerIndian garb is here." ..
+               "||She seems occupied with some fetishes.>",
+       "Scene-10 neutral text no longer matches ROM 0x101E24")
 local presented_contact_text, presented_continuation
 game.location = {
     type = "field_map",

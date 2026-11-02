@@ -2617,6 +2617,10 @@ int main() {
     const auto generic_scene_10_response =
         scripts.generic_field_contact_dialogue(
             10U, "scene_10_default_script", 4U);
+    // [C] Scene-10 event 6's spawn record at 0x17018 installs template
+    // 0x171A2; its +0x9E byte selects group 2 through 0x21174/0xFE640,
+    // resolving row 0xFEB4C and text 0x100A0C. The generated catalog must
+    // expose this previously unlisted bit-4 contact.
     const auto unsupported_scene_10_response =
         scripts.generic_field_contact_dialogue(
             10U, "scene_10_event_6_script", 2U);
@@ -3056,7 +3060,8 @@ int main() {
                     ContactAction::generic_contact_dialogue &&
                 generic_scene_10_response ==
                     std::optional<std::string>{"scene_10_default_neutral"} &&
-                !unsupported_scene_10_response.has_value() &&
+                unsupported_scene_10_response ==
+                    std::optional<std::string>{"scene_10_group_2_default"} &&
                 conditional_candidate_table_valid &&
                 conditional_candidate_count == 69U &&
                 reachable_random_contact_routes_valid &&

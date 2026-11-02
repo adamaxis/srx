@@ -9882,10 +9882,12 @@ int run_field_scene20_physical_entry_qa(
         // Lua task's dialogue and its ROM 0x54402 story/reward writes.
         field_scene.set_field_entity_world_position_for_dump(
             actor_position->x, actor_position->y);
+        std::uint16_t contact_updates = 0U;
         for (std::uint16_t attempt = 0U;
              attempt < 120U && !field_scene.dialogue_open(); ++attempt) {
             field_scene.advance_frame();
             ++frame;
+            ++contact_updates;
         }
         const auto panel = field_scene.dialogue_panel();
         const auto contact_records = field_scene.field_party_records_for_dump();
@@ -9989,7 +9991,13 @@ int run_field_scene20_physical_entry_qa(
         std::cout << "field_scene20_ilene_prerequisite_qa=passed "
                   << "scene=20 service=19 marker=FFE182 "
                   << "contact=ROM_pair_window activity=0x54402 "
-                  << "karma_delta=2 text_rows=5 one_shot=+0xB0.bit7 "
+                  << "contact_updates=" << contact_updates
+                  << " dialogue_open_update=" << contact_updates
+                  << " delta_updates="
+                  << (contact_updates > 0U ? contact_updates - 1U : 0U)
+                  << " text_rows=" << panel.text_segment_count
+                  << " text_shown=" << dialogue_matches
+                  << " karma_delta=2 one_shot=+0xB0.bit7 "
                   << "preparations=" << route_preparations
                   << " pending_list=0xA8CC actor_slot=3 default_first_slot=4"
                   << " artifacts=" << output.string() << '\n';
@@ -15073,10 +15081,12 @@ int run_scene10_default_generic_contact_qa(
          index < dialogue.text_segment_count; ++index) {
         has_first_line = has_first_line ||
             dialogue.text_segments[index].find(
-                "Ilene Two Fists is here.") != std::string_view::npos;
+                "A huge female ork dressed in AmerIndian garb is here.") !=
+                std::string_view::npos;
         has_question = has_question ||
             dialogue.text_segments[index].find(
-                "What can I do for you, Joshua.") != std::string_view::npos;
+                "She seems occupied with some fetishes.") !=
+                std::string_view::npos;
     }
     const auto generic_opened = std::find(
         boundaries.begin(), boundaries.end(),
@@ -15109,6 +15119,137 @@ int run_scene10_default_generic_contact_qa(
               << static_cast<unsigned>(timeout)
               << " resource_countdown=" << resource_countdown
               << " response=scene_10_default_neutral\n";
+    return 0;
+}
+
+int run_bulk_generic_field_contacts_qa(
+    const StartupIntegrationState& startup_state,
+    const std::filesystem::path& output) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Bulk generic-contact QA: could not clear output: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Bulk generic-contact QA: could not create output: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+
+    struct ContactCase {
+        std::uint16_t scene;
+        const char* directory;
+        const char* activity_id;
+        const char* expected_text;
+        const char* row_evidence;
+    };
+    // ROM 0x17050 selects the Scene-11 hireling/Marrs dialogue through
+    // 0x21174/0xFE640; Ricky is the 0x16FFC actor and uses the same dispatcher.
+    constexpr std::array<ContactCase, 2U> cases{{
+        {11U, "marrs-hireling", "scene_11_script",
+         "An armed troll studies you with his largest pupil.",
+         "0x100353"},
+        {19U, "ricky", "scene_19_script",
+         "A rat-like dwarf is here.", "0xFFBDA"},
+    }};
+
+    for (const auto& test_case : cases) {
+        const auto case_output = output / test_case.directory;
+        std::filesystem::create_directories(case_output, output_error);
+        if (output_error) {
+            std::cerr << "Bulk generic-contact QA: could not create case "
+                      << test_case.directory << ": "
+                      << output_error.message() << '\n';
+            return 3;
+        }
+
+        std::vector<std::string> boundaries;
+        qt_runtime::FieldSceneRuntime field_scene(
+            [&boundaries](const std::string_view boundary) {
+                boundaries.emplace_back(boundary);
+            });
+        if (!field_scene.bootstrap_for_scene_dump(startup_state,
+                                                   test_case.scene)) {
+            std::cerr << "Bulk generic-contact QA: Scene "
+                      << test_case.scene << " bootstrap failed: "
+                      << field_scene.failure() << '\n';
+            return 3;
+        }
+        field_scene.set_compact_runner_markers_for_dump(0xFFU, 0xFFU);
+        if (!field_scene.reenter_field_scene_for_dump(test_case.scene)) {
+            std::cerr << "Bulk generic-contact QA: Scene "
+                      << test_case.scene << " actor-list reentry failed: "
+                      << field_scene.failure() << '\n';
+            return 3;
+        }
+        const auto actor =
+            field_scene.world_activity_script_actor_projection_for_dump(0U);
+        if (!actor.has_value() ||
+            actor->activity_id != test_case.activity_id ||
+            (actor->spawn_state_flags & 0x10U) == 0U ||
+            (field_scene.field_entity_behavior_flags_for_dump() & 0x02U) ==
+                0U) {
+            std::cerr << "Bulk generic-contact QA: Scene "
+                      << test_case.scene
+                      << " did not install the source bit-4 actor or an "
+                         "eligible runner\n";
+            return 3;
+        }
+
+        // Place the runner at the ROM-authored actor coordinate before the
+        // actor-service pass. This records the first eligible contact update.
+        field_scene.set_field_entity_world_position_for_dump(
+            actor->world_position.x, actor->world_position.y);
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+
+        const auto& dialogue = field_scene.dialogue_panel();
+        bool expected_text_shown = false;
+        for (std::size_t index = 0U;
+             index < dialogue.text_segment_count; ++index) {
+            expected_text_shown = expected_text_shown ||
+                dialogue.text_segments[index].find(test_case.expected_text) !=
+                    std::string_view::npos;
+        }
+        const auto generic_open_count = std::count(
+            boundaries.begin(), boundaries.end(),
+            std::string("field.world_activity.generic_contact_dialogue_opened"));
+        const auto timeout =
+            field_scene.world_activity_request_timeout_for_dump();
+        const auto resource_countdown =
+            field_scene.world_frame_logic_for_dump().resource_countdown;
+        const auto actual = render_qa_field(field_scene);
+        const bool actual_saved = !actual.isNull() &&
+            actual.save(QString::fromStdString(
+                (case_output / "actual.bmp").string()));
+        if (!field_scene.dialogue_open() || !dialogue.source_complete ||
+            !expected_text_shown || generic_open_count != 1 ||
+            timeout != 59U || resource_countdown != 59U || !actual_saved) {
+            std::cerr << "Bulk generic-contact QA: Scene "
+                      << test_case.scene
+                      << " failed first-overlap dialogue; open="
+                      << field_scene.dialogue_open()
+                      << " complete=" << dialogue.source_complete
+                      << " expected_text=" << expected_text_shown
+                      << " open_events=" << generic_open_count
+                      << " timeout=" << static_cast<unsigned>(timeout)
+                      << " countdown=" << resource_countdown
+                      << " failure=" << field_scene.failure() << '\n';
+            return 3;
+        }
+        std::cout << "bulk_generic_contact=passed scene="
+                  << test_case.scene << " activity="
+                  << test_case.activity_id
+                  << " first_overlap_update=1 dialogue_update=1 delta=0"
+                  << " timeout=" << static_cast<unsigned>(timeout)
+                  << " resource_countdown=" << resource_countdown
+                  << " text_pointer=" << test_case.row_evidence
+                  << " actual.bmp=" << (case_output / "actual.bmp").string()
+                  << '\n';
+    }
     return 0;
 }
 
@@ -38500,6 +38641,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_scene10_generic_contact_qa_path;
         std::optional<std::filesystem::path>
+            field_bulk_generic_contacts_qa_path;
+        std::optional<std::filesystem::path>
             field_crime_mall_ilene_gate_qa_path;
         std::optional<std::filesystem::path>
             field_riannons_magic_shop_entry_qa_path;
@@ -38844,6 +38987,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_scene10_generic_contact_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-bulk-generic-contacts-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_bulk_generic_contacts_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -41003,6 +41153,10 @@ int main(int argc, char** argv) {
             if (field_scene10_generic_contact_qa_path.has_value()) {
                 return run_scene10_default_generic_contact_qa(
                     smoke_state, *field_scene10_generic_contact_qa_path);
+            }
+            if (field_bulk_generic_contacts_qa_path.has_value()) {
+                return run_bulk_generic_field_contacts_qa(
+                    smoke_state, *field_bulk_generic_contacts_qa_path);
             }
             if (field_stoker_collision_qa_path.has_value() ||
                 field_scene2_pedestrians_qa_path.has_value() ||

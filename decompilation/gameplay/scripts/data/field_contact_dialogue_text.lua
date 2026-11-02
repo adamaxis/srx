@@ -1,8 +1,13 @@
--- Neutral Scene-10 default bit-4 contact row.
--- [C] 0xFE680 selects descriptor 0xFF12C, whose first text record is 0x102424.
-local E = require("enums")
+-- Compatibility text lookup derived from the ROM-imported rows. Keep authored
+-- strings out of this file; tools/enumerate_field_contacts.py owns the data.
+local imported = require("data.field_contact_dialogue_rows")
+local dialogue_text = {}
 
-return {
-    [E.GenericFieldContactResponse.SCENE_10_DEFAULT_NEUTRAL] =
-        "<Ilene Two Fists is here.>||What can I do for you, Joshua.",
-}
+for content_id, response in pairs(imported.responses or {}) do
+    if type(response.opening_text) == "string" and
+       response.opening_text ~= "" then
+        dialogue_text[content_id] = response.opening_text
+    end
+end
+
+return dialogue_text

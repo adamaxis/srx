@@ -129,9 +129,13 @@ E.GenericFieldContact = {
     ROW_OFFSET_HIGH = 8, -- FFFC12 >= 4 [C: 0x21174]
     ROW_OFFSET_NEGATIVE = 0x0C, -- FFFC12 < 0 [C: 0x21174]
 } -- data-driven response selector for generic bit-4 contacts
+E.GenericFieldContactVariant = {
+    GROUP_0 = 0, GROUP_1 = 1, GROUP_2 = 2, GROUP_3 = 3, GROUP_4 = 4,
+    GROUP_5 = 5, GROUP_6 = 6, GROUP_7 = 7, GROUP_8 = 8, GROUP_9 = 9,
+} -- 0xECCC -> 0xEEFE..0xEF07; Scene 10 selects groups 2/4 [C]
 E.GenericFieldContactResponse = {
     SCENE_10_DEFAULT_NEUTRAL = "scene_10_default_neutral",
-} -- 0xFE680 -> 0xFF12C -> 0x102424 [C]
+} -- 0xFE680 -> 0xFF12C -> 0x101E24 [C]
 
 E.StokerMotelArrival = {
     RANDOM_BOUND = 100, -- 0x249C4 calls 0x0D3A with D1=100 [C]
