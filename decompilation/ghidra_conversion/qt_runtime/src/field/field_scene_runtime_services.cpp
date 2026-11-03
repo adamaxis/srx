@@ -1754,9 +1754,10 @@ HotelMenuEvent FieldSceneRuntime::process_hotel_menu_events(
     if (hotel_menu_.phase() == HotelMenuPhase::options) {
         const auto decision = game_scripts_.call_integers(
             "hotel", "advance_options",
-            {static_cast<std::int64_t>(events)});
+            {static_cast<std::int64_t>(events),
+             menu_b_policy_ == "always_cancel" ? 1 : 0});
         if (!decision.has_value() || decision->size() != 3U ||
-            decision->at(0U) < 0 || decision->at(0U) > 4 ||
+            decision->at(0U) < 0 || decision->at(0U) > 5 ||
             decision->at(1U) < 0 || decision->at(1U) > 1 ||
             decision->at(2U) < 0 || decision->at(2U) > 1) {
             failure_ = game_scripts_.failure().empty()
@@ -1765,12 +1766,13 @@ HotelMenuEvent FieldSceneRuntime::process_hotel_menu_events(
             source_boundary("field.hotel.options_script_input_failed");
             return HotelMenuEvent::waiting;
         }
-        constexpr std::array<HotelMenuEvent, 5> kLuaEvents{{
+        constexpr std::array<HotelMenuEvent, 6> kLuaEvents{{
             HotelMenuEvent::waiting,
             HotelMenuEvent::selection_moved,
             HotelMenuEvent::checkout_opened,
             HotelMenuEvent::karma_screen_opened,
             HotelMenuEvent::mode_action,
+            HotelMenuEvent::returned_to_field,
         }};
         result = hotel_menu_.apply_lua_options_result(
             kLuaEvents[static_cast<std::size_t>(decision->front())],
@@ -1778,9 +1780,10 @@ HotelMenuEvent FieldSceneRuntime::process_hotel_menu_events(
     } else if (hotel_menu_.phase() == HotelMenuPhase::checkout) {
         const auto decision = game_scripts_.call_integers(
             "hotel", "advance_checkout",
-            {static_cast<std::int64_t>(events)});
+            {static_cast<std::int64_t>(events),
+             menu_b_policy_ == "always_cancel" ? 1 : 0});
         if (!decision.has_value() || decision->size() != 3U ||
-            decision->at(0U) < 0 || decision->at(0U) > 3 ||
+            decision->at(0U) < 0 || decision->at(0U) > 4 ||
             decision->at(1U) < 0 || decision->at(1U) > 1 ||
             decision->at(2U) < 0 || decision->at(2U) > 1) {
             failure_ = game_scripts_.failure().empty()
@@ -1789,11 +1792,12 @@ HotelMenuEvent FieldSceneRuntime::process_hotel_menu_events(
             source_boundary("field.hotel.checkout_script_input_failed");
             return HotelMenuEvent::waiting;
         }
-        constexpr std::array<HotelMenuEvent, 4> kLuaEvents{{
+        constexpr std::array<HotelMenuEvent, 5> kLuaEvents{{
             HotelMenuEvent::waiting,
             HotelMenuEvent::selection_moved,
             HotelMenuEvent::stayed_at_hotel,
             HotelMenuEvent::checked_out,
+            HotelMenuEvent::checkout_cancelled,
         }};
         result = hotel_menu_.apply_lua_checkout_result(
             kLuaEvents[static_cast<std::size_t>(decision->front())],
@@ -1813,6 +1817,12 @@ HotelMenuEvent FieldSceneRuntime::process_hotel_menu_events(
         break;
     case HotelMenuEvent::checkout_opened:
         source_boundary("field.hotel.checkout.opened");
+        break;
+    case HotelMenuEvent::returned_to_field:
+        source_boundary("field.hotel.menu.cancelled");
+        break;
+    case HotelMenuEvent::checkout_cancelled:
+        source_boundary("field.hotel.checkout.cancelled");
         break;
     case HotelMenuEvent::stayed_at_hotel:
         if (const auto reset = game_scripts_.call_integers(

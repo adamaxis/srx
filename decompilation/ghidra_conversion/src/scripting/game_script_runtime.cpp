@@ -15724,17 +15724,19 @@ ScriptTaskStep GameScriptRuntime::complete_native_menu_input(
     auto* state = impl_->state;
     auto* task = impl_->task_state;
     const auto& operation = impl_->active_native_operation;
-    const bool recognized_input =
+    const bool generic_menu_cancel = input_id == "menu_cancel";
+    const bool recognized_input = generic_menu_cancel ||
         input_id == "up" || input_id == "down" || input_id == "confirm" ||
         input_id == "cancel" || input_id == "back" || input_id == "page";
     if (state == nullptr || task == nullptr || !impl_->task_waiting ||
         impl_->pending_task_operation.has_value() || !operation.has_value() ||
         operation->type != ScriptNativeOperation::Type::ui_menu ||
         !operation->menu.has_value() ||
-        operation->menu->input_mode != ScriptMenuInputMode::cursor ||
+        (!generic_menu_cancel && operation->menu->input_mode !=
+                                     ScriptMenuInputMode::cursor) ||
         !recognized_input) {
         return impl_->failed_task(
-            "gameplay script task is not waiting for a valid cursor-menu input");
+            "gameplay script task is not waiting for a valid menu input");
     }
     impl_->task_waiting = false;
     impl_->active_native_operation.reset();

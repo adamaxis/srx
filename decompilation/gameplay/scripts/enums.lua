@@ -705,7 +705,13 @@ E.MenuScreen = { COMMAND = 1, POSTURE = 2, ITEM_ACTION = 3, CLIPS = 4, ATTRIBUTE
                  NOTEBOOK_CONTACTS = 35, NOTEBOOK_SHADOWRUNNERS = 36,
                  MATRIX_NODE_ACTION = 37, MATRIX_ENTRY = 38,
                  MATRIX_SEARCH = 39, TAXI_SELECTOR = 40,
-                 NOTEBOOK_CURRENT_RUN = 41, SHOP = 42 }   -- Positive detail page follows 0x1E72C; taxi destinations follow 0x134D2/0xD4456/0xD445D
+                 NOTEBOOK_CURRENT_RUN = 41, SHOP = 42,
+                 STARTUP_OPTIONS = 43, HOTEL_OPTIONS = 44, HOTEL_CHECKOUT = 45,
+                 HOSPITAL_OPTIONS = 46, HOSPITAL_MEDICAL_ATTENTION = 47,
+                 HOSPITAL_LEAVE_CONFIRMATION = 48,
+                 DIALOGUE_BUTTON_CHOICES = 49, DIALOGUE_CURSOR_CHOICES = 50,
+                 DIALOGUE_VID_PHONE_CONTACTS = 51,
+                 DIALOGUE_HOSTED_CHOICES = 52 }
 -- Presenter regions (docs/09 section 10.1 coordinates) [C positions]
 E.MenuRegion = { ITEM_PICTURE = 0x0001, ITEM_HEADER = 0x0002, RATING = 0x0004, DAMAGE_POWER = 0x0008, COMBAT_BARS = 0x0010,
                  WEAPON_BARS = 0x0020, ARMOR = 0x0040, POSTURE_BLOCK = 0x0080, BUTTON_STRIP = 0x0100,
@@ -716,6 +722,12 @@ E.MenuTransition = { NONE = 0, PUSH = 1, POP = 2, REPLACE = 3, REBUILD = 4, EXIT
 -- branch untouched; ALWAYS_CANCEL is applied once by menu.route before the
 -- active screen handler receives the edge.
 E.MenuBPolicy = { ROM = "rom", ALWAYS_CANCEL = "always_cancel" }
+E.MenuBPolicyCode = { ROM = 0, ALWAYS_CANCEL = 1 }
+E.MenuInputAction = {
+    IGNORE = 0, FORWARD = 1, UP = 2, DOWN = 3, CONFIRM = 4,
+    BACK = 5, PAGE = 6, CANCEL = 7, BUTTON_A = 8, BUTTON_B = 9,
+    BUTTON_C = 10, MENU_CANCEL = 11,
+}
 -- ROM 0x134D2 overlays the cab map from 0xD4298; 0x13726 writes its
 -- destination caption on palette line 3. Longplay frame min_001/f_1650
 -- shows the resulting white caption over a black strip.

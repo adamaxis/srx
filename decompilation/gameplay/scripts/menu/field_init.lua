@@ -49,6 +49,25 @@ Route.register(E.MenuScreen.MATRIX_SEARCH,
 Route.register(E.MenuScreen.TAXI_SELECTOR,
                require("menu.screens.taxi_selector"))
 Route.register(E.MenuScreen.SHOP, require("menu.screens.shop"))
+local Hotel = require("hotel")
+Route.register(E.MenuScreen.HOTEL_OPTIONS, Hotel.Options)
+Route.register(E.MenuScreen.HOTEL_CHECKOUT, Hotel.Checkout)
+local external_input = require("menu.screens.external_input")
+Route.register(E.MenuScreen.STARTUP_OPTIONS, external_input.startup_options)
+Route.register(E.MenuScreen.HOSPITAL_OPTIONS,
+               external_input.hospital_options)
+Route.register(E.MenuScreen.HOSPITAL_MEDICAL_ATTENTION,
+               external_input.hospital_medical_attention)
+Route.register(E.MenuScreen.HOSPITAL_LEAVE_CONFIRMATION,
+               external_input.hospital_leave_confirmation)
+Route.register(E.MenuScreen.DIALOGUE_BUTTON_CHOICES,
+               external_input.dialogue_button_choices)
+Route.register(E.MenuScreen.DIALOGUE_CURSOR_CHOICES,
+               external_input.dialogue_cursor_choices)
+Route.register(E.MenuScreen.DIALOGUE_VID_PHONE_CONTACTS,
+               external_input.dialogue_vid_phone_contacts)
+Route.register(E.MenuScreen.DIALOGUE_HOSTED_CHOICES,
+               external_input.dialogue_hosted_choices)
 local save_load = require("menu.screens.save_load")
 Route.register(E.MenuScreen.SAVE_LOAD, save_load.SaveLoad)
 Route.register(E.MenuScreen.SAVE_SLOT, save_load.Slot)

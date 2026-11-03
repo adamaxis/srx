@@ -34,6 +34,8 @@ local function run_cursor_menu(menu_id, choices, initial_selection,
             elseif choice ~= nil then
                 return choice
             end
+        elseif input == "menu_cancel" then
+            return input, selected
         elseif input == "back" or (input == "cancel" and not ignore_cancel) then
             return input, selected
         end
@@ -178,7 +180,9 @@ function Hospital.present_options()
         choice, selected = run_cursor_menu("hospital_options", {
             "medical_attention", "cyberware", "exit",
         }, selected, nil, true)
-        if choice == "back" then
+        if choice == "menu_cancel" then
+            return "field_return"
+        elseif choice == "back" then
             -- ROM 0xC9EA calls 0x391A and returns to the same menu loop with
             -- its cursor unchanged. Run the shared typed host action, then
             -- reopen the Lua menu at that row. Start remains ignored by the
@@ -225,6 +229,9 @@ function Hospital.present_medical_attention()
     if choice_id == "cancel" then
         return "hospital-options"
     end
+    if choice_id == "menu_cancel" then
+        return "hospital-options"
+    end
 
     local selected
     for _, choice in ipairs(choices) do
@@ -265,6 +272,8 @@ function Hospital.present_leave_confirmation()
             selected = selected % 2 + 1
         elseif input == "confirm" or input == "page" or input == "back" then
             return selected == 1 and "hospital_left" or "hospital-options"
+        elseif input == "menu_cancel" then
+            return "hospital-options"
         elseif input == "cancel" then
             -- Start is not part of the ROM's accepted-button mask.
         end

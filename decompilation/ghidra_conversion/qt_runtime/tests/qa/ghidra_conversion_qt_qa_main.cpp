@@ -48865,11 +48865,18 @@ int main(int argc, char** argv) {
                         std::cerr << "hospital menu dump: Down did not select Cyberware before the field action\n";
                         return 3;
                     }
-                    tap_qa_controller_button(field_scene, 0x10U);
+                    tap_qa_controller_button(field_scene, 0x10U); // B is absent from 0xC928's mask.
                     if (!field_scene.dialogue_open() ||
                         !field_scene.field_dialogue_uses_hospital_layout_for_dump() ||
                         panel.selected_option != 1U) {
-                        std::cerr << "hospital menu dump: B did not run the field action and return to the same cursor row\n";
+                        std::cerr << "hospital menu dump: ROM-mode B changed Hospital Options\n";
+                        return 3;
+                    }
+                    tap_qa_controller_button(field_scene, 0x20U); // C calls 0x391A.
+                    if (!field_scene.dialogue_open() ||
+                        !field_scene.field_dialogue_uses_hospital_layout_for_dump() ||
+                        panel.selected_option != 1U) {
+                        std::cerr << "hospital menu dump: C did not run the field action and return to the same cursor row\n";
                         return 3;
                     }
                     QImage runner_action_scene(

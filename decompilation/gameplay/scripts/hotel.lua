@@ -1,6 +1,9 @@
 -- Qt owns pixel placement and VBlank collection. Lua owns the selected Hotel
 -- option and the controller transition that consumes each typed input sample.
 local Hotel = {}
+local E = require("enums")
+local Route = require("menu.route")
+local T = E.MenuTransition
 local options_selection = 0
 local checkout_selection = 1
 
@@ -27,10 +30,10 @@ end
 -- ROM 0xCF98 checks Up before Down, then 0xCFD2 dispatches A using the new
 -- selection. C is checked afterward at 0xCFEA; B, Left, Right, and Start do
 -- not change this menu. Event bits are the host's latched 16-bit input word.
--- Results: event code (0 waiting, 1 moved, 2 checkout, 3 Karma, 4 action),
--- selected row (0 or 1), and whether a direction moved the cursor. Direction
--- and confirm can occur in one source sample, so retain both facts.
-function Hotel.advance_options(events)
+-- Results: event code (0 waiting, 1 moved, 2 checkout, 3 Karma, 4 action,
+-- 5 route cancel), selected row (0 or 1), and whether a direction moved the
+-- cursor. Direction and confirm can occur in one source sample, so retain both.
+local function advance_options_rom(events)
     if type(events) ~= "number" or events % 1 ~= 0 or
        events < 0 or events > 0xFFFF then
         error("Hotel Options needs a 16-bit controller event word")
@@ -63,9 +66,9 @@ end
 -- cursor and returning to the wait. A/B/C confirmation at 0xDAF0..0xDB10 is
 -- reached only on a direction-free sample. Yes is row 0; No is row 1 and the
 -- initial choice. Left, Right, and Start have no branch here.
--- Results: event code (0 waiting, 1 moved, 2 stay, 3 checked out), selected
--- row (0 Yes, 1 No), and whether the cursor moved.
-function Hotel.advance_checkout(events)
+-- Results: event code (0 waiting, 1 moved, 2 stay, 3 checked out, 4 route
+-- cancel), selected row (0 Yes, 1 No), and whether the cursor moved.
+local function advance_checkout_rom(events)
     if type(events) ~= "number" or events % 1 ~= 0 or
        events < 0 or events > 0xFFFF then
         error("Hotel Check Out needs a 16-bit controller event word")
@@ -87,6 +90,47 @@ function Hotel.advance_checkout(events)
         result = checkout_selection == 0 and 3 or 2
     end
     return { result, checkout_selection, moved and 1 or 0 }
+end
+
+Hotel.Options = {
+    new = function() return {} end,
+    input = function(_, events) return advance_options_rom(events) end,
+}
+Hotel.Checkout = {
+    new = function() return {} end,
+    input = function(_, events) return advance_checkout_rom(events) end,
+}
+
+local function dispatch_policy(policy_code)
+    if policy_code == E.MenuBPolicy.ALWAYS_CANCEL or
+       policy_code == E.MenuBPolicyCode.ALWAYS_CANCEL then
+        return E.MenuBPolicy.ALWAYS_CANCEL
+    end
+    return E.MenuBPolicy.ROM
+end
+
+local function dispatch_hotel(screen, events, policy_code, depth)
+    require("menu.field_init")
+    local policy = dispatch_policy(policy_code)
+    local result = Route.dispatch_screen_input(
+        screen, {}, events, { game = { menu_b_policy = policy } }, policy,
+        true, depth)
+    if result.transition == T.EXIT then
+        return { 5, options_selection, 0 }
+    elseif result.transition == T.POP then
+        return { 4, checkout_selection, 0 }
+    end
+    return result
+end
+
+function Hotel.advance_options(events, policy_code)
+    return dispatch_hotel(E.MenuScreen.HOTEL_OPTIONS, events,
+                          policy_code, 1)
+end
+
+function Hotel.advance_checkout(events, policy_code)
+    return dispatch_hotel(E.MenuScreen.HOTEL_CHECKOUT, events,
+                          policy_code, 2)
 end
 
 function Hotel.text_keys()

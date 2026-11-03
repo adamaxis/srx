@@ -78,6 +78,7 @@ local function dispatch_input(module, state, events, ctx, policy,
             transition = stack_depth > 1 and T.POP or T.EXIT,
             result = {},
             event = "returned_to_field",
+            action = E.MenuInputAction.MENU_CANCEL,
         }
     end
     if invoke_handler == false then return { event = "no_change" } end
@@ -87,11 +88,32 @@ end
 -- Some field services own a modal presentation outside the stacked Command
 -- screen, but still use the same menu input policy and screen dispatch.
 function Route.dispatch_screen_input(screen, state, events, ctx, policy,
-                                     invoke_handler)
+                                     invoke_handler, stack_depth)
     local module = assert(registry[screen],
         "unregistered screen " .. tostring(screen))
-    return dispatch_input(module, state, events, ctx or {}, policy, 1,
+    return dispatch_input(module, state, events, ctx or {}, policy,
+                          stack_depth or 1,
                           invoke_handler)
+end
+
+-- Controller input for prompts presented outside the stacked field menu uses
+-- the same policy gate and registered Lua screen modules. The returned
+-- transition distinguishes a root cancel from a one-level child return; the
+-- screen module supplies only its ROM-mode action.
+function Route.external_input_disposition(screen, events, policy_code,
+                                          stack_depth, choices_present)
+    require("menu.field_init")
+    local policy = policy_code == E.MenuBPolicyCode.ALWAYS_CANCEL
+        and BPolicy.ALWAYS_CANCEL or BPolicy.ROM
+    local ctx = { game = { menu_b_policy = policy } }
+    local has_choices = choices_present ~= false and choices_present ~= 0
+    local result = Route.dispatch_screen_input(
+        screen, { has_choices = has_choices }, events, ctx, policy, true,
+        stack_depth or 1)
+    return {
+        result.transition or T.NONE,
+        result.action or E.MenuInputAction.IGNORE,
+    }
 end
 
 -- Apply a screen result: { transition = E.MenuTransition.*, screen = id, args = {}, result = {} }

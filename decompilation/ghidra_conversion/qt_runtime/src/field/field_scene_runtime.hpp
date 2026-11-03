@@ -357,6 +357,7 @@ public:
         std::function<void()> fade_out);
     void set_menu_b_policy(std::string policy) {
         menu_b_policy_ = policy == "always_cancel" ? "always_cancel" : "rom";
+        field_dialogue_.set_menu_b_policy(menu_b_policy_);
     }
     const std::vector<std::uint16_t>& field_music_requests() const noexcept {
         return field_music_requests_;

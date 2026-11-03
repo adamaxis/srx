@@ -282,19 +282,30 @@ int main() {
     });
     gameplay_scripts.set_location_context(
         "activity", "resource_scene", "field.activity", "", "", 26U);
-    if (!expect(runtime.open_gameplay_task(
-            scripting::ScriptDialogueSource::field_menu,
-            "field_activities", "resource_scene_main_menu")) ||
-        !expect(runtime.panel().cursor_selection) ||
-        !expect(runtime.panel().option_count == 2U) ||
-        !expect(runtime.advance_controller_events(0x4000U) ==
+    const bool resource_main_menu_opened = runtime.open_gameplay_task(
+        scripting::ScriptDialogueSource::field_menu,
+        "field_activities", "resource_scene_main_menu");
+    const bool resource_main_menu_cursor = runtime.panel().cursor_selection;
+    const auto resource_main_menu_option_count =
+        runtime.panel().option_count;
+    const auto resource_main_menu_result = resource_main_menu_opened
+        ? runtime.advance_controller_events(0x4000U)
+        : FieldDialogueAdvanceResult::source_boundary;
+    if (!expect(resource_main_menu_opened) ||
+        !expect(resource_main_menu_cursor) ||
+        !expect(resource_main_menu_option_count == 2U) ||
+        !expect(resource_main_menu_result ==
                 FieldDialogueAdvanceResult::matrix_entry_requested) ||
         !expect(runtime.take_matrix_entry_system_id() ==
                 std::optional<std::uint8_t>{0x18U}) ||
         !expect(runtime.take_matrix_entry_node_id() ==
                 std::optional<std::uint8_t>{0x16U})) {
         std::cerr << "Scene-26 resource Main Menu did not hand its seeded "
-                     "Matrix system/node directly to the host\n";
+                     "Matrix system/node directly to the host (result="
+                  << static_cast<int>(resource_main_menu_result)
+                  << ", failure=" << runtime.failure()
+                  << ", boundary=" << runtime.panel().source_boundary_reason
+                  << ")\n";
         return 119;
     }
     gameplay_scripts.set_story_state({
@@ -685,6 +696,41 @@ int main() {
         std::cerr << "Council Island Hospital Yes path did not return its typed leave result\n";
         return 124;
     }
+
+    runtime.set_menu_b_policy("always_cancel");
+    const bool hospital_cancel_root_opened = runtime.open_gameplay_task(
+        scripting::ScriptDialogueSource::building_service,
+        "council_island_hospital", "present_options");
+    const auto hospital_cancel_root_result = hospital_cancel_root_opened
+        ? runtime.advance_controller_events(0x1000U)
+        : FieldDialogueAdvanceResult::source_boundary;
+    if (!expect(hospital_cancel_root_opened) ||
+        !expect(hospital_cancel_root_result ==
+                FieldDialogueAdvanceResult::returned_to_field) ||
+        !expect(runtime.take_gameplay_task_result() ==
+                std::optional<std::string>{"field_return"})) {
+        std::cerr << "Hospital Options ALWAYS_CANCEL did not close its root; result="
+                  << static_cast<int>(hospital_cancel_root_result)
+                  << " failure=" << runtime.failure() << '\n';
+        return 124;
+    }
+    const bool hospital_cancel_child_opened = runtime.open_gameplay_task(
+        scripting::ScriptDialogueSource::building_service,
+        "council_island_hospital", "present_leave_confirmation");
+    const auto hospital_cancel_child_result = hospital_cancel_child_opened
+        ? runtime.advance_controller_events(0x1000U)
+        : FieldDialogueAdvanceResult::source_boundary;
+    if (!expect(hospital_cancel_child_opened) ||
+        !expect(hospital_cancel_child_result ==
+                FieldDialogueAdvanceResult::hospital_options_requested) ||
+        !expect(runtime.take_gameplay_task_result() ==
+                std::optional<std::string>{"hospital-options"})) {
+        std::cerr << "Hospital child ALWAYS_CANCEL did not return one level; result="
+                  << static_cast<int>(hospital_cancel_child_result)
+                  << " failure=" << runtime.failure() << '\n';
+        return 124;
+    }
+    runtime.set_menu_b_policy("rom");
 
     gameplay_scripts.set_field_mode_context(
         scripting::ScriptFieldModeContext{4U, 4U, -1});

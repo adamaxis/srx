@@ -18,6 +18,28 @@ constexpr std::uint16_t kControllerCEvent = 0x2000U;
 constexpr std::uint16_t kControllerStartEvent = 0x8000U;
 constexpr std::uint16_t kControllerUpEvent = 0x0100U;
 constexpr std::uint16_t kControllerDownEvent = 0x0200U;
+// Values mirror E.MenuScreen and E.MenuInputAction in gameplay/scripts/enums.lua.
+enum class RoutedMenuScreen : std::int64_t {
+    hospital_options = 46,
+    hospital_medical_attention = 47,
+    hospital_leave_confirmation = 48,
+    dialogue_button_choices = 49,
+    dialogue_cursor_choices = 50,
+    dialogue_vid_phone_contacts = 51,
+    dialogue_hosted_choices = 52,
+};
+enum class RoutedMenuInputAction : std::int64_t {
+    ignore = 0, up = 2, down = 3, confirm = 4, back = 5, page = 6,
+    cancel = 7, button_a = 8, button_b = 9, button_c = 10,
+    menu_cancel = 11,
+};
+constexpr std::int64_t routed_value(const RoutedMenuScreen value) noexcept {
+    return static_cast<std::int64_t>(value);
+}
+constexpr std::int64_t routed_value(
+    const RoutedMenuInputAction value) noexcept {
+    return static_cast<std::int64_t>(value);
+}
 // 0x1F3C4 page waits: the pad is not sampled for this many frames after the
 // press that drew the page. A choice page runs 0xC24 with d5=0x0A (0x1F502)
 // and then the 0x1F50C loop's 0xBD2 before 0x195C: 12 frames [C: ROM;
@@ -1005,6 +1027,52 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
         return FieldDialogueAdvanceResult::source_boundary;
     }
 
+    std::int64_t menu_input_action =
+        routed_value(RoutedMenuInputAction::ignore);
+    bool menu_policy_cancel = false;
+    if (active_script_menu_.has_value() && script_runtime_ != nullptr) {
+        auto screen = RoutedMenuScreen::dialogue_button_choices;
+        std::int64_t depth = 2;
+        if (active_script_menu_->id == "hospital_options") {
+            screen = RoutedMenuScreen::hospital_options;
+            depth = 1;
+        } else if (active_script_menu_->id ==
+                   "hospital_medical_attention") {
+            screen = RoutedMenuScreen::hospital_medical_attention;
+        } else if (active_script_menu_->id ==
+                   "hospital_leave_confirmation") {
+            screen = RoutedMenuScreen::hospital_leave_confirmation;
+        } else if (active_script_menu_->id == "contacts" &&
+                   active_script_menu_->text_profile == "field.vid_phone") {
+            // Preserve the contact page's A/B, Start, C ordering before the
+            // generic hosted/cursor choice adapters are considered.
+            screen = RoutedMenuScreen::dialogue_vid_phone_contacts;
+        } else if (hosted_list) {
+            screen = RoutedMenuScreen::dialogue_hosted_choices;
+        } else if (active_script_menu_->input_mode ==
+                   scripting::ScriptMenuInputMode::cursor) {
+            screen = RoutedMenuScreen::dialogue_cursor_choices;
+        }
+        const auto routed = script_runtime_->call_integers(
+            "menu.route", "external_input_disposition",
+            {routed_value(screen), static_cast<std::int64_t>(event_word),
+             menu_b_policy_ == "always_cancel" ? 1 : 0,
+             depth, active_script_menu_->choices.empty() ? 0 : 1});
+        if (!routed.has_value() || routed->size() != 2U ||
+            routed->at(0U) < 0 || routed->at(0U) > 5 ||
+            routed->at(1U) < routed_value(RoutedMenuInputAction::ignore) ||
+            routed->at(1U) > routed_value(RoutedMenuInputAction::menu_cancel)) {
+            open_source_boundary(
+                script_runtime_->failure().empty()
+                    ? "Lua menu route returned an invalid external input action"
+                    : script_runtime_->failure());
+            return FieldDialogueAdvanceResult::source_boundary;
+        }
+        menu_input_action = routed->at(1U);
+        menu_policy_cancel = menu_input_action ==
+            routed_value(RoutedMenuInputAction::menu_cancel);
+    }
+
     const bool active_script_page = active_script_operation_.has_value() &&
         (active_script_operation_->type ==
              scripting::ScriptNativeOperation::Type::ui_say ||
@@ -1071,45 +1139,27 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
         return FieldDialogueAdvanceResult::source_boundary;
     }
 
-    if (cursor_menu) {
+    if (cursor_menu || menu_policy_cancel) {
         std::string_view input_id;
-        const bool vid_phone_contact_menu =
-            active_script_menu_->id == "contacts" &&
-            active_script_menu_->text_profile == "field.vid_phone";
-        if (active_script_menu_->choices.empty()) {
-            if ((event_word & kControllerBEvent) != 0U) {
-                input_id = "back";
-            } else {
-                // The source medical screen may have no treatment rows. In
-                // that state only its B-button return is actionable.
-                return FieldDialogueAdvanceResult::waiting_for_controller;
-            }
-        } else if ((event_word & kControllerUpEvent) != 0U) {
+        if (menu_policy_cancel) {
+            input_id = "menu_cancel";
+        } else if (menu_input_action ==
+                   routed_value(RoutedMenuInputAction::up)) {
             input_id = "up";
-        } else if ((event_word & kControllerDownEvent) != 0U) {
+        } else if (menu_input_action ==
+                   routed_value(RoutedMenuInputAction::down)) {
             input_id = "down";
-        } else if (vid_phone_contact_menu &&
-                   (event_word & (kControllerAEvent | kControllerBEvent)) !=
-                       0U) {
-            // ROM 0xF90C/0xF972: A or B activates the selected contact row,
-            // including the explicit Next/Prior Screen rows.
+        } else if (menu_input_action ==
+                   routed_value(RoutedMenuInputAction::confirm)) {
             input_id = "confirm";
-        } else if (vid_phone_contact_menu &&
-                   (event_word & kControllerStartEvent) != 0U) {
-            input_id = "cancel";
-        } else if (vid_phone_contact_menu &&
-                   (event_word & kControllerCEvent) != 0U) {
-            // ROM 0xF980 routes C through the field action service; it does
-            // not change pages. Leave the phone list open here rather than
-            // treating C as an undocumented page shortcut.
-            return FieldDialogueAdvanceResult::waiting_for_controller;
-        } else if ((event_word & kControllerCEvent) != 0U) {
-            input_id = "page";
-        } else if ((event_word & kControllerBEvent) != 0U) {
+        } else if (menu_input_action ==
+                   routed_value(RoutedMenuInputAction::back)) {
             input_id = "back";
-        } else if ((event_word & kControllerAEvent) != 0U) {
-            input_id = "confirm";
-        } else if ((event_word & kControllerStartEvent) != 0U) {
+        } else if (menu_input_action ==
+                   routed_value(RoutedMenuInputAction::page)) {
+            input_id = "page";
+        } else if (menu_input_action ==
+                   routed_value(RoutedMenuInputAction::cancel)) {
             input_id = "cancel";
         } else {
             return FieldDialogueAdvanceResult::waiting_for_controller;
@@ -1332,25 +1382,42 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
     std::size_t option_index = 0U;
     if (hosted_list && panel_.option_count != 0U) {
         const auto count = panel_.option_count;
-        if ((event_word & kControllerUpEvent) != 0U) {
+        if (menu_input_action == routed_value(RoutedMenuInputAction::up)) {
             panel_.selected_option = (panel_.selected_option + count - 1U) % count;
             return FieldDialogueAdvanceResult::prompt_advanced;
         }
-        if ((event_word & kControllerDownEvent) != 0U) {
+        if (menu_input_action == routed_value(RoutedMenuInputAction::down)) {
             panel_.selected_option = (panel_.selected_option + 1U) % count;
             return FieldDialogueAdvanceResult::prompt_advanced;
         }
-        if ((event_word & (kControllerAEvent | kControllerBEvent |
-                           kControllerCEvent)) == 0U) {
+        if (menu_input_action !=
+            routed_value(RoutedMenuInputAction::confirm)) {
             return FieldDialogueAdvanceResult::waiting_for_controller;
         }
         option_index = panel_.selected_option;
-    } else if ((event_word & kControllerAEvent) != 0U) {
+    } else if (active_script_menu_.has_value() &&
+               menu_input_action ==
+                   routed_value(RoutedMenuInputAction::button_a)) {
         option_index = 0U;
-    } else if ((event_word & kControllerBEvent) != 0U) {
+    } else if (active_script_menu_.has_value() &&
+               menu_input_action ==
+                   routed_value(RoutedMenuInputAction::button_b)) {
         option_index = 1U;
-    } else if ((event_word & kControllerCEvent) != 0U) {
+    } else if (active_script_menu_.has_value() &&
+               menu_input_action ==
+                   routed_value(RoutedMenuInputAction::button_c)) {
         option_index = 2U;
+    } else if (!active_script_menu_.has_value() &&
+               (event_word & kControllerAEvent) != 0U) {
+        option_index = 0U;
+    } else if (!active_script_menu_.has_value() &&
+               (event_word & kControllerBEvent) != 0U) {
+        option_index = 1U;
+    } else if (!active_script_menu_.has_value() &&
+               (event_word & kControllerCEvent) != 0U) {
+        option_index = 2U;
+    } else if (active_script_menu_.has_value()) {
+        return FieldDialogueAdvanceResult::waiting_for_controller;
     }
     if (option_index >= panel_.option_count) {
         return FieldDialogueAdvanceResult::source_boundary;

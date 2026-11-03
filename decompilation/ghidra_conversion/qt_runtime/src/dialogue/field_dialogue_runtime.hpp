@@ -12,6 +12,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <array>
 #include <functional>
 #include <optional>
 #include <string>
@@ -86,6 +87,9 @@ public:
     void set_native_script_service_callback(
         std::function<std::optional<std::string>(std::string_view)> callback);
     void set_script_runtime(scripting::GameScriptRuntime* runtime) noexcept;
+    void set_menu_b_policy(std::string policy) {
+        menu_b_policy_ = policy == "always_cancel" ? "always_cancel" : "rom";
+    }
 
     // Bind the selection made by converted 0x1F65A to a common NPC panel.
     // Profiles whose portrait/text records have not been extracted remain a
@@ -190,6 +194,7 @@ private:
     DialoguePanelView panel_{};
     StokerMotelPromptId active_prompt_ = StokerMotelPromptId::source_boundary;
     scripting::GameScriptRuntime* script_runtime_ = nullptr;
+    std::string menu_b_policy_ = "rom";
     std::optional<scripting::ScriptSpeakerProfile> stoker_speaker_profile_;
     std::optional<scripting::ScriptSpeakerProfile> active_speaker_profile_;
     std::optional<scripting::ScriptNativeOperation>

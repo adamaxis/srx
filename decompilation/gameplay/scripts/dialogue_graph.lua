@@ -441,6 +441,10 @@ function Session:_choose(graph_id, node_id, graph, node, choices, context)
     if node.inputContract ~= "cursor_list" then
         local selected = self.host.present_choice(
             node, ids, speaker_id, text_profile)
+        if selected == "menu_cancel" or selected == "cancel" or
+           selected == "back" then
+            return nil, true
+        end
         return selected, false
     end
 
@@ -456,7 +460,8 @@ function Session:_choose(graph_id, node_id, graph, node, choices, context)
                 and 1 or selected_index + 1
         elseif input == "confirm" then
             return choices[selected_index].id, false
-        elseif input == "cancel" or input == "back" then
+        elseif input == "menu_cancel" or input == "cancel" or
+               input == "back" then
             return nil, true
         elseif input == "page" then
             -- ROM Vid-Phone C input is ignored by the contact-list loop.

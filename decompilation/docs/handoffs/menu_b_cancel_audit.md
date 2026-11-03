@@ -1,8 +1,8 @@
 # #30b B-button policy audit (US ROM, `port-fixes`)
 
-This audit covers the 41 Lua `E.MenuScreen` routes registered by
-`menu/field_init.lua`, plus nearby controller-driven menu roots that do not
-currently use `menu.route`. Genesis has no universal B-cancel mapping. The
+This audit covers the 42 field-menu route screens registered by
+`menu/field_init.lua`, plus controller-driven prompts now adapted through the
+same route. Genesis has no universal B-cancel mapping. The
 selected port policy is therefore **ROM by default**, with an optional
 `ALWAYS_CANCEL` policy that changes B only in the port.
 
@@ -56,34 +56,31 @@ alone.
 | Message/wait pages (`MESSAGE`) | The caller supplies the source wait mask; B is accepted only when included in that mask [C, per caller] | The Lua mask controls whether B dismisses; default measured in message routes [H] | Pop to parent, or close at root |
 | Debug menu/system picker (`DEBUG_MENU`, `DEBUG_PICK_SYSTEM`) | A dispatches; C switches runner; Start returns. No B dispatch: `0x599DA`, `0x59A9A` [C] | B leaves the selection unchanged; route handler [H], no dedicated baseline assertion yet | Pop to parent, or close at root |
 
-The table names all 41 `E.MenuScreen` IDs; related screens share rows only
+The table names the 42 original field `E.MenuScreen` IDs; related screens share rows only
 where they share the same source dispatch. The existing headless baseline is
 `menu_tests.lua` 60/60 and `submenu_tests.lua` 268/268. [C] This baseline
 confirms the five original routes and the additional B branches marked with
 named tests above. Rows marked [H] still need a focused behavior measurement
 before their ROM-versus-port default result can be called confirmed.
 
-The non-route roots below are present in the project but do not pass input
-through `menu.route` today. Their source B behavior is recorded so the setting
-work can make its boundary explicit; their integration into the common route
-policy is not yet verified.
+The following callers use `menu.route` through registered external-screen
+adapters. Their ROM-mode default actions remain screen-specific; the optional
+B policy runs before each handler.
 
 | Non-route menu | ROM B action and address | Port default behavior (headless measured) | `ALWAYS_CANCEL` |
 |---|---|---|---|
-| Startup Options selector (New Game / Load Game) | B dispatches the selected row at `0x590EA..0x59170` [C] | The startup menu conversion test measures B entering New Game on row 0 and Load Game on row 1 [C] | [H] The title/startup selector is outside the in-game Lua route; cancellation back to title is not wired |
-| Shops | A/B share the selected-action branch; Start leaves the shop: `0x56AC0` [C] | Headless production Lua `Shop.advance_menu(E.Pad.B)` on `weapons_world`: `event=no_change`, panel 0, selected action 0, still open after one call [C] | [H] Shop uses `Shop.advance_menu`, outside `menu.route`; ALWAYS_CANCEL is not connected |
-| Hotel Options / Check Out | Options has no B branch (`0xCF98`); Check Out A/B/C confirm at `0xDAF0` [C] | `hotel_options_input_permutation_test` measures B no-op on Options and confirmation on Check Out [C] | [H] Hotel Lua controller is outside `menu.route` |
-| Hospital Options | Outer hospital loop routes B/action through `0xC928 -> 0x391A` [C] | Hospital input currently comes from `game.ui.cursor_menu`; all-choice B result not measured [H] | [H] Hospital UI input is outside `menu.route` |
-| Field dialogue choices | Source dialogue list dispatch is caller-specific; examples include `0xF5C2` and `0xF236` [C] | Selected prompt's B action depends on each script menu's input map; a complete headless family measurement is still [H] | [H] Field dialogue is outside `menu.route`; ALWAYS_CANCEL is not connected |
+| Startup Options selector (New Game / Load Game) | B dispatches the selected row: row 0 enters New Game, row 1 opens Load Game, `0x59154..0x5916E` [C] | Headless startup B check measures row 0 -> New Game/archetype and row 1 -> Load Game; `generic_menu_input_tests.lua` confirms the Lua adapter forwards B [measured] | `generic_menu_input_tests.lua` measures route `EXIT` at root and `POP` at child depth; Qt maps root cancel to `title_ready` [measured route; host branch wired] |
+| Shops | A/B share the selected-action branch; Start leaves the shop: `0x56AC0` [C] | Headless production Lua across all five catalogs: root B is a no-op; action-panel B dispatches the selected action [measured] | `shop_route_tests.lua` measures root/action-panel exit and ALWAYS_CANCEL preemption of transactions [measured] |
+| Hotel Options / Check Out | Options handles Up/Down/A/C and has no B branch (`0xCF98..0xCFF0`); Check Out accepts A/B/C at `0xDAF0..0xDB10` after cursor movement at `0xDABE..0xDAEE` [C] | Headless `hotel_options_input_permutation_test`: all 256 masks from both initial rows on each screen; B is ignored on Options, while Check Out B confirms the selected row (initial No stays; Yes checks out) [measured] | `generic_menu_input_tests.lua` and production Hotel Lua wrappers measure root B -> close event and child B -> return-to-Options event [measured] |
+| Hospital Options and child prompts | `0xC928..0xCA0A` has no B branch; C calls `0x391A` at `0xC9EA..0xC9FC`. Medical Attention B returns to Options from handler `0xCA2E`; Exit B confirms the selected Yes/No row in handler `0xCE7C` (`0xCF02` accepts A/B/C) [C] | Headless Hospital Options QA: B (`port_byte=0x10`) with Cyberware selected leaves the prompt on row 1; C (`port_byte=0x20`) calls the field mode action and returns to row 1. `field_dialogue_runtime` measures medical B back and leave B confirming the initial No row [measured] | Headless `field_dialogue_runtime`: ALWAYS_CANCEL B closes Hospital Options to field at root and returns from leave confirmation to Hospital Options at child depth [measured] |
+| Scripted field-dialogue choices | B dispatch depends on the caller: `run_mode_text_prompt` tests A/B/C in `0x1F3C4..0x1F58C`; e.g. `0xF5C2..0xF5CE` uses B to select a detail row [C]. Vid-Phone A/B activates the contact row at `0xF90C/0xF972`; Start precedes the ignored C path at `0xF980` [C] | Headless `field_dialogue_runtime`: B selects option 2 in its scripted room-choice case; cursor-choice menus map B to the caller's back result. Vid-Phone C leaves its contact page open [measured] | `menu.route` returns root `EXIT` or child `POP` before the Lua menu action. `dialogue_graph_tests.lua` verifies button and cursor cancel edges; `generic_menu_input_tests.lua` covers ROM and ALWAYS_CANCEL actions for button, cursor, hosted, and Vid-Phone screens [measured] |
 
 ## Conclusion
 
-The ROM-accurate default remains unchanged. The Lua route policy is applied
-before a screen handler sees B, so the same behavior covers confirm, no-op,
-wait, inventory, and Matrix route children without per-screen remaps. Headless
-route tests exercise ROM forwarding and ALWAYS_CANCEL at root and child depth
-for every one of the 41 `E.MenuScreen` IDs. [C] The startup selector, shops,
-hotel, hospital, and dialogue controllers remain outside `menu.route`; the
-setting is not wired to them and both policy modes have not been exercised in
-those controllers. Their source/default behavior rows remain separate above
-and #30b is not ready for an all-menus coverage claim.
+The ROM-mode behavior remains unchanged except for Hospital Options B, whose
+headless pre-fix action contradicted the no-B-branch ROM loop at `0xC928..0xCA0A`.
+The Lua route applies policy before an external screen's source-mode action.
+Headless route tests cover ROM forwarding and ALWAYS_CANCEL root/child results
+for all 52 registered screens. [C] Startup Options, Hotel Options/Check Out,
+Hospital Options/children, and scripted dialogue choices now use the same Lua
+route; Shops were already migrated in #31.

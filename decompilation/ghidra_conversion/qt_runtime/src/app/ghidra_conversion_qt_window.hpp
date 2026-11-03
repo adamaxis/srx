@@ -80,6 +80,12 @@ using namespace shadowrun::ghidra_conversion::qt_runtime;
 constexpr int kSceneWidth = 320;
 constexpr int kSceneHeight = 224;
 constexpr int kSceneScale = 3;
+// External Lua route IDs and actions mirror E.MenuScreen and
+// E.MenuInputAction in gameplay/scripts/enums.lua.
+constexpr std::int64_t kStartupOptionsMenuRoute = 43;
+constexpr std::int64_t kMenuRouteAlwaysCancelPolicy = 1;
+constexpr std::int64_t kMenuRouteForwardAction = 1;
+constexpr std::int64_t kMenuRouteCancelAction = 11;
 constexpr std::uint8_t kTitleStartButton = 0x80U;
 constexpr std::size_t kTitleCircuitPhaseCount = 7U;
 constexpr std::size_t kTitleCircuitPaletteRevealPassCount = 3U;
@@ -574,7 +580,12 @@ protected:
         } else if (state_.phase == StartupIntegrationPhase::start_options ||
                    state_.phase == StartupIntegrationPhase::save_load ||
                    state_.phase == StartupIntegrationPhase::joshua_archetype) {
-            advance_startup_integration(state_, sample, startup_callbacks_);
+            if (state_.phase == StartupIntegrationPhase::start_options) {
+                advance_start_options_input(sample);
+            } else {
+                advance_startup_integration(state_, sample,
+                                            startup_callbacks_);
+            }
         }
 
         update_window_title();
@@ -662,6 +673,40 @@ private:
         QSettings settings;
         shadowrun::ghidra_conversion::qt_runtime::
             store_menu_b_policy_setting(settings, menu_b_policy_);
+    }
+
+    void advance_start_options_input(const std::uint8_t sampled) {
+        if (sampled != 0U) {
+            const auto routed = startup_scripts_.call_integers(
+                "menu.route", "external_input_disposition",
+                {kStartupOptionsMenuRoute,
+                 static_cast<std::int64_t>(sampled) << 8U,
+                 menu_b_policy_ == "always_cancel"
+                     ? kMenuRouteAlwaysCancelPolicy : 0,
+                 1});
+            if (!routed.has_value() || routed->size() != 2U) {
+                throw std::runtime_error(
+                    "Lua generic menu route failed for Startup Options: " +
+                    startup_scripts_.failure());
+            }
+            if (routed->at(0U) == srx::v(srx::MenuTransition::EXIT) &&
+                routed->at(1U) == kMenuRouteCancelAction) {
+                state_.phase = StartupIntegrationPhase::title_ready;
+                state_.event_log.emplace_back(
+                    "startup_options.cancelled_to_title");
+                if (startup_callbacks_.phase_changed) {
+                    startup_callbacks_.phase_changed(state_.phase);
+                }
+                update_window_title();
+                return;
+            }
+            if (routed->at(0U) != srx::v(srx::MenuTransition::NONE) ||
+                routed->at(1U) != kMenuRouteForwardAction) {
+                throw std::runtime_error(
+                    "Lua generic menu route returned an invalid Startup Options action");
+            }
+        }
+        advance_startup_integration(state_, sampled, startup_callbacks_);
     }
 
     struct PendingRemoteKey {
@@ -1763,8 +1808,7 @@ private:
         if (state_.phase == StartupIntegrationPhase::start_options_shell) {
             const auto sampled = pending_start_options_controller_byte_;
             pending_start_options_controller_byte_ = 0U;
-            advance_startup_integration(state_, sampled,
-                                        startup_callbacks_);
+            advance_start_options_input(sampled);
             return;
         }
         if (state_.phase ==

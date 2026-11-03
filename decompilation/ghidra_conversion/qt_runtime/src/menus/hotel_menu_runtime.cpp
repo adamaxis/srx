@@ -245,6 +245,10 @@ HotelMenuEvent HotelMenuRuntime::apply_lua_options_result(
         event == HotelMenuEvent::waiting) {
         return event;
     }
+    if (event == HotelMenuEvent::returned_to_field) {
+        close();
+        return event;
+    }
     return HotelMenuEvent::waiting;
 }
 
@@ -258,6 +262,13 @@ HotelMenuEvent HotelMenuRuntime::apply_lua_checkout_result(
     checkout_selection_ = selection;
     if (event == HotelMenuEvent::selection_moved ||
         event == HotelMenuEvent::waiting) {
+        return event;
+    }
+    if (event == HotelMenuEvent::checkout_cancelled) {
+        phase_ = HotelMenuPhase::options;
+        checkout_selection_ = selection;
+        reset_page_effect();
+        present_phase_after(options_redraw_frames_);
         return event;
     }
     if (event == HotelMenuEvent::stayed_at_hotel) {

@@ -39,6 +39,8 @@ enum class HotelMenuEvent {
     checked_out,
     karma_screen_opened,
     mode_action,
+    checkout_cancelled,
+    returned_to_field,
 };
 
 struct HotelMenuChoiceText {

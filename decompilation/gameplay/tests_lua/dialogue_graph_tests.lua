@@ -129,6 +129,17 @@ local document = {
             left = { type = "terminal",
                      outcome = { type = "continue_in_place" } },
         }),
+        ["test.button_menu_cancel"] = graph("menu", {
+            menu = {
+                type = "choice", menuId = "test_menu_cancel",
+                inputContract = "buttons_abc", cancelNext = "cancelled",
+                choices = { { id = "first", next = "done" } },
+            },
+            done = { type = "terminal",
+                     outcome = { type = "continue_in_place" } },
+            cancelled = { type = "terminal",
+                          outcome = { type = "return_to_caller" } },
+        }),
         ["test.inline_prompt"] = graph("prompt", {
             prompt = {
                 type = "choice", menuId = "test_inline_menu",
@@ -332,11 +343,19 @@ assert(outcome.type == "source_boundary" and
 next_button_input = nil
 outcome = session:run("test.button_no_selection")
 assert(outcome.type == "continue_in_place")
+next_button_input = "menu_cancel"
+outcome = session:run("test.button_menu_cancel")
+assert(outcome.type == "return_to_caller")
 next_button_input = "second"
 
 outcome = session:run("test.cursor")
 assert(outcome.type == "enter_activity" and
        outcome.activityId == "resource_scene_35")
+cursor_inputs = { "menu_cancel" }
+outcome = session:run("test.cursor")
+assert(outcome.type == "return_to_origin" and
+       outcome.returnPoint == "saved_door_entry")
+cursor_inputs = { "down", "confirm" }
 
 outcome = session:run("test.yes_no")
 assert(outcome.type == "return_to_caller")

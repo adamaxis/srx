@@ -54,7 +54,8 @@ local function run_cursor_menu(menu_id, choices, initial_selection,
             selected = selected % #choices + 1
         elseif input == "confirm" then
             return choices[selected], selected
-        elseif input == "cancel" or input == "back" then
+        elseif input == "menu_cancel" or input == "cancel" or
+               input == "back" then
             return "exit", selected
         end
     end
