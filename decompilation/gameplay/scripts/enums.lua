@@ -231,6 +231,11 @@ E.ActionDelayCapability = {
     FACTOR_BONUS_8 = 0x2000,
     FACTOR_BONUS_12 = 0x4000,
 } -- +0x90 flags scanned by 0xD7EA in that priority order [C]
+E.ActionMovementLockoutKind = { WEAPON = "weapon", SPELL = "spell" }
+E.ActionMovementLockoutPasses = {
+    WEAPON = 30, -- GPGX C042: pose completes on action frame 30 [C: 0xB39A, 0x5FDC, 0x600E]
+    SPELL = 58, -- GPGX C082: movement continuation resumes after pass 58 [C: 0xAF7C, 0xAFAE, 0xAFE2]
+} -- measured behavior-service passes; distinct from the +0xDC gate
 
 -- Stable host presentation-profile IDs. Source sprite selectors are translated
 -- in the native adapter and never become Lua actor state.

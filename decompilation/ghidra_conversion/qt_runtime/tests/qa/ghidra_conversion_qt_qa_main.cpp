@@ -5437,21 +5437,32 @@ int run_field_barrier_collision_qa(
     field_scene.set_controller_port_byte(0U);
     field_scene.advance_frame();
     const auto cast_move_start = field_scene.field_entity_world_position();
-    for (std::int32_t frame = 0; frame < 8; ++frame) {
+    // The repeated C082 cast begins a fresh action pose. GPGX captures show
+    // the spell pose ending on post-action pass 57 and movement first changing
+    // position on pass 58; this remains independent of the longer +0xDC gate
+    // (ROM 0xA8EA, 0xAFE2, and measured fixture rows). [C]
+    for (std::int32_t frame = 0; frame < 56; ++frame) {
         field_scene.set_controller_port_byte(0x08U);
         field_scene.advance_frame();
     }
+    const auto cast_still_locked = field_scene.field_entity_world_position();
+    field_scene.set_controller_port_byte(0x08U);
+    field_scene.advance_frame();
     const auto cast_move_end = field_scene.field_entity_world_position();
     field_scene.set_controller_port_byte(0U);
     if (repeated_cast_after != kExpectedBarrierCastGate ||
         first_cast_runner.animation_action_gate <= 0 ||
+        cast_still_locked.x != cast_move_start.x ||
+        cast_still_locked.y != cast_move_start.y ||
         (cast_move_end.x == cast_move_start.x &&
          cast_move_end.y == cast_move_start.y)) {
-        std::cerr << "Field barrier collision QA: spell action did not repeat on pass 103 or movement stopped during its gate"
+        std::cerr << "Field barrier collision QA: spell repeat gate or measured 58-pass movement lockout changed"
                   << " repeat_after=" << repeated_cast_after
                   << " gate=" << first_cast_runner.animation_action_gate
                   << " from=" << cast_move_start.x << ','
-                  << cast_move_start.y << " to=" << cast_move_end.x << ','
+                  << cast_move_start.y << " through_pass_57="
+                  << cast_still_locked.x << ',' << cast_still_locked.y
+                  << " pass_58=" << cast_move_end.x << ','
                   << cast_move_end.y << '\n';
         return 3;
     }
@@ -47544,11 +47555,12 @@ int main(int argc, char** argv) {
                     const auto delay_name =
                         std::string("action-delay-") +
                         std::to_string(delay_frame);
-                    const bool attack_pose_expected = next_delay >= 0;
-                    // ROM C042 selector 0x40 is the one-frame 0x784C list
-                    // (+0x80 against +0x1000): render pass 32 completes it,
-                    // then the next A8EA pass restores B45C/C052 even though
-                    // the separate +0xDC gate has not expired. [C]
+                    // The Lua C042 pose flag retires after its finite clip;
+                    // that is separate from both the ROM movement return
+                    // (GPGX pass 30) and the +0xDC repeat-action gate (51).
+                    // The visible one-frame clip remains through render update
+                    // 32 [C: 0xB39A, fixture post_attack_lockout_gpgx.tsv].
+                    const bool attack_pose_expected = delay_frame <= 30U;
                     const auto expected_animation_id = delay_frame <= 31U
                         ? "attack"
                         : "idle";
@@ -48472,6 +48484,8 @@ int main(int argc, char** argv) {
                     moving_action_delay <= 0 ||
                     weapon_fire_audio !=
                         std::vector<std::uint16_t>{0x001CU} ||
+                    moving_after_first.x != moving_start.x ||
+                    moving_after_first.y != moving_start.y ||
                     !save_weapon_fire_scene("moving-held-first-shot",
                                             moving_first_shot)) {
                     std::cerr << "field player action dump: moving A did not produce one initial weapon action; ammo="
@@ -48494,6 +48508,11 @@ int main(int argc, char** argv) {
                 bool moving_position_advanced =
                     moving_after_first.x != moving_start.x ||
                     moving_after_first.y != moving_start.y;
+                auto moving_previous = moving_after_first;
+                // GPGX forced-record fixture: B39A's firearm pose blocks
+                // movement through post-action pass 29; B574 first moves on
+                // pass 30 even though the separate +0xDC gate is still 21.
+                constexpr std::int32_t kWeaponMovementLockoutPasses = 30;
                 for (std::int32_t elapsed = 1;
                      elapsed <= static_cast<std::int32_t>(
                                     moving_action_delay) +
@@ -48509,18 +48528,22 @@ int main(int argc, char** argv) {
                     const auto current_position =
                         weapon_fire_scene.field_entity_world_position();
                     const bool position_changed =
-                        current_position.x != moving_start.x ||
-                        current_position.y != moving_start.y;
+                        current_position.x != moving_previous.x ||
+                        current_position.y != moving_previous.y;
+                    moving_previous = current_position;
                     moving_position_advanced =
                         moving_position_advanced || position_changed;
                     const auto expected_remaining_rounds =
                         repeated ? 1U : 2U;
+                    const bool movement_expected =
+                        !repeated &&
+                        elapsed >= kWeaponMovementLockoutPasses;
                     if (held_fire_runner.ammo_rounds !=
                             expected_remaining_rounds ||
                         shot_sounds != expected_sounds ||
                         (repeated && held_fire_runner.animation_action_gate <=
                                          0) ||
-                        !position_changed ||
+                        position_changed != movement_expected ||
                         !weapon_audio_is_source_valid(weapon_fire_audio)) {
                         std::cerr << "field player action dump: moving held A violated the source fire cadence or stopped movement at frame "
                                   << elapsed << " gate="

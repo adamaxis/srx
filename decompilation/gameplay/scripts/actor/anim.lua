@@ -33,6 +33,18 @@ end
 
 local function snapshot(state, action, audio_event, projectile_movement,
                         target_heading_audio_event)
+    local movement_bearing_degrees = state.movement_bearing_degrees
+    local movement_route_distance = state.movement_route_distance
+    if type(R.action_movement_locked) == "function" and
+       R.action_movement_locked(state) then
+        -- Source action continuations retain their route while the finite
+        -- weapon/spell selector runs, but movement resumes only after that
+        -- pose completes (ROM 0xB3EE/0xAFE2 -> 0xB574 via 0xA8EA). Keep the
+        -- stored Lua route for its next pass while withholding movement facts
+        -- from the host during the lockout. [C]
+        movement_bearing_degrees = nil
+        movement_route_distance = nil
+    end
     local combat_engagement_started =
         state.combat_engagement_started == true
     local field_event_request = state.field_event_request
@@ -63,8 +75,14 @@ local function snapshot(state, action, audio_event, projectile_movement,
         animation_complete =
             (state.animation_id == "weapon" and
              state.item_action_complete == true) or
+            (state.animation_id == "spell" and
+             state.action_animation_complete == true) or
             (state.animation_id == "action" and
              state.action_animation_complete == true) or
+            state.player_weapon_animation_complete == true or
+            (state.action_movement_lockout_kind ==
+                 E.ActionMovementLockoutKind.SPELL and
+             state.player_action_pose_complete == true) or
             ((state.animation_id == "hurt" or
               state.animation_id == "down") and
              state.damage_reaction_animation_complete == true) or
@@ -90,9 +108,9 @@ local function snapshot(state, action, audio_event, projectile_movement,
         target_heading_audio_event = target_heading_audio_event,
         strike_bearing_degrees = strike_bearing_degrees,
         weapon_item_id = state.weapon_item_id,
-        movement_bearing_degrees = state.movement_bearing_degrees,
+        movement_bearing_degrees = movement_bearing_degrees,
         movement_current_bearing_degrees = state.movement_current_bearing_degrees,
-        movement_route_distance = state.movement_route_distance,
+        movement_route_distance = movement_route_distance,
         ai_target_id = state.ai_target_id,
         ai_target_bearing_degrees = state.ai_target_bearing_degrees,
         ai_target_distance = state.ai_target_distance,

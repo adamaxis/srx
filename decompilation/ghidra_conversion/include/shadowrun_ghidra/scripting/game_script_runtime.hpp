@@ -2290,6 +2290,9 @@ struct ScriptActorBehaviorContext {
     bool combat_confirm_held = false;
     bool combat_action_ready = false;
     bool combat_action_available = false;
+    // The host's loaded magazine and weapon template show whether this held
+    // action will spawn a shot (empty-magazine reloads do not start a pose).
+    bool player_weapon_action_will_fire = false;
     bool combat_input_blocked = false;
     // ROM 0xAD86: a negative +0x56 sends the field player's held-A action
     // to 0xAE6E/0x1033E. The host offers the equipped D4EA0 row code

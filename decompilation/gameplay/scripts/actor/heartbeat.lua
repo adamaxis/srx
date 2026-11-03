@@ -8,6 +8,7 @@ local SoundId, SceneId, EntryDelayMax, AiTuning =
     E.SoundId, E.SceneId, E.EntryDelayMax, E.AiTuning
 local VisualProfile = E.ActorVisualProfile
 local ActorLifecycleEvent = E.ActorLifecycleEvent
+local ActionMovementLockoutKind = E.ActionMovementLockoutKind
 
 -- ROM 0x1E514 clears the escort relationship and deactivates the actor. The
 -- host clears its typed template marker and retires the live record slot.
@@ -64,6 +65,10 @@ function ActorAI.heartbeat(context)
                 -- Latch the successful-action start for the following render
                 -- heartbeat; the finite C042 pose has its own lifetime.
                 state.player_weapon_animation_start_pending = true
+                if context.player_weapon_action_will_fire == true then
+                    R.begin_action_movement_lockout(
+                        state, ActionMovementLockoutKind.WEAPON)
+                end
             end
             state.movement_step = nil
             if context.phase == "behavior" then
@@ -119,6 +124,7 @@ function ActorAI.heartbeat(context)
         end
     end
     R.advance_source_action_delay(state, context)
+    R.advance_action_movement_lockout(state, context)
     if context.action_kind == ActionKind.item and
        context.source_item_spawn_result == "spawned" then
         local target = R.retained_linked_target(context, state)
@@ -263,12 +269,23 @@ function ActorAI.heartbeat(context)
                 -- A held-fire repeat is a new C042 action and resets its
                 -- animation in the next render pass, after the host action.
                 state.player_weapon_animation_start_pending = true
+                if context.player_weapon_action_will_fire == true then
+                    R.begin_action_movement_lockout(
+                        state, ActionMovementLockoutKind.WEAPON)
+                end
             end
         end
         if profile.controls_movement and not profile.dynamic_encounter_only then
             local cast_audio = R.begin_player_spell_cast(state, context)
             if cast_audio ~= nil then
                 audio_event = cast_audio
+            end
+            if state.source_action_dispatch == "player_spell" or
+               state.source_action_dispatch == "player_spell_blocked" or
+               state.source_action_dispatch == "player_spell_suppressed" or
+               state.source_action_dispatch == "player_spell_no_target" then
+                R.begin_action_movement_lockout(
+                    state, ActionMovementLockoutKind.SPELL)
             end
             local swing_audio, strike_heading_audio =
                 R.begin_player_melee(state, context)
@@ -293,9 +310,24 @@ function ActorAI.heartbeat(context)
                         return nil
                     end
                 elseif state.animation_id == "spell" then
-                    -- C082 lists are one frame. Hold it; do not invent a count.
-                    state.animation_frame = 0
-                    state.animation_progress = 0
+                    if state.action_animation_complete then
+                        local facing_bearing_degrees =
+                            state.movement_current_bearing_degrees or
+                            context.initial_bearing_degrees
+                        state.direction = R.direction_from_bearing_degrees(
+                            facing_bearing_degrees)
+                        state.animation_id = "idle"
+                        state.animation_frame = 0
+                        if not R.advance_dynamic_actor_idle_animation(
+                               state) then
+                            return nil
+                        end
+                    else
+                        -- C082 lists are one frame; retain the source cast pose
+                        -- through its measured 58-pass movement lockout.
+                        state.animation_frame = 0
+                        state.animation_progress = 0
+                    end
                 elseif state.animation_id == "walk" then
                     if not R.advance_dynamic_actor_walk_animation(state) then
                         return nil
@@ -491,7 +523,8 @@ function ActorAI.heartbeat(context)
                     -- service pass. 0xB574 slews +0x2E toward the stored
                     -- +0x34 heading by 0x0800 and advances using +0xC8, which
                     -- 0x145A2 measured to the selected route destination.
-                    if state.transition_complete and state.movement_active then
+                    if state.transition_complete and state.movement_active and
+                       not R.action_movement_locked(state) then
                         state.movement_current_bearing_degrees = R.approach_bearing_degrees(
                             state.movement_current_bearing_degrees,
                             state.movement_bearing_degrees)

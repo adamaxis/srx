@@ -12,7 +12,7 @@ game = { actors = {}, modules = {
     items = Items,
     magic = Magic,
 } }
-require("actor.init")
+local ActorAI = require("actor.init")
 
 local passed, total = 0, 0
 local function check(condition, label)
@@ -21,6 +21,12 @@ local function check(condition, label)
         passed = passed + 1
     else
         print("FAIL " .. label)
+    end
+end
+
+local function clear_actor_states()
+    for actor_id in pairs(game.actors) do
+        game.actors[actor_id] = nil
     end
 end
 
@@ -286,7 +292,7 @@ end
 local armor_damage = { 1, 2, 0, 0, 0, 0, 0 }
 for index, row in ipairs(ROM_ARMOR) do
     local armor_id, primary = row[1], row[2]
-    game.actors = {}
+    clear_actor_states()
     local attacker = make_combatant({
         party = true, action = "american_l36", firearms = 2, pistols = 2,
         quickness = 3, intelligence = 2, willpower = 4,
@@ -412,7 +418,7 @@ end
 -- D4EA0 row 4 (+0x57 code 5), which sets FFF0CC and uses mental +0x9C at
 -- 0x55A78. The H target-resistance labels are not checked here.
 local function apply_spell_meter_path(spell_id, target_id)
-    game.actors = {}
+    clear_actor_states()
     local target = spell_target(target_id)
     local result = Combat.resolve_spell_impact({
         combatant = spell_caster(0, {}),
@@ -539,11 +545,145 @@ check(COMBAT_RECORDS.joshua_decker.rom_record == 0x72A1A and
       COMBAT_RECORDS.yakuza_weenr.item_code == E.ItemId.MACH22,
       "combat fixtures must retain distinct source profile and item records")
 
+-- The GPGX fixture measures first movement after a forced source action, not
+-- just the independent +0xDC repeat-action gate. Each row drives the live
+-- player heartbeat for the captured number of field behavior passes.
+local function read_post_attack_lockout_fixture()
+    local path = "decompilation/gameplay/tests_lua/fixtures/" ..
+                 "post_attack_lockout_gpgx.tsv"
+    local stream = io.open(path, "r")
+    if stream == nil then
+        return nil
+    end
+    local headers, rows
+    rows = {}
+    for line in stream:lines() do
+        if line ~= "" and line:sub(1, 1) ~= "#" then
+            local fields = {}
+            for value in (line .. "\t"):gmatch("(.-)\t") do
+                fields[#fields + 1] = value
+            end
+            if headers == nil then
+                headers = fields
+            else
+                local row = {}
+                for index, key in ipairs(headers) do
+                    row[key] = fields[index]
+                end
+                rows[#rows + 1] = row
+            end
+        end
+    end
+    stream:close()
+    return rows
+end
+
+local function lockout_player_context(actor_id, phase, spawn)
+    return {
+        actor_id = actor_id,
+        profile_id = "field_runner_k03_none00",
+        visual_profile_id = E.ActorVisualProfile.FIELD_RUNNER,
+        action_kind = "none",
+        action_code = 0,
+        phase = phase,
+        initial_bearing_degrees = 0,
+        entry_delay = 0,
+        spawn = spawn,
+        source_record_slot = 1,
+        has_live_actor_record = true,
+        controlled_party_member_id = "party.runner.1",
+        is_controlled_party_actor = true,
+        actor_facts = {
+            lifecycle = { active = true, thinking_enabled = false,
+                ai_runner = false, downed = false, group_leader = true,
+                dead = false },
+            interaction = { projectile = false,
+                proximity_interaction_pending = false,
+                use_collision_heading = false, collision_recovery_active = false,
+                action_hook_pending = false, defense_difficulty_reduction = false,
+                breathing_out = false, unseen = false,
+                no_coverage_difficulty_bonus = false },
+            behavior = { route_clear = false, path_active = false,
+                restart_steering = false, wall_following = false,
+                in_target_band = false, route_transition = false,
+                fleeing = false, escort = false },
+            roles = { spotted = false, reinforcement = false,
+                despawn_offscreen = false, quest = false, runner = false,
+                pedestrian = false, hostile = false },
+        },
+        movement_allowed = false,
+        movement_input_direction = "east",
+        combat_action_available = false,
+        combat_action_ready = false,
+        combat_confirm_held = false,
+        combat_input_blocked = false,
+    }
+end
+
+local lockout_fixture = read_post_attack_lockout_fixture()
+check(type(lockout_fixture) == "table" and #lockout_fixture >= 15,
+      "post-attack lockout fixture contains the measured weapon/spell matrix")
+if type(lockout_fixture) == "table" then
+    for _, row in ipairs(lockout_fixture) do
+        clear_actor_states()
+        local actor_id = "post_attack_lockout." .. row.case
+        local context = lockout_player_context(actor_id, "behavior", true)
+        ActorAI.heartbeat(context)
+        context.spawn = false
+        context.movement_allowed = true
+        context.combat_action_ready = true
+        context.combat_confirm_held = true
+        if row.action_kind == "weapon" then
+            context.combat_action_available = true
+            context.player_weapon_action_will_fire = true
+        else
+            context.player_spell_available = true
+            context.player_spell_id = "mana_zap"
+            context.final_battle_active = true
+        end
+
+        local action_decision = ActorAI.heartbeat(context)
+        local measured_lockout = tonumber(row.first_movement_pass)
+        local gate = tonumber(row.source_action_gate)
+        local observed_gate_ready =
+            tonumber(row.observed_gate_ready_pass)
+        check(action_decision ~= nil and measured_lockout ~= nil and gate ~= nil,
+              row.case .. " fixture row parses action, lock, and +0xDC")
+        if action_decision ~= nil and measured_lockout ~= nil then
+            check(action_decision.movement_bearing_degrees == nil,
+                  row.case .. " action pass suppresses held east movement")
+            context.combat_action_available = false
+            context.player_weapon_action_will_fire = false
+            context.player_spell_available = false
+            context.combat_action_ready = false
+            context.combat_confirm_held = false
+            for pass_number = 1, measured_lockout do
+                local decision = ActorAI.heartbeat(context)
+                local should_move = pass_number == measured_lockout
+                check(decision ~= nil and
+                      (should_move
+                          and decision.movement_bearing_degrees == 90
+                          or not should_move and
+                             decision.movement_bearing_degrees == nil),
+                      string.format("%s GPGX pass %d movement gate", row.case,
+                                    pass_number))
+            end
+            local next_action = tonumber(row.next_action_pass)
+            local movement_before_gate =
+                tonumber(row.movement_before_gate_ready) == 1
+            check(next_action == gate + 1 and
+                  observed_gate_ready == next_action and
+                  movement_before_gate == (measured_lockout < next_action),
+                  row.case .. " pose lock remains distinct from +0xDC gate")
+        end
+    end
+end
+
 -- The emulator-backed fixture below asserts the complete action stream against
 -- production Lua. Keep this direct anchor readable: seed 0001 measured 2
 -- attack successes, 0 defense successes, one physical damage, mental unchanged.
 do
-    game.actors = {}
+    clear_actor_states()
     local party = source_combatant(COMBAT_RECORDS.joshua_decker, 0)
     local enemy = source_combatant(COMBAT_RECORDS.weenr2, 6)
     local target = { id = "measured-source-hit", combatant = enemy }

@@ -5,6 +5,8 @@ local E = require("enums")
 local Delay = require("actor.delay")
 local SoundId, SceneId, EntryDelayMax, AiTuning =
     E.SoundId, E.SceneId, E.EntryDelayMax, E.AiTuning
+local ActionMovementLockoutKind = E.ActionMovementLockoutKind
+local ActionMovementLockoutPasses = E.ActionMovementLockoutPasses
 local states = game.actors
 local TARGET_MARKER_RADIUS_STEP = 8
 local TARGET_MARKER_OUTER_RADIUS = 64
@@ -31,6 +33,79 @@ local function advance_source_action_delay(state, context)
     if state.action_delay >= 0 then
         state.action_delay = state.action_delay - 1
     end
+end
+
+local function begin_action_movement_lockout(state, kind, passes)
+    if type(state) ~= "table" or
+       (kind ~= ActionMovementLockoutKind.WEAPON and
+        kind ~= ActionMovementLockoutKind.SPELL) then
+        return false
+    end
+    local duration = passes or
+        (kind == ActionMovementLockoutKind.WEAPON
+            and ActionMovementLockoutPasses.WEAPON
+            or ActionMovementLockoutPasses.SPELL)
+    if type(duration) ~= "number" or duration < 1 then
+        return false
+    end
+    state.action_movement_lockout_kind = kind
+    state.action_movement_lockout_remaining = math.ceil(duration)
+    state.player_action_pose_complete = false
+    state.player_weapon_animation_complete = nil
+    if kind == ActionMovementLockoutKind.SPELL then
+        state.action_animation_complete = false
+    end
+    return true
+end
+
+local function advance_action_movement_lockout(state, context)
+    if type(state) ~= "table" or type(context) ~= "table" or
+       context.phase ~= "behavior" or
+       (not context.dynamic_world_encounter_actor and
+        context.has_live_actor_record ~= true) then
+        return
+    end
+    local remaining = state.action_movement_lockout_remaining
+    if type(remaining) ~= "number" or remaining <= 0 then
+        return
+    end
+    remaining = remaining - 1
+    state.action_movement_lockout_remaining = remaining
+    if remaining == 0 and
+       state.action_movement_lockout_kind ==
+           ActionMovementLockoutKind.SPELL then
+        -- Player C082 is presented by the host; dynamic C082 actors own this
+        -- completion in Lua. Both release movement on the measured pass 58.
+        state.player_action_pose_complete = true
+        state.action_animation_complete = true
+    end
+end
+
+local function action_movement_locked(state)
+    if type(state) ~= "table" then
+        return false
+    end
+    if type(state.action_movement_lockout_remaining) == "number" and
+       state.action_movement_lockout_remaining > 0 then
+        return true
+    end
+    local kind = state.action_movement_lockout_kind
+    if kind == ActionMovementLockoutKind.WEAPON then
+        if state.animation_id == "weapon" and
+           state.item_action_complete ~= true then
+            return true
+        end
+    elseif kind == ActionMovementLockoutKind.SPELL then
+        if state.animation_id == "spell" and
+           state.action_animation_complete ~= true then
+            return true
+        end
+        if state.animation_id == "cast" and
+           state.player_action_pose_complete ~= true then
+            return true
+        end
+    end
+    return false
 end
 
 local function advance_target_motion_effect(state, context)
@@ -359,6 +434,11 @@ local function begin_dynamic_item_action(state, context, target)
     state.animation_progress = 0
     state.animation_elapsed_updates = 0
     state.item_action_complete = false
+    local clip_passes = math.ceil(animation.frame_count *
+                                  animation.frame_duration_updates)
+    begin_action_movement_lockout(
+        state, ActionMovementLockoutKind.WEAPON,
+        math.max(ActionMovementLockoutPasses.WEAPON, clip_passes))
     state.action_delay = source_action_delay(context, state, 0)
     state.ai_target_engaged = false
     return true
@@ -376,6 +456,8 @@ local function begin_spell_cast(state, context, target, resolution)
     state.animation_frame = 0
     state.animation_progress = 0
     state.action_animation_complete = false
+    begin_action_movement_lockout(
+        state, ActionMovementLockoutKind.SPELL)
     state.action_delay = source_action_delay(context, state, 0)
     state.ai_target_engaged = false
     state.movement_bearing_degrees = nil
@@ -901,6 +983,9 @@ end
 -- register this module's definitions
 R.source_action_delay = source_action_delay
 R.advance_source_action_delay = advance_source_action_delay
+R.begin_action_movement_lockout = begin_action_movement_lockout
+R.advance_action_movement_lockout = advance_action_movement_lockout
+R.action_movement_locked = action_movement_locked
 R.advance_target_motion_effect = advance_target_motion_effect
 R.request_target_motion_effect = request_target_motion_effect
 R.advance_target_marker = advance_target_marker

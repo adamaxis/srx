@@ -783,6 +783,13 @@ for _, name in ipairs(targets) do
       end
       normalize_spell_pending(value.spell_effect_pending)
     end
+    local function normalize_action_movement_lockout(value)
+      if type(value) ~= "table" then return end
+      value.action_movement_lockout_kind = nil
+      value.action_movement_lockout_remaining = nil
+      value.player_action_pose_complete = nil
+      value.player_weapon_animation_complete = nil
+    end
     local INITIAL_STATE_FIELDS = {
       "actor_id", "profile_id", "action_kind", "package_id",
       "weapon_item_id", "direction", "entry_delay", "behavior_timer",
@@ -879,6 +886,13 @@ for _, name in ipairs(targets) do
       if name == "advance_spell_effect" or name == "begin_spell_cast" then
         normalize_spell_effect_state(s)
         normalize_spell_effect_state(g.actors)
+      end
+      if name == "begin_spell_cast" then
+        -- The GPGX-backed combat_engine_tests.lua covers the newly added
+        -- per-actor movement lockout; keep this legacy differential focused
+        -- on the rest of the pre-split spell behavior.
+        normalize_action_movement_lockout(s)
+        normalize_action_movement_lockout(g.actors)
       end
       strip_think(r); strip_think(s); strip_think(g.actors)
       local service_log = table.concat(log, ";")

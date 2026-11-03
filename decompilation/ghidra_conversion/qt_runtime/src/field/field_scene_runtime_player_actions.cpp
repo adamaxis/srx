@@ -778,7 +778,6 @@ void FieldSceneRuntime::advance_field_movement() {
     if (movement_step.outcome ==
         scripting::ScriptActorMovementStep::Outcome::reset) {
         field_entity_animation_.redraw_requested = true;
-        field_entity_attack_pose_active_ = false;
         field_entity_walking_ = false;
         source_boundary("field.movement.reset_blocked_step");
     }
@@ -793,7 +792,6 @@ void FieldSceneRuntime::advance_field_movement() {
     if (previous_x != field_movement_state_.position_x ||
         previous_y != field_movement_state_.position_y) {
         source_boundary("field.movement.accepted_step");
-        field_entity_attack_pose_active_ = false;
         field_entity_walking_ = true;
     } else {
         field_entity_walking_ = false;
@@ -808,17 +806,18 @@ void FieldSceneRuntime::advance_player_weapon_action_gate() {
 
     auto& runner = active_runner_record();
     advance_active_entity_animation_action_gate(runner);
-    if (runner.animation_action_gate >= 0 ||
-        !field_entity_attack_pose_active_) {
-        return;
+    if (runner.animation_action_gate < 0 &&
+        field_entity_attack_pose_active_ &&
+        field_entity_attack_pose_kind_ == FieldPlayerAttackPose::strike) {
+        // Unarmed C0A2 retains its existing source action-gate lifetime; the
+        // measured #38 C042/C082 pose timers apply to firearms and casts.
+        field_entity_attack_pose_active_ = false;
+        if (!field_entity_walking_) {
+            field_entity_animation_.frame = 0U;
+            field_entity_animation_.redraw_requested = true;
+        }
+        source_boundary("field.combat.player_attack_pose_expired");
     }
-
-    field_entity_attack_pose_active_ = false;
-    if (!field_entity_walking_) {
-        field_entity_animation_.frame = 0U;
-        field_entity_animation_.redraw_requested = true;
-    }
-    source_boundary("field.combat.player_attack_pose_expired");
 }
 
 

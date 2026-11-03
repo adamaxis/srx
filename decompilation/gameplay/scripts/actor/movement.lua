@@ -312,6 +312,9 @@ local function projectile_heartbeat(state, context)
 end
 
 local function requested_movement_bearing_degrees(context, profile, state)
+    if R.action_movement_locked(state) then
+        return nil
+    end
     if profile.dynamic_encounter_only then
         local target = R.linked_target(context, state)
         local heading = target and target.bearing_degrees or nil

@@ -12075,6 +12075,8 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "combat_action_ready");
     lua_pushboolean(state, context.combat_action_available);
     lua_setfield(state, -2, "combat_action_available");
+    lua_pushboolean(state, context.player_weapon_action_will_fire);
+    lua_setfield(state, -2, "player_weapon_action_will_fire");
     if (context.controlled_party_member_id.empty()) {
         lua_pushnil(state);
     } else {

@@ -1,0 +1,24 @@
+# US Genesis GPGX forced-RAM action timing capture; emulator only.
+# ROM SHA-256: 92a614491fc3ea12a6df32459cce08b48574b7b814e244c07eb860dc5c6edb7e
+# Savestate SHA-256: 1ad22c7a20fd001bee1f16fcc1617f3ca523818f2709cdda689a6bcfcb251c77
+# Player is record FF0100; Q/I at +0x78/+0x7B, skill at +0x80..+0x8B, cyberware at +0x90.
+# Sources: 0xA8EA/+0xDC, 0xABFC, 0xB39A, 0xD7EA/0xD81C, 0xAF7C/0xAFAE, 0x5FDC/0x600E.
+# Movement pass counts complete GPGX frames after the action-entry frame; right is held after A is released.
+# A positive gate_at_first_movement proves movement resumes before the separate next-action gate.
+case	action_kind	action_code	skill	skill_value	quickness	intelligence	cyberware_flags	source_action_gate	next_action_pass	observed_gate_ready_pass	action_selector	pose_complete_pass	first_movement_pass	gate_at_first_movement	movement_before_gate_ready	initial_x	initial_y	post_action_x	post_action_y
+pistol_skill0	weapon	1	pistols	0	3	2	0x0000	51	52	52	0x0050	29	30	21	1	7424	3000	7424	3000
+pistol_skill8	weapon	1	pistols	8	3	2	0x0000	51	52	52	0x0050	29	30	21	1	7424	3000	7424	3000
+smg_skill0	weapon	8	smgs	0	3	2	0x0000	51	52	52	0x0050	29	30	21	1	7424	3000	7424	3000
+smg_skill8	weapon	8	smgs	8	3	2	0x0000	51	52	52	0x0050	29	30	21	1	7424	3000	7424	3000
+shotgun_skill0	weapon	11	shotguns	0	3	2	0x0000	102	103	103	0x0050	29	30	72	1	7424	3000	7424	3000
+shotgun_skill8	weapon	11	shotguns	8	3	2	0x0000	102	103	103	0x0050	29	30	72	1	7424	3000	7424	3000
+pistol_wr4	weapon	1	pistols	4	3	2	0x1000	43	44	44	0x0050	29	30	13	1	7424	3000	7424	3000
+pistol_wr8	weapon	1	pistols	4	3	2	0x2000	35	36	36	0x0050	29	30	5	1	7424	3000	7424	3000
+pistol_wr12	weapon	1	pistols	4	3	2	0x4000	27	28	28	0x0050	29	30	-1	0	7424	3000	7424	3000
+pistol_wr_priority	weapon	1	pistols	4	3	2	0x3000	43	44	44	0x0050	29	30	13	1	7424	3000	7424	3000
+pistol_higher_attributes	weapon	1	pistols	4	5	4	0x0000	47	48	48	0x0050	29	30	17	1	7424	3000	7424	3000
+spell_sorcery0	spell	9	sorcery	0	3	2	0x0000	102	103	103	0x0090	57	58	44	1	7424	3000	7424	3000
+spell_sorcery8	spell	9	sorcery	8	3	2	0x0000	102	103	103	0x0090	57	58	44	1	7424	3000	7424	3000
+spell_wr4	spell	9	sorcery	4	3	2	0x1000	86	87	87	0x0090	57	58	28	1	7424	3000	7424	3000
+spell_wr8	spell	9	sorcery	4	3	2	0x2000	70	71	71	0x0090	57	58	12	1	7424	3000	7424	3000
+spell_wr12	spell	9	sorcery	4	3	2	0x4000	54	55	55	0x0090	57	58	-1	0	7424	3000	7424	3000

@@ -12054,19 +12054,23 @@ FieldSceneRuntime::heartbeat_field_player(
             runner.equipped_inventory_slot >= 0 &&
             static_cast<std::size_t>(runner.equipped_inventory_slot) <
                 runner.inventory_phase_bytes.size();
+        const auto* player_weapon =
+            weapon_template_for_item_code(runner.equipped_item_code);
         const bool weapon_action_available =
             (runner.flags & 0x0300U) == 0x0300U && valid_weapon_slot &&
             classify_field_combat_action(
                 runner.equipped_inventory_slot,
                 runner.equipped_item_code) ==
                 FieldCombatActionKind::weapon_ammo &&
-            weapon_template_for_item_code(runner.equipped_item_code) !=
-                nullptr;
+            player_weapon != nullptr;
         actor_context.combat_confirm_held =
             (field_controller_sample_state_.held & 0x0040U) != 0U;
         actor_context.combat_action_ready =
             runner.animation_action_gate < 0;
         actor_context.combat_action_available = weapon_action_available;
+        actor_context.player_weapon_action_will_fire =
+            weapon_action_available && player_weapon != nullptr &&
+            runner.ammo_rounds >= player_weapon->rounds_per_action;
         actor_context.combat_input_blocked =
             field_combat_input_suppressed_until_release_;
         // ROM 0xAD86: negative +0x56 selects the 0xAE6E spell branch. The
@@ -12328,6 +12332,15 @@ FieldSceneRuntime::heartbeat_field_player(
     const auto actor_decision = game_scripts_.actor_heartbeat(actor_context);
     if (actor_decision.has_value()) {
         field_player_actor_script_initialized_ = true;
+        const bool timed_action_pose =
+            field_entity_attack_pose_kind_ == FieldPlayerAttackPose::firearm ||
+            field_entity_attack_pose_kind_ == FieldPlayerAttackPose::cast;
+        if (field_entity_attack_pose_active_ && timed_action_pose &&
+            actor_decision->animation_complete) {
+            field_entity_attack_pose_active_ = false;
+            field_entity_animation_.redraw_requested = true;
+            source_boundary("field.player.lua_action_pose_completed");
+        }
         if (actor_decision->target_selection_processed) {
             if (!apply_scripted_field_entity_target_selection(
                     actor_decision->selected_world_actor_id)) {
