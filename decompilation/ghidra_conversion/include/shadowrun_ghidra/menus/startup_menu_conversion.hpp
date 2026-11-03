@@ -11,6 +11,8 @@ namespace shadowrun::ghidra_conversion {
 // #9, #C, #D, and #E. These are the Genesis Up/Down/B/C/A masks after the
 // byte-sized bit-number wrapping performed by the 68000 instruction.
 constexpr std::uint8_t kStartupMenuUp = 0x01U;
+constexpr std::uint8_t kStartupMenuLeft = 0x04U;
+constexpr std::uint8_t kStartupMenuRight = 0x08U;
 constexpr std::uint8_t kStartupMenuDown = 0x02U;
 constexpr std::uint8_t kStartupMenuB = 0x10U;
 constexpr std::uint8_t kStartupMenuC = 0x20U;
@@ -124,6 +126,9 @@ struct StartOptionsMenuCallbacks {
     std::function<void()> draw_new_game_load_game_grid;
     std::function<void()> draw_start_options_title;
     std::function<void(StartOptionsChoice)> draw_start_options_cursor;
+    // Port setting displayed on the existing Options screen. Left/Right cycle
+    // the B policy without changing the ROM New Game/Load Game selector.
+    std::function<void(int)> change_menu_b_policy;
 };
 
 enum class StartOptionsMenuEvent {

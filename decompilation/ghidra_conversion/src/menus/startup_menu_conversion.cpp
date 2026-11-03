@@ -63,6 +63,16 @@ StartOptionsMenuEvent advance_start_options_menu(
     }
 
     if (!action_pressed(sampled_controller_byte)) {
+        if (callbacks.change_menu_b_policy) {
+            if ((sampled_controller_byte & kStartupMenuLeft) != 0U) {
+                callbacks.change_menu_b_policy(-1);
+                return StartOptionsMenuEvent::selection_moved;
+            }
+            if ((sampled_controller_byte & kStartupMenuRight) != 0U) {
+                callbacks.change_menu_b_policy(1);
+                return StartOptionsMenuEvent::selection_moved;
+            }
+        }
         return StartOptionsMenuEvent::waiting;
     }
     return state.selected == StartOptionsChoice::new_game

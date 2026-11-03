@@ -355,6 +355,9 @@ public:
         std::function<void(std::uint16_t)> play_music,
         std::function<void(std::uint8_t)> attenuate,
         std::function<void()> fade_out);
+    void set_menu_b_policy(std::string policy) {
+        menu_b_policy_ = policy == "always_cancel" ? "always_cancel" : "rom";
+    }
     const std::vector<std::uint16_t>& field_music_requests() const noexcept {
         return field_music_requests_;
     }
@@ -2368,6 +2371,7 @@ private:
     GameSaveStore game_save_store_{};
     bool menu_route_active_ = false;
     std::uint16_t menu_route_screen_ = 0U;
+    std::string menu_b_policy_ = "rom";
     std::optional<int> menu_route_posture_bar_selection_;
     std::optional<scripting::ScriptMenuRouteSnapshot::MagicView>
         menu_route_magic_view_;

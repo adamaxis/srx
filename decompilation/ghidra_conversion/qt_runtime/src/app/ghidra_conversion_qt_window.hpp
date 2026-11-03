@@ -21,6 +21,7 @@
 #include "cab_map_caption_presenter.hpp"
 #include "frame_debug_server.hpp"
 #include "genesis_image_compositor.hpp"
+#include "menu_b_policy_settings.hpp"
 
 #include <deque>
 #include <unordered_map>
@@ -37,6 +38,7 @@
 #include <QPoint>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QSettings>
 #include <QString>
 #include <QTimer>
 #include <QWidget>
@@ -101,6 +103,12 @@ std::uint8_t sampled_menu_byte(const int key) {
     default:
         return 0U;
     }
+}
+
+std::uint8_t sampled_start_options_byte(const int key) {
+    if (key == Qt::Key_Left) return kStartupMenuLeft;
+    if (key == Qt::Key_Right) return kStartupMenuRight;
+    return sampled_menu_byte(key);
 }
 
 // 0x1A9E's title break is driven by the latched Genesis Start bit. Startup
@@ -190,6 +198,8 @@ public:
                   audio_playback_->stop_resource(sound);
               }
           }) {
+        menu_b_policy_ = load_menu_b_policy_setting();
+        field_scene_runtime_.set_menu_b_policy(menu_b_policy_);
         debug_event_queue_enabled_ = debug_port.has_value();
         setWindowTitle(QStringLiteral("Shadowrun - Ghidra Conversion Qt"));
         setFixedSize(kSceneWidth * kSceneScale, kSceneHeight * kSceneScale);
@@ -524,11 +534,16 @@ protected:
             }
         }
 
+        const bool start_options_phase =
+            state_.phase == StartupIntegrationPhase::start_options_shell ||
+            state_.phase == StartupIntegrationPhase::start_options;
         const auto sample =
             state_.phase == StartupIntegrationPhase::title_ready ||
                     state_.phase == StartupIntegrationPhase::opening_intro
                 ? sampled_title_byte(event->key())
-                : sampled_menu_byte(event->key());
+                : start_options_phase
+                      ? sampled_start_options_byte(event->key())
+                      : sampled_menu_byte(event->key());
         if (sample == 0U) {
             QWidget::keyPressEvent(event);
             return;
@@ -575,6 +590,9 @@ protected:
         }
         if (!event->isAutoRepeat() &&
             (sampled_menu_byte(event->key()) != 0U ||
+             ((state_.phase == StartupIntegrationPhase::start_options_shell ||
+               state_.phase == StartupIntegrationPhase::start_options) &&
+              sampled_start_options_byte(event->key()) != 0U) ||
              sampled_title_byte(event->key()) != 0U)) {
             // Record the complete controller edge pair. In field mode the
             // release clears a live port bit; omitting it makes deterministic
@@ -583,7 +601,7 @@ protected:
         }
         if (state_.phase == StartupIntegrationPhase::start_options_shell &&
             !event->isAutoRepeat()) {
-            const auto released = sampled_menu_byte(event->key());
+            const auto released = sampled_start_options_byte(event->key());
             if (released != 0U) {
                 pending_start_options_controller_byte_ =
                     static_cast<std::uint8_t>(
@@ -628,6 +646,24 @@ protected:
     }
 
 private:
+    std::string load_menu_b_policy_setting() const {
+        QSettings settings;
+        return shadowrun::ghidra_conversion::qt_runtime::
+            load_menu_b_policy_setting(settings);
+    }
+
+    void change_menu_b_policy(const int direction) {
+        if (direction == 0) {
+            return;
+        }
+        menu_b_policy_ = menu_b_policy_ == "rom"
+            ? "always_cancel" : "rom";
+        field_scene_runtime_.set_menu_b_policy(menu_b_policy_);
+        QSettings settings;
+        shadowrun::ghidra_conversion::qt_runtime::
+            store_menu_b_policy_setting(settings, menu_b_policy_);
+    }
+
     struct PendingRemoteKey {
         int key = 0;
         bool pressed = false;
@@ -1148,6 +1184,9 @@ private:
             no_op,
             [this](const StartOptionsChoice choice) {
                 start_options_cursor_ = choice;
+            },
+            [this](const int direction) {
+                change_menu_b_policy(direction);
             },
         };
         startup_callbacks_.save_load = {
@@ -2562,6 +2601,13 @@ private:
             draw_startup_layout(painter, kStartOptionsPlaneVram,
                                 kStartOptionsLayout,
                                 &*startup_options_menu_);
+            const auto policy_label = menu_b_policy_ == "always_cancel"
+                ? std::string_view("B MODE: ALWAYS CANCEL (L/R)")
+                : std::string_view("B MODE: ROM (L/R)");
+            draw_startup_text(
+                painter, startup_menu_vram_x(kStartOptionsPlaneVram),
+                startup_menu_line_y(kStartOptionsPlaneVram, 7U),
+                policy_label, source_text_color(0U));
             draw_cursor(painter, startup_menu_vram_x(kStartOptionsCursorVram),
                         startup_menu_cursor_y(
                             kStartOptionsCursorVram,
@@ -2948,6 +2994,7 @@ private:
     JoshuaArchetypeChoice selected_archetype_ =
         JoshuaArchetypeChoice::samurai;
     StartOptionsChoice start_options_cursor_ = StartOptionsChoice::new_game;
+    std::string menu_b_policy_ = "rom";
     SaveSlotChoice save_load_cursor_ = SaveSlotChoice::slot_one;
     JoshuaArchetypeChoice joshua_cursor_ = JoshuaArchetypeChoice::samurai;
     JoshuaArchetypeChoice joshua_preview_ = JoshuaArchetypeChoice::samurai;

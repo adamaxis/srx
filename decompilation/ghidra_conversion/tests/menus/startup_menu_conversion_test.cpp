@@ -89,6 +89,40 @@ int main() {
                     StartOptionsMenuEvent::enter_joshua_archetype_menu)) {
         return 3;
     }
+    // ROM 0x590EA..0x59170 sends B through the selected startup action row.
+    StartOptionsMenuState startup_b{};
+    if (!expect(advance_start_options_menu(
+                    startup_b, kStartupMenuB, {}) ==
+                    StartOptionsMenuEvent::enter_joshua_archetype_menu &&
+                advance_start_options_menu(
+                    startup_b, kStartupMenuDown, {}) ==
+                    StartOptionsMenuEvent::selection_moved &&
+                advance_start_options_menu(
+                    startup_b, kStartupMenuB, {}) ==
+                    StartOptionsMenuEvent::enter_save_load_menu)) {
+        return 17;
+    }
+    int menu_b_policy_direction = 0;
+    StartOptionsMenuCallbacks policy_callbacks;
+    policy_callbacks.change_menu_b_policy = [&](const int direction) {
+        menu_b_policy_direction = direction;
+    };
+    if (!expect(advance_start_options_menu(
+                    start, kStartupMenuLeft, policy_callbacks) ==
+                    StartOptionsMenuEvent::selection_moved &&
+                menu_b_policy_direction == -1 &&
+                start.selected == StartOptionsChoice::new_game &&
+                advance_start_options_menu(
+                    start, kStartupMenuRight, policy_callbacks) ==
+                    StartOptionsMenuEvent::selection_moved &&
+                menu_b_policy_direction == 1 &&
+                advance_start_options_menu(
+                    start, kStartupMenuRight | kStartupMenuA,
+                    policy_callbacks) ==
+                    StartOptionsMenuEvent::enter_joshua_archetype_menu &&
+                menu_b_policy_direction == 1)) {
+        return 16;
+    }
 
     SaveLoadMenuState save_load{};
     std::vector<std::string> save_load_order;

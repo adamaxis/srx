@@ -6,6 +6,7 @@
 local E = require("enums")
 local T = E.MenuTransition
 local S = E.MenuScreen
+local BPolicy = E.MenuBPolicy
 local FieldReturn = require("menu.rules.field_return_transition")
 
 local Route = {}
@@ -132,6 +133,15 @@ function Route:frame(events)
     end
     local top = self:top()
     if not top then return end
+    local policy = self.game.menu_b_policy
+    if type(policy) == "function" then policy = policy() end
+    if policy == BPolicy.ALWAYS_CANCEL and (events & E.Pad.B) ~= 0 then
+        self:apply(top, {
+            transition = #self.stack > 1 and T.POP or T.EXIT,
+            result = {},
+        })
+        return
+    end
     local m = registry[top.screen]
     self:apply(top, m.input(top.state, events, self.ctx))
 end

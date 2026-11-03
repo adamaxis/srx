@@ -124,6 +124,20 @@ target_link_libraries(shadowrun_ghidra_hotel_options_input_permutation_test
 add_test(NAME shadowrun_ghidra_hotel_options_input_permutation
          COMMAND shadowrun_ghidra_hotel_options_input_permutation_test)
 
+# Missing and legacy settings must select the ROM menu policy; the selected
+# port preference is persisted independently of the active game route.
+add_executable(shadowrun_ghidra_menu_b_policy_settings_test
+    tests/menus/menu_b_policy_settings_test.cpp)
+target_include_directories(shadowrun_ghidra_menu_b_policy_settings_test
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/app")
+target_link_libraries(shadowrun_ghidra_menu_b_policy_settings_test
+    PRIVATE Qt6::Core)
+add_test(NAME shadowrun_ghidra_menu_b_policy_settings
+         COMMAND shadowrun_ghidra_menu_b_policy_settings_test)
+set_tests_properties(shadowrun_ghidra_menu_b_policy_settings
+    PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy")
+
 # This is the runnable Qt host for the converted source contracts. It is a
 # child of the root Ghidra project, not the archived native-port project.
 # It deliberately does not link shadowrun_port, shadowrun_native,

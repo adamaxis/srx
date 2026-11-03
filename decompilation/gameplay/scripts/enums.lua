@@ -712,6 +712,10 @@ E.MenuRegion = { ITEM_PICTURE = 0x0001, ITEM_HEADER = 0x0002, RATING = 0x0004, D
                  COMMAND_LABEL = 0x0200, INVENTORY_CURSOR = 0x0400, POSTURE_LABEL = 0x0800, SIDEBAR_SLOT = 0x1000,
                  MESSAGE = 0x2000, SUBMENU = 0x4000, FULL = 0x8000 }
 E.MenuTransition = { NONE = 0, PUSH = 1, POP = 2, REPLACE = 3, REBUILD = 4, EXIT = 5 }
+-- Optional port preference for B. ROM mode leaves each source screen's B
+-- branch untouched; ALWAYS_CANCEL is applied once by menu.route before the
+-- active screen handler receives the edge.
+E.MenuBPolicy = { ROM = "rom", ALWAYS_CANCEL = "always_cancel" }
 -- ROM 0x134D2 overlays the cab map from 0xD4298; 0x13726 writes its
 -- destination caption on palette line 3. Longplay frame min_001/f_1650
 -- shows the resulting white caption over a black strip.

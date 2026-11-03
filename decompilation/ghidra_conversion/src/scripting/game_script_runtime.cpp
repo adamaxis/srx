@@ -2871,6 +2871,7 @@ struct GameScriptRuntime::Impl {
         deck_slots,
         deck_commit,
         program_unloaded,
+        menu_b_policy,
     };
 
     lua_State* state = nullptr;
@@ -3746,6 +3747,13 @@ struct GameScriptRuntime::Impl {
             return dispatch_cyberdeck_menu_binding(
                 lua, self->menu_route_bindings.game,
                 CyberdeckMenuBinding::program_unloaded);
+        case MenuBinding::menu_b_policy: {
+            const auto policy = self->menu_route_bindings.game.menu_b_policy
+                ? self->menu_route_bindings.game.menu_b_policy()
+                : std::string("rom");
+            lua_pushlstring(lua, policy.data(), policy.size());
+            return 1;
+        }
         case MenuBinding::nuyen: {
             const auto funds = self->menu_route_bindings.game.nuyen
                                    ? self->menu_route_bindings.game.nuyen()
@@ -3932,6 +3940,8 @@ struct GameScriptRuntime::Impl {
                          MenuBinding::deck_commit);
         add_menu_binding(state, table_index, "program_unloaded",
                          MenuBinding::program_unloaded);
+        add_menu_binding(state, table_index, "menu_b_policy",
+                         MenuBinding::menu_b_policy);
     }
 
     bool refresh_menu_route_snapshot() {

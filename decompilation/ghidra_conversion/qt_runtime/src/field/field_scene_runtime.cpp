@@ -10295,6 +10295,7 @@ void FieldSceneRuntime::configure_field_menu_route() {
         // Program effects are owned by the active Matrix session. The field
         // Cyberdeck editor has no session effects to clear.
     };
+    bindings.game.menu_b_policy = [this] { return menu_b_policy_; };
     game_scripts_.set_menu_route_bindings(std::move(bindings));
 }
 

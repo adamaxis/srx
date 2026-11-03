@@ -620,6 +620,9 @@ struct ScriptMenuRouteGame {
                        const std::array<ScriptCyberdeckProgramSlot, 5>&)>
         deck_commit;
     std::function<void(int)> program_unloaded;
+    // Port-only menu preference; values are enums.MenuBPolicy strings.
+    // An absent callback uses the source-faithful ROM behavior.
+    std::function<std::string()> menu_b_policy;
 };
 
 struct ScriptMenuRouteBindings {
