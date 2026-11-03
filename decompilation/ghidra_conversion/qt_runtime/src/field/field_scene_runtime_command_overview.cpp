@@ -924,6 +924,7 @@ void FieldSceneRuntime::open_command_overview(
     field_taxi_route_active_ =
         root_screen == static_cast<std::uint16_t>(
                            srx::MenuScreen::TAXI_SELECTOR);
+    menu_route_posture_bar_selection_.reset();
     matrix_return_to_field_on_close_ =
         field_matrix_route_active_ && start_arguments.return_to_field;
     matrix_field_return_transition_pending_ = false;
@@ -935,9 +936,12 @@ void FieldSceneRuntime::open_command_overview(
         matrix_return_to_field_on_close_ = false;
         source_boundary("field.command_overview.lua_route_unavailable");
         menu_route_screen_ = 0U;
+        menu_route_posture_bar_selection_.reset();
     } else {
         const auto route_state = game_scripts_.menu_route_snapshot();
         menu_route_screen_ = route_state.top_screen;
+        menu_route_posture_bar_selection_ =
+            route_state.posture_bar_selection;
         posture_dialog_active_ =
             menu_route_screen_ ==
             static_cast<std::uint16_t>(srx::MenuScreen::POSTURE);

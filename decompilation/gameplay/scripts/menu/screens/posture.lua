@@ -3,11 +3,16 @@ local E = require("enums")
 local P, R, T, S = E.Pad, E.MenuRegion, E.MenuTransition, E.MenuSound
 local M = { window = E.WindowPlane.SIDEBAR }
 
-function M.new() return {} end
+function M.new()
+    return { posture_bar_selection = E.MeterSelection.INACTIVE }
+end
 
 local BARS = R.POSTURE_BLOCK | R.COMBAT_BARS        -- 0x11ABE: strip + 0x12CEE twice [C]
 
-function M.enter(st, ctx) ctx.redraw(R.POSTURE_LABEL); ctx.redraw(BARS) end   -- focused label 0xCD514 [C]
+function M.enter(st, ctx)
+    st.posture_bar_selection = E.MeterSelection.SELECTED
+    ctx.redraw(R.POSTURE_LABEL); ctx.redraw(BARS)
+end -- focused label 0xCD514 and selected bar row 0xCF334 [C]
 
 -- 0x11AE4 adjust, clamp 0..4 [C]
 function M.adjust(ctx, d)

@@ -109,6 +109,7 @@ E.ActorAnimationMode = {
 } -- typed field-player animation mode; ROM 0xB39A installs the C042 action pose [C]
 
 E.Posture   = { FULL_DEFENSE = 0, MEDIUM_DEFENSE = 1, NEUTRAL = 2, MEDIUM_OFFENSE = 3, FULL_OFFENSE = 4 }  -- +0x4D, names 0xD1A05 [C]
+E.MeterSelection = { INACTIVE = 0, SELECTED = 1 }  -- posture/Force marker focus state, 0x10722/0x119CE [C]
 E.ActorAttribute = { BODY = "body", WILLPOWER = "willpower" } -- semantic attributes used by combat rules; +0x77/+0x7C [C]
 -- Lifecycle transitions requested by gameplay interactions.
 E.ActorLifecycleEvent = {

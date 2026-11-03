@@ -77,6 +77,10 @@ local function publish_layout(values, st, table_)
         LAYOUT.posture_bar_x, LAYOUT.posture_bar_y
     values.posture_text_x, values.posture_text_y =
         LAYOUT.posture_text_x, LAYOUT.posture_text_y
+    values.force_bar_selection =
+        st.force_bar_selection or E.MeterSelection.INACTIVE
+    values.posture_bar_selection =
+        st.posture_bar_selection or E.MeterSelection.INACTIVE
     values.spell_ids = {}
     for index = 1, math.min(#table_, 14) do
         values.spell_ids[index] = table_[index].id
@@ -141,6 +145,8 @@ end
 function M.new()
     return {
         sel = { row = 0, column = 0 },
+        force_bar_selection = E.MeterSelection.INACTIVE,
+        posture_bar_selection = E.MeterSelection.INACTIVE,
         cursor_timer = 0,
         cursor_phase = 0,
         cursor_startup_heartbeats = 0,
@@ -281,6 +287,8 @@ function Force.new(args)
         row = args.row,
         column = args.column,
         table_entry_index = args.table_entry_index,
+        force_bar_selection = E.MeterSelection.SELECTED,
+        posture_bar_selection = E.MeterSelection.INACTIVE,
         cursor_timer = args.cursor_timer or 0,
         cursor_phase = args.cursor_phase or 0,
     }
@@ -293,8 +301,13 @@ local function force_view(st, ctx)
         record, party, ctx.game.slot_active_set(), st.table, st.entry,
         st.row, st.column, st.force)
     values.table_entry_index = st.table_entry_index
-    publish_layout(values, { sel = { row = st.row, column = st.column },
-                              cursor_phase = st.cursor_phase }, st.table)
+    publish_layout(values, {
+        sel = { row = st.row, column = st.column },
+        cursor_phase = st.cursor_phase,
+        cursor_sat_phase = st.cursor_sat_phase,
+        force_bar_selection = st.force_bar_selection,
+        posture_bar_selection = st.posture_bar_selection,
+    }, st.table)
     st.magic_view = values
 end
 
@@ -361,6 +374,8 @@ function MagicPosture.new(args)
         row = args.row,
         column = args.column,
         table_entry_index = args.table_entry_index,
+        force_bar_selection = E.MeterSelection.INACTIVE,
+        posture_bar_selection = E.MeterSelection.SELECTED,
         cursor_timer = args.cursor_timer or 0,
         cursor_phase = args.cursor_phase or 0,
     }

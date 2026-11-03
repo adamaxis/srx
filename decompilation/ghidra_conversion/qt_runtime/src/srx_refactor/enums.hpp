@@ -691,6 +691,10 @@ enum class Posture : std::int64_t {
     MEDIUM_OFFENSE = 0x3,
     FULL_OFFENSE = 0x4,
 };
+enum class MeterSelection : std::int64_t {
+    INACTIVE = 0x0,
+    SELECTED = 0x1,
+};
 enum class RunnerField : std::int64_t {
     STATUS = 0x10,
     STATE_FN = 0x3A,

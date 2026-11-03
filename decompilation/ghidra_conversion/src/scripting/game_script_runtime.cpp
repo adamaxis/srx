@@ -4149,6 +4149,9 @@ struct GameScriptRuntime::Impl {
             lua_getfield(state, entry_index, "state");
             if (lua_istable(state, -1)) {
                 const auto screen_state_index = lua_absindex(state, -1);
+                menu_route_state.posture_bar_selection =
+                    read_optional(screen_state_index,
+                                  "posture_bar_selection");
                 lua_getfield(state, screen_state_index, "title");
                 (void)read_string(state, -1, menu_route_state.top_title);
                 lua_pop(state, 1);
@@ -5067,6 +5070,12 @@ struct GameScriptRuntime::Impl {
                             .value_or(-1);
                     view.posture =
                         read_optional(view_index, "posture").value_or(0);
+                    view.force_bar_selection =
+                        read_optional(view_index, "force_bar_selection")
+                            .value_or(0);
+                    view.posture_bar_selection =
+                        read_optional(view_index, "posture_bar_selection")
+                            .value_or(0);
                     view.cursor_phase =
                         read_optional(view_index, "cursor_phase").value_or(0);
                     view.cursor_sat_phase =

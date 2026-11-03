@@ -133,6 +133,46 @@ namespace {
 // longest 0x62AC list has 10 frames (0x75E8) [C], so 16 is headroom [H].
 constexpr std::uint8_t kActorArtFrameScanLimit = 16U;
 
+void draw_meter_variant(QPainter& painter, const int x, const int y,
+                        const QImage& inactive, const QImage& selected,
+                        const bool is_selected) {
+    const auto& variant = is_selected ? selected : inactive;
+    if (!variant.isNull()) {
+        painter.drawImage(x, y, variant);
+    }
+}
+
+const QImage& command_posture_selected_marker() {
+    // ROM 0x11ABE selects the focused CF334 posture row. The independent
+    // GPGX crop shows this fixed 6x8 marker over the matching status-bar row;
+    // colors reuse that row's imported CRAM palette.
+    static const QImage marker = [] {
+        constexpr std::array<std::array<std::uint8_t, 6>, 8> kPixels{{
+            {{0, 0, 0, 0, 0, 0}},
+            {{0, 1, 1, 2, 2, 0}},
+            {{0, 3, 1, 1, 2, 0}},
+            {{0, 3, 1, 1, 2, 0}},
+            {{0, 3, 1, 1, 2, 0}},
+            {{0, 3, 1, 1, 2, 0}},
+            {{0, 3, 3, 1, 1, 0}},
+            {{0, 0, 0, 0, 0, 0}},
+        }};
+        const std::array<QColor, 4> palette{{
+            QColor(255, 219, 0), QColor(146, 146, 146),
+            QColor(255, 255, 255), QColor(73, 73, 73)}};
+        QImage image(6, 8, QImage::Format_ARGB32_Premultiplied);
+        for (int y = 0; y < image.height(); ++y) {
+            for (int x = 0; x < image.width(); ++x) {
+                image.setPixelColor(
+                    x, y, palette[kPixels[static_cast<std::size_t>(y)]
+                                         [static_cast<std::size_t>(x)]]);
+            }
+        }
+        return image;
+    }();
+    return marker;
+}
+
 scripting::ScriptFormationPosition formation_position_from_record_slot(
     const std::uint8_t source_slot) noexcept {
     // ROM 0x1451E/0x14522 branch on actor +0x3E values 0 and 1; remaining
@@ -9699,6 +9739,7 @@ void FieldSceneRuntime::configure_field_menu_route() {
         }
         menu_route_active_ = false;
         menu_route_screen_ = 0U;
+        menu_route_posture_bar_selection_.reset();
         restore_start_menu_duck();
         posture_dialog_active_ = false;
         command_overview_inventory_lua_route_active_ = false;
@@ -10272,6 +10313,7 @@ void FieldSceneRuntime::advance_field_menu_route() {
                 *route_state.selected_inventory_row));
     }
     menu_route_screen_ = route_state.top_screen;
+    menu_route_posture_bar_selection_ = route_state.posture_bar_selection;
     posture_dialog_active_ =
         route_state.open &&
         menu_route_screen_ == static_cast<std::uint16_t>(
@@ -15929,15 +15971,39 @@ void FieldSceneRuntime::paint_command_overview_posture_panel(
     const auto posture = std::min<std::size_t>(
         active_runner_record().posture,
         command_overview_status_bars_.size() - 1U);
-    // 0x11B1A writes the 8x1-cell strip at $CAAC (x=176 y=168); the extracted
-    // BMP is its trimmed 57x6 art, which starts 3 px right and 1 px down in
-    // that strip [C emulator e1 8640: best fit (179,169)].
+    // The host bar canvas places the trimmed status-bar asset (57x6) at
+    // x=3,y=1 in the source's 8x1-cell strip (x=176,y=168). 0x11ABE selects
+    // the CF334 row; the GPGX Neutral focus crop shows its selected 6x8
+    // marker at x=13 in this canvas, then one eight-pixel step per posture
+    // [C ROM 0x119CE/0x11ABE/0x11AE4; emulator crop fixture].
+    constexpr std::array<int, 5> kPostureMarkerX{{13, 21, 29, 37, 45}};
+    QImage posture_bar_inactive(
+        QSize(64, 8), QImage::Format_ARGB32_Premultiplied);
+    posture_bar_inactive.fill(Qt::transparent);
+    {
+        QPainter bar_painter(&posture_bar_inactive);
+        bar_painter.drawImage(3, 1,
+                              command_overview_status_bars_[posture]);
+    }
+    auto posture_bar_selected = posture_bar_inactive.copy();
+    {
+        QPainter selected_painter(&posture_bar_selected);
+        selected_painter.drawImage(kPostureMarkerX[posture], 0,
+                                   command_posture_selected_marker());
+    }
+    const auto posture_bar_is_selected = menu_route_active_
+        ? menu_route_posture_bar_selection_.value_or(
+              static_cast<int>(srx::v(srx::MeterSelection::INACTIVE))) ==
+              static_cast<int>(srx::v(srx::MeterSelection::SELECTED))
+        : posture_dialog_active_;
     // The inventory detail refresh also empties the bar fill for its hold:
     // e6 8740-8746, 8780-8787, 8820-8826 show only the frame [C emulator].
     // The fill returns with the ring on the MOVE frame (8788) [C emulator].
     if (!command_overview_inventory_detail_pending_ ||
         !command_overview_inventory_cursor_hidden_) {
-        painter.drawImage(179, 169, command_overview_status_bars_[posture]);
+        draw_meter_variant(painter, 176, 168, posture_bar_inactive,
+                           posture_bar_selected,
+                           posture_bar_is_selected);
     }
     draw_command_overview_text(
         painter,
@@ -16544,11 +16610,13 @@ void FieldSceneRuntime::paint_command_overview_magic(
     const auto posture = std::min<std::size_t>(
         static_cast<std::size_t>(posture_value),
         command_overview_magic_posture_bars_.size() - 1U);
-    auto posture_bar = command_overview_magic_posture_bars_[posture].copy();
+    const auto posture_bar_selected =
+        command_overview_magic_posture_bars_[posture].copy();
+    auto posture_bar_inactive = posture_bar_selected.copy();
     QRect marker_pixels;
-    for (int y = 0; y < posture_bar.height(); ++y) {
-        for (int x = 0; x < posture_bar.width(); ++x) {
-            const auto color = posture_bar.pixelColor(x, y);
+    for (int y = 0; y < posture_bar_inactive.height(); ++y) {
+        for (int x = 0; x < posture_bar_inactive.width(); ++x) {
+            const auto color = posture_bar_inactive.pixelColor(x, y);
             if (color.alpha() > 0 && color.red() > 0 &&
                 color.red() == color.green() &&
                 color.green() == color.blue()) {
@@ -16558,24 +16626,33 @@ void FieldSceneRuntime::paint_command_overview_magic(
     }
     if (!marker_pixels.isNull()) {
         const auto halo = marker_pixels.adjusted(-1, -1, 1, 1);
-        // ROM 0x107CE selects the C8600 posture row. e6 9060/9265/9400 show
-        // the gray marker without the asset's pale one-pixel halo [C].
+        // ROM 0x107CE selects a C8600 row whose pale perimeter is visible
+        // while the posture bar is selected (GPGX posture_active crop). Keep
+        // an unselected copy without that perimeter for the spell/Force page.
         for (int y = halo.top(); y <= halo.bottom(); ++y) {
             for (int x = halo.left(); x <= halo.right(); ++x) {
                 const auto on_halo =
                     x == halo.left() || x == halo.right() ||
                     y == halo.top() || y == halo.bottom();
                 if (on_halo && x >= 0 && y >= 0 &&
-                    x < posture_bar.width() && y < posture_bar.height()) {
-                    posture_bar.setPixelColor(x, y, QColor(0, 0, 0, 0));
+                    x < posture_bar_inactive.width() &&
+                    y < posture_bar_inactive.height()) {
+                    posture_bar_inactive.setPixelColor(
+                        x, y, QColor(0, 0, 0, 0));
                 }
             }
         }
     }
-    painter.drawImage(
+    const auto posture_bar_is_selected = lua_view != nullptr
+        ? lua_view->posture_bar_selection == static_cast<int>(
+              srx::v(srx::MeterSelection::SELECTED))
+        : magic_posture_selection_open();
+    draw_meter_variant(
+        painter,
         lua_view != nullptr ? lua_view->posture_bar_x : 160,
         lua_view != nullptr ? lua_view->posture_bar_y : 136,
-        posture_bar);
+        posture_bar_inactive, posture_bar_selected,
+        posture_bar_is_selected);
     if (posture < field_menu_text_.status_names.size()) {
         draw_field_menu_font_text(
             painter,
@@ -16603,12 +16680,21 @@ void FieldSceneRuntime::paint_command_overview_magic(
     }
     // 0x1232 with d7=1 copies two consecutive words from A2: C85A8/C85AA
     // during the force loop, C85AC/C85AE afterwards [C ROM 0x101B4].
-    const auto marker = magic_force_selection_open() ? 3U : 4U;
-    painter.drawImage(force_tile_x(current_force), 112,
-                      command_overview_magic_force_meter_tiles_[marker]);
-    painter.drawImage(force_tile_x(static_cast<std::uint16_t>(
-                          current_force + 1U)), 112,
-                      command_overview_magic_force_meter_tiles_[marker + 2U]);
+    const auto force_bar_is_selected = lua_view != nullptr
+        ? lua_view->force_bar_selection == static_cast<int>(
+              srx::v(srx::MeterSelection::SELECTED))
+        : magic_force_selection_open();
+    draw_meter_variant(
+        painter, force_tile_x(current_force), 112,
+        command_overview_magic_force_meter_tiles_[4],
+        command_overview_magic_force_meter_tiles_[3],
+        force_bar_is_selected);
+    draw_meter_variant(
+        painter,
+        force_tile_x(static_cast<std::uint16_t>(current_force + 1U)), 112,
+        command_overview_magic_force_meter_tiles_[6],
+        command_overview_magic_force_meter_tiles_[5],
+        force_bar_is_selected);
     for (std::uint16_t index = 0U;
          index < maximum_force - current_force; ++index) {
         painter.drawImage(

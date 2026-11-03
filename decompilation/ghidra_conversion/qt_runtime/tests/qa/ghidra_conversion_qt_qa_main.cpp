@@ -40,6 +40,33 @@ namespace {
 using NumericVisualAlignment =
     shadowrun::ghidra_conversion::qt_runtime::NumericVisualAlignment;
 
+bool image_matches_emulator_reference(const QImage& actual,
+                                      const QImage& reference,
+                                      const int channel_tolerance) {
+    if (actual.isNull() || reference.isNull() ||
+        actual.size() != reference.size() || channel_tolerance < 0) {
+        return false;
+    }
+    const auto actual_rgb = actual.convertToFormat(QImage::Format_RGB32);
+    const auto reference_rgb =
+        reference.convertToFormat(QImage::Format_RGB32);
+    for (int y = 0; y < actual_rgb.height(); ++y) {
+        for (int x = 0; x < actual_rgb.width(); ++x) {
+            const auto actual_color = actual_rgb.pixelColor(x, y);
+            const auto reference_color = reference_rgb.pixelColor(x, y);
+            if (std::abs(actual_color.red() - reference_color.red()) >
+                    channel_tolerance ||
+                std::abs(actual_color.green() - reference_color.green()) >
+                    channel_tolerance ||
+                std::abs(actual_color.blue() - reference_color.blue()) >
+                    channel_tolerance) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 bool source_menu_caption_matches(const QImage& scene, const QImage& font,
                                 const int origin_x, const int origin_y,
                                 const std::string_view text,
@@ -52856,6 +52883,12 @@ int main(int argc, char** argv) {
                          (std::string(name) + ".bmp"))
                             .wstring()));
                 };
+                const auto posture_reference = QImage(
+                    QString::fromStdWString(
+                        (asset_root.parent_path() / "ghidra_conversion" /
+                         "qt_runtime" / "tests" / "qa" / "fixtures" /
+                         "gpgx_us_magic_posture_selected.png")
+                            .wstring()));
                 const auto direct_asset = [&asset_root](
                     const std::string& relative_path) {
                     return QImage(QString::fromStdWString(
@@ -53464,10 +53497,30 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 press_field_port(0x02U); // Down enters posture adjustment.
+                const auto selected_posture_scene = render_scene();
+                const auto magic_route_state =
+                    field_scene.field_menu_route_snapshot_for_dump();
+                const auto magic_posture_selection_is_authoritative =
+                    magic_route_state.magic_view.has_value() &&
+                    magic_route_state.magic_view->posture_bar_selection ==
+                        static_cast<int>(
+                            srx::v(srx::MeterSelection::SELECTED));
+                const auto selected_posture_bar_matches =
+                    posture_reference.size() == QSize(64, 8) &&
+                    image_matches_emulator_reference(
+                        selected_posture_scene.copy(160, 136, 64, 8),
+                        posture_reference, 20);
                 if (!field_scene.magic_posture_selection_open() ||
-                    !save_scene("posture_selection", render_scene())) {
+                    !magic_posture_selection_is_authoritative ||
+                    !selected_posture_bar_matches ||
+                    !save_scene("posture_selection",
+                                selected_posture_scene)) {
                     std::cerr << "field Magic spell dump: Down did not "
-                                 "enter the posture loop\n";
+                                 "enter the posture loop with the selected "
+                                 "Lua-selected ROM posture outline (state="
+                              << magic_posture_selection_is_authoritative
+                              << ", pixels=" << selected_posture_bar_matches
+                              << ")\n";
                     return 3;
                 }
                 press_field_port(0x08U); // Right raises posture.
@@ -61982,9 +62035,17 @@ int main(int argc, char** argv) {
                     }
                     for (int y = 0; y < first.height(); ++y) {
                         for (int x = 0; x < first.width(); ++x) {
-                            const bool focus_row = x >= 120 && x < 168 &&
-                                                   y >= 168 && y < 176;
-                            if (!focus_row &&
+                            const bool posture_focus_label =
+                                x >= 120 && x < 168 &&
+                                y >= 168 && y < 176;
+                            // ROM 0x119CE/0x11ABE adds the selected 6x8
+                            // marker over the status bar; the GPGX Neutral
+                            // focus crop locates it at x=205..210 [C].
+                            const bool selected_bar_marker =
+                                x >= 205 && x < 211 &&
+                                y >= 168 && y < 176;
+                            if (!posture_focus_label &&
+                                !selected_bar_marker &&
                                 first.pixel(x, y) != second.pixel(x, y)) {
                                 return false;
                             }
@@ -61996,6 +62057,12 @@ int main(int argc, char** argv) {
                     QString::fromStdWString(
                         (asset_root / "menu" / "field" /
                          "posture-focus.bmp")
+                            .wstring()));
+                const auto command_posture_reference = QImage(
+                    QString::fromStdWString(
+                        (asset_root.parent_path() / "ghidra_conversion" /
+                         "qt_runtime" / "tests" / "qa" / "fixtures" /
+                         "gpgx_us_command_posture_selected.png")
                             .wstring()));
                 if (posture_focus_asset.size() != QSize(48, 8)) {
                     return posture_failure(
@@ -62129,17 +62196,39 @@ int main(int argc, char** argv) {
                     const auto focus_asset_matches =
                         region_matches_asset(focused, posture_focus_asset,
                                              120, 168);
+                    const auto command_route_state =
+                        field_scene.field_menu_route_snapshot_for_dump();
+                    const auto command_posture_selection_is_authoritative =
+                        page != 2U ||
+                        (command_route_state.posture_bar_selection.has_value() &&
+                         *command_route_state.posture_bar_selection ==
+                             static_cast<int>(
+                                 srx::v(srx::MeterSelection::SELECTED)));
+                    // Independent headless GPGX US ROM capture: 0x119CE
+                    // selects the posture bar and 0x11ABE/0x11AE4 draw its
+                    // CF334 row and selected marker at the active posture.
+                    const auto command_posture_bar_matches =
+                        page != 2U ||
+                        (command_posture_reference.size() == QSize(64, 8) &&
+                         image_matches_emulator_reference(
+                             focused.copy(176, 168, 64, 8),
+                             command_posture_reference, 20));
                     const auto page_outside_focus_matches =
                         same_outside_focus_row(page_base, focused);
+                    const auto focused_combat_bars_match =
+                        combat_bar_assets_match(focused, initial_combat_bars);
+                    const auto focused_status_row_changed =
+                        image_region_differs(page_base, focused, 176, 168,
+                                             64, 8);
                     if (!field_scene.posture_dialog_open() ||
                         field_scene.command_overview_primary_page() != page ||
                         field_scene.posture_dialog_value() != baseline_posture ||
                         !field_audio_events.empty() ||
                         !focus_asset_matches ||
-                        !combat_bar_assets_match(focused,
-                                                 initial_combat_bars) ||
-                        image_region_differs(page_base, focused, 176, 168,
-                                             64, 8) ||
+                        !command_posture_selection_is_authoritative ||
+                        !command_posture_bar_matches ||
+                        !focused_combat_bars_match ||
+                        !focused_status_row_changed ||
                         !page_outside_focus_matches ||
                         !focused_frame_saved) {
                         std::cerr << "field posture page="
@@ -62156,6 +62245,14 @@ int main(int argc, char** argv) {
                                   << static_cast<unsigned>(baseline_posture)
                                   << " audio=" << field_audio_events.size()
                                   << " focus_asset=" << focus_asset_matches
+                                  << " lua_selection="
+                                  << command_posture_selection_is_authoritative
+                                  << " source_bar="
+                                  << command_posture_bar_matches
+                                  << " combat_bars="
+                                  << focused_combat_bars_match
+                                  << " status_changed="
+                                  << focused_status_row_changed
                                   << " outside_focus="
                                   << page_outside_focus_matches
                                   << " saved=" << focused_frame_saved << '\n';

@@ -2368,6 +2368,7 @@ private:
     GameSaveStore game_save_store_{};
     bool menu_route_active_ = false;
     std::uint16_t menu_route_screen_ = 0U;
+    std::optional<int> menu_route_posture_bar_selection_;
     std::optional<scripting::ScriptMenuRouteSnapshot::MagicView>
         menu_route_magic_view_;
     std::optional<scripting::ScriptShopDefinition> field_shop_definition_;

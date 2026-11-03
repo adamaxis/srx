@@ -781,6 +781,7 @@ struct ScriptMenuRouteSnapshot {
     ScriptFieldReturnTransitionPhase field_return_transition_phase =
         ScriptFieldReturnTransitionPhase::none;
     std::uint16_t top_screen = 0U;
+    std::optional<int> posture_bar_selection;
     std::string top_title;
     std::string top_text;
     std::string top_footer_text;
@@ -920,6 +921,8 @@ struct ScriptMenuRouteSnapshot {
         int mana_defense_value = 0;
         int mana_defense_row = -1;
         int posture = 0;
+        int force_bar_selection = 0;
+        int posture_bar_selection = 0;
         int cursor_phase = 0;
         // Phase whose SAT list is on screen: 0xFDFE builds FFD986 and only
         // requests the upload (FFD980), so the slot ring lags F0DB by one
