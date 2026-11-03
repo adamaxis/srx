@@ -9,6 +9,7 @@
 #include <QColor>
 #include <QPainter>
 
+#include "genesis_image_compositor.hpp"
 #include "shadowrun_ghidra/field/field_action_progression_purchase_conversion.hpp"
 #include "numeric_visual_renderer.hpp"
 
@@ -227,15 +228,12 @@ FieldActionCostContext field_shop_cost_context(
 // 0xDB, so the tint is pre-scaled to land on levels (1,6,1).
 QColor cram_text_tint(const std::uint16_t cram) {
     constexpr int kGlyphCoverage = 0xDB;
-    const auto level = [](const int cram_nibble) {
-        return ((cram_nibble >> 1) * 255 + 3) / 7;
-    };
     const auto scale = [&](const int value) {
         return std::min(255, (value * 255 + kGlyphCoverage / 2) / kGlyphCoverage);
     };
-    return QColor(scale(level(cram & 0xF)),
-                  scale(level((cram >> 4) & 0xF)),
-                  scale(level((cram >> 8) & 0xF)));
+    const auto color = genesis_cram_word_to_color(cram);
+    return QColor(scale(color.red()), scale(color.green()),
+                  scale(color.blue()));
 }
 
 QColor command_overview_text_tint() {

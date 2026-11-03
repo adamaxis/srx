@@ -276,8 +276,12 @@ bool FieldVdpMirror::rebuild(const ConversionAssetCatalog& catalog,
     const auto map = field_map.convertToFormat(QImage::Format_ARGB32);
     const auto overlay =
         priority_overlay.convertToFormat(QImage::Format_ARGB32);
-    const auto primary = primary_raw.convertToFormat(QImage::Format_ARGB32);
-    const auto secondary = secondary_raw.convertToFormat(QImage::Format_ARGB32);
+    const auto primary =
+        convert_legacy_expanded_genesis_image_to_gpgx_rgb565(primary_raw)
+            .convertToFormat(QImage::Format_ARGB32);
+    const auto secondary =
+        convert_legacy_expanded_genesis_image_to_gpgx_rgb565(secondary_raw)
+            .convertToFormat(QImage::Format_ARGB32);
 
     std::set<ColorSet> unique_sets;
     if (!collect_tile_color_sets(primary, unique_sets) ||

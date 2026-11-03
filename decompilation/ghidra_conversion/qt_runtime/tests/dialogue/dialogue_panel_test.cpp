@@ -457,7 +457,8 @@ int main(const int argc, char** argv) {
             }
         }
         for (int x = 16; x < 312; ++x) {
-            if (guard_image.pixelColor(x, 223) != QColor(146, 146, 146)) {
+            // CRAM grey level 4 is GPGX RGB565-expanded (139,137,139).
+            if (guard_image.pixelColor(x, 223) != QColor(139, 137, 139)) {
                 std::cerr << "bottom ROM frame border is missing at x=" << x
                           << '\n';
                 return 34;

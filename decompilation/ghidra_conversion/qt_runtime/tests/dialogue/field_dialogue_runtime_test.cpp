@@ -1,4 +1,5 @@
 #include "field_dialogue_runtime.hpp"
+#include "genesis_image_compositor.hpp"
 
 #include "shadowrun_ghidra/core/asset_catalog_conversion.hpp"
 
@@ -84,10 +85,13 @@ bool matches_region(const QImage& image, const QImage& reference,
 
 bool matches_overlay(const QImage& image, const QImage& overlay,
                      const int x, const int y) {
-    for (int row = 0; row < overlay.height(); ++row) {
-        for (int column = 0; column < overlay.width(); ++column) {
+    const auto gpgx_overlay =
+        shadowrun::ghidra_conversion::qt_runtime::
+            convert_legacy_expanded_genesis_image_to_gpgx_rgb565(overlay);
+    for (int row = 0; row < gpgx_overlay.height(); ++row) {
+        for (int column = 0; column < gpgx_overlay.width(); ++column) {
             const auto actual = image.pixelColor(x + column, y + row);
-            const auto source = overlay.pixelColor(column, row);
+            const auto source = gpgx_overlay.pixelColor(column, row);
             const auto alpha = source.alpha();
             const auto composite_on_black = [alpha](const int component) {
                 return (component * alpha + 127) / 255;

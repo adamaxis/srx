@@ -1989,6 +1989,13 @@ private:
             // Extracted sprites carry their baked color-zero alpha through
             // the V4 BMP alpha mask; no black-pixel wipe is applied.
             image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+            // Startup text samples this atlas as a coverage mask. Other
+            // individual RGBA assets were baked with the old 3-bit expansion
+            // and are mapped to GPGX's RGB565 output when cached.
+            if (alias != "menu.startup.font") {
+                image = convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                    image);
+            }
             draw_asset_cache_.emplace(
                 alias, std::move(image));
         }
@@ -2342,9 +2349,8 @@ private:
         // The source tile stream in 0x5B378 presents a fine orange focus box.
         // Drawing whole tile-width bars turned it into a thick white frame.
         constexpr int kLine = 1;
-        // CRAM levels (7,5,0) [C: emulator pixel 238,170,0], expanded with
-        // the same 3-bit rule as the rest of the host palette.
-        const QColor outline(0xFF, 0xB6, 0x00);
+        // CRAM word 0x00AE = (7,5,0) [C: emulator pixel 238,170,0].
+        const auto outline = genesis_cram_word_to_color(0x00AEU);
         if (width <= 0 || height <= 0) {
             return;
         }
@@ -2410,8 +2416,10 @@ private:
 
     static QImage recolor_opening_landed_rotor(
         const QImage& source, const std::uint8_t palette_phase) {
-        constexpr QRgb kPaletteEntry18 = qRgb(0, 0, 73);
-        constexpr QRgb kPaletteEntry19 = qRgb(0, 0, 36);
+        const auto kPaletteEntry18 =
+            genesis_cram_word_to_color(0x0400U).rgb();
+        const auto kPaletteEntry19 =
+            genesis_cram_word_to_color(0x0200U).rgb();
         constexpr QRgb kBlack = qRgb(0, 0, 0);
         QRgb entry18 = kPaletteEntry18;
         QRgb entry19 = kPaletteEntry19;
@@ -2887,16 +2895,15 @@ private:
         // ROM text CRAM word 0x02C2 = (R1, G6, B1) in every startup and
         // opening scene [C: emulator FFD87E entries 27/11/59, pixels
         // 32,206,32]. The font mask stores level 6 as 219, which
-        // draw_startup_text turns into alpha, so tint with the level
-        // expansion scaled by 255/219 to land on the CRAM level.
-        constexpr std::uint16_t kStartupTextCramWord = 0x02C2U;
-        const auto channel = [](const unsigned shift) {
-            const auto level = (kStartupTextCramWord >> (shift + 1U)) & 7U;
-            const auto expanded = (level << 5U) | (level << 2U) | (level >> 1U);
-            return static_cast<int>(
-                std::min(255U, (expanded * 255U + 109U) / 219U));
+        // draw_startup_text turns into alpha, so compensate the tint by that
+        // coverage before compositing.
+        const auto source_color = genesis_cram_word_to_color(0x02C2U);
+        const auto compensate = [](const int channel) {
+            return std::min(255, (channel * 255 + 109) / 219);
         };
-        return QColor(channel(0U), channel(4U), channel(8U));
+        return QColor(compensate(source_color.red()),
+                      compensate(source_color.green()),
+                      compensate(source_color.blue()));
     }
 
     void draw_startup_text(QPainter& painter, const int x, const int y,

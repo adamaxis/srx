@@ -12,6 +12,12 @@ namespace shadowrun::ghidra_conversion::qt_runtime {
 // consume indexed 4bpp patterns rather than already-colored source images.
 QColor genesis_cram_word_to_color(std::uint16_t color_word);
 
+// The checked-in image assets were expanded with bit replication before the
+// host adopted GPGX's RGB565 output mapping. Convert those legacy RGB pixels
+// when loading them; alpha and non-Genesis colors are preserved.
+QImage convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+    const QImage& image);
+
 // Replace each visible pixel with one expanded 12-bit Genesis CRAM color.
 // This is used only while an intro palette bank has all fifteen nonzero
 // entries set to the same color; source color-zero transparency is retained.

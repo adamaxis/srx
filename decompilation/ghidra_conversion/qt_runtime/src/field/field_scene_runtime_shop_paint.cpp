@@ -847,9 +847,11 @@ void FieldSceneRuntime::draw_hotel_menu_text(
     QPainter& painter, const int x, const int y,
     const std::string_view text,
     const HotelMenuPaletteLine palette_line) const {
-    const auto& font = palette_line == HotelMenuPaletteLine::checkout
-                           ? hotel_checkout_font_
-                           : command_overview_font_;
+    const auto& source_font = palette_line == HotelMenuPaletteLine::checkout
+                                  ? hotel_checkout_font_
+                                  : command_overview_font_;
+    const auto font = convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+        source_font);
     if (font.isNull() || font.width() < 8 || font.height() < 8) {
         return;
     }

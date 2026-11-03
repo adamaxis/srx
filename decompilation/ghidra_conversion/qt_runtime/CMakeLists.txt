@@ -2430,6 +2430,7 @@ add_executable(shadowrun_ghidra_dialogue_panel_test
     tests/dialogue/dialogue_panel_test.cpp
     src/dialogue/dialogue_panel.cpp
     src/dialogue/dialogue_panel_presenter.cpp
+    src/rendering/genesis_image_compositor.cpp
 )
 set_target_properties(shadowrun_ghidra_dialogue_panel_test PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
@@ -2497,6 +2498,7 @@ add_executable(shadowrun_ghidra_field_mode_text_runtime_test
     src/field/field_mode_text_runtime.cpp
     src/dialogue/dialogue_panel_presenter.cpp
     src/dialogue/dialogue_panel.cpp
+    src/rendering/genesis_image_compositor.cpp
 )
 target_include_directories(shadowrun_ghidra_field_mode_text_runtime_test
     PRIVATE ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS})
@@ -2518,6 +2520,7 @@ add_executable(shadowrun_ghidra_field_interaction_runtime_test
     src/field/field_interaction_runtime.cpp
     src/dialogue/dialogue_panel_presenter.cpp
     src/dialogue/dialogue_panel.cpp
+    src/rendering/genesis_image_compositor.cpp
 )
 target_include_directories(shadowrun_ghidra_field_interaction_runtime_test
     PRIVATE ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS})

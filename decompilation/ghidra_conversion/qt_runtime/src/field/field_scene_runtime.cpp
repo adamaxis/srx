@@ -158,8 +158,10 @@ const QImage& command_posture_selected_marker() {
             {{0, 0, 0, 0, 0, 0}},
         }};
         const std::array<QColor, 4> palette{{
-            QColor(255, 219, 0), QColor(146, 146, 146),
-            QColor(255, 255, 255), QColor(73, 73, 73)}};
+            genesis_cram_word_to_color(0x00CEU),
+            genesis_cram_word_to_color(0x0888U),
+            genesis_cram_word_to_color(0x0EEEU),
+            genesis_cram_word_to_color(0x0444U)}};
         QImage image(6, 8, QImage::Format_ARGB32_Premultiplied);
         for (int y = 0; y < image.height(); ++y) {
             for (int x = 0; x < image.width(); ++x) {
@@ -18845,7 +18847,7 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         constexpr int kOutlineHeight = 20;
         // Emulator e6 8701/8748 ring pixels are 238,206,0 = Genesis levels
         // R7 G6 B0 [C emulator].
-        const QColor selector_color(255, 219, 0);
+        const auto selector_color = genesis_cram_word_to_color(0x00CEU);
         painter.fillRect(x, y, kOutlineWidth, 1, selector_color);
         painter.fillRect(x, y + kOutlineHeight - 1,
                          kOutlineWidth, 1, selector_color);

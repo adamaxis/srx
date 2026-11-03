@@ -88,6 +88,11 @@ int main() {
                         VdpNameTableEntry{false, 0U, false, false, 2U}.encode());
 
     QImage composed;
+    // These CRAM fixtures exercise GPGX's normal palette path:
+    // `pixel_lut[1] = MAKE_PIXEL(r<<1,g<<1,b<<1)` in
+    // Genesis-Plus-GX/core/vdp_render.c. Source channel level 7 therefore
+    // expands to 238 in RGB565 output; the authored sprite colors below
+    // bypass CRAM and retain their explicit RGB values.
     model.compose(
         composed,
         [](QPainter& painter) {
@@ -100,15 +105,15 @@ int main() {
                 "compose must produce the H40 320x224 field surface") ||
         !expect(composed.pixelColor(1, 1) == QColor(0, 0, 255),
                 "low sprites must cover low-priority B and A") ||
-        !expect(composed.pixelColor(9, 1) == QColor(255, 255, 0),
+        !expect(composed.pixelColor(9, 1) == QColor(238, 238, 0),
                 "high-priority B must cover low-priority A") ||
-        !expect(composed.pixelColor(17, 1) == QColor(255, 0, 255),
+        !expect(composed.pixelColor(17, 1) == QColor(238, 0, 238),
                 "high-priority A must cover high-priority B") ||
-        !expect(composed.pixelColor(25, 1) == QColor(0, 255, 255),
+        !expect(composed.pixelColor(25, 1) == QColor(0, 238, 238),
                 "window plane must follow both high-priority map passes") ||
         !expect(composed.pixelColor(33, 1) == QColor(255, 255, 255),
                 "high sprites must follow the window plane") ||
-        !expect(composed.pixelColor(41, 1) == QColor(0, 255, 0),
+        !expect(composed.pixelColor(41, 1) == QColor(0, 238, 0),
                 "equal-priority A must follow B") ||
         !expect(composed.pixelColor(49, 1) == QColor(0, 0, 0),
                 "transparent color zero must reveal the backdrop")) {
@@ -133,9 +138,9 @@ int main() {
     }
     QImage scrolled;
     scroll_model.compose(scrolled);
-    if (!expect(scrolled.pixelColor(0, 0) == QColor(0, 255, 0),
+    if (!expect(scrolled.pixelColor(0, 0) == QColor(0, 238, 0),
                 "plane B must use the direct FFDD0E vertical scroll input") ||
-        !expect(scrolled.pixelColor(8, 0) == QColor(0, 0, 255),
+        !expect(scrolled.pixelColor(8, 0) == QColor(0, 0, 238),
                 "plane A must keep its independent zero vertical scroll")) {
         return 1;
     }
@@ -145,7 +150,7 @@ int main() {
     scroll_model.set_scroll({});
     QImage latched;
     scroll_model.compose(latched, {}, {}, &latched_frame);
-    if (!expect(latched.pixelColor(0, 0) == QColor(0, 255, 0),
+    if (!expect(latched.pixelColor(0, 0) == QColor(0, 238, 0),
                 "compose must use the supplied VBlank-latched scroll frame")) {
         return 1;
     }

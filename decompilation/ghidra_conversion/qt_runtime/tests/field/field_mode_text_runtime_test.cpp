@@ -7,8 +7,10 @@
 #include <QImage>
 #include <QPainter>
 
+#include <algorithm>
 #include <cstdint>
 #include <filesystem>
+#include <iostream>
 #include <string_view>
 
 namespace {
@@ -50,8 +52,13 @@ bool region_has_gray_frame_pixels(const QImage& image, const int x, const int y,
     for (int row = y; row < y + height; ++row) {
         for (int column = x; column < x + width; ++column) {
             const auto pixel = image.pixelColor(column, row);
-            if (pixel.red() == pixel.green() &&
-                pixel.green() == pixel.blue() && pixel.red() > 32 &&
+            const auto maximum =
+                std::max({pixel.red(), pixel.green(), pixel.blue()});
+            const auto minimum =
+                std::min({pixel.red(), pixel.green(), pixel.blue()});
+            // GPGX expands the same 4-bit source gray through 5:6:5
+            // channels, yielding red/blue 139 and green 137 at level 4.
+            if (maximum - minimum <= 2 && pixel.red() > 32 &&
                 pixel.red() < 224) {
                 return true;
             }
@@ -115,6 +122,17 @@ int main() {
                                 QColor(0, 0, 0))) ||
         // Longplay 002/f_0540.jpg shows this gray bottom frame edge.
         !expect(region_has_gray_frame_pixels(image, 16, 216, 296, 8))) {
+        std::cerr << "field mode text screenshot: green="
+                  << has_green_ink(image, 88, 16, 216, 120)
+                  << " blank_portrait="
+                  << region_is_color(image, 16, 32, 56, 72,
+                                     QColor(0, 0, 0))
+                  << " black_lower="
+                  << region_is_color(image, 16, 152, 296, 64,
+                                     QColor(0, 0, 0))
+                  << " gray_frame="
+                  << region_has_gray_frame_pixels(image, 16, 216, 296, 8)
+                  << '\n';
         return 6;
     }
 

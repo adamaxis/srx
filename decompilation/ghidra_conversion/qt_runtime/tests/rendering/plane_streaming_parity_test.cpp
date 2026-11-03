@@ -285,17 +285,22 @@ bool compare_scene(const int scene_id,
                    const std::filesystem::path& asset_root,
                    const std::vector<std::uint8_t>& rom) {
     const auto stem = "mode-" + std::to_string(scene_id);
-    const auto map = QImage(QString::fromStdString(
-        (asset_root / "field/maps" / (stem + ".bmp")).string()));
-    const auto overlay = QImage(QString::fromStdString(
-        (asset_root / "field/maps" /
-         (stem + "-priority-overlay.png")).string()));
-    const auto primary = QImage(QString::fromStdString(
-        (asset_root / "field/maps" /
-         (stem + "-primary-plane.png")).string()));
-    const auto secondary = QImage(QString::fromStdString(
-        (asset_root / "field/maps" /
-         (stem + "-secondary-plane.png")).string()));
+    const auto map = convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+        QImage(QString::fromStdString(
+            (asset_root / "field/maps" / (stem + ".bmp")).string())));
+    const auto overlay = convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+        QImage(QString::fromStdString(
+            (asset_root / "field/maps" /
+             (stem + "-priority-overlay.png")).string())));
+    const auto primary = convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+        QImage(QString::fromStdString(
+            (asset_root / "field/maps" /
+             (stem + "-primary-plane.png")).string())));
+    const auto secondary =
+        convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+            QImage(QString::fromStdString(
+                (asset_root / "field/maps" /
+                 (stem + "-secondary-plane.png")).string())));
     const auto palette_offset = palette_offset_for_scene(asset_root, scene_id);
     if (map.isNull() || overlay.isNull() || primary.isNull() ||
         secondary.isNull() || !palette_offset.has_value() ||

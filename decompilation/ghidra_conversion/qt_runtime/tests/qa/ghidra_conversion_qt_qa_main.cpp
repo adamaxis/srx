@@ -202,13 +202,16 @@ bool image_region_contains_asset_ink(const QImage& scene,
                                      const QImage& asset,
                                      const int origin_x,
                                      const int origin_y) {
-    if (asset.isNull() || origin_x < 0 || origin_y < 0 ||
-        origin_x + asset.width() > scene.width() ||
-        origin_y + asset.height() > scene.height()) {
+    const auto normalized_asset =
+        convert_legacy_expanded_genesis_image_to_gpgx_rgb565(asset);
+    if (normalized_asset.isNull() || origin_x < 0 || origin_y < 0 ||
+        origin_x + normalized_asset.width() > scene.width() ||
+        origin_y + normalized_asset.height() > scene.height()) {
         return false;
     }
     const auto scene_rgb = scene.convertToFormat(QImage::Format_RGB32);
-    const auto asset_rgb = asset.convertToFormat(QImage::Format_RGB32);
+    const auto asset_rgb =
+        normalized_asset.convertToFormat(QImage::Format_RGB32);
     std::size_t visible_asset_pixels = 0U;
     for (int y = 0; y < asset_rgb.height(); ++y) {
         for (int x = 0; x < asset_rgb.width(); ++x) {
@@ -229,7 +232,7 @@ bool image_region_contains_asset_ink(const QImage& scene,
 bool source_menu_caption_matches(const QImage& scene, const QImage& font,
                                 const int origin_x, const int origin_y,
                                 const std::string_view text,
-                                const QColor tint = QColor(42, 255, 42)) {
+                                const QColor tint = QColor(37, 240, 37)) {
     if (font.isNull() || font.width() < 8 || font.height() < 8 ||
         origin_x < 0 || origin_y < 0 ||
         origin_x + static_cast<int>(text.size() * 8U) > scene.width() ||
@@ -276,9 +279,10 @@ bool source_menu_caption_matches(const QImage& scene, const QImage& font,
                     (static_cast<std::uint32_t>(source_pixel.alpha()) *
                      static_cast<std::uint32_t>(coverage)) /
                     255U);
-                // Command text is CRAM 0x02C2 = levels (1,6,1) (emulator
-                // run5 FFD8F4); the presenter pre-scales the tint for the
-                // atlas' 0xDB coverage, so the reference does the same.
+                // Command text is CRAM 0x02C2 = levels (1,6,1), measured as
+                // RGB565 (32,206,32) in GPGX run5 FFD8F4. The presenter
+                // pre-scales the tint for the atlas' 0xDB coverage, so the
+                // reference does the same.
                 tinted_glyph.setPixelColor(
                     glyph_x, glyph_y,
                     QColor(tint.red(), tint.green(), tint.blue(), alpha));
@@ -324,6 +328,11 @@ bool source_menu_direct_asset_text_matches(
     QImage expected(static_cast<int>(text.size() * 8U), 8,
                     QImage::Format_ARGB32_Premultiplied);
     expected.fill(Qt::black);
+    const auto gpgx_font =
+        convert_legacy_expanded_genesis_image_to_gpgx_rgb565(font);
+    if (gpgx_font.isNull()) {
+        return false;
+    }
     QPainter painter(&expected);
     auto cursor_x = 0;
     auto cursor_y = 0;
@@ -340,11 +349,13 @@ bool source_menu_direct_asset_text_matches(
         const auto glyph = static_cast<int>(code - 0x20U);
         const auto source_x = (glyph % 16) * 8;
         const auto source_y = (glyph / 16) * 8;
-        if (source_x + 8 > font.width() || source_y + 8 > font.height()) {
+        if (source_x + 8 > gpgx_font.width() ||
+            source_y + 8 > gpgx_font.height()) {
             painter.end();
             return false;
         }
-        painter.drawImage(cursor_x, cursor_y, font, source_x, source_y, 8, 8);
+        painter.drawImage(cursor_x, cursor_y, gpgx_font, source_x, source_y,
+                          8, 8);
         cursor_x += 8;
     }
     painter.end();
@@ -365,10 +376,13 @@ bool numeric_visual_patch_matches(
     const int origin_y, const std::uint32_t value,
     const std::optional<QColor> tint,
     const NumericVisualAlignment alignment = NumericVisualAlignment::left) {
+    const auto gpgx_font = tint.has_value()
+        ? font
+        : convert_legacy_expanded_genesis_image_to_gpgx_rgb565(font);
     const auto visual =
         shadowrun::ghidra_conversion::qt_runtime::render_numeric_visual(
-            font, value, false, tint);
-    if (visual.isNull()) {
+            gpgx_font, value, false, tint);
+    if (gpgx_font.isNull() || visual.isNull()) {
         return false;
     }
     const int left = alignment == NumericVisualAlignment::right
@@ -439,7 +453,7 @@ bool numeric_visual_change_matches(
             return false;
         }
         const int background_numerator =
-            reference_pixel * 255 - reference_source * reference_alpha;
+            reference_pixel * 255 - reference_source * reference_alpha - 127;
         const int background = std::clamp(
             (background_numerator + remaining_reference_alpha / 2) /
                 remaining_reference_alpha,
@@ -1980,8 +1994,10 @@ int run_field_ganger_walk_facing_qa(
             if (asset == nullptr) {
                 return false;
             }
-            QImage expected(QString::fromStdWString(
-                asset->absolute_path.wstring()));
+            QImage expected =
+                convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                    QImage(QString::fromStdWString(
+                        asset->absolute_path.wstring())));
             if (expected.isNull()) {
                 return false;
             }
@@ -17781,7 +17797,7 @@ int run_field_elevator_physical_entry_qa(
         opening.copy(selected_floor_label_region) ==
             current_one_selected_two.copy(selected_floor_label_region) ||
         !image_region_has_color(current_one_selected_two, 220, 88, 40, 48,
-                                QColor(255, 219, 0))) {
+                                QColor(238, 206, 0))) {
         std::cerr << "Elevator physical-entry QA: selection changed the "
                      "current-floor label or left the selected-floor label "
                      "unchanged\n";
@@ -17865,9 +17881,9 @@ int run_field_elevator_physical_entry_qa(
         current_two_selected_three_rest ==
             current_two_selected_three_feedback_active ||
         !image_region_has_color(current_two_selected_three_rest, 220, 24, 40,
-                                40, QColor(255, 219, 0)) ||
+                                40, QColor(238, 206, 0)) ||
         !image_region_has_color(current_two_selected_three_rest, 220, 88, 40,
-                                48, QColor(255, 219, 0))) {
+                                48, QColor(238, 206, 0))) {
         std::cerr << "Elevator physical-entry QA: current and selected floor "
                      "digits were not both visible over resting arrows\n";
         return 3;
@@ -18644,7 +18660,7 @@ int run_field_elevator_group_route_qa(
         selector_open.copy(selected_floor_label_region) ==
             first_selected_floor.copy(selected_floor_label_region) ||
         !image_region_has_color(first_selected_floor, 220, 88, 40, 48,
-                                QColor(255, 219, 0))) {
+                                QColor(238, 206, 0))) {
         std::cerr << "Elevator group route QA: navigation changed the current "
                      "floor label or failed to show the selected floor\n";
         return 3;
@@ -18723,7 +18739,7 @@ int run_field_elevator_group_route_qa(
             if (lift_image.copy(current_floor_label_region) ==
                     previous_lift_image.copy(current_floor_label_region) ||
                 !image_region_has_color(lift_image, 220, 24, 40, 40,
-                                        QColor(255, 219, 0)) ||
+                                        QColor(238, 206, 0)) ||
                 lift_image.copy(selected_floor_label_region) !=
                     selected_floor.copy(selected_floor_label_region)) {
                 std::cerr << "Elevator group route QA: floor stop did not "
@@ -19207,7 +19223,7 @@ int run_field_elevator_floor_group_roundtrip_qa(
         if (selector.isNull() || selector == parent_field ||
             !field_hud_chrome_survives(selector, asset_root) ||
             !image_region_has_color(selector, 220, 88, 40, 48,
-                                    QColor(255, 219, 0))) {
+                                    QColor(238, 206, 0))) {
             return QImage{};
         }
         return selector;
@@ -31126,7 +31142,7 @@ int run_field_tarislar_city_inn_qa(
                     !image_has_green_ink(hotel_options, 88, 72, 160, 8) ||
                     !image_has_green_ink(hotel_options, 88, 88, 160, 8) ||
                     !image_region_has_color(hotel_options, 88, 72, 160, 8,
-                                            QColor(36, 219, 36)) ||
+                                            QColor(32, 206, 32)) ||
                     image_has_green_ink(hotel_options, 32, 40, 240, 8) ||
                     !hotel_options.save(QString::fromStdWString(
                         (output / "hotel-options.bmp").wstring())) ||
@@ -31485,7 +31501,7 @@ int run_field_wylie_gala_inn_qa(
         !image_has_green_ink(hotel_options, 88, 72, 160, 8) ||
         !image_has_green_ink(hotel_options, 88, 88, 160, 8) ||
         !image_region_has_color(hotel_options, 88, 72, 160, 8,
-                                QColor(36, 219, 36)) ||
+                                QColor(32, 206, 32)) ||
         image_has_green_ink(hotel_options, 32, 40, 240, 8) ||
         !hotel_options.save(QString::fromStdWString(
             (output / "hotel-options.bmp").wstring()))) {
@@ -35280,9 +35296,11 @@ int run_field_spirit_eyes_physical_entry_qa(
         "salish.spirit_eyes.page.post_ritual_name",
         "salish.spirit_eyes.page.post_ritual_brother",
         "salish.spirit_eyes.page.post_ritual_lust"}};
-    const QImage story_art(QString::fromStdWString(
-        (asset_root / "cinematics" /
-         "salish-spirit-eyes-ritual.bmp").wstring()));
+    const auto story_art =
+        convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+            QImage(QString::fromStdWString(
+                (asset_root / "cinematics" /
+                 "salish-spirit-eyes-ritual.bmp").wstring())));
     QImage previous_story_page;
     if (story_art.size() != QSize(kSceneWidth, kSceneHeight)) {
         std::cerr << "Spirit Eyes QA: source-derived ritual artwork is missing\n";
@@ -35860,9 +35878,11 @@ int run_field_sinsearach_gate_physical_entry_qa(
         "salish.sinsearach.page.harlequin_request",
         "salish.sinsearach.page.thon_presence",
         "salish.sinsearach.page.tarislar_apartments"}};
-    const QImage story_art(QString::fromStdWString(
-        (asset_root / "cinematics" /
-         "salish-sinsearach-frosty-harlequin.bmp").wstring()));
+    const auto story_art =
+        convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+            QImage(QString::fromStdWString(
+                (asset_root / "cinematics" /
+                 "salish-sinsearach-frosty-harlequin.bmp").wstring())));
     if (story_art.size() != QSize(kSceneWidth, kSceneHeight)) {
         std::cerr << "Sinsearach gate QA: named source exposition art is missing\n";
         return 3;
@@ -42685,10 +42705,13 @@ int main(int argc, char** argv) {
                 const auto icon_matches = [&asset_root, &actual_image](
                                               const int program,
                                               const int x) {
-                    const QImage icon(QString::fromStdString(
-                        (asset_root / "cyberspace" / "matrix" /
-                         ("program-icon-" + std::to_string(program) +
-                          ".bmp")).string()));
+                    const auto icon =
+                        convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                            QImage(QString::fromStdString(
+                                (asset_root / "cyberspace" / "matrix" /
+                                 ("program-icon-" +
+                                  std::to_string(program) + ".bmp"))
+                                    .string())));
                     if (icon.size() != QSize(24, 16) ||
                         actual_image.size() !=
                             QSize(kSceneWidth, kSceneHeight)) {
@@ -42773,15 +42796,21 @@ int main(int argc, char** argv) {
                 }
                 const auto analyze_action_image =
                     capture("matrix-analyze-action-phase-3");
-                const QImage analyze_rings(QString::fromStdString(
-                    (asset_root / "cyberspace" / "matrix" /
-                     "traversal-analyze-ring-phase-3.png").string()));
-                const QImage analyze_runner(QString::fromStdString(
-                    (asset_root / "cyberspace" / "matrix" /
-                     "traversal-runner-action-raised.png").string()));
-                const QImage analyze_idle_runner(QString::fromStdString(
-                    (asset_root / "cyberspace" / "matrix" /
-                     "traversal-runner-idle.png").string()));
+                const QImage analyze_rings =
+                    convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                        QImage(QString::fromStdString(
+                            (asset_root / "cyberspace" / "matrix" /
+                             "traversal-analyze-ring-phase-3.png").string())));
+                const QImage analyze_runner =
+                    convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                        QImage(QString::fromStdString(
+                            (asset_root / "cyberspace" / "matrix" /
+                             "traversal-runner-action-raised.png").string())));
+                const QImage analyze_idle_runner =
+                    convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                        QImage(QString::fromStdString(
+                            (asset_root / "cyberspace" / "matrix" /
+                             "traversal-runner-idle.png").string())));
                 const auto alpha_bounds = [](const QImage& image,
                                              const int first_x,
                                              const int last_x) {
@@ -43502,10 +43531,11 @@ int main(int argc, char** argv) {
                         ? "cyberdeck-background.bmp"
                         : "cyberdeck-background-phase-" +
                               std::to_string(phase) + ".bmp";
-                    cyberdeck_source_backgrounds[phase] = QImage(
-                        QString::fromStdString(
-                            (asset_root / "cyberspace" / "matrix" /
-                             filename).string()));
+                    cyberdeck_source_backgrounds[phase] =
+                        convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                            QImage(QString::fromStdString(
+                                (asset_root / "cyberspace" / "matrix" /
+                                 filename).string())));
                 }
                 const auto source_background_for_phase =
                     [&cyberdeck_source_backgrounds](const int phase)
@@ -43581,7 +43611,7 @@ int main(int argc, char** argv) {
                     cyberdeck_source_background.size() !=
                         QSize(kSceneWidth, kSceneHeight) ||
                     cyberdeck_source_background.pixelColor(6, 12) !=
-                        QColor(0, 73, 182) ||
+                        QColor(0, 68, 172) ||
                     !full_cyberdeck_frame(cyberdeck_image)) {
                     std::cerr << "Matrix CyberInfo QA: Cyberdeck image is "
                                  "using the wrong live palette, cropped, or "
@@ -43606,7 +43636,7 @@ int main(int argc, char** argv) {
                         for (int x = bounds.x();
                              x < bounds.x() + bounds.width(); ++x) {
                             if (image.pixelColor(x, y) ==
-                                QColor(36, 219, 36)) {
+                                QColor(32, 206, 32)) {
                                 return true;
                             }
                         }
@@ -43618,8 +43648,10 @@ int main(int argc, char** argv) {
                         const QImage& image,
                         const int x, const int y,
                         const std::filesystem::path& relative_asset) {
-                        const QImage source(QString::fromStdString(
-                            (asset_root / relative_asset).string()));
+                        const auto source =
+                            convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                                QImage(QString::fromStdString(
+                                    (asset_root / relative_asset).string())));
                         if (source.isNull() ||
                             image.size() != QSize(kSceneWidth, kSceneHeight) ||
                             x < 0 || y < 0 ||
@@ -44082,7 +44114,7 @@ int main(int argc, char** argv) {
                         for (int x = bounds.x();
                              x < bounds.x() + bounds.width(); ++x) {
                             if (cyber_info_image.pixelColor(x, y) ==
-                                QColor(36, 219, 36)) {
+                                QColor(32, 206, 32)) {
                                 return true;
                             }
                         }
@@ -44892,19 +44924,24 @@ int main(int argc, char** argv) {
                 const auto traversal_image = capture("matrix-traversal");
                 const auto floor_grid_reference_pixel =
                     traversal_image.pixelColor(15, 160);
-                const auto traversal_hud_asset = QImage(QString::fromStdString(
-                    (asset_root / "cyberspace" / "matrix" /
-                     "traversal-hud-frame.png").string()));
+                const auto traversal_hud_asset =
+                    convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                        QImage(QString::fromStdString(
+                            (asset_root / "cyberspace" / "matrix" /
+                             "traversal-hud-frame.png").string())));
                 const auto& traversal_view =
                     *traversal_route.top_matrix_traversal_view;
                 const auto model_id = static_cast<std::size_t>(
                     traversal_view.world_model_id);
-                const auto model_asset = QImage(QString::fromStdString(
-                    (asset_root / "cyberspace" / "matrix" /
-                     ("world-model-" + std::to_string(model_id) +
-                      "-security-color-" +
-                      std::to_string(traversal_view.palette_theme) + ".png"))
-                        .string()));
+                const auto model_asset =
+                    convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                        QImage(QString::fromStdString(
+                            (asset_root / "cyberspace" / "matrix" /
+                             ("world-model-" + std::to_string(model_id) +
+                              "-security-color-" +
+                              std::to_string(traversal_view.palette_theme) +
+                              ".png"))
+                                .string())));
                 const auto model_origin = model_id == 0U
                     ? QPoint(104, 48)
                     : QPoint(110, 28);
@@ -44939,9 +44976,9 @@ int main(int argc, char** argv) {
                     traversal_hud_asset.size() !=
                         QSize(kSceneWidth, kSceneHeight) ||
                     traversal_hud_asset.pixelColor(17, 39) !=
-                        QColor(36, 219, 36) ||
+                        QColor(32, 206, 32) ||
                     traversal_hud_asset.pixelColor(177, 39) !=
-                        QColor(36, 219, 36) ||
+                        QColor(32, 206, 32) ||
                     traversal_image.pixelColor(17, 39) !=
                         traversal_hud_asset.pixelColor(17, 39) ||
                     traversal_image.pixelColor(177, 39) !=
@@ -47575,10 +47612,13 @@ int main(int argc, char** argv) {
                 const auto ammo_counter_matches_for_slot =
                     [&](const QImage& image, const int rounds,
                         const std::size_t slot) {
-                    const auto counter = QImage(QString::fromStdWString(
-                        (asset_root / "field" / "hud" /
-                         ("ammo-counter-" + std::to_string(rounds) +
-                          ".bmp")).wstring()));
+                    const auto counter =
+                        convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                            QImage(QString::fromStdWString(
+                                (asset_root / "field" / "hud" /
+                                 ("ammo-counter-" +
+                                  std::to_string(rounds) + ".bmp"))
+                                    .wstring())));
                     const auto slot_vram = static_cast<std::uint16_t>(
                         kFieldHudAmmoVram +
                         static_cast<std::uint16_t>(slot) *
@@ -47606,10 +47646,14 @@ int main(int argc, char** argv) {
                                                              0U);
                     };
                 const auto weapon_glyph_matches = [&](const QImage& image) {
-                    const auto item = QImage(QString::fromStdWString(
-                        (asset_root / "field" / "hud" /
-                         ("item-" + std::to_string(runner.archetype_index) +
-                          ".bmp")).wstring()));
+                    const auto item =
+                        convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                            QImage(QString::fromStdWString(
+                                (asset_root / "field" / "hud" /
+                                 ("item-" +
+                                  std::to_string(runner.archetype_index) +
+                                  ".bmp"))
+                                    .wstring())));
                     const int x = field_hud_vram_x(kFieldHudItemVram);
                     const int y = field_hud_vram_y(kFieldHudItemVram);
                     if (item.isNull() || x < 0 || y < 0 ||
@@ -50184,7 +50228,7 @@ int main(int argc, char** argv) {
                     !image_has_green_ink(status, 32, 48, 240, 8) ||
                     !image_has_green_ink(status, 32, 80, 224, 8) ||
                     !image_region_has_color(status, 88, 40, 48, 8,
-                                            QColor(36, 219, 36)) ||
+                                            QColor(32, 206, 32)) ||
                     image_has_green_ink(status, 32, 40, 48, 8) ||
                     image_has_green_ink(status, 32, 56, 240, 24)) {
                     std::cerr << "field Hotel QA: status page text or full redraw is incorrect\n";
@@ -50253,7 +50297,7 @@ int main(int argc, char** argv) {
                     !image_has_green_ink(options_default, 88, 72, 160, 8) ||
                     !image_has_green_ink(options_default, 88, 88, 160, 8) ||
                     !image_region_has_color(options_default, 88, 72, 160, 8,
-                                            QColor(36, 219, 36)) ||
+                                            QColor(32, 206, 32)) ||
                     image_has_green_ink(options_default, 32, 40, 240, 8)) {
                     std::cerr << "field Hotel QA: options page is missing rows or retained the status page\n";
                     return 3;
@@ -50301,7 +50345,7 @@ int main(int argc, char** argv) {
                                            "actual.bmp");
                 if (karma_spend.isNull() ||
                     !image_region_has_color(karma_spend, 64, 200, 224, 8,
-                                            QColor(109, 73, 146)) ||
+                                            QColor(98, 68, 139)) ||
                     image_has_green_ink(karma_spend, 88, 72, 40, 16) ||
                     field_scene.active_runner_record().attributes !=
                         hotel_record_before_upgrade.attributes ||
@@ -50335,7 +50379,7 @@ int main(int argc, char** argv) {
                     output / "karma-spend" / "prompt-yes.bmp");
                 if (!image_region_has_color(karma_prompt_yes, 96, 168,
                                             120, 32,
-                                            QColor(109, 73, 146)) ||
+                                            QColor(98, 68, 139)) ||
                     image_has_green_ink(karma_prompt_yes, 24, 168, 72, 24) ||
                     image_region_differs(karma_spend, karma_prompt_yes,
                                          64, 200, 224, 8)) {
@@ -50505,7 +50549,7 @@ int main(int argc, char** argv) {
                                 "preview_status\tnext\tcost\tkarma\tframe\n";
                     // Menu text is CRAM 0x02C2 (levels 1,6,1), the same tint
                     // as source_menu_caption_matches() [C].
-                    const QColor kGreen(42, 255, 42);
+                    const QColor kGreen(37, 240, 37);
                     const auto color_tint =
                         std::optional<QColor>(kGreen);
                     const auto expected_preview = [&rom_bytes](
@@ -50765,7 +50809,7 @@ int main(int argc, char** argv) {
                                 // ROM 0xD046 base grid CRAM 0x0060; 0xD1DC
                                 // shows Essence +0x7E/+0x8E and Magic +0x7F;
                                 // 0xC1AD8 sub-skills carry a leading space.
-                                const QColor kBaseGrid(0, 127, 0);
+                                const QColor kBaseGrid(0, 118, 0);
                                 const auto base_tint =
                                     std::optional<QColor>(kBaseGrid);
                                 const auto label_indent =
@@ -51246,7 +51290,7 @@ int main(int argc, char** argv) {
                                 restricted.isNull() ||
                                 !image_region_has_color(
                                     restricted, 72, 176, 160, 16,
-                                    QColor(109, 73, 146))) {
+                                    QColor(98, 68, 139))) {
                                 return profile_failure(
                                     "Samurai/Decker Sorcery did not show Mage Only without mutation");
                             }
@@ -51346,7 +51390,7 @@ int main(int argc, char** argv) {
                             insufficient_frame.isNull() ||
                             !image_region_has_color(
                                 insufficient_frame, 72, 176, 160, 16,
-                                QColor(109, 73, 146))) {
+                                QColor(98, 68, 139))) {
                             return profile_failure(
                                 "the insufficient-Karma path did not preserve +0x77/+0x8D and display its message");
                         }
@@ -51802,7 +51846,7 @@ int main(int argc, char** argv) {
                     !image_region_differs(options_default, options_checkout,
                                           72, 72, 8, 24) ||
                     !image_region_has_color(options_checkout, 72, 88, 8, 8,
-                                            QColor(36, 219, 36))) {
+                                            QColor(32, 206, 32))) {
                     std::cerr << "field Hotel QA: source's 8x8 selection arrow did not move between options\n";
                     return 3;
                 }
@@ -51817,15 +51861,15 @@ int main(int argc, char** argv) {
                     capture(output / "checkout-no" / "actual.bmp");
                 if (checkout_no.isNull() ||
                     !image_region_has_color(checkout_no, 80, 72, 160, 16,
-                                            QColor(36, 219, 36)) ||
+                                            QColor(32, 206, 32)) ||
                     !image_region_has_color(checkout_no, 128, 96, 64, 8,
-                                            QColor(36, 219, 36)) ||
+                                            QColor(32, 206, 32)) ||
                     !image_region_has_color(checkout_no, 128, 112, 64, 8,
-                                            QColor(36, 219, 36)) ||
+                                            QColor(32, 206, 32)) ||
                     !image_region_has_color(checkout_no, 104, 112, 8, 8,
-                                            QColor(36, 219, 36)) ||
+                                            QColor(32, 206, 32)) ||
                     image_region_has_color(checkout_no, 104, 104, 8, 8,
-                                            QColor(36, 219, 36)) ||
+                                            QColor(32, 206, 32)) ||
                     image_has_green_ink(checkout_no, 72, 48, 160, 8)) {
                     std::cerr << "field Hotel QA: checkout text or old options clear is incorrect\n";
                     return 3;
@@ -51862,9 +51906,9 @@ int main(int argc, char** argv) {
                 if (options_after_no.isNull() ||
                     image_has_green_ink(options_after_no, 80, 96, 160, 32) ||
                     image_region_has_color(options_after_no, 80, 72, 160, 48,
-                                           QColor(109, 73, 146)) ||
+                                           QColor(98, 68, 139)) ||
                     image_region_has_color(options_after_no, 104, 96, 8, 24,
-                                           QColor(109, 73, 146))) {
+                                           QColor(98, 68, 139))) {
                     std::cerr << "field Hotel QA: No left checkout text under the Hotel options\n";
                     return 3;
                 }
@@ -51885,9 +51929,9 @@ int main(int argc, char** argv) {
                     capture(output / "checkout-yes" / "actual.bmp");
                 if (checkout_yes.isNull() ||
                     !image_region_has_color(checkout_yes, 104, 96, 8, 8,
-                                            QColor(36, 219, 36)) ||
+                                            QColor(32, 206, 32)) ||
                     image_region_has_color(checkout_yes, 104, 112, 8, 8,
-                                            QColor(36, 219, 36)) ||
+                                            QColor(32, 206, 32)) ||
                     !image_region_differs(checkout_no, checkout_yes,
                                           104, 96, 8, 24)) {
                     std::cerr << "field Hotel QA: checkout cursor did not move from No to Yes\n";
@@ -52574,10 +52618,10 @@ int main(int argc, char** argv) {
                                           16) ||
                     !image_region_has_color(
                         universal_clips, 128, 32, 24, 16,
-                        QColor(146, 146, 146)) ||
+                        QColor(139, 137, 139)) ||
                     !image_region_has_color(
                         universal_clips, 128, 32, 24, 16,
-                        QColor(255, 0, 0)) ||
+                        QColor(238, 0, 0)) ||
                     !image_has_green_ink(universal_clips, 24, 56, 224, 64) ||
                     !image_has_green_ink(universal_clips, 104, 144, 64, 16) ||
                     // The ROM-derived description places the currency glyph
@@ -53339,21 +53383,32 @@ int main(int argc, char** argv) {
                             .wstring()));
                 const auto direct_asset = [&asset_root](
                     const std::string& relative_path) {
-                    return QImage(QString::fromStdWString(
+                    const QImage source(QString::fromStdWString(
                         (asset_root / relative_path).wstring()));
+                    // font.bmp is a glyph coverage mask; all palette art and
+                    // named icon assets use the shared display conversion.
+                    return relative_path == "menu/field/font.bmp"
+                        ? source
+                        : convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                              source);
                 };
                 const auto region_matches = image_region_matches_rgb32_asset;
                 const auto visible_asset_pixels_match = [](
                     const QImage& scene, const QImage& asset,
                     const int origin_x, const int origin_y) {
-                    if (asset.isNull() || origin_x < 0 || origin_y < 0 ||
-                        origin_x + asset.width() > scene.width() ||
-                        origin_y + asset.height() > scene.height()) {
+                    const auto normalized_asset =
+                        convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                            asset);
+                    if (normalized_asset.isNull() || origin_x < 0 ||
+                        origin_y < 0 ||
+                        origin_x + normalized_asset.width() > scene.width() ||
+                        origin_y + normalized_asset.height() > scene.height()) {
                         return false;
                     }
-                    for (int y = 0; y < asset.height(); ++y) {
-                        for (int x = 0; x < asset.width(); ++x) {
-                            const auto expected = asset.pixelColor(x, y);
+                    for (int y = 0; y < normalized_asset.height(); ++y) {
+                        for (int x = 0; x < normalized_asset.width(); ++x) {
+                            const auto expected =
+                                normalized_asset.pixelColor(x, y);
                             if (expected.alpha() == 0) {
                                 continue;
                             }
@@ -53957,7 +54012,7 @@ int main(int argc, char** argv) {
                     posture_reference.size() == QSize(64, 8) &&
                     image_matches_emulator_reference(
                         selected_posture_scene.copy(160, 136, 64, 8),
-                        posture_reference, 20);
+                        posture_reference, 0);
                 if (!field_scene.magic_posture_selection_open() ||
                     !magic_posture_selection_is_authoritative ||
                     !selected_posture_bar_matches ||
@@ -55599,8 +55654,11 @@ int main(int argc, char** argv) {
                               << taxi_has_sidebar_pixels << ")\n";
                     return 3;
                 }
-                const auto cab_map = QImage(QString::fromStdWString(
-                    (asset_root / "intro" / "cab-map.bmp").wstring()));
+                const auto cab_map =
+                    convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                        QImage(QString::fromStdWString(
+                            (asset_root / "intro" / "cab-map.bmp")
+                                .wstring())));
                 if (cab_map.isNull() || cab_map.size() != QSize(208, 136)) {
                     std::cerr << "field taxi dump: direct ROM cab map asset "
                                  "is unavailable\n";
@@ -55631,10 +55689,13 @@ int main(int argc, char** argv) {
                 }};
                 for (std::size_t tile_index = 0U;
                      tile_index < kFinalCursorTiles.size(); ++tile_index) {
-                    const auto tile = QImage(QString::fromStdWString(
-                        (asset_root / "intro" / "cab" /
-                         std::string(kFinalCursorTiles[tile_index][1]))
-                            .wstring()));
+                    const auto tile =
+                        convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                            QImage(QString::fromStdWString(
+                                (asset_root / "intro" / "cab" /
+                                 std::string(
+                                     kFinalCursorTiles[tile_index][1]))
+                                    .wstring())));
                     if (tile.isNull() || tile.size() != QSize(8, 8)) {
                         std::cerr << "field taxi dump: final outline tile is "
                                      "missing or the wrong size\n";
@@ -55845,10 +55906,12 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 const auto fare_offer = capture_field_scene();
-                const auto taxi_portrait = QImage(QString::fromStdWString(
-                    (asset_root / "dialogue" / "portraits" /
-                     "taxi-cabbie.bmp")
-                        .wstring()));
+                const auto taxi_portrait =
+                    convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                        QImage(QString::fromStdWString(
+                            (asset_root / "dialogue" / "portraits" /
+                             "taxi-cabbie.bmp")
+                                .wstring())));
                 std::size_t matched_taxi_portrait_pixels = 0U;
                 bool taxi_portrait_matches =
                     !fare_offer.isNull() &&
@@ -56524,10 +56587,12 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 field_audio_events.clear();
-                const QImage attributes_background(QString::fromStdWString(
-                    (asset_root / "menu" / "field" /
-                     "attributes-background.bmp")
-                        .wstring()));
+                const auto attributes_background =
+                    convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                        QImage(QString::fromStdWString(
+                            (asset_root / "menu" / "field" /
+                             "attributes-background.bmp")
+                                .wstring())));
                 const auto initial_scene = capture_scene();
                 const auto actual_saved = save_scene("actual", initial_scene);
                 bool background_region_matches =
@@ -56560,9 +56625,9 @@ int main(int argc, char** argv) {
                 // Command text is CRAM 0x02C2 = levels (1,6,1) (emulator run5
                 // FFD8F4); the earlier (0,219,0) was the host's pure green.
                 if (!image_region_has_color(initial_scene, 120, 160, 40, 8,
-                                            QColor(36, 219, 36)) ||
+                                            QColor(32, 206, 32)) ||
                     image_region_has_color(initial_scene, 64, 200, 224, 8,
-                                           QColor(109, 73, 146))) {
+                                           QColor(98, 68, 139))) {
                     std::cerr << "field Attributes/Skills dump: command "
                                  "view did not show its current Karma total "
                                  "or leaked Hotel upgrade costs\n";
@@ -56615,7 +56680,7 @@ int main(int argc, char** argv) {
 
                 // ROM 0xD03C: focused row = CRAM 0x02C2 (bright green)
                 // [C emulator e2 8844].
-                const QColor kSelectedKarmaText(36, 219, 36);
+                const QColor kSelectedKarmaText(32, 206, 32);
                 int captured_cell_count = 0;
                 for (std::uint8_t column = 0U; column < 2U; ++column) {
                     if (column == 1U) {
@@ -57256,8 +57321,10 @@ int main(int argc, char** argv) {
                         if (resource == nullptr) {
                             return false;
                         }
-                        QImage expected(QString::fromStdWString(
-                            resource->absolute_path.wstring()));
+                        QImage expected =
+                            convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                                QImage(QString::fromStdWString(
+                                    resource->absolute_path.wstring())));
                         if (expected.isNull() || expected.width() != 32 ||
                             expected.height() != 32) {
                             return false;
@@ -59622,6 +59689,9 @@ int main(int argc, char** argv) {
                 const auto magic_force_value_pixels_match =
                     [&magic_force_font](const QImage& scene,
                                         const std::uint8_t force) {
+                        const auto gpgx_font =
+                            convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                                magic_force_font);
                         const auto text = std::to_string(force);
                         auto cursor_x = 216;
                         constexpr int kCursorY = 104;
@@ -59633,8 +59703,9 @@ int main(int argc, char** argv) {
                                 static_cast<int>(code - 0x20U);
                             const auto source_x = (glyph % 16) * 8;
                             const auto source_y = (glyph / 16) * 8;
-                            if (source_x + 8 > magic_force_font.width() ||
-                                source_y + 8 > magic_force_font.height() ||
+                            if (gpgx_font.isNull() ||
+                                source_x + 8 > gpgx_font.width() ||
+                                source_y + 8 > gpgx_font.height() ||
                                 cursor_x + 8 > scene.width() ||
                                 kCursorY + 8 > scene.height()) {
                                 return false;
@@ -59642,7 +59713,7 @@ int main(int argc, char** argv) {
                             for (int y = 0; y < 8; ++y) {
                                 for (int x = 0; x < 8; ++x) {
                                     const auto expected =
-                                        magic_force_font.pixelColor(
+                                        gpgx_font.pixelColor(
                                             source_x + x, source_y + y);
                                     if (expected.alpha() == 0) {
                                         continue;
@@ -59682,14 +59753,17 @@ int main(int argc, char** argv) {
                             return source_menu_caption_matches(
                                 scene, menu_font, 168, 80, "None");
                         }
-                        const auto width = mana_storm_damage_bar.width();
-                        const auto height = mana_storm_damage_bar.height();
+                        const auto gpgx_bar =
+                            convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                                mana_storm_damage_bar);
+                        const auto width = gpgx_bar.width();
+                        const auto height = gpgx_bar.height();
                         return width > 0 && height > 0 &&
                                168 + width <= scene.width() &&
                                80 + height <= scene.height() &&
                                scene.copy(168, 80, width, height)
                                        .convertToFormat(QImage::Format_RGB32) ==
-                                   mana_storm_damage_bar.convertToFormat(
+                                   gpgx_bar.convertToFormat(
                                        QImage::Format_RGB32);
                     };
                 const auto region_matches_bar_asset =
@@ -59703,15 +59777,19 @@ int main(int argc, char** argv) {
                                                  const int x, const int y) {
                             const QImage asset(QString::fromStdWString(
                                 path.wstring()));
-                            if (asset.size() != QSize(104, 8) ||
-                                x + asset.width() > scene.width() ||
-                                y + asset.height() > scene.height()) {
+                            const auto gpgx_asset =
+                                convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                                    asset);
+                            if (gpgx_asset.size() != QSize(104, 8) ||
+                                x + gpgx_asset.width() > scene.width() ||
+                                y + gpgx_asset.height() > scene.height()) {
                                 return false;
                             }
-                            return scene.copy(x, y, asset.width(),
-                                              asset.height())
+                            return scene.copy(x, y, gpgx_asset.width(),
+                                              gpgx_asset.height())
                                        .convertToFormat(QImage::Format_RGB32) ==
-                                   asset.convertToFormat(QImage::Format_RGB32);
+                                   gpgx_asset.convertToFormat(
+                                       QImage::Format_RGB32);
                         };
                         const auto menu_root = asset_root / "menu" / "field";
                         const auto attack_path = bars.attack_bar >= 23U
@@ -59732,14 +59810,18 @@ int main(int argc, char** argv) {
                 const auto region_matches_asset = [](
                     const QImage& scene, const QImage& asset, const int x,
                     const int y) {
-                    if (asset.isNull() || x < 0 || y < 0 ||
-                        x + asset.width() > scene.width() ||
-                        y + asset.height() > scene.height()) {
+                    const auto gpgx_asset =
+                        convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                            asset);
+                    if (gpgx_asset.isNull() || x < 0 || y < 0 ||
+                        x + gpgx_asset.width() > scene.width() ||
+                        y + gpgx_asset.height() > scene.height()) {
                         return false;
                     }
-                    return scene.copy(x, y, asset.width(), asset.height())
+                    return scene.copy(x, y, gpgx_asset.width(),
+                                      gpgx_asset.height())
                                .convertToFormat(QImage::Format_RGB32) ==
-                           asset.convertToFormat(QImage::Format_RGB32);
+                           gpgx_asset.convertToFormat(QImage::Format_RGB32);
                 };
                 const auto active_hud_ammo_pixels_match =
                     [&asset_root, &field_scene, &region_matches_asset](
@@ -59856,7 +59938,7 @@ int main(int argc, char** argv) {
                     const auto y = 120 +
                                    static_cast<int>((slot / 2U) * 24U) - 4;
                     const auto pixel = scene.pixelColor(x, y);
-                    const QColor equipped_marker(109, 109, 109);
+                    const QColor equipped_marker(98, 101, 98);
                     // Empty inventory cells can retain a black backing pixel
                     // after a controlled item is inserted. The source marker
                     // assertion is whether the equipped highlight is present,
@@ -62221,8 +62303,8 @@ int main(int argc, char** argv) {
                 };
                 // ROM 0xD03C/0xD046: focus CRAM 0x02C2, base grid 0x0060
                 // [C emulator e2 8844].
-                const QColor kSelectedText(36, 219, 36);
-                const QColor kBaseGridTint(0, 127, 0);
+                const QColor kSelectedText(32, 206, 32);
+                const QColor kBaseGridTint(0, 118, 0);
                 std::size_t profile_frames = 0U;
 
                 for (std::size_t profile_index = 0U;
@@ -62577,16 +62659,19 @@ int main(int argc, char** argv) {
                                                        const QImage& asset,
                                                        const int x,
                                                        const int y) {
-                    if (asset.isNull() || x < 0 || y < 0 ||
-                        x + asset.width() > scene.width() ||
-                        y + asset.height() > scene.height()) {
+                    const auto gpgx_asset =
+                        convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                            asset);
+                    if (gpgx_asset.isNull() || x < 0 || y < 0 ||
+                        x + gpgx_asset.width() > scene.width() ||
+                        y + gpgx_asset.height() > scene.height()) {
                         return false;
                     }
                     const auto actual = scene.copy(
-                        x, y, asset.width(), asset.height())
+                        x, y, gpgx_asset.width(), gpgx_asset.height())
                                             .convertToFormat(
                                                 QImage::Format_RGB32);
-                    const auto expected = asset.convertToFormat(
+                    const auto expected = gpgx_asset.convertToFormat(
                         QImage::Format_RGB32);
                     return actual == expected;
                 };
@@ -62851,7 +62936,7 @@ int main(int argc, char** argv) {
                         (command_posture_reference.size() == QSize(64, 8) &&
                          image_matches_emulator_reference(
                              focused.copy(176, 168, 64, 8),
-                             command_posture_reference, 20));
+                             command_posture_reference, 0));
                     const auto page_outside_focus_matches =
                         same_outside_focus_row(page_base, focused);
                     const auto focused_combat_bars_match =
@@ -63423,16 +63508,20 @@ int main(int argc, char** argv) {
                                                       const int x,
                                                       const int y,
                                                       const QImage& expected) {
-                    if (expected.isNull() || x < 0 || y < 0 ||
-                        x + expected.width() > scene.width() ||
-                        y + expected.height() > scene.height()) {
+                    const auto normalized_expected =
+                        convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                            expected);
+                    if (normalized_expected.isNull() || x < 0 || y < 0 ||
+                        x + normalized_expected.width() > scene.width() ||
+                        y + normalized_expected.height() > scene.height()) {
                         return false;
                     }
-                    for (int row = 0; row < expected.height(); ++row) {
-                        for (int column = 0; column < expected.width();
-                             ++column) {
+                    for (int row = 0;
+                         row < normalized_expected.height(); ++row) {
+                        for (int column = 0;
+                             column < normalized_expected.width(); ++column) {
                             if (scene.pixel(x + column, y + row) !=
-                                expected.pixel(column, row)) {
+                                normalized_expected.pixel(column, row)) {
                                 return false;
                             }
                         }
@@ -63586,8 +63675,9 @@ int main(int argc, char** argv) {
                         "-offset-" +
                         std::to_string(record.hud_portrait_table_offset) +
                         "-palette-" + std::to_string(palette_line) + ".bmp";
-                    return QImage(QString::fromStdWString(
-                        (asset_root / "menu" / "field" / filename).wstring()));
+                    return convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                        QImage(QString::fromStdWString(
+                            (asset_root / "menu" / "field" / filename).wstring())));
                 };
                 const auto full_recipient_preview =
                     runner_preview_asset(full_recipient);
@@ -63626,10 +63716,12 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 const auto full_scene = render_scene();
-                const QImage confirmation_background(QString::fromStdWString(
-                    (asset_root / "menu" / "field" /
-                     "action-confirm-background.bmp")
-                        .wstring()));
+                const auto confirmation_background =
+                    convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                        QImage(QString::fromStdWString(
+                            (asset_root / "menu" / "field" /
+                             "action-confirm-background.bmp")
+                                .wstring())));
                 const QImage no_focus(QString::fromStdWString(
                     (asset_root / "menu" / "field" /
                      "action-confirm-focus-1.bmp")
@@ -63870,10 +63962,13 @@ int main(int argc, char** argv) {
                 };
                 const auto region_has_green_ink = image_region_has_dominant_green_ink;
                 const auto target_face_matches = [&](const QImage& scene) {
-                    const QImage face(QString::fromStdWString(
-                        (asset_root / "field" / "hud" /
-                         ("face-" + std::to_string(field_archetype) + ".bmp"))
-                            .wstring()));
+                    const auto face =
+                        convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                            QImage(QString::fromStdWString(
+                                (asset_root / "field" / "hud" /
+                                 ("face-" + std::to_string(field_archetype) +
+                                  ".bmp"))
+                                    .wstring())));
                     if (face.isNull() || face.size() != QSize(32, 32)) {
                         return false;
                     }
@@ -65405,8 +65500,14 @@ int main(int argc, char** argv) {
                     return true;
                 };
                 const auto direct_asset = [&](const std::string& name) {
-                    return QImage(QString::fromStdWString(
+                    const auto image = QImage(QString::fromStdWString(
                         (asset_root / "menu" / "field" / name).wstring()));
+                    // The shared field font is sampled for glyph coverage;
+                    // all other direct images are expected at display RGB.
+                    return name == "font.bmp"
+                        ? image
+                        : convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                              image);
                 };
                 const auto armor_summary_bars_match =
                     [&](const QImage& scene, const std::uint8_t armor_index) {
@@ -65450,9 +65551,11 @@ int main(int argc, char** argv) {
                     const QImage& scene, const std::uint8_t rounds) {
                     const auto asset_name = "ammo-counter-" +
                                             std::to_string(rounds) + ".bmp";
-                    const auto counter = QImage(QString::fromStdWString(
+                    const auto counter =
+                        convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                            QImage(QString::fromStdWString(
                         (asset_root / "field" / "hud" / asset_name)
-                            .wstring()));
+                            .wstring())));
                     return region_matches(
                         scene, counter,
                         field_hud_vram_x(kFieldHudAmmoVram),
@@ -65465,17 +65568,19 @@ int main(int argc, char** argv) {
                         : std::to_string(code);
                     const auto name = "item-" + number + "-" +
                                       std::to_string(palette) + ".bmp";
-                    return QImage(QString::fromStdWString(
+                    return convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                        QImage(QString::fromStdWString(
                         (asset_root / "items" / "weapons" / "icons" /
-                         name).wstring()));
+                         name).wstring())));
                 };
                 const auto direct_armor_icon = [&](const std::uint8_t code,
                                                    const std::uint8_t palette) {
                     const auto name = "item-" + std::to_string(code) + "-" +
                                       std::to_string(palette) + ".bmp";
-                    return QImage(QString::fromStdWString(
+                    return convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                        QImage(QString::fromStdWString(
                         (asset_root / "items" / "armor" / "icons" /
-                         name).wstring()));
+                         name).wstring())));
                 };
                 const auto direct_miscellaneous_icon =
                     [&](const std::uint8_t code,
@@ -65483,9 +65588,10 @@ int main(int argc, char** argv) {
                         const auto name = "item-" + std::to_string(code) +
                                           "-" + std::to_string(palette) +
                                           ".bmp";
-                        return QImage(QString::fromStdWString(
+                        return convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                            QImage(QString::fromStdWString(
                             (asset_root / "items" / "miscellaneous" /
-                             "icons" / name).wstring()));
+                             "icons" / name).wstring())));
                     };
                 const auto item_icon_palette = [](
                     const RunnerRecordFields& runner) {
@@ -65657,7 +65763,7 @@ int main(int argc, char** argv) {
                     [](const QImage& scene, const QImage& reference) {
                     constexpr QRect kMainAmmoDigits(120, 56, 16, 8);
                     constexpr QRect kPortraitAmmoDigits(272, 72, 16, 8);
-                    constexpr int kPaletteConversionTolerance = 12;
+                    constexpr int kPaletteConversionTolerance = 0;
                     const auto region_matches = [&](const QRect& region) {
                         for (int y = region.top(); y <= region.bottom(); ++y) {
                             for (int x = region.left(); x <= region.right();
@@ -65830,23 +65936,42 @@ int main(int argc, char** argv) {
                 }
                 const auto action_open_scene = render_scene();
                 const auto weapon_one_equipped_icon = direct_weapon_icon(1U, 1U);
-                if (!region_matches(action_open_scene, focus_equip, 136, 184) ||
-                    !source_menu_caption_matches(
-                        action_open_scene, direct_asset("font.bmp"), 112,
-                        200, "  Equip/Unequip  ") ||
-                    !field_inventory_selector_survives(action_open_scene, 0U,
-                                                       0U) ||
-                    !weapon_damage_row_matches(action_open_scene, 1U) ||
-                    !ammo_counter_matches(action_open_scene, 3U) ||
-                    !icon_interior_matches(action_open_scene,
-                                           weapon_one_equipped_icon, 16, 120) ||
-                    action_open_scene.pixelColor(11, 116) !=
-                        QColor(109, 109, 109) ||
-                    !save_scene("00_inventory_action_equip",
-                                action_open_scene)) {
+                const auto action_focus_matches = region_matches(
+                    action_open_scene, focus_equip, 136, 184);
+                const auto action_caption_matches = source_menu_caption_matches(
+                    action_open_scene, direct_asset("font.bmp"), 112,
+                    200, "  Equip/Unequip  ");
+                const auto action_selector_matches =
+                    field_inventory_selector_survives(action_open_scene, 0U,
+                                                      0U);
+                const auto action_damage_matches =
+                    weapon_damage_row_matches(action_open_scene, 1U);
+                const auto action_ammo_matches =
+                    ammo_counter_matches(action_open_scene, 3U);
+                const auto action_icon_matches = icon_interior_matches(
+                    action_open_scene, weapon_one_equipped_icon, 16, 120);
+                const auto action_cell_pixel =
+                    action_open_scene.pixelColor(11, 116);
+                const auto action_dump_saved = save_scene(
+                    "00_inventory_action_equip", action_open_scene);
+                if (!action_focus_matches || !action_caption_matches ||
+                    !action_selector_matches || !action_damage_matches ||
+                    !action_ammo_matches || !action_icon_matches ||
+                    action_cell_pixel != QColor(98, 101, 98) ||
+                    !action_dump_saved) {
                     std::cerr << "field action dump: could not write open "
                                  "scene, action focus, equipped icon, cell "
-                                 "treatment, or item selector is misplaced\n";
+                                 "treatment, or item selector is misplaced"
+                              << " (focus=" << action_focus_matches
+                              << ", caption=" << action_caption_matches
+                              << ", selector=" << action_selector_matches
+                              << ", damage=" << action_damage_matches
+                              << ", ammo=" << action_ammo_matches
+                              << ", icon=" << action_icon_matches
+                              << ", cell=" << action_cell_pixel.red() << ','
+                              << action_cell_pixel.green() << ','
+                              << action_cell_pixel.blue()
+                              << ", saved=" << action_dump_saved << ")\n";
                     return 3;
                 }
 
@@ -66007,7 +66132,7 @@ int main(int argc, char** argv) {
                     unequipped_scene, weapon_one_unequipped_icon, 16, 120);
                 const auto unequipped_cell_treatment_ok =
                     unequipped_scene.pixelColor(11, 116) ==
-                    QColor(36, 36, 36);
+                    QColor(32, 32, 32);
                 const auto unequipped_grid_matches_fresh =
                     same_inventory_grid(unequipped_scene,
                                         fresh_unequipped_scene);
@@ -66125,7 +66250,7 @@ int main(int argc, char** argv) {
                     !icon_interior_matches(weapon_two_equipped_scene,
                                            weapon_two_equipped_icon, 56, 120) ||
                     weapon_two_equipped_scene.pixelColor(51, 116) !=
-                        QColor(109, 109, 109) ||
+                        QColor(98, 101, 98) ||
                     !save_scene("10_weapon_2_equipped_at_50_percent",
                                 weapon_two_equipped_scene) ||
                     !save_scene("actual", weapon_two_equipped_scene)) {
@@ -66180,7 +66305,7 @@ int main(int argc, char** argv) {
                                            weapon_two_unequipped_icon, 56,
                                            120) ||
                     weapon_two_unequipped_scene.pixelColor(51, 116) !=
-                        QColor(36, 36, 36) ||
+                        QColor(32, 32, 32) ||
                     !same_inventory_grid(weapon_two_unequipped_scene,
                                          fresh_weapon_two_unequipped_scene) ||
                     !fresh_weapon_two_unequipped_scene_saved ||
@@ -66619,7 +66744,7 @@ int main(int argc, char** argv) {
                     !icon_interior_matches(armor_before_scene,
                                            armor_before_icon, 16, 144) ||
                     armor_before_scene.pixelColor(11, 140) !=
-                        QColor(36, 36, 36) ||
+                        QColor(32, 32, 32) ||
                     !armor_summary_bars_match(armor_before_scene, 1U) ||
                     !region_is_color(armor_before_scene, 112, 80, 112, 16,
                                      QColor(0, 0, 0)) ||
@@ -66674,7 +66799,7 @@ int main(int argc, char** argv) {
                     !icon_interior_matches(armor_equipped_scene,
                                            armor_equipped_icon, 16, 144) ||
                     armor_equipped_scene.pixelColor(11, 140) !=
-                        QColor(109, 109, 109) ||
+                        QColor(98, 101, 98) ||
                     !armor_summary_bars_match(armor_equipped_scene, 1U) ||
                     !same_inventory_grid(armor_equipped_scene,
                                          fresh_armor_equipped_scene) ||
@@ -66739,7 +66864,7 @@ int main(int argc, char** argv) {
                     !icon_interior_matches(armor_unequipped_scene,
                                            armor_unequipped_icon, 16, 144) ||
                     armor_unequipped_scene.pixelColor(11, 140) !=
-                        QColor(36, 36, 36) ||
+                        QColor(32, 32, 32) ||
                     !armor_summary_bars_match(armor_unequipped_scene, 1U) ||
                     !same_image(armor_before_scene,
                                 armor_unequipped_scene) ||
@@ -66921,9 +67046,9 @@ int main(int argc, char** argv) {
                     !armor_summary_bars_match(replacement_toggled_off_scene,
                                               2U) ||
                     replacement_toggled_off_scene.pixelColor(11, 140) !=
-                        QColor(36, 36, 36) ||
+                        QColor(32, 32, 32) ||
                     replacement_toggled_off_scene.pixelColor(51, 140) !=
-                        QColor(36, 36, 36) ||
+                        QColor(32, 32, 32) ||
                     !same_inventory_grid(replacement_toggled_off_scene,
                                          fresh_replacement_toggled_off_scene) ||
                     !save_scene(
@@ -66960,9 +67085,9 @@ int main(int argc, char** argv) {
                     !armor_summary_bars_match(replacement_equipped_scene,
                                               2U) ||
                     replacement_equipped_scene.pixelColor(11, 140) !=
-                        QColor(36, 36, 36) ||
+                        QColor(32, 32, 32) ||
                     replacement_equipped_scene.pixelColor(51, 140) !=
-                        QColor(109, 109, 109) ||
+                        QColor(98, 101, 98) ||
                     !same_inventory_grid(replacement_equipped_scene,
                                          fresh_replacement_equipped_scene) ||
                     !save_scene("30_fresh_armor_replacement_equipped_baseline",
@@ -66994,9 +67119,9 @@ int main(int argc, char** argv) {
                     !armor_summary_bars_match(replacement_unequipped_scene,
                                               2U) ||
                     replacement_unequipped_scene.pixelColor(11, 140) !=
-                        QColor(36, 36, 36) ||
+                        QColor(32, 32, 32) ||
                     replacement_unequipped_scene.pixelColor(51, 140) !=
-                        QColor(36, 36, 36) ||
+                        QColor(32, 32, 32) ||
                     !same_image(replacement_toggled_off_scene,
                                 replacement_unequipped_scene) ||
                     !same_inventory_grid(replacement_unequipped_scene,
@@ -67051,7 +67176,7 @@ int main(int argc, char** argv) {
                     !icon_interior_matches(gear_before_scene, gear_icon, 16,
                                            168) ||
                     gear_before_scene.pixelColor(11, 164) !=
-                        QColor(36, 36, 36) ||
+                        QColor(32, 32, 32) ||
                     !save_scene("32_gear_before_equip", gear_before_scene)) {
                     std::cerr << "field action dump: gear fixture, selected "
                                  "cell, icon, or unequipped border was wrong\n";
@@ -67103,7 +67228,7 @@ int main(int argc, char** argv) {
                     gear_equipped_record.inventory_phase_bytes[4] != 0U ||
                     !gear_equipped_selector_matches ||
                     !gear_equipped_icon_matches ||
-                    gear_equipped_border_color != QColor(109, 109, 109) ||
+                    gear_equipped_border_color != QColor(98, 101, 98) ||
                     !gear_equipped_grid_matches ||
                     !fresh_gear_equipped_scene_saved ||
                     !gear_equipped_scene_saved) {
@@ -67163,7 +67288,7 @@ int main(int argc, char** argv) {
                     !icon_interior_matches(gear_unequipped_scene,
                                            gear_unequipped_icon, 16, 168) ||
                     gear_unequipped_scene.pixelColor(11, 164) !=
-                        QColor(36, 36, 36) ||
+                        QColor(32, 32, 32) ||
                     !same_image(gear_before_scene, gear_unequipped_scene) ||
                     !same_inventory_grid(gear_unequipped_scene,
                                          fresh_gear_unequipped_scene) ||
@@ -67231,15 +67356,19 @@ int main(int argc, char** argv) {
                                                const QImage& asset,
                                                const int origin_x,
                                                const int origin_y) {
-                    if (asset.isNull() || origin_x < 0 || origin_y < 0 ||
-                        origin_x + asset.width() > scene.width() ||
-                        origin_y + asset.height() > scene.height()) {
+                    const auto normalized_asset =
+                        convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                            asset);
+                    if (normalized_asset.isNull() || origin_x < 0 ||
+                        origin_y < 0 ||
+                        origin_x + normalized_asset.width() > scene.width() ||
+                        origin_y + normalized_asset.height() > scene.height()) {
                         return false;
                     }
-                    for (int y = 0; y < asset.height(); ++y) {
-                        for (int x = 0; x < asset.width(); ++x) {
+                    for (int y = 0; y < normalized_asset.height(); ++y) {
+                        for (int x = 0; x < normalized_asset.width(); ++x) {
                             if (scene.pixel(origin_x + x, origin_y + y) !=
-                                asset.pixel(x, y)) {
+                                normalized_asset.pixel(x, y)) {
                                 return false;
                             }
                         }
@@ -67247,8 +67376,12 @@ int main(int argc, char** argv) {
                     return true;
                 };
                 const auto direct_asset = [&](const std::string& name) {
-                    return QImage(QString::fromStdWString(
+                    const QImage source(QString::fromStdWString(
                         (asset_root / "menu" / "field" / name).wstring()));
+                    return name == "font.bmp"
+                        ? source
+                        : convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                              source);
                 };
                 const auto button_panel_matches =
                     [&](const QImage& scene, const QImage& row_background,

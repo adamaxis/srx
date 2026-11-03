@@ -1,4 +1,5 @@
 #include "dialogue_panel_presenter.hpp"
+#include "genesis_image_compositor.hpp"
 
 #include <QFile>
 #include <QJsonArray>
@@ -47,6 +48,9 @@ bool DialoguePanelPresenter::load_assets(
             record->absolute_path.wstring()))
                                    .convertToFormat(
                                        QImage::Format_ARGB32_Premultiplied);
+        panel_frames_[index] =
+            convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                panel_frames_[index]);
         if (panel_frames_[index].isNull() ||
             panel_frames_[index].size() != QSize(320, 224)) {
             failure_ = "shared dialogue frame asset is unreadable";
@@ -64,6 +68,9 @@ bool DialoguePanelPresenter::load_assets(
             record->absolute_path.wstring()))
                                      .convertToFormat(
                                          QImage::Format_ARGB32_Premultiplied);
+        option_markers_[index] =
+            convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                option_markers_[index]);
         if (option_markers_[index].isNull() ||
             option_markers_[index].size() != QSize(16, 16)) {
             failure_ = "dialogue option marker asset is unreadable";
@@ -80,6 +87,8 @@ bool DialoguePanelPresenter::load_assets(
         cursor_record->absolute_path.wstring()))
                             .convertToFormat(
                                 QImage::Format_ARGB32_Premultiplied);
+    cursor_marker_ = convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+        cursor_marker_);
     if (cursor_marker_.isNull() || cursor_marker_.size() != QSize(7, 8)) {
         failure_ = "source menu cursor asset is unreadable";
         return false;
@@ -115,7 +124,9 @@ bool DialoguePanelPresenter::load_assets(
         if (!portrait.isNull()) {
             portraits_.emplace(
                 record.alias,
-                portrait.convertToFormat(QImage::Format_ARGB32_Premultiplied));
+                convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                    portrait.convertToFormat(
+                        QImage::Format_ARGB32_Premultiplied)));
         }
     }
     constexpr std::string_view kStoryPagePrefix = "cinematic.";
@@ -133,7 +144,8 @@ bool DialoguePanelPresenter::load_assets(
         }
         story_page_assets_.emplace(
             record.alias,
-            image.convertToFormat(QImage::Format_ARGB32_Premultiplied));
+            convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                image.convertToFormat(QImage::Format_ARGB32_Premultiplied)));
     }
 
     constexpr std::string_view kCreditsAlias =

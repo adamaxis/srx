@@ -542,6 +542,8 @@
         if (fasa_image.isNull()) {
             return fail("could not load the named boot.fasa asset");
         }
+        fasa_image = convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+            fasa_image);
         QImage expected_fasa(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
         expected_fasa.fill(Qt::black);
         {
@@ -829,7 +831,9 @@
         // Palette line 1 at ROM 0x5DC66 uses CRAM words $0A60, $0C82, $0EEE
         // for sprite indices 13..15 (words at 0x5DCA0..0x5DCA4).
         const std::array<QRgb, 3> shock_palette{{
-            qRgb(0, 109, 182), qRgb(36, 146, 219), qRgb(255, 255, 255)}};
+            genesis_cram_word_to_color(0x0A60U).rgb(),
+            genesis_cram_word_to_color(0x0C82U).rgb(),
+            genesis_cram_word_to_color(0x0EEEU).rgb()}};
         const auto palette_counts = [&](const QImage& image) {
             std::array<std::uint32_t, 3> counts{};
             for (int y = shock_region.top(); y <= shock_region.bottom(); ++y) {
@@ -1791,7 +1795,7 @@
             return fail("Plane-A catalog origin is missing");
         }
         constexpr std::array<QRgb, 3U> kTailPaletteColors{{
-            qRgb(0, 0, 0), qRgb(0, 0, 73), qRgb(0, 0, 36)}};
+            qRgb(0, 0, 0), qRgb(0, 0, 65), qRgb(0, 0, 32)}};
         constexpr std::array<std::array<int, 3U>, 3U> kPhaseColorCounts{{
             {{42, 30, 32}}, {{32, 42, 30}}, {{30, 32, 42}}}};
         for (std::size_t phase = 0U;
@@ -2167,7 +2171,7 @@
             return fail("settled rooftop sprite is outside the captured scene");
         }
         constexpr std::array<QRgb, 2U> kSourceRotorColors{{
-            qRgb(0, 0, 73), qRgb(0, 0, 36)}};
+            qRgb(0, 0, 65), qRgb(0, 0, 32)}};
         std::array<int, kSourceRotorColors.size()> rotor_color_counts{};
         for (int y = 0; y < kRooftopRotorHeight; ++y) {
             for (int x = 0; x < kRooftopRotorWidth; ++x) {
@@ -2219,6 +2223,13 @@
                             qBlue(image.pixel(movement_point.x + x,
                                               movement_point.y + y)));
                         if (actual_color != expected_color) {
+                            std::cerr << "opening landing rotor pixel mismatch: phase="
+                                      << static_cast<unsigned>(phase)
+                                      << " local=" << x << ',' << y
+                                      << " source=0x" << std::hex
+                                      << source_color << " expected=0x"
+                                      << expected_color << " actual=0x"
+                                      << actual_color << std::dec << '\n';
                             return false;
                         }
                     }
@@ -2653,7 +2664,8 @@
         // head, but ROM 0x5A2D0 does not install its white hit palette until
         // persistent stage 4. Before that event, keep enough of the named
         // sprite's original pixels visible to catch a stuck/early white fill.
-        const QColor white(255, 255, 255);
+        // ROM palette entry $EEE displays as RGB565-expanded 238 white.
+        const QColor white(238, 238, 238);
         const auto pre_hit_body_x = map_record->origin_x +
                                     state_.opening_intro.stage2.x_offset;
         const auto pre_hit_body_y = map_record->origin_y -
@@ -4167,7 +4179,7 @@
                            outline.y + outline.height - 1);
                 // CRAM levels (7,5,0) [C: emulator pixel 238,170,0].
                 if (scene.pixelColor(bottom_midpoint) !=
-                    QColor(0xFF, 0xB6, 0x00)) {
+                    QColor(238, 170, 0)) {
                     std::cerr
                         << "startup qa: Seattle focus box was not a fine "
                            "amber outline in phase "

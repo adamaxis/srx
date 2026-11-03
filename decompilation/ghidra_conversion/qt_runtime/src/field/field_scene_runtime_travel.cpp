@@ -120,6 +120,13 @@ bool FieldSceneRuntime::load_image(
     }
     destination = destination.convertToFormat(
         QImage::Format_ARGB32_Premultiplied);
+    // This atlas is also sampled as per-pixel glyph coverage by the tinted
+    // field text renderer. Keep its legacy mask values; direct-color text
+    // drawing converts a copy at the point of use.
+    if (alias != "menu.field.font") {
+        destination = convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+            destination);
+    }
     return true;
 }
 

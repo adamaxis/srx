@@ -233,8 +233,11 @@ bool image_region_matches_rgb32_asset(const QImage& scene,
         origin_y + asset.height() > scene.height()) {
         return false;
     }
-    return scene.copy(origin_x, origin_y, asset.width(), asset.height()) ==
-           asset.convertToFormat(QImage::Format_RGB32);
+    const auto normalized =
+        convert_legacy_expanded_genesis_image_to_gpgx_rgb565(asset);
+    return scene.copy(origin_x, origin_y, normalized.width(),
+                      normalized.height()) ==
+           normalized.convertToFormat(QImage::Format_RGB32);
 }
 
 bool image_cell_matches_black_transparent_pattern(
@@ -246,13 +249,17 @@ bool image_cell_matches_black_transparent_pattern(
         origin_y + pattern.height() > scene.height()) {
         return false;
     }
+    const auto normalized_pattern =
+        convert_legacy_expanded_genesis_image_to_gpgx_rgb565(pattern);
+    const auto normalized_backing =
+        convert_legacy_expanded_genesis_image_to_gpgx_rgb565(backing);
     for (int y = 0; y < pattern.height(); ++y) {
         for (int x = 0; x < pattern.width(); ++x) {
-            const auto pattern_pixel = pattern.pixelColor(x, y);
+            const auto pattern_pixel = normalized_pattern.pixelColor(x, y);
             const auto expected = pattern_pixel.red() == 0 &&
                                           pattern_pixel.green() == 0 &&
                                           pattern_pixel.blue() == 0
-                                      ? backing.pixelColor(x, y)
+                                      ? normalized_backing.pixelColor(x, y)
                                       : pattern_pixel;
             if (scene.pixelColor(origin_x + x, origin_y + y) != expected) {
                 return false;
@@ -438,9 +445,11 @@ bool source_shell_pixels_survive(const QImage& scene, const QImage& shell,
     if (shell.isNull() || scene.size() != shell.size()) {
         return false;
     }
+    const auto normalized_shell =
+        convert_legacy_expanded_genesis_image_to_gpgx_rgb565(shell);
     for (const auto& point : points) {
         if (!scene.rect().contains(point) ||
-            scene.pixel(point) != shell.pixel(point)) {
+            scene.pixel(point) != normalized_shell.pixel(point)) {
             return false;
         }
     }
@@ -479,7 +488,7 @@ bool field_inventory_selector_survives(const QImage& scene,
     constexpr int kCellHeight = 24;
     constexpr int kOutlineWidth = 28;
     constexpr int kOutlineHeight = 20;
-    const QColor gold(255, 219, 0);
+    const QColor gold(238, 206, 0);
     const auto x = kItemXOrigin + static_cast<int>(primary) * kCellWidth;
     const auto y = kItemYOrigin + static_cast<int>(secondary) * kCellHeight;
     if (x < 0 || y < 0 || x + kOutlineWidth > scene.width() ||
@@ -554,7 +563,10 @@ std::array<int, 4> target_marker_corner_pixel_matches(
     }};
     constexpr int kGenesisSpriteOrigin = 0x80;
     std::array<int, 4> matches{};
-    if (tile.size() != QSize(8, 8) || !tile.hasAlphaChannel()) {
+    const auto normalized_tile =
+        convert_legacy_expanded_genesis_image_to_gpgx_rgb565(tile);
+    if (normalized_tile.size() != QSize(8, 8) ||
+        !normalized_tile.hasAlphaChannel()) {
         return matches;
     }
     const int anchor_x =
@@ -567,7 +579,7 @@ std::array<int, 4> target_marker_corner_pixel_matches(
         const auto& corner = kCorners[corner_index];
         for (int y = 0; y < 8; ++y) {
             for (int x = 0; x < 8; ++x) {
-                const auto source = tile.pixelColor(
+                const auto source = normalized_tile.pixelColor(
                     corner.flip_x ? 7 - x : x,
                     corner.flip_y ? 7 - y : y);
                 if (source.alpha() == 0) {
@@ -626,10 +638,11 @@ bool field_hud_face_family_survives(const QImage& scene,
     // selection is asserted by field_hud_conversion_test and field-hud QA.
     for (std::size_t palette = 0;
          palette < kFieldHudPortraitPaletteVariantCount; ++palette) {
-        const QImage face(QString::fromStdWString(
-            (asset_root / "field" / "hud" / "party" /
-             ("face-" + std::to_string(archetype_index) + "-palette-" +
-              std::to_string(palette) + ".bmp")).wstring()));
+        const QImage face = convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+            QImage(QString::fromStdWString(
+                (asset_root / "field" / "hud" / "party" /
+                 ("face-" + std::to_string(archetype_index) + "-palette-" +
+                  std::to_string(palette) + ".bmp")).wstring())));
         if (face.isNull() || face.size() != QSize(32, 32)) {
             continue;
         }
@@ -659,8 +672,9 @@ bool field_hud_party_slot_asset_survives(
     const QImage& scene, const std::filesystem::path& asset_root,
     const std::string& relative_path, const int x, const int y,
     const QSize expected_size) {
-    const QImage asset(QString::fromStdWString(
-        (asset_root / std::filesystem::path(relative_path)).wstring()));
+    const QImage asset = convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+        QImage(QString::fromStdWString(
+            (asset_root / std::filesystem::path(relative_path)).wstring())));
     if (asset.isNull() || asset.size() != expected_size) {
         return false;
     }
@@ -687,16 +701,18 @@ bool field_hud_meter_assets_survive(const QImage& scene,
                                     const bool primary_runner) {
     const auto delay_index = std::min<std::uint8_t>(delay_meter, 10U);
     const auto behavior_index = std::min<std::uint8_t>(behavior_meter, 10U);
-    const auto delay = QImage(QString::fromStdWString(
+    const auto delay = convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+        QImage(QString::fromStdWString(
         (asset_root / "field" / "hud" /
          ("delay-meter-" + std::to_string(delay_index) + ".bmp"))
-            .wstring()));
-    const auto behavior = QImage(QString::fromStdWString(
+            .wstring())));
+    const auto behavior = convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+        QImage(QString::fromStdWString(
         (asset_root / "field" / "hud" /
          ((primary_runner ? "behavior-meter-primary-"
                           : "behavior-meter-companion-") +
           std::to_string(behavior_index) + ".bmp"))
-            .wstring()));
+            .wstring())));
     if (delay.size() != QSize(8, 32) || behavior.size() != QSize(32, 8) ||
         scene.width() < 312 || scene.height() < 64) {
         return false;
