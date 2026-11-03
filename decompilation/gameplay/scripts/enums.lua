@@ -797,6 +797,18 @@ E.MenuRegion = { ITEM_PICTURE = 0x0001, ITEM_HEADER = 0x0002, RATING = 0x0004, D
                  COMMAND_LABEL = 0x0200, INVENTORY_CURSOR = 0x0400, POSTURE_LABEL = 0x0800, SIDEBAR_SLOT = 0x1000,
                  MESSAGE = 0x2000, SUBMENU = 0x4000, FULL = 0x8000 }
 E.MenuTransition = { NONE = 0, PUSH = 1, POP = 2, REPLACE = 3, REBUILD = 4, EXIT = 5 }
+-- Shared declarative content for static field panels. ROM 0xFBA6 passes the
+-- C89C0 text block and 0x106DA bar rows to the common VDP writer; the host
+-- uses these typed roles to present the same content in a native panel.
+E.MenuPanelBackground = { NONE = 0, COMMAND_CONTENT = 1 }
+E.MenuPanelPosture = { VISIBLE = 1, HIDDEN = 2 }
+E.MenuPanelElement = { TEXT = 1, BAR = 2 }
+E.MenuPanelText = {
+    MAGIC_DEFENSE_TITLE = 1,
+    MAGIC_DEFENSE_RULE = 2,
+    MAGIC_DEFENSE_PHYSICAL = 3,
+    MAGIC_DEFENSE_MANA = 4,
+}
 -- Optional port preference for B. ROM mode leaves each source screen's B
 -- branch untouched; ALWAYS_CANCEL is applied once by menu.route before the
 -- active screen handler receives the edge.

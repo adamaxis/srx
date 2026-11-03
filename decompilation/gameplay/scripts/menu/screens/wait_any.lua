@@ -4,7 +4,11 @@ local E = require("enums")
 local function make(region_on_enter)
     local M = { window = E.WindowPlane.SIDEBAR }
     function M.new(args)
-        return { args = args, magic_view = args and args.magic_view }
+        return {
+            args = args,
+            magic_view = args and args.magic_view,
+            panel_view = args and args.panel_view,
+        }
     end
     function M.enter(st, ctx) ctx.redraw(region_on_enter) end
     function M.input(st, events, ctx)

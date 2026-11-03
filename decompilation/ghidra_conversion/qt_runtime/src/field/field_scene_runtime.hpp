@@ -1959,7 +1959,9 @@ private:
         const AttributesSkillsMenuController& menu) const;
     void paint_command_overview(QPainter& painter) const;
     void paint_command_overview_clips(QPainter& painter) const;
-    void paint_command_overview_posture_panel(QPainter& painter) const;
+    void paint_command_overview_posture_panel(QPainter& painter,
+                                               bool visible) const;
+    void paint_menu_panel_view(QPainter& painter) const;
     void paint_field_shop(QPainter& painter) const;
     void paint_field_shop_notice(QPainter& painter) const;
     std::optional<std::uint8_t> selected_shop_item_code() const;
@@ -2385,6 +2387,8 @@ private:
     std::optional<int> menu_route_posture_bar_selection_;
     std::optional<scripting::ScriptMenuRouteSnapshot::MagicView>
         menu_route_magic_view_;
+    std::optional<scripting::ScriptMenuRouteSnapshot::PanelView>
+        menu_route_panel_view_;
     std::optional<scripting::ScriptShopDefinition> field_shop_definition_;
     std::optional<scripting::ScriptShopDefinition>
         field_shop_active_definition_;

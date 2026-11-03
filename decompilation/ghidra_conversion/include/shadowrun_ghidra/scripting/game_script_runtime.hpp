@@ -777,6 +777,44 @@ struct ScriptMenuRouteLayout {
 };
 
 struct ScriptMenuRouteSnapshot {
+    enum class PanelBackground : std::uint8_t {
+        none = 0,
+        command_content = 1,
+    };
+    enum class PanelPosture : std::uint8_t {
+        visible = 1,
+        hidden = 2,
+    };
+    enum class PanelElementKind : std::uint8_t {
+        none = 0,
+        text = 1,
+        bar = 2,
+    };
+    enum class PanelTextKey : std::uint8_t {
+        none = 0,
+        magic_defense_title = 1,
+        magic_defense_rule = 2,
+        magic_defense_physical = 3,
+        magic_defense_mana = 4,
+    };
+    struct PanelElement {
+        PanelElementKind kind = PanelElementKind::none;
+        PanelTextKey text_key = PanelTextKey::none;
+        int value = 0;
+        int x = 0;
+        int y = 0;
+    };
+    struct PanelView {
+        PanelBackground background = PanelBackground::none;
+        PanelPosture posture = PanelPosture::visible;
+        int background_x = 0;
+        int background_y = 0;
+        int background_width = 0;
+        int background_height = 0;
+        std::vector<PanelElement> elements;
+        bool present = false;
+    };
+    std::optional<PanelView> panel_view;
     bool open = false;
     bool field_return_transition_active = false;
     std::uint16_t field_return_transition_elapsed_frames = 0U;

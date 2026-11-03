@@ -344,6 +344,10 @@ int main() {
         text.catalog.cyberware_empty_message != "NONE" ||
         text.catalog.cyberware_text_ids != expected_cyberware_text_ids ||
         text.catalog.magic_defense_title != " Magical Defense" ||
+        text.catalog.magic_defense_separator !=
+            std::string("[") + std::string(16U, '\\') ||
+        text.catalog.magic_defense_physical_label != "  vs. Phys" ||
+        text.catalog.magic_defense_mana_label != "  vs. Mana" ||
         text.catalog.magic_force_posture_heading !=
             "Set Force & Posture." ||
         text.catalog.magic_success_label != "Success" ||

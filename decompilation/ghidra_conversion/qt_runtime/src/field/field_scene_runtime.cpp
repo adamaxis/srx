@@ -16020,7 +16020,7 @@ void FieldSceneRuntime::draw_pocket_secretary_cursor(QPainter& painter,
 }
 
 void FieldSceneRuntime::paint_command_overview_posture_panel(
-    QPainter& painter) const {
+    QPainter& painter, const bool visible) const {
     // ROM 0x11900 redraws the common lower shell after Clips clears the
     // center window. The posture frame is part of that shared panel; drawing
     // this crop prevents the child clear from leaving a black band above the
@@ -16060,19 +16060,84 @@ void FieldSceneRuntime::paint_command_overview_posture_panel(
     // The inventory detail refresh also empties the bar fill for its hold:
     // e6 8740-8746, 8780-8787, 8820-8826 show only the frame [C emulator].
     // The fill returns with the ring on the MOVE frame (8788) [C emulator].
-    if (!command_overview_inventory_detail_pending_ ||
-        !command_overview_inventory_cursor_hidden_) {
-        draw_meter_variant(painter, 176, 168, posture_bar_inactive,
-                           posture_bar_selected,
-                           posture_bar_is_selected);
+    if (visible) {
+        if (!command_overview_inventory_detail_pending_ ||
+            !command_overview_inventory_cursor_hidden_) {
+            draw_meter_variant(painter, 176, 168, posture_bar_inactive,
+                               posture_bar_selected,
+                               posture_bar_is_selected);
+        }
+        draw_command_overview_text(
+            painter,
+            centered_text_x(136, kMenuLabelCells,
+                            field_menu_text_.status_names[posture]),
+            176, field_menu_text_.status_names[posture]);
     }
-    draw_command_overview_text(
-        painter,
-        centered_text_x(136, kMenuLabelCells,
-                        field_menu_text_.status_names[posture]),
-        176, field_menu_text_.status_names[posture]);
-    if (posture_dialog_active_) {
+    if (visible && posture_dialog_active_) {
         painter.drawImage(120, 168, posture_focus_);
+    }
+}
+
+void FieldSceneRuntime::paint_menu_panel_view(QPainter& painter) const {
+    if (!menu_route_panel_view_.has_value() ||
+        !menu_route_panel_view_->present) {
+        return;
+    }
+    const auto& view = *menu_route_panel_view_;
+    if (view.background ==
+        scripting::ScriptMenuRouteSnapshot::PanelBackground::command_content) {
+        const QRect background_rect(view.background_x, view.background_y,
+                                   view.background_width,
+                                   view.background_height);
+        if (background_rect.width() > 0 && background_rect.height() > 0 &&
+            command_overview_background_.rect().contains(background_rect)) {
+            painter.drawImage(background_rect, command_overview_background_,
+                              background_rect);
+        }
+    }
+
+    const auto panel_text = [this](
+                                const scripting::ScriptMenuRouteSnapshot::
+                                    PanelTextKey key) -> std::string_view {
+        using Key =
+            scripting::ScriptMenuRouteSnapshot::PanelTextKey;
+        switch (key) {
+        case Key::magic_defense_title:
+            return field_menu_text_.magic_defense_title;
+        case Key::magic_defense_rule:
+            return field_menu_text_.magic_defense_separator;
+        case Key::magic_defense_physical:
+            return field_menu_text_.magic_defense_physical_label;
+        case Key::magic_defense_mana:
+            return field_menu_text_.magic_defense_mana_label;
+        case Key::none:
+            break;
+        }
+        return {};
+    };
+    for (const auto& element : view.elements) {
+        switch (element.kind) {
+        case scripting::ScriptMenuRouteSnapshot::PanelElementKind::text: {
+            const auto text = panel_text(element.text_key);
+            if (!text.empty()) {
+                draw_command_overview_text(painter, element.x, element.y,
+                                           text);
+            }
+            break;
+        }
+        case scripting::ScriptMenuRouteSnapshot::PanelElementKind::bar:
+            if (element.value >= 0 &&
+                static_cast<std::size_t>(element.value) <
+                    command_overview_defense_bars_.size()) {
+                painter.drawImage(
+                    element.x, element.y,
+                    command_overview_defense_bars_[
+                        static_cast<std::size_t>(element.value)]);
+            }
+            break;
+        case scripting::ScriptMenuRouteSnapshot::PanelElementKind::none:
+            break;
+        }
     }
 }
 
@@ -18246,7 +18311,11 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
     // 0x11928/0x11AE4 places the five-state bar and status name. Keeping this
     // in a helper lets child screens restore the shared panel after clearing
     // their content region.
-    paint_command_overview_posture_panel(painter);
+    const auto posture_row_visible =
+        !menu_route_panel_view_.has_value() ||
+        menu_route_panel_view_->posture !=
+            scripting::ScriptMenuRouteSnapshot::PanelPosture::hidden;
+    paint_command_overview_posture_panel(painter, posture_row_visible);
     if (command_overview_inventory_trade_.open) {
         // 0x1286A calls 0x11900, whose C1320 grid replaces the full posture
         // plate (21x3 cells at $EA18) while either recipient path is open.
@@ -18910,35 +18979,7 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                     view.source_state.primary_page]));
     }
 
-    if (command_overview_magic_state_ ==
-        CommandOverviewMagicState::magical_defense_wait) {
-        // ROM 0xFBA6 rebuilds the common menu row (0x11900), clears the
-        // central menu grid (0x12C36), then writes C89C0 at C31C and the two
-        // 13-tile strips at C51E/C69E. Replace the Qt panel's previous status
-        // text/details with its named blank background before drawing this
-        // screen; otherwise model, weapon, and Atk/Def content leaks through
-        // the Magical Defense title and bars.
-        constexpr QRect kMagicDefenseContentRect{96, 16, 168, 144};
-        painter.drawImage(kMagicDefenseContentRect,
-                          command_overview_background_,
-                          kMagicDefenseContentRect);
-        painter.fillRect(112, 48,
-                         static_cast<int>(
-                             field_menu_text_.magic_defense_title.size()) * 8,
-                         8, Qt::black);
-        draw_command_overview_text(painter, 112, 48,
-                                   field_menu_text_.magic_defense_title);
-        const auto draw_strip = [this, &painter](
-                                    const MagicDefenseStripView& strip,
-                                    const int y) {
-            if (strip.bar_row < command_overview_defense_bars_.size()) {
-                painter.drawImage(
-                    120, y, command_overview_defense_bars_[strip.bar_row]);
-            }
-        };
-        draw_strip(command_overview_magic_physical_defense_, 80);
-        draw_strip(command_overview_magic_mana_defense_, 104);
-    }
+    paint_menu_panel_view(painter);
 
     if (command_overview_first_aid_state_ !=
         CommandOverviewFirstAidState::inactive) {

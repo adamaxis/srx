@@ -5094,6 +5094,75 @@ struct GameScriptRuntime::Impl {
                     menu_route_state.magic_view = view;
                 }
                 lua_pop(state, 1);
+                lua_getfield(state, screen_state_index, "panel_view");
+                if (lua_istable(state, -1)) {
+                    const auto panel_index = lua_absindex(state, -1);
+                    ScriptMenuRouteSnapshot::PanelView panel;
+                    panel.present = true;
+                    panel.background =
+                        static_cast<ScriptMenuRouteSnapshot::PanelBackground>(
+                            read_optional(panel_index, "background")
+                                .value_or(0));
+                    panel.posture =
+                        static_cast<ScriptMenuRouteSnapshot::PanelPosture>(
+                            read_optional(panel_index, "posture")
+                                .value_or(0));
+                    panel.background_x =
+                        read_optional(panel_index, "background_x").value_or(0);
+                    panel.background_y =
+                        read_optional(panel_index, "background_y").value_or(0);
+                    panel.background_width =
+                        read_optional(panel_index, "background_width")
+                            .value_or(0);
+                    panel.background_height =
+                        read_optional(panel_index, "background_height")
+                            .value_or(0);
+                    lua_getfield(state, panel_index, "elements");
+                    if (lua_istable(state, -1)) {
+                        constexpr std::size_t kMaximumPanelElements = 8U;
+                        const auto elements_index = lua_absindex(state, -1);
+                        const auto element_count =
+                            lua_rawlen(state, elements_index);
+                        if (element_count <= kMaximumPanelElements) {
+                            panel.elements.reserve(element_count);
+                            for (std::size_t element_index = 0U;
+                                 element_index < element_count;
+                                 ++element_index) {
+                                lua_rawgeti(
+                                    state, elements_index,
+                                    static_cast<lua_Integer>(element_index + 1U));
+                                if (lua_istable(state, -1)) {
+                                    const auto value_index =
+                                        lua_absindex(state, -1);
+                                    ScriptMenuRouteSnapshot::PanelElement
+                                        element;
+                                    element.kind = static_cast<
+                                        ScriptMenuRouteSnapshot::PanelElementKind>(
+                                        read_optional(value_index, "kind")
+                                            .value_or(0));
+                                    element.text_key = static_cast<
+                                        ScriptMenuRouteSnapshot::PanelTextKey>(
+                                        read_optional(value_index, "text")
+                                            .value_or(0));
+                                    element.value =
+                                        read_optional(value_index, "value")
+                                            .value_or(0);
+                                    element.x =
+                                        read_optional(value_index, "x")
+                                            .value_or(0);
+                                    element.y =
+                                        read_optional(value_index, "y")
+                                            .value_or(0);
+                                    panel.elements.push_back(element);
+                                }
+                                lua_pop(state, 1);
+                            }
+                            menu_route_state.panel_view = std::move(panel);
+                        }
+                    }
+                    lua_pop(state, 1);
+                }
+                lua_pop(state, 1);
                 lua_getfield(state, screen_state_index, "matrix_map_cells");
                 if (lua_istable(state, -1)) {
                     const auto cells_index = lua_absindex(state, -1);

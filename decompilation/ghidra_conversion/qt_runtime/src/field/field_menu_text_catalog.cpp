@@ -116,6 +116,31 @@ bool is_magic_panel_text_label_key(
            has_menu_choice_id(text_ids, key.substr(kTextPrefix.size()));
 }
 
+std::string magic_panel_line(const std::string_view text,
+                             const std::string_view marker) {
+    std::string decoded(text);
+    std::size_t escaped_break = 0U;
+    while ((escaped_break = decoded.find("\\n", escaped_break)) !=
+           std::string::npos) {
+        decoded.replace(escaped_break, 2U, "\n");
+        ++escaped_break;
+    }
+    const std::string_view content(decoded);
+    const auto position = content.find(marker);
+    if (position == std::string_view::npos) {
+        return {};
+    }
+    const auto previous_break = content.rfind('\n', position);
+    const auto next_break = content.find('\n', position);
+    const auto begin = previous_break == std::string_view::npos
+                           ? 0U
+                           : previous_break + 1U;
+    const auto end = next_break == std::string_view::npos
+                         ? content.size()
+                         : next_break;
+    return std::string(content.substr(begin, end - begin));
+}
+
 bool has_cyberware_text_label_prefix(const std::string_view key) {
     return key.rfind("cyberware.text.option.", 0U) == 0U;
 }
@@ -702,6 +727,14 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
         "catalog", magic_panel_text, result.errors,
         nullptr, &result.catalog.magic_panel_text_ids);
     result.catalog.magic_defense_title = magic_panel_text[0];
+    // C89D1..C89E1 is the source row '[' followed by sixteen '\\' glyphs;
+    // C89FC's separately extracted multiline text supplies both label rows.
+    result.catalog.magic_defense_separator = "[";
+    result.catalog.magic_defense_separator.append(16U, '\\');
+    result.catalog.magic_defense_physical_label = magic_panel_line(
+        magic_panel_text[5], "vs. Phys");
+    result.catalog.magic_defense_mana_label = magic_panel_line(
+        magic_panel_text[5], "vs. Mana");
     result.catalog.magic_force_posture_heading = magic_panel_text[1];
     result.catalog.magic_success_label = magic_panel_text[2];
     result.catalog.magic_force_label = magic_panel_text[3];

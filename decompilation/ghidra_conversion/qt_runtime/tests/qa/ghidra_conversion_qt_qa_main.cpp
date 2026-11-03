@@ -68,6 +68,102 @@ bool image_matches_emulator_reference(const QImage& actual,
     return true;
 }
 
+bool image_matches_genesis_pixels_outside_region(
+    const QImage& actual, const QImage& reference,
+    const QRect& ignored_region, std::size_t* compared_pixels = nullptr,
+    std::size_t* differing_pixels = nullptr, QPoint* first_difference = nullptr) {
+    if (actual.isNull() || reference.isNull() ||
+        actual.size() != reference.size()) {
+        return false;
+    }
+    constexpr std::array<std::array<int, 8>, 3> kCramChannelLevels{{
+        {{0, 32, 65, 98, 139, 172, 205, 238}},
+        {{0, 32, 68, 101, 137, 170, 206, 238}},
+        {{0, 32, 65, 98, 139, 172, 205, 238}},
+    }};
+    const auto channel_index = [&](const int value, const std::size_t channel) {
+        int closest = 0;
+        int closest_distance = std::numeric_limits<int>::max();
+        for (int index = 0; index < 8; ++index) {
+            const auto distance = std::abs(
+                value - kCramChannelLevels[channel][static_cast<std::size_t>(index)]);
+            if (distance < closest_distance) {
+                closest = index;
+                closest_distance = distance;
+            }
+        }
+        return closest;
+    };
+    const auto actual_rgb = actual.convertToFormat(QImage::Format_RGB32);
+    const auto reference_rgb = reference.convertToFormat(QImage::Format_RGB32);
+    std::size_t compared = 0U;
+    std::size_t differing = 0U;
+    for (int y = 0; y < actual_rgb.height(); ++y) {
+        for (int x = 0; x < actual_rgb.width(); ++x) {
+            if (ignored_region.contains(x, y)) {
+                continue;
+            }
+            ++compared;
+            const auto actual_color = actual_rgb.pixelColor(x, y);
+            const auto reference_color = reference_rgb.pixelColor(x, y);
+            const std::array<int, 3> actual_channels{{
+                actual_color.red(), actual_color.green(), actual_color.blue()}};
+            const std::array<int, 3> reference_channels{{
+                reference_color.red(), reference_color.green(),
+                reference_color.blue()}};
+            bool pixel_differs = false;
+            for (std::size_t channel = 0U; channel < actual_channels.size();
+                 ++channel) {
+                if (channel_index(actual_channels[channel], channel) !=
+                    channel_index(reference_channels[channel], channel)) {
+                    pixel_differs = true;
+                }
+            }
+            if (pixel_differs) {
+                if (differing == 0U && first_difference != nullptr) {
+                    *first_difference = QPoint(x, y);
+                }
+                ++differing;
+            }
+        }
+    }
+    if (compared_pixels != nullptr) {
+        *compared_pixels = compared;
+    }
+    if (differing_pixels != nullptr) {
+        *differing_pixels = differing;
+    }
+    return differing == 0U;
+}
+
+bool image_region_contains_asset_ink(const QImage& scene,
+                                     const QImage& asset,
+                                     const int origin_x,
+                                     const int origin_y) {
+    if (asset.isNull() || origin_x < 0 || origin_y < 0 ||
+        origin_x + asset.width() > scene.width() ||
+        origin_y + asset.height() > scene.height()) {
+        return false;
+    }
+    const auto scene_rgb = scene.convertToFormat(QImage::Format_RGB32);
+    const auto asset_rgb = asset.convertToFormat(QImage::Format_RGB32);
+    std::size_t visible_asset_pixels = 0U;
+    for (int y = 0; y < asset_rgb.height(); ++y) {
+        for (int x = 0; x < asset_rgb.width(); ++x) {
+            const auto expected = asset_rgb.pixelColor(x, y);
+            if (expected == QColor(Qt::black)) {
+                continue;
+            }
+            ++visible_asset_pixels;
+            if (scene_rgb.pixelColor(origin_x + x, origin_y + y) !=
+                expected) {
+                return false;
+            }
+        }
+    }
+    return visible_asset_pixels != 0U;
+}
+
 bool source_menu_caption_matches(const QImage& scene, const QImage& font,
                                 const int origin_x, const int origin_y,
                                 const std::string_view text,
@@ -39569,6 +39665,9 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> field_clips_dump_path;
         std::optional<std::filesystem::path> field_shop_dump_path;
         std::optional<std::filesystem::path> field_magic_dump_path;
+        bool field_magic_reference_qa = false;
+        std::optional<std::filesystem::path>
+            field_magic_reference_fixture_directory;
         std::optional<std::filesystem::path>
             field_magic_defense_profile_qa_path;
         std::optional<std::filesystem::path> field_magic_spell_dump_path;
@@ -40714,6 +40813,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_magic_dump_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-magic-reference-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_magic_reference_qa = true;
+                field_magic_reference_fixture_directory =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -54789,11 +54895,22 @@ int main(int argc, char** argv) {
                                 for (int x = 96; x < 264; ++x) {
                                     const auto title = y >= 48 && y < 56 &&
                                                        x >= 112 && x < 240;
+                                    const auto separator =
+                                        y >= 56 && y < 64 && x >= 112 &&
+                                        x < 248;
+                                    const auto physical_label =
+                                        y >= 72 && y < 80 && x >= 112 &&
+                                        x < 192;
                                     const auto strip =
                                         ((y >= 80 && y < 88) ||
                                          (y >= 104 && y < 112)) &&
                                         x >= 120 && x < 224;
-                                    if (!title && !strip &&
+                                    const auto mana_label =
+                                        y >= 96 && y < 104 && x >= 112 &&
+                                        x < 192;
+                                    if (!title && !separator &&
+                                        !physical_label && !strip &&
+                                        !mana_label &&
                                         actual.pixel(x, y) !=
                                             command_background.pixel(x, y)) {
                                         return false;
@@ -54914,19 +55031,43 @@ int main(int argc, char** argv) {
 #endif
             }
             if (field_magic_dump_path.has_value()) {
-                // ROM archetype template 0 is Samurai, class 2 with +0x7F=0.
-                // Exercise the real non-magic fallback without rewriting the
-                // active runner record. The Shaman spell-panel route has its
+                if (field_magic_reference_qa &&
+                    !field_magic_reference_fixture_directory.has_value()) {
+                    std::cerr << "field Magic reference QA: fixture directory "
+                                 "was not provided\n";
+                    return 3;
+                }
+                if (field_magic_reference_qa) {
+                    // The supplied real-game reference shows Decker's L36
+                    // portrait counter at 04. This changes only the captured
+                    // source state; the counter remains Lua/game data.
+                    field_scene.active_runner_record().ammo_rounds = 4U;
+                    field_scene.refresh_field_hud_for_dump();
+                }
+                // ROM templates 0/1 are Samurai/Decker, classes 2/3 with
+                // +0x7F=0. Exercise the non-magic fallback with its source
+                // record intact; Decker is also the supplied external visual
+                // reference profile. The Shaman spell-panel route has its
                 // separate source-record QA below.
                 const auto initial_record =
                     field_scene.active_runner_record();
-                if (field_archetype != 0U ||
-                    initial_record.archetype_index != 2U ||
+                const auto expected_class =
+                    field_archetype == 0U ? std::uint8_t{2U}
+                                          : std::uint8_t{3U};
+                if (field_archetype > 1U ||
+                    initial_record.archetype_index != expected_class ||
                     initial_record.auxiliary[0] != 0U ||
                     select_magic_menu_path(initial_record) !=
                         MagicMenuPath::fallback_menu) {
-                    std::cerr << "field Magic dump: expected unmodified "
-                                 "Samurai class 2 fallback record\n";
+                    std::cerr << "field Magic dump: expected an unmodified "
+                                 "Samurai/Decker non-magic fallback record\n";
+                    return 3;
+                }
+                if (field_magic_reference_qa &&
+                    (initial_record.equipped_item_code != 3U ||
+                     initial_record.ammo_rounds != 4U)) {
+                    std::cerr << "field Magic reference QA: expected the "
+                                 "equipped L36 and current rounds 04\n";
                     return 3;
                 }
                 if (!field_scene.open_command_overview_for_dump() ||
@@ -55069,6 +55210,10 @@ int main(int argc, char** argv) {
                      ("defense-bar-" + std::to_string(mana.bar_row) + ".bmp"))
                         .wstring()));
                 const auto actual_scene = render_scene();
+                if (!save_scene("actual", actual_scene)) {
+                    std::cerr << "field Magic dump: could not save actual.bmp\n";
+                    return 3;
+                }
                 const auto shared_layout_matches_command_page = [&] {
                     // FBA6 replaces only the central grid. The row rebuilt
                     // by 0x11900/0x11928 and the independently painted HUD
@@ -55096,19 +55241,27 @@ int main(int argc, char** argv) {
                             x, y);
                     };
                 const auto panel_matches_clean_redraw = [&] {
-                    // The encoded ROM title uses a 16-cell field with a
-                    // leading blank cell; the final glyph occupies cell 15.
+                    // C89C0 contains title, rule, and both labels; the two
+                    // 13-tile strips come from 0x106DA [C].
                     constexpr auto kMagicDefenseTitleRight = 112 + 16 * 8;
                     for (int y = 16; y < 160; ++y) {
                         for (int x = 96; x < 264; ++x) {
                             const auto title_pixel =
                                 y >= 48 && y < 56 && x >= 112 &&
                                 x < kMagicDefenseTitleRight;
+                            const auto separator_pixel =
+                                y >= 56 && y < 64 && x >= 112 && x < 248;
+                            const auto physical_label_pixel =
+                                y >= 72 && y < 80 && x >= 112 && x < 192;
                             const auto strip_pixel =
                                 ((y >= 80 && y < 88) ||
                                  (y >= 104 && y < 112)) &&
                                 x >= 120 && x < 224;
-                            if (title_pixel || strip_pixel) {
+                            const auto mana_label_pixel =
+                                y >= 96 && y < 104 && x >= 112 && x < 192;
+                            if (title_pixel || separator_pixel ||
+                                physical_label_pixel || strip_pixel ||
+                                mana_label_pixel) {
                                 continue;
                             }
                             if (actual_scene.pixel(x, y) !=
@@ -55119,6 +55272,49 @@ int main(int argc, char** argv) {
                     }
                     return true;
                 };
+                constexpr QRect kPostureRowRegion{96, 160, 168, 24};
+                const auto posture_asset = initial_record.posture < 5U
+                    ? QImage(QString::fromStdWString(
+                          (asset_root / "menu" / "field" /
+                           ("status-bar-" +
+                            std::to_string(initial_record.posture) + ".bmp"))
+                              .wstring()))
+                    : QImage{};
+                const bool posture_bar_visible =
+                    !posture_asset.isNull() &&
+                    image_region_contains_asset_ink(actual_scene,
+                                                    posture_asset, 179, 169);
+                std::size_t compared_reference_pixels = 0U;
+                std::size_t reference_pixel_differences = 0U;
+                std::size_t compared_gpgx_pixels = 0U;
+                std::size_t gpgx_pixel_differences = 0U;
+                QPoint first_reference_difference(-1, -1);
+                QPoint first_gpgx_difference(-1, -1);
+                bool screenshot_reference_matches = true;
+                bool gpgx_reference_matches = true;
+                if (field_magic_reference_qa) {
+                    const auto& fixture_directory =
+                        *field_magic_reference_fixture_directory;
+                    const QImage screenshot_reference(QString::fromStdWString(
+                        (fixture_directory /
+                         "ui_ref_magic_defense_decker_ammo04.png")
+                            .wstring()));
+                    const QImage gpgx_reference(QString::fromStdWString(
+                        (fixture_directory /
+                         "gpgx_us_magic_defense_decker_ammo04.png")
+                            .wstring()));
+                    screenshot_reference_matches =
+                        image_matches_genesis_pixels_outside_region(
+                            actual_scene, screenshot_reference,
+                            kPostureRowRegion, &compared_reference_pixels,
+                            &reference_pixel_differences,
+                            &first_reference_difference);
+                    gpgx_reference_matches =
+                        image_matches_genesis_pixels_outside_region(
+                            actual_scene, gpgx_reference, kPostureRowRegion,
+                            &compared_gpgx_pixels, &gpgx_pixel_differences,
+                            &first_gpgx_difference);
+                }
                 if (physical.value != expected_physical ||
                     mana.value != expected_mana ||
                     !valid_view(physical) || !valid_view(mana) ||
@@ -55128,12 +55324,32 @@ int main(int argc, char** argv) {
                                     120, 104) ||
                     !panel_matches_clean_redraw() ||
                     !shared_layout_matches_command_page() ||
-                    !panel_matches_background(128, 64, 120, 16) ||
+                    !panel_matches_background(128, 64, 120, 8) ||
+                    !panel_matches_background(192, 72, 56, 8) ||
+                    !panel_matches_background(192, 96, 56, 8) ||
+                    !panel_matches_background(128, 88, 120, 8) ||
                     !panel_matches_background(112, 112, 8, 8) ||
-                    !panel_matches_background(128, 120, 120, 40)) {
+                    !panel_matches_background(128, 120, 120, 40) ||
+                    (field_magic_reference_qa &&
+                     (!posture_bar_visible ||
+                      !screenshot_reference_matches ||
+                      !gpgx_reference_matches ||
+                      compared_reference_pixels != 67648U ||
+                      compared_gpgx_pixels != 67648U))) {
                     std::cerr << "field Magic dump: physical/mana values, "
                                  "source rows, strip placement, clean center "
-                                 "redraw, or shared layout diverged\n";
+                                 "redraw, shared layout, posture bar, or "
+                                 "reference pixels diverged"
+                              << " posture=" << posture_bar_visible
+                              << " screenshot_diff="
+                              << reference_pixel_differences << '/'
+                              << compared_reference_pixels << " first="
+                              << first_reference_difference.x() << ','
+                              << first_reference_difference.y()
+                              << " gpgx_diff=" << gpgx_pixel_differences << '/'
+                              << compared_gpgx_pixels << " first="
+                              << first_gpgx_difference.x() << ','
+                              << first_gpgx_difference.y() << '\n';
                     return 3;
                 }
                 int title_ink = 0;

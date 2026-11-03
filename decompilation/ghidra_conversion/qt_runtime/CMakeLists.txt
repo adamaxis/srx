@@ -2189,6 +2189,17 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_magic_qa
                  --field-magic-dump
                  "${CMAKE_CURRENT_BINARY_DIR}/field-magic-nonmagic-qa")
 
+# Pixel-check the same fallback with Joshua's Decker template against the
+# supplied emulator crop and a headless GPGX frame. The posture row is an
+# approved port deviation and is asserted separately by this QA route.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_magic_reference_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-archetype decker
+                 --field-magic-reference-qa
+                 "${CMAKE_CURRENT_SOURCE_DIR}/tests/qa/fixtures"
+                 --field-magic-dump
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-magic-reference-qa")
+
 # Drive every non-caster source profile through the fallback Defense page with
 # zero, one, and two other caster records; compare both rendered rows to the
 # separate raw-ROM expectation. These are Qt regression captures, not Genesis

@@ -3,7 +3,7 @@
 This file is kept in the repo so the notes survive if the box is wiped. The box's /workspace/shadowrun/out was lost on 2026-10-31.
 Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 
-## Current state (2026-11-03 09:07 CST)
+## Current state (2026-11-03 10:40 CST)
 - Remote port-fixes: see latest Fixes entry. QA_GREEN (ctest all pass, Lua suites pass). Working playtest_2026-11-01 items one Luna run at a time.
 - In progress: Luna (codex exec, gpt-6-luna, max effort, fast tier off) is fixing aa3b2cb7 forward. Brief is /workspace/briefs/aa3b.md, the earlier partial work is /workspace/briefs/aa3b_wip.diff and stash 'aa3b-wip'.
 - Box toolchain: `. /workspace/tcenv.sh` (conda env /workspace/mamba/envs/srx). Build dirs are /workspace/b2 (Qt) and /workspace/b2n (non-Qt). Full QA is /workspace/qa.sh, which prints QA_GREEN.
@@ -90,6 +90,7 @@ Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 - playtest #39: #39: inventory hover Atk/Def preview audit; add #39-#43 rows, rom_deviations.md. [C] 0x12CEE->0x12148, skill 0x12C74, Atk 0xCF3D4, Def 0xCF610; GPGX same-state + user ref, headless port frame
 - playtest #40: #40: firearm main-panel max ammo vs portrait current rounds. [C] 0x12A8C draws D4540 +0x24 capacity (0xD45C4), portrait 0x36FC live +0x4E; GPGX same-state L36 11/04 fixtures + user refs 2,3
 - playtest #41: #41: posture bar outline recheck of #33, no code change. [C] 0x119CE->0x11ABE->0x11AE4; fresh GPGX capture pixel-identical to #33 fixture; user ref 2
+- playtest #42: Magical Defense screen layout from ROM 0xFBA6 panel data (#42). Evidence: ROM 0xFBA6..0xFBEE / C89C0 / 0x106DA / 0x11928 / 0x11AE4; QA compares against GPGX and the user-reference fixtures, posture row excluded and asserted visible
 
 ## Open work, in order
 1. Get ctest green again by fixing aa3b2cb7 forward.

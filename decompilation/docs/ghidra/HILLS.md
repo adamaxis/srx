@@ -787,6 +787,16 @@ the independent longplay supports the Shaman spell page; a one-second search of
 sections 08-41 found no matching Magic Defense frame. Treat that as bounded
 negative evidence, not proof of absence. Class/race presets select different attributes, spell tables, and limits; displayed Magic and Atk/Def strips are calculated from the relevant runner, party, posture, focus, and action fields. See the [Magic profile and input permutation audit](visual-audits/magic-spell-action-permutation-audit-2026-10-23.md) and the [Magic split audit](visual-audits/magic-user-screen-split.md).
 
+The non-magic Magical Defense layout is now defended by
+`shadowrun_ghidra_conversion_qt_field_magic_reference_qa` and its
+`qt_runtime/field-magic-reference-qa/actual.bmp` dump. The Decker 04 capture compares
+every 320x224 pixel against the supplied emulator reference and same-state
+GPGX frame, excluding only the posture-row rectangle `x=96..263, y=160..183`;
+the separate assertion requires the posture bar to remain visible under the
+approved deviation recorded in `../rom_deviations.md`. This closes the
+visual-reference portion of #36 as well as #42; other Magic action/effect
+paths remain partial.
+
 Matrix node-entry status text is separated and positioned by the ROM draw
 addresses: node title at `$C418`, file class at `$C39A`, alert band at `$C51E`,
 and difficulty at `$C52C`. Lua publishes the three status values independently;

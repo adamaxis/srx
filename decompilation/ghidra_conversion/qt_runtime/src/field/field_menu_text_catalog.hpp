@@ -151,6 +151,11 @@ struct FieldMenuTextCatalog {
     std::string cyberware_empty_message;
     // ROM 0xFBA6 fallback branch decodes the C89C0 title into C31C.
     std::string magic_defense_title;
+    // C89C0's encoded continuation contains the rule and both defense labels;
+    // the labels are also present in the extracted C89FC panel text.
+    std::string magic_defense_separator;
+    std::string magic_defense_physical_label;
+    std::string magic_defense_mana_label;
     std::string magic_force_posture_heading;
     std::string magic_success_label;
     std::string magic_force_label;

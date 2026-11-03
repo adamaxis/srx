@@ -6,6 +6,38 @@ local P, R, T = E.Pad, E.MenuRegion, E.MenuTransition
 local Posture = require("menu.screens.posture")
 local Rules = require("menu.rules.magic")
 
+local function defense_panel(defense)
+    -- ROM 0xFBA6 sends the complete C89C0 block to 0xC0DA at C31C:
+    -- heading y=48, rule y=56, labels y=72/96. 0x106DA writes the two
+    -- 13-tile rows at C51E/C69E, which land at y=80/104 [C].
+    return {
+        background = E.MenuPanelBackground.COMMAND_CONTENT,
+        posture = E.MenuPanelPosture.VISIBLE,
+        background_x = 96, background_y = 16,
+        background_width = 168, background_height = 144,
+        elements = {
+            { kind = E.MenuPanelElement.TEXT,
+              text = E.MenuPanelText.MAGIC_DEFENSE_TITLE,
+              x = 112, y = 48 },
+            { kind = E.MenuPanelElement.TEXT,
+              text = E.MenuPanelText.MAGIC_DEFENSE_RULE,
+              x = 112, y = 56 },
+            { kind = E.MenuPanelElement.TEXT,
+              text = E.MenuPanelText.MAGIC_DEFENSE_PHYSICAL,
+              x = 112, y = 72 },
+            { kind = E.MenuPanelElement.BAR,
+              value = defense.physical_row,
+              x = 120, y = 80 },
+            { kind = E.MenuPanelElement.TEXT,
+              text = E.MenuPanelText.MAGIC_DEFENSE_MANA,
+              x = 112, y = 96 },
+            { kind = E.MenuPanelElement.BAR,
+              value = defense.mana_row,
+              x = 120, y = 104 },
+        },
+    }
+end
+
 -- ROM FBA6 lays out the icon cells in a seven-column grid; FDFE applies the
 -- selected-cell offsets to the cursor sprite. ROM 10276 sends the spell name
 -- to C21C; e6 9060/9265/9400 show its first visible glyph at x=128 [C],
@@ -169,6 +201,7 @@ function M.enter(st, ctx)
                     mana_defense_value = defense.mana,
                     mana_defense_row = defense.mana_row,
                 },
+                panel_view = defense_panel(defense),
             },
         }
     end
