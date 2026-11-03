@@ -1,0 +1,11 @@
+# Headless GPGX frame / ROM state documented in progress_notes.md #43.
+# Text is read from the 320x224 frame at /tmp/bug43-gpgx-barehand-00.png.
+rom_template	0x72A1A
+source_weapon_slot	0
+source_weapon_code	0
+source_armor_index	0
+action_name	   Empty\n    Hand
+damage_label	Stun
+damage_bar_index	1
+power_label_index	1
+armor_label	No Armor

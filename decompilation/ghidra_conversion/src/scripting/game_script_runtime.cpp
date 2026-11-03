@@ -3087,6 +3087,8 @@ struct GameScriptRuntime::Impl {
                 };
                 push_runner_menu_facts(lua, member.status);
                 lua_setfield(lua, member_index, "runner_facts");
+                set_integer("equipped_action_code", member.weapon_code);
+                set_integer("cyberware_flags", member.cyberware_flags);
                 set_integer("clips", member.clips);
                 set_integer("rounds", member.rounds);
                 if (member.weapon_slot >= 0 &&
@@ -3360,6 +3362,8 @@ struct GameScriptRuntime::Impl {
                     member.race = original_party[index].race;
                     member.character_class =
                         original_party[index].character_class;
+                    member.cyberware_flags =
+                        original_party[index].cyberware_flags;
                     member.clips = bounded_byte(member_index, "clips");
                     member.rounds = bounded_byte(member_index, "rounds");
                     member.weapon_slot = original_party[index].weapon_slot;
@@ -5161,6 +5165,59 @@ struct GameScriptRuntime::Impl {
                         }
                     }
                     lua_pop(state, 1);
+                }
+                lua_pop(state, 1);
+                lua_getfield(state, screen_state_index,
+                             "equipment_status_view");
+                if (lua_istable(state, -1)) {
+                    const auto status_index = lua_absindex(state, -1);
+                    ScriptMenuRouteSnapshot::CommandEquipmentStatusView
+                        status;
+                    const auto read_status_string = [&](const char* field,
+                                                        std::string& value) {
+                        lua_getfield(state, status_index, field);
+                        const bool valid =
+                            read_string_allow_empty(state, -1, value);
+                        lua_pop(state, 1);
+                        return valid;
+                    };
+                    const bool strings_valid =
+                        read_status_string("action_item_id",
+                                           status.action_item_id) &&
+                        read_status_string("action_name",
+                                           status.action_name) &&
+                        read_status_string("damage_effect_label",
+                                           status.damage_effect_label) &&
+                        read_status_string("armor_item_id",
+                                           status.armor_item_id) &&
+                        read_status_string("armor_label",
+                                           status.armor_label);
+                    status.damage_bar_index =
+                        read_optional(status_index, "damage_bar_index");
+                    status.power_label_index =
+                        read_optional(status_index, "power_label_index");
+                    lua_getfield(state, status_index, "no_armor");
+                    const bool has_no_armor = lua_isboolean(state, -1);
+                    status.no_armor = has_no_armor &&
+                                      lua_toboolean(state, -1) != 0;
+                    lua_pop(state, 1);
+                    lua_getfield(state, status_index, "special_action");
+                    status.special_action = lua_toboolean(state, -1) != 0;
+                    lua_pop(state, 1);
+                    const bool damage_index_valid =
+                        !status.damage_bar_index.has_value() ||
+                        (*status.damage_bar_index >= 0 &&
+                         *status.damage_bar_index < 14);
+                    const bool power_index_valid =
+                        !status.power_label_index.has_value() ||
+                        (*status.power_label_index >= 0 &&
+                         *status.power_label_index < 13);
+                    if (strings_valid && has_no_armor && damage_index_valid &&
+                        power_index_valid) {
+                        status.present = true;
+                        menu_route_state.command_equipment_status_view =
+                            std::move(status);
+                    }
                 }
                 lua_pop(state, 1);
                 lua_getfield(state, screen_state_index, "matrix_map_cells");

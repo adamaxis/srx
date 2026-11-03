@@ -1764,6 +1764,20 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_runner_summary_gat
                  --field-command-page 2
                  --field-archetype gator)
 
+# Compare the bare-hand command status panel to an independent headless GPGX
+# capture made from the Decker ROM template at +0x56/+0x57/+0x76 = 0.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_barehand_status_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-command-dump
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-barehand-status-qa.bmp"
+                 --field-command-page 2
+                 --field-archetype decker
+                 --field-barehand-status-qa
+                 --field-barehand-status-emulator-frame
+                 "${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/command-status-barehand-gpgx.png"
+                 --field-barehand-status-real-reference-panel
+                 "${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/command-status-barehand-real-reference-panel.png")
+
 # Command-menu Attributes/Skills is the view-only Karma page. Its separate
 # Hotel route exposes the upgrade preview and spending prompt; keep the
 # captures and verification for those distinct screen variants separate.

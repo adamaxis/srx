@@ -5,6 +5,7 @@ local E = require("enums")
 local Inv = require("menu.rules.inventory")
 local Items = require("items").by_id
 local ItemDefinitions = require("data.items").by_id
+local EquipmentStatus = require("menu.rules.command_equipment_status")
 local P, Section, R, T, S = E.Pad, E.CommandSection, E.MenuRegion, E.MenuTransition, E.MenuSound
 local SECTION_ORDER = {
     Section.INVENTORY_LEFT, Section.INVENTORY_RIGHT, Section.CLIPS,
@@ -41,6 +42,7 @@ function M.new()
     return {
         section = Section.POCKET_SECRETARY,
         selected_inventory_row = 0,
+        equipment_status_view = nil,
         suppress_next_posture_focus = false,
         inventory_item_hold_frames = 0,
         inventory_picture_bank = nil,
@@ -133,6 +135,7 @@ local function build(st, ctx, full, black_frames, reveal_line, reveal, lead)
     -- 0x12A54 compares FFF100 with the selected picture bank and calls
     -- 0x1107E to upload only when the bank changes.
     mark_picture_bank(st, current_picture_item_id(st, ctx))
+    st.equipment_status_view = EquipmentStatus.command_view(leader(ctx))
 end
 
 function M.enter(st, ctx) build(st, ctx, true, BLANK_OPEN, BLANK_REVEAL_LINE, OPEN.reveal, OPEN.lead) end
@@ -151,6 +154,10 @@ function M.step_section(st, direction, ctx)
     if next_position < 1 then next_position = #SECTION_ORDER end
     if next_position > #SECTION_ORDER then next_position = 1 end
     st.section = SECTION_ORDER[next_position]
+    -- Party/equipment facts can be replaced by the host while Command stays
+    -- open (e.g. active-runner selection); refresh this shared view on the
+    -- same routed section transition as its presentation refresh. [C 0x114A0]
+    st.equipment_status_view = EquipmentStatus.command_view(leader(ctx))
     if is_inventory_section(st.section) then
         inventory_cursor(st, ctx)
     else
@@ -335,6 +342,7 @@ end
 
 -- What 0x10D30's loop does after the child routine returns; FFF0D0 was saved/restored around it [C]
 function M.child_returned(st, child, res, ctx)
+    st.equipment_status_view = EquipmentStatus.command_view(leader(ctx))
     update_inventory_ammo_count(st, ctx)
     if child == E.MenuScreen.POSTURE then
         if res.exit_menu then reselect_if_incapacitated(ctx); return { transition = T.EXIT } end  -- FFF0B1 [C]
@@ -358,5 +366,7 @@ function M.child_returned(st, child, res, ctx)
        section == Section.MAGIC then build(st, ctx, true); return end
     build(st, ctx, false)
 end
+
+M.equipment_status_view = EquipmentStatus.command_view
 
 return M

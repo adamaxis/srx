@@ -316,6 +316,8 @@ struct ScriptMenuPartyMember {
     std::uint8_t karma = 0U;
     std::uint8_t magic_force = 0U;
     std::uint8_t posture = 0U;
+    // ROM +0x90 supports the Command screen's hand-damage and Power selectors.
+    std::uint16_t cyberware_flags = 0U;
     // Source table index and continuation are translated at the Lua boundary.
     std::uint16_t magic_table_index = 0U;
     std::uint32_t state_function = 0U;
@@ -814,7 +816,20 @@ struct ScriptMenuRouteSnapshot {
         std::vector<PanelElement> elements;
         bool present = false;
     };
+    struct CommandEquipmentStatusView {
+        std::string action_item_id;
+        std::string action_name;
+        std::string damage_effect_label;
+        std::string armor_item_id;
+        std::string armor_label;
+        std::optional<int> damage_bar_index;
+        std::optional<int> power_label_index;
+        bool no_armor = false;
+        bool special_action = false;
+        bool present = false;
+    };
     std::optional<PanelView> panel_view;
+    std::optional<CommandEquipmentStatusView> command_equipment_status_view;
     bool open = false;
     bool field_return_transition_active = false;
     std::uint16_t field_return_transition_elapsed_frames = 0U;

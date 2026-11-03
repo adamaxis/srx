@@ -303,6 +303,33 @@ E.CyberwareMask = {
     SPURS = 0x0008, -- raw 0x0008: cyberware word bit 3 [C]
     SMARTLINK = 0x0010, -- raw 0x0010: cyberware word bit 4 [C]
 }
+E.CommandStatusAction = {
+    EMPTY_HAND = "empty_hand",
+} -- ROM 0x111E8 selects D1A7E when +0x57 is zero [C]
+E.CommandStatusDamage = {
+    STUN = "stun",
+} -- ROM 0x12EAE selects D1AA5 for a zero action without hand cyberware [C]
+E.CommandStatusArmor = {
+    NONE = "none",
+} -- ROM 0x11352 selects D1F45 when runner +0x76 is zero [C]
+E.CommandStatusDamageBar = {
+    HAND_RAZORS = 0, STUN = 1,
+} -- ROM 0x12EAE selects 0xCF84C row 0 or 1 from +0x90 bits 2/3 [C]
+E.CommandPowerLabel = {
+    MEAGER = 0, MINOR = 1, VERY_LOW = 2, LOW = 3,
+    VERY_LIGHT = 4, LIGHT = 5, MEDIUM = 6, MEDIUM_HIGH = 7,
+    HIGH = 8, BRUTAL = 9, SEVERE = 10, MASSIVE = 11, INCREDIBLE = 12,
+} -- D1F5E has thirteen 12-byte labels; 0x13094..0x130A8 clamps its row [C]
+E.CommandPowerCyberwareBonus = {
+    { mask = 0x0020, value = 1 }, { mask = 0x0040, value = 2 },
+    { mask = 0x0080, value = 3 }, { mask = 0x0100, value = 4 },
+} -- ROM 0x13060..0x13080 adds the first set bit in +0x90 bits 5..8 [C]
+E.WeaponDamageEffect = {
+    LIGHT = 1, MEDIUM = 3, HEAVY = 6,
+} -- D4540 +0x25 resolved by 0x166AD4 [C]
+E.WeaponDamageBar = {
+    LIGHT = 0, MEDIUM = 1, HEAVY = 2,
+} -- ROM 0x13084..0x13090 selects the corresponding damage table row [C]
 E.CombatInteractionFlag = {
     NO_COVERAGE_DIFFICULTY_BONUS = 0x80, -- raw 0x80: prevents the +4 condition adjustment [C value, H flag name]
     DEFENSE_DIFFICULTY_REDUCTION = 0x20, -- raw 0x20: subtracts two in defense_modifier [C value, H flag name]

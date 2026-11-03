@@ -2387,6 +2387,8 @@ private:
     std::optional<int> menu_route_posture_bar_selection_;
     std::optional<scripting::ScriptMenuRouteSnapshot::MagicView>
         menu_route_magic_view_;
+    std::optional<scripting::ScriptMenuRouteSnapshot::CommandEquipmentStatusView>
+        menu_route_equipment_status_view_;
     std::optional<scripting::ScriptMenuRouteSnapshot::PanelView>
         menu_route_panel_view_;
     std::optional<scripting::ScriptShopDefinition> field_shop_definition_;

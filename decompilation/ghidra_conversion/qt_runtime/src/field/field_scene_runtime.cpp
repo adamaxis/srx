@@ -9876,6 +9876,7 @@ void FieldSceneRuntime::configure_field_menu_route() {
             member.karma = record.karma;
             member.magic_force = record.magic_force;
             member.posture = record.posture;
+            member.cyberware_flags = record.cyberware_flags;
             member.magic_table_index = record.magic_table_index;
             member.state_function = record.first_aid_continuation;
             member.inventory = record.inventory_item_codes;
@@ -9997,6 +9998,7 @@ void FieldSceneRuntime::configure_field_menu_route() {
             record.karma = member.karma;
             record.magic_force = member.magic_force;
             record.posture = member.posture;
+            record.cyberware_flags = member.cyberware_flags;
             record.magic_table_index = member.magic_table_index;
             record.first_aid_continuation = member.state_function;
             record.inventory_item_codes = member.inventory;
@@ -18414,7 +18416,9 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             }
         };
     const auto draw_armor_summary = [this, &painter](
-                                        const std::string_view armor_item_id) {
+                                        const std::string_view armor_item_id,
+                                        const std::string_view no_armor_label =
+                                            std::string_view{}) {
         const auto armor_index =
             scripting::script_armor_source_index_from_item_id(armor_item_id);
         if (armor_index.has_value() &&
@@ -18429,8 +18433,13 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                 }
             }
         } else {
+            // ROM 0x11352 takes the zero +0x76 branch to 0x1142E, writes
+            // only D1F45 at C8A6, then returns at 0x11440.
             draw_command_overview_text(painter, 152, 136,
-                                       field_menu_text_.no_armor_label);
+                no_armor_label.empty()
+                    ? std::string_view{field_menu_text_.no_armor_label}
+                    : no_armor_label);
+            return;
         }
         draw_command_overview_text(painter, 136, 144,
                                    field_menu_text_.weapons_label);
@@ -18575,7 +18584,77 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                         field_menu_text_.power_labels[force_row]);
                 }
             }
+        } else if (menu_route_equipment_status_view_.has_value() &&
+                   menu_route_equipment_status_view_->present) {
+            const auto& status = *menu_route_equipment_status_view_;
+            if (!status.action_name.empty()) {
+                draw_command_overview_text(painter, 128, 64,
+                                           status.action_name);
+            } else if (!status.action_item_id.empty()) {
+                const auto item_code =
+                    scripting::script_item_source_code_from_id(
+                        status.action_item_id);
+                if (item_code.has_value() && *item_code > 0U &&
+                    *item_code <= field_menu_text_.items.size()) {
+                    const auto& item_text = field_menu_text_.items[
+                        static_cast<std::size_t>(*item_code - 1U)];
+                    draw_command_overview_text(
+                        painter,
+                        centered_text_x(128, kMenuLabelCells, item_text.name),
+                        64, item_text.name);
+                    if (!item_text.category.empty()) {
+                        draw_command_overview_text(
+                            painter,
+                            centered_text_x(128, kMenuLabelCells,
+                                            item_text.category),
+                            72, item_text.category);
+                    }
+                }
+            }
+            if (status.damage_bar_index.has_value() &&
+                *status.damage_bar_index >= 0 &&
+                static_cast<std::size_t>(*status.damage_bar_index) <
+                    command_overview_damage_bars_.size()) {
+                draw_command_overview_text(
+                    painter, 112, 80, field_menu_text_.damage_label);
+                painter.drawImage(
+                    168, 80,
+                    command_overview_damage_bars_[static_cast<std::size_t>(
+                        *status.damage_bar_index)]);
+                if (!status.damage_effect_label.empty()) {
+                    draw_command_overview_text(
+                        painter, 224, 80, status.damage_effect_label);
+                }
+            }
+            if (status.power_label_index.has_value() &&
+                *status.power_label_index >= 0 &&
+                static_cast<std::size_t>(*status.power_label_index) <
+                    field_menu_text_.power_labels.size()) {
+                draw_command_overview_text(
+                    painter, 112, 88, field_menu_text_.power_label);
+                draw_command_overview_text(
+                    painter, 168, 88,
+                    field_menu_text_.power_labels[static_cast<std::size_t>(
+                        *status.power_label_index)]);
+            }
         } else {
+            if (equipped_item_code > 0U &&
+                equipped_item_code <= field_menu_text_.items.size()) {
+                const auto item_index =
+                    static_cast<std::size_t>(equipped_item_code - 1U);
+                const auto& item_text = field_menu_text_.items[item_index];
+                draw_command_overview_text(
+                    painter, centered_text_x(128, kMenuLabelCells,
+                                             item_text.name),
+                    64, item_text.name);
+                if (!item_text.category.empty()) {
+                    draw_command_overview_text(
+                        painter,
+                        centered_text_x(128, kMenuLabelCells,
+                                        item_text.category),
+                        72, item_text.category);
+                }
+            }
             draw_item_detail_rows(equipped_item_code, std::nullopt, false);
         }
         draw_command_overview_text(painter, 112, 104,
@@ -18599,9 +18678,21 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                     command_overview_combat_bars_.defense_bar]);
         }
         const auto equipped_armor_id =
-            scripting::script_armor_item_id_from_source_index(
-                active_runner_record().equipped_armor_index);
-        draw_armor_summary(equipped_armor_id.value_or(std::string_view{}));
+            menu_route_equipment_status_view_.has_value() &&
+                    menu_route_equipment_status_view_->present
+                ? std::string_view{
+                      menu_route_equipment_status_view_->armor_item_id}
+                : scripting::script_armor_item_id_from_source_index(
+                      active_runner_record().equipped_armor_index)
+                      .value_or(std::string_view{});
+        const auto no_armor_label =
+            menu_route_equipment_status_view_.has_value() &&
+                    menu_route_equipment_status_view_->present &&
+                    menu_route_equipment_status_view_->no_armor
+                ? std::string_view{
+                      menu_route_equipment_status_view_->armor_label}
+                : std::string_view{};
+        draw_armor_summary(equipped_armor_id, no_armor_label);
     } else if (!command_overview_clips_.is_open() &&
                !command_overview_inventory_detail_pending_) {
         const auto slot = view.source_state.secondary_page * 2U +

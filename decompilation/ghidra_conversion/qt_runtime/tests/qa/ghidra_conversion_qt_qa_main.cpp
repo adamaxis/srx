@@ -68,6 +68,68 @@ bool image_matches_emulator_reference(const QImage& actual,
     return true;
 }
 
+std::size_t emulator_reference_pixel_mismatches(
+    const QImage& actual, const QImage& reference, const QRect& region,
+    const int channel_tolerance) {
+    if (actual.isNull() || reference.isNull() ||
+        actual.size() != reference.size() || channel_tolerance < 0 ||
+        !actual.rect().contains(region)) {
+        return std::numeric_limits<std::size_t>::max();
+    }
+    const auto actual_rgb = actual.convertToFormat(QImage::Format_RGB32);
+    const auto reference_rgb = reference.convertToFormat(QImage::Format_RGB32);
+    std::size_t mismatches = 0U;
+    for (int y = region.top(); y <= region.bottom(); ++y) {
+        for (int x = region.left(); x <= region.right(); ++x) {
+            const auto actual_color = actual_rgb.pixelColor(x, y);
+            const auto reference_color = reference_rgb.pixelColor(x, y);
+            if (std::abs(actual_color.red() - reference_color.red()) >
+                    channel_tolerance ||
+                std::abs(actual_color.green() - reference_color.green()) >
+                    channel_tolerance ||
+                std::abs(actual_color.blue() - reference_color.blue()) >
+                    channel_tolerance) {
+                ++mismatches;
+            }
+        }
+    }
+    return mismatches;
+}
+
+std::size_t reference_green_mask_mismatches(const QImage& actual,
+                                            const QImage& reference_crop,
+                                            const QRect& actual_region) {
+    if (actual.isNull() || reference_crop.isNull() ||
+        !actual.rect().contains(actual_region) ||
+        reference_crop.size() != actual_region.size()) {
+        return std::numeric_limits<std::size_t>::max();
+    }
+    const auto actual_rgb = actual.convertToFormat(QImage::Format_RGB32);
+    const auto reference_rgb =
+        reference_crop.convertToFormat(QImage::Format_RGB32);
+    const auto is_green = [](const QRgb pixel) {
+        const auto red = qRed(pixel);
+        const auto green = qGreen(pixel);
+        const auto blue = qBlue(pixel);
+        return green > 130 && green * 10 > red * 17 &&
+               green * 10 > blue * 17;
+    };
+    std::size_t mismatches = 0U;
+    for (int y = 0; y < actual_region.height(); ++y) {
+        const auto* actual_row = reinterpret_cast<const QRgb*>(
+            actual_rgb.constScanLine(actual_region.y() + y));
+        const auto* reference_row = reinterpret_cast<const QRgb*>(
+            reference_rgb.constScanLine(y));
+        for (int x = 0; x < actual_region.width(); ++x) {
+            if (is_green(actual_row[actual_region.x() + x]) !=
+                is_green(reference_row[x])) {
+                ++mismatches;
+            }
+        }
+    }
+    return mismatches;
+}
+
 bool image_matches_genesis_pixels_outside_region(
     const QImage& actual, const QImage& reference,
     const QRect& ignored_region, std::size_t* compared_pixels = nullptr,
@@ -39649,6 +39711,11 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_matrix_traversal_entry_qa_path;
         std::optional<std::uint8_t> field_command_page;
+        bool field_barehand_status_qa = false;
+        std::optional<std::filesystem::path>
+            field_barehand_status_emulator_frame;
+        std::optional<std::filesystem::path>
+            field_barehand_status_real_reference_panel;
         std::optional<std::filesystem::path> field_cyberware_dump_path;
         std::optional<std::filesystem::path> field_secretary_dump_path;
         std::optional<std::filesystem::path> field_posture_dump_path;
@@ -40886,6 +40953,24 @@ int main(int argc, char** argv) {
                 field_smoke = true;
                 field_command_page = static_cast<std::uint8_t>(
                     std::stoul(argv[++index]));
+            }
+            if (std::string(argv[index]) == "--field-barehand-status-qa") {
+                field_smoke = true;
+                field_barehand_status_qa = true;
+            }
+            if (std::string(argv[index]) ==
+                    "--field-barehand-status-emulator-frame" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_barehand_status_emulator_frame =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-barehand-status-real-reference-panel" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_barehand_status_real_reference_panel =
+                    std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-secretary-dump" &&
                 index + 1 < argc) {
@@ -54814,6 +54899,12 @@ int main(int argc, char** argv) {
                                     field_scene.field_scene_reference_for_dump()) +
                                 ", failure=" + field_scene.failure() + ")");
                         }
+                        // The test replaces host party records while Command
+                        // remains open. Move away and back through the shared
+                        // route so Lua refreshes the view for the replacement
+                        // active runner before the parent/return comparison.
+                        tap_qa_controller_button(field_scene, 0x04U);
+                        tap_qa_controller_button(field_scene, 0x08U);
                         const auto parent = render_qa_field(field_scene);
                         const auto profile_prefix =
                             std::string(profiles[recipient].slug) + "-" +
@@ -55948,6 +56039,14 @@ int main(int argc, char** argv) {
             }
             if (field_command_dump_path.has_value()) {
                 const auto capture_field_scene = [&field_scene] { return render_qa_field(field_scene); };
+                if (field_barehand_status_qa) {
+                    auto& runner = field_scene.active_runner_record();
+                    // Joshua Decker template, ROM 0x72A1A: the status-panel
+                    // fixture has source +0x56=0, +0x57=0 and +0x76=0.
+                    runner.equipped_inventory_slot = 0;
+                    runner.equipped_item_code = 0U;
+                    runner.equipped_armor_index = 0U;
+                }
                 const auto field_before_command = capture_field_scene();
                 if (!field_scene.open_command_overview_for_dump()) {
                     std::cerr << "field command dump: command overview did "
@@ -55962,6 +56061,58 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 const auto command_scene = capture_field_scene();
+                if (field_barehand_status_qa) {
+                    if (!field_barehand_status_emulator_frame.has_value()) {
+                        std::cerr << "bare-hand status QA: GPGX reference frame "
+                                     "was not supplied\n";
+                        return 3;
+                    }
+                    const QImage emulator_frame(QString::fromStdWString(
+                        field_barehand_status_emulator_frame->wstring()));
+                    constexpr QRect kBarehandStatusPixelRegion(
+                        112, 64, 136, 96);
+                    const auto mismatches =
+                        emulator_reference_pixel_mismatches(
+                            command_scene, emulator_frame,
+                            kBarehandStatusPixelRegion, 20);
+                    if (mismatches > 48U) {
+                        command_scene.save(QString::fromStdWString(
+                            field_command_dump_path->wstring()));
+                        std::cerr << "bare-hand status QA: GPGX pixel "
+                                     "comparison failed in x=112..247, "
+                                     "y=64..159; mismatches="
+                                  << mismatches << " tolerance=20\n";
+                        return 3;
+                    }
+                    std::cout << "barehand_status_gpgx_pixel_check=passed"
+                              << " region=112,64,136,96 mismatches="
+                              << mismatches << " tolerance=20\n";
+                    if (!field_barehand_status_real_reference_panel
+                             .has_value()) {
+                        std::cerr << "bare-hand status QA: cropped real-game "
+                                     "reference panel was not supplied\n";
+                        return 3;
+                    }
+                    const QImage real_reference_panel(
+                        QString::fromStdWString(
+                            field_barehand_status_real_reference_panel
+                                ->wstring()));
+                    const auto reference_green_mismatches =
+                        reference_green_mask_mismatches(
+                            command_scene, real_reference_panel,
+                            kBarehandStatusPixelRegion);
+                    if (reference_green_mismatches > 16U) {
+                        std::cerr << "bare-hand status QA: real-game "
+                                     "reference green-mask comparison failed; "
+                                     "mismatches="
+                                  << reference_green_mismatches
+                                  << " limit=16\n";
+                        return 3;
+                    }
+                    std::cout << "barehand_status_real_reference_green_mask="
+                                 "passed region=112,64,136,96 mismatches="
+                              << reference_green_mismatches << " limit=16\n";
+                }
                 // Focusing the Attributes/Skills command row must leave the
                 // shared command shell intact. ROM 0xD01C is entered only by
                 // the following A action.
@@ -56259,6 +56410,27 @@ int main(int argc, char** argv) {
                                                    .source_state.primary_page)
                           << " static_frames=30 clean_return=1"
                           << "\n";
+                if (field_barehand_status_qa) {
+                    const auto& bars =
+                        field_scene.command_overview_combat_bars();
+                    const auto& runner = field_scene.active_runner_record();
+                    std::cout << "field_barehand_status=measured"
+                              << " item=" << static_cast<unsigned>(
+                                     runner.equipped_item_code)
+                              << " slot=" << static_cast<int>(
+                                     runner.equipped_inventory_slot)
+                              << " armor=" << static_cast<unsigned>(
+                                     runner.equipped_armor_index)
+                              << " attack_written="
+                              << (bars.attack_written ? 1 : 0)
+                              << " attack_bar="
+                              << static_cast<unsigned>(bars.attack_bar)
+                              << " defense_written="
+                              << (bars.defense_written ? 1 : 0)
+                              << " defense_bar="
+                              << static_cast<unsigned>(bars.defense_bar)
+                              << '\n';
+                }
                 return 0;
             }
             if (field_attributes_skills_dump_path.has_value()) {

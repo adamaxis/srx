@@ -155,6 +155,7 @@ std::optional<std::uint8_t> inventory_action_selector_from_id(
 void FieldSceneRuntime::synchronize_command_overview_magic_from_route(
     const scripting::ScriptMenuRouteSnapshot& route_state) {
     menu_route_magic_view_.reset();
+    menu_route_equipment_status_view_.reset();
     menu_route_panel_view_.reset();
     menu_route_magic_physical_defense_ = MagicDefenseStripView{};
     menu_route_magic_mana_defense_ = MagicDefenseStripView{};
@@ -167,6 +168,11 @@ void FieldSceneRuntime::synchronize_command_overview_magic_from_route(
     if (route_state.panel_view.has_value() &&
         route_state.panel_view->present) {
         menu_route_panel_view_ = route_state.panel_view;
+    }
+    if (route_state.command_equipment_status_view.has_value() &&
+        route_state.command_equipment_status_view->present) {
+        menu_route_equipment_status_view_ =
+            route_state.command_equipment_status_view;
     }
 
     switch (static_cast<srx::MenuScreen>(route_state.top_screen)) {
