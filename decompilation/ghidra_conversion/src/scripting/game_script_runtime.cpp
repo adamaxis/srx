@@ -16425,7 +16425,11 @@ bool GameScriptRuntime::open_menu_route(
     }
     lua_pushvalue(state, route_index);
     lua_pushinteger(state, static_cast<lua_Integer>(root_screen));
-    lua_createtable(state, 0, 6);
+    lua_createtable(state, 0, 7);
+    if (start_arguments.karma_upgrade_attributes) {
+        lua_pushboolean(state, 1);
+        lua_setfield(state, -2, "karma");
+    }
     if (start_arguments.matrix_system_id.has_value()) {
         lua_pushinteger(state, *start_arguments.matrix_system_id);
         lua_setfield(state, -2, "system_id");

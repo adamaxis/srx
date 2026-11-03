@@ -59,6 +59,12 @@ public:
     void refresh(const RunnerRecordFields& active_record);
     void synchronize_cursor(int column, int row,
                             const RunnerRecordFields& active_record);
+    // Presentation mirror for the Lua route. Input and prompt decisions stay
+    // in menu.route.lua; these fields only let the Qt presenter draw its
+    // current selection and modal child.
+    void synchronize_route_state(
+        int column, int row, bool prompt_open, int prompt_selection,
+        AttributesSkillsMenuMessage message) noexcept;
     // Upgrade rule source (0xD82A). Unset keeps the converted C++ rule.
     using UpgradeRule = std::function<AttributeSkillUpgradePreview(
         const RunnerRecordFields&, AttributeSkillCursor)>;
@@ -123,6 +129,12 @@ public:
     void synchronize_cursor(int column, int row,
                             const RunnerRecordFields& active_record) {
         controller_.synchronize_cursor(column, row, active_record);
+    }
+    void synchronize_route_state(
+        int column, int row, bool prompt_open, int prompt_selection,
+        AttributesSkillsMenuMessage message) noexcept {
+        controller_.synchronize_route_state(
+            column, row, prompt_open, prompt_selection, message);
     }
     AttributesSkillsRuntimeEvent advance(
         std::uint16_t controller_events, RunnerRecordFields& active_record,

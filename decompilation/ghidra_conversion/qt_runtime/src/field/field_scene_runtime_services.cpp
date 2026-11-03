@@ -1839,7 +1839,7 @@ HotelMenuEvent FieldSceneRuntime::process_hotel_menu_events(
         static_cast<void>(begin_native_menu_source_entry_return());
         source_boundary("field.hotel.checked_out");
         break;
-    case HotelMenuEvent::karma_screen_opened:
+    case HotelMenuEvent::karma_screen_opened: {
         // ROM 0xD82A rules come from Lua karma.lua; C++ keeps the grid
         // layout (cell -> record offset) and cross-checks Lua's cell.
         hotel_karma_skills_.set_upgrade_rule(
@@ -1898,6 +1898,7 @@ HotelMenuEvent FieldSceneRuntime::process_hotel_menu_events(
                 const auto status_id = string_field("status");
                 const auto section_id = string_field("section");
                 const auto field_id = string_field("field");
+                const auto text_tone = string_field("text_tone");
                 const auto next_value = integer_field("next_value");
                 const auto karma_cost = integer_field("karma_cost");
                 std::optional<AttributeSkillUpgradeStatus> lua_status;
@@ -1938,6 +1939,7 @@ HotelMenuEvent FieldSceneRuntime::process_hotel_menu_events(
                 if (!lua_status.has_value() || !section_id.has_value() ||
                     !field_id.has_value() || !next_value.has_value() ||
                     !karma_cost.has_value() ||
+                    text_tone != "focused" ||
                     *section_id != (skill ? "skill" : "attribute") ||
                     *field_id != expected_field || *next_value < 0 ||
                     *next_value > 0xFF || *karma_cost < 0 ||
@@ -1951,12 +1953,28 @@ HotelMenuEvent FieldSceneRuntime::process_hotel_menu_events(
                 preview.next_value = static_cast<std::uint8_t>(*next_value);
                 preview.karma_cost =
                     static_cast<std::uint16_t>(*karma_cost);
+                preview.text_tone = MenuTextTone::focused;
                 return preview;
             });
-        hotel_karma_skills_.open(active_runner_record());
+        hotel_karma_route_active_ = true;
+        scripting::ScriptMenuRouteStartArguments route_arguments{};
+        route_arguments.karma_upgrade_attributes = true;
+        menu_route_active_ = game_scripts_.open_menu_route(
+            static_cast<std::uint16_t>(srx::MenuScreen::ATTRIBUTES_SKILLS),
+            route_arguments);
+        if (!menu_route_active_) {
+            hotel_karma_route_active_ = false;
+            failure_ = game_scripts_.failure().empty()
+                ? "Lua Hotel Karma route could not open"
+                : game_scripts_.failure();
+            source_boundary("field.hotel.karma_route_open_failed");
+            break;
+        }
+        synchronize_hotel_karma_route();
         hotel_karma_load_frames_ = hotel_karma_load_black_frames_;
         source_boundary("field.hotel.karma_screen.opened");
         break;
+    }
     case HotelMenuEvent::mode_action:
         // 0xCFF4 calls the field C-button routine 0x391A, whose first act
         // is sound event 0x25 via 0x530DE (emulator: +1 frame after C in
@@ -2006,46 +2024,121 @@ FieldSceneRuntime::advance_hotel_karma_screen_for_dump(
 AttributesSkillsRuntimeEvent
 FieldSceneRuntime::process_hotel_karma_screen_events(
     const std::uint16_t events) {
-    const auto result = hotel_karma_skills_.advance(
-        events, active_runner_record(), [this] {
-            handle_field_mode_action_event();
-            refresh_field_hud_runner_slot();
-            source_boundary("field.hotel.karma_screen.runner_selected");
-        });
-    switch (result) {
-    case AttributesSkillsRuntimeEvent::no_change:
-        break;
-    case AttributesSkillsRuntimeEvent::selection_moved:
-        source_boundary("field.hotel.karma_screen.selection_moved");
-        break;
-    case AttributesSkillsRuntimeEvent::upgrade_prompt_opened:
-        source_boundary("field.hotel.karma_screen.upgrade_prompt_opened");
-        break;
-    case AttributesSkillsRuntimeEvent::upgrade_prompt_moved:
-        source_boundary("field.hotel.karma_screen.upgrade_prompt_moved");
-        break;
-    case AttributesSkillsRuntimeEvent::upgrade_applied:
-        source_boundary("field.hotel.karma_screen.upgrade_applied");
-        break;
-    case AttributesSkillsRuntimeEvent::upgrade_declined:
-        source_boundary("field.hotel.karma_screen.upgrade_declined");
-        break;
-    case AttributesSkillsRuntimeEvent::upgrade_blocked:
-        source_boundary("field.hotel.karma_screen.upgrade_blocked");
-        break;
-    case AttributesSkillsRuntimeEvent::insufficient_karma:
-        source_boundary("field.hotel.karma_screen.insufficient_karma");
-        break;
-    case AttributesSkillsRuntimeEvent::
-        active_runner_selection_requested:
-        hotel_karma_skills_.refresh(active_runner_record());
-        break;
-    case AttributesSkillsRuntimeEvent::returned_to_parent:
+    if (!hotel_karma_route_active_) {
+        return AttributesSkillsRuntimeEvent::no_change;
+    }
+
+    const auto before_route = game_scripts_.menu_route_snapshot();
+    const auto before_record = active_runner_record();
+    game_scripts_.advance_menu_route(events);
+    if (!game_scripts_.failure().empty()) {
+        failure_ = game_scripts_.failure();
+        source_boundary("field.hotel.karma_route_input_failed");
+        return AttributesSkillsRuntimeEvent::no_change;
+    }
+    const auto after_route = game_scripts_.menu_route_snapshot();
+    if (!after_route.open) {
+        hotel_karma_route_active_ = false;
+        menu_route_active_ = false;
         hotel_karma_skills_.close_to_parent();
         source_boundary("field.hotel.karma_screen.returned_to_options");
-        break;
+        return AttributesSkillsRuntimeEvent::returned_to_parent;
     }
-    return result;
+    synchronize_hotel_karma_route();
+
+    const auto attributes_screen = static_cast<std::uint16_t>(
+        srx::MenuScreen::ATTRIBUTES_SKILLS);
+    const auto prompt_screen = static_cast<std::uint16_t>(
+        srx::MenuScreen::UPGRADE_PROMPT);
+    const auto message_screen = static_cast<std::uint16_t>(
+        srx::MenuScreen::MESSAGE);
+    if (before_route.top_screen == attributes_screen &&
+        after_route.top_screen == prompt_screen) {
+        source_boundary("field.hotel.karma_screen.upgrade_prompt_opened");
+        return AttributesSkillsRuntimeEvent::upgrade_prompt_opened;
+    }
+    if (before_route.top_screen == prompt_screen &&
+        after_route.top_screen == prompt_screen &&
+        before_route.top_selection != after_route.top_selection) {
+        source_boundary("field.hotel.karma_screen.upgrade_prompt_moved");
+        return AttributesSkillsRuntimeEvent::upgrade_prompt_moved;
+    }
+    if (before_route.top_screen == prompt_screen &&
+        after_route.top_screen == attributes_screen) {
+        if (after_route.top_message == static_cast<int>(
+                srx::MenuMessage::INSUFFICIENT_KARMA)) {
+            source_boundary("field.hotel.karma_screen.insufficient_karma");
+            return AttributesSkillsRuntimeEvent::insufficient_karma;
+        }
+        const auto& after_record = active_runner_record();
+        const bool changed = before_record.attributes != after_record.attributes ||
+            before_record.skills != after_record.skills ||
+            before_record.karma != after_record.karma;
+        const auto result = changed
+            ? AttributesSkillsRuntimeEvent::upgrade_applied
+            : AttributesSkillsRuntimeEvent::upgrade_declined;
+        source_boundary(changed
+            ? "field.hotel.karma_screen.upgrade_applied"
+            : "field.hotel.karma_screen.upgrade_declined");
+        return result;
+    }
+    if (before_route.top_screen == attributes_screen &&
+        after_route.top_screen == attributes_screen &&
+        (before_route.top_column != after_route.top_column ||
+         before_route.top_row != after_route.top_row)) {
+        source_boundary("field.hotel.karma_screen.selection_moved");
+        return AttributesSkillsRuntimeEvent::selection_moved;
+    }
+    const bool confirm_pressed = (events & 0x5000U) != 0U;
+    if (after_route.top_screen == attributes_screen &&
+        after_route.top_message.has_value() &&
+        (before_route.top_message != after_route.top_message ||
+         confirm_pressed)) {
+        if (after_route.top_message == static_cast<int>(
+                srx::MenuMessage::INSUFFICIENT_KARMA)) {
+            source_boundary("field.hotel.karma_screen.insufficient_karma");
+            return AttributesSkillsRuntimeEvent::insufficient_karma;
+        }
+        source_boundary("field.hotel.karma_screen.upgrade_blocked");
+        return AttributesSkillsRuntimeEvent::upgrade_blocked;
+    }
+    if (after_route.top_screen == message_screen) {
+        if (after_route.top_message == static_cast<int>(
+                srx::MenuMessage::INSUFFICIENT_KARMA)) {
+            source_boundary("field.hotel.karma_screen.insufficient_karma");
+            return AttributesSkillsRuntimeEvent::insufficient_karma;
+        }
+        source_boundary("field.hotel.karma_screen.upgrade_blocked");
+        return AttributesSkillsRuntimeEvent::upgrade_blocked;
+    }
+    return AttributesSkillsRuntimeEvent::no_change;
+}
+
+void FieldSceneRuntime::synchronize_hotel_karma_route() {
+    if (!hotel_karma_skills_.is_open()) {
+        return;
+    }
+    const auto route = game_scripts_.menu_route_snapshot();
+    const auto current = hotel_karma_skills_.state().cursor;
+    const auto column = route.top_column.value_or(current.column);
+    const auto row = route.top_row.value_or(current.row);
+    const auto prompt_screen = static_cast<std::uint16_t>(
+        srx::MenuScreen::UPGRADE_PROMPT);
+    const bool prompt_open = route.top_screen == prompt_screen;
+    auto message = AttributesSkillsMenuMessage::none;
+    if (route.top_message.has_value()) {
+        if (route.top_message == static_cast<int>(srx::MenuMessage::MAX_LEVEL)) {
+            message = AttributesSkillsMenuMessage::maximum_level;
+        } else if (route.top_message == static_cast<int>(
+                                           srx::MenuMessage::MAGE_ONLY)) {
+            message = AttributesSkillsMenuMessage::mage_only_skill;
+        } else if (route.top_message == static_cast<int>(
+                                           srx::MenuMessage::INSUFFICIENT_KARMA)) {
+            message = AttributesSkillsMenuMessage::insufficient_karma;
+        }
+    }
+    hotel_karma_skills_.synchronize_route_state(
+        column, row, prompt_open, route.top_selection.value_or(0), message);
 }
 
 #ifdef SHADOWRUN_QT_QA_DRIVER

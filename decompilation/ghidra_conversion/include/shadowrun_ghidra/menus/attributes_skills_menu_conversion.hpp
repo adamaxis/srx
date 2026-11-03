@@ -31,6 +31,11 @@ enum class AttributeSkillUpgradeStatus {
     at_limit,
 };
 
+enum class MenuTextTone {
+    standard,
+    focused,
+};
+
 struct AttributeSkillUpgradePreview {
     AttributeSkillUpgradeStatus status =
         AttributeSkillUpgradeStatus::invalid_selection;
@@ -40,6 +45,7 @@ struct AttributeSkillUpgradePreview {
     std::uint8_t current_value = 0;
     std::uint8_t next_value = 0;
     std::uint16_t karma_cost = 0;
+    MenuTextTone text_tone = MenuTextTone::focused;
 };
 
 enum class AttributeSkillUpgradeResult {

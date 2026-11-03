@@ -1,6 +1,8 @@
 -- Hotel Karma upgrade rules from ROM 0xD82A/0xD3EA [C].
 local E = require("enums")
 local K = require("karma")
+local AttributeScreen = require("menu.screens.attributes")
+local MenuRoute = require("menu.route")
 local Combat = require("combat")
 local Items = require("items")
 local Magic = require("magic")
@@ -33,6 +35,11 @@ end
 local function p(profile, column, row)
     return K.upgrade_preview(profile, column, row)
 end
+
+MenuRoute.register(E.MenuScreen.ATTRIBUTES_SKILLS,
+                   AttributeScreen.Attributes)
+MenuRoute.register(E.MenuScreen.UPGRADE_PROMPT,
+                   AttributeScreen.Prompt)
 
 local human = runner(E.RunnerRace.HUMAN, E.RunnerClass.SAMURAI)
 local result = p(human, 0, 0)
@@ -122,6 +129,181 @@ check(result.status == E.KarmaUpgrade.AVAILABLE and
       "untrained Shotguns use Firearms twelve for preview")
 check(p(trained, 2, 0).status == E.KarmaUpgrade.INVALID,
       "out-of-grid selection is invalid")
+
+-- Independent GPGX runtime oracle for the exact Human/Shaman record shown at
+-- frame 9030. The fixture records FFF0B6/FFF0B8 preview RAM plus the committed
+-- record and +0x8D Karma after real D-pad/A input. Exercise both production
+-- Lua rule modules and the shared menu.route.lua input/prompt path.
+local function route_host()
+    return {
+        blank = function() end,
+        mask = function() end,
+        redraw = function() end,
+        set_window = function() end,
+        set_screen = function() end,
+        menu_closed = function() end,
+        play_sound = function() end,
+    }
+end
+
+local function source_runner()
+    local profile = runner(E.RunnerRace.HUMAN, E.RunnerClass.SHAMAN, {
+        ["attributes.body"] = 2,
+        ["attributes.quickness"] = 4,
+        ["attributes.strength"] = 1,
+        ["attributes.charisma"] = 2,
+        ["attributes.intelligence"] = 3,
+        ["attributes.willpower"] = 4,
+        ["skills.sorcery"] = 3,
+        ["skills.firearms"] = 2,
+        ["skills.pistols"] = 0,
+        ["skills.smgs"] = 0,
+        ["skills.shotguns"] = 0,
+        ["skills.melee_combat"] = 1,
+        ["skills.throwing"] = 0,
+        ["skills.computer"] = 0,
+        ["skills.biotech"] = 0,
+        ["skills.electronics"] = 0,
+        ["skills.reputation"] = 1,
+        ["skills.negotiation"] = 3,
+    })
+    profile.karma = 20
+    return profile
+end
+
+local capped_body = source_runner()
+capped_body.attributes.body = 6
+local cap_route = MenuRoute.new(route_host(), {
+    party = function() return { [1] = capped_body } end,
+    active_slot = function() return 1 end,
+})
+cap_route:open(E.MenuScreen.ATTRIBUTES_SKILLS, { karma = true })
+check(cap_route:top().screen == E.MenuScreen.ATTRIBUTES_SKILLS and
+      cap_route:top().state.message == E.MenuMessage.MAX_LEVEL,
+      "ROM maximum-level feedback stays in the Attributes page status area")
+cap_route:frame(0)
+check(cap_route:top().screen == E.MenuScreen.ATTRIBUTES_SKILLS,
+      "maximum-level feedback does not consume the next grid input as a modal")
+cap_route:frame(E.Pad.DOWN)
+check(cap_route:top().screen == E.MenuScreen.ATTRIBUTES_SKILLS and
+      cap_route:top().state.row == 1 and
+      cap_route:top().state.message == nil,
+      "moving off a capped stat clears its inline maximum-level feedback")
+
+local restricted_profile = source_runner()
+restricted_profile.character_class = E.RunnerClass.SAMURAI
+local restricted_route = MenuRoute.new(route_host(), {
+    party = function() return { [1] = restricted_profile } end,
+    active_slot = function() return 1 end,
+})
+restricted_route:open(E.MenuScreen.ATTRIBUTES_SKILLS, { karma = true })
+for _ = 1, 4 do restricted_route:frame(E.Pad.DOWN) end
+restricted_route:frame(E.Pad.A)
+check(restricted_route:top().screen == E.MenuScreen.ATTRIBUTES_SKILLS and
+      restricted_route:top().state.message == E.MenuMessage.MAGE_ONLY,
+      "Mage Only feedback stays inline and keeps the grid as route owner")
+restricted_route:frame(E.Pad.DOWN)
+check(restricted_route:top().state.row == 5 and
+      restricted_route:top().state.message == nil,
+      "a d-pad event moves directly after inline Mage Only feedback")
+
+local poor_profile = source_runner()
+poor_profile.karma = 0
+local poor_route = MenuRoute.new(route_host(), {
+    party = function() return { [1] = poor_profile } end,
+    active_slot = function() return 1 end,
+})
+poor_route:open(E.MenuScreen.ATTRIBUTES_SKILLS, { karma = true })
+poor_route:frame(E.Pad.A)
+check(poor_route:top().screen == E.MenuScreen.ATTRIBUTES_SKILLS and
+      poor_route:top().state.message == E.MenuMessage.INSUFFICIENT_KARMA,
+      "insufficient Karma feedback stays inline without a pushed message page")
+
+local fixture_path = (os.getenv("SHADOWRUN_ROOT") or ".") ..
+    "/decompilation/gameplay/tests_lua/fixtures/" ..
+    "karma_upgrade_gpgx_frame_9030.tsv"
+local fixture = assert(io.open(fixture_path, "r"),
+                       "missing GPGX Karma-upgrade fixture")
+for line in fixture:lines() do
+    if not line:match("^%s*#") and line ~= "" then
+        local col, row, section, field, current, next_value, cost,
+            committed, karma_before, karma_after = line:match(
+                "^(%d+)\t(%d+)\t([^\t]+)\t([^\t]+)\t(%d+)\t(%d+)\t" ..
+                "(%d+)\t(%d+)\t(%d+)\t(%d+)$")
+        assert(col ~= nil, "malformed GPGX Karma fixture row: " .. line)
+        col, row = tonumber(col), tonumber(row)
+        current, next_value, cost = tonumber(current), tonumber(next_value),
+            tonumber(cost)
+        committed, karma_before, karma_after = tonumber(committed),
+            tonumber(karma_before), tonumber(karma_after)
+
+        local profile = source_runner()
+        profile.karma = karma_before
+        local record_section = section == "attribute"
+            and "attributes" or "skills"
+        local field_profile_value = profile[record_section][field]
+        local result = K.upgrade_preview(profile, col, row)
+        check(field_profile_value == current and
+              result.status == E.KarmaUpgrade.AVAILABLE and
+              result.section == section and result.field == field and
+              result.next_value == next_value and
+              result.karma_cost == cost and
+              result.text_tone == E.MenuTextTone.FOCUSED,
+              string.format("GPGX preview mismatch at (%d,%d)", col, row))
+
+        local screen_status, screen_next, screen_cost =
+            AttributeScreen.Attributes.preview(profile, col, row)
+        check(screen_status == E.KarmaUpgrade.AVAILABLE and
+              screen_next == next_value and screen_cost == cost,
+              string.format("Attributes screen rule mismatch at (%d,%d)",
+                            col, row))
+
+        local route_profile = source_runner()
+        route_profile.karma = karma_before
+        local game_state = {
+            party = function()
+                local copy = {}
+                for key, value in pairs(route_profile) do
+                    if key == "attributes" or key == "skills" then
+                        local nested = {}
+                        for field_name, field_value in pairs(value) do
+                            nested[field_name] = field_value
+                        end
+                        copy[key] = nested
+                    else
+                        copy[key] = value
+                    end
+                end
+                return { [1] = copy }
+            end,
+            active_slot = function() return 1 end,
+            commit_party = function(party)
+                route_profile = party[1]
+            end,
+            reselect_leader = function() end,
+        }
+        local route = MenuRoute.new(route_host(), game_state)
+        route:open(E.MenuScreen.ATTRIBUTES_SKILLS, { karma = true })
+        if col == 1 then route:frame(E.Pad.RIGHT) end
+        for _ = 1, row do route:frame(E.Pad.DOWN) end
+        local top = route:top()
+        local correct_cursor = top ~= nil and top.state.col == col and
+            top.state.row == row
+        route:frame(E.Pad.A)
+        local prompt_open = route:top() ~= nil and
+            route:top().screen == E.MenuScreen.UPGRADE_PROMPT
+        route:frame(E.Pad.A)
+        check(correct_cursor and prompt_open and
+              route:top() ~= nil and
+              route:top().screen == E.MenuScreen.ATTRIBUTES_SKILLS and
+              route_profile[record_section][field] == committed and
+              route_profile.karma == karma_after and
+              karma_before - route_profile.karma == cost,
+              string.format("route.lua GPGX transaction mismatch at (%d,%d)",
+                            col, row))
+    end
+end
+fixture:close()
 
 game = { actors = {}, modules = {
     combat = Combat, items = Items, magic = Magic,

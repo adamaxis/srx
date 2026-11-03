@@ -88,13 +88,23 @@ function M.apply(r, col, row)
 end
 
 local function rec(ctx) return ctx.game.party()[ctx.game.active_slot()] end
-function M.new(a) return { col = 0, row = 0, karma = a.karma or false } end
+function M.new(a)
+    return { col = 0, row = 0, karma = a.karma or false, message = nil }
+end
+local function selected_message(st, ctx)
+    -- The 0xD82A renderer writes MAX_LEVEL at 0xD9DE in the page's lower
+    -- status area; the selection stays on this page [C].
+    if st.karma and M.preview(rec(ctx), st.col, st.row) == "at_limit" then
+        return MM.MAX_LEVEL
+    end
+end
 function M.enter(st, ctx)
+    st.message = selected_message(st, ctx)
     ctx.host.blank(E.DisplayBlank.OFF); ctx.redraw(R.FULL); ctx.host.blank(E.DisplayBlank.ON)   -- 0xD01C build [C]
 end
 local function moved(st, ctx)
+    st.message = selected_message(st, ctx)
     ctx.redraw(R.SUBMENU)
-    if st.karma and M.preview(rec(ctx), st.col, st.row) == "at_limit" then return { transition = T.PUSH, screen = E.MenuScreen.MESSAGE, args = { message = MM.MAX_LEVEL } } end
 end
 -- Exit 0xD4A0 [C]: VDP reg 0x11=$91 (window = field sidebar from x>=272),
 -- then CPU fills of tile $07FF over plane FFDD16 (0xFFE) and FFDD14 (0x102A)
@@ -117,37 +127,59 @@ function M.input(st, events, ctx)
     if events & (P.A | P.B) ~= 0 then
         if not st.karma then return exit(ctx) end    -- view-only (0xD33A -> 0xD4A0): upgrade key leaves (selection_data_unavailable)
         local r = rec(ctx)
-        if st.col == 1 and (st.row == 2 or st.row == 3) then return { transition = T.PUSH, screen = E.MenuScreen.MESSAGE, args = { message = MM.NOT_RAISABLE } } end
+        st.message = nil
+        if st.col == 1 and (st.row == 2 or st.row == 3) then return end
+        -- 0xD3D0 renders Mage Only in the Hotel page's inline status region [C].
         if st.col == 0 and st.row == 4 and
            not E.RunnerClass.CASTERS[r.character_class] then
-            return { transition = T.PUSH, screen = E.MenuScreen.MESSAGE,
-                     args = { message = MM.MAGE_ONLY } }
+            st.message = MM.MAGE_ONLY
+            return
         end
         local status, _, cost = M.preview(r, st.col, st.row)
-        if status ~= "available" then return end
-        if r.karma < cost then return { transition = T.PUSH, screen = E.MenuScreen.MESSAGE, args = { message = MM.INSUFFICIENT_KARMA } } end
+        if status ~= "available" then
+            st.message = status == "at_limit" and MM.MAX_LEVEL or nil
+            return
+        end
+        if r.karma < cost then
+            -- 0xD414 reports insufficient Karma while leaving the grid active [C].
+            st.message = MM.INSUFFICIENT_KARMA
+            return
+        end
         return { transition = T.PUSH, screen = E.MenuScreen.UPGRADE_PROMPT, args = { col = st.col, row = st.row } }
     end
-    if events & P.C ~= 0 then st.col = 0; ctx.game.reselect_leader(); ctx.redraw(R.SUBMENU | R.SIDEBAR_SLOT); return end
+    if events & P.C ~= 0 then
+        st.col = 0
+        ctx.game.reselect_leader()
+        st.message = selected_message(st, ctx)
+        ctx.redraw(R.SUBMENU | R.SIDEBAR_SLOT)
+        return
+    end
     if events & P.START ~= 0 then return exit(ctx) end
 end
-function M.child_returned(st, child, res, ctx) ctx.redraw(R.SUBMENU | R.COMBAT_BARS) end
+function M.child_returned(st, child, res, ctx)
+    st.message = res.message or selected_message(st, ctx)
+    ctx.redraw(R.SUBMENU | R.COMBAT_BARS)
+end
 
 -- Yes/No upgrade prompt: Up/Down wrap, A/B/C confirm; Yes = option 0 [srx C]
 local Prompt = { window = E.WindowPlane.OFF }
-function Prompt.new(a) return { col = a.col, row = a.row, option = 0 } end
+function Prompt.new(a) return { col = a.col, row = a.row, selection = 0 } end
 function Prompt.enter(st, ctx) ctx.redraw(R.SUBMENU) end
 function Prompt.input(st, events, ctx)
-    if events & (P.UP | P.DOWN) ~= 0 then st.option = 1 - st.option; ctx.redraw(R.SUBMENU); return end
+    if events & (P.UP | P.DOWN) ~= 0 then st.selection = 1 - st.selection; ctx.redraw(R.SUBMENU); return end
     if events & (P.A | P.B | P.C) == 0 then return end
     local res = "declined"
-    if st.option == 0 then
+    if st.selection == 0 then
         -- game.party() hands out record copies; write the upgraded record back explicitly.
         local party = ctx.game.party()
         res = M.apply(party[ctx.game.active_slot()], st.col, st.row)
         if res == "upgraded" then ctx.game.commit_party(party) end
     end
-    if res == "insufficient_karma" then return { transition = T.REPLACE, screen = E.MenuScreen.MESSAGE, args = { message = MM.INSUFFICIENT_KARMA } } end
+    if res == "insufficient_karma" then
+        return { transition = T.POP,
+                 result = { upgrade = res,
+                            message = MM.INSUFFICIENT_KARMA } }
+    end
     return { transition = T.POP, result = { upgrade = res } }
 end
 

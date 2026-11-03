@@ -1,0 +1,27 @@
+# GPGX source-runtime measurements, never values copied from the port.
+# ROM SHA-256: 92a614491fc3ea12a6df32459cce08b48574b7b814e244c07eb860dc5c6edb7e
+# Base: /workspace/menus2/fixtures/m8540-menus-full.state, replayed through
+# frame 9030 using the per-frame controller bytes captured in
+# /workspace/menus2/au/e8_karma_spend/ram.npy. Cursor navigation, FFF0B6/
+# FFF0B8 preview RAM, and post-confirm FF0100 record/+0x8D Karma were measured
+# in GPGX for each row. Source routine: 0xD82A..0xDA12 preview, 0xD53C prompt,
+# 0xD42E..0xD474 commit. Columns: col row section field current next cost
+# committed_value karma_before karma_after.
+0	0	attribute	body	2	3	3	3	20	17
+0	1	attribute	quickness	4	5	5	5	20	15
+0	2	attribute	strength	1	2	2	2	20	18
+0	3	attribute	charisma	2	3	3	3	20	17
+0	4	skill	sorcery	3	4	8	4	20	12
+0	5	skill	firearms	2	3	6	3	20	14
+0	6	skill	pistols	0	3	5	3	20	15
+0	7	skill	smgs	0	3	5	3	20	15
+0	8	skill	shotguns	0	3	5	3	20	15
+0	9	skill	melee_combat	1	2	4	2	20	16
+1	0	attribute	intelligence	3	4	4	4	20	16
+1	1	attribute	willpower	4	5	5	5	20	15
+1	4	skill	throwing	0	1	2	1	20	18
+1	5	skill	computer	0	1	2	1	20	18
+1	6	skill	biotech	0	1	2	1	20	18
+1	7	skill	electronics	0	1	2	1	20	18
+1	8	skill	reputation	1	2	4	2	20	16
+1	9	skill	negotiation	3	4	8	4	20	12

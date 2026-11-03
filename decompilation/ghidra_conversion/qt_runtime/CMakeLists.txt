@@ -1823,9 +1823,9 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_hotel_profile_perm
                  --field-hotel-profile-permutation-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-hotel-profile-permutation")
 
-# Both menu routes share the ROM's Attributes/Skills grid and current-Karma
-# value, but render different detail lines. Compare fresh output from each
-# end-to-end route and require only the lower line to differ.
+# Compare the live headless routes against independent GPGX frame captures.
+# The command frame is the read-only status page; the Hotel frames show the
+# focused upgrade preview and the default-Yes confirmation prompt.
 add_executable(shadowrun_ghidra_conversion_qt_karma_screen_distinction_qa
     tests/menus/karma_screen_distinction_test.cpp)
 target_link_libraries(
@@ -1839,12 +1839,16 @@ set_target_properties(
         RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}")
 add_test(NAME shadowrun_ghidra_conversion_qt_karma_screen_distinction_qa
          COMMAND shadowrun_ghidra_conversion_qt_karma_screen_distinction_qa
-                 "${CMAKE_CURRENT_BINARY_DIR}/field-attributes-skills-view-only-qa/actual.bmp"
-                 "${CMAKE_CURRENT_BINARY_DIR}/field-hotel-qa/karma-spend/actual.bmp")
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-profile-attributes-skills/joshua-gator-shaman-actual.bmp"
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-hotel-profile-permutation/capture-human-shaman/body2-karma20-preview.bmp"
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-hotel-profile-permutation/capture-human-shaman/body2-karma20-held-a.bmp"
+                 "${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/karma-command-gpgx-frame-08800.png"
+                 "${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/karma-hotel-gpgx-frame-09030.png"
+                 "${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/karma-prompt-gpgx-frame-09081.png")
 set_tests_properties(
     shadowrun_ghidra_conversion_qt_karma_screen_distinction_qa
     PROPERTIES
-        DEPENDS "shadowrun_ghidra_conversion_qt_field_attributes_skills_qa;shadowrun_ghidra_conversion_qt_field_hotel_qa")
+        DEPENDS "shadowrun_ghidra_conversion_qt_field_profile_attributes_skills_permutation_qa;shadowrun_ghidra_conversion_qt_field_hotel_profile_permutation_qa")
 
 # The Pocket Secretary route must open from the command overview's sixth
 # tab and render its own full-screen composition.

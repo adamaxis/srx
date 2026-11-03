@@ -60,6 +60,23 @@ void AttributesSkillsMenuController::synchronize_cursor(
     refresh_selection_state(active_record);
 }
 
+void AttributesSkillsMenuController::synchronize_route_state(
+    const int column, const int row, const bool prompt_open,
+    const int prompt_selection,
+    const AttributesSkillsMenuMessage message) noexcept {
+    if (!state_.open) {
+        return;
+    }
+    state_.cursor.column = static_cast<std::uint8_t>(std::clamp(
+        column, 0, static_cast<int>(kAttributesSkillsColumnCount) - 1));
+    state_.cursor.row = static_cast<std::uint8_t>(std::clamp(
+        row, 0, static_cast<int>(kAttributesSkillsRowCount) - 1));
+    upgrade_prompt_open_ = prompt_open;
+    upgrade_prompt_selection_ = static_cast<std::uint8_t>(std::clamp(
+        prompt_selection, 0, 1));
+    message_ = message;
+}
+
 void AttributesSkillsMenuController::refresh_selection_state(
     const RunnerRecordFields& active_record) {
     const auto result = render_attributes_and_skills(

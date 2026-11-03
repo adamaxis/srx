@@ -9696,10 +9696,16 @@ void FieldSceneRuntime::configure_field_menu_route() {
         const auto is_attributes = screen == attributes_screen;
         const auto was_cyberware = menu_route_screen_ == cyberware_screen;
         const auto is_cyberware = screen == cyberware_screen;
-        if (is_attributes && !was_attributes) {
+        if (is_attributes && hotel_karma_route_active_) {
+            if (!hotel_karma_skills_.is_open()) {
+                hotel_karma_skills_.open(active_runner_record());
+            }
+        } else if (is_attributes && !was_attributes) {
             begin_command_overview_attributes_skills();
         } else if (was_attributes && !is_attributes) {
-            command_overview_attributes_skills_.close_to_parent();
+            if (!hotel_karma_route_active_) {
+                command_overview_attributes_skills_.close_to_parent();
+            }
         }
         if (is_cyberware && !was_cyberware) {
             begin_command_overview_cyberware();
@@ -11196,6 +11202,7 @@ bool FieldSceneRuntime::bootstrap(
     game_scripts_.close_menu_route();
     menu_route_active_ = false;
     menu_route_screen_ = 0U;
+    hotel_karma_route_active_ = false;
     restore_start_menu_duck();
     command_overview_.close();
     field_dialogue_.close();
@@ -16360,19 +16367,37 @@ void FieldSceneRuntime::paint_attributes_skills_menu(
             attributes_focus_text_tint());
     }
 
+    const auto upgrade = menu.allows_karma_upgrades()
+                             ? menu.preview(record)
+                             : AttributeSkillUpgradePreview{};
+    const auto draw_karma_text = [&](const int x, const int y,
+                                     const std::string_view text) {
+        if (upgrade.text_tone == MenuTextTone::focused) {
+            draw_tinted_field_text(painter, x, y, text,
+                                   attributes_focus_text_tint());
+        } else {
+            draw_hotel_menu_text(painter, x, y, text,
+                                 HotelMenuPaletteLine::checkout);
+        }
+    };
+    const auto draw_karma_number = [&](const int x, const int y,
+                                       const unsigned value) {
+        if (upgrade.text_tone == MenuTextTone::focused) {
+            draw_numeric_visual(painter, command_overview_font_, x, y, value,
+                                NumericVisualAlignment::left, false,
+                                attributes_focus_text_tint());
+        } else {
+            draw_numeric_visual(painter, hotel_checkout_font_, x, y, value);
+        }
+    };
     if (menu.allows_karma_upgrades()) {
-        const auto upgrade = menu.preview(record);
         if (upgrade.status == AttributeSkillUpgradeStatus::available) {
-            draw_hotel_menu_text(
-                painter, 64, 200,
-                field_menu_text_.attributes_upgrade_header,
-                HotelMenuPaletteLine::checkout);
-            draw_numeric_visual(
-                painter, hotel_checkout_font_, 160, 200,
-                static_cast<unsigned>(upgrade.next_value));
-            draw_numeric_visual(
-                painter, hotel_checkout_font_, 248, 200,
-                static_cast<unsigned>(upgrade.karma_cost));
+            draw_karma_text(
+                64, 200, field_menu_text_.attributes_upgrade_header);
+            draw_karma_number(160, 200,
+                              static_cast<unsigned>(upgrade.next_value));
+            draw_karma_number(248, 200,
+                              static_cast<unsigned>(upgrade.karma_cost));
         }
     }
 
@@ -16382,22 +16407,19 @@ void FieldSceneRuntime::paint_attributes_skills_menu(
     case AttributesSkillsMenuMessage::none:
         break;
     case AttributesSkillsMenuMessage::maximum_level:
-        draw_hotel_menu_text(
-            painter, 48, 200,
-            field_menu_text_.attributes_upgrade_maximum_level_message,
-            HotelMenuPaletteLine::checkout);
+        draw_karma_text(
+            48, 200,
+            field_menu_text_.attributes_upgrade_maximum_level_message);
         break;
     case AttributesSkillsMenuMessage::mage_only_skill:
-        draw_hotel_menu_text(
-            painter, 72, 176,
-            field_menu_text_.attributes_upgrade_mage_only_message,
-            HotelMenuPaletteLine::checkout);
+        draw_karma_text(
+            72, 176,
+            field_menu_text_.attributes_upgrade_mage_only_message);
         break;
     case AttributesSkillsMenuMessage::insufficient_karma:
-        draw_hotel_menu_text(
-            painter, 72, 176,
-            field_menu_text_.attributes_upgrade_insufficient_karma_message,
-            HotelMenuPaletteLine::checkout);
+        draw_karma_text(
+            72, 176,
+            field_menu_text_.attributes_upgrade_insufficient_karma_message);
         break;
     }
 
@@ -16405,20 +16427,45 @@ void FieldSceneRuntime::paint_attributes_skills_menu(
         // ROM 0xD31E redraws Plane A at $CA86 (four rows x 34 columns via
         // 0x12C5A/0x11C0), then 0xD53C writes at $CB18/$CAB2. Keep the y=200
         // preview, which lies below the redraw, and omit the cleared detail.
-        draw_hotel_menu_text(
-            painter, 96, 176, field_menu_text_.attributes_upgrade_prompt,
-            HotelMenuPaletteLine::checkout);
-        draw_hotel_menu_text(painter, 200, 168,
-                             field_menu_text_.action_choice_yes,
-                             HotelMenuPaletteLine::checkout);
-        draw_hotel_menu_text(painter, 200, 184,
-                             field_menu_text_.action_choice_no,
-                             HotelMenuPaletteLine::checkout);
+        draw_karma_text(96, 176,
+                        field_menu_text_.attributes_upgrade_prompt);
+        draw_karma_text(200, 168, field_menu_text_.action_choice_yes);
+        draw_karma_text(200, 184, field_menu_text_.action_choice_no);
         const auto cursor_y =
             menu.upgrade_prompt_selection() == 0U
                 ? 168
                 : 184;
-        painter.drawImage(184, cursor_y, hotel_checkout_cursor_);
+        if (upgrade.text_tone == MenuTextTone::focused &&
+            !hotel_checkout_cursor_.isNull()) {
+            QImage tinted_cursor(
+                hotel_checkout_cursor_.size(),
+                QImage::Format_ARGB32_Premultiplied);
+            tinted_cursor.fill(Qt::transparent);
+            // Text glyph tint compensates for its source coverage value;
+            // this opaque tile uses the raw CRAM entry 0x02C2 [C].
+            const auto focus = genesis_cram_word_to_color(0x02C2U);
+            for (int y = 0; y < hotel_checkout_cursor_.height(); ++y) {
+                for (int x = 0; x < hotel_checkout_cursor_.width(); ++x) {
+                    const auto source = hotel_checkout_cursor_.pixelColor(x, y);
+                    const auto coverage = std::max(
+                        {source.red(), source.green(), source.blue()});
+                    if (source.alpha() == 0 || coverage == 0) {
+                        continue;
+                    }
+                    auto pixel = focus;
+                    // The source uses an opaque 4-bit cursor tile. Keep the
+                    // host sprite's shape as a mask, not its alpha level.
+                    pixel.setAlpha(255);
+                    tinted_cursor.setPixelColor(x, y, pixel);
+                }
+            }
+            // GPGX frame 09081 places the 0xD53C Yes cursor at x=185 [C].
+            // The Hotel checkout sprite's transparent padding is one pixel
+            // narrower on the left than the ROM tile.
+            painter.drawImage(185, cursor_y, tinted_cursor);
+        } else {
+            painter.drawImage(184, cursor_y, hotel_checkout_cursor_);
+        }
     }
 }
 

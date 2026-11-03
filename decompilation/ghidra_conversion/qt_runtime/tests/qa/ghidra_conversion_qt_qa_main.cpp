@@ -50345,7 +50345,7 @@ int main(int argc, char** argv) {
                                            "actual.bmp");
                 if (karma_spend.isNull() ||
                     !image_region_has_color(karma_spend, 64, 200, 224, 8,
-                                            QColor(98, 68, 139)) ||
+                                            QColor(32, 206, 32)) ||
                     image_has_green_ink(karma_spend, 88, 72, 40, 16) ||
                     field_scene.active_runner_record().attributes !=
                         hotel_record_before_upgrade.attributes ||
@@ -50379,7 +50379,7 @@ int main(int argc, char** argv) {
                     output / "karma-spend" / "prompt-yes.bmp");
                 if (!image_region_has_color(karma_prompt_yes, 96, 168,
                                             120, 32,
-                                            QColor(98, 68, 139)) ||
+                                            QColor(32, 206, 32)) ||
                     image_has_green_ink(karma_prompt_yes, 24, 168, 72, 24) ||
                     image_region_differs(karma_spend, karma_prompt_yes,
                                          64, 200, 224, 8)) {
@@ -50531,12 +50531,9 @@ int main(int argc, char** argv) {
                     }
                     const QImage green_font(QString::fromStdWString(
                         (asset_root / "menu" / "field" / "font.bmp").wstring()));
-                    const QImage purple_font(QString::fromStdWString(
-                        (asset_root / "menu" / "field" /
-                         "font-palette-2.bmp").wstring()));
-                    if (green_font.isNull() || purple_font.isNull()) {
+                    if (green_font.isNull()) {
                         return profile_failure(
-                            "the source green and Hotel purple font assets are missing");
+                            "the source green font asset is missing");
                     }
                     std::ofstream manifest(output_directory / "profile-cells.tsv",
                                            std::ios::trunc);
@@ -50721,7 +50718,29 @@ int main(int argc, char** argv) {
                             live.attributes != record.attributes ||
                             live.skills != record.skills ||
                             live.auxiliary != record.auxiliary) {
-                            reason = "typed Hotel state did not match the selected profile/cursor";
+                            reason = "typed Hotel state did not match the selected profile/cursor "
+                                "(open=" + std::to_string(menu.is_open()) +
+                                ", upgrades=" + std::to_string(
+                                    menu.allows_karma_upgrades()) +
+                                ", prompt=" + std::to_string(
+                                    menu.upgrade_prompt_open()) +
+                                ", cursor=" + std::to_string(
+                                    menu.state().cursor.column) + "," +
+                                    std::to_string(menu.state().cursor.row) +
+                                ", expected=" + std::to_string(column) +
+                                    "," + std::to_string(row) +
+                                ", record=" + std::to_string(
+                                    live.species_index) + "/" +
+                                    std::to_string(live.archetype_index) +
+                                ", input=" + std::to_string(
+                                    record.species_index) + "/" +
+                                    std::to_string(record.archetype_index) +
+                                ", attributes=" + std::to_string(
+                                    live.attributes == record.attributes) +
+                                ", skills=" + std::to_string(
+                                    live.skills == record.skills) +
+                                ", auxiliary=" + std::to_string(
+                                    live.auxiliary == record.auxiliary) + ")";
                             return false;
                         }
                         const auto expected =
@@ -50906,23 +50925,23 @@ int main(int argc, char** argv) {
                         if (expected.status ==
                             AttributeSkillUpgradeStatus::available) {
                             if (!source_menu_direct_asset_text_matches(
-                                    image, purple_font, 64, 200,
+                                    image, green_font, 64, 200,
                                     "Upgrade to") ||
                                 !source_menu_direct_asset_text_matches(
-                                    image, purple_font, 200, 200, "Cost") ||
+                                    image, green_font, 200, 200, "Cost") ||
                                 !numeric_visual_patch_matches(
-                                    image, purple_font, 160, 200,
-                                    expected.next_value, std::nullopt) ||
+                                    image, green_font, 160, 200,
+                                    expected.next_value, color_tint) ||
                                 !numeric_visual_patch_matches(
-                                    image, purple_font, 248, 200,
-                                    expected.karma_cost, std::nullopt)) {
+                                    image, green_font, 248, 200,
+                                    expected.karma_cost, color_tint)) {
                                 reason = "lower next-value or Karma-cost pixels did not match the ROM formula";
                                 return false;
                             }
                         } else if (expected.status ==
                                    AttributeSkillUpgradeStatus::at_limit) {
                             if (!source_menu_direct_asset_text_matches(
-                                    image, purple_font, 48, 200,
+                                    image, green_font, 48, 200,
                                     "You are at the maximum level.")) {
                                 reason = "race/skill maximum did not display its source-backed message";
                                 return false;
@@ -51290,7 +51309,7 @@ int main(int argc, char** argv) {
                                 restricted.isNull() ||
                                 !image_region_has_color(
                                     restricted, 72, 176, 160, 16,
-                                    QColor(98, 68, 139))) {
+                                    QColor(32, 206, 32))) {
                                 return profile_failure(
                                     "Samurai/Decker Sorcery did not show Mage Only without mutation");
                             }
@@ -51390,7 +51409,7 @@ int main(int argc, char** argv) {
                             insufficient_frame.isNull() ||
                             !image_region_has_color(
                                 insufficient_frame, 72, 176, 160, 16,
-                                QColor(98, 68, 139))) {
+                                QColor(32, 206, 32))) {
                             return profile_failure(
                                 "the insufficient-Karma path did not preserve +0x77/+0x8D and display its message");
                         }
@@ -51492,18 +51511,18 @@ int main(int argc, char** argv) {
                             expected_after.status ==
                                     AttributeSkillUpgradeStatus::available
                                 ? numeric_visual_patch_matches(
-                                      applied_frame, purple_font, 160, 200,
-                                      expected_after.next_value, std::nullopt) &&
+                                      applied_frame, green_font, 160, 200,
+                                      expected_after.next_value, color_tint) &&
                                       numeric_visual_patch_matches(
-                                          applied_frame, purple_font, 248, 200,
+                                          applied_frame, green_font, 248, 200,
                                           expected_after.karma_cost,
-                                          std::nullopt)
+                                          color_tint)
                                 : expected_after.status ==
                                           AttributeSkillUpgradeStatus::at_limit &&
                                       field_scene.hotel_karma_screen().message() ==
                                           AttributesSkillsMenuMessage::maximum_level &&
                                       source_menu_direct_asset_text_matches(
-                                          applied_frame, purple_font, 48, 200,
+                                          applied_frame, green_font, 48, 200,
                                           "You are at the maximum level.");
                         if (field_scene.hotel_karma_screen()
                                 .upgrade_prompt_open() ||
@@ -51576,6 +51595,9 @@ int main(int argc, char** argv) {
                                 "the Joshua Human/Shaman ROM preset no longer provides Body 2 with zero preset Karma");
                         }
                         capture_profile.karma = 20U;
+                        // Match the synthetic GPGX capture state at frame
+                        // 9030, which has all 15 cyberware bits set.
+                        capture_profile.cyberware_flags = 0x7FFFU;
                         field_scene.active_runner_record() = capture_profile;
                         field_scene.refresh_field_hud_for_dump();
                         press_profile_button(0x40U);
@@ -51610,12 +51632,12 @@ int main(int argc, char** argv) {
                                 color_tint);
                         const auto capture_next_pixels =
                             numeric_visual_patch_matches(
-                                preview_frame, purple_font, 160, 200, 3U,
-                                std::nullopt);
+                                preview_frame, green_font, 160, 200, 3U,
+                                color_tint);
                         const auto capture_cost_pixels =
                             numeric_visual_patch_matches(
-                                preview_frame, purple_font, 248, 200, 3U,
-                                std::nullopt);
+                                preview_frame, green_font, 248, 200, 3U,
+                                color_tint);
                         const auto capture_karma_pixels =
                             !zero_karma_frame.isNull() &&
                             numeric_visual_change_matches(
@@ -51702,12 +51724,12 @@ int main(int argc, char** argv) {
                                 color_tint);
                         const auto applied_next_pixels =
                             numeric_visual_patch_matches(
-                                applied_frame, purple_font, 160, 200, 4U,
-                                std::nullopt);
+                                applied_frame, green_font, 160, 200, 4U,
+                                color_tint);
                         const auto applied_cost_pixels =
                             numeric_visual_patch_matches(
-                                applied_frame, purple_font, 248, 200, 4U,
-                                std::nullopt);
+                                applied_frame, green_font, 248, 200, 4U,
+                                color_tint);
                         if (field_scene.hotel_karma_screen()
                                 .upgrade_prompt_open() ||
                             applied_profile.attributes[0U] != 3U ||

@@ -806,6 +806,9 @@ E.MenuPanelText = {
     MAGIC_DEFENSE_PHYSICAL = 3,
     MAGIC_DEFENSE_MANA = 4,
 }
+-- The shared menu text writer selects focus line 0x4000 for the active
+-- Attributes/Skills detail and its confirmation prompt [C 0xD9B8, 0xD53C].
+E.MenuTextTone = { STANDARD = "standard", FOCUSED = "focused" }
 -- Optional port preference for B. ROM mode leaves each source screen's B
 -- branch untouched; ALWAYS_CANCEL is applied once by menu.route before the
 -- active screen handler receives the edge.

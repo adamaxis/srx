@@ -633,6 +633,9 @@ struct ScriptMenuRouteBindings {
 };
 
 struct ScriptMenuRouteStartArguments {
+    // Enter the shared Attributes/Skills route with its Hotel Karma child
+    // mode enabled. Command routes leave this false and remain read-only.
+    bool karma_upgrade_attributes = false;
     std::optional<std::uint8_t> matrix_system_id;
     // Optional source-node seed used by deterministic full-frame QA starts.
     std::optional<std::uint8_t> matrix_node_id;

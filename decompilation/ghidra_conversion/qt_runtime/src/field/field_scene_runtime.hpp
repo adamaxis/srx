@@ -2017,6 +2017,7 @@ private:
     HotelMenuEvent process_hotel_menu_events(std::uint16_t events);
     AttributesSkillsRuntimeEvent process_hotel_karma_screen_events(
         std::uint16_t events);
+    void synchronize_hotel_karma_route();
     void draw_pocket_secretary_cursor(QPainter& painter, int x, int y) const;
     void draw_command_overview_text(QPainter& painter, int x, int y,
                                     std::string_view text,
@@ -2379,6 +2380,7 @@ private:
     HotelKarmaUpgradeRuntime hotel_karma_skills_{};
     std::uint32_t hotel_karma_load_frames_ = 0U;
     std::uint32_t hotel_karma_load_black_frames_ = 0U;
+    bool hotel_karma_route_active_ = false;
     scripting::GameScriptRuntime game_scripts_;
     GameSaveStore game_save_store_{};
     bool menu_route_active_ = false;

@@ -52,6 +52,10 @@ local function result(status, section, field, next_value, karma_cost)
         field = field,
         next_value = next_value or 0,
         karma_cost = karma_cost or 0,
+        -- The 0x4000 source text mode covers the preview, limit feedback,
+        -- and confirmation text on this child screen [C 0xD9B8, 0xD9DE,
+        -- 0xD53C]. The native presenter resolves this semantic role to CRAM.
+        text_tone = E.MenuTextTone.FOCUSED,
     }
 end
 
