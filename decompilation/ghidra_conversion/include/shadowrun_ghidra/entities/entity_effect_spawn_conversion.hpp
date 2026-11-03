@@ -27,8 +27,13 @@ struct EntityEffectSpawnTarget {
 };
 
 struct EntityEffectSpawnTargetResolution {
-    EntityEffectSpawnTarget target{};
+    std::uint16_t heading = 0; // source geometry result from 0x15D3C
+    std::uint16_t distance = 0; // source geometry result from 0x15D3C
     std::uint8_t source_marker = 0;
+};
+
+enum class EntityEffectSpawnBehaviorKind {
+    thrown_item_effect,
 };
 
 struct EntityEffectSpawnRecord {
@@ -51,12 +56,13 @@ struct EntityEffectSpawnRecord {
     std::int16_t heading_offset_x = 0; // source record +0x4C
     std::int16_t heading_offset_y = 0; // source record +0x4E
     std::uint8_t behavior_type = 0; // source record +0x0E
+    EntityEffectSpawnBehaviorKind behavior =
+        EntityEffectSpawnBehaviorKind::thrown_item_effect;
     std::uint8_t field_0x56 = 0;
     std::uint8_t field_0x57 = 0;
     std::uint8_t field_0x9D = 0;
     std::uint8_t source_marker = 0; // source record +0x9F
     bool active = false; // source record +0x10 bit 0
-    std::uint32_t continuation_address = 0; // source record +0x3A
 };
 
 using EntityEffectSpawnEntityAllocator =
@@ -66,12 +72,21 @@ using EntityEffectSpawnTimeout = std::function<void()>;
 using EntityEffectSpawnTargetTransform = std::function<
     std::optional<EntityEffectSpawnTargetResolution>(
         const EntityEffectSpawnTarget&, std::uint16_t heading)>;
+using EntityEffectSpawnWindowPolicy =
+    std::function<bool(std::uint16_t animation_counter)>;
+using EntityEffectSpawnRecordPolicy = std::function<
+    std::optional<EntityEffectSpawnRecord>(
+        const EntityEffectSpawnParent&,
+        const std::optional<EntityEffectSpawnTargetResolution>&)>;
 
 struct EntityEffectSpawnCallbacks {
     EntityEffectSpawnEntityAllocator allocate_entity_slot;
     EntityEffectSpawnMeterAdvance advance_asset_meter;
     EntityEffectSpawnTimeout schedule_world_timeout;
     EntityEffectSpawnTargetTransform transform_target;
+    // Lua policies own the 0x15646 counter gate and source-derived record math.
+    EntityEffectSpawnWindowPolicy animation_window_open;
+    EntityEffectSpawnRecordPolicy build_record;
 };
 
 enum class EntityEffectSpawnAction {
@@ -79,6 +94,7 @@ enum class EntityEffectSpawnAction {
     no_entity_slot,
     effect_table_full,
     target_transform_unresolved,
+    record_policy_unresolved,
     spawned_without_target,
     spawned_toward_target,
 };

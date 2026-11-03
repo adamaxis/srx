@@ -1,52 +1,30 @@
 #include "shadowrun_ghidra/entities/entity_effect_spawn_conversion.hpp"
 
-#include "shadowrun_ghidra/entities/movement_metric_conversion.hpp"
-
 namespace shadowrun::ghidra_conversion {
 namespace {
 
-std::size_t direction_index(const std::uint16_t heading) {
-    auto rotated = static_cast<std::uint16_t>(
-        static_cast<std::uint16_t>(heading << 3U) |
-        static_cast<std::uint16_t>(heading >> 13U));
-    if ((rotated & 0x8000U) != 0U) {
-        ++rotated;
-    }
-    return static_cast<std::size_t>(rotated & 0x0007U);
-}
-
-std::uint16_t add_word(
-    const std::uint16_t value,
-    const std::int16_t delta) {
-    return static_cast<std::uint16_t>(
-        static_cast<std::int32_t>(value) + delta);
-}
-
-struct DirectionOffsets {
-    std::int16_t position_x = 0;
-    std::int16_t position_y = 0;
-    std::int16_t probe_x = 0;
-    std::int16_t probe_y = 0;
-};
-
-DirectionOffsets direction_offsets(const std::uint16_t heading) {
-    // ROM 0x15A4C (position) / 0x15A6C (FFDD60/62 probe): signed words,
-    // indexed by the rotated heading used by 0x14FF8. This recovered lookup
-    // remains local to the native effect-placement implementation.
-    static constexpr std::int16_t kPositionOffsets[8][2] = {
-        {0x0000, -0x00B0}, {0x007C, -0x007C},
-        {0x00B0, 0x0000}, {0x007C, 0x007C},
-        {0x0000, 0x00B0}, {-0x007C, 0x007C},
-        {-0x00B0, 0x0000}, {-0x007C, -0x007C}};
-    static constexpr std::int16_t kProbeOffsets[8][2] = {
-        {0x0040, -0x0100}, {0x0120, -0x00F0},
-        {0x0180, -0x0040}, {0x00D0, 0x0050},
-        {0x0000, 0x0020}, {-0x0180, 0x0040},
-        {-0x0180, -0x0040}, {-0x0100, -0x00C0}};
-    const auto index = direction_index(heading);
-    return DirectionOffsets{
-        kPositionOffsets[index][0], kPositionOffsets[index][1],
-        kProbeOffsets[index][0], kProbeOffsets[index][1]};
+void copy_source_decisions(
+    EntityEffectSpawnRecord& host_record,
+    const EntityEffectSpawnRecord& lua_record) {
+    host_record.world_x = lua_record.world_x;
+    host_record.world_y = lua_record.world_y;
+    host_record.heading = lua_record.heading;
+    host_record.movement_scale = lua_record.movement_scale;
+    host_record.animation_resource = lua_record.animation_resource;
+    host_record.effect_distance_steps = lua_record.effect_distance_steps;
+    host_record.movement_offset = lua_record.movement_offset;
+    host_record.vertical_velocity = lua_record.vertical_velocity;
+    host_record.lifetime = lua_record.lifetime;
+    host_record.directional_probe_x = lua_record.directional_probe_x;
+    host_record.directional_probe_y = lua_record.directional_probe_y;
+    host_record.heading_offset_x = lua_record.heading_offset_x;
+    host_record.heading_offset_y = lua_record.heading_offset_y;
+    host_record.behavior_type = lua_record.behavior_type;
+    host_record.behavior = lua_record.behavior;
+    host_record.field_0x56 = lua_record.field_0x56;
+    host_record.field_0x57 = lua_record.field_0x57;
+    host_record.field_0x9D = lua_record.field_0x9D;
+    host_record.source_marker = lua_record.source_marker;
 }
 
 } // namespace
@@ -56,9 +34,10 @@ EntityEffectSpawnResult spawn_entity_effect_record(
     const std::optional<EntityEffectSpawnTarget> linked_target,
     std::array<std::uint8_t, 18>& effect_slots,
     const EntityEffectSpawnCallbacks& callbacks) {
-    // 0x15646: the source masks the parent's animation counter before the
-    // unsigned <= 0x3C window test. The host keeps the carry exit explicit.
-    if ((parent.animation_counter & 0x07FFU) > 0x003CU) {
+    // The source counter policy and source-derived record fields are supplied
+    // by Lua; this function only coordinates host allocations and services.
+    if (!callbacks.animation_window_open ||
+        !callbacks.animation_window_open(parent.animation_counter)) {
         return EntityEffectSpawnResult{
             EntityEffectSpawnAction::animation_window_expired, true};
     }
@@ -80,30 +59,25 @@ EntityEffectSpawnResult spawn_entity_effect_record(
         callbacks.schedule_world_timeout();
     }
 
-    EntityEffectSpawnRecord record{};
+    if (!callbacks.build_record) {
+        return EntityEffectSpawnResult{
+            EntityEffectSpawnAction::record_policy_unresolved, true};
+    }
+    const auto base_record = callbacks.build_record(parent, std::nullopt);
+    if (!base_record.has_value()) {
+        return EntityEffectSpawnResult{
+            EntityEffectSpawnAction::record_policy_unresolved, true};
+    }
+
+    EntityEffectSpawnRecord record = *base_record;
     initialize_entity_behavior_record(record.behavior_defaults);
     record.entity_slot = *entity_slot;
-    record.world_x = parent.world_x;
-    record.world_y = parent.world_y;
-    record.heading = parent.heading;
-    record.movement_scale = 0x2000U;
-    record.animation_resource = 0U;
-    record.field_0x56 = parent.field_0x56;
-    record.field_0x57 = parent.field_0x57;
-    record.field_0x9D = parent.field_0x9D;
-    record.continuation_address = 0x00015390U;
-    record.lifetime = 0x0013U;
-    record.movement_offset = static_cast<std::int16_t>(0xFB00U);
-    record.vertical_velocity = 0xF400U;
-    record.behavior_type = 0x02U;
-    record.effect_distance_steps = 0x00B4U;
     record.active = true;
 
     const auto allocation = allocate_first_free_effect_slot_record(effect_slots);
     if (allocation.table_full) {
-        // 0x156E6 clears the new record's +0x10 active byte before returning
-        // through the carry path; the allocated entity slot is not reused by
-        // this routine.
+        // The ROM allocates the entity before the effect-slot scan, then clears
+        // +0x10 and returns carry when all eighteen slots are occupied.
         record.active = false;
         return EntityEffectSpawnResult{
             EntityEffectSpawnAction::effect_table_full, true, record};
@@ -112,19 +86,7 @@ EntityEffectSpawnResult spawn_entity_effect_record(
     record.effect_record_parameter = allocation.record_parameter;
     record.effect_auxiliary_offset = allocation.record_auxiliary_offset;
 
-    const auto offsets = direction_offsets(record.heading);
-    record.directional_probe_x = add_word(record.world_x, offsets.probe_x);
-    record.directional_probe_y = add_word(record.world_y, offsets.probe_y);
-    record.world_x = add_word(record.world_x, offsets.position_x);
-    record.world_y = add_word(record.world_y, offsets.position_y);
-
     if (!linked_target.has_value()) {
-        record.source_marker = static_cast<std::uint8_t>(
-            parent.field_0x87 >> 1U);
-        const auto offsets_from_heading = derive_scaled_entity_heading_offsets(
-            record.heading, 0x0008, 5U);
-        record.heading_offset_x = offsets_from_heading.horizontal;
-        record.heading_offset_y = offsets_from_heading.vertical;
         return EntityEffectSpawnResult{
             EntityEffectSpawnAction::spawned_without_target, false, record};
     }
@@ -140,24 +102,12 @@ EntityEffectSpawnResult spawn_entity_effect_record(
             EntityEffectSpawnAction::target_transform_unresolved, true, record};
     }
 
-    record.source_marker = resolved_target->source_marker;
-    auto measurement = measure_relative_heading_and_distance(
-        parent.world_x,
-        parent.world_y,
-        resolved_target->target.world_x,
-        resolved_target->target.world_y);
-    if (measurement.distance > 0x0BE0U) {
-        measurement.distance = 0x0BE0U;
+    const auto linked_record = callbacks.build_record(parent, resolved_target);
+    if (!linked_record.has_value()) {
+        return EntityEffectSpawnResult{
+            EntityEffectSpawnAction::record_policy_unresolved, true, record};
     }
-    record.heading = measurement.heading;
-    record.effect_distance_steps = static_cast<std::uint16_t>(
-        (measurement.distance / 0x0080U) * 2U);
-    record.movement_offset = static_cast<std::int16_t>(
-        -static_cast<std::int32_t>(measurement.distance / 0x0080U) * 0x20);
-    const auto offsets_from_heading = derive_scaled_entity_heading_offsets(
-        record.heading, 0x0008, 4U);
-    record.heading_offset_x = offsets_from_heading.horizontal;
-    record.heading_offset_y = offsets_from_heading.vertical;
+    copy_source_decisions(record, *linked_record);
     return EntityEffectSpawnResult{
         EntityEffectSpawnAction::spawned_toward_target, false, record};
 }

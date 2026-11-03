@@ -1,0 +1,8 @@
+# Headless Genesis Plus GX capture; source routine 0x15646 bytes remain unmodified.
+# ROM_SHA256=92a614491fc3ea12a6df32459cce08b48574b7b814e244c07eb860dc5c6edb7e
+# STATE_SHA256=b9bc8cfbe6341aa93be083c82706977c374e302e4ef01fee42760842eb245019
+# A capture-only hook at 0xA8EA called the real routine once. Parent: slot 0,
+# x=0x1000, y=0x2000, heading=0, animation=0, item=FRAG_GRENADE, +0x87=0x44,
+# no linked target. Values are from the resulting GPGX RAM record, not the port.
+case	item_code	parent_x	parent_y	heading	field_0x87	world_x	world_y	probe_x	probe_y	result_heading	source_marker	distance_steps	movement_offset	vertical_velocity	offset_x	offset_y	lifetime	behavior_type	movement_scale
+north_no_target	13	1000	2000	0000	44	1000	1F50	1040	1F00	0000	22	00B4	FB00	F400	0000	E000	0013	0002	2000
