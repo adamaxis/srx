@@ -632,7 +632,7 @@ void FieldSceneRuntime::start_field_party_wake_transition() {
     field_dialogue_scene_pending_spawn_ = SceneRunnerPosition{
         static_cast<std::uint16_t>((*destination)[1]),
         static_cast<std::uint16_t>((*destination)[2])};
-    if (field_elevator_scene_transition_.begin_fade_out()) {
+    if (field_scene_transition_.begin_fade_out()) {
         field_dialogue_scene_transition_active_ = true;
         source_boundary("field.party_wipe.destination_fade_out_started");
     } else {

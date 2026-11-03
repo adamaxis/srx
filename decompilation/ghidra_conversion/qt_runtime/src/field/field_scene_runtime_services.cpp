@@ -1220,13 +1220,13 @@ bool FieldSceneRuntime::handle_dialogue_enter_field_scene(
         if (state_.field_scene_buffers.scene_reference != 9U ||
             outcome.scene_id != 6U ||
             field_dialogue_scene_pending_destination_.has_value() ||
-            field_elevator_scene_transition_.is_active()) {
+            field_scene_transition_.is_active()) {
             source_boundary(
                 "field.dialogue.scene_entry.typed_route_mismatch");
             return true;
         }
         field_dialogue_scene_pending_destination_ = outcome.scene_id;
-        if (field_elevator_scene_transition_.begin_fade_out()) {
+        if (field_scene_transition_.begin_fade_out()) {
             field_dialogue_scene_transition_active_ = true;
             source_boundary(
                 "field.dialogue.scene_entry.fade_out_started");
@@ -1246,7 +1246,7 @@ bool FieldSceneRuntime::handle_dialogue_enter_field_scene(
         source_boundary("field.vid_phone.typed_scene_outcome_mismatch");
         return true;
     }
-    if (field_elevator_scene_transition_.begin_fade_out()) {
+    if (field_scene_transition_.begin_fade_out()) {
         field_phone_transition_active_ = true;
         source_boundary("field.vid_phone.passage_fade_out_started");
     } else {

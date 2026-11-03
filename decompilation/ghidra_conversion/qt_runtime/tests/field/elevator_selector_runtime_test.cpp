@@ -210,7 +210,7 @@ int main() {
         selector.selected_floor() != 5U) {
         return 24;
     }
-    ElevatorSceneTransitionRuntime transition;
+    FieldSceneTransitionRuntime transition;
     if (transition.is_active() || transition.palette_step() != 0U ||
         !transition.begin_fade_out() || !transition.is_active() ||
         transition.begin_fade_in()) {
@@ -219,7 +219,7 @@ int main() {
     // ROM 0x131C / 0x12F6 loops 17 times and 0x1342 waits two VBlanks
     // before each 0x1088 / 0x10D6 CRAM pass [C].
     for (std::uint8_t pass = 1U;
-         pass <= kElevatorSceneTransitionPaletteStepCount; ++pass) {
+         pass <= kFieldSceneTransitionPaletteStepCount; ++pass) {
         auto fade_update = transition.advance();
         if (fade_update.palette_step_changed ||
             transition.palette_step() != pass - 1U) {
@@ -228,18 +228,18 @@ int main() {
         fade_update = transition.advance();
         if (!fade_update.palette_step_changed ||
             fade_update.destination_load_requested !=
-                (pass == kElevatorSceneTransitionPaletteStepCount) ||
+                (pass == kFieldSceneTransitionPaletteStepCount) ||
             fade_update.completed || transition.palette_step() != pass) {
             return 18;
         }
     }
     if (transition.phase() !=
-            ElevatorSceneTransitionPhase::destination_handoff ||
+            FieldSceneTransitionPhase::destination_handoff ||
         !transition.begin_fade_in()) {
         return 19;
     }
     for (std::uint8_t pass = 1U;
-         pass <= kElevatorSceneTransitionPaletteStepCount; ++pass) {
+         pass <= kFieldSceneTransitionPaletteStepCount; ++pass) {
         auto fade_update = transition.advance();
         if (fade_update.palette_step_changed) {
             return 20;
@@ -248,13 +248,13 @@ int main() {
         if (!fade_update.palette_step_changed ||
             fade_update.destination_load_requested ||
             fade_update.completed !=
-                (pass == kElevatorSceneTransitionPaletteStepCount) ||
+                (pass == kFieldSceneTransitionPaletteStepCount) ||
             transition.palette_step() != pass) {
             return 21;
         }
     }
     if (transition.is_active() ||
-        transition.palette_step() != kElevatorSceneTransitionPaletteStepCount ||
+        transition.palette_step() != kFieldSceneTransitionPaletteStepCount ||
         transition.begin_fade_in()) {
         return 22;
     }

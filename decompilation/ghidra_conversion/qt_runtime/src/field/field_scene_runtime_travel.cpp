@@ -487,7 +487,7 @@ void FieldSceneRuntime::advance_field_elevator_selector() {
         field_active_effect_index_ =
             field_elevator_selector_.current_floor();
         field_elevator_pending_destination_ = destination;
-        if (field_elevator_scene_transition_.begin_fade_out()) {
+        if (field_scene_transition_.begin_fade_out()) {
             source_boundary("field.elevator.destination_fade_out_started");
         } else {
             field_elevator_pending_destination_.reset();
@@ -504,7 +504,7 @@ void FieldSceneRuntime::advance_field_elevator_selector() {
 
 
 void FieldSceneRuntime::advance_field_elevator_scene_transition() {
-    const auto update = field_elevator_scene_transition_.advance();
+    const auto update = field_scene_transition_.advance();
     const bool dialogue_scene_route =
         field_dialogue_scene_transition_active_;
     const bool phone_route = field_phone_transition_active_;
@@ -541,7 +541,7 @@ void FieldSceneRuntime::advance_field_elevator_scene_transition() {
         if (!destination.has_value() ||
             !transition_to_field_destination(*destination, route,
                                              requested_spawn)) {
-            field_elevator_scene_transition_.cancel();
+            field_scene_transition_.cancel();
             field_elevator_pending_destination_.reset();
             field_taxi_pending_destination_.reset();
             field_phone_pending_destination_.reset();
@@ -566,8 +566,8 @@ void FieldSceneRuntime::advance_field_elevator_scene_transition() {
             field_elevator_floor_group_.reset();
             field_elevator_pending_destination_.reset();
         }
-        if (!field_elevator_scene_transition_.begin_fade_in()) {
-            field_elevator_scene_transition_.cancel();
+        if (!field_scene_transition_.begin_fade_in()) {
+            field_scene_transition_.cancel();
             field_taxi_transition_active_ = false;
             field_phone_transition_active_ = false;
             field_dialogue_scene_transition_active_ = false;

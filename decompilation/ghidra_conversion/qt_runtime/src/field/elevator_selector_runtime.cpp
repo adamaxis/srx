@@ -144,55 +144,55 @@ ElevatorSelectorUpdate ElevatorSelectorRuntime::advance(
     return update;
 }
 
-bool ElevatorSceneTransitionRuntime::begin_fade_out() noexcept {
-    if (phase_ != ElevatorSceneTransitionPhase::idle) {
+bool FieldSceneTransitionRuntime::begin_fade_out() noexcept {
+    if (phase_ != FieldSceneTransitionPhase::idle) {
         return false;
     }
-    phase_ = ElevatorSceneTransitionPhase::fading_to_black;
+    phase_ = FieldSceneTransitionPhase::fading_to_black;
     palette_step_ = 0U;
     vblanks_in_palette_step_ = 0U;
     return true;
 }
 
-bool ElevatorSceneTransitionRuntime::begin_fade_in() noexcept {
-    if (phase_ != ElevatorSceneTransitionPhase::destination_handoff) {
+bool FieldSceneTransitionRuntime::begin_fade_in() noexcept {
+    if (phase_ != FieldSceneTransitionPhase::destination_handoff) {
         return false;
     }
-    phase_ = ElevatorSceneTransitionPhase::fading_from_black;
+    phase_ = FieldSceneTransitionPhase::fading_from_black;
     palette_step_ = 0U;
     vblanks_in_palette_step_ = 0U;
     return true;
 }
 
-void ElevatorSceneTransitionRuntime::cancel() noexcept {
-    phase_ = ElevatorSceneTransitionPhase::idle;
+void FieldSceneTransitionRuntime::cancel() noexcept {
+    phase_ = FieldSceneTransitionPhase::idle;
     palette_step_ = 0U;
     vblanks_in_palette_step_ = 0U;
 }
 
-ElevatorSceneTransitionUpdate ElevatorSceneTransitionRuntime::advance()
+FieldSceneTransitionUpdate FieldSceneTransitionRuntime::advance()
     noexcept {
-    ElevatorSceneTransitionUpdate update{};
-    if (phase_ != ElevatorSceneTransitionPhase::fading_to_black &&
-        phase_ != ElevatorSceneTransitionPhase::fading_from_black) {
+    FieldSceneTransitionUpdate update{};
+    if (phase_ != FieldSceneTransitionPhase::fading_to_black &&
+        phase_ != FieldSceneTransitionPhase::fading_from_black) {
         return update;
     }
     ++vblanks_in_palette_step_;
     if (vblanks_in_palette_step_ <
-        kElevatorSceneTransitionPaletteStepVblanks) {
+        kFieldSceneTransitionPaletteStepVblanks) {
         return update;
     }
     vblanks_in_palette_step_ = 0U;
     ++palette_step_;
     update.palette_step_changed = true;
-    if (palette_step_ < kElevatorSceneTransitionPaletteStepCount) {
+    if (palette_step_ < kFieldSceneTransitionPaletteStepCount) {
         return update;
     }
-    if (phase_ == ElevatorSceneTransitionPhase::fading_to_black) {
-        phase_ = ElevatorSceneTransitionPhase::destination_handoff;
+    if (phase_ == FieldSceneTransitionPhase::fading_to_black) {
+        phase_ = FieldSceneTransitionPhase::destination_handoff;
         update.destination_load_requested = true;
     } else {
-        phase_ = ElevatorSceneTransitionPhase::idle;
+        phase_ = FieldSceneTransitionPhase::idle;
         update.completed = true;
     }
     return update;

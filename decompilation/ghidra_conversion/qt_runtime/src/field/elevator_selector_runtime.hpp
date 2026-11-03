@@ -14,8 +14,8 @@ constexpr std::uint8_t kElevatorSelectorAnimationFrameDelay = 8U;
 constexpr std::uint8_t kElevatorSelectorNavigationFeedbackFrameCount = 9U;
 // ROM 0x131C / 0x12F6 loop d6 from 0x10 through zero: 17 calls to 0x1088 /
 // 0x10D6, with each call spaced by two VBlanks at 0x1342 [C].
-constexpr std::uint8_t kElevatorSceneTransitionPaletteStepCount = 17U;
-constexpr std::uint8_t kElevatorSceneTransitionPaletteStepVblanks = 2U;
+constexpr std::uint8_t kFieldSceneTransitionPaletteStepCount = 17U;
+constexpr std::uint8_t kFieldSceneTransitionPaletteStepVblanks = 2U;
 
 enum class ElevatorSelectorButton : std::uint16_t {
     previous_floor = 0x0200U,
@@ -97,14 +97,14 @@ private:
     bool open_ = false;
 };
 
-enum class ElevatorSceneTransitionPhase : std::uint8_t {
+enum class FieldSceneTransitionPhase : std::uint8_t {
     idle,
     fading_to_black,
     destination_handoff,
     fading_from_black,
 };
 
-struct ElevatorSceneTransitionUpdate {
+struct FieldSceneTransitionUpdate {
     bool palette_step_changed = false;
     bool destination_load_requested = false;
     bool completed = false;
@@ -113,24 +113,24 @@ struct ElevatorSceneTransitionUpdate {
 // The source scene handoff fades 17 palette passes toward black (0x131C),
 // reloads the destination scene (0x2BD2/0x16A8E), then fades toward its target
 // palette in 17 passes (0x12F6). Each pass waits two VBlanks via 0x1342.
-class ElevatorSceneTransitionRuntime final {
+class FieldSceneTransitionRuntime final {
 public:
     bool begin_fade_out() noexcept;
     bool begin_fade_in() noexcept;
     void cancel() noexcept;
-    ElevatorSceneTransitionUpdate advance() noexcept;
+    FieldSceneTransitionUpdate advance() noexcept;
 
-    ElevatorSceneTransitionPhase phase() const noexcept { return phase_; }
+    FieldSceneTransitionPhase phase() const noexcept { return phase_; }
     std::uint8_t palette_step() const noexcept { return palette_step_; }
     std::uint8_t vblanks_in_palette_step() const noexcept {
         return vblanks_in_palette_step_;
     }
     bool is_active() const noexcept {
-        return phase_ != ElevatorSceneTransitionPhase::idle;
+        return phase_ != FieldSceneTransitionPhase::idle;
     }
 
 private:
-    ElevatorSceneTransitionPhase phase_ = ElevatorSceneTransitionPhase::idle;
+    FieldSceneTransitionPhase phase_ = FieldSceneTransitionPhase::idle;
     std::uint8_t palette_step_ = 0U;
     std::uint8_t vblanks_in_palette_step_ = 0U;
 };

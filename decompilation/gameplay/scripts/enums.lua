@@ -27,6 +27,13 @@ E.FieldLocationSceneOutcome = {
     SOURCE_DOOR_RETURN = "source_door_return",
     SCENE_CHANGE = "scene_change",
 } -- field callback return at 0xB34 resumes redraw without 0x2F32/0x2FA4 [C]
+E.FieldSceneTransitionPolicy = {
+    NONE = "none",
+    BUILDING_FADE = "building_fade",
+}
+E.FieldSceneTransitionVBlanks = {
+    BUILDING_FADE = 34,
+} -- 17 0x131C/0x12F6 passes, two 0x0BD2 waits per pass [C]
 E.DialogueSource = {
     BUILDING_ENTRY = "building_entry",
     BUILDING_SERVICE = "building_service",

@@ -140,6 +140,12 @@ enum class FieldLocationSceneOutcome {
     scene_change,
 };
 
+enum class FieldSceneTransitionPolicy {
+    none,
+    building_fade,
+};
+inline constexpr std::uint8_t kRomBuildingTransitionVBlanks = 34U;
+
 // Some ROM title services select a particular resource entry and marker
 // after their gated dialogue completes. Entity link data names the typed
 // effect; the field host applies it at the shared resource-activity boundary.
@@ -188,6 +194,9 @@ struct FieldScriptRoute {
         FieldLocationMusicReturnPolicy::none;
     FieldLocationSceneOutcome scene_outcome =
         FieldLocationSceneOutcome::scene_change;
+    FieldSceneTransitionPolicy scene_transition_policy =
+        FieldSceneTransitionPolicy::none;
+    std::uint8_t scene_transition_vblanks = 0U;
     // Optional entity-authored dialogue that must run before the selected
     // area-event destination is prepared. Lua owns the content and gates;
     // the host retains the typed area destination while the task is open.

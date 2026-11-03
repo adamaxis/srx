@@ -803,16 +803,23 @@ public:
     std::uint16_t elevator_selector_destination_for_dump() const noexcept {
         return field_elevator_script_destination_.value_or(0U);
     }
-    ElevatorSceneTransitionPhase
+    FieldSceneTransitionPhase
     elevator_scene_transition_phase_for_dump() const noexcept {
-        return field_elevator_scene_transition_.phase();
+        return field_scene_transition_.phase();
     }
     std::uint8_t elevator_scene_transition_palette_step_for_dump() const noexcept {
-        return field_elevator_scene_transition_.palette_step();
+        return field_scene_transition_.palette_step();
     }
     std::uint8_t
     elevator_scene_transition_vblanks_for_dump() const noexcept {
-        return field_elevator_scene_transition_.vblanks_in_palette_step();
+        return field_scene_transition_.vblanks_in_palette_step();
+    }
+    bool building_scene_transition_active_for_dump() const noexcept {
+        return field_building_scene_transition_active_;
+    }
+    FieldSceneTransitionPhase
+    building_scene_transition_phase_for_dump() const noexcept {
+        return field_scene_transition_.phase();
     }
     std::uint8_t field_entity_behavior_flags_for_dump() const noexcept {
         return field_entity_behavior_flags_;
@@ -1820,6 +1827,8 @@ private:
     bool project_field_world_interaction();
     void update_source_field_camera();
     void service_pending_field_viewports();
+    void advance_field_building_scene_transition();
+    void capture_field_building_transition_source_image();
     bool recover_blocked_field_movement(
         const MovementProbeResult& initial_probe);
     void advance_field_scene_transition_after_modal();
@@ -2395,7 +2404,9 @@ private:
     FieldModeTextRuntime field_mode_text_{};
     FieldInteractionRuntime field_interaction_;
     ElevatorSelectorRuntime field_elevator_selector_{};
-    ElevatorSceneTransitionRuntime field_elevator_scene_transition_{};
+    FieldSceneTransitionRuntime field_scene_transition_{};
+    bool field_building_scene_transition_active_ = false;
+    bool field_building_transition_handoff_ = false;
     TarislarCreditsTitleReturnRuntime tarislar_credits_title_return_{};
     std::optional<scripting::ScriptElevatorFloorGroup>
         field_elevator_floor_group_;
@@ -2414,6 +2425,7 @@ private:
     std::size_t field_joshua_archetype_selection_ = 0U;
     QImage field_map_;
     QImage field_map_priority_overlay_;
+    QImage field_building_transition_source_image_;
     bool field_vdp_mirror_enabled_ = false;
     bool field_vdp_mirror_qa_override_ = false;
     std::unique_ptr<FieldVdpMirror> field_vdp_mirror_;

@@ -1244,6 +1244,16 @@ FieldSceneRuntime::FieldSceneRuntime(
                             this->source_boundary(
                                 "field.entry.location_dialogue_denied_transition");
                         }
+                        if (active_field_script_route_.has_value() &&
+                            active_field_script_route_->scene_transition_policy ==
+                                FieldSceneTransitionPolicy::building_fade) {
+                            // The selected doorway route may offer a building
+                            // destination while its Lua passage still chooses
+                            // to stay on the source map. Only commit its fade
+                            // after the scene-change action actually ran.
+                            active_field_script_route_.reset();
+                            field_building_transition_source_image_ = QImage{};
+                        }
                         advance_field_scene_transition_after_modal();
                     }
                     begin_field_modal_return_transition(fade_frames);
@@ -1768,6 +1778,10 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
         source_boundary("field.exit.building_route_script_failed");
     }
     active_field_script_route_ = event_route;
+    if (event_route.scene_transition_policy ==
+        FieldSceneTransitionPolicy::building_fade) {
+        capture_field_building_transition_source_image();
+    }
     pending_field_return_anchor_ = event_route.return_anchor;
     pending_field_return_facing_ = event_route.return_facing;
     pending_field_return_music_policy_ = event_route.return_music_policy;
@@ -8214,7 +8228,13 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 runtime.field_transition_requested = true;
                 return;
             }
-            active_field_script_route_.reset();
+            const bool keep_route_for_building_transition =
+                active_field_script_route_.has_value() &&
+                active_field_script_route_->scene_transition_policy ==
+                    FieldSceneTransitionPolicy::building_fade;
+            if (!keep_route_for_building_transition) {
+                active_field_script_route_.reset();
+            }
             if (!selected_scene.has_value()) {
                 source_boundary(
                     "field.world_activity.building_route_missing");
@@ -8559,6 +8579,10 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                     if (route->kind == FieldScriptRouteKind::area_event &&
                         route->area_event_target.has_value()) {
                         active_field_script_route_ = *route;
+                        if (route->scene_transition_policy ==
+                            FieldSceneTransitionPolicy::building_fade) {
+                            capture_field_building_transition_source_image();
+                        }
                         pending_field_return_anchor_ = route->return_anchor;
                         pending_field_return_facing_ = route->return_facing;
                         pending_field_return_music_policy_ =
@@ -8610,8 +8634,14 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 world_frame_logic_state_.world_mode =
                     static_cast<std::uint8_t>(destination_scene);
                 advance_field_scene_transition_after_modal();
+                const bool scene_load_deferred_for_building_fade =
+                    field_building_scene_transition_active_ &&
+                    active_field_script_route_.has_value() &&
+                    active_field_script_route_->scene_transition_policy ==
+                        FieldSceneTransitionPolicy::building_fade;
                 if (state_.field_scene_buffers.scene_reference !=
-                    destination_scene) {
+                        destination_scene &&
+                    !scene_load_deferred_for_building_fade) {
                     runtime.field_transition_requested = true;
                     source_boundary(
                         "field.entry.area_event_reentry_failed");
@@ -9728,7 +9758,7 @@ void FieldSceneRuntime::configure_field_menu_route() {
                     state_.field_scene_buffers.scene_reference) {
                     field_taxi_pending_destination_.reset();
                     source_boundary("field.taxi.returned_to_current_region");
-                } else if (field_elevator_scene_transition_.begin_fade_out()) {
+                } else if (field_scene_transition_.begin_fade_out()) {
                     field_taxi_transition_active_ = true;
                     source_boundary("field.taxi.destination_fade_out_started");
                 } else {
@@ -11172,7 +11202,10 @@ bool FieldSceneRuntime::bootstrap(
     field_mode_text_.close();
     field_interaction_.reset_session();
     field_elevator_selector_ = ElevatorSelectorRuntime{};
-    field_elevator_scene_transition_ = ElevatorSceneTransitionRuntime{};
+    field_scene_transition_ = FieldSceneTransitionRuntime{};
+    field_building_scene_transition_active_ = false;
+    field_building_transition_handoff_ = false;
+    field_building_transition_source_image_ = QImage{};
     tarislar_credits_title_return_.reset();
     field_elevator_floor_group_.reset();
     field_elevator_script_destination_.reset();
@@ -13558,6 +13591,10 @@ void FieldSceneRuntime::advance_frame() {
         source_boundary("field.vdp_mirror.vblank_stream_failed");
     }
     service_scene_music_latch();
+    if (field_building_scene_transition_active_) {
+        advance_field_building_scene_transition();
+        return;
+    }
     // Contact timing is selected by the Lua dialogue descriptor. Hold the
     // field update until its first page becomes visible on the measured
     // source frame; the interaction itself is already in the Lua task.
@@ -13614,7 +13651,7 @@ void FieldSceneRuntime::advance_frame() {
         source_boundary("field.modal_return.waiting_for_input_release");
         return;
     }
-    if (field_elevator_scene_transition_.is_active()) {
+    if (field_scene_transition_.is_active()) {
         advance_field_elevator_scene_transition();
         return;
     }
@@ -13906,7 +13943,7 @@ void FieldSceneRuntime::advance_frame() {
                     } else {
                         field_taxi_pending_destination_ =
                             static_cast<std::uint16_t>(accepted_field_mode);
-                        if (field_elevator_scene_transition_.begin_fade_out()) {
+                        if (field_scene_transition_.begin_fade_out()) {
                             field_taxi_transition_active_ = true;
                             taxi_departure_started = true;
                             source_boundary(
@@ -19025,23 +19062,23 @@ void FieldSceneRuntime::paint(QPainter& target_painter) const {
             palette_passes = field_door_return_palette_level();
             transition_active = palette_passes != 0U;
         } else
-        switch (field_elevator_scene_transition_.phase()) {
-        case ElevatorSceneTransitionPhase::fading_to_black:
+        switch (field_scene_transition_.phase()) {
+        case FieldSceneTransitionPhase::fading_to_black:
             palette_passes = std::min<std::uint8_t>(
-                field_elevator_scene_transition_.palette_step(), 7U);
+                field_scene_transition_.palette_step(), 7U);
             transition_active = true;
             break;
-        case ElevatorSceneTransitionPhase::destination_handoff:
+        case FieldSceneTransitionPhase::destination_handoff:
             palette_passes = 7U;
             transition_active = true;
             break;
-        case ElevatorSceneTransitionPhase::fading_from_black:
+        case FieldSceneTransitionPhase::fading_from_black:
             palette_passes = std::min<std::uint8_t>(
-                field_elevator_scene_transition_.palette_step(), 7U);
+                field_scene_transition_.palette_step(), 7U);
             toward_black = false;
             transition_active = true;
             break;
-        case ElevatorSceneTransitionPhase::idle:
+        case FieldSceneTransitionPhase::idle:
             if (field_palette_fade_steps_ != 0U) {
                 // 0xB7B8 initializes FFDF3C to 0x10. run_game_loop at 0x75E
                 // calls 0x16396 once per field pass, with the next 0xBD2
@@ -19097,6 +19134,12 @@ void FieldSceneRuntime::paint(QPainter& target_painter) const {
             field_dialogue_.paint_retained_credits_page_for_title_return(
                 credits_painter);
             credits_painter.end();
+        }
+        if (field_building_scene_transition_active_ &&
+            field_scene_transition_.phase() ==
+                FieldSceneTransitionPhase::fading_to_black &&
+            !field_building_transition_source_image_.isNull()) {
+            scene = field_building_transition_source_image_;
         }
         if (transition_active) {
             scene = transition_genesis_cram_image(

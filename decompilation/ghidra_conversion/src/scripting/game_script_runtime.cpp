@@ -7860,6 +7860,62 @@ GameScriptRuntime::resolve_field_location_route(
         lua_pop(state, 1);
     }
 
+    auto scene_transition_policy = FieldSceneTransitionPolicy::none;
+    lua_getfield(state, result_index, "scene_transition_policy");
+    if (!lua_isnil(state, -1)) {
+        std::string policy_name;
+        const bool valid = read_string(state, -1, policy_name);
+        lua_pop(state, 1);
+        if (!valid) {
+            return fail(
+                "building.lua route has an invalid scene transition policy");
+        }
+        if (policy_name == "none") {
+            scene_transition_policy = FieldSceneTransitionPolicy::none;
+        } else if (policy_name == "building_fade") {
+            scene_transition_policy =
+                FieldSceneTransitionPolicy::building_fade;
+        } else {
+            return fail(
+                "building.lua route returned an unknown scene transition policy");
+        }
+    } else {
+        lua_pop(state, 1);
+    }
+
+    std::uint8_t scene_transition_vblanks = 0U;
+    lua_getfield(state, result_index, "scene_transition_vblanks");
+    if (!lua_isnil(state, -1)) {
+        if (!lua_isinteger(state, -1)) {
+            lua_pop(state, 1);
+            return fail(
+                "building.lua route has an invalid scene transition duration");
+        }
+        const auto vblanks = lua_tointeger(state, -1);
+        lua_pop(state, 1);
+        if (vblanks < 0 || vblanks > 0xFF ||
+            (scene_transition_policy ==
+                 FieldSceneTransitionPolicy::none &&
+             vblanks != 0) ||
+            (scene_transition_policy ==
+                 FieldSceneTransitionPolicy::building_fade &&
+             (vblanks != kRomBuildingTransitionVBlanks ||
+              scene_outcome !=
+                  FieldLocationSceneOutcome::scene_change))) {
+            return fail(
+                "building.lua route returned an invalid scene transition duration");
+        }
+        scene_transition_vblanks = static_cast<std::uint8_t>(vblanks);
+    } else {
+        lua_pop(state, 1);
+    }
+    if (scene_transition_policy ==
+            FieldSceneTransitionPolicy::building_fade &&
+        scene_transition_vblanks != kRomBuildingTransitionVBlanks) {
+        return fail(
+            "building.lua route omitted the ROM scene transition duration");
+    }
+
     const auto read_optional_string =
         [state, result_index](const char* name, std::string& value) {
             lua_getfield(state, result_index, name);
@@ -7998,6 +8054,8 @@ GameScriptRuntime::resolve_field_location_route(
     route.return_facing = return_facing;
     route.return_music_policy = return_music_policy;
     route.scene_outcome = scene_outcome;
+    route.scene_transition_policy = scene_transition_policy;
+    route.scene_transition_vblanks = scene_transition_vblanks;
     route.resource_scene_entry_placement = resource_scene_entry_placement;
     std::string resource_override_name;
     std::string entry_continue_outcome_type_name;

@@ -110,7 +110,67 @@ void clear_qa_bitmap_artifacts(const std::filesystem::path& output,
     }
 }
 
+struct FieldBuildingTransitionFrameCounts {
+    std::uint8_t fade_out = 0U;
+    std::uint8_t fade_in = 0U;
+};
+
+bool finish_field_building_scene_transition(
+    FieldSceneRuntime& field_scene,
+    FieldBuildingTransitionFrameCounts* const counts = nullptr) {
+    if (counts != nullptr) {
+        *counts = FieldBuildingTransitionFrameCounts{};
+    }
+    const bool transition_started =
+        field_scene.building_scene_transition_active_for_dump();
+    if (transition_started && counts != nullptr) {
+        const auto phase =
+            field_scene.building_scene_transition_phase_for_dump();
+        const auto elapsed = static_cast<std::uint8_t>(
+            field_scene.elevator_scene_transition_palette_step_for_dump() * 2U +
+            field_scene.elevator_scene_transition_vblanks_for_dump());
+        if (phase == FieldSceneTransitionPhase::fading_to_black) {
+            counts->fade_out = elapsed;
+        } else if (phase == FieldSceneTransitionPhase::fading_from_black) {
+            counts->fade_out =
+                shadowrun::ghidra_conversion::kRomBuildingTransitionVBlanks;
+            counts->fade_in = elapsed;
+        }
+    }
+    constexpr auto kMaximumTransitionFrames =
+        2U * shadowrun::ghidra_conversion::kRomBuildingTransitionVBlanks;
+    for (std::uint8_t frame = 0U;
+         frame < kMaximumTransitionFrames &&
+         field_scene.building_scene_transition_active_for_dump();
+         ++frame) {
+        const auto phase =
+            field_scene.building_scene_transition_phase_for_dump();
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        if (counts != nullptr) {
+            if (phase == FieldSceneTransitionPhase::fading_to_black) {
+                ++counts->fade_out;
+            } else if (phase == FieldSceneTransitionPhase::fading_from_black) {
+                ++counts->fade_in;
+            }
+        }
+    }
+    const bool completed =
+        !field_scene.building_scene_transition_active_for_dump() &&
+        field_scene.building_scene_transition_phase_for_dump() ==
+            FieldSceneTransitionPhase::idle;
+    return completed &&
+           (!transition_started || counts == nullptr ||
+            (counts->fade_out ==
+                 shadowrun::ghidra_conversion::kRomBuildingTransitionVBlanks &&
+             counts->fade_in ==
+                 shadowrun::ghidra_conversion::kRomBuildingTransitionVBlanks));
+}
+
 bool finish_field_modal_return_transition(FieldSceneRuntime& field_scene) {
+    if (!finish_field_building_scene_transition(field_scene)) {
+        return false;
+    }
     auto remaining =
         field_scene.field_modal_return_transition_frames_for_dump();
     if (remaining > 60U) {

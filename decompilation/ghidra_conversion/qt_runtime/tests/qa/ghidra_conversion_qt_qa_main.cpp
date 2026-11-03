@@ -1177,12 +1177,29 @@ int run_field_audio_qa(FieldSceneRuntime& field_scene) {
                   << print(activity_music) << "\n";
         return 1;
     }
+    if (!finish_field_building_scene_transition(field_scene)) {
+        std::cerr << "field audio QA: resource-scene entry fade did not finish\n";
+        return 1;
+    }
     if (!field_scene.return_from_world_activity_for_dump()) {
         std::cerr << "field audio QA: world activity did not return to its "
-                     "source scene\n";
+                     "source scene (scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", pending="
+                  << field_scene.field_transition_pending_for_dump()
+                  << ", building-fade="
+                  << field_scene.building_scene_transition_active_for_dump()
+                  << ", phase=" << static_cast<int>(
+                         field_scene.building_scene_transition_phase_for_dump())
+                  << ", failure=" << field_scene.failure() << ")\n";
         return 1;
     }
     field_scene.advance_frame(); // 0x2900 consumes the activity-return latch
+    if (!finish_field_building_scene_transition(field_scene)) {
+        std::cerr << "field audio QA: building transition did not finish "
+                     "after returning to the source scene\n";
+        return 1;
+    }
     const std::vector<std::uint16_t> returned_music{
         boot_music[0], building_music, boot_music[0]};
     if (field_scene.field_music_requests() != returned_music) {
@@ -1601,7 +1618,7 @@ int run_field_party_wipe_qa(
         for (std::uint8_t frame = 0U;
              frame < 120U &&
              field_scene.elevator_scene_transition_phase_for_dump() !=
-                 ElevatorSceneTransitionPhase::idle;
+                 FieldSceneTransitionPhase::idle;
              ++frame) {
             field_scene.set_controller_port_byte(0U);
             field_scene.advance_frame();
@@ -1623,7 +1640,7 @@ int run_field_party_wipe_qa(
         const auto image = render_qa_field(field_scene);
         return !field_scene.dialogue_open() &&
                field_scene.elevator_scene_transition_phase_for_dump() ==
-                   ElevatorSceneTransitionPhase::idle &&
+                   FieldSceneTransitionPhase::idle &&
                field_scene.field_scene_reference_for_dump() == expected_scene &&
                arrival.x == expected_x && arrival.y == expected_y &&
                runner_refresh_ok &&
@@ -13119,6 +13136,11 @@ int run_field_scene26_event1_physical_entry_qa(
 
     // Scene 26 is reached only through the run stage above (0x1EEDC);
     // continue with the destination resource-activity checks.
+    if (!finish_field_building_scene_transition(field_scene)) {
+        std::cerr << "Scene-26 event-1 entry QA: the building transition did "
+                     "not finish at its ROM-sized cadence\n";
+        return 3;
+    }
     const auto& destination_metadata =
         field_scene.state().field_scene_buffers.source_metadata;
     const auto& activity = field_scene.world_activity_state_for_dump();
@@ -16094,6 +16116,12 @@ int run_scene1_ilene_gated_entry_qa(
             field_scene.advance_frame();
             if (!write_state("entry-transition", tick)) return 3;
         }
+        if (!finish_field_building_scene_transition(field_scene)) {
+            std::cerr << entrance.site_name
+                      << " entry QA: the building transition did not finish "
+                         "at its ROM-sized cadence\n";
+            return 3;
+        }
         if (test_case.ilene_met) {
             for (std::uint8_t service = 0U;
                  service < 8U &&
@@ -17740,7 +17768,7 @@ int run_field_elevator_physical_entry_qa(
     tap_button(0x80U); // Start begins the source 0x131C palette fade.
     if (!field_scene.elevator_selector_open_for_dump() ||
         field_scene.elevator_scene_transition_phase_for_dump() !=
-            ElevatorSceneTransitionPhase::fading_to_black ||
+            FieldSceneTransitionPhase::fading_to_black ||
         field_scene.elevator_scene_transition_palette_step_for_dump() != 0U ||
         field_scene.elevator_scene_transition_vblanks_for_dump() != 1U) {
         std::cerr << "Elevator physical-entry QA: Start did not enter the "
@@ -17750,23 +17778,23 @@ int run_field_elevator_physical_entry_qa(
     // ROM 0x131C and 0x12F6 perform 17 passes at two VBlanks per pass. The
     // transition state is a CRAM pass counter; it has no alpha progress value.
     for (std::uint8_t palette_step = 1U;
-         palette_step <= kElevatorSceneTransitionPaletteStepCount;
+         palette_step <= kFieldSceneTransitionPaletteStepCount;
          ++palette_step) {
         if (palette_step != 1U) {
             tick_frame(); // first of the two source VBlanks for this pass
         }
         tick_frame(); // second VBlank advances one source palette pass
         const auto final_fade_out =
-            palette_step == kElevatorSceneTransitionPaletteStepCount;
+            palette_step == kFieldSceneTransitionPaletteStepCount;
         const auto transition_state_matches = final_fade_out
             ? field_scene.field_scene_reference_for_dump() == 28U &&
                   field_scene.elevator_scene_transition_phase_for_dump() ==
-                      ElevatorSceneTransitionPhase::fading_from_black &&
+                      FieldSceneTransitionPhase::fading_from_black &&
                   field_scene.elevator_scene_transition_palette_step_for_dump() ==
                       0U
             : field_scene.field_scene_reference_for_dump() == 26U &&
                   field_scene.elevator_scene_transition_phase_for_dump() ==
-                      ElevatorSceneTransitionPhase::fading_to_black &&
+                      FieldSceneTransitionPhase::fading_to_black &&
                   field_scene.elevator_scene_transition_palette_step_for_dump() ==
                       palette_step &&
                   field_scene.elevator_scene_transition_palette_step_for_dump() !=
@@ -17789,14 +17817,14 @@ int run_field_elevator_physical_entry_qa(
         field_scene.field_scene_reference_for_dump() != 28U ||
         field_scene.elevator_selector_open_for_dump() ||
         field_scene.elevator_scene_transition_phase_for_dump() !=
-            ElevatorSceneTransitionPhase::fading_from_black ||
+            FieldSceneTransitionPhase::fading_from_black ||
         field_scene.elevator_scene_transition_palette_step_for_dump() != 0U) {
         std::cerr << "Elevator physical-entry QA: scene handoff did not replace "
                      "the selector at full black\n";
         return 3;
     }
     for (std::uint8_t palette_step = 1U;
-         palette_step <= kElevatorSceneTransitionPaletteStepCount;
+         palette_step <= kFieldSceneTransitionPaletteStepCount;
          ++palette_step) {
         tick_frame(); // first source VBlank in the palette step wait
         if (palette_step == 9U) {
@@ -17840,9 +17868,9 @@ int run_field_elevator_physical_entry_qa(
         field_scene.field_scene_reference_for_dump() != 28U ||
         field_scene.elevator_selector_open_for_dump() ||
         field_scene.elevator_scene_transition_phase_for_dump() !=
-            ElevatorSceneTransitionPhase::idle ||
+            FieldSceneTransitionPhase::idle ||
         field_scene.elevator_scene_transition_palette_step_for_dump() !=
-            kElevatorSceneTransitionPaletteStepCount ||
+            kFieldSceneTransitionPaletteStepCount ||
         destination_position.x != destination_landing_position.x ||
         destination_position.y != destination_landing_position.y ||
         !field_scene.field_entity_visible_for_dump() ||
@@ -18588,7 +18616,7 @@ int run_field_elevator_group_route_qa(
     field_scene.set_controller_port_byte(0U);
     if (!start_saved || !advance() ||
         field_scene.elevator_scene_transition_phase_for_dump() !=
-            ElevatorSceneTransitionPhase::fading_to_black) {
+            FieldSceneTransitionPhase::fading_to_black) {
         std::cerr << "Elevator group route QA: Start did not begin the "
                      "source-timed fade after the lift arrived\n";
         return 3;
@@ -18600,7 +18628,7 @@ int run_field_elevator_group_route_qa(
     while (transition_frames < 500U &&
            (field_scene.field_scene_reference_for_dump() != destination_scene ||
             field_scene.elevator_scene_transition_phase_for_dump() !=
-                ElevatorSceneTransitionPhase::idle)) {
+                FieldSceneTransitionPhase::idle)) {
         if (!advance()) {
             return 3;
         }
@@ -18608,7 +18636,7 @@ int run_field_elevator_group_route_qa(
         if (!black_handoff_captured &&
             field_scene.field_scene_reference_for_dump() == destination_scene &&
             field_scene.elevator_scene_transition_phase_for_dump() ==
-                ElevatorSceneTransitionPhase::fading_from_black &&
+                FieldSceneTransitionPhase::fading_from_black &&
             field_scene.elevator_scene_transition_palette_step_for_dump() ==
                 0U) {
             QImage black(kSceneWidth, kSceneHeight, QImage::Format_ARGB32);
@@ -18631,9 +18659,9 @@ int run_field_elevator_group_route_qa(
         field_scene.field_scene_reference_for_dump() != destination_scene ||
         field_scene.elevator_selector_open_for_dump() || !no_modal_screen() ||
         field_scene.elevator_scene_transition_phase_for_dump() !=
-            ElevatorSceneTransitionPhase::idle ||
+            FieldSceneTransitionPhase::idle ||
         field_scene.elevator_scene_transition_palette_step_for_dump() !=
-            kElevatorSceneTransitionPaletteStepCount ||
+            kFieldSceneTransitionPaletteStepCount ||
         destination_position.x != destination_landing_position.x ||
         destination_position.y != destination_landing_position.y ||
         !field_scene.field_entity_visible_for_dump() ||
@@ -18898,7 +18926,7 @@ int run_field_elevator_floor_group_roundtrip_qa(
     if (field_scene.field_scene_reference_for_dump() != 28U ||
         field_scene.elevator_selector_open_for_dump() ||
         field_scene.elevator_scene_transition_phase_for_dump() !=
-            ElevatorSceneTransitionPhase::idle ||
+            FieldSceneTransitionPhase::idle ||
         !no_modal_screen()) {
         std::cerr << "Elevator floor-group QA: first route did not leave a "
                      "stable scene-28 field\n";
@@ -19089,31 +19117,31 @@ int run_field_elevator_floor_group_roundtrip_qa(
             tap_button(0x80U);
             if (!field_scene.elevator_selector_open_for_dump() ||
                 field_scene.elevator_scene_transition_phase_for_dump() !=
-                    ElevatorSceneTransitionPhase::fading_to_black ||
+                    FieldSceneTransitionPhase::fading_to_black ||
                 field_scene.elevator_scene_transition_palette_step_for_dump() !=
                     0U ||
                 field_scene.elevator_scene_transition_vblanks_for_dump() != 1U) {
                 return QImage{};
             }
             for (std::uint8_t palette_step = 1U;
-                 palette_step <= kElevatorSceneTransitionPaletteStepCount;
+                 palette_step <= kFieldSceneTransitionPaletteStepCount;
                  ++palette_step) {
                 if (palette_step != 1U) {
                     tick_frame();
                 }
                 tick_frame();
                 const auto last_step =
-                    palette_step == kElevatorSceneTransitionPaletteStepCount;
+                    palette_step == kFieldSceneTransitionPaletteStepCount;
                 const auto transition_matches = last_step
                     ? field_scene.field_scene_reference_for_dump() ==
                               destination_scene &&
                           field_scene.elevator_scene_transition_phase_for_dump() ==
-                              ElevatorSceneTransitionPhase::fading_from_black &&
+                              FieldSceneTransitionPhase::fading_from_black &&
                           field_scene.elevator_scene_transition_palette_step_for_dump() ==
                               0U
                     : field_scene.field_scene_reference_for_dump() == source_scene &&
                           field_scene.elevator_scene_transition_phase_for_dump() ==
-                              ElevatorSceneTransitionPhase::fading_to_black &&
+                              FieldSceneTransitionPhase::fading_to_black &&
                           field_scene.elevator_scene_transition_palette_step_for_dump() ==
                               palette_step &&
                           field_scene.elevator_scene_transition_palette_step_for_dump() !=
@@ -19136,7 +19164,7 @@ int run_field_elevator_floor_group_roundtrip_qa(
                 return QImage{};
             }
             for (std::uint8_t palette_step = 1U;
-                 palette_step <= kElevatorSceneTransitionPaletteStepCount;
+                 palette_step <= kFieldSceneTransitionPaletteStepCount;
                  ++palette_step) {
                 tick_frame();
                 if (palette_step == 9U &&
@@ -19163,9 +19191,9 @@ int run_field_elevator_floor_group_roundtrip_qa(
                     destination_scene ||
                 field_scene.elevator_selector_open_for_dump() ||
                 field_scene.elevator_scene_transition_phase_for_dump() !=
-                    ElevatorSceneTransitionPhase::idle ||
+                    FieldSceneTransitionPhase::idle ||
                 field_scene.elevator_scene_transition_palette_step_for_dump() !=
-                    kElevatorSceneTransitionPaletteStepCount ||
+                    kFieldSceneTransitionPaletteStepCount ||
                 destination_position.x != destination_landing_position.x ||
                 destination_position.y != destination_landing_position.y ||
                 !field_scene.field_entity_visible_for_dump() ||
@@ -22176,7 +22204,7 @@ bool ride_scene30_elevator_for_pedestrian_qa(
     field_scene.advance_frame();
     const bool scene_transition_started =
         field_scene.elevator_scene_transition_phase_for_dump() ==
-            ElevatorSceneTransitionPhase::fading_to_black;
+            FieldSceneTransitionPhase::fading_to_black;
     field_scene.set_controller_port_byte(0U);
     field_scene.advance_frame();
     std::uint16_t scene_transition_updates = 0U;
@@ -22184,7 +22212,7 @@ bool ride_scene30_elevator_for_pedestrian_qa(
            (field_scene.field_scene_reference_for_dump() !=
                 kDestinationScene ||
             field_scene.elevator_scene_transition_phase_for_dump() !=
-                ElevatorSceneTransitionPhase::idle)) {
+                FieldSceneTransitionPhase::idle)) {
         field_scene.advance_frame();
         ++scene_transition_updates;
     }
@@ -22194,7 +22222,7 @@ bool ride_scene30_elevator_for_pedestrian_qa(
         field_scene.field_scene_reference_for_dump() == kDestinationScene &&
         field_scene.field_interaction_mode_for_dump() == 2U &&
         field_scene.elevator_scene_transition_phase_for_dump() ==
-            ElevatorSceneTransitionPhase::idle &&
+            FieldSceneTransitionPhase::idle &&
         !field_scene.elevator_selector_open_for_dump() && no_modal_screen() &&
         field_scene.active_effect_index_for_dump() ==
             std::optional<std::uint16_t>{4U} &&
@@ -25242,7 +25270,10 @@ int run_field_mitsuhama_after_hours_entry_qa(
     }
     const auto return_frames =
         field_scene.field_modal_return_transition_frames_for_dump();
+    FieldBuildingTransitionFrameCounts entry_fade_frames{};
     const bool transition_finished =
+        finish_field_building_scene_transition(
+            field_scene, &entry_fade_frames) &&
         finish_field_modal_return_transition(field_scene);
     const auto scene30_image = render_qa_field(field_scene);
     const auto& activity = field_scene.world_activity_state_for_dump();
@@ -25285,7 +25316,11 @@ int run_field_mitsuhama_after_hours_entry_qa(
         live_selected_effect_index == std::optional<std::uint16_t>{4U} &&
         live_story_actor_count == 0U &&
         resource_entry_runner_placement_matches &&
-        return_frames == 59U && transition_finished &&
+        return_frames == 0U &&
+        entry_fade_frames.fade_out ==
+            kRomBuildingTransitionVBlanks &&
+        entry_fade_frames.fade_in == kRomBuildingTransitionVBlanks &&
+        transition_finished &&
         count_playfield_lit(scene30_image) >= 100U &&
         std::count(source_boundaries.begin(), source_boundaries.end(),
                    std::string("field.entry.area_event_scene_entered")) == 1;
@@ -25303,6 +25338,9 @@ int run_field_mitsuhama_after_hours_entry_qa(
                   << ", return_frames="
                   << static_cast<unsigned>(return_frames)
                   << ", transition_finished=" << transition_finished
+                  << ", building_fade="
+                  << static_cast<unsigned>(entry_fade_frames.fade_out) << "/"
+                  << static_cast<unsigned>(entry_fade_frames.fade_in)
                   << ", resource_bound="
                   << activity.resource_random_index_bound
                   << ", resource_index="
@@ -25681,14 +25719,14 @@ int run_field_mitsuhama_after_hours_entry_qa(
     field_scene.advance_frame();
     const bool scene_transition_started =
         field_scene.elevator_scene_transition_phase_for_dump() ==
-            ElevatorSceneTransitionPhase::fading_to_black;
+            FieldSceneTransitionPhase::fading_to_black;
     field_scene.set_controller_port_byte(0U);
     field_scene.advance_frame();
     std::uint16_t scene_transition_updates = 0U;
     while (scene_transition_updates < 500U &&
            (field_scene.field_scene_reference_for_dump() != 34U ||
             field_scene.elevator_scene_transition_phase_for_dump() !=
-                ElevatorSceneTransitionPhase::idle)) {
+                FieldSceneTransitionPhase::idle)) {
         field_scene.advance_frame();
         ++scene_transition_updates;
     }
@@ -25723,7 +25761,7 @@ int run_field_mitsuhama_after_hours_entry_qa(
         scene_transition_started && scene_transition_updates < 500U &&
         field_scene.field_scene_reference_for_dump() == 34U &&
         field_scene.elevator_scene_transition_phase_for_dump() ==
-            ElevatorSceneTransitionPhase::idle &&
+            FieldSceneTransitionPhase::idle &&
         !field_scene.elevator_selector_open_for_dump() && no_modal_screen() &&
         scene34_entry_records.size() != 0U &&
         scene34_position.x == scene34_entry_records[0U].x &&
@@ -27586,18 +27624,72 @@ int run_field_jump_house_entry_qa(
     field_scene.set_controller_port_byte(0U);
     if (field_scene.dialogue_open() ||
         field_scene.field_scene_reference_for_dump() != kJumpHouseScene ||
-        field_scene.field_modal_return_transition_frames_for_dump() != 60U ||
+        field_scene.field_modal_return_transition_frames_for_dump() != 0U ||
+        !field_scene.building_scene_transition_active_for_dump() ||
+        field_scene.building_scene_transition_phase_for_dump() !=
+            FieldSceneTransitionPhase::fading_to_black ||
         !save("scene13-transition-start", std::nullopt)) {
         std::cerr << "Jump House entry QA: dismissing the entry page did not "
-                     "resume the retained scene-13 route\n";
+                     "start the Lua-selected building fade-out (scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", active="
+                  << field_scene.building_scene_transition_active_for_dump()
+                  << ", phase=" << static_cast<unsigned>(
+                         field_scene.building_scene_transition_phase_for_dump())
+                  << ", modal=" << static_cast<unsigned>(
+                         field_scene.field_modal_return_transition_frames_for_dump())
+                  << ")\n";
+        for (const auto& boundary : source_boundaries) {
+            if (boundary.find("building_transition") != std::string::npos ||
+                boundary.find("field.entry") != std::string::npos) {
+                std::cerr << "  boundary=" << boundary << '\n';
+            }
+        }
         return 3;
     }
-    for (std::uint8_t frame = 0U; frame < 60U; ++frame) {
+    std::uint8_t entry_fade_out_frames = 0U;
+    while (field_scene.building_scene_transition_active_for_dump() &&
+           field_scene.building_scene_transition_phase_for_dump() ==
+               FieldSceneTransitionPhase::fading_to_black &&
+           entry_fade_out_frames < 40U) {
         field_scene.advance_frame();
-        if (frame == 29U &&
+        ++entry_fade_out_frames;
+        if (entry_fade_out_frames == 17U &&
             !save("scene13-transition-midpoint", std::nullopt)) {
             return 3;
         }
+    }
+    if (entry_fade_out_frames != kRomBuildingTransitionVBlanks ||
+        !field_scene.building_scene_transition_active_for_dump() ||
+        field_scene.building_scene_transition_phase_for_dump() !=
+            FieldSceneTransitionPhase::fading_from_black ||
+        !save("scene13-transition-black", std::nullopt)) {
+        std::cerr << "Jump House entry QA: building fade-out consumed "
+                  << static_cast<unsigned>(entry_fade_out_frames)
+                  << " frames instead of " << static_cast<unsigned>(
+                         kRomBuildingTransitionVBlanks) << " VBlanks\n";
+        return 3;
+    }
+    std::uint8_t entry_fade_in_frames = 0U;
+    while (field_scene.building_scene_transition_active_for_dump() &&
+           field_scene.building_scene_transition_phase_for_dump() ==
+               FieldSceneTransitionPhase::fading_from_black &&
+           entry_fade_in_frames < 40U) {
+        field_scene.advance_frame();
+        ++entry_fade_in_frames;
+        if (entry_fade_in_frames == 17U &&
+            !save("scene13-reveal-midpoint", std::nullopt)) {
+            return 3;
+        }
+    }
+    if (entry_fade_in_frames != kRomBuildingTransitionVBlanks ||
+        field_scene.building_scene_transition_active_for_dump() ||
+        !save("scene13-transition-final", std::nullopt)) {
+        std::cerr << "Jump House entry QA: building fade-in consumed "
+                  << static_cast<unsigned>(entry_fade_in_frames)
+                  << " frames instead of " << static_cast<unsigned>(
+                         kRomBuildingTransitionVBlanks) << " VBlanks\n";
+        return 3;
     }
     const auto final_image = render();
     const auto final_checkpoint_path = output / "scene13-transition-final.bmp";
@@ -27829,13 +27921,64 @@ int run_field_jump_house_entry_qa(
         }
         return 3;
     }
-    for (std::uint16_t settle = 0U;
-         settle < 120U &&
-         (field_scene.field_scene_reference_for_dump() != 2U ||
-          field_scene.field_transition_pending_for_dump() ||
-          field_scene.field_modal_return_transition_frames_for_dump() != 0U);
-         ++settle) {
+    std::uint8_t exit_transition_start_frames = 0U;
+    while (!field_scene.building_scene_transition_active_for_dump() &&
+           exit_transition_start_frames < 4U) {
         field_scene.advance_frame();
+        ++exit_transition_start_frames;
+    }
+    if (!field_scene.building_scene_transition_active_for_dump() ||
+        field_scene.building_scene_transition_phase_for_dump() !=
+            FieldSceneTransitionPhase::fading_to_black ||
+        field_scene.field_modal_return_transition_frames_for_dump() != 0U ||
+        !save("scene13-exit-fade-start", std::nullopt)) {
+        std::cerr << "Jump House exit QA: source activity return did not start "
+                     "the shared building fade-out\n";
+        return 3;
+    }
+    std::uint8_t exit_fade_out_frames = 0U;
+    while (field_scene.building_scene_transition_active_for_dump() &&
+           field_scene.building_scene_transition_phase_for_dump() ==
+               FieldSceneTransitionPhase::fading_to_black &&
+           exit_fade_out_frames < 40U) {
+        field_scene.advance_frame();
+        ++exit_fade_out_frames;
+        if (exit_fade_out_frames == 17U &&
+            !save("scene13-exit-fade-midpoint", std::nullopt)) {
+            return 3;
+        }
+    }
+    if (exit_fade_out_frames != kRomBuildingTransitionVBlanks ||
+        !field_scene.building_scene_transition_active_for_dump() ||
+        field_scene.building_scene_transition_phase_for_dump() !=
+            FieldSceneTransitionPhase::fading_from_black ||
+        field_scene.field_scene_reference_for_dump() != 2U ||
+        !save("scene2-return-black", std::nullopt)) {
+        std::cerr << "Jump House exit QA: building fade-out consumed "
+                  << static_cast<unsigned>(exit_fade_out_frames)
+                  << " frames or missed the source-scene handoff\n";
+        return 3;
+    }
+    std::uint8_t exit_fade_in_frames = 0U;
+    while (field_scene.building_scene_transition_active_for_dump() &&
+           field_scene.building_scene_transition_phase_for_dump() ==
+               FieldSceneTransitionPhase::fading_from_black &&
+           exit_fade_in_frames < 40U) {
+        field_scene.advance_frame();
+        ++exit_fade_in_frames;
+        if (exit_fade_in_frames == 17U &&
+            !save("scene2-return-reveal-midpoint", std::nullopt)) {
+            return 3;
+        }
+    }
+    if (exit_fade_in_frames != kRomBuildingTransitionVBlanks ||
+        field_scene.building_scene_transition_active_for_dump() ||
+        field_scene.field_scene_reference_for_dump() != 2U) {
+        std::cerr << "Jump House exit QA: building fade-in consumed "
+                  << static_cast<unsigned>(exit_fade_in_frames)
+                  << " frames instead of " << static_cast<unsigned>(
+                         kRomBuildingTransitionVBlanks) << " VBlanks\n";
+        return 3;
     }
     const auto event0_final_image = render();
     const auto returned_position = field_scene.field_entity_world_position();
@@ -27856,6 +27999,7 @@ int run_field_jump_house_entry_qa(
         returned_heading != expected_return_heading ||
         field_scene.dialogue_open() || field_scene.field_interaction_open() ||
         field_scene.field_transition_pending_for_dump() ||
+        field_scene.building_scene_transition_active_for_dump() ||
         field_scene.field_modal_return_transition_frames_for_dump() != 0U ||
         !field_hud_chrome_survives(event0_final_image, asset_root) ||
         count_playfield_lit(event0_final_image) < 100U ||
@@ -27903,7 +28047,9 @@ int run_field_jump_house_entry_qa(
              "event0_records\tevent0_start_x\tevent0_start_y\t"
              "event0_contact_x\tevent0_contact_y\tevent0_movement_ticks\t"
              "event0_destination_scene\treturn_x\treturn_y\t"
-             "return_heading\n"
+             "return_heading\tentry_fade_out_frames\t"
+             "entry_fade_in_frames\texit_fade_out_frames\t"
+             "exit_fade_in_frames\n"
           << "85\t0x00C4\t4\t13\t" << movement_ticks << '\t'
           << field_audio_events.size() << "\t0\t11\t"
           << event30_movement_ticks << '\t' << event30_start.x << '\t'
@@ -27912,12 +28058,17 @@ int run_field_jump_house_entry_qa(
           << event0_start.y << '\t' << event0_contact.x << '\t'
           << event0_contact.y << '\t' << event0_movement_ticks << "\t2\t"
           << returned_position.x << '\t' << returned_position.y << '\t'
-          << returned_heading << '\n';
+          << returned_heading << '\t'
+          << static_cast<unsigned>(entry_fade_out_frames) << '\t'
+          << static_cast<unsigned>(entry_fade_in_frames) << '\t'
+          << static_cast<unsigned>(exit_fade_out_frames) << '\t'
+          << static_cast<unsigned>(exit_fade_in_frames) << '\n';
     std::cout << "field_jump_house_entry_qa=passed record=85 event=4 "
                  "movement=ordinary-up entry=lua dismissal=ordinary-A "
                  "destination_scene=13 event30_record=11 "
                  "event30=ordinary-up+Lua-link event0_records=9,10 "
                  "event0=ordinary-down+Lua-link return_scene=2 "
+                 "building_fade_vblanks=34 entry=34/34 exit=34/34 "
                  "saved_anchor="
               << returned_position.x << ',' << returned_position.y
               << " outward_heading=" << returned_heading
@@ -29348,6 +29499,11 @@ int run_field_wanderer_south_exit_qa(
         return 3;
     }
     if (!save("scene14-actual")) return 3;
+    if (!finish_field_building_scene_transition(field_scene)) {
+        std::cerr << "Wanderer south exit QA: the Scene-14 entry fade did not "
+                     "finish\n";
+        return 3;
+    }
 
     const auto& scene14_metadata =
         field_scene.state().field_scene_buffers.source_metadata;
@@ -29401,7 +29557,8 @@ int run_field_wanderer_south_exit_qa(
     std::uint16_t movement_ticks = 0U;
     for (; movement_ticks < 90U &&
            field_scene.field_scene_reference_for_dump() == 14U &&
-           !field_scene.field_transition_pending_for_dump();
+           !field_scene.field_transition_pending_for_dump() &&
+           !field_scene.building_scene_transition_active_for_dump();
          ++movement_ticks) {
         field_scene.set_controller_nibble(0x02U); // ordinary Down
         field_scene.advance_frame();
@@ -29412,7 +29569,8 @@ int run_field_wanderer_south_exit_qa(
     if (movement_ticks == 0U || movement_ticks >= 90U ||
         field_scene.field_mode_event_code_for_dump() != 0U ||
         field_scene.field_scene_reference_for_dump() != 14U ||
-        !field_scene.field_transition_pending_for_dump() ||
+        (!field_scene.field_transition_pending_for_dump() &&
+         !field_scene.building_scene_transition_active_for_dump()) ||
         (contact.x >> 4U) < target_rectangle.left ||
         (contact.x >> 4U) > target_rectangle.right ||
         (contact.y >> 4U) < target_rectangle.top ||
@@ -29434,6 +29592,38 @@ int run_field_wanderer_south_exit_qa(
                 boundary.find("field.entry.") != std::string::npos ||
                 boundary.find("field.scene.transition.") !=
                     std::string::npos) {
+                std::cerr << "  boundary=" << boundary << '\n';
+            }
+        }
+        return 3;
+    }
+
+    if (field_scene.field_transition_pending_for_dump() &&
+        !field_scene.building_scene_transition_active_for_dump()) {
+        // The source contact publishes its event one pass before the field
+        // exit orchestrator selects the saved-source return route.
+        field_scene.advance_frame();
+    }
+    FieldBuildingTransitionFrameCounts exit_fade_frames{};
+    if (!finish_field_building_scene_transition(
+            field_scene, &exit_fade_frames) ||
+        exit_fade_frames.fade_out != kRomBuildingTransitionVBlanks ||
+        exit_fade_frames.fade_in != kRomBuildingTransitionVBlanks) {
+        std::cerr << "Wanderer south exit QA: the Scene-14 exit did not use "
+                     "the measured 34+34 VBlank fade (out="
+                  << static_cast<unsigned>(exit_fade_frames.fade_out)
+                  << ", in=" << static_cast<unsigned>(exit_fade_frames.fade_in)
+                  << ", active="
+                  << field_scene.building_scene_transition_active_for_dump()
+                  << ", phase=" << static_cast<int>(
+                         field_scene.building_scene_transition_phase_for_dump())
+                  << ", pending="
+                  << field_scene.field_transition_pending_for_dump() << ")\n";
+        for (const auto& boundary : source_boundaries) {
+            if (boundary.find("field.exit.") != std::string::npos ||
+                boundary.find("field.entry.") != std::string::npos ||
+                boundary.find("field.scene.transition.") != std::string::npos ||
+                boundary.find("field.building_transition.") != std::string::npos) {
                 std::cerr << "  boundary=" << boundary << '\n';
             }
         }
@@ -32650,6 +32840,11 @@ int run_field_gated_building_entry_qa(
     tap_qa_controller_button(field_scene, 0x40U); // A: accept entry passage
     const auto return_frames =
         field_scene.field_modal_return_transition_frames_for_dump();
+    FieldBuildingTransitionFrameCounts entry_fade_frames{};
+    const auto transition_finished =
+        finish_field_building_scene_transition(
+            field_scene, &entry_fade_frames) &&
+        finish_field_modal_return_transition(field_scene);
     const bool dialogue_closed = !field_scene.dialogue_open();
     const auto destination_scene = field_scene.field_scene_reference_for_dump();
     const auto destination_mode = field_scene.field_runtime_state_for_dump()
@@ -32667,13 +32862,13 @@ int run_field_gated_building_entry_qa(
          entry_camera_y == route.expected_entry_camera_y &&
          entry_position.x == route.expected_entry_joshua_x &&
          entry_position.y == route.expected_entry_joshua_y);
-    const auto transition_finished =
-        finish_field_modal_return_transition(field_scene);
     const auto& activity = field_scene.world_activity_state_for_dump();
     const bool activity_frame_saved =
         save(route.destination_capture, std::nullopt);
     if (!dialogue_closed || destination_scene != route.destination_scene ||
-        destination_mode != route.destination_scene || return_frames != 59U ||
+        destination_mode != route.destination_scene || return_frames != 0U ||
+        entry_fade_frames.fade_out != kRomBuildingTransitionVBlanks ||
+        entry_fade_frames.fade_in != kRomBuildingTransitionVBlanks ||
         activity.selected_resource_random_index !=
             route.expected_resource_index ||
         activity.resource_marker_ordinal != route.expected_marker_ordinal ||
@@ -32968,6 +33163,11 @@ int run_field_penumbra_lone_star_entry_qa(
             break;
         }
         field_scene.advance_frame();
+    }
+    if (!finish_field_building_scene_transition(field_scene)) {
+        std::cerr << "Penumbra Lone Star entry QA: the building transition "
+                     "did not finish at its ROM-sized cadence\n";
+        return 3;
     }
     const auto& activity = field_scene.world_activity_state_for_dump();
     const auto actual = render();
@@ -34294,6 +34494,13 @@ int run_field_medicine_lodge_physical_entry_qa(
              settle < 100U && field_scene.dialogue_open(); ++settle) {
             field_scene.advance_frame();
         }
+        FieldBuildingTransitionFrameCounts profile_fade_frames{};
+        if (!finish_field_building_scene_transition(
+                field_scene, &profile_fade_frames)) {
+            std::cerr << "Medicine Lodge QA: scene-profile transition did not "
+                         "finish at the ROM cadence\n";
+            return 3;
+        }
         const auto pending_profile =
             field_scene.field_pending_scene_profile_for_dump();
         const bool profile_queued = pending_profile ==
@@ -34306,9 +34513,15 @@ int run_field_medicine_lodge_physical_entry_qa(
             source_boundaries.begin(), source_boundaries.end(),
             std::string(
                 "field.location.medicine_lodge_wise_one_profile_queued"));
+        const bool profile_fade_timing_matches =
+            (profile_fade_frames.fade_out == 0U &&
+             profile_fade_frames.fade_in == 0U) ||
+            (profile_fade_frames.fade_out == kRomBuildingTransitionVBlanks &&
+             profile_fade_frames.fade_in == kRomBuildingTransitionVBlanks);
         if (field_scene.dialogue_open() ||
             field_scene.field_scene_reference_for_dump() != 4U ||
             !profile_applied ||
+            !profile_fade_timing_matches ||
             profile_handoff_count != 1 ||
             !save("field-return", std::nullopt)) {
             std::cerr << "Medicine Lodge QA: command 0x1F did not queue the "
@@ -34319,7 +34532,24 @@ int run_field_medicine_lodge_physical_entry_qa(
                       << ", applied=" << profile_applied
                       << ", position=" << placed_runner.x << ','
                       << placed_runner.y << ", handoff="
-                      << profile_handoff_count << ")\n";
+                      << profile_handoff_count << ", fade="
+                      << static_cast<unsigned>(profile_fade_frames.fade_out)
+                      << '+'
+                      << static_cast<unsigned>(profile_fade_frames.fade_in)
+                      << ", active="
+                      << field_scene.building_scene_transition_active_for_dump()
+                      << ", pending="
+                      << field_scene.field_transition_pending_for_dump()
+                      << ", phase=" << static_cast<int>(
+                             field_scene.building_scene_transition_phase_for_dump())
+                      << ")\n";
+            for (const auto& boundary : source_boundaries) {
+                if (boundary.find("medicine_lodge_wise_one") != std::string::npos ||
+                    boundary.find("scene.transition") != std::string::npos ||
+                    boundary.find("building_transition") != std::string::npos) {
+                    std::cerr << "  boundary=" << boundary << '\n';
+                }
+            }
             return 3;
         }
         std::ofstream trace(output / "route.tsv", std::ios::trunc);
@@ -36095,7 +36325,7 @@ int run_field_sinsearach_gate_fare_physical_entry_qa(
         if (!transition_boundaries_present ||
             field_scene.field_scene_reference_for_dump() != 6U ||
             field_scene.elevator_scene_transition_phase_for_dump() !=
-                ElevatorSceneTransitionPhase::idle ||
+                FieldSceneTransitionPhase::idle ||
             field_scene.dialogue_open() ||
             field_scene.field_funds_for_dump() != 0U ||
             arrival_position.x != 0x1310U ||
@@ -36562,6 +36792,13 @@ int run_field_owlfeather_physical_entry_qa(
              !field_scene.dialogue_open(); ++settle) {
             field_scene.advance_frame();
         }
+        FieldBuildingTransitionFrameCounts entry_fade_frames{};
+        if (!finish_field_building_scene_transition(
+                field_scene, &entry_fade_frames)) {
+            std::cerr << "Owlfeather world-gate QA: the building transition "
+                         "did not finish at its ROM-sized cadence\n";
+            return 3;
+        }
         if (ilene_gate_script_qa) {
             for (std::uint8_t service = 0U;
                  service < 8U &&
@@ -36595,6 +36832,9 @@ int run_field_owlfeather_physical_entry_qa(
         if (field_scene.dialogue_open() ||
             field_scene.field_scene_reference_for_dump() != 13U ||
             transition_frames != 0U ||
+            entry_fade_frames.fade_out !=
+                kRomBuildingTransitionVBlanks ||
+            entry_fade_frames.fade_in != kRomBuildingTransitionVBlanks ||
             opened_services != 0 ||
             field_scene.field_interaction_open() ||
             (ilene_gate_script_qa && !script_selected) ||
@@ -44716,7 +44956,7 @@ int main(int argc, char** argv) {
                 if (field_scene.dialogue_open() ||
                     field_scene.field_scene_reference_for_dump() != 2U ||
                     field_scene.elevator_scene_transition_phase_for_dump() !=
-                        ElevatorSceneTransitionPhase::fading_to_black ||
+                        FieldSceneTransitionPhase::fading_to_black ||
                     !capture("07-fade-out-start")) {
                     std::cerr << "Vid-Phone passage QA: result acknowledgement "
                                  "did not close the panel and start the fade\n";
@@ -44724,7 +44964,7 @@ int main(int argc, char** argv) {
                 }
                 while (transition_frames < 90U &&
                        field_scene.elevator_scene_transition_phase_for_dump() ==
-                           ElevatorSceneTransitionPhase::fading_to_black &&
+                           FieldSceneTransitionPhase::fading_to_black &&
                        field_scene
                                .elevator_scene_transition_palette_step_for_dump() <
                            3U) {
@@ -44733,7 +44973,7 @@ int main(int argc, char** argv) {
                     ++transition_frames;
                 }
                 if (field_scene.elevator_scene_transition_phase_for_dump() !=
-                        ElevatorSceneTransitionPhase::fading_to_black ||
+                        FieldSceneTransitionPhase::fading_to_black ||
                     field_scene
                             .elevator_scene_transition_palette_step_for_dump() !=
                         3U ||
@@ -44750,7 +44990,7 @@ int main(int argc, char** argv) {
                 }
                 if (field_scene.field_scene_reference_for_dump() != 6U ||
                     field_scene.elevator_scene_transition_phase_for_dump() !=
-                        ElevatorSceneTransitionPhase::fading_from_black ||
+                        FieldSceneTransitionPhase::fading_from_black ||
                     field_scene
                             .elevator_scene_transition_palette_step_for_dump() !=
                         0U ||
@@ -44761,7 +45001,7 @@ int main(int argc, char** argv) {
                 }
                 while (transition_frames < 90U &&
                        field_scene.elevator_scene_transition_phase_for_dump() ==
-                           ElevatorSceneTransitionPhase::fading_from_black &&
+                           FieldSceneTransitionPhase::fading_from_black &&
                        field_scene
                                .elevator_scene_transition_palette_step_for_dump() <
                            3U) {
@@ -44770,7 +45010,7 @@ int main(int argc, char** argv) {
                     ++transition_frames;
                 }
                 if (field_scene.elevator_scene_transition_phase_for_dump() !=
-                        ElevatorSceneTransitionPhase::fading_from_black ||
+                        FieldSceneTransitionPhase::fading_from_black ||
                     field_scene
                             .elevator_scene_transition_palette_step_for_dump() !=
                         3U ||
@@ -44781,7 +45021,7 @@ int main(int argc, char** argv) {
                 }
                 while (transition_frames < 90U &&
                        field_scene.elevator_scene_transition_phase_for_dump() !=
-                           ElevatorSceneTransitionPhase::idle) {
+                           FieldSceneTransitionPhase::idle) {
                     field_scene.set_controller_port_byte(0U);
                     field_scene.advance_frame();
                     ++transition_frames;
@@ -44822,7 +45062,7 @@ int main(int argc, char** argv) {
                     field_scene.field_transition_context_for_dump() == 0U;
                 if (field_scene.field_scene_reference_for_dump() != 6U ||
                     field_scene.elevator_scene_transition_phase_for_dump() !=
-                        ElevatorSceneTransitionPhase::idle ||
+                        FieldSceneTransitionPhase::idle ||
                     field_scene.field_funds_for_dump() != 9000U ||
                     field_scene.dialogue_open() ||
                     !runner_anchor_on_field() ||
@@ -45026,7 +45266,7 @@ int main(int argc, char** argv) {
                 if (field_scene.dialogue_open() ||
                     field_scene.field_scene_reference_for_dump() != 6U ||
                     field_scene.elevator_scene_transition_phase_for_dump() !=
-                        ElevatorSceneTransitionPhase::fading_to_black ||
+                        FieldSceneTransitionPhase::fading_to_black ||
                     !capture("20-sinsearach-fade-out-start")) {
                     std::cerr << "Vid-Phone passage QA: result acknowledgement "
                                  "did not close the panel and begin travel\n";
@@ -45035,7 +45275,7 @@ int main(int argc, char** argv) {
                 transition_frames = 2U;
                 while (transition_frames < 90U &&
                        field_scene.elevator_scene_transition_phase_for_dump() ==
-                           ElevatorSceneTransitionPhase::fading_to_black &&
+                           FieldSceneTransitionPhase::fading_to_black &&
                        field_scene
                                .elevator_scene_transition_palette_step_for_dump() <
                            3U) {
@@ -45059,7 +45299,7 @@ int main(int argc, char** argv) {
                 }
                 if (field_scene.field_scene_reference_for_dump() != 9U ||
                     field_scene.elevator_scene_transition_phase_for_dump() !=
-                        ElevatorSceneTransitionPhase::fading_from_black ||
+                        FieldSceneTransitionPhase::fading_from_black ||
                     field_scene
                             .elevator_scene_transition_palette_step_for_dump() !=
                         0U ||
@@ -45070,7 +45310,7 @@ int main(int argc, char** argv) {
                 }
                 while (transition_frames < 90U &&
                        field_scene.elevator_scene_transition_phase_for_dump() ==
-                           ElevatorSceneTransitionPhase::fading_from_black &&
+                           FieldSceneTransitionPhase::fading_from_black &&
                        field_scene
                                .elevator_scene_transition_palette_step_for_dump() <
                            3U) {
@@ -45088,7 +45328,7 @@ int main(int argc, char** argv) {
                 }
                 while (transition_frames < 90U &&
                        field_scene.elevator_scene_transition_phase_for_dump() !=
-                           ElevatorSceneTransitionPhase::idle) {
+                           FieldSceneTransitionPhase::idle) {
                     field_scene.set_controller_port_byte(0U);
                     field_scene.advance_frame();
                     ++transition_frames;
@@ -45105,7 +45345,7 @@ int main(int argc, char** argv) {
                     field_scene.field_transition_context_for_dump() == 3U;
                 if (field_scene.field_scene_reference_for_dump() != 9U ||
                     field_scene.elevator_scene_transition_phase_for_dump() !=
-                        ElevatorSceneTransitionPhase::idle ||
+                        FieldSceneTransitionPhase::idle ||
                     field_scene.field_funds_for_dump() != 1000U ||
                     field_scene.dialogue_open() ||
                     !field_scene.field_entity_visible_for_dump() ||

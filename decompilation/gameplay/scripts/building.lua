@@ -307,6 +307,43 @@ local function selected_scene_destination(context)
     return destination
 end
 
+local function is_building_activity_scene(scene_id)
+    return scene_id == E.Scene.JUMP_HOUSE or
+        scene_id == E.Scene.WANDERER or
+        (scene_id >= E.Scene.RESOURCE_ACTIVITY_FIRST and
+         scene_id <= E.Scene.RESOURCE_ACTIVITY_LAST)
+end
+
+function Building.scene_transition_policy_for_route(
+    source_scene_id, destination_scene_id, scene_outcome)
+    if scene_outcome ~= E.FieldLocationSceneOutcome.SCENE_CHANGE then
+        return E.FieldSceneTransitionPolicy.NONE, 0
+    end
+    local source_is_building =
+        WorldLinks.scene_mode(source_scene_id) == "building" or
+        is_building_activity_scene(source_scene_id)
+    local destination_is_building = destination_scene_id ~= nil and
+        (WorldLinks.scene_mode(destination_scene_id) == "building" or
+         is_building_activity_scene(destination_scene_id))
+    if source_is_building or destination_is_building then
+        return E.FieldSceneTransitionPolicy.BUILDING_FADE,
+            E.FieldSceneTransitionVBlanks.BUILDING_FADE
+    end
+    return E.FieldSceneTransitionPolicy.NONE, 0
+end
+
+local function attach_scene_transition_policy(route, context, scene_outcome)
+    local destination_scene = route.area_event_target or
+        selected_scene_destination(context)
+    local policy, vblanks = Building.scene_transition_policy_for_route(
+        context.scene_id, destination_scene, scene_outcome)
+    if policy ~= E.FieldSceneTransitionPolicy.NONE then
+        route.scene_transition_policy = policy
+        route.scene_transition_vblanks = vblanks
+    end
+    return route
+end
+
 local function attach_building_service_exit_policy(route, link, context)
     local identity = link ~= nil and
         ((link.entity_id or "location") .. "." ..
@@ -346,7 +383,7 @@ local function attach_building_service_exit_policy(route, link, context)
     route.return_facing = policy.return_facing
     route.return_music_policy = policy.return_music_policy
     route.scene_outcome = scene_outcome
-    return route
+    return attach_scene_transition_policy(route, context, scene_outcome)
 end
 
 function Building.resolve_field_location_route(context)
@@ -540,11 +577,11 @@ function Building.resolve_field_location_route(context)
                     (link.entity_id or "location") .. "." ..
                     (link.link_id or link.id or "unnamed"))
             end
-            return {
+            return attach_scene_transition_policy({
                 kind = route_kind.source_activity_return,
                 script = route_script.source_activity_return,
                 event_code = context.event_code,
-            }
+            }, context, E.FieldLocationSceneOutcome.SCENE_CHANGE)
         end
     end
 
@@ -554,11 +591,11 @@ function Building.resolve_field_location_route(context)
     if context.scene_id >= 21 and context.scene_id <= 43 and
        context.event_code == "event_0" and
        context.transition.kind == "return_to_field" then
-        return {
+        return attach_scene_transition_policy({
             kind = route_kind.source_activity_return,
             script = route_script.source_activity_return,
             event_code = context.event_code,
-        }
+        }, context, E.FieldLocationSceneOutcome.SCENE_CHANGE)
     end
 
     if context.transition.kind ~= "enter_scene" then

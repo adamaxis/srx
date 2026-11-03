@@ -4,6 +4,7 @@ package.path = "decompilation/gameplay/scripts/?.lua;" ..
 
 local W = require("world_links")
 local E = require("enums")
+local Building = require("building")
 local D = W.data()
 
 local pass, total = 0, 0
@@ -15,12 +16,13 @@ end
 -- Each imported link is already expressed as bounds and a semantic transition.
 local directions = { north = true, east = true, south = true, west = true }
 local links, routed = 0, 0
+local building_entry_routes = 0
 for scene_id = 0, 55 do
     local scene = D.scenes[scene_id]
     check(scene ~= nil, "scene " .. scene_id .. " present")
     check(scene.event_destinations == nil,
           "ROM selector tables stay out of Lua data " .. scene_id)
-    for _, link in ipairs(W.links_in_scene(scene_id)) do
+    for link_index, link in ipairs(W.links_in_scene(scene_id)) do
         links = links + 1
         local bounds = link.bounds
         check(directions[link.return_side] == true, "named return side")
@@ -34,6 +36,33 @@ for scene_id = 0, 55 do
             check(W.scene_mode(link.transition.destination_scene_id) ~= nil and
                   D.scenes[link.transition.destination_scene_id] ~= nil,
                   "destination has a scene profile")
+            local destination_scene = link.transition.destination_scene_id
+            local is_building_destination =
+                W.scene_mode(destination_scene) == "building" or
+                destination_scene == E.Scene.JUMP_HOUSE or
+                destination_scene == E.Scene.WANDERER or
+                (destination_scene >= E.Scene.RESOURCE_ACTIVITY_FIRST and
+                 destination_scene <= E.Scene.RESOURCE_ACTIVITY_LAST)
+            local policy, vblanks =
+                Building.scene_transition_policy_for_route(
+                    scene_id, destination_scene,
+                    E.FieldLocationSceneOutcome.SCENE_CHANGE)
+            if is_building_destination then
+                building_entry_routes = building_entry_routes + 1
+                check(policy == E.FieldSceneTransitionPolicy.BUILDING_FADE and
+                      vblanks ==
+                          E.FieldSceneTransitionVBlanks.BUILDING_FADE,
+                      string.format(
+                          "scene %d link %d building entry fades for %d VBlanks",
+                          scene_id, link_index,
+                          E.FieldSceneTransitionVBlanks.BUILDING_FADE))
+            else
+                check(policy == E.FieldSceneTransitionPolicy.NONE and
+                      vblanks == 0,
+                      string.format(
+                          "scene %d link %d nonbuilding route has no building fade",
+                          scene_id, link_index))
+            end
         else
             check(link.transition.kind == "same_map_service" or
                   link.transition.kind == "contextual_transition" or
@@ -44,6 +73,9 @@ for scene_id = 0, 55 do
 end
 check(links == 892, "892 imported doorway links, got " .. links)
 check(routed > 0, "some doors route")
+check(building_entry_routes == 38,
+      "38 linked building/activity entrances receive the fade, got " ..
+          building_entry_routes)
 check(W.transition_at(2, 7424, 2304).destination_scene_id == 13,
       "Redmond doorway routes to the Jump House")
 check(W.transition_at(0, 8448, 1792).destination_scene_id == 10,
@@ -71,7 +103,29 @@ local ROM_RETURN_BANKS = {
     west = { { -0x1E0, 0 }, { -0x100, 0x140 }, { -0x100, -0x100 } },
 }
 local building_service_exits = W.building_service_exit_cases()
+local building_service_entry_count = 0
+local same_map_service_count = 0
 for _, exit_case in ipairs(building_service_exits) do
+    local destination_scene = exit_case.destination_scene_id
+    if destination_scene ~= nil and
+       W.scene_mode(destination_scene) == "building" then
+        building_service_entry_count = building_service_entry_count + 1
+        local policy, vblanks =
+            Building.scene_transition_policy_for_route(
+                exit_case.scene_id, destination_scene,
+                E.FieldLocationSceneOutcome.SCENE_CHANGE)
+        check(policy == E.FieldSceneTransitionPolicy.BUILDING_FADE and
+              vblanks == E.FieldSceneTransitionVBlanks.BUILDING_FADE,
+              exit_case.exit_id .. " building entry has ROM fade timing")
+    else
+        same_map_service_count = same_map_service_count + 1
+        local policy, vblanks =
+            Building.scene_transition_policy_for_route(
+                exit_case.scene_id, destination_scene,
+                E.FieldLocationSceneOutcome.SAME_SCENE)
+        check(policy == E.FieldSceneTransitionPolicy.NONE and vblanks == 0,
+              exit_case.exit_id .. " same-map service has no scene fade")
+    end
     local expected_bank = ROM_RETURN_BANKS[exit_case.return_side]
     check(expected_bank ~= nil,
           exit_case.exit_id .. " has a ROM return bank")
@@ -128,6 +182,32 @@ end
 check(#building_service_exits == 30,
       "30 outdoor building/service links receive a measured return, got " ..
           #building_service_exits)
+check(building_service_entry_count == 13 and same_map_service_count == 17,
+      "30-link sweep separates 13 building entries from 17 same-map services")
+
+local building_exit_routes = 0
+local building_activity_scenes = { E.Scene.JUMP_HOUSE, E.Scene.WANDERER }
+for scene_id = E.Scene.RESOURCE_ACTIVITY_FIRST,
+                 E.Scene.RESOURCE_ACTIVITY_LAST do
+    building_activity_scenes[#building_activity_scenes + 1] = scene_id
+end
+for _, scene_id in ipairs(building_activity_scenes) do
+    building_exit_routes = building_exit_routes + 1
+    local policy, vblanks = Building.scene_transition_policy_for_route(
+        scene_id, nil, E.FieldLocationSceneOutcome.SCENE_CHANGE)
+    check(policy == E.FieldSceneTransitionPolicy.BUILDING_FADE and
+          vblanks == E.FieldSceneTransitionVBlanks.BUILDING_FADE,
+          "building/activity scene " .. scene_id ..
+              " exit fades for the ROM timing")
+end
+check(building_exit_routes == 25,
+      "25 building/activity return routes receive the fade, got " ..
+          building_exit_routes)
+print(string.format(
+    "building_fade_route_sweep=passed entries=%d exits=%d directed_routes=%d vblanks_per_fade=%d",
+    building_entry_routes, building_exit_routes,
+    building_entry_routes + building_exit_routes,
+    E.FieldSceneTransitionVBlanks.BUILDING_FADE))
 local exit_exceptions = W.building_service_exit_exceptions()
 for _, exception in ipairs(exit_exceptions) do
     print(string.format("field_exit_return_exception id=%s rom=%s anchor=%s " ..

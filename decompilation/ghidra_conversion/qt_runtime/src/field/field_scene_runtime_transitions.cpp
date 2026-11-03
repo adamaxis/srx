@@ -536,8 +536,14 @@ bool FieldSceneRuntime::restore_world_activity_source_scene(
     world_frame_logic_state_.world_mode = source_scene;
 
     advance_field_scene_transition_after_modal();
+    const bool scene_load_deferred_for_building_fade =
+        field_building_scene_transition_active_ &&
+        active_field_script_route_.has_value() &&
+        active_field_script_route_->scene_transition_policy ==
+            FieldSceneTransitionPolicy::building_fade;
     if (!state_.field_scene_buffers.initialized ||
-        state_.field_scene_buffers.scene_reference != source_scene) {
+        (state_.field_scene_buffers.scene_reference != source_scene &&
+         !scene_load_deferred_for_building_fade)) {
         source_boundary("field.world_activity.return_scene_prepare_failed");
         return false;
     }
@@ -553,6 +559,35 @@ void FieldSceneRuntime::advance_field_scene_transition_after_modal() {
     // The modal Qt loop is non-blocking. Keep the 0x2BD2 transition pending
     // while the page owns the screen; once it closes, run the ROM-selected
     // same-scene refresh or nonzero scene/profile re-entry in source order.
+
+    if (!field_building_transition_handoff_ &&
+        active_field_script_route_.has_value() &&
+        active_field_script_route_->scene_transition_policy ==
+            FieldSceneTransitionPolicy::building_fade) {
+        if (active_field_script_route_->scene_transition_vblanks !=
+            kRomBuildingTransitionVBlanks) {
+            source_boundary("field.building_transition.invalid_lua_timing");
+            return;
+        }
+        if (field_building_scene_transition_active_) {
+            return;
+        }
+        if (field_scene_transition_.is_active()) {
+            source_boundary("field.building_transition.transition_busy");
+            return;
+        }
+        if (field_building_transition_source_image_.isNull()) {
+            capture_field_building_transition_source_image();
+        }
+        if (!field_scene_transition_.begin_fade_out()) {
+            source_boundary("field.building_transition.fade_out_unresolved");
+            return;
+        }
+        field_building_scene_transition_active_ = true;
+        suppress_field_modal_close_input();
+        source_boundary("field.building_transition.fade_out_started");
+        return;
+    }
 
     FieldSceneTransitionState transition{};
     transition.field_transition_marker = static_cast<std::uint16_t>(
@@ -680,6 +715,48 @@ void FieldSceneRuntime::advance_field_scene_transition_after_modal() {
     source_boundary("field.scene.transition.same_scene_reentered");
 }
 
+void FieldSceneRuntime::capture_field_building_transition_source_image() {
+    QImage image(320, 224, QImage::Format_ARGB32_Premultiplied);
+    image.fill(Qt::black);
+    QPainter painter(&image);
+    paint(painter);
+    painter.end();
+    field_building_transition_source_image_ = std::move(image);
+}
+
+void FieldSceneRuntime::advance_field_building_scene_transition() {
+    if (!field_building_scene_transition_active_) {
+        return;
+    }
+    const auto update = field_scene_transition_.advance();
+    if (update.palette_step_changed) {
+        source_boundary("field.building_transition.palette_step");
+    }
+    if (update.destination_load_requested) {
+        // The destination is committed only after the full ROM-sized fade to
+        // black. Keep this handoff in the same scene re-entry code used by the
+        // ordinary field route, then reveal the new scene from black.
+        field_building_transition_source_image_ = QImage{};
+        field_building_transition_handoff_ = true;
+        advance_field_scene_transition_after_modal();
+        field_building_transition_handoff_ = false;
+        if (!field_scene_transition_.begin_fade_in()) {
+            field_scene_transition_.cancel();
+            field_building_scene_transition_active_ = false;
+            source_boundary("field.building_transition.fade_in_unresolved");
+            return;
+        }
+        source_boundary("field.building_transition.fade_in_started");
+        return;
+    }
+    if (update.completed) {
+        field_building_scene_transition_active_ = false;
+        field_building_transition_source_image_ = QImage{};
+        active_field_script_route_.reset();
+        source_boundary("field.building_transition.completed");
+    }
+}
+
 bool FieldSceneRuntime::resume_field_mode_entry_route() {
     if (!field_mode_entry_transition_pending_ ||
         !field_mode_entry_destination_scene_.has_value()) {
@@ -737,8 +814,16 @@ bool FieldSceneRuntime::resume_field_mode_entry_route() {
     initialize(field_runtime_state_);
     field_mode_entry_run_target_actor_group_.reset();
 
+    const bool scene_load_deferred_for_building_fade =
+        field_building_scene_transition_active_ &&
+        active_field_script_route_.has_value() &&
+        active_field_script_route_->scene_transition_policy ==
+            FieldSceneTransitionPolicy::building_fade;
     if (field_runtime_state_.field_transition_requested ||
-        field_runtime_state_.scene_id != expected_activity_scene) {
+        field_runtime_state_.scene_id != expected_activity_scene ||
+        (state_.field_scene_buffers.scene_reference !=
+             expected_activity_scene &&
+         !scene_load_deferred_for_building_fade)) {
         source_boundary("field.entry.area_event_scene_prepare_failed");
         return false;
     }
@@ -760,6 +845,13 @@ bool FieldSceneRuntime::resume_field_mode_entry_route() {
 
 void FieldSceneRuntime::begin_field_modal_return_transition(
     const std::uint8_t duration_frames) {
+    if (field_building_scene_transition_active_) {
+        field_modal_return_transition_frames_remaining_ = 0U;
+        field_palette_fade_steps_ = 0U;
+        suppress_field_modal_close_input();
+        source_boundary("field.modal_return.building_transition_owns_fade");
+        return;
+    }
     // ROM 0x2BD2 begins with a 17-pass 0x131C fade-out before its field
     // refresh; each palette pass waits two VBlanks through 0x1342 [C]. This
     // additional native 60-frame fade-in and input guard are host presentation
