@@ -2536,9 +2536,15 @@ bool parse_menu_choices(lua_State* state, const int index,
         bool valid = false;
         if (lua_istable(state, -1)) {
             const auto choice_record = lua_absindex(state, -1);
+            const bool label_key_valid =
+                read_optional_field_string(state, choice_record,
+                                           "label_key", choice.label_key) &&
+                (choice.label_key.empty() ||
+                 valid_identifier(choice.label_key));
             valid = read_field_string(state, choice_record, "id", choice.id) &&
                     read_field_string(state, choice_record, "label",
                                       choice.inline_label) &&
+                    label_key_valid &&
                     !choice.inline_label.empty() &&
                     choice.inline_label.size() <= 160U &&
                     std::none_of(
@@ -6725,7 +6731,9 @@ struct GameScriptRuntime::Impl {
         }
         const auto descriptor_index = lua_absindex(task_state, -1);
         ScriptDialogueOpenDescriptor descriptor{};
+        std::uint32_t transition_frames = 0U;
         std::uint32_t text_delay_frames = 0U;
+        std::uint32_t input_lock_frames = 0U;
         const auto read_optional = [this, descriptor_index](
             const char* field, std::string& value) {
             lua_getfield(task_state, descriptor_index, field);
@@ -6745,18 +6753,30 @@ struct GameScriptRuntime::Impl {
                               descriptor.exit_behavior) &&
             read_field_string(task_state, descriptor_index, "transition",
                               descriptor.transition) &&
+            read_field_integer(task_state, descriptor_index,
+                               "transition_frames", 255U,
+                               transition_frames) &&
             read_optional("return_anchor", descriptor.return_anchor) &&
             read_optional("return_facing", descriptor.return_facing) &&
             read_optional("music_return_policy",
                           descriptor.music_return_policy) &&
             read_optional("input_lock", descriptor.input_lock) &&
+            read_optional("scene_change_result_id",
+                          descriptor.scene_change_result_id) &&
             read_field_integer(task_state, descriptor_index,
                                "text_delay_frames", 255U,
-                               text_delay_frames);
+                               text_delay_frames) &&
+            read_field_integer(task_state, descriptor_index,
+                               "input_lock_frames", 255U,
+                               input_lock_frames);
         lua_pop(task_state, 3);
         if (!valid) return std::nullopt;
+        descriptor.transition_frames =
+            static_cast<std::uint8_t>(transition_frames);
         descriptor.text_delay_frames =
             static_cast<std::uint8_t>(text_delay_frames);
+        descriptor.input_lock_frames =
+            static_cast<std::uint8_t>(input_lock_frames);
         return descriptor;
     }
 
@@ -15598,13 +15618,25 @@ ScriptTaskStep GameScriptRuntime::start_dialogue_task(
         impl_->failure = "invalid typed dialogue source";
         return {ScriptTaskStep::Status::failed, std::nullopt};
     }
-    const std::array<std::string_view, 10> arguments{
+    const auto input_lock_frames = route_data.input_lock_frames == 0U
+        ? std::string{}
+        : std::to_string(route_data.input_lock_frames);
+    const auto transition_frames = route_data.transition_frames == 0U
+        ? std::string{}
+        : std::to_string(route_data.transition_frames);
+    const auto text_delay_frames = std::string_view{};
+    const std::array<std::string_view, 13> arguments{
         source_id, module, function, route_data.scene_outcome,
         route_data.exit_behavior, route_data.transition,
         route_data.return_anchor, route_data.return_facing,
-        route_data.music_return_policy, route_data.input_lock};
+        route_data.music_return_policy, route_data.input_lock,
+        input_lock_frames, route_data.scene_change_result_id,
+        transition_frames};
     return impl_->start_task("dialogue_framework", "open", {
-        arguments[0], arguments[1], arguments[2]});
+        arguments[0], arguments[1], arguments[2], arguments[3],
+        arguments[4], arguments[5], arguments[6], arguments[7],
+        arguments[8], arguments[9], text_delay_frames, arguments[10],
+        arguments[11], arguments[12]});
 }
 
 ScriptTaskStep GameScriptRuntime::complete_native_operation(
@@ -15940,6 +15972,22 @@ std::optional<ScriptMenuDefinition> GameScriptRuntime::resolve_dialogue_menu(
                 "dialogue menu contains an invalid stable choice id";
             return std::nullopt;
         }
+    }
+
+    // A Lua `prompt_text` operation already carries both its prompt and
+    // visible labels. It should not need a second JSON menu-label table.
+    // Catalog-backed prompts (choice IDs only) still resolve through
+    // dialogue.menu_text_keys below.
+    const bool has_authored_inline_labels = menu.inline_prompt &&
+        !menu.choices.empty() &&
+        std::all_of(menu.choices.begin(), menu.choices.end(),
+                    [](const ScriptMenuChoice& choice) {
+                        return choice.label_key.empty() &&
+                               !choice.inline_label.empty();
+                    });
+    if (has_authored_inline_labels) {
+        impl_->failure.clear();
+        return menu;
     }
 
     constexpr std::string_view kModule = "dialogue";

@@ -159,12 +159,6 @@ function WorldLinks.building_service_exit_policy(context)
     }
 end
 
-function WorldLinks.same_scene_return_policy()
-    return WorldLinks.building_service_exit_policy{
-        scene_outcome = E.FieldLocationSceneOutcome.SAME_SCENE,
-    }
-end
-
 function WorldLinks.building_service_exit_exceptions()
     local result = {}
     for exit_id, exception in pairs(EXIT_RETURN_EXCEPTIONS) do

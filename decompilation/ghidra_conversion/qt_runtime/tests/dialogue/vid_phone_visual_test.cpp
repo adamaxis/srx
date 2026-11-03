@@ -164,6 +164,9 @@ int main(int argc, char** argv) {
          &phone_feature_flags, &phone_archetype_status](
             const std::string_view service_id)
             -> std::optional<std::string> {
+            if (service_id.rfind("dialogue_exit.", 0U) == 0U) {
+                return "applied";
+            }
             const auto deck_action = vid_phone_deck_action_for_id(service_id);
             if (deck_action.has_value()) {
                 const auto result = apply_vid_phone_deck_service(
@@ -697,7 +700,8 @@ int main(int argc, char** argv) {
         return 17;
     }
 
-    if (!expect(runtime.advance_controller_events(0x8000U) ==
+    const auto phone_exit_result = runtime.advance_controller_events(0x8000U);
+    if (!expect(phone_exit_result ==
                     FieldDialogueAdvanceResult::returned_to_field,
                 "Start did not leave the field terminal after the phone call") ||
         !expect(!runtime.open(), "Vid-Phone panel did not clear on exit")) {

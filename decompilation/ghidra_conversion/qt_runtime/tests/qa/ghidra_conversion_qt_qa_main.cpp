@@ -4020,10 +4020,168 @@ int run_field_hidden_camera_qa(
         return 3;
     }
 
+    const auto haggard_output = output / "haggard_man_help";
+    std::filesystem::create_directories(haggard_output, error);
+    if (error || !field_scene.reenter_field_scene_for_dump(2U)) {
+        std::cerr << "field hidden-camera QA: could not prepare Scene 2 "
+                     "doctor encounter: " << error.message() << '\n';
+        return 3;
+    }
+    // The previous modal close consumed its A press. Give the next forced
+    // encounter one neutral sample so the following A is a fresh controller
+    // edge, as on a released physical pad.
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    const auto haggard_position_before = field_scene.field_entity_world_position();
+    const auto haggard_music_before = field_scene.field_music_requests();
+    const auto haggard_spawned =
+        field_scene.resolve_and_spawn_field_encounter_for_dump(
+            0U, 1U, *failure_seed);
+    const auto& haggard_opening = field_scene.dialogue_panel();
+    const auto haggard_opening_image = render_qa_field(field_scene);
+    const bool haggard_opening_text = std::any_of(
+        haggard_opening.text_segments.begin(),
+        haggard_opening.text_segments.begin() +
+            static_cast<std::ptrdiff_t>(haggard_opening.text_segment_count),
+        [](const std::string_view segment) {
+            return segment.find("haggard man collapses") !=
+                   std::string_view::npos;
+        });
+    if (haggard_spawned != 0U || !haggard_opening.open ||
+        !haggard_opening.has_more || !haggard_opening_text ||
+        !save_qa_image(haggard_output, "opening.bmp",
+                       haggard_opening_image)) {
+        std::cerr << "field hidden-camera QA: Scene-2 selector did not open "
+                     "the escaped-patient prompt; spawned="
+                  << haggard_spawned << " dialogue=" << haggard_opening.open
+                  << " more=" << haggard_opening.has_more
+                  << " text_match=" << haggard_opening_text
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    // ROM 0x23BB4 displays Attack / Threaten / Help; choose Help (third row).
+    tap_qa_controller_button(field_scene, 0x40U);
+    const auto& haggard_choices = field_scene.dialogue_panel();
+    if (!haggard_choices.open || haggard_choices.cursor_selection ||
+        haggard_choices.option_count != 3U) {
+        std::cerr << "field hidden-camera QA: doctor choice page did not "
+                     "expose its three source A/B/C choices (open="
+                  << haggard_choices.open << " cursor="
+                  << haggard_choices.cursor_selection << " options="
+                  << static_cast<unsigned>(haggard_choices.option_count)
+                  << " kind=" << static_cast<unsigned>(haggard_choices.kind)
+                  << " more=" << haggard_choices.has_more
+                  << " selected=" << haggard_choices.selected_option
+                  << " complete=" << haggard_choices.source_complete
+                  << " failure=" << field_scene.failure() << ")\n";
+        for (std::size_t index = 0U;
+             index < haggard_choices.text_segment_count; ++index) {
+            std::cerr << "  text[" << index << "]="
+                      << haggard_choices.text_segments[index] << '\n';
+        }
+        for (std::size_t index = 0U;
+             index < haggard_choices.option_count; ++index) {
+            std::cerr << "  choice[" << index << "]="
+                      << haggard_choices.options[index].source_label << '\n';
+        }
+        return 3;
+    }
+    // Source dialogue has three A/B/C rows, as at 0x1F3C4.
+    tap_qa_controller_button(field_scene, 0x20U);
+    const auto& haggard_result = field_scene.dialogue_panel();
+    const auto haggard_result_image = render_qa_field(field_scene);
+    const bool haggard_result_text = std::any_of(
+        haggard_result.text_segments.begin(),
+        haggard_result.text_segments.begin() +
+            static_cast<std::ptrdiff_t>(haggard_result.text_segment_count),
+        [](const std::string_view segment) {
+            return segment.find("restrained") != std::string_view::npos;
+        });
+    if (!haggard_result.open || haggard_result.has_more ||
+        !haggard_result_text ||
+        !save_qa_image(haggard_output, "result.bmp", haggard_result_image)) {
+        std::cerr << "field hidden-camera QA: Help did not display the "
+                     "restrained-patient result; dialogue="
+                  << haggard_result.open << " more=" << haggard_result.has_more
+                  << " text_match=" << haggard_result_text
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    settle_qa_dialogue_input(field_scene);
+    field_scene.set_controller_port_byte(0x40U);
+    field_scene.advance_frame();
+    field_scene.set_controller_port_byte(0U);
+    const auto haggard_lock_start =
+        field_scene.world_frame_logic_for_dump().resource_countdown;
+    const auto haggard_fade_frames =
+        field_scene.field_modal_return_transition_frames_for_dump();
+    const auto haggard_position_after = field_scene.field_entity_world_position();
+    if (field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 2U ||
+        haggard_position_after.x != haggard_position_before.x ||
+        haggard_position_after.y != haggard_position_before.y ||
+        haggard_lock_start != 60U || haggard_fade_frames != 83U ||
+        field_scene.field_music_requests() != haggard_music_before) {
+        std::cerr << "field hidden-camera QA: doctor exit effects disagree "
+                     "with its descriptor; scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << " position=" << haggard_position_after.x << ','
+                  << haggard_position_after.y << " lock=" << haggard_lock_start
+                  << " fade=" << static_cast<unsigned>(haggard_fade_frames)
+                  << " music_requests=" << field_scene.field_music_requests().size()
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+    std::uint16_t observed_fade_frames = 0U;
+    auto remaining_fade = haggard_fade_frames;
+    while (remaining_fade != 0U && observed_fade_frames < 100U) {
+        field_scene.advance_frame();
+        ++observed_fade_frames;
+        remaining_fade =
+            field_scene.field_modal_return_transition_frames_for_dump();
+    }
+    if (remaining_fade != 0U || observed_fade_frames != 83U ||
+        field_scene.field_palette_fade_steps_for_dump() != 0U) {
+        std::cerr << "field hidden-camera QA: doctor return fade did not "
+                     "complete\n";
+        return 3;
+    }
+    std::uint16_t haggard_lock_service_passes = 0U;
+    auto haggard_lock_remaining =
+        field_scene.world_frame_logic_for_dump().resource_countdown;
+    while (haggard_lock_remaining != 0U &&
+           haggard_lock_service_passes < 100U) {
+        field_scene.advance_frame();
+        ++haggard_lock_service_passes;
+        haggard_lock_remaining =
+            field_scene.world_frame_logic_for_dump().resource_countdown;
+    }
+    if (haggard_lock_service_passes != 60U ||
+        haggard_lock_remaining != 0U) {
+        std::cerr << "field hidden-camera QA: doctor input lock did not expire after 60 field service passes (passes="
+                  << haggard_lock_service_passes
+                  << ", remaining=" << haggard_lock_remaining << ")\n";
+        return 3;
+    }
+    const auto haggard_actual = render_qa_field(field_scene);
+    if (!save_qa_image(haggard_output, "actual.bmp", haggard_actual)) {
+        std::cerr << "field hidden-camera QA: could not save doctor actual.bmp\n";
+        return 3;
+    }
+
     std::cout << "field_hidden_camera_qa=passed scene=26 party="
               << active_runners << " dice=" << dice_pool
-              << " target=" << target << " alarm=1 actual="
-              << (output / "actual.bmp").string() << '\n';
+              << " target=" << target << " alarm=1"
+              << " haggard_scene=2 help=1 stay=1 fade_frames="
+              << observed_fade_frames << " lock_frames="
+              << haggard_lock_service_passes
+              << " player=" << haggard_position_after.x << ','
+              << haggard_position_after.y
+              << " music_delta=0 actual="
+              << (output / "actual.bmp").string() << " doctor_actual="
+              << (haggard_output / "actual.bmp").string() << '\n';
     return 0;
 }
 
@@ -19687,17 +19845,65 @@ int run_field_stoker_collision_to_dialogue_qa(
     }
     write_state("paid-package-handoff");
 
-    press_button(0x40U);
+    const auto stoker_music_count_before =
+        field_scene.field_music_requests().size();
+    settle_qa_dialogue_input(field_scene);
+    field_scene.set_controller_port_byte(0x40U);
     field_scene.advance_frame();
+    const auto stoker_lock_frames =
+        field_scene.world_frame_logic_for_dump().resource_countdown;
+    const auto stoker_fade_frames =
+        field_scene.field_modal_return_transition_frames_for_dump();
+    const auto returned_position_at_exit =
+        field_scene.field_entity_world_position();
+    const auto returned_heading_at_exit =
+        field_scene.field_entity_heading_for_dump();
+    field_scene.set_controller_port_byte(0U);
+    std::uint16_t observed_stoker_fade_frames = 0U;
+    std::uint16_t observed_stoker_lock_frames = 0U;
+    std::uint16_t elapsed_stoker_exit_frames = 0U;
+    auto remaining_stoker_fade = stoker_fade_frames;
+    auto remaining_stoker_lock = stoker_lock_frames;
+    while ((remaining_stoker_fade != 0U || remaining_stoker_lock != 0U) &&
+           elapsed_stoker_exit_frames < 150U) {
+        if (remaining_stoker_fade != 0U) {
+            ++observed_stoker_fade_frames;
+        }
+        if (remaining_stoker_lock != 0U) {
+            ++observed_stoker_lock_frames;
+        }
+        field_scene.advance_frame();
+        ++elapsed_stoker_exit_frames;
+        remaining_stoker_fade =
+            field_scene.field_modal_return_transition_frames_for_dump();
+        remaining_stoker_lock =
+            field_scene.world_frame_logic_for_dump().resource_countdown;
+    }
     const bool modal_return_completed =
-        finish_field_modal_return_transition(field_scene);
+        remaining_stoker_fade == 0U &&
+        field_scene.field_palette_fade_steps_for_dump() == 0U;
+    const auto stoker_lock_countdown_delta = static_cast<std::uint16_t>(
+        stoker_lock_frames - remaining_stoker_lock);
+    const auto stoker_music_delta =
+        field_scene.field_music_requests().size() -
+        stoker_music_count_before;
+    const auto stoker_returned_music_id =
+        field_scene.field_music_requests().empty()
+            ? std::uint16_t{0xFFFFU}
+            : field_scene.field_music_requests().back();
     if (field_scene.dialogue_open() ||
         !modal_return_completed ||
         field_scene.field_transition_pending_for_dump() ||
         field_scene.field_scene_reference_for_dump() != 2U ||
-        field_scene.field_palette_fade_steps_for_dump() != 0U) {
+        field_scene.field_palette_fade_steps_for_dump() != 0U ||
+        stoker_lock_frames != 60U || stoker_fade_frames != 60U ||
+        observed_stoker_fade_frames != 60U ||
+        stoker_lock_countdown_delta != 60U ||
+        remaining_stoker_lock != 0U || stoker_music_delta != 1U ||
+        stoker_returned_music_id != 0x000FU) {
         std::cerr << "Stoker collision QA: dialogue return did not resume a "
-                     "clear scene-2 field frame (dialogue="
+                     "clear scene-2 field frame with measured source exit "
+                     "effects (dialogue="
                   << (field_scene.dialogue_open() ? "open" : "closed")
                   << ", transition_pending="
                   << (field_scene.field_transition_pending_for_dump()
@@ -19707,16 +19913,26 @@ int run_field_stoker_collision_to_dialogue_qa(
                   << field_scene.field_scene_reference_for_dump()
                   << ", palette_steps=" << static_cast<unsigned>(
                          field_scene.field_palette_fade_steps_for_dump())
+                  << ", lock=" << static_cast<unsigned>(stoker_lock_frames)
+                  << ", fade_start=" << static_cast<unsigned>(stoker_fade_frames)
+                  << ", fade_updates=" << observed_stoker_fade_frames
+                  << ", lock_nonzero_updates=" << observed_stoker_lock_frames
+                  << ", lock_countdown_delta="
+                  << stoker_lock_countdown_delta
+                  << ", lock_remaining=" << remaining_stoker_lock
+                  << ", music_delta=" << stoker_music_delta
+                  << ", music_id=0x" << std::hex
+                  << stoker_returned_music_id << std::dec
                   << ")\n";
         return 3;
     }
-    const auto returned_position = field_scene.field_entity_world_position();
+    const auto returned_position = returned_position_at_exit;
     const auto returned_image = render_field();
     if (!stoker_doorway_probe.initialized ||
         stoker_doorway_probe.selected_offset_bank != 2U ||
         returned_position.x != stoker_expected_return_position.x ||
         returned_position.y != stoker_expected_return_position.y ||
-        field_scene.field_entity_heading_for_dump() !=
+        returned_heading_at_exit !=
             stoker_expected_return_heading ||
         !save_frame("returned-to-field", true) ||
         !returned_image.save(QString::fromStdWString(
@@ -20134,7 +20350,17 @@ int run_field_stoker_collision_to_dialogue_qa(
               << " position=" << position.x << ',' << position.y
               << " returned_position=" << returned_position.x << ','
               << returned_position.y
-              << " dialogue=opening->manager-package->debt->paid-handoff->field"
+                  << " exit_fade_frames=" << observed_stoker_fade_frames
+                  << " exit_lock_countdown="
+                  << stoker_lock_countdown_delta
+                  << " exit_host_updates_until_unlock="
+                  << elapsed_stoker_exit_frames
+                  << " exit_music_delta=" << stoker_music_delta
+                  << " exit_music_id=0x" << std::hex
+                  << stoker_returned_music_id << std::dec
+                  << " exit_heading=0x" << std::hex
+                  << returned_heading_at_exit << std::dec
+                  << " dialogue=opening->manager-package->debt->paid-handoff->field"
                  "->motel-leave->field"
               << " mode_entry_commands="
               << mode_entry_commands_after - mode_entry_commands_before
@@ -27206,15 +27432,33 @@ int run_field_jump_house_entry_qa(
                           const std::optional<bool> expect_field_hud) {
         const auto image = render();
         const auto path = output / (std::string(name) + ".bmp");
-        if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
-            (expect_field_hud.has_value() &&
-             field_hud_chrome_survives(image, asset_root) !=
-                 *expect_field_hud) ||
-            (expect_field_hud == std::optional<bool>{true} &&
-             count_playfield_lit(image) < 100U) ||
-            !image.save(QString::fromStdWString(path.wstring()))) {
+        const bool dimensions_match =
+            image.size() == QSize(kSceneWidth, kSceneHeight);
+        const bool hud_survives =
+            !expect_field_hud.has_value() ||
+            field_hud_chrome_survives(image, asset_root) ==
+                *expect_field_hud;
+        const auto lit = count_playfield_lit(image);
+        const bool enough_lit_pixels =
+            expect_field_hud != std::optional<bool>{true} || lit >= 100U;
+        const bool image_saved =
+            image.save(QString::fromStdWString(path.wstring()));
+        if (!dimensions_match || !hud_survives || !enough_lit_pixels ||
+            !image_saved) {
             std::cerr << "Jump House entry QA: full-screen capture failed for "
-                      << name << '\n';
+                      << name << " size=" << image.width() << 'x'
+                      << image.height() << " hud=" << hud_survives
+                      << " expected_hud="
+                      << (expect_field_hud.has_value()
+                              ? (*expect_field_hud ? 1 : 0) : -1)
+                      << " lit=" << lit << " fade="
+                      << static_cast<unsigned>(
+                             field_scene.field_palette_fade_steps_for_dump())
+                      << " transition=" << static_cast<unsigned>(
+                             field_scene.field_modal_return_transition_frames_for_dump())
+                      << " dialogue=" << field_scene.dialogue_open()
+                      << " interaction="
+                      << field_scene.field_interaction_open() << '\n';
             return false;
         }
         return true;
@@ -27426,6 +27670,17 @@ int run_field_jump_house_entry_qa(
                      "unfunded contact purchase cleanly\n";
         return 3;
     }
+    for (std::uint16_t frame = 0U;
+         frame < 120U &&
+         field_scene.field_modal_return_transition_frames_for_dump() != 0U;
+         ++frame) {
+        field_scene.advance_frame();
+    }
+    if (field_scene.field_modal_return_transition_frames_for_dump() != 0U) {
+        std::cerr << "Jump House entry QA: Gunderson's descriptor-owned "
+                     "modal return did not finish before the next contact\n";
+        return 3;
+    }
 
     const auto event30_opened_before = std::count(
         source_boundaries.begin(), source_boundaries.end(),
@@ -27471,6 +27726,17 @@ int run_field_jump_house_entry_qa(
         field_scene.dialogue_open()) {
         std::cerr << "Jump House entry QA: Gunderson leave command did not "
                      "resume the field after the physical event-30 route\n";
+        return 3;
+    }
+    for (std::uint16_t frame = 0U;
+         frame < 120U &&
+         field_scene.field_modal_return_transition_frames_for_dump() != 0U;
+         ++frame) {
+        field_scene.advance_frame();
+    }
+    if (field_scene.field_modal_return_transition_frames_for_dump() != 0U) {
+        std::cerr << "Jump House entry QA: Gunderson's descriptor-owned "
+                     "modal return did not finish before the next contact\n";
         return 3;
     }
 
@@ -35922,6 +36188,9 @@ int run_field_mode_13_entry_qa(
         return 3;
     }
 
+    const auto renraku_position_before =
+        field_scene.field_entity_world_position();
+
     // The ROM activity timer runs before the deferred 0x53EE2 callback. Wait
     // through that source interval, then verify its distinct mode-text page.
     std::uint16_t activity_wait_frames = 0U;
@@ -36002,6 +36271,8 @@ int run_field_mode_13_entry_qa(
         }
         return 3;
     }
+    const auto renraku_music_before_exit =
+        field_scene.field_music_requests();
 
     // A held/early A event is ignored during the ROM's 30-frame wait. After
     // that delay, a fresh A edge returns in place and leaves the actors active.
@@ -36032,18 +36303,73 @@ int run_field_mode_13_entry_qa(
     }
     field_scene.set_controller_port_byte(0x40U);
     field_scene.advance_frame();
+    const auto renraku_lock_start =
+        field_scene.world_frame_logic_for_dump().resource_countdown;
     field_scene.set_controller_port_byte(0U);
     field_scene.advance_frame();
+    auto renraku_lock_remaining =
+        field_scene.world_frame_logic_for_dump().resource_countdown;
+    std::uint16_t renraku_lock_service_passes =
+        static_cast<std::uint16_t>(renraku_lock_start -
+                                   renraku_lock_remaining);
+    std::uint16_t renraku_lock_host_updates = 1U;
+    while (renraku_lock_remaining != 0U &&
+           renraku_lock_host_updates < 100U) {
+        field_scene.advance_frame();
+        ++renraku_lock_host_updates;
+        const auto next_lock_remaining =
+            field_scene.world_frame_logic_for_dump().resource_countdown;
+        if (renraku_lock_remaining >= next_lock_remaining) {
+            renraku_lock_service_passes = static_cast<std::uint16_t>(
+                renraku_lock_service_passes +
+                renraku_lock_remaining - next_lock_remaining);
+        }
+        renraku_lock_remaining = next_lock_remaining;
+    }
     const auto returned_in_place = std::find(
         source_boundaries.begin(), source_boundaries.end(),
         "field.dialogue.continued_in_place");
     if (field_scene.dialogue_open() ||
         field_scene.field_scene_reference_for_dump() != 47U ||
         returned_in_place == source_boundaries.end() ||
+        field_scene.field_entity_world_position().x !=
+            renraku_position_before.x ||
+        field_scene.field_entity_world_position().y !=
+            renraku_position_before.y ||
+        renraku_lock_start != 60U ||
+        renraku_lock_service_passes != 60U ||
+        renraku_lock_remaining != 0U ||
+        field_scene.field_modal_return_transition_frames_for_dump() != 0U ||
+        field_scene.field_palette_fade_steps_for_dump() != 0U ||
+        field_scene.field_music_requests() != renraku_music_before_exit ||
         field_scene.world_activity_script_actor_count_for_dump() !=
             kExpectedActors.size()) {
         std::cerr << "Mode-13 entry QA: text page did not return to Scene 47 "
-                     "in place\n";
+                     "in place (open=" << field_scene.dialogue_open()
+                  << ", scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", returned_boundary="
+                  << (returned_in_place != source_boundaries.end())
+                  << ", position="
+                  << field_scene.field_entity_world_position().x << ','
+                  << field_scene.field_entity_world_position().y
+                  << ", expected_position=" << renraku_position_before.x
+                  << ',' << renraku_position_before.y
+                  << ", lock_start=" << renraku_lock_start
+                  << ", lock_service_passes="
+                  << renraku_lock_service_passes
+                  << ", lock_host_updates=" << renraku_lock_host_updates
+                  << ", lock_remaining=" << renraku_lock_remaining
+                  << ", fade=" << static_cast<unsigned>(
+                         field_scene.field_modal_return_transition_frames_for_dump())
+                  << ", palette=" << static_cast<unsigned>(
+                         field_scene.field_palette_fade_steps_for_dump())
+                  << ", music_delta="
+                  << (field_scene.field_music_requests().size() -
+                      renraku_music_before_exit.size())
+                  << ", actors="
+                  << field_scene.world_activity_script_actor_count_for_dump()
+                  << ")\n";
         return 3;
     }
 
@@ -36062,7 +36388,11 @@ int run_field_mode_13_entry_qa(
                  "activity_wait_frames=" << activity_wait_frames
               << " input_wait_frames="
               << static_cast<unsigned>(elapsed_wait_frames)
-              << " outcome=continue_in_place artifacts="
+              << " outcome=continue_in_place stay=1 fade_frames=0 "
+                 "music_delta=0 lock_frames="
+              << renraku_lock_service_passes
+              << " lock_host_updates=" << renraku_lock_host_updates
+              << " artifacts="
               << output.string() << '\n';
     return 0;
 }
@@ -48465,6 +48795,12 @@ int main(int argc, char** argv) {
                               << " selection=" << panel.selected_option
                               << " boundary=" << panel.source_boundary_reason
                               << "\n";
+                    for (std::size_t index = 0U;
+                         index < panel.option_count; ++index) {
+                        std::cerr << "  option[" << index << "]=\""
+                                  << panel.options[index].source_label
+                                  << "\"\n";
+                    }
                     return 3;
                 }
                 if (options_screen) {

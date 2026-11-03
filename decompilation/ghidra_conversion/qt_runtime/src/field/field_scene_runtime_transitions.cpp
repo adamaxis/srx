@@ -542,12 +542,6 @@ bool FieldSceneRuntime::restore_world_activity_source_scene(
         return false;
     }
 
-    // Returning from a building/resource scene is a full field entry even
-    // when it restores the same scene id. ROM 0x2822-0x2830 sets FFE172;
-    // 0x2900 consumes it to send FFDE06 to 0x530EA. Ordinary same-scene
-    // redraws through 0x2BD2 still leave the music latch clear.
-    scene_music_latch_ = true;
-
     field_runtime_state_.field_transition_requested = false;
     runtime_state.field_transition_requested = false;
     source_boundary("field.world_activity.source_scene_restored");
@@ -764,13 +758,17 @@ bool FieldSceneRuntime::resume_field_mode_entry_route() {
     return true;
 }
 
-void FieldSceneRuntime::begin_field_modal_return_transition() {
+void FieldSceneRuntime::begin_field_modal_return_transition(
+    const std::uint8_t duration_frames) {
     // ROM 0x2BD2 begins with a 17-pass 0x131C fade-out before its field
     // refresh; each palette pass waits two VBlanks through 0x1342 [C]. This
     // additional native 60-frame fade-in and input guard are host presentation
     // choices, not timing copied from that path [H].
+    field_modal_return_transition_duration_frames_ =
+        duration_frames == 0U ? kFieldModalReturnTransitionFrames
+                              : duration_frames;
     field_modal_return_transition_frames_remaining_ =
-        kFieldModalReturnTransitionFrames;
+        field_modal_return_transition_duration_frames_;
     field_palette_fade_steps_ = 9U;
     suppress_field_modal_close_input();
     field_entity_animation_.redraw_requested = true;
@@ -1113,22 +1111,14 @@ void FieldSceneRuntime::place_party_at_field_door_return_point() {
 }
 
 bool FieldSceneRuntime::apply_field_door_exit_return() {
-    // Same-scene services and building returns share the Lua placement path.
     // ROM 0xBC36/0xBD34 supplies the saved party point; 0x09B8/0x2FA4
-    // establish the outgoing heading and restore the party anchors.
+    // establish the outgoing heading and restore the party anchors. Music is
+    // resumed by the selected Lua dialogue-exit primitive.
     if (!field_door_return_point_.valid) {
         return false;
     }
-    const bool resume_scene_music =
-        field_door_return_point_.return_music_policy ==
-        FieldLocationMusicReturnPolicy::resume_scene_profile;
     place_party_at_field_door_return_point();
     field_door_return_point_.valid = false;
-    if (resume_scene_music) {
-        // Lua's typed exit policy requests the source field profile through
-        // the same latch serviced at ROM 0x2900.
-        scene_music_latch_ = true;
-    }
     field_entity_animation_.redraw_requested = true;
     source_boundary("field.door.service_close_return");
     return true;
@@ -1276,6 +1266,7 @@ FieldSceneRuntime::perform_building_service_exit_sweep_for_dump(
             state_.field_scene_buffers.profile = original_profile;
             return std::nullopt;
         }
+        scene_music_latch_ = true;
         // 0x2900 is serviced at the start of the next field frame.
         advance_frame();
 

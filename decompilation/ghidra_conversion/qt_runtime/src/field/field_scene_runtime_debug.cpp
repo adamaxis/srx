@@ -882,12 +882,22 @@ bool FieldSceneRuntime::dispatch_world_activity_extraction_result_for_dump(
     field_runtime_state_.world_activity_countdown = 0U;
     field_runtime_state_.field_activity_lock = false;
     field_runtime_state_.display_service_word = 0U;
+    // The pending callback is exercised through the production coordinator,
+    // which refreshes its mirror from the native field state at frame entry.
+    // Keep both views idle after the preceding modal/scene-return QA path.
+    state_.display_service_word = 0U;
     record_field_activity_start(
         MovementModeTransitionContinuation::world_activity_extraction_result);
     advance_frame();
     if (!field_dialogue_.open()) {
         failure_ =
-            "0x1F16A QA callback did not open; pending=" +
+            "0x1F16A QA callback did not open; reason=" +
+            field_dialogue_.failure() + " panel=" +
+            std::string(field_dialogue_.panel().source_boundary_reason) +
+            " kind=" +
+            std::to_string(static_cast<int>(field_dialogue_.panel().kind)) +
+            " panel_open=" +
+            std::to_string(field_dialogue_.panel().open) + " pending=" +
             std::to_string(field_runtime_state_.pending_field_scene_handler) +
             " countdown=" +
             std::to_string(field_runtime_state_.world_activity_countdown) +
@@ -1413,7 +1423,8 @@ std::size_t FieldSceneRuntime::resolve_and_spawn_field_encounter_for_dump(
     }
     if (outcome->kind ==
             scripting::ScriptFieldEncounterOutcomeKind::dialogue_event &&
-        outcome->event_id == "hidden_camera") {
+        (outcome->event_id == "hidden_camera" ||
+         outcome->event_id == "haggard_man_collapse")) {
         pending_field_encounter_outcome_ = std::move(*outcome);
         (void)present_field_dialogue_event();
         return 0U;

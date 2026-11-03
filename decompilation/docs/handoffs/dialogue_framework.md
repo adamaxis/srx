@@ -3,8 +3,9 @@
 ## Scope and ROM mapping
 
 The US ROM has several dialogue dispatch paths. The common layer below records
-which source opened a Lua dialogue task and its typed close contract; it does
-not replace those source dispatchers with one ROM-shaped runtime.
+which source opened a Lua dialogue task and lets its descriptor drive terminal
+exit effects. It does not replace those source dispatchers with one
+ROM-shaped runtime.
 
 | Port entry family | ROM source path | Evidence / certainty |
 |---|---|---|
@@ -36,20 +37,29 @@ The descriptor fields are:
 | `source` | `E.DialogueSource` | Building entry/service/exit, field contact/event/activity, random or scripted encounter, Vid-Phone, run target, story/reward/recovery, field menu, taxi, or cinematic. |
 | `route_id` | stable Lua module/function ID | Identifies the selected task without embedding a ROM address in runtime state. |
 | `scene_outcome` | existing `E.FieldLocationSceneOutcome` | `SAME_SCENE`, `SOURCE_DOOR_RETURN`, `SCENE_CHANGE`, or `NONE`. |
-| `exit_behavior` | `E.DialogueExitBehavior` | `STAY`, `SOURCE_DOOR_RETURN`, `SCENE_CHANGE`, or `NONE`. |
-| `transition` | `E.DialogueTransition` | `FADE` or `NONE`; later fade timing can be added here as route data. |
+| `exit_behavior` | `E.DialogueExitBehavior` | `STAY`, `SOURCE_DOOR_RETURN`, `SCENE_CHANGE`, `RETURN_TO_ACTIVITY_SOURCE`, or `NONE`. |
+| `transition`, `transition_frames` | `E.DialogueTransition` and `E.DialogueTransitionFrames` | Selects `FADE` or `NONE` and the descriptor-owned fade duration in host updates. The measured Haggard interval uses 83 frames; ordinary modal returns keep the named 60-frame default. |
 | `return_anchor`, `return_facing`, `music_return_policy` | existing `E.FieldLocationReturnAnchor`, `E.FieldLocationReturnFacing`, and `E.FieldLocationMusicReturnPolicy` | Return placement, outward-facing or preserved heading, and scene-profile music resume. |
-| `input_lock` | `E.DialogueInputLock` | Names the shared `FFE11C` lock when the selected route uses it. |
+| `input_lock`, `input_lock_frames` | `E.DialogueInputLock` and `E.DialogueInputLockFrames` | Names the shared `FFE11C` lock and its exact frame count. |
+| `exit_result_id`, `exit_outcome_type` | stable Lua result string / outcome type | Limits exit effects to a selected terminal branch. |
+| `encounter_source` | `E.DialogueSource` | Identifies an encounter nested inside another task, such as Stoker's random arrival roll inside a building-exit task. |
 
 `game.dialogue.active` remains set for the entire Lua task, including every
 yielded page or menu. The host copies it into `ScriptTaskStep` and
 `FieldDialogueRuntime::opening_descriptor()`. Lua task bodies own the page,
-choice, state, and outcome flow; `DialogueGraph.run` (`dialogue_graph.lua:647`)
-and direct `game.ui.*` calls are page/choice operations inside an already
-opened task. Qt continues to present yielded operations and execute the
-existing typed field/modal transition. The opening descriptor is the shared
-policy record; the host remains responsible for applying scene placement,
-input, fade, and audio services.
+choice, state, and outcome flow; `DialogueGraph.run` and direct `game.ui.*`
+calls are page/choice operations inside an already opened task.
+
+`DialogueFramework.execute_exit` runs when the task reaches its terminal
+result. It reads the descriptor and requests each selected effect through
+the narrow `dialogue_exit.*` host primitive service: stay,
+source-door return with anchor/facing, scene change, return to an activity's
+saved source, fade, scene-profile music resume, and an input lock with an
+exact frame count. A source boundary has no exit effects. Optional
+`exit_outcome_type` and `exit_result_id` fields defer those effects when a
+task opens a nested service or selects another route. Qt implements each
+requested state/placement/transition/audio primitive; it no longer selects
+exit policy or runs a second dialogue-close path.
 
 Source defaults and route exceptions live in `dialogue_framework.lua`, not in
 per-call close branches:
@@ -57,20 +67,69 @@ per-call close branches:
 | Source/route | Descriptor policy |
 |---|---|
 | Building entry | Scene change, fade. A route may refine the outcome. |
-| Building service | Same scene, stay, no transition by default. |
-| Building exit | Source-door return, fade, collision-probe lead, face away from entry, resume scene-profile music. Route data may refine this. |
-| Field NPC contact | Same scene, stay, no transition; the shared activity input lock is declared by the generic-contact and Ilene route overrides. |
-| Field event/activity and story/reward | No transition unless route data selects a scene result; ordinary field activity defaults to staying in the source scene. |
+| Building service | Same-scene stay with the descriptor's current 60-frame modal-return fade. |
+| Building exit | Source-door return, fade, collision-probe lead, face away from entry, resume scene-profile music, and `FFE11C=60`. Route data may refine this. |
+| Field NPC contact | Same-scene stay with the modal-return fade; the shared activity input lock is declared by the generic-contact and Ilene route overrides. |
+| Field event/activity and story/reward | Field events keep their current context; activity and story/reward routes default to same-scene stay. Their selected descriptors apply the modal-return fade. |
 | Random/scripted encounter | No scene change or transition unless route data says otherwise. |
 | Vid-Phone and taxi | Their currently selected source transition is recorded as fade; task outcome still selects the existing destination/return. |
-| Party recovery and cinematic | No built-in field scene change or fade; recovery/cinematic outcome owns the continuation. |
+| Party recovery | No built-in scene change or fade; the task result selects its continuation. |
+| Cinematic | A `play_cinematic` result with `returnPolicy=source_context` runs its opening descriptor after Lua presents the final page, before the host consumes the typed return. |
 | `field_generic_contacts.present`, `ilene.complete_scene_20_activity` | Same-scene stay with `E.DialogueInputLock.WORLD_ACTIVITY_FFE11C`. |
-| `michael_package.stoker_interaction` | Same-scene stay. |
+| `michael_package.stoker_interaction` | Same-context use keeps `STAY`; when typed route data selects the Stoker source-door exception, the descriptor selects the shared outside placement, modal-return fade, scene-profile music, and `FFE11C=60` (`0x173138 -> 0x1F65A -> 0xBC36`). Other #28c same-scene routes remain `STAY`. |
+| `michael_package.present_package_handoff` | Same-context terminal page with a modal-return fade; the enclosing Stoker interaction descriptor applies its selected field return. |
+| Haggard/escaped-patient encounter (`field_random_events.present_haggard_man`) | Random encounter; same-scene stay, 83-frame black/fade return, no profile music request, and `FFE11C=60` [C]. The Help branch is now a production Lua task. |
+| `salish_spirit_eyes.present` | The `source_context` cinematic outcome executes this route's same-scene fade after the graph presents its story pages. |
+| `salish_spirit_eyes.present_renraku_ambush` | Scripted encounter; same-scene stay, no exit fade or profile music request, and `FFE11C=60` [C]. |
+| `michael_package.present_field_exit_prompt` | Building-exit task with a nested `RANDOM_ENCOUNTER` result from `0x249C4`; source-door return, fade, scene-profile music, and `FFE11C=60` run only for `continue_in_place` [C addresses; parity caveat below]. |
+| `field_activities.resource_scene_main_menu` | Restore the saved field scene and apply the descriptor-selected fade/music only for `return_from_world_activity`. |
 
 Field-route `scene_outcome`, return anchor, facing, and music policy are passed
 to Lua as descriptor route data from `field_scene_runtime_internal.hpp`.
 This preserves the existing `world_links.lua` / `building.lua` route census,
 including `SAME_SCENE` and explicit `SOURCE_DOOR_RETURN` exceptions.
+
+## #37b encounter measurements and removed paths
+
+The framework drives exits from the descriptor. `SOURCE_DOOR_RETURN` carries
+`COLLISION_PROBE_LEAD` plus `FACE_AWAY_FROM_ENTRY` (ROM
+`0xB834 -> 0xBC36/0xBD34`, heading `0x09B8`); `STAY` invalidates any stale
+door-return point; `SCENE_CHANGE` resumes the selected field route; and
+`RETURN_TO_ACTIVITY_SOURCE` restores the saved field scene. Transition,
+music, and lock effects then execute in descriptor order. The native
+primitive validates anchor/facing and lock range before updating typed host
+state. A completed `return_to_caller` is consumed by the presenter only after
+the Lua executor has issued the descriptor's primitive operations. A
+source-context cinematic is a deferred dialogue exit: its descriptor runs
+after the graph has yielded all of its pages.
+
+| Encounter/route | ROM behavior and evidence | Headless measurement |
+|---|---|---|
+| Doctor restraining the patient (`field_random_events.present_haggard_man`) | `0x20FA2 -> 0x23BB4 -> 0x23CF2 -> 0x121188`; same Scene 2 position, no door placement or profile resume, `FFE11C=60`. Forced GPGX `/workspace/shadowrun/emu/doors/r95.state` measured the Help result, `+50` nuyen, 60 lock decrements, and 83 consecutive black frames [C]. Longplay section-11 frames 1224–1261 are documented as 38 consecutive black frames; the referenced frame dump is absent in this checkout, so the input/result identity remains [H]. | `shadowrun_ghidra_conversion_qt_field_hidden_camera_qa` drives the production Lua Help branch and measures same-scene stay at `(15584,11520)`, 83 fade updates, 60 lock countdown decrements, and `music_delta=0`. The forced ROM and port positions are fixture-specific; the matching behavior is the unchanged position. |
+| Renraku strike team (`salish_spirit_eyes.present_renraku_ambush`) | `0x2CE0 -> 0x53EE2 -> 0x1F246`; the deferred page continues in Scene 47 without source-door placement or a fade; `0x1E2EC` sets the shared `FFE11C=60` lock [C]. A route-matched GPGX exit capture is not available in this checkout [H]. | `shadowrun_ghidra_conversion_qt_field_mode_13_entry_qa` measures a 60-frame activity wait, 30-frame text-input wait, same position, no exit fade, no exit profile-music request, and 60 lock countdown decrements. |
+| Stoker paid package interaction (`michael_package.stoker_interaction`) | Same-context dialogue result; the Stoker source-route caller selects the outside exit at `0x173138 -> 0x1F65A -> 0xBC36/0xBD34`, heading `0x09B8` [C]. The route-matched GPGX terminal-effects capture remains unavailable [H]. | `shadowrun_ghidra_conversion_qt_field_stoker_collision_to_dialogue_qa` measures the descriptor-selected field return: lead `(15584,11210)`, heading `0x8000`, 60 fade updates, 60 lock countdown decrements, and one profile request for `0x0F`. These are port measurements, not a ROM parity claim. |
+| Stoker ambush (`0x249C4`, nested in `michael_package.present_field_exit_prompt`) | `0x249C4` samples 80–99 for the ordered ambush list at `0x1D6E2A`; the enclosing field exit is selected at `0x1F65A`. Its terminal path shares the `0xB834 -> 0xBC36/0xBD34` placement and `0x09B8` outward heading; the Scene-2 music request path includes `0xFFE172`/`0x53126` and `0x2900..0x2916`, with track word `0x0F` [C]. The GPGX forced-state capture `/workspace/shadowrun/emu/doors/jh3.state` measures the three actor spawns, not the terminal exit transition [H]. | The port's shared exit primitives are measured by the Stoker collision QA above, but a headless QA case that runs the rare `0x249C4` exit descriptor is still needed [H]. |
+
+The forced Haggard GPGX and port values match for stay placement, the 83-frame
+black interval, and the 60-count lock; its exact music identity remains [H].
+Renraku and Stoker have measured port exits and ROM-traced policies, but their
+route-matched GPGX exit captures are not available here. The ordinary Stoker
+fade is an approximate 60-update host transition, not a ROM timing claim.
+
+| Removed dialogue side-effect path | File:line | Executor-owned operation |
+|---|---|---|
+| Typed in-place close queried `same_scene_return_policy`, selected placement policy, and started scene/modal refresh. | `qt_runtime/src/field/field_scene_runtime_services.cpp:1160-1215` (before refactor) | Lua `STAY`, transition, music, and lock descriptor fields. |
+| Typed source-route close resumed the selected route and started its modal return. | `qt_runtime/src/field/field_scene_runtime_services.cpp:1254-1269` (before refactor) | Lua `SCENE_CHANGE` and transition fields. |
+| Typed return-to-origin close began the physical door-return state. | `qt_runtime/src/field/field_scene_runtime_services.cpp:1317-1327` (before refactor) | Lua `SOURCE_DOOR_RETURN`; the outcome handler now only consumes its applied marker. |
+| Generic dialogue completion applied door placement, scene refresh, and modal fade. | `qt_runtime/src/field/field_scene_runtime.cpp:13617-13721` (before refactor) | Lua exit executor. |
+| Resource-activity dialogue completion restored its saved source and began modal fade. | `qt_runtime/src/field/field_scene_runtime.cpp:13723-13730` (before refactor) | Lua `RETURN_TO_ACTIVITY_SOURCE` and transition fields. |
+| Source-scene restoration resumed profile music unconditionally. | `qt_runtime/src/field/field_scene_runtime_transitions.cpp:549` (before refactor) | Descriptor `RESUME_SCENE_PROFILE`; non-dialogue field-exit orchestration retains its separate route. |
+| Door-return helper resumed music as part of party placement. | `qt_runtime/src/field/field_scene_runtime_transitions.cpp:1122-1130` (before refactor) | Descriptor `RESUME_SCENE_PROFILE`. |
+| Parallel Lua same-scene return-policy helper. | `gameplay/scripts/world_links.lua:162-166` (before refactor) | Descriptor stay/source-door fields. |
+
+Hotel and Hospital native menu checkout/leave results remain separate from the
+Lua dialogue exit contract; those non-dialogue menus use
+`begin_native_menu_source_entry_return`.
 
 ## Entry inventory
 
@@ -158,12 +217,12 @@ they do not start another host task.
 |---|---|---|
 | `qt_runtime/src/dialogue/field_dialogue_runtime.cpp:385` | Resolve Lua `DialogueOutcome` and close the active task view | Typed outcome boundary; route-specific source dispatch above. |
 | `qt_runtime/src/dialogue/field_dialogue_runtime.cpp:860-1469` | Advance pages/choices, resume the active coroutine, and close or return a typed outcome | Page/choice loop and source task result; task remains on `game.dialogue.active` while yielded. |
-| `qt_runtime/src/field/field_scene_runtime.cpp:13594-13780` | Consume completed task outcome/result and continue its current field route | Field controller owns applying the outcome; no replacement state machine added. |
-| `qt_runtime/src/field/field_scene_runtime_services.cpp:1112-1267` | Dispatch typed dialogue outcome and return/transition policy | `continue_in_place`, service return, source route resume, or scene handoff. |
+| `qt_runtime/src/field/field_scene_runtime.cpp:13594-13865` | Consume completed task outcome/result and continue its current field route | Lua executor applies exit policy; C++ dispatches gameplay-specific outcomes and nested service handoffs. |
+| `qt_runtime/src/field/field_scene_runtime_services.cpp:1112-1282` | Dispatch typed dialogue outcomes and consume executor-applied markers | `continue_in_place`, service return, source route resume, or scene handoff. |
 | `qt_runtime/src/field/field_scene_runtime_transitions.cpp:558,767` | Advance scene transition after modal and start modal return transition | Existing modal timing and scene transition path. |
 | `gameplay/scripts/building.lua:316-349` | Select route scene outcome and attach return policy | `E.FieldLocationSceneOutcome`; same-scene service and scene-entry branches [C]. |
 | `gameplay/scripts/world_links.lua:117-178,228-255` | Choose same-scene stay versus source-door return, anchor, facing, and music policy | `0xB834 -> 0xBC36/0xBD34`; away-facing write `0x09B8`; music resume through existing scene profile path [C]. |
-| `gameplay/scripts/dialogue_framework.lua:176-230` | Hold the active typed source/route descriptor through the full task and restore nested state on completion/error | New common opening lifecycle; no gameplay close expectation changed. |
+| `gameplay/scripts/dialogue_framework.lua:176-230,285-331` | Hold the active typed source/route descriptor and execute its selected exit contract on completion | The Lua executor owns policy; native callbacks supply the individual effects. |
 
 Intentional outward-facing exits (`world_links.exit_bearing`) and the
 `SAME_SCENE` return rule remain intact. The current 32-route, 30-exit, and

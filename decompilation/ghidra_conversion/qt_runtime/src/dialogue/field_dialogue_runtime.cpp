@@ -258,6 +258,14 @@ bool FieldDialogueRuntime::open_stoker_prompt(
             failure_.empty() ? "Stoker dialogue assets are not loaded"
                              : failure_);
     }
+    if (prompt == StokerMotelPromptId::package_handoff &&
+        script_runtime_ != nullptr) {
+        script_runtime_->set_location_context(
+            "motel", "stoker_motel", "stoker.motel", "stoker");
+        return start_script_task(
+            scripting::ScriptDialogueSource::building_service,
+            "michael_package", "present_package_handoff", prompt);
+    }
     boundary_reason_.clear();
     active_prompt_ = prompt;
     hotel_options_menu_follows_ = false;
@@ -596,7 +604,7 @@ bool FieldDialogueRuntime::present_script_operation(
                     : script_runtime_->failure());
         }
         for (auto& choice : active_script_menu_->choices) {
-            if (choice.inline_label.empty()) {
+            if (choice.inline_label.empty() || choice.label_key.empty()) {
                 continue;
             }
             const auto* source_label =
@@ -719,12 +727,72 @@ bool FieldDialogueRuntime::present_script_operation(
             active_script_menu_.reset();
     hosted_choice_list_ = false;
             last_gameplay_task_result_id_ = task.result_id;
+            const bool dialogue_exit_primitive =
+                operation.service_id.rfind("dialogue_exit.", 0U) == 0U;
+            const auto completed_exit_result = [&]() {
+                const auto& result_id = task.result_id;
+                if (result_id ==
+                    std::optional<std::string>{"return_from_world_activity"}) {
+                    return FieldDialogueAdvanceResult::
+                        returned_from_world_activity;
+                }
+                if (result_id ==
+                    std::optional<std::string>{"hospital-options"}) {
+                    return FieldDialogueAdvanceResult::hospital_options_requested;
+                }
+                if (result_id == std::optional<std::string>{
+                                     "hospital_medical_attention_requested"}) {
+                    return FieldDialogueAdvanceResult::
+                        hospital_medical_attention_requested;
+                }
+                if (result_id == std::optional<std::string>{
+                                     "hospital_cyberware_requested"}) {
+                    return FieldDialogueAdvanceResult::
+                        hospital_cyberware_requested;
+                }
+                if (result_id == std::optional<std::string>{
+                                     "hospital_leave_confirmation_requested"}) {
+                    return FieldDialogueAdvanceResult::
+                        hospital_leave_confirmation_requested;
+                }
+                if (result_id == std::optional<std::string>{"hospital_left"}) {
+                    return FieldDialogueAdvanceResult::hospital_left;
+                }
+                if (result_id == std::optional<std::string>{
+                                     "medicine_lodge_store_requested"}) {
+                    return FieldDialogueAdvanceResult::
+                        medicine_lodge_store_requested;
+                }
+                if (result_id == std::optional<std::string>{
+                                     "medicine_lodge_wise_one_followup"}) {
+                    return FieldDialogueAdvanceResult::
+                        medicine_lodge_wise_one_followup;
+                }
+                return FieldDialogueAdvanceResult::returned_to_field;
+            };
+            // A completed dialogue that returns control to its caller still
+            // needs the descriptor's requested native close operations first.
+            // Consume that terminal outcome here after the exit primitive has
+            // finished, instead of treating it as a new field transition.
+            if (dialogue_exit_primitive && task.dialogue_outcome.has_value() &&
+                scripting::dialogue_outcome_type(*task.dialogue_outcome) ==
+                    scripting::DialogueOutcomeType::return_to_caller) {
+                close();
+                inline_task_advance_result_ = completed_exit_result();
+                return true;
+            }
             if (const auto outcome = resolve_typed_outcome(task);
                 outcome.has_value()) {
                 inline_task_advance_result_ = *outcome;
                 return true;
             }
+            const auto exit_result =
+                dialogue_exit_primitive
+                    ? std::optional<FieldDialogueAdvanceResult>{
+                          completed_exit_result()}
+                    : std::nullopt;
             close();
+            inline_task_advance_result_ = exit_result;
             return true;
         }
         return open_source_boundary(

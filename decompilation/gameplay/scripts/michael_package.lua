@@ -95,6 +95,10 @@ function MichaelPackage.stoker_interaction()
         "stoker_motel.indexed_service", registered_actions())
 end
 
+function MichaelPackage.present_package_handoff()
+    return DialogueGraph.run("stoker_motel.package_handoff_result")
+end
+
 function MichaelPackage.present_field_exit_prompt()
     return DialogueGraph.run(
         "stoker_motel.field_exit_prompt", registered_actions())

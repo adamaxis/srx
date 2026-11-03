@@ -176,6 +176,19 @@
         },
         "stay_on_map": { "type": "terminal", "outcome": { "type": "continue_in_place" } }
       }
+    },
+    "stoker_motel.package_handoff_result": {
+      "entryNode": "package_handoff",
+      "speakerId": "stoker",
+      "textProfile": "stoker.motel",
+      "provenance": {
+        "romAddresses": ["0x53A78", "0x53AB6", "0x213FA", "0x1F246", "0x1F3C4"],
+        "scope": "paid_michael_package_handoff_and_same_map_return"
+      },
+      "nodes": {
+        "package_handoff": { "type": "page", "eventId": "package-handoff", "next": "stay_on_map" },
+        "stay_on_map": { "type": "terminal", "outcome": { "type": "continue_in_place" } }
+      }
     }
   }
 }

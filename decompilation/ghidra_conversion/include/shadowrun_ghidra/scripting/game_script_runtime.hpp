@@ -1151,10 +1151,13 @@ struct ScriptDialogueOpenDescriptor {
     std::string scene_outcome;
     std::string exit_behavior;
     std::string transition;
+    std::uint8_t transition_frames = 0U;
     std::string return_anchor;
     std::string return_facing;
     std::string music_return_policy;
     std::string input_lock;
+    std::string scene_change_result_id;
+    std::uint8_t input_lock_frames = 0U;
     std::uint8_t text_delay_frames = 0U;
 };
 
@@ -1164,10 +1167,13 @@ struct ScriptDialogueOpenRouteData {
     std::string scene_outcome;
     std::string exit_behavior;
     std::string transition;
+    std::uint8_t transition_frames = 0U;
     std::string return_anchor;
     std::string return_facing;
     std::string music_return_policy;
     std::string input_lock;
+    std::string scene_change_result_id;
+    std::uint8_t input_lock_frames = 0U;
 };
 
 struct ScriptDialogueRequest {

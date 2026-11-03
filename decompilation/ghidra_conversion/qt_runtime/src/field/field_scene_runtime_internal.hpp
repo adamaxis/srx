@@ -19,39 +19,22 @@ namespace shadowrun::ghidra_conversion::qt_runtime::field_scene_detail {
 inline scripting::ScriptDialogueOpenRouteData dialogue_open_route_data(
     const FieldScriptRoute& route) {
     scripting::ScriptDialogueOpenRouteData data{};
-    if (route.kind == FieldScriptRouteKind::field_service) {
-        // Lua's field-service policy leaves scene_outcome unset because its
-        // host service has a separate close lifecycle. Its typed return
-        // anchor still distinguishes restoring the source door from staying
-        // at the service location.
-        if (route.return_anchor ==
-            FieldLocationReturnAnchor::collision_probe_lead) {
-            data.scene_outcome = "source_door_return";
-            data.exit_behavior = "source_door_return";
-        } else {
-            data.scene_outcome = "same_scene";
-            data.exit_behavior = "stay";
-        }
-        data.transition = "none";
-    } else {
+    data.scene_change_result_id = route.entry_continue_result_id;
+    if (route.kind != FieldScriptRouteKind::field_service) {
         switch (route.scene_outcome) {
         case FieldLocationSceneOutcome::same_scene:
             data.scene_outcome = "same_scene";
-            data.exit_behavior = "stay";
-            data.transition = "none";
             break;
         case FieldLocationSceneOutcome::source_door_return:
             data.scene_outcome = "source_door_return";
-            data.exit_behavior = "source_door_return";
-            data.transition = "fade";
             break;
         case FieldLocationSceneOutcome::scene_change:
             data.scene_outcome = "scene_change";
-            data.exit_behavior = "scene_change";
-            data.transition = "fade";
             break;
         }
     }
+    // The field route contributes source-derived outcome and placement facts.
+    // Lua resolves those facts to exit behavior and transition policy.
     switch (route.return_anchor) {
     case FieldLocationReturnAnchor::none:
         data.return_anchor = "none";

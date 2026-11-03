@@ -1075,6 +1075,169 @@ FieldSceneRuntime::FieldSceneRuntime(
     field_dialogue_.set_native_script_service_callback(
         [this](const std::string_view service_id)
             -> std::optional<std::string> {
+            constexpr std::string_view kDialogueExitPrefix =
+                "dialogue_exit.";
+            if (service_id.rfind(kDialogueExitPrefix, 0U) == 0U) {
+                const auto action = service_id.substr(
+                    kDialogueExitPrefix.size());
+                if (action == "stay") {
+                    field_dialogue_exit_source_door_return_applied_ = false;
+                    field_dialogue_exit_activity_source_restored_ = false;
+                    field_dialogue_exit_scene_transition_applied_ = false;
+                    field_dialogue_exit_scene_change_resumed_ = false;
+                    if (active_field_script_route_.has_value() &&
+                        active_field_script_route_->kind !=
+                            FieldScriptRouteKind::field_service &&
+                        active_field_script_route_->scene_outcome !=
+                            FieldLocationSceneOutcome::source_door_return) {
+                        active_field_script_route_->return_anchor =
+                            FieldLocationReturnAnchor::none;
+                        active_field_script_route_->return_facing =
+                            FieldLocationReturnFacing::preserve_entry_heading;
+                        active_field_script_route_->return_music_policy =
+                            FieldLocationMusicReturnPolicy::none;
+                        pending_field_return_anchor_ =
+                            FieldLocationReturnAnchor::none;
+                        pending_field_return_facing_ =
+                            FieldLocationReturnFacing::preserve_entry_heading;
+                        pending_field_return_music_policy_ =
+                            FieldLocationMusicReturnPolicy::none;
+                        field_door_return_point_.valid = false;
+                    }
+                    return "applied";
+                }
+                constexpr std::string_view kSourceDoorReturnPrefix =
+                    "source_door_return_";
+                if (action.rfind(kSourceDoorReturnPrefix, 0U) == 0U) {
+                    const auto policy = action.substr(
+                        kSourceDoorReturnPrefix.size());
+                    if (policy.rfind("collision_probe_lead_", 0U) != 0U) {
+                        return std::nullopt;
+                    }
+                    const auto facing = policy.substr(
+                        std::string_view{"collision_probe_lead_"}.size());
+                    FieldLocationReturnFacing return_facing{};
+                    if (facing == "face_away_from_entry") {
+                        return_facing =
+                            FieldLocationReturnFacing::face_away_from_entry;
+                    } else if (facing == "preserve_entry") {
+                        return_facing =
+                            FieldLocationReturnFacing::preserve_entry_heading;
+                    } else {
+                        return std::nullopt;
+                    }
+                    if (!field_door_return_point_.valid) {
+                        return std::nullopt;
+                    }
+                    field_door_return_point_.return_anchor =
+                        FieldLocationReturnAnchor::collision_probe_lead;
+                    field_door_return_point_.return_facing = return_facing;
+                    pending_field_return_anchor_ =
+                        FieldLocationReturnAnchor::collision_probe_lead;
+                    pending_field_return_facing_ = return_facing;
+                    if (active_field_script_route_.has_value()) {
+                        active_field_script_route_->return_anchor =
+                            FieldLocationReturnAnchor::collision_probe_lead;
+                        active_field_script_route_->return_facing =
+                            return_facing;
+                    }
+                    field_dialogue_exit_scene_transition_applied_ = false;
+                    field_dialogue_exit_scene_change_resumed_ = false;
+                    field_dialogue_exit_activity_source_restored_ = false;
+                    field_dialogue_exit_source_door_return_applied_ =
+                        apply_field_door_exit_return();
+                    return field_dialogue_exit_source_door_return_applied_
+                        ? std::optional<std::string>{"applied"} : std::nullopt;
+                }
+                if (action == "scene_change") {
+                    field_dialogue_exit_scene_transition_applied_ = false;
+                    field_dialogue_exit_scene_change_resumed_ = false;
+                    field_dialogue_exit_source_door_return_applied_ = false;
+                    field_dialogue_exit_activity_source_restored_ = false;
+                    if (!field_mode_entry_transition_pending_) {
+                        return "applied";
+                    }
+                    if (!resume_field_mode_entry_route()) {
+                        return std::nullopt;
+                    }
+                    field_dialogue_exit_scene_transition_applied_ = true;
+                    field_dialogue_exit_scene_change_resumed_ = true;
+                    return "applied";
+                }
+                if (action == "return_to_activity_source") {
+                    field_dialogue_exit_source_door_return_applied_ = false;
+                    field_dialogue_exit_activity_source_restored_ =
+                        restore_world_activity_source_scene(
+                            field_runtime_state_);
+                    if (!field_dialogue_exit_activity_source_restored_) {
+                        return std::nullopt;
+                    }
+                    field_dialogue_exit_scene_transition_applied_ = true;
+                    field_dialogue_exit_scene_change_resumed_ = false;
+                    return "applied";
+                }
+                constexpr std::string_view kFadePrefix = "fade_";
+                std::uint8_t fade_frames =
+                    field_scene_detail::kFieldModalReturnTransitionFrames;
+                if (action != "fade" &&
+                    action.rfind(kFadePrefix, 0U) == 0U) {
+                    const auto frames_text = action.substr(
+                        kFadePrefix.size());
+                    std::uint32_t frames = 0U;
+                    const auto parsed = std::from_chars(
+                        frames_text.data(),
+                        frames_text.data() + frames_text.size(), frames);
+                    if (frames_text.empty() || parsed.ec != std::errc{} ||
+                        parsed.ptr != frames_text.data() + frames_text.size() ||
+                        frames == 0U || frames > 0xFFU) {
+                        return std::nullopt;
+                    }
+                    fade_frames = static_cast<std::uint8_t>(frames);
+                }
+                if (action == "fade" ||
+                    action.rfind(kFadePrefix, 0U) == 0U) {
+                    if (!field_dialogue_exit_scene_transition_applied_) {
+                        if (field_mode_entry_transition_pending_) {
+                            field_mode_entry_transition_pending_ = false;
+                            field_mode_entry_destination_scene_.reset();
+                            field_mode_entry_run_target_actor_group_.reset();
+                            this->source_boundary(
+                                "field.entry.location_dialogue_denied_transition");
+                        }
+                        advance_field_scene_transition_after_modal();
+                    }
+                    begin_field_modal_return_transition(fade_frames);
+                    field_dialogue_exit_scene_transition_applied_ = false;
+                    return "applied";
+                }
+                if (action == "resume_scene_profile") {
+                    scene_music_latch_ = true;
+                    return "applied";
+                }
+                constexpr std::string_view kLockPrefix = "lock_";
+                if (action.rfind(kLockPrefix, 0U) == 0U) {
+                    const auto frames_text = action.substr(
+                        kLockPrefix.size());
+                    std::uint32_t frames = 0U;
+                    const auto parsed = std::from_chars(
+                        frames_text.data(),
+                        frames_text.data() + frames_text.size(), frames);
+                    if (frames_text.empty() || parsed.ec != std::errc{} ||
+                        parsed.ptr != frames_text.data() +
+                                          frames_text.size() ||
+                        frames == 0U || frames > 0xFFU) {
+                        return std::nullopt;
+                    }
+                    field_world_activity_state_.timeout =
+                        static_cast<std::uint8_t>(frames);
+                    world_frame_logic_state_.resource_countdown =
+                        static_cast<std::uint8_t>(frames);
+                    field_runtime_state_.world_activity_countdown =
+                        static_cast<std::uint8_t>(frames);
+                    return "applied";
+                }
+                return std::nullopt;
+            }
             constexpr std::string_view kBoundedRandomPrefix =
                 "random.bounded_";
             if (service_id.rfind(kBoundedRandomPrefix, 0U) == 0U) {
@@ -8427,6 +8590,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                     source_boundary(
                         "field.exit.resource_activity_return_snapshot_missing");
                 } else {
+                    scene_music_latch_ = true;
                     source_boundary(
                         "field.exit.resource_activity_return_applied");
                 }
@@ -8435,6 +8599,8 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
 
             if (!restore_world_activity_source_scene(runtime)) {
                 runtime.field_transition_requested = true;
+            } else {
+                scene_music_latch_ = true;
             }
         };
     field_runtime_callbacks_.run_field_exit_orchestrator =
@@ -13371,12 +13537,14 @@ void FieldSceneRuntime::advance_frame() {
         field_modal_return_blocked_inputs_ = static_cast<std::uint8_t>(
             field_modal_return_blocked_inputs_ | field_controller_port_byte_);
         --field_modal_return_transition_frames_remaining_;
+        const auto transition_duration = std::max<unsigned>(
+            1U, field_modal_return_transition_duration_frames_);
         field_palette_fade_steps_ = static_cast<std::uint8_t>(
             (static_cast<unsigned>(
                  field_modal_return_transition_frames_remaining_) *
                  9U +
-             (kFieldModalReturnTransitionFrames / 2U)) /
-            kFieldModalReturnTransitionFrames);
+             (transition_duration / 2U)) /
+            transition_duration);
         field_combat_input_suppressed_until_release_ =
             (field_modal_return_blocked_inputs_ & 0x40U) != 0U;
         if (field_modal_return_transition_frames_remaining_ == 0U) {
@@ -13620,18 +13788,27 @@ void FieldSceneRuntime::advance_frame() {
             if (pending_field_encounter_outcome_.has_value() &&
                 pending_field_encounter_outcome_->kind ==
                     scripting::ScriptFieldEncounterOutcomeKind::dialogue_event &&
-                pending_field_encounter_outcome_->event_id == "hidden_camera") {
+                (pending_field_encounter_outcome_->event_id == "hidden_camera" ||
+                 pending_field_encounter_outcome_->event_id ==
+                     "haggard_man_collapse")) {
+                const auto event_id =
+                    pending_field_encounter_outcome_->event_id;
                 const auto task_result =
                     field_dialogue_.take_gameplay_task_result();
                 pending_field_encounter_outcome_.reset();
-                if (task_result !=
-                    std::optional<std::string>{"resolved"}) {
-                    failure_ = "hidden-camera field event did not resolve";
-                    source_boundary(
-                        "field.random_encounter.hidden_camera_result_missing");
+                if (task_result != std::optional<std::string>{"resolved"}) {
+                    failure_ = "field event did not resolve: " + event_id;
+                    const auto boundary =
+                        event_id == "hidden_camera"
+                            ? "field.random_encounter.hidden_camera_result_missing"
+                            : "field.random_encounter.haggard_man_collapse.result_missing";
+                    source_boundary(boundary);
                 } else {
-                    source_boundary(
-                        "field.random_encounter.hidden_camera_resolved");
+                    const auto boundary =
+                        event_id == "hidden_camera"
+                            ? "field.random_encounter.hidden_camera_resolved"
+                            : "field.random_encounter.haggard_man_collapse.resolved";
+                    source_boundary(boundary);
                 }
             }
             if (field_party_wipe_dialogue_stage_ !=
@@ -13695,38 +13872,26 @@ void FieldSceneRuntime::advance_frame() {
                         ? active_field_script_route_->
                               entry_continue_result_id
                         : std::string{};
-                const bool entry_allows_transition =
-                    expected_result.empty() ||
-                    field_dialogue_.take_gameplay_task_result() ==
-                        std::optional<std::string>{expected_result};
-                if (entry_allows_transition) {
-                    if (!resume_field_mode_entry_route()) {
-                        source_boundary(
-                            "field.entry.area_event_route_resume_failed");
-                    }
-                } else {
-                    field_mode_entry_transition_pending_ = false;
-                    field_mode_entry_destination_scene_.reset();
-                    field_mode_entry_run_target_actor_group_.reset();
-                    source_boundary(
-                        "field.entry.location_dialogue_denied_transition");
-                    advance_field_scene_transition_after_modal();
+                if (!expected_result.empty()) {
+                    static_cast<void>(
+                        field_dialogue_.take_gameplay_task_result());
                 }
-                begin_field_modal_return_transition();
+                field_mode_entry_transition_pending_ = false;
+                field_mode_entry_destination_scene_.reset();
+                field_mode_entry_run_target_actor_group_.reset();
+                field_dialogue_exit_scene_change_resumed_ = false;
+                source_boundary(
+                    "field.entry.dialogue_executor_did_not_resume_route");
             } else {
-                // Place first: the suspended same-scene re-entry below must
-                // not consume or discard the service return point.
-                (void)apply_field_door_exit_return();
-                advance_field_scene_transition_after_modal();
-                begin_field_modal_return_transition();
+                field_dialogue_exit_scene_change_resumed_ = false;
             }
         } else if (result ==
                    FieldDialogueAdvanceResult::returned_from_world_activity) {
-            if (!restore_world_activity_source_scene(field_runtime_state_)) {
+            if (!field_dialogue_exit_activity_source_restored_) {
                 failure_ = "resource activity return lost its source scene";
                 source_boundary("field.activity.return_source_failed");
             } else {
-                begin_field_modal_return_transition();
+                field_dialogue_exit_activity_source_restored_ = false;
             }
         } else if (result ==
                    FieldDialogueAdvanceResult::hotel_options_requested) {
@@ -13748,9 +13913,7 @@ void FieldSceneRuntime::advance_frame() {
             (void)begin_hospital_menu_task("present_leave_confirmation");
         } else if (result == FieldDialogueAdvanceResult::hospital_left) {
             hospital_service_session_active_ = false;
-            scripting::DialogueOutcome outcome =
-                scripting::ReturnToOriginOutcome{"source_entry", std::nullopt};
-            (void)dispatch_dialogue_outcome(outcome);
+            static_cast<void>(begin_native_menu_source_entry_return());
         } else if (result == FieldDialogueAdvanceResult::
                        hospital_cyberware_requested) {
             hospital_service_session_active_ = false;
@@ -14251,7 +14414,11 @@ void FieldSceneRuntime::advance_frame() {
             state_.display_service_word = 0U;
             field_runtime_state_.display_service_word = 0U;
             field_shop_active_definition_.reset();
-            (void)apply_field_door_exit_return();
+            if (apply_field_door_exit_return() &&
+                pending_field_return_music_policy_ ==
+                    FieldLocationMusicReturnPolicy::resume_scene_profile) {
+                scene_music_latch_ = true;
+            }
             shop_boundary("returned_to_field");
             break;
         case ShopMenuEvent::no_change:

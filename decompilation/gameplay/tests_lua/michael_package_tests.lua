@@ -169,6 +169,11 @@ expect_page(2, "package-handoff")
 assert(services[1].operation == "prepare_debt_offer" and
        services[2].operation == "pay_debt")
 
+reset()
+result = outcome(MichaelPackage.present_package_handoff())
+assert(result.type == "continue_in_place")
+expect_page(1, "package-handoff")
+
 game.state.motel_bill_paid = false
 service_results["michael_package.pay_debt"] = "insufficient"
 reset("package", "debt-payment")

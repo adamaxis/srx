@@ -1823,7 +1823,8 @@ private:
     bool restore_world_activity_source_scene(
         integration::FieldRuntimeCoordinatorState& runtime_state);
     bool resume_field_mode_entry_route();
-    void begin_field_modal_return_transition();
+    void begin_field_modal_return_transition(
+        std::uint8_t duration_frames = 60U);
     void suppress_field_modal_close_input();
     void handle_field_map_event_activations(
         const std::vector<FieldMapEventActivation>& activations);
@@ -1971,6 +1972,7 @@ private:
         const scripting::EnterFieldSceneOutcome& outcome);
     bool handle_dialogue_return_to_source_entry(
         const scripting::ReturnToOriginOutcome& outcome);
+    bool begin_native_menu_source_entry_return();
     bool prepare_open_dialogue_service(
         const scripting::OpenServiceOutcome& outcome);
     bool open_hotel_dialogue_service(
@@ -2772,6 +2774,10 @@ private:
     // yields across frames, so retain the typed destination and resume its
     // scene-entry tail only after the player dismisses the entry page.
     bool field_mode_entry_transition_pending_ = false;
+    bool field_dialogue_exit_scene_transition_applied_ = false;
+    bool field_dialogue_exit_scene_change_resumed_ = false;
+    bool field_dialogue_exit_source_door_return_applied_ = false;
+    bool field_dialogue_exit_activity_source_restored_ = false;
     std::optional<scripting::ScriptRunFieldEventDecision>
         field_mode_entry_run_target_actor_group_;
     bool field_matrix_route_active_ = false;
@@ -2808,6 +2814,7 @@ private:
     // FFDD64: 0x53A78 stores the index of the trigger service it dispatches.
     std::uint8_t field_palette_fade_steps_ = 0U;
     std::uint8_t field_modal_return_transition_frames_remaining_ = 0U;
+    std::uint8_t field_modal_return_transition_duration_frames_ = 60U;
     bool command_overview_return_transition_active_ = false;
     std::uint16_t command_overview_return_transition_elapsed_frames_ = 0U;
     std::uint8_t command_overview_return_palette_step_ = 0U;

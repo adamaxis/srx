@@ -1157,62 +1157,7 @@ bool FieldSceneRuntime::handle_dialogue_continue_in_place(
     field_mode_entry_transition_pending_ = false;
     field_mode_entry_destination_scene_.reset();
     field_mode_entry_run_target_actor_group_.reset();
-    if (active_field_script_route_.has_value() &&
-        (active_field_script_route_->kind ==
-             FieldScriptRouteKind::field_service ||
-         active_field_script_route_->scene_outcome ==
-             FieldLocationSceneOutcome::source_door_return)) {
-        if (active_field_script_route_->return_anchor !=
-            FieldLocationReturnAnchor::none) {
-            (void)apply_field_door_exit_return();
-        }
-    } else if (active_field_script_route_.has_value()) {
-        using Value = scripting::ScriptPersistentValue;
-        const auto policy = game_scripts_.call_value(
-            "world_links", "same_scene_return_policy", {});
-        const auto* fields = policy.has_value()
-            ? std::get_if<Value::Object>(&policy->value) : nullptr;
-        const auto text_field = [fields](const char* name)
-            -> std::optional<std::string_view> {
-            if (fields == nullptr) return std::nullopt;
-            const auto found = fields->find(name);
-            if (found == fields->end()) return std::nullopt;
-            const auto* value = std::get_if<std::string>(
-                &found->second.value);
-            return value == nullptr
-                ? std::nullopt
-                : std::optional<std::string_view>(*value);
-        };
-        const auto anchor = text_field("return_anchor");
-        const auto facing = text_field("return_facing");
-        const auto music = text_field("return_music_policy");
-        if (!anchor.has_value() || !facing.has_value() ||
-            !music.has_value() || *anchor != "none" ||
-            *facing != "preserve_entry" || *music != "none") {
-            failure_ = policy.has_value()
-                ? "world_links same-scene return policy is invalid"
-                : game_scripts_.failure();
-            source_boundary("field.dialogue.same_scene_return_policy_failed");
-            return false;
-        }
-        active_field_script_route_->return_anchor =
-            FieldLocationReturnAnchor::none;
-        active_field_script_route_->return_facing =
-            FieldLocationReturnFacing::preserve_entry_heading;
-        active_field_script_route_->return_music_policy =
-            FieldLocationMusicReturnPolicy::none;
-        pending_field_return_anchor_ = FieldLocationReturnAnchor::none;
-        pending_field_return_facing_ =
-            FieldLocationReturnFacing::preserve_entry_heading;
-        pending_field_return_music_policy_ =
-            FieldLocationMusicReturnPolicy::none;
-        // Discard a probe saved for a prior physical door. ROM's same-scene
-        // callback path never runs the mode-entry anchor restore at 0x2FA4.
-        field_door_return_point_.valid = false;
-    }
     source_boundary("field.dialogue.continued_in_place");
-    advance_field_scene_transition_after_modal();
-    begin_field_modal_return_transition();
     return true;
 }
 
@@ -1251,21 +1196,18 @@ bool FieldSceneRuntime::handle_dialogue_resume_source_route(
         active_field_script_route_->entry_continue_outcome_type &&
         scripting::DialogueOutcomeType::resume_source_route ==
             *active_field_script_route_->entry_continue_outcome_type;
-    if (!field_mode_entry_transition_pending_ || !outcome_matches_route) {
+    if (!field_dialogue_exit_scene_change_resumed_ ||
+        !outcome_matches_route) {
+        field_dialogue_exit_scene_change_resumed_ = false;
         field_mode_entry_transition_pending_ = false;
         field_mode_entry_destination_scene_.reset();
         field_mode_entry_run_target_actor_group_.reset();
         source_boundary("field.entry.typed_outcome_did_not_match_route");
-        advance_field_scene_transition_after_modal();
-        begin_field_modal_return_transition();
         return true;
     }
 
+    field_dialogue_exit_scene_change_resumed_ = false;
     source_boundary("field.entry.source_route_resumed");
-    if (!resume_field_mode_entry_route()) {
-        source_boundary("field.entry.area_event_route_resume_failed");
-    }
-    begin_field_modal_return_transition();
     return true;
 }
 
@@ -1318,8 +1260,20 @@ bool FieldSceneRuntime::handle_dialogue_return_to_source_entry(
     const scripting::ReturnToOriginOutcome& outcome) {
     if (!ready_ || outcome.return_point_id != "source_entry" ||
         (outcome.return_policy.has_value() &&
-         *outcome.return_policy != "recorded_entry") ||
-        !field_door_return_point_.valid) {
+         *outcome.return_policy != "recorded_entry")) {
+        return false;
+    }
+    if (!field_dialogue_exit_source_door_return_applied_) {
+        source_boundary("field.dialogue.executor_did_not_apply_source_entry");
+        return true;
+    }
+    field_dialogue_exit_source_door_return_applied_ = false;
+    refresh_field_hud_runner_slot();
+    return true;
+}
+
+bool FieldSceneRuntime::begin_native_menu_source_entry_return() {
+    if (!field_door_return_point_.valid) {
         return false;
     }
     begin_field_door_return();
@@ -1872,12 +1826,7 @@ HotelMenuEvent FieldSceneRuntime::process_hotel_menu_events(
         source_boundary("field.hotel.checkout.stayed");
         break;
     case HotelMenuEvent::checked_out:
-        {
-            scripting::DialogueOutcome outcome =
-                scripting::ReturnToOriginOutcome{"source_entry", std::nullopt};
-            (void)dispatch_dialogue_outcome(outcome);
-        }
-        refresh_field_hud_runner_slot();
+        static_cast<void>(begin_native_menu_source_entry_return());
         source_boundary("field.hotel.checked_out");
         break;
     case HotelMenuEvent::karma_screen_opened:

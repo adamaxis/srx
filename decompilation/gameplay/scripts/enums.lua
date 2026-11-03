@@ -50,16 +50,26 @@ E.DialogueTransition = {
     NONE = "none",
     FADE = "fade",
 }
+E.DialogueTransitionFrames = {
+    NONE = 0,
+    MODAL_RETURN = 60,
+    HAGGARD_BLACK_INTERVAL = 83,
+} -- Haggard 0x20FA2, forced GPGX state r95.state.
 E.DialogueExitBehavior = {
     NONE = "none",
     STAY = "stay",
     SOURCE_DOOR_RETURN = "source_door_return",
     SCENE_CHANGE = "scene_change",
+    RETURN_TO_ACTIVITY_SOURCE = "return_to_activity_source",
 }
 E.DialogueInputLock = {
     NONE = "none",
     WORLD_ACTIVITY_FFE11C = "world_activity_ffe11c",
 } -- ROM 0x1E2E0/0x1E2EC; same-pass decrement at 0x1DD94 [C]
+E.DialogueInputLockFrames = {
+    NONE = 0,
+    WORLD_ACTIVITY = 60,
+} -- 0x1E2EC writes 60; 0x1DD94 decrements per field service pass [C]
 E.DialogueTextDelay = {
     NONE = 0,
     PEDESTRIAN_FIRST_TEXT_FRAME_22 = 21,

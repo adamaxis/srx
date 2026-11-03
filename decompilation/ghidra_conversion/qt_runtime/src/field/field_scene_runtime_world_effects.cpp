@@ -494,15 +494,23 @@ bool FieldSceneRuntime::present_field_dialogue_event() {
             scripting::ScriptFieldEncounterOutcomeKind::dialogue_event) {
         return false;
     }
-    if (pending_field_encounter_outcome_->event_id != "hidden_camera") {
+    const auto event_id = pending_field_encounter_outcome_->event_id;
+    const char* task_name = nullptr;
+    if (event_id == "hidden_camera") {
+        task_name = "present_hidden_camera";
+    } else if (event_id == "haggard_man_collapse") {
+        // ROM 0x20FA2 opens the escaped-patient encounter; Lua owns the
+        // choices and its 0x23CF2 Help result.
+        task_name = "present_haggard_man";
+    }
+    if (task_name == nullptr) {
         failure_ = "field event has no Lua behavior: " +
-            pending_field_encounter_outcome_->event_id;
+            event_id;
         source_boundary(
             "field.random_encounter.dialogue_handler_unimplemented");
         return false;
     }
 
-    const auto event_id = pending_field_encounter_outcome_->event_id;
     const auto scene_id = static_cast<std::uint8_t>(
         state_.field_scene_buffers.scene_reference);
     game_scripts_.set_location_context(
@@ -510,15 +518,16 @@ bool FieldSceneRuntime::present_field_dialogue_event() {
         "field_narrator", event_id, scene_id);
     if (!field_dialogue_.open_gameplay_task(
             scripting::ScriptDialogueSource::random_encounter,
-            "field_random_events", "present_hidden_camera")) {
-        failure_ = "could not open hidden-camera field event: " +
+            "field_random_events", task_name)) {
+        failure_ = "could not open field event " + event_id + ": " +
             field_dialogue_.failure();
         source_boundary(
-            "field.random_encounter.hidden_camera_open_failed");
+            "field.random_encounter.dialogue_open_failed");
         pending_field_encounter_outcome_.reset();
         return false;
     }
-    source_boundary("field.random_encounter.hidden_camera_prompt_opened");
+    source_boundary("field.random_encounter." + event_id +
+                    ".prompt_opened");
     return true;
 }
 

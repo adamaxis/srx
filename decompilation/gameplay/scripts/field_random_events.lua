@@ -9,8 +9,15 @@ local ALARM_RESULT =
     "of a hidden security camera.>"
 local NERVES_RESULT =
     "<Nothing happens, though. Maybe it's just your nerves.>"
+local HAGGARD_HELP_RESULT =
+    "The patient is restrained and taken away. The doctor pays you 50 nuyen."
+local HAGGARD_CHOICES = {
+    { id = "attack", label = "Attack!" },
+    { id = "threaten", label = "Threaten to leave the patient alone." },
+    { id = "help", label = "Help them." },
+} -- Longplay section 11, frame 930; source dispatch 0x23BB4 [C].
 
-local function hidden_camera_opening()
+local function event_opening(event_id)
     local data = game.modules.world_content_data
     local content = type(data) == "table" and
         data.world_activity_event_content or nil
@@ -22,14 +29,14 @@ local function hidden_camera_opening()
 
     local opening
     for _, row in ipairs(content) do
-        if row.event_id == "hidden_camera" then
+        if row.event_id == event_id then
             opening = row.opening_text
             break
         end
     end
     local choice_count = 0
     for _, row in ipairs(choices) do
-        if row.event_id == "hidden_camera" then
+        if row.event_id == event_id then
             choice_count = choice_count + 1
             if row.choice_order ~= 1 or row.choice_id ~= "continue" then
                 return nil
@@ -88,7 +95,7 @@ function RandomEvents.present_hidden_camera()
         return nil
     end
 
-    local opening = hidden_camera_opening()
+    local opening = event_opening("hidden_camera")
     local dice_pool, target = party_check()
     if opening == nil or dice_pool == nil then return nil end
 
@@ -116,6 +123,45 @@ function RandomEvents.present_hidden_camera()
     else
         game.ui.say_text(NERVES_RESULT, false)
     end
+    return "resolved"
+end
+
+local function source_boundary(reason)
+    return { type = "source_boundary", reason = reason }
+end
+
+function RandomEvents.present_haggard_man()
+    local location = game.location
+    if type(location) ~= "table" or location.type ~= "field_map" or
+       location.id ~= "random_field_event" or
+       location.event_id ~= "haggard_man_collapse" then
+        return nil
+    end
+
+    local opening = event_opening("haggard_man_collapse")
+    if opening == nil then
+        return source_boundary(
+            "ROM 0x20FA2 doctor opening data is unavailable")
+    end
+
+    game.ui.say_text(opening, true)
+    local choice = game.ui.prompt_text(
+        "haggard_man_action", "", HAGGARD_CHOICES)
+    if choice ~= "help" then
+        -- Attack and Threaten continue through separate combat/patrol
+        -- branches at 0x23C38/0x23CB4/0x23C52, still explicit boundaries.
+        return source_boundary(
+            "ROM 0x23BB4 choice continuation is not implemented: " ..
+            tostring(choice))
+    end
+
+    local funds = type(game.nuyen) == "function" and game.nuyen() or nil
+    if type(funds) ~= "number" or funds % 1 ~= 0 or funds < 0 then
+        return source_boundary(
+            "ROM 0x23CF2 reward needs the current nuyen value")
+    end
+    game.set_nuyen(funds + 50) -- 0x23CF2 adds 50; result text at 0x121188.
+    game.ui.say_text(HAGGARD_HELP_RESULT, false)
     return "resolved"
 end
 

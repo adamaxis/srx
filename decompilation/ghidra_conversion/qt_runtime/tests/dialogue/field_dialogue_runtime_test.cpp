@@ -166,6 +166,14 @@ int main() {
         {"cyberspace_datajack_present", true},
     });
     runtime.set_script_runtime(&gameplay_scripts);
+    runtime.set_native_script_service_callback(
+        [](const std::string_view service_id)
+            -> std::optional<std::string> {
+            if (service_id.rfind("dialogue_exit.", 0U) == 0U) {
+                return "applied";
+            }
+            return std::nullopt;
+        });
 
     gameplay_scripts.set_story_state({
         {"mako_defeated", true},
@@ -227,6 +235,9 @@ int main() {
     runtime.set_native_script_service_callback(
         [&fuchi_safe_arm_calls](const std::string_view service_id)
             -> std::optional<std::string> {
+            if (service_id.rfind("dialogue_exit.", 0U) == 0U) {
+                return "applied";
+            }
             if (service_id == "field.arm_fuchi_cyberheart_safe") {
                 ++fuchi_safe_arm_calls;
                 return "applied";
@@ -327,6 +338,9 @@ int main() {
          &room_payment_funds, &room_payment_outcome,
          &run_random_services, &run_random_results, &run_random_call](
             const std::string_view service_id) -> std::optional<std::string> {
+            if (service_id.rfind("dialogue_exit.", 0U) == 0U) {
+                return "applied";
+            }
             if (service_id.rfind("random.bounded_", 0U) == 0U ||
                 service_id == "runner.negotiation_skill") {
                 if (run_random_call >= run_random_services.size() ||
@@ -567,13 +581,20 @@ int main() {
         !expect(runtime.panel().text_segments[0] == " Hospital Options") ||
         !expect(runtime.advance_controller_events(0x0200U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
-        !expect(runtime.panel().selected_option == 1U) ||
-        !expect(runtime.advance_controller_events(0x4000U) ==
+        !expect(runtime.panel().selected_option == 1U)) {
+        std::cerr << "Council Island Hospital Options could not move to Cyberware\n";
+        return 124;
+    }
+    const auto cyberware_result =
+        runtime.advance_controller_events(0x4000U);
+    if (!expect(cyberware_result ==
                 FieldDialogueAdvanceResult::hospital_cyberware_requested) ||
         !expect(runtime.take_gameplay_task_result() ==
                 std::optional<std::string>{
                     "hospital_cyberware_requested"})) {
-        std::cerr << "Council Island Hospital options did not present a Lua-owned cursor screen or dispatch Cyberware\n";
+        std::cerr << "Council Island Hospital options did not present a Lua-owned cursor screen or dispatch Cyberware; failure="
+                  << runtime.failure() << " result="
+                  << static_cast<int>(cyberware_result) << '\n';
         return 124;
     }
     if (!runtime.open_gameplay_task(
@@ -2255,14 +2276,30 @@ int main() {
                         std::string_view::npos;
             }
         }
+        const bool prompt_has_no_choices = runtime.panel().option_count == 0U;
+        const bool prompt_has_text =
+            runtime.panel().text_segment_count != 0U;
+        const auto prompt_result = runtime.advance_controller_events(0x4000U);
+        const auto prompt_outcome = runtime.take_gameplay_task_outcome();
+        const bool framework_completion = index == 0U;
         if (!expect(expected_text_found) ||
-            !expect(runtime.panel().option_count == 0U) ||
-            !expect(runtime.panel().text_segment_count != 0U) ||
-            !expect(runtime.advance_controller_events(0x4000U) ==
-                    FieldDialogueAdvanceResult::returned_to_field) ||
+            !expect(prompt_has_no_choices) ||
+            !expect(prompt_has_text) ||
+            !expect(prompt_result ==
+                    (framework_completion
+                         ? FieldDialogueAdvanceResult::typed_outcome_requested
+                         : FieldDialogueAdvanceResult::returned_to_field)) ||
+            !expect(framework_completion
+                        ? prompt_outcome.has_value() &&
+                              std::holds_alternative<
+                                  scripting::ContinueInPlaceOutcome>(
+                                  *prompt_outcome)
+                        : !prompt_outcome.has_value()) ||
             !expect(!runtime.open())) {
             std::cerr << "Lua prompt event resolution failed for event index "
-                      << index << '\n';
+                      << index << " result="
+                      << static_cast<int>(prompt_result)
+                      << " open=" << runtime.open() << '\n';
             return static_cast<int>(60U + index);
         }
     }
