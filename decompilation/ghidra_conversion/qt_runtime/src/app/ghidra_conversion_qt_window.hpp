@@ -232,6 +232,11 @@ public:
 #ifdef SHADOWRUN_QT_QA_DRIVER
         install_qa_startup_observers();
 #endif
+        // The pre-title controller creates its first Lua-owned screen effect
+        // while begin_startup_integration initializes the sequence state.
+        // Load script definitions before that first callback; validate their
+        // asset bindings after the integration has populated state_.
+        load_startup_script_package();
         const auto result = begin_startup_integration(
             asset_root_, state_, startup_callbacks_);
         if (result != StartupIntegrationStartResult::boot_in_progress) {
@@ -657,6 +662,63 @@ protected:
     }
 
 private:
+    void load_startup_script_package() {
+        const auto script_directory =
+            asset_root_.parent_path() / "gameplay" / "scripts";
+        const auto text_file = asset_root_ / "dialogue" / "script-text.json";
+        if (!startup_scripts_.load_package(script_directory, text_file)) {
+            throw std::runtime_error(
+                "startup gameplay scripts did not load: " +
+                startup_scripts_.failure());
+        }
+    }
+
+    PreTitleLogoReveal read_sega_logo_reveal(
+        const std::optional<std::vector<std::int64_t>>& values) const {
+        constexpr std::size_t kMetadataValues = 9U;
+        const auto fail = [this] {
+            throw std::runtime_error(
+                "startup Lua could not update the SEGA line reveal: " +
+                startup_scripts_.failure());
+        };
+        if (!values.has_value() ||
+            values->size() != kMetadataValues + kPreTitleLogoRevealLines ||
+            (*values)[0] < 0 || (*values)[0] > 2 ||
+            (*values)[1] < 0 || (*values)[1] > 337 ||
+            (*values)[2] < -32768 || (*values)[2] > 32767 ||
+            (*values)[3] < 0 ||
+            (*values)[3] > static_cast<std::int64_t>(
+                               kPreTitleLogoRevealLines) ||
+            (*values)[4] < 0 || (*values)[4] >= 6 ||
+            (*values)[5] < -1 ||
+            (*values)[5] >= static_cast<std::int64_t>(
+                                kPreTitleLogoRevealLines) ||
+            (*values)[6] < 0 || (*values)[6] > 337 ||
+            (*values)[7] < 0 || (*values)[7] > 337 ||
+            ((*values)[8] != 0 && (*values)[8] != 1)) {
+            fail();
+        }
+
+        PreTitleLogoReveal reveal{};
+        reveal.stage = static_cast<PreTitleLogoRevealStage>((*values)[0]);
+        reveal.elapsed_vblanks = static_cast<std::uint16_t>((*values)[1]);
+        reveal.effect_counter = static_cast<std::int16_t>((*values)[2]);
+        reveal.visible_rows = static_cast<std::uint8_t>((*values)[3]);
+        reveal.shimmer_phase = static_cast<std::uint8_t>((*values)[4]);
+        reveal.edge_row = static_cast<std::int8_t>((*values)[5]);
+        reveal.eligible_vblanks = static_cast<std::uint16_t>((*values)[6]);
+        reveal.counter_step_count = static_cast<std::uint16_t>((*values)[7]);
+        reveal.counter_stepped = (*values)[8] != 0;
+        for (std::size_t row = 0U; row < kPreTitleLogoRevealLines; ++row) {
+            const auto offset = (*values)[kMetadataValues + row];
+            if (offset < 0 || offset > 31) {
+                fail();
+            }
+            reveal.line_offsets[row] = static_cast<std::uint8_t>(offset);
+        }
+        return reveal;
+    }
+
     std::string load_menu_b_policy_setting() const {
         QSettings settings;
         return shadowrun::ghidra_conversion::qt_runtime::
@@ -831,15 +893,6 @@ private:
     }
 
     void load_startup_script_content() {
-        const auto script_directory =
-            asset_root_.parent_path() / "gameplay" / "scripts";
-        const auto text_file = asset_root_ / "dialogue" / "script-text.json";
-        if (!startup_scripts_.load_package(script_directory, text_file)) {
-            throw std::runtime_error(
-                "startup gameplay scripts did not load: " +
-                startup_scripts_.failure());
-        }
-
         const auto start_options = startup_scripts_.menu(
             "startup", "options", "startup", "options");
         const auto save_slots = startup_scripts_.menu(
@@ -1184,38 +1237,23 @@ private:
                 });
         };
         startup_callbacks_.pre_title.write_horizontal_scroll_stream = no_op;
-        startup_callbacks_.pre_title.resolve_logo_reveal =
-            [this](const std::int16_t effect_counter,
-                   const std::int16_t source_logo_phase) {
-                const auto values = startup_scripts_.call_integers(
-                    "startup", "sega_logo_reveal",
-                    {effect_counter, source_logo_phase});
-                constexpr std::size_t kRevealRows = 32U;
-                if (!values.has_value() ||
-                    values->size() != kRevealRows + 2U ||
-                    (*values)[0] < 0 || (*values)[0] > 2 ||
-                    (*values)[kRevealRows + 1U] < 0 ||
-                    (*values)[kRevealRows + 1U] >= 6) {
-                    throw std::runtime_error(
-                        "startup Lua could not resolve the SEGA logo reveal: " +
-                        startup_scripts_.failure());
+        startup_callbacks_.pre_title.create_logo_reveal = [this] {
+            return read_sega_logo_reveal(startup_scripts_.call_integers(
+                "startup", "create_sega_logo_reveal", {}));
+        };
+        startup_callbacks_.pre_title.update_logo_reveal =
+            [this](const bool counter_eligible,
+                   const std::int16_t source_logo_phase,
+                   const std::array<std::uint16_t,
+                                    kPreTitleLogoRevealLines>& line_samples) {
+                std::vector<std::int64_t> arguments{
+                    counter_eligible ? 1 : 0, source_logo_phase};
+                arguments.reserve(2U + line_samples.size());
+                for (const auto sample : line_samples) {
+                    arguments.push_back(sample);
                 }
-                std::array<std::uint8_t, kRevealRows> visible_pixels_by_row{};
-                for (std::size_t row = 0U; row < kRevealRows; ++row) {
-                    const auto visible_pixels = (*values)[row + 1U];
-                    if (visible_pixels < 0 || visible_pixels > 96) {
-                        throw std::runtime_error(
-                            "startup Lua returned an invalid SEGA logo row count");
-                    }
-                    visible_pixels_by_row[row] =
-                        static_cast<std::uint8_t>(visible_pixels);
-                }
-                return PreTitleLogoReveal{
-                    static_cast<PreTitleLogoRevealStage>((*values)[0]),
-                    visible_pixels_by_row,
-                    static_cast<std::uint8_t>(
-                        (*values)[kRevealRows + 1U]),
-                };
+                return read_sega_logo_reveal(startup_scripts_.call_integers(
+                    "startup", "update_sega_logo_reveal", arguments));
             };
         startup_callbacks_.pre_title.publish_audio_request =
             [this](const PreTitleAudioRequest& request) {
@@ -2115,52 +2153,39 @@ private:
             return;
         }
 
-        // The independent emulator's full mark spans x=104..199, y=80..111.
-        // Lua supplies source-state row coverage; Qt chooses the within-row
-        // presentation ordering and draws the resulting host image.
+        // The source logo asset is drawn through a short top-down reveal.
+        // Lua supplies a random horizontal scroll for unsettled lines, then
+        // leaves each line at its authored position as the edge moves down.
         constexpr int kLogoLeft = 104;
         constexpr int kLogoTop = 80;
         constexpr int kLogoWidth = 96;
         constexpr int kLogoHeight = 32;
-        auto image = asset->second.copy();
-        for (int row = 0; row < kLogoHeight; ++row) {
-            std::array<std::pair<int, int>, kLogoWidth> candidates{};
-            int candidate_count = 0;
-            for (int column = 0; column < kLogoWidth; ++column) {
-                const int x = kLogoLeft + column;
-                const int y = kLogoTop + row;
-                const auto pixel = asset->second.pixel(x, y);
-                if ((pixel & 0x00FFFFFFU) == 0U) {
-                    continue;
-                }
-                const int sparkle =
-                    (column * 37 + row * 17 +
-                     static_cast<int>(reveal.shimmer_phase) * 23 +
-                     (column * row) % 29) % 100;
-                candidates[static_cast<std::size_t>(candidate_count++)] =
-                    {sparkle, column};
+        const int visible_rows = std::min<int>(
+            reveal.visible_rows, kLogoHeight);
+        const auto draw_line = [&](const int row, const int offset,
+                                   const int horizontal_ghost) {
+            const int line_width = kLogoWidth - offset;
+            if (line_width <= 0) {
+                return;
             }
-            const int visible_count =
-                reveal.visible_pixels_by_row[static_cast<std::size_t>(row)];
-            if (visible_count > candidate_count) {
-                throw std::runtime_error(
-                    "SEGA logo row count exceeds the source logo mask");
-            }
-            std::sort(candidates.begin(),
-                      candidates.begin() + candidate_count,
-                      [](const auto& left, const auto& right) {
-                          return left.first != right.first
-                              ? left.first < right.first
-                              : left.second < right.second;
-                      });
-            for (int index = visible_count; index < candidate_count; ++index) {
-                const int column =
-                    candidates[static_cast<std::size_t>(index)].second;
-                image.setPixel(kLogoLeft + column, kLogoTop + row,
-                               qRgb(0, 0, 0));
+            const QRect source(kLogoLeft + offset, kLogoTop + row,
+                               line_width, 1);
+            const QRect destination(
+                record->origin_x + kLogoLeft + horizontal_ghost,
+                record->origin_y + kLogoTop + row, line_width, 1);
+            painter.drawImage(destination, asset->second, source);
+        };
+        for (int row = 0; row < visible_rows; ++row) {
+            const int offset = static_cast<int>(
+                reveal.line_offsets[static_cast<std::size_t>(row)]);
+            draw_line(row, offset, 0);
+            if (row == reveal.edge_row) {
+                // Reuse source palette pixels for a one-pixel shimmer ghost;
+                // no blended color is introduced at the reveal edge.
+                const int ghost = reveal.shimmer_phase % 2U == 0U ? -1 : 1;
+                draw_line(row, offset, ghost);
             }
         }
-        painter.drawImage(record->origin_x, record->origin_y, image);
     }
 
     void draw_boot_scene(QPainter& painter) const {

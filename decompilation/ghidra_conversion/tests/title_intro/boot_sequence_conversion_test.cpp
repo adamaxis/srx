@@ -2,6 +2,7 @@
 #include "shadowrun_ghidra/core/random_conversion.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <string>
 #include <vector>
 
@@ -65,6 +66,10 @@ int main() {
     std::vector<PreTitleLogoStrobePalette> strobe_palettes;
     std::vector<PreTitleSpriteBatch> sprite_batches;
     std::vector<PreTitleAudioRequest> audio_requests;
+    std::int16_t effect_counter = 0;
+    std::uint16_t effect_elapsed = 0U;
+    std::uint16_t effect_eligible_vblanks = 0U;
+    std::uint16_t effect_counter_steps = 0U;
     std::size_t variant_audio_requests = 0;
     std::size_t enabled_service_audio_requests = 0;
     bool resource_work_area_zeroed = false;
@@ -104,6 +109,65 @@ int main() {
         resource_events.emplace_back("reset-upload");
     };
     pre_title_callbacks.wait_for_vblank = [&waits] { ++waits; };
+    pre_title_callbacks.create_logo_reveal = [&effect_counter] {
+        effect_counter = 0x0041; // ROM 0x5D75A
+        PreTitleLogoReveal reveal{};
+        reveal.effect_counter = effect_counter;
+        return reveal;
+    };
+    pre_title_callbacks.update_logo_reveal =
+        [&effect_counter, &effect_elapsed, &effect_eligible_vblanks,
+         &effect_counter_steps](const bool counter_eligible,
+                               const std::int16_t source_phase,
+                               const auto& line_samples) {
+            PreTitleLogoReveal reveal{};
+            reveal.elapsed_vblanks = ++effect_elapsed;
+            reveal.counter_stepped = false;
+            if (counter_eligible) {
+                ++effect_eligible_vblanks;
+                if ((effect_eligible_vblanks & 1U) == 0U) {
+                    --effect_counter;
+                    ++effect_counter_steps;
+                    reveal.counter_stepped = true;
+                }
+            }
+            reveal.effect_counter = effect_counter;
+            reveal.eligible_vblanks = effect_eligible_vblanks;
+            reveal.counter_step_count = effect_counter_steps;
+            reveal.shimmer_phase = static_cast<std::uint8_t>(
+                source_phase % 6);
+            if (effect_counter > 54) {
+                reveal.stage = PreTitleLogoRevealStage::hidden;
+            } else if (effect_counter <= 17) {
+                reveal.stage = PreTitleLogoRevealStage::complete;
+                reveal.visible_rows = static_cast<std::uint8_t>(
+                    kPreTitleLogoRevealLines);
+            } else {
+                reveal.stage = PreTitleLogoRevealStage::revealing;
+                const auto progress = static_cast<double>(54 - effect_counter) /
+                                      static_cast<double>(54 - 17);
+                reveal.visible_rows = static_cast<std::uint8_t>(
+                    std::min<double>(kPreTitleLogoRevealLines,
+                        std::ceil(5.0 + progress * 27.0)));
+            }
+            reveal.edge_row = reveal.visible_rows == 0U
+                ? -1 : static_cast<std::int8_t>(reveal.visible_rows - 1U);
+            for (std::size_t row = 0U; row < line_samples.size(); ++row) {
+                if (row + 4U >= reveal.visible_rows) {
+                    reveal.line_offsets[row] = static_cast<std::uint8_t>(
+                        line_samples[row] & 0x001FU);
+                }
+            }
+            if (effect_elapsed >= 337U) {
+                reveal.stage = PreTitleLogoRevealStage::complete;
+                reveal.visible_rows = static_cast<std::uint8_t>(
+                    kPreTitleLogoRevealLines);
+                reveal.edge_row = static_cast<std::int8_t>(
+                    kPreTitleLogoRevealLines - 1U);
+                reveal.line_offsets.fill(0U);
+            }
+            return reveal;
+        };
     pre_title_callbacks.animation.publish_sprite_batch =
         [&sprite_builds, &sprite_batches](const PreTitleSpriteBatch& batch) {
             ++sprite_builds;
@@ -160,6 +224,12 @@ int main() {
         pre_title.palette_transition_passes_completed !=
             kPreTitlePaletteTransitionPasses ||
         pre_title.palette_transition_vblank_phase != 0U ||
+        pre_title.logo_effect_counter != -57 ||
+        pre_title.logo_reveal.elapsed_vblanks != 337U ||
+        pre_title.logo_reveal.eligible_vblanks != 245U ||
+        pre_title.logo_reveal.counter_step_count != 122U ||
+        effect_counter != -57 || effect_elapsed != 337U ||
+        effect_eligible_vblanks != 245U || effect_counter_steps != 122U ||
         resource_events != std::vector<std::string>{
             "clear-a", "clear-b", "prepare-title", "refresh-field",
             "decode-upload", "write-grid", "clear-a", "clear-b",

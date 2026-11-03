@@ -3,7 +3,7 @@
 This file is kept in the repo so the notes survive if the box is wiped. The box's /workspace/shadowrun/out was lost on 2026-10-31.
 Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 
-## Current state (2026-11-03 13:39 CST)
+## Current state (2026-11-03 14:34 CST)
 - Remote port-fixes: see latest Fixes entry. QA_GREEN (ctest all pass, Lua suites pass). Working playtest_2026-11-01 items one Luna run at a time.
 - In progress: Luna (codex exec, gpt-6-luna, max effort, fast tier off) is fixing aa3b2cb7 forward. Brief is /workspace/briefs/aa3b.md, the earlier partial work is /workspace/briefs/aa3b_wip.diff and stash 'aa3b-wip'.
 - Box toolchain: `. /workspace/tcenv.sh` (conda env /workspace/mamba/envs/srx). Build dirs are /workspace/b2 (Qt) and /workspace/b2n (non-Qt). Full QA is /workspace/qa.sh, which prints QA_GREEN.
@@ -93,6 +93,7 @@ Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 - playtest #42: Magical Defense screen layout from ROM 0xFBA6 panel data (#42). Evidence: ROM 0xFBA6..0xFBEE / C89C0 / 0x106DA / 0x11928 / 0x11AE4; QA compares against GPGX and the user-reference fixtures, posture row excluded and asserted visible
 - playtest #43: Bare-hand Command equipment status from ROM data (#43). Evidence: ROM 0x111E8/0x12EAE/0x13000/0x11352, text D1A7E/D1AA5/D1F45/D1F58; tests compare against a GPGX fixture
 - playtest #39b: Shared CRAM to RGB conversion matches GPGX RGB565 expansion (#39b). Evidence: palette 0x18AC56 via 0x566C2, words 0x18AC6A-0x18AC74, bars 0x12CEE/0xCF3D4/0xCF610; formula from GPGX vdp_render.c MAKE_PIXEL
+- playtest #35d: Reusable Lua screen effects; Sega logo line-scroll reveal look-alike (#35d). Evidence: ROM 0x5D746..0x5D852 / 0x5D7AA..0x5D802 / 0x5DAC4..0x5DADA -> 0x0D44; 337-VBlank timing test; GPGX side-by-side in boot-sega-logo-reveal.md
 
 ## Open work, in order
 1. Get ctest green again by fixing aa3b2cb7 forward.

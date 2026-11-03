@@ -1009,16 +1009,18 @@
         host_frame_timer_.stop();
         std::filesystem::create_directories(output_directory);
         std::ofstream trace(output_directory / "sega-logo-reveal-qa.tsv");
-        if (!trace) {
+        std::ofstream timing(output_directory / "timing.tsv");
+        if (!trace || !timing) {
             std::cerr << "SEGA logo reveal QA: could not open trace in "
                       << output_directory.string() << '\n';
             return 3;
         }
         trace << "longplay_frame\trom_frame\teffect_counter\t"
-                 "source_phase\tsource_phase_countdown\tport_phase\t"
-                 "port_phase_countdown\tport_lightning_phase\t"
-                 "source_pixels\tport_pixels\t"
-                 "row_count_mismatches\timage\n";
+                 "source_phase\tport_phase\tport_counter\tport_elapsed\t"
+                 "source_pixels\tport_pixels\tmask_iou\timage\n";
+        timing << "source_vblank\tcounter_eligible\tcounter_stepped\t"
+                  "effect_counter\teligible_vblanks\tcounter_steps\t"
+                  "visible_rows\tedge_row\n";
 
         struct Sample {
             std::int16_t effect_counter;
@@ -1029,10 +1031,10 @@
             const char* reference;
             std::uint32_t expected_pixels;
         };
-        // These GPGX screenshots pair with longplay section 00 frames using
-        // e = 240 + 2*(f - 80). The RAM phase fields are read from the same
-        // emulator capture. Exact row counts catch edge density and phase;
-        // a broad total-pixel tolerance hid the counter-34 defect.
+        // These independently captured GPGX screenshots pair with longplay
+        // section 00 frames using e = 240 + 2*(f - 80). Totals guard the
+        // reference capture; the implementation is judged by foreground-mask
+        // overlap because #35d intentionally uses a practical line reveal.
         constexpr std::array<Sample, 14> kSamples{{
             {54, 80, 240, 0U, 2, "e_00240.png", 318U},
             {50, 84, 248, 2U, 2, "e_00248.png", 556U},
@@ -1050,6 +1052,8 @@
             {14, 120, 320, 2U, 2, "e_00320.png", 2755U},
         }};
         const QRect logo_region(100, 75, 110, 41);
+        constexpr double kMinimumCheckpointIou = 0.30;
+        constexpr double kMinimumMeanIou = 0.45;
         const auto fail = [](const std::string& message) {
             std::cerr << "SEGA logo reveal QA: " << message << '\n';
             return 3;
@@ -1073,16 +1077,60 @@
         const auto total_pixels = [](const auto& rows) {
             return std::accumulate(rows.begin(), rows.end(), std::uint32_t{0});
         };
+        const auto mask_iou = [&logo_region](const QImage& source,
+                                             const QImage& port) {
+            std::uint32_t intersection = 0U;
+            std::uint32_t union_count = 0U;
+            for (int y = logo_region.top(); y <= logo_region.bottom(); ++y) {
+                for (int x = logo_region.left(); x <= logo_region.right(); ++x) {
+                    const bool source_pixel =
+                        (source.pixel(x, y) & 0x00FFFFFFU) != 0U;
+                    const bool port_pixel =
+                        (port.pixel(x, y) & 0x00FFFFFFU) != 0U;
+                    intersection += source_pixel && port_pixel ? 1U : 0U;
+                    union_count += source_pixel || port_pixel ? 1U : 0U;
+                }
+            }
+            return union_count == 0U ? 1.0 :
+                static_cast<double>(intersection) / union_count;
+        };
 
-        constexpr std::uint32_t kMaximumSourceUpdates = 700U;
+        constexpr std::uint32_t kDurationVBlanks = 337U;
         std::uint32_t source_updates = 0U;
+        bool timing_valid = true;
         const auto advance_one = [&] {
             if (state_.phase != StartupIntegrationPhase::pre_title ||
-                source_updates >= kMaximumSourceUpdates) {
+                source_updates >= kDurationVBlanks) {
                 return false;
             }
+            const auto before = state_.pre_title.logo_reveal;
+            const bool counter_eligible =
+                state_.pre_title.figure_y == 0x0160 &&
+                state_.pre_title.sega_phase_delay <= 0;
+            const auto expected_eligible = static_cast<std::uint16_t>(
+                before.eligible_vblanks + (counter_eligible ? 1U : 0U));
+            const bool expected_step = counter_eligible &&
+                (expected_eligible % 2U) == 0U;
+            const auto expected_counter = static_cast<std::int16_t>(
+                before.effect_counter - (expected_step ? 1 : 0));
+
             advance_one_source_frame();
             ++source_updates;
+            const auto& after = state_.pre_title.logo_reveal;
+            if (after.elapsed_vblanks != source_updates ||
+                after.eligible_vblanks != expected_eligible ||
+                after.counter_stepped != expected_step ||
+                after.effect_counter != expected_counter ||
+                after.counter_step_count != static_cast<std::uint16_t>(
+                    before.counter_step_count + (expected_step ? 1U : 0U))) {
+                timing_valid = false;
+            }
+            timing << source_updates << '\t' << (counter_eligible ? 1 : 0)
+                   << '\t' << (after.counter_stepped ? 1 : 0) << '\t'
+                   << after.effect_counter << '\t' << after.eligible_vblanks
+                   << '\t' << after.counter_step_count << '\t'
+                   << static_cast<unsigned>(after.visible_rows) << '\t'
+                   << static_cast<int>(after.edge_row) << '\n';
             return state_.phase == StartupIntegrationPhase::pre_title;
         };
         const auto advance_until = [&](const auto& predicate) {
@@ -1093,12 +1141,17 @@
             }
             return true;
         };
-        if (state_.phase != StartupIntegrationPhase::pre_title) {
-            return fail("boot did not start in the pre-title phase");
+        if (state_.phase != StartupIntegrationPhase::pre_title ||
+            state_.pre_title.logo_effect_counter != 0x0041 ||
+            state_.pre_title.logo_reveal.elapsed_vblanks != 0U ||
+            state_.pre_title.logo_reveal.stage !=
+                PreTitleLogoRevealStage::hidden) {
+            return fail("effect did not start hidden at FFDD2A=$41 before its first VBlank");
         }
 
-        std::uint32_t previous_port_pixels = 0U;
-        bool all_samples_exact = true;
+        double iou_sum = 0.0;
+        double minimum_iou = 1.0;
+        bool all_samples_match = true;
         QImage final_image;
         for (const auto& sample : kSamples) {
             const auto reference_path = reference_directory / sample.reference;
@@ -1108,8 +1161,7 @@
                 !advance_until([&] {
                     return state_.pre_title.logo_effect_counter ==
                                sample.effect_counter &&
-                           state_.pre_title.logo_phase ==
-                               sample.logo_phase &&
+                           state_.pre_title.logo_phase == sample.logo_phase &&
                            state_.pre_title.logo_phase_countdown ==
                                sample.logo_phase_countdown;
                 })) {
@@ -1123,27 +1175,18 @@
                 return fail("source reference pixel count changed for " +
                             std::string(sample.reference));
             }
-            const auto port_phase = state_.pre_title.logo_phase;
-            const auto port_lightning_phase =
-                state_.pre_title.sega_lightning_phase;
-            const auto port_phase_countdown =
-                state_.pre_title.logo_phase_countdown;
-            const bool phase_matches =
-                port_phase == sample.logo_phase &&
-                port_lightning_phase == sample.logo_phase &&
-                port_phase_countdown == sample.logo_phase_countdown;
             const auto actual = render_scene();
-            const auto actual_rows = row_pixels(actual);
-            const auto actual_pixels = total_pixels(actual_rows);
-            std::uint32_t row_count_mismatches = 0U;
-            for (std::size_t row = 0U; row < actual_rows.size(); ++row) {
-                row_count_mismatches +=
-                    source_rows[row] == actual_rows[row] ? 0U : 1U;
-            }
-            const bool row_profile_matches = row_count_mismatches == 0U;
-            all_samples_exact = all_samples_exact && phase_matches &&
-                                row_profile_matches &&
-                                actual_pixels >= previous_port_pixels;
+            const auto actual_pixels = total_pixels(row_pixels(actual));
+            const auto similarity = mask_iou(reference, actual);
+            const bool phase_matches =
+                state_.pre_title.logo_phase == sample.logo_phase &&
+                state_.pre_title.sega_lightning_phase == sample.logo_phase &&
+                state_.pre_title.logo_phase_countdown ==
+                    sample.logo_phase_countdown;
+            all_samples_match = all_samples_match && phase_matches &&
+                similarity >= kMinimumCheckpointIou;
+            iou_sum += similarity;
+            minimum_iou = std::min(minimum_iou, similarity);
 
             const auto filename = "counter-" +
                                   std::to_string(sample.effect_counter) +
@@ -1155,40 +1198,60 @@
             trace << sample.longplay_frame << '\t' << sample.rom_frame << '\t'
                   << sample.effect_counter << '\t'
                   << static_cast<unsigned>(sample.logo_phase) << '\t'
-                  << sample.logo_phase_countdown << '\t'
-                  << static_cast<unsigned>(port_phase) << '\t'
-                  << port_phase_countdown << '\t' << port_lightning_phase
-                  << '\t' << expected_pixels << '\t'
-                  << actual_pixels << '\t' << row_count_mismatches << '\t'
-                  << filename << '\n';
-            if (!phase_matches || !row_profile_matches ||
-                actual_pixels < previous_port_pixels) {
+                  << static_cast<unsigned>(state_.pre_title.logo_phase) << '\t'
+                  << state_.pre_title.logo_effect_counter << '\t'
+                  << state_.pre_title.logo_reveal.elapsed_vblanks << '\t'
+                  << expected_pixels << '\t' << actual_pixels << '\t'
+                  << similarity << '\t' << filename << '\n';
+            if (!phase_matches || similarity < kMinimumCheckpointIou) {
                 std::cerr << "SEGA logo reveal QA mismatch at counter "
                           << sample.effect_counter << " source="
                           << expected_pixels << " port=" << actual_pixels
-                          << " rows=" << row_count_mismatches
-                          << " phase=" << static_cast<unsigned>(port_phase)
-                          << '/' << port_phase_countdown << " lighting="
-                          << port_lightning_phase << " expected="
+                          << " mask_iou=" << similarity << " phase="
+                          << static_cast<unsigned>(state_.pre_title.logo_phase)
+                          << '/' << state_.pre_title.logo_phase_countdown
+                          << " expected="
                           << static_cast<unsigned>(sample.logo_phase) << '/'
                           << sample.logo_phase_countdown << '\n';
             }
-            previous_port_pixels = actual_pixels;
             final_image = actual;
         }
 
+        while (state_.pre_title.logo_reveal.elapsed_vblanks <
+               kDurationVBlanks) {
+            if (!advance_one()) {
+                return fail("the 337-VBlank effect ended before its final update");
+            }
+        }
+        if (!timing_valid || source_updates != kDurationVBlanks ||
+            state_.pre_title.logo_reveal.elapsed_vblanks != 337U ||
+            state_.pre_title.logo_reveal.effect_counter != -57 ||
+            state_.pre_title.logo_reveal.eligible_vblanks != 245U ||
+            state_.pre_title.logo_reveal.counter_step_count != 122U) {
+            return fail("start, 337-VBlank duration, or every-other eligible counter cadence changed");
+        }
+        const double mean_iou = iou_sum / static_cast<double>(kSamples.size());
+        if (mean_iou < kMinimumMeanIou) {
+            all_samples_match = false;
+        }
         const auto actual_path = output_directory / "actual.bmp";
         if (!final_image.save(QString::fromStdWString(actual_path.wstring()),
                               "BMP")) {
             return fail("could not save the completed-logo actual.bmp");
         }
-        if (!all_samples_exact) {
-            return fail("headless row profiles and source phases must match "
-                        "all GPGX reveal checkpoints exactly");
+        if (!all_samples_match) {
+            return fail("phase cadence or GPGX foreground-mask similarity fell below its documented floor");
         }
-        std::cout << "sega_logo_reveal_qa=passed samples="
-                  << kSamples.size()
-                  << " exact_row_profiles=1 rom_frames=240..320"
+        std::cout << "sega_logo_reveal_qa=passed samples=" << kSamples.size()
+                  << " duration_vblanks=" << source_updates
+                  << " eligible_vblanks="
+                  << state_.pre_title.logo_reveal.eligible_vblanks
+                  << " counter_steps="
+                  << state_.pre_title.logo_reveal.counter_step_count
+                  << " final_counter="
+                  << state_.pre_title.logo_reveal.effect_counter
+                  << " mean_mask_iou=" << mean_iou
+                  << " min_mask_iou=" << minimum_iou
                   << " actual=" << output_directory.string() << '\n';
         return 0;
     }

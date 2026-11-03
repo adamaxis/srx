@@ -132,6 +132,73 @@ int main(int argc, char** argv) {
         [&horizontal_scroll_updates](const auto&) {
             ++horizontal_scroll_updates;
         };
+    // This workbench exercises the native sequence controller without a Lua
+    // runtime. The Qt application supplies the production screen-effects
+    // callbacks from startup.lua; here only the typed callback contract and
+    // source loop cadence need a deterministic stand-in.
+    PreTitleLogoReveal logo_reveal_snapshot{};
+    startup_callbacks.pre_title.create_logo_reveal = [&logo_reveal_snapshot] {
+        logo_reveal_snapshot = PreTitleLogoReveal{};
+        logo_reveal_snapshot.effect_counter = 0x0041;
+        return logo_reveal_snapshot;
+    };
+    startup_callbacks.pre_title.update_logo_reveal =
+        [&logo_reveal_snapshot](
+            const bool counter_eligible,
+            const std::int16_t source_phase,
+            const std::array<std::uint16_t,
+                             kPreTitleLogoRevealLines>& line_samples) {
+            ++logo_reveal_snapshot.elapsed_vblanks;
+            logo_reveal_snapshot.counter_stepped = false;
+            if (counter_eligible) {
+                ++logo_reveal_snapshot.eligible_vblanks;
+                if ((logo_reveal_snapshot.eligible_vblanks & 1U) == 0U) {
+                    --logo_reveal_snapshot.effect_counter;
+                    ++logo_reveal_snapshot.counter_step_count;
+                    logo_reveal_snapshot.counter_stepped = true;
+                }
+            }
+            logo_reveal_snapshot.shimmer_phase = static_cast<std::uint8_t>(
+                source_phase % 6);
+            if (logo_reveal_snapshot.effect_counter > 54) {
+                logo_reveal_snapshot.stage = PreTitleLogoRevealStage::hidden;
+                logo_reveal_snapshot.visible_rows = 0U;
+            } else if (logo_reveal_snapshot.effect_counter <= 17) {
+                logo_reveal_snapshot.stage =
+                    PreTitleLogoRevealStage::complete;
+                logo_reveal_snapshot.visible_rows =
+                    static_cast<std::uint8_t>(kPreTitleLogoRevealLines);
+            } else {
+                logo_reveal_snapshot.stage =
+                    PreTitleLogoRevealStage::revealing;
+                const auto progress = static_cast<double>(
+                    54 - logo_reveal_snapshot.effect_counter) / 37.0;
+                logo_reveal_snapshot.visible_rows =
+                    static_cast<std::uint8_t>(std::clamp(
+                        static_cast<int>(9.0 + progress *
+                            (kPreTitleLogoRevealLines - 9U)),
+                        9, static_cast<int>(kPreTitleLogoRevealLines)));
+            }
+            logo_reveal_snapshot.edge_row =
+                logo_reveal_snapshot.visible_rows == 0U
+                    ? -1
+                    : static_cast<std::int8_t>(
+                          logo_reveal_snapshot.visible_rows - 1U);
+            for (std::size_t row = 0U; row < line_samples.size(); ++row) {
+                logo_reveal_snapshot.line_offsets[row] =
+                    static_cast<std::uint8_t>(line_samples[row] & 0x001FU);
+            }
+            if (logo_reveal_snapshot.elapsed_vblanks >= 337U) {
+                logo_reveal_snapshot.stage =
+                    PreTitleLogoRevealStage::complete;
+                logo_reveal_snapshot.visible_rows =
+                    static_cast<std::uint8_t>(kPreTitleLogoRevealLines);
+                logo_reveal_snapshot.edge_row = static_cast<std::int8_t>(
+                    kPreTitleLogoRevealLines - 1U);
+                logo_reveal_snapshot.line_offsets.fill(0U);
+            }
+            return logo_reveal_snapshot;
+        };
     startup_callbacks.pre_title.publish_audio_request =
         [&audio_variant_calls, &audio_calls](const PreTitleAudioRequest& request) {
             if (request.service_path ==

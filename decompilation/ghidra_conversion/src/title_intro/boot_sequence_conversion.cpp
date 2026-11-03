@@ -187,6 +187,8 @@ bool has_pre_title_callbacks(const PreTitleSequenceCallbacks& callbacks) {
            static_cast<bool>(animation.publish_logo_strobe_palette) &&
            static_cast<bool>(animation.step_entity_color_words) &&
            static_cast<bool>(callbacks.write_horizontal_scroll_stream) &&
+           static_cast<bool>(callbacks.create_logo_reveal) &&
+           static_cast<bool>(callbacks.update_logo_reveal) &&
            static_cast<bool>(callbacks.publish_audio_request) &&
            static_cast<bool>(callbacks.sample_controller) &&
            static_cast<bool>(callbacks.latch_controller_events) &&
@@ -377,7 +379,8 @@ PreTitleSequenceResult begin_pre_title_sequence(
     state.resource_marker = 1U;
     state.figure_x = 0x0119;
     state.figure_y = 0x01A8;
-    state.logo_effect_counter = 0x0041;
+    state.logo_reveal = callbacks.create_logo_reveal();
+    state.logo_effect_counter = state.logo_reveal.effect_counter;
     state.logo_strobe_active = false;
     state.sega_lightning_batches_active = false;
     state.frame_counter = 0x0150;
@@ -468,45 +471,50 @@ PreTitleSequenceResult advance_pre_title_sequence_frame(
     fill_pre_title_horizontal_scroll(state, callbacks);
     advance_pre_title_animation(state, callbacks);
 
+    bool counter_eligible = false;
     if (state.figure_y == 0x0160) {
         --state.sega_phase_delay;
-        if (state.sega_phase_delay < 0) {
-            ++state.sega_delay_cadence;
-            if ((state.sega_delay_cadence & 1) == 0) {
-                if (state.logo_effect_counter < 6) {
-                    callbacks.publish_audio_request(
-                        {PreTitleAudioServicePath::enabled_variant_transaction,
-                         PreTitleAudioTrigger::logo_effect_counter_below_six,
-                         0x0016U});
-                }
-                --state.logo_effect_counter;
-                if (state.logo_effect_counter >= 0) {
-                    if (state.logo_effect_counter == 0) {
-                        callbacks.publish_audio_request(
-                            {PreTitleAudioServicePath::
-                                 enabled_variant_transaction,
-                             PreTitleAudioTrigger::
-                                 logo_effect_counter_reached_zero,
-                             0x0016U});
-                        state.logo_strobe_active = true;
-                    }
-                    --state.secondary_effect_counter;
-                    if (state.logo_effect_counter > 4) {
-                        callbacks.publish_audio_request(
-                            {PreTitleAudioServicePath::
-                                 enabled_service_queue,
-                             PreTitleAudioTrigger::
-                                 logo_effect_counter_above_four,
-                             0x005CU});
-                    }
-                }
-            }
-        }
+        counter_eligible = state.sega_phase_delay < 0;
     } else {
         --state.figure_y;
         if (state.figure_y == 0x0160) {
             state.sega_phase_delay = 0x0014;
             state.sega_shock_frames = 0x0078;
+        }
+    }
+
+    std::array<std::uint16_t, kPreTitleLogoRevealLines> logo_line_scroll{};
+    constexpr std::size_t kLogoFirstScanline = 80U;
+    std::copy_n(state.horizontal_scroll.begin() + kLogoFirstScanline,
+                logo_line_scroll.size(), logo_line_scroll.begin());
+    const auto previous_logo_counter = state.logo_effect_counter;
+    state.logo_reveal = callbacks.update_logo_reveal(
+        counter_eligible, state.logo_phase, logo_line_scroll);
+    state.logo_effect_counter = state.logo_reveal.effect_counter;
+    if (state.logo_reveal.counter_stepped) {
+        // 0x5D7E6 tests the old counter; 0x5D7FC decrements it. Preserve that
+        // ordering while Lua owns the counter cadence and reveal state.
+        if (previous_logo_counter <= 5) {
+            callbacks.publish_audio_request(
+                {PreTitleAudioServicePath::enabled_variant_transaction,
+                 PreTitleAudioTrigger::logo_effect_counter_below_six,
+                 0x0016U});
+        }
+        if (state.logo_effect_counter >= 0) {
+            if (state.logo_effect_counter == 0) {
+                callbacks.publish_audio_request(
+                    {PreTitleAudioServicePath::enabled_variant_transaction,
+                     PreTitleAudioTrigger::logo_effect_counter_reached_zero,
+                     0x0016U});
+                state.logo_strobe_active = true;
+            }
+            --state.secondary_effect_counter;
+            if (state.logo_effect_counter > 4) {
+                callbacks.publish_audio_request(
+                    {PreTitleAudioServicePath::enabled_service_queue,
+                     PreTitleAudioTrigger::logo_effect_counter_above_four,
+                     0x005CU});
+            }
         }
     }
 
@@ -526,10 +534,6 @@ PreTitleSequenceResult advance_pre_title_sequence_frame(
     state.dirty_flags = static_cast<std::uint8_t>(
         state.dirty_flags | 0x0EU);
     --state.frame_counter;
-    if (callbacks.resolve_logo_reveal) {
-        state.logo_reveal = callbacks.resolve_logo_reveal(
-            state.logo_effect_counter, state.logo_phase);
-    }
     if (state.frame_counter != -1) {
         return PreTitleSequenceResult::source_complete;
     }

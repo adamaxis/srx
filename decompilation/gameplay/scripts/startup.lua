@@ -2,6 +2,7 @@
 -- The native startup controller owns selection, input timing, and transitions.
 local Startup = {}
 local E = require("enums")
+local ScreenEffects = require("effects.screen_effects")
 
 -- 0x1D7A leaves the phase/countdown used by the pre-title strobe intact;
 -- 0x2634 then advances that state while DD5A is 2. The host keeps only the
@@ -12,6 +13,7 @@ local title_circuit_lights = { phase = 0, countdown = 0 }
 -- The same palette line colors Plane-A's tail fan and the rotor on the landed
 -- 0x5B1B6 movement sprite; Lua owns the shared phase for both presentations.
 local opening_tail_rotor = { phase = E.OpeningTailRotor.INITIAL_PHASE }
+local sega_logo_reveal_effect
 
 function Startup.reset_opening_tail_rotor()
     opening_tail_rotor.phase = E.OpeningTailRotor.INITIAL_PHASE
@@ -46,53 +48,59 @@ function Startup.advance_title_circuit_lights(completion_state)
     return { title_circuit_lights.phase, title_circuit_lights.countdown }
 end
 
--- The source counter steps every other VBlank after its initial countdown.
--- GPGX measurements show a changing, non-monotonic fringe across all 32 rows;
--- return source-sized row counts and let the host present that typed state.
-function Startup.sega_logo_reveal(effect_counter, source_logo_phase)
+local function pack_sega_logo_reveal(effect)
+    local values = {
+        effect.stage,
+        effect.elapsed_vblanks,
+        effect.effect_counter,
+        effect.visible_rows,
+        effect.shimmer_phase,
+        effect.edge_row,
+        effect.eligible_vblanks,
+        effect.counter_step_count,
+        effect.counter_stepped and 1 or 0,
+    }
+    for row = 1, effect.line_count do
+        values[#values + 1] = effect.line_offsets[row]
+    end
+    return values
+end
+
+function Startup.create_sega_logo_reveal()
     local R = E.PreTitleLogoReveal
-    local phase = source_logo_phase % R.SHIMMER_PHASE_COUNT
-    local function result(stage, row_pixels)
-        local values = { stage }
-        for row = 1, R.LOGO_HEIGHT do
-            values[#values + 1] = row_pixels[row]
-        end
-        values[#values + 1] = phase
-        return values
-    end
-    local hidden_rows = {}
-    for row = 1, R.LOGO_HEIGHT do
-        hidden_rows[row] = 0
-    end
-    if effect_counter > R.HIDDEN_ABOVE_COUNTER then
-        return result(R.STAGE_HIDDEN, hidden_rows)
-    end
+    sega_logo_reveal_effect = ScreenEffects.create(
+        E.ScreenEffectKind.LINE_SCROLL_REVEAL, {
+            duration_vblanks = R.DURATION_VBLANKS,
+            start_counter = R.START_COUNTER,
+            counter_cadence = R.COUNTER_STEP_CADENCE,
+            first_reveal_counter = R.FIRST_REVEAL_COUNTER,
+            full_reveal_counter = R.FULL_REVEAL_COUNTER,
+            initial_visible_rows = R.INITIAL_VISIBLE_ROWS,
+            line_count = R.LOGO_HEIGHT,
+            shimmer_tail_rows = R.SHIMMER_TAIL_ROWS,
+            max_line_offset = R.MAX_LINE_OFFSET,
+        })
+    return pack_sega_logo_reveal(sega_logo_reveal_effect)
+end
 
-    local checkpoints = R.CHECKPOINTS
-    if effect_counter <= R.FULL_REVEAL_COUNTER then
-        return result(R.STAGE_COMPLETE, R.FULL_ROW_PIXEL_COUNTS)
+-- 0x5D746 supplies one update per VBlank; its delay-gated counter tick is
+-- delegated to the reusable effect module. The host supplies the shared
+-- 0x0D44 line samples for the logo's 32 screen rows.
+function Startup.update_sega_logo_reveal(counter_eligible, source_logo_phase, ...)
+    if sega_logo_reveal_effect == nil then
+        Startup.create_sega_logo_reveal()
     end
-
-    for index = 1, #checkpoints - 1 do
-        local left = checkpoints[index]
-        local right = checkpoints[index + 1]
-        if effect_counter <= left.counter and effect_counter >= right.counter then
-            local progress = (left.counter - effect_counter) /
-                (left.counter - right.counter)
-            local row_pixels = {}
-            for row = 1, R.LOGO_HEIGHT do
-                row_pixels[row] = math.floor(
-                    left.row_pixels[row] +
-                    (right.row_pixels[row] - left.row_pixels[row]) * progress +
-                    0.5)
-            end
-            return result(R.STAGE_SHIMMER, row_pixels)
-        end
+    local samples = {...}
+    local line_scroll_values = {}
+    for row = 1, E.PreTitleLogoReveal.LOGO_HEIGHT do
+        line_scroll_values[row] = samples[row] or 0
     end
-
-    -- The counter can only move downward through the measured reveal range.
-    -- Keep the boundary explicit if an unexpected caller supplies a gap.
-    return result(R.STAGE_HIDDEN, hidden_rows)
+    ScreenEffects.update(sega_logo_reveal_effect, {
+        counter_eligible = counter_eligible ~= 0,
+        line_scroll_values = line_scroll_values,
+        shimmer_phase = source_logo_phase,
+    })
+    return pack_sega_logo_reveal(sega_logo_reveal_effect)
 end
 
 -- ROM 0x5A0B2 advances the four orc map patches before 0x5A146 installs the

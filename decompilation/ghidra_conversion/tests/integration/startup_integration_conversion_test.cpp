@@ -279,6 +279,65 @@ StartupIntegrationCallbacks make_callbacks(
                             kPreTitleHorizontalScrollLines>&) {
             record(observations, "write_horizontal_scroll");
         };
+    auto logo_reveal = std::make_shared<PreTitleLogoReveal>();
+    callbacks.pre_title.create_logo_reveal = [logo_reveal] {
+        *logo_reveal = PreTitleLogoReveal{};
+        logo_reveal->effect_counter = 0x0041;
+        return *logo_reveal;
+    };
+    callbacks.pre_title.update_logo_reveal =
+        [logo_reveal](
+            const bool counter_eligible,
+            const std::int16_t source_phase,
+            const std::array<std::uint16_t,
+                             kPreTitleLogoRevealLines>& line_samples) {
+            ++logo_reveal->elapsed_vblanks;
+            logo_reveal->counter_stepped = false;
+            if (counter_eligible) {
+                ++logo_reveal->eligible_vblanks;
+                if ((logo_reveal->eligible_vblanks & 1U) == 0U) {
+                    --logo_reveal->effect_counter;
+                    ++logo_reveal->counter_step_count;
+                    logo_reveal->counter_stepped = true;
+                }
+            }
+            logo_reveal->shimmer_phase = static_cast<std::uint8_t>(
+                source_phase % 6);
+            if (logo_reveal->effect_counter > 54) {
+                logo_reveal->stage = PreTitleLogoRevealStage::hidden;
+                logo_reveal->visible_rows = 0U;
+            } else if (logo_reveal->effect_counter <= 17) {
+                logo_reveal->stage = PreTitleLogoRevealStage::complete;
+                logo_reveal->visible_rows = static_cast<std::uint8_t>(
+                    kPreTitleLogoRevealLines);
+            } else {
+                logo_reveal->stage = PreTitleLogoRevealStage::revealing;
+                const auto progress = 54 - logo_reveal->effect_counter;
+                const auto added_rows = (progress * 23 + 36) / 37;
+                logo_reveal->visible_rows = static_cast<std::uint8_t>(
+                    std::min<std::int16_t>(32, 9 + added_rows));
+            }
+            logo_reveal->edge_row = logo_reveal->visible_rows == 0U
+                ? -1
+                : static_cast<std::int8_t>(logo_reveal->visible_rows - 1U);
+            const auto settled_rows = logo_reveal->visible_rows > 8U
+                ? static_cast<std::size_t>(logo_reveal->visible_rows - 8U)
+                : 0U;
+            for (std::size_t row = 0U; row < line_samples.size(); ++row) {
+                logo_reveal->line_offsets[row] = row < settled_rows
+                    ? 0U
+                    : static_cast<std::uint8_t>(line_samples[row] & 0x001FU);
+            }
+            if (logo_reveal->elapsed_vblanks >= 337U) {
+                logo_reveal->stage = PreTitleLogoRevealStage::complete;
+                logo_reveal->visible_rows = static_cast<std::uint8_t>(
+                    kPreTitleLogoRevealLines);
+                logo_reveal->edge_row = static_cast<std::int8_t>(
+                    kPreTitleLogoRevealLines - 1U);
+                logo_reveal->line_offsets.fill(0U);
+            }
+            return *logo_reveal;
+        };
     callbacks.pre_title.publish_audio_request = [&observations](
                                                     const PreTitleAudioRequest& request) {
         record(observations,

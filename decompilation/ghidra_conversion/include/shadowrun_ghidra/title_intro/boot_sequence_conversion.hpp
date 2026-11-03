@@ -12,6 +12,7 @@
 namespace shadowrun::ghidra_conversion {
 
 constexpr std::size_t kPreTitleHorizontalScrollLines = 224U;
+constexpr std::size_t kPreTitleLogoRevealLines = 32U;
 constexpr std::size_t kPreTitleResourceWorkWordCount = 0x1C0U;
 constexpr std::uint8_t kPreTitlePaletteTransitionPasses = 17U;
 constexpr std::uint8_t kPreTitleVBlanksPerPalettePass = 2U;
@@ -19,17 +20,23 @@ constexpr std::uint8_t kPreTitleFigurePaletteLevelsToBlack = 7U;
 
 enum class PreTitleLogoRevealStage : std::uint8_t {
     hidden,
-    shimmering,
+    revealing,
     complete,
 };
 
 struct PreTitleLogoReveal {
     PreTitleLogoRevealStage stage = PreTitleLogoRevealStage::hidden;
-    // Lua provides visible source-logo pixels for each of the 32 ROM rows.
-    // This is presentation state measured at the reveal checkpoints, not a
-    // emulated plane or palette.
-    std::array<std::uint8_t, 32U> visible_pixels_by_row{};
+    // Lua owns reveal timing and the top-down settling front. The host consumes
+    // only visible line count and horizontal presentation offsets.
+    std::uint16_t elapsed_vblanks = 0U;
+    std::int16_t effect_counter = 0;
+    std::uint8_t visible_rows = 0U;
     std::uint8_t shimmer_phase = 0U;
+    std::int8_t edge_row = -1;
+    std::uint16_t eligible_vblanks = 0U;
+    std::uint16_t counter_step_count = 0U;
+    bool counter_stepped = false;
+    std::array<std::uint8_t, kPreTitleLogoRevealLines> line_offsets{};
 };
 
 // The aliases are the direct host resources required before the title can
@@ -47,14 +54,13 @@ struct PreTitleSequenceState {
     std::int16_t figure_y = 0;
     std::int16_t logo_effect_counter = 0;
     std::int16_t sega_phase_delay = 0;
-    std::int16_t sega_delay_cadence = 0;
     std::int16_t secondary_effect_counter = 0;
     bool logo_strobe_active = false;
     // Exact output of the 0x5D996 lightning-batch gate for the frame just
     // built. It can differ from the post-loop presentation stage for one tick.
     bool sega_lightning_batches_active = false;
-    // Lua chooses per-row logo coverage from the source effect counter and
-    // logo phase; Qt consumes this as a visual mask only.
+    // Lua owns the reveal, cadence and line-scroll effect; Qt presents this
+    // typed snapshot without simulating the source display hardware.
     PreTitleLogoReveal logo_reveal{};
 
     // 0x5D996 owns these title-phase words. Their initial values are set by
@@ -198,8 +204,11 @@ struct PreTitleSequenceCallbacks {
     std::function<void(const std::array<std::uint16_t,
                                         kPreTitleHorizontalScrollLines>&)>
         write_horizontal_scroll_stream;
-    std::function<PreTitleLogoReveal(std::int16_t, std::int16_t)>
-        resolve_logo_reveal;
+    std::function<PreTitleLogoReveal()> create_logo_reveal;
+    std::function<PreTitleLogoReveal(
+        bool, std::int16_t,
+        const std::array<std::uint16_t, kPreTitleLogoRevealLines>&)>
+        update_logo_reveal;
     std::function<void(const PreTitleAudioRequest&)> publish_audio_request;
     std::function<void()> sample_controller;
     // 0x1342 latches controller events after each of its two VBlank waits.

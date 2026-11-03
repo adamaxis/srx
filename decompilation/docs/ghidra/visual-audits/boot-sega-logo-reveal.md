@@ -1,5 +1,44 @@
 # Boot SEGA logo reveal: frame-by-frame audit
 
+## #35d practical reveal check
+
+[C] The native reveal uses a top-down moving edge over the extracted SEGA
+artwork. Lua owns the effect counter, visible rows, settle band, and line
+offsets; the Qt presenter draws the resulting rows and a one-pixel shimmer at
+the edge. Its 32 line inputs come from the source-sized horizontal-scroll
+stream. The ROM builds that stream in `0x5DAC4..0x5DADA` through `0x0D44`,
+whose 16-bit recurrence is `(state * 0x20E5 + 1) & 0xFFFF`, sampled as
+`(state >> 5) & 0x1F`.
+
+[C] A headless runtime trace measures the source start counter as `0x41`, one
+effect update on each of 337 VBlanks, 245 counter-eligible updates, and 122
+counter decrements (first decrement at update 94, every second eligible
+update), ending at `-57`. The ROM loop and conditions are at
+`0x5D746..0x5D852` and `0x5D7AA..0x5D802`. The focused QA also samples the
+separate six-phase logo/lightning animation at 14 aligned GPGX frames.
+
+[C] The side-by-side sheet below compares five independent GPGX frames from
+`/workspace/wip35c/boot-sega-logo/` with the headless Qt captures. On eye
+inspection, both show a fragmented blue logo emerging from its top edge,
+filling downward, and settling into the same final mark over the same figure
+and lightning composition. [H] The port's early edge is intentionally smoother
+and its partial logo pixels do not occupy the exact GPGX locations.
+
+![Five GPGX and port SEGA reveal frames side by side](boot-sega-logo-reveal-side-by-side.png)
+
+[C] The loose metric is nonblack-mask intersection-over-union in the logo
+composition crop `(100,75)..(209,115)` at the 14 aligned checkpoints. Mean
+IoU is `0.774`, the minimum is `0.416` at the sparsest opening sample, and
+the two completed-logo checkpoints score `1.000`. The QA accepts a minimum
+per-frame IoU of `0.30` and mean of `0.45`; these thresholds allow an
+intentional host-native realization rather than requiring source pixel
+placement. This metric does not compare color values or claim pixel
+equivalence. Captures and timing data are in
+`/workspace/b2/qt_runtime/sega-logo-reveal-qa/`.
+
+The detailed 30-fps route notes below preserve the prior #35b analysis; the
+current #35d comparison and implementation are recorded above.
+
 ## Evidence and method
 
 [C] I watched every 30-fps longplay frame from `/workspace/shadowrun/longplay/frames/min_000/f_0080.jpg` through `f_0134.jpg`, then paired that section with the independent GPGX boot capture at `/workspace/shadowrun/emu/boot/frames/e_*.png`. The alignment is `e = 240 + 2*(f - 80)`. GPGX RAM snapshots in `/workspace/shadowrun/emu/boot/ram.npy` confirm the `FFDD2A` reveal counter, `FFE064` lightning phase, `FFE066` phase countdown, and the `FFDD3C` handoff flag. The source loop is ROM `0x5D746`; it calls the per-frame sprite/phase path `0x5D938 -> 0x5D996`, line stream `0x5DAC4 -> 0x0D44 -> 0x5DAFC`, and logo strobe `0x5D8BA`.
