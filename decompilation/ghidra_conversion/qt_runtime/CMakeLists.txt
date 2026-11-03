@@ -628,6 +628,14 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_sega_shock_qa
                  --sega-shock-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/sega-shock-qa")
 
+# Compare the Lua-driven SEGA reveal against independent GPGX screenshots,
+# paired with the 30-fps longplay checkpoints documented in the visual audit.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_sega_logo_reveal_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --sega-logo-reveal-qa
+                 "${CMAKE_CURRENT_SOURCE_DIR}/../../docs/ghidra/visual-audits/references/boot-sega-logo"
+                 "${CMAKE_CURRENT_BINARY_DIR}/sega-logo-reveal-qa")
+
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_action_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-action-dump

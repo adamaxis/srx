@@ -430,6 +430,32 @@ E.TitleCircuitLight = {
     COUNTDOWN_RELOAD = 4,
 } -- 0x5D8BA cycles FFDF92 modulo 8; 0x2634 reloads 4 and cycles modulo 7
   -- under DD5A=2. At 0x1D7A, the US ROM trace preserves FFDF90=2 / phase 6 [C]
+E.PreTitleLogoReveal = {
+    HIDDEN_ABOVE_COUNTER = 54,
+    FIRST_REVEAL_COUNTER = 54,
+    FULL_REVEAL_COUNTER = 17,
+    LOGO_TOP_ROW = 80,
+    LOGO_HEIGHT = 32,
+    SHIMMER_PHASE_COUNT = 6,
+    STAGE_HIDDEN = 0,
+    STAGE_SHIMMER = 1,
+    STAGE_COMPLETE = 2,
+    CHECKPOINTS = {
+        -- Independent GPGX captures e_00240/e_00260/e_00280/e_00300/e_00320;
+        -- matching longplay frames f_0080/f_0090/f_0100/f_0110/f_0120.
+        {counter = 54, full_rows = 0, shimmer_rows = 9,
+         leading_coverage = 55, trailing_coverage = 12},
+        {counter = 44, full_rows = 5, shimmer_rows = 14,
+         leading_coverage = 88, trailing_coverage = 12},
+        {counter = 34, full_rows = 15, shimmer_rows = 17,
+         leading_coverage = 88, trailing_coverage = 8},
+        {counter = 24, full_rows = 25, shimmer_rows = 7,
+         leading_coverage = 88, trailing_coverage = 48},
+        {counter = 17, full_rows = 32, shimmer_rows = 0,
+         leading_coverage = 100, trailing_coverage = 100},
+    },
+} -- [C] GPGX reveal is a 32-row top-down fill with a changing fringe;
+  -- frame counts and visual notes: docs/ghidra/visual-audits/boot-sega-logo-reveal.md
 E.OpeningOrcSequence = {
     HIT_PALETTE_STAGE = 5,       -- 0x5A124/0x5A146 writes white after four patch records [C]
     FIRST_FADE_STAGE = 6,        -- 0x5A16E steps line 0 every nine source updates [C]

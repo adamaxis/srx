@@ -999,6 +999,161 @@
         return 0;
     }
 
+    int run_sega_logo_reveal_qa(
+        const std::filesystem::path& reference_directory,
+        const std::filesystem::path& output_directory) {
+        host_frame_timer_.stop();
+        std::filesystem::create_directories(output_directory);
+        std::ofstream trace(output_directory / "sega-logo-reveal-qa.tsv");
+        if (!trace) {
+            std::cerr << "SEGA logo reveal QA: could not open trace in "
+                      << output_directory.string() << '\n';
+            return 3;
+        }
+        trace << "longplay_frame\trom_frame\teffect_counter\t"
+                 "source_pixels\tport_pixels\trow_profile_error_percent\t"
+                 "image\n";
+
+        struct Sample {
+            std::int16_t effect_counter;
+            std::uint16_t longplay_frame;
+            std::uint16_t rom_frame;
+            const char* reference;
+            std::uint32_t expected_pixels;
+        };
+        // GPGX frames e_00240..e_00320 pair with longplay f_0080..f_0120.
+        // Their 110x41-pixel counts and per-row profile are an independent
+        // oracle for the Qt-rendered boot scene, not a re-encoding of assets.
+        constexpr std::array<Sample, 5> kSamples{{
+            {54, 80, 240, "e_00240.png", 318U},
+            {44, 90, 260, "e_00260.png", 1017U},
+            {34, 100, 280, "e_00280.png", 1888U},
+            {24, 110, 300, "e_00300.png", 2545U},
+            {14, 120, 320, "e_00320.png", 2755U},
+        }};
+        const QRect logo_region(100, 75, 110, 41);
+        const auto fail = [](const std::string& message) {
+            std::cerr << "SEGA logo reveal QA: " << message << '\n';
+            return 3;
+        };
+        const auto row_pixels = [&logo_region](const QImage& image) {
+            std::array<std::uint32_t, 41> counts{};
+            if (image.size() != QSize(kSceneWidth, kSceneHeight)) {
+                return counts;
+            }
+            for (int row = 0; row < logo_region.height(); ++row) {
+                for (int column = 0; column < logo_region.width(); ++column) {
+                    if ((image.pixel(logo_region.x() + column,
+                                     logo_region.y() + row) & 0x00FFFFFFU) !=
+                        0U) {
+                        ++counts[static_cast<std::size_t>(row)];
+                    }
+                }
+            }
+            return counts;
+        };
+        const auto total_pixels = [](const auto& rows) {
+            return std::accumulate(rows.begin(), rows.end(), std::uint32_t{0});
+        };
+
+        constexpr std::uint32_t kMaximumSourceUpdates = 700U;
+        std::uint32_t source_updates = 0U;
+        const auto advance_one = [&] {
+            if (state_.phase != StartupIntegrationPhase::pre_title ||
+                source_updates >= kMaximumSourceUpdates) {
+                return false;
+            }
+            advance_one_source_frame();
+            ++source_updates;
+            return state_.phase == StartupIntegrationPhase::pre_title;
+        };
+        const auto advance_until = [&](const auto& predicate) {
+            while (!predicate()) {
+                if (!advance_one()) {
+                    return false;
+                }
+            }
+            return true;
+        };
+        if (state_.phase != StartupIntegrationPhase::pre_title) {
+            return fail("boot did not start in the pre-title phase");
+        }
+
+        std::uint32_t previous_port_pixels = 0U;
+        QImage final_image;
+        for (const auto& sample : kSamples) {
+            const auto reference_path = reference_directory / sample.reference;
+            const QImage reference(QString::fromStdWString(
+                reference_path.wstring()));
+            if (reference.size() != QSize(kSceneWidth, kSceneHeight) ||
+                !advance_until([&] {
+                    return state_.pre_title.logo_effect_counter ==
+                           sample.effect_counter;
+                })) {
+                return fail("could not load a source frame or reach counter " +
+                            std::to_string(sample.effect_counter));
+            }
+
+            const auto source_rows = row_pixels(reference);
+            const auto expected_pixels = total_pixels(source_rows);
+            if (expected_pixels != sample.expected_pixels) {
+                return fail("source reference pixel count changed for " +
+                            std::string(sample.reference));
+            }
+            const auto actual = render_scene();
+            const auto actual_rows = row_pixels(actual);
+            const auto actual_pixels = total_pixels(actual_rows);
+            std::uint32_t row_profile_error = 0U;
+            for (std::size_t row = 0U; row < actual_rows.size(); ++row) {
+                const auto source_count = source_rows[row];
+                const auto port_count = actual_rows[row];
+                row_profile_error += source_count > port_count
+                    ? source_count - port_count
+                    : port_count - source_count;
+            }
+            const auto error_percent = static_cast<std::uint32_t>(
+                row_profile_error * 100U / std::max(1U, expected_pixels));
+            const auto pixel_tolerance = std::max(
+                180U, expected_pixels * 22U / 100U);
+            if (actual_pixels + pixel_tolerance < expected_pixels ||
+                actual_pixels > expected_pixels + pixel_tolerance ||
+                error_percent > 34U ||
+                actual_pixels < previous_port_pixels) {
+                return fail("headless frame did not match the GPGX reveal "
+                            "profile at counter " +
+                            std::to_string(sample.effect_counter) +
+                            " (source=" + std::to_string(expected_pixels) +
+                            ", port=" + std::to_string(actual_pixels) +
+                            ", row_error=" +
+                            std::to_string(error_percent) + "%)");
+            }
+
+            const auto filename = "counter-" +
+                                  std::to_string(sample.effect_counter) +
+                                  ".png";
+            const auto image_path = output_directory / filename;
+            if (!actual.save(QString::fromStdWString(image_path.wstring()))) {
+                return fail("could not save " + image_path.string());
+            }
+            trace << sample.longplay_frame << '\t' << sample.rom_frame << '\t'
+                  << sample.effect_counter << '\t' << expected_pixels << '\t'
+                  << actual_pixels << '\t' << error_percent << '\t'
+                  << filename << '\n';
+            previous_port_pixels = actual_pixels;
+            final_image = actual;
+        }
+
+        const auto actual_path = output_directory / "actual.bmp";
+        if (!final_image.save(QString::fromStdWString(actual_path.wstring()),
+                              "BMP")) {
+            return fail("could not save the completed-logo actual.bmp");
+        }
+        std::cout << "sega_logo_reveal_qa=passed samples="
+                  << kSamples.size() << " source_pixels=318,1017,1888,2545,2755"
+                  << " actual=" << output_directory.string() << '\n';
+        return 0;
+    }
+
     // Deterministic visual-audit entry point. The phase transitions and
     // opening frames are still driven by the converted source contracts;
     // this only exposes their existing Qt presentation as an image dump.

@@ -3,7 +3,7 @@
 This file is kept in the repo so the notes survive if the box is wiped. The box's /workspace/shadowrun/out was lost on 2026-10-31.
 Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 
-## Current state (2026-11-03 02:28 CST)
+## Current state (2026-11-03 03:10 CST)
 - Remote port-fixes: see latest Fixes entry. QA_GREEN (ctest all pass, Lua suites pass). Working playtest_2026-11-01 items one Luna run at a time.
 - In progress: Luna (codex exec, gpt-6-luna, max effort, fast tier off) is fixing aa3b2cb7 forward. Brief is /workspace/briefs/aa3b.md, the earlier partial work is /workspace/briefs/aa3b_wip.diff and stash 'aa3b-wip'.
 - Box toolchain: `. /workspace/tcenv.sh` (conda env /workspace/mamba/envs/srx). Build dirs are /workspace/b2 (Qt) and /workspace/b2n (non-Qt). Full QA is /workspace/qa.sh, which prints QA_GREEN.
@@ -83,6 +83,7 @@ Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 - playtest #30c: #30c: remaining menus onto shared Lua menu route. [C] startup 0x59154..0x5916E; Hotel 0xCF98 no B, Check Out 0xDAF0; hospital 0xC928 no B, C 0xC9EA->0x391A, Medical 0xCA2E, Exit 0xCE7C; choices 0x1F3C4..0x1F58C; Vid-Phone 0xF90C/0xF972/0xF980
 - playtest #32: #32: generic building entry/exit fade (34/34 VBlank). [C] fade-out 0x131C (17 steps x 2 0x0BD2 waits), fade-in 0x12F6 via 0x092E; GPGX jh1.state Jump House 34/34; QA callers updated to advance the measured fade
 - playtest #34: #34: pedestrian gate audit, no code change. [C] 0xA800..0xA8AC gate, 0x43B6 alloc; GPGX scene 0x1A frames 1-60 no walker; port headless frame sprite 405/405 px when gated
+- playtest #35: #35: SEGA logo top-down shimmer reveal. [C] 0x5D746, 0x5D938->0x5D996, 0x5DAC4->0x0D44->0x5DAFC, 0x5D8BA; GPGX/port crop px 318/317 1017/1016 1888/1983 2545/2529 2755/2755
 
 ## Open work, in order
 1. Get ctest green again by fixing aa3b2cb7 forward.

@@ -17,6 +17,21 @@ constexpr std::uint8_t kPreTitlePaletteTransitionPasses = 17U;
 constexpr std::uint8_t kPreTitleVBlanksPerPalettePass = 2U;
 constexpr std::uint8_t kPreTitleFigurePaletteLevelsToBlack = 7U;
 
+enum class PreTitleLogoRevealStage : std::uint8_t {
+    hidden,
+    shimmering,
+    complete,
+};
+
+struct PreTitleLogoReveal {
+    PreTitleLogoRevealStage stage = PreTitleLogoRevealStage::hidden;
+    std::uint8_t fully_revealed_rows = 0U;
+    std::uint8_t shimmer_rows = 0U;
+    std::uint8_t leading_coverage_percent = 0U;
+    std::uint8_t trailing_coverage_percent = 0U;
+    std::uint8_t shimmer_phase = 0U;
+};
+
 // The aliases are the direct host resources required before the title can
 // hand off to the startup menu. Full-screen title animation samples are not
 // part of this set; the title is composed from its background, logo, text,
@@ -38,6 +53,9 @@ struct PreTitleSequenceState {
     // Exact output of the 0x5D996 lightning-batch gate for the frame just
     // built. It can differ from the post-loop presentation stage for one tick.
     bool sega_lightning_batches_active = false;
+    // Lua chooses the top-down logo fill and flicker envelope from the source
+    // effect counter; Qt consumes this as a visual mask only.
+    PreTitleLogoReveal logo_reveal{};
 
     // 0x5D996 owns these title-phase words. Their initial values are set by
     // surrounding title setup, not invented by this leaf conversion.
@@ -180,6 +198,8 @@ struct PreTitleSequenceCallbacks {
     std::function<void(const std::array<std::uint16_t,
                                         kPreTitleHorizontalScrollLines>&)>
         write_horizontal_scroll_stream;
+    std::function<PreTitleLogoReveal(std::int16_t, std::int16_t)>
+        resolve_logo_reveal;
     std::function<void(const PreTitleAudioRequest&)> publish_audio_request;
     std::function<void()> sample_controller;
     // 0x1342 latches controller events after each of its two VBlank waits.

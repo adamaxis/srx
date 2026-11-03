@@ -526,6 +526,10 @@ PreTitleSequenceResult advance_pre_title_sequence_frame(
     state.dirty_flags = static_cast<std::uint8_t>(
         state.dirty_flags | 0x0EU);
     --state.frame_counter;
+    if (callbacks.resolve_logo_reveal) {
+        state.logo_reveal = callbacks.resolve_logo_reveal(
+            state.logo_effect_counter, state.frame_counter);
+    }
     if (state.frame_counter != -1) {
         return PreTitleSequenceResult::source_complete;
     }

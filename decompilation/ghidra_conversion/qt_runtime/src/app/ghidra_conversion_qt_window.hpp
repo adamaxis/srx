@@ -1184,6 +1184,32 @@ private:
                 });
         };
         startup_callbacks_.pre_title.write_horizontal_scroll_stream = no_op;
+        startup_callbacks_.pre_title.resolve_logo_reveal =
+            [this](const std::int16_t effect_counter,
+                   const std::int16_t source_frame_countdown) {
+                const auto values = startup_scripts_.call_integers(
+                    "startup", "sega_logo_reveal",
+                    {effect_counter, source_frame_countdown});
+                if (!values.has_value() || values->size() != 6U ||
+                    (*values)[0] < 0 || (*values)[0] > 2 ||
+                    (*values)[1] < 0 || (*values)[1] > 32 ||
+                    (*values)[2] < 0 || (*values)[2] > 32 ||
+                    (*values)[3] < 0 || (*values)[3] > 100 ||
+                    (*values)[4] < 0 || (*values)[4] > 100 ||
+                    (*values)[5] < 0 || (*values)[5] >= 6) {
+                    throw std::runtime_error(
+                        "startup Lua could not resolve the SEGA logo reveal: " +
+                        startup_scripts_.failure());
+                }
+                return PreTitleLogoReveal{
+                    static_cast<PreTitleLogoRevealStage>((*values)[0]),
+                    static_cast<std::uint8_t>((*values)[1]),
+                    static_cast<std::uint8_t>((*values)[2]),
+                    static_cast<std::uint8_t>((*values)[3]),
+                    static_cast<std::uint8_t>((*values)[4]),
+                    static_cast<std::uint8_t>((*values)[5]),
+                };
+            };
         startup_callbacks_.pre_title.publish_audio_request =
             [this](const PreTitleAudioRequest& request) {
                 // The 0x5D746 source path sends 0x16 through 0x530D2 as
@@ -2057,6 +2083,73 @@ private:
         }
     }
 
+    void draw_boot_sega_logo(QPainter& painter) const {
+        using RevealStage = PreTitleLogoRevealStage;
+        const auto& reveal = state_.pre_title.logo_reveal;
+        if (reveal.stage == RevealStage::hidden) {
+            return;
+        }
+        if (reveal.stage == RevealStage::complete) {
+            draw_alias(painter, "boot.sega.background");
+            return;
+        }
+
+        const auto* record =
+            state_.asset_catalog.catalog.find("boot.sega.background");
+        const auto asset = draw_asset_cache_.find("boot.sega.background");
+        if (record == nullptr || asset == draw_asset_cache_.end()) {
+            return;
+        }
+
+        // The independent emulator's full mark spans x=104..199, y=80..111.
+        // Lua supplies the completed rows and the changing fringe coverage;
+        // this small image mask is only the Qt presentation of that state.
+        constexpr int kLogoLeft = 104;
+        constexpr int kLogoTop = 80;
+        constexpr int kLogoWidth = 96;
+        constexpr int kLogoHeight = 32;
+        auto image = asset->second.copy();
+        const int full_rows = std::min<int>(
+            reveal.fully_revealed_rows, kLogoHeight);
+        const int shimmer_rows = std::min<int>(
+            reveal.shimmer_rows, kLogoHeight - full_rows);
+        for (int row = 0; row < kLogoHeight; ++row) {
+            for (int column = 0; column < kLogoWidth; ++column) {
+                const int x = kLogoLeft + column;
+                const int y = kLogoTop + row;
+                const auto pixel = asset->second.pixel(x, y);
+                if ((pixel & 0x00FFFFFFU) == 0U || row < full_rows) {
+                    continue;
+                }
+
+                bool visible = false;
+                if (row < full_rows + shimmer_rows) {
+                    const int fringe_row = row - full_rows;
+                    const int coverage = shimmer_rows <= 1
+                        ? reveal.leading_coverage_percent
+                        : static_cast<int>(reveal.leading_coverage_percent) +
+                              (static_cast<int>(
+                                   reveal.trailing_coverage_percent) -
+                               static_cast<int>(
+                                   reveal.leading_coverage_percent)) *
+                                  fringe_row / (shimmer_rows - 1);
+                    // A stable spatial pattern changes with the Lua phase, so
+                    // the advancing edge glitters without a runtime VDP or
+                    // source-address renderer.
+                    const int sparkle =
+                        (column * 37 + row * 17 +
+                         static_cast<int>(reveal.shimmer_phase) * 23 +
+                         (column * row) % 29) % 100;
+                    visible = sparkle < coverage;
+                }
+                if (!visible) {
+                    image.setPixel(x, y, qRgb(0, 0, 0));
+                }
+            }
+        }
+        painter.drawImage(record->origin_x, record->origin_y, image);
+    }
+
     void draw_boot_scene(QPainter& painter) const {
         using PresentationStage =
             PreTitleSequenceState::PresentationStage;
@@ -2075,7 +2168,7 @@ private:
             draw_alias(painter,
                        "boot.sega.strobe." + std::to_string(phase));
         } else {
-            draw_alias(painter, "boot.sega.background");
+            draw_boot_sega_logo(painter);
         }
 
         if (state_.pre_title.sega_lightning_batches_active) {
