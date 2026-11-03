@@ -3,7 +3,7 @@
 This file is kept in the repo so the notes survive if the box is wiped. The box's /workspace/shadowrun/out was lost on 2026-10-31.
 Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 
-## Current state (2026-11-02 23:15 CST)
+## Current state (2026-11-02 23:38 CST)
 - Remote port-fixes: see latest Fixes entry. QA_GREEN (ctest all pass, Lua suites pass). Working playtest_2026-11-01 items one Luna run at a time.
 - In progress: Luna (codex exec, gpt-6-luna, max effort, fast tier off) is fixing aa3b2cb7 forward. Brief is /workspace/briefs/aa3b.md, the earlier partial work is /workspace/briefs/aa3b_wip.diff and stash 'aa3b-wip'.
 - Box toolchain: `. /workspace/tcenv.sh` (conda env /workspace/mamba/envs/srx). Build dirs are /workspace/b2 (Qt) and /workspace/b2n (non-Qt). Full QA is /workspace/qa.sh, which prints QA_GREEN.
@@ -79,6 +79,7 @@ Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 - playtest #30: #30: B-button ROM audit (partial) and #38b follow-up row. [C] 0x195C/FFDD22 B=0x1000; Command 0x10EC8->0x10E4E; spell 0xFD72->0xFF5A; PocketSec 0xC2A6 no B; Notebook 0xF236; Johnsons 0xF5C2->0xF592; headless port 1-update measurements
 - playtest #33: #33: posture bar selection outline via shared meter path. [C] 0x10722/0x107CE/C8600 and 0x119CE/0x11ABE/0x11AE4/CF334; headless GPGX US crops committed as QA fixtures
 - playtest #30b: #30b: optional B always-cancel policy (E.MenuBPolicy) on shared Lua route. [C] audit table extended in menu_b_cancel_audit.md; menu_b_policy_tests 125/125 (43/125 pre-change); ROM-mode expectations unchanged
+- playtest #31: #31: shops on shared Lua menu route; ROM shop input. [C] 0x56AC0 loop; A 0x56CE8->0x56DC4 gated FFF0D1; B 0x56D6C->0x56CF4; Start 0x56D9C; C 0x56D7C->0xD4C8; panels 0x58CDE; shop_route_tests 55/55 (34/45 pre)
 
 ## Open work, in order
 1. Get ctest green again by fixing aa3b2cb7 forward.

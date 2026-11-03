@@ -14087,6 +14087,18 @@ void FieldSceneRuntime::advance_frame() {
             source_boundary(std::string("field.shop.") + shop_tag + "." +
                             std::string(event));
         };
+        const auto return_to_field = [this, &shop_boundary] {
+            field_shop_route_pending_service_id_.clear();
+            state_.display_service_word = 0U;
+            field_runtime_state_.display_service_word = 0U;
+            field_shop_active_definition_.reset();
+            if (apply_field_door_exit_return() &&
+                pending_field_return_music_policy_ ==
+                    FieldLocationMusicReturnPolicy::resume_scene_profile) {
+                scene_music_latch_ = true;
+            }
+            shop_boundary("returned_to_field");
+        };
         const auto service_wire_upgrade =
             [this, &shop_boundary](const bool confirmed) {
                 if (!field_shop_active_definition_.has_value() ||
@@ -14205,6 +14217,26 @@ void FieldSceneRuntime::advance_frame() {
             field_controller_sample_state_, field_controller_port_byte_);
         if (field_shop_menu_.transaction_confirmation_open() ||
             field_shop_menu_.transaction_waiting_for_event()) {
+            // Transaction confirmation remains a narrow host service, but
+            // its B edge first passes through the shared Lua route policy.
+            // In ROM mode the host prompt receives the edge unchanged.
+            const auto route_policy = game_scripts_.advance_shop_menu(
+                field_controller_sample_state_.events, true);
+            if (!route_policy.has_value()) {
+                shop_boundary("lua_menu_policy_unavailable");
+                return;
+            }
+            if (!route_policy->open) {
+                const auto event =
+                    field_shop_menu_.apply_script_snapshot(*route_policy);
+                if (!event.has_value() ||
+                    *event != ShopMenuEvent::returned_to_field) {
+                    shop_boundary("lua_menu_close_unavailable");
+                    return;
+                }
+                return_to_field();
+                return;
+            }
             if (!field_funds_.has_value()) {
                 shop_boundary("transaction_wallet_unavailable");
                 field_shop_menu_.clear_pending_action();
@@ -14466,16 +14498,7 @@ void FieldSceneRuntime::advance_frame() {
             shop_boundary("active_runner_changed");
             break;
         case ShopMenuEvent::returned_to_field:
-            field_shop_route_pending_service_id_.clear();
-            state_.display_service_word = 0U;
-            field_runtime_state_.display_service_word = 0U;
-            field_shop_active_definition_.reset();
-            if (apply_field_door_exit_return() &&
-                pending_field_return_music_policy_ ==
-                    FieldLocationMusicReturnPolicy::resume_scene_profile) {
-                scene_music_latch_ = true;
-            }
-            shop_boundary("returned_to_field");
+            return_to_field();
             break;
         case ShopMenuEvent::no_change:
             break;

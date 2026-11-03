@@ -63,6 +63,37 @@ local function push(self, screen, args)
     end
 end
 
+local function current_policy(game, policy)
+    if policy == nil and game then policy = game.menu_b_policy end
+    if type(policy) == "function" then policy = policy() end
+    return policy
+end
+
+local function dispatch_input(module, state, events, ctx, policy,
+                              stack_depth, invoke_handler)
+    local game = ctx and ctx.game or nil
+    policy = current_policy(game, policy)
+    if policy == BPolicy.ALWAYS_CANCEL and (events & E.Pad.B) ~= 0 then
+        return {
+            transition = stack_depth > 1 and T.POP or T.EXIT,
+            result = {},
+            event = "returned_to_field",
+        }
+    end
+    if invoke_handler == false then return { event = "no_change" } end
+    return module.input(state, events, ctx)
+end
+
+-- Some field services own a modal presentation outside the stacked Command
+-- screen, but still use the same menu input policy and screen dispatch.
+function Route.dispatch_screen_input(screen, state, events, ctx, policy,
+                                     invoke_handler)
+    local module = assert(registry[screen],
+        "unregistered screen " .. tostring(screen))
+    return dispatch_input(module, state, events, ctx or {}, policy, 1,
+                          invoke_handler)
+end
+
 -- Apply a screen result: { transition = E.MenuTransition.*, screen = id, args = {}, result = {} }
 function Route:apply(entry, res)
     if not res or res.transition == nil or res.transition == T.NONE then return end
@@ -133,17 +164,9 @@ function Route:frame(events)
     end
     local top = self:top()
     if not top then return end
-    local policy = self.game.menu_b_policy
-    if type(policy) == "function" then policy = policy() end
-    if policy == BPolicy.ALWAYS_CANCEL and (events & E.Pad.B) ~= 0 then
-        self:apply(top, {
-            transition = #self.stack > 1 and T.POP or T.EXIT,
-            result = {},
-        })
-        return
-    end
     local m = registry[top.screen]
-    self:apply(top, m.input(top.state, events, self.ctx))
+    self:apply(top, dispatch_input(m, top.state, events, self.ctx, nil,
+                                   #self.stack, true))
 end
 
 function Route:field_return_transition_snapshot()

@@ -582,6 +582,7 @@ enum class MenuScreen : std::int64_t {
     MATRIX_SEARCH = 0x27,
     TAXI_SELECTOR = 0x28,
     NOTEBOOK_CURRENT_RUN = 0x29,
+    SHOP = 0x2A,
 };
 enum class MenuSound : std::int64_t {
     DAMAGE = 0x18,

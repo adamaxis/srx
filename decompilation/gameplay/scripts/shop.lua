@@ -3,6 +3,8 @@
 local E = require("enums")
 local Catalog = require("data.shop_catalog")
 local service_title, action_heading = Catalog.service_title, Catalog.action_heading
+local Route = require("menu.route")
+local T = E.MenuTransition
 
 local Shop = {}
 local E = require("enums")
@@ -38,103 +40,30 @@ function Shop.open_menu(shop_id)
     return menu_snapshot(menu, true, "opened")
 end
 
-function Shop.advance_menu(controller_events)
+function Shop.advance_menu(controller_events, menu_b_policy,
+                           transaction_active)
     local menu = assert(game.shop_menu, "shop menu is not open")
-    local definition = assert(Shop.catalog[menu.shop_id],
-        "active shop menu definition is missing")
-    local function snapshot(event)
-        return menu_snapshot(menu, true, event)
-    end
-    local function move_cursor(delta)
-        local maximum = menu.action_panel == 0
-            and (menu.menu_result == 0 and 3 or 5)
-            or 7
-        local candidate = menu.action_cursor + delta
-        if candidate < 0 then
-            candidate = 0
-        elseif candidate > maximum then
-            candidate = maximum
-        end
-        if candidate == menu.action_cursor then
-            return snapshot("no_change")
-        end
-        menu.action_cursor = candidate
-        if menu.action_panel == 0 or menu.menu_result == 1 then
-            menu.selected_action = candidate
-        end
-        return snapshot("selection_moved")
-    end
-    local function move_panel(delta)
-        if menu.menu_result == 1 then
-            return snapshot("no_change")
-        end
-        local candidate = menu.action_panel + delta
-        if candidate < 0 or candidate > 1 then
-            return snapshot("no_change")
-        end
-        if candidate == menu.action_panel then
-            return snapshot("no_change")
-        end
-        menu.action_panel = candidate
-        menu.action_cursor = 0
-        if candidate == 0 then
-            menu.selected_action = 0
-        end
-        return snapshot("panel_changed")
-    end
-
-    -- Source input priority follows 0x56AC0: cursor, panel, confirm,
-    -- runner-menu setup, then return to the field caller. Masks are the
-    -- FFDD22 edge byte: LEFT 0x0400, UP 0x0100, RIGHT 0x0800, DOWN 0x0200,
-    -- A|B 0x5000, C 0x2000, START 0x8000 [C].
-    if (controller_events & E.Pad.LEFT) ~= 0 then
-        return move_cursor(-1)
-    elseif (controller_events & E.Pad.UP) ~= 0 then
-        return move_panel(-1)
-    elseif (controller_events & E.Pad.RIGHT) ~= 0 then
-        return move_cursor(1)
-    elseif (controller_events & E.Pad.DOWN) ~= 0 then
-        return move_panel(1)
-    elseif (controller_events & (E.Pad.A | E.Pad.B)) ~= 0 then
-        if menu.action_panel == 0 then
-            menu.selected_action = menu.action_cursor
-            return snapshot("no_change")
-        end
-        local group = definition.groups[
-            menu.menu_result == 1 and 1 or menu.selected_action + 1]
-        if group == nil then
-            return snapshot("source_action_boundary")
-        elseif menu.menu_result == 1 then
-            return snapshot(group.equipment_upgrade_offers[
-                menu.action_cursor + 1] and "equipment_upgrade_selected"
-                or "offer_unavailable")
-        elseif group.id == "sell" then
-            return snapshot("sale_selected")
-        elseif #group.progression_offers > 0 then
-            return snapshot(group.progression_offers[menu.action_cursor + 1]
-                and "progression_selected" or "offer_unavailable")
-        elseif #group.offers > 0 then
-            return snapshot(group.offers[menu.action_cursor + 1]
-                and "purchase_selected" or "offer_unavailable")
-        end
-        return snapshot("source_action_boundary")
-    elseif (controller_events & E.Pad.C) ~= 0 then
-        menu.action_cursor = 0
-        menu.action_panel = 0
-        menu.selected_action = 0
-        return snapshot("active_runner_change_requested")
-    elseif (controller_events & E.Pad.START) ~= 0 then
-        local closed = menu_snapshot(menu, false, "returned_to_field")
+    -- The input route registers one generic shop screen. Its single policy
+    -- gate handles B for all catalog entries; the transaction prompt remains
+    -- a host service, but ALWAYS_CANCEL still preempts that prompt here.
+    require("menu.field_init")
+    local result = Route.dispatch_screen_input(
+        E.MenuScreen.SHOP, menu, controller_events,
+        { game = { menu_b_policy = menu_b_policy } }, menu_b_policy,
+        transaction_active ~= true)
+    if result.transition == T.EXIT then
+        local closed = menu_snapshot(menu, false,
+            result.event or "returned_to_field")
         game.shop_menu = nil
         return closed
     end
-    return snapshot("no_change")
+    return menu_snapshot(menu, true, result.event or "no_change")
 end
 
 function Shop.reset_menu()
     local menu = assert(game.shop_menu, "shop menu is not open")
     menu.action_cursor = 0
-    menu.action_panel = 0
+    menu.action_panel = menu.menu_result == 1 and 1 or 0
     menu.selected_action = 0
     return menu_snapshot(menu, true, "no_change")
 end

@@ -11387,7 +11387,8 @@ std::optional<ScriptShopMenuSnapshot> GameScriptRuntime::open_shop_menu(
 }
 
 std::optional<ScriptShopMenuSnapshot> GameScriptRuntime::advance_shop_menu(
-    const std::uint16_t controller_events) {
+    const std::uint16_t controller_events,
+    const bool transaction_active) {
     auto* state = impl_->state;
     if (state == nullptr) {
         impl_->failure = "Lua runtime is unavailable for shop menus";
@@ -11409,7 +11410,14 @@ std::optional<ScriptShopMenuSnapshot> GameScriptRuntime::advance_shop_menu(
     }
     lua_remove(state, -2);
     lua_pushinteger(state, controller_events);
-    if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
+    if (impl_->menu_route_bindings.game.menu_b_policy) {
+        const auto policy = impl_->menu_route_bindings.game.menu_b_policy();
+        lua_pushlstring(state, policy.data(), policy.size());
+    } else {
+        lua_pushnil(state);
+    }
+    lua_pushboolean(state, transaction_active);
+    if (lua_pcall(state, 3, 1, 0) != LUA_OK) {
         return fail("shop.lua menu input handler failed: " +
                     stack_error(state));
     }

@@ -2784,7 +2784,8 @@ public:
     std::optional<ScriptShopMenuSnapshot> open_shop_menu(
         std::string_view shop_id);
     std::optional<ScriptShopMenuSnapshot> advance_shop_menu(
-        std::uint16_t controller_events);
+        std::uint16_t controller_events,
+        bool transaction_active = false);
     std::optional<ScriptShopMenuSnapshot> reset_shop_menu();
     bool close_shop_menu();
     std::optional<ScriptItemCatalog> item_catalog();

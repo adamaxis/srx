@@ -48,6 +48,7 @@ Route.register(E.MenuScreen.MATRIX_SEARCH,
                require("menu.screens.matrix_search"))
 Route.register(E.MenuScreen.TAXI_SELECTOR,
                require("menu.screens.taxi_selector"))
+Route.register(E.MenuScreen.SHOP, require("menu.screens.shop"))
 local save_load = require("menu.screens.save_load")
 Route.register(E.MenuScreen.SAVE_LOAD, save_load.SaveLoad)
 Route.register(E.MenuScreen.SAVE_SLOT, save_load.Slot)
