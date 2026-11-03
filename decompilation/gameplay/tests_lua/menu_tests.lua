@@ -139,6 +139,29 @@ r:frame(P.LEFT); check(st(r).section == Section.POCKET_SECRETARY, "wrap down")
 -- [H] The Lua hold represents the CPU-bound picture decode and extends the
 -- measured per-picture delays to the native menu route.
 do
+    -- ROM 0x12A8C reads a firearm's magazine capacity from D4540 + 0x24
+    -- and draws that value through 0x6AC46; the separate 0x36FC HUD uses
+    -- live +0x4E. GPGX frames show main AMMO 11 with current 04 equipped
+    -- and 00 unarmed; the supplied refs show those corresponding states.
+    local function l36_main_ammo(equipped)
+        local menu, _, game = mk({ items = { [0] = "american_l36" } })
+        local runner = game.party[0]
+        runner.rounds = 4
+        if equipped then
+            runner.equipped_weapon_id = "american_l36"
+            runner.equipped_weapon_cell = Inventory.cell(0, 0)
+        end
+        menu:frame(P.RIGHT) -- Pocket Secretary -> Inventory, ROM 0x114A0.
+        return st(menu).inventory_ammo_count, runner.rounds
+    end
+    local unequipped_ammo, unequipped_rounds = l36_main_ammo(false)
+    check(unequipped_ammo == 0x0B and unequipped_rounds == 4,
+          "hovered unequipped L36 shows ROM magazine capacity 11 [C 0x12A8C, 0xD45C4; GPGX #40]")
+    local equipped_ammo, equipped_rounds = l36_main_ammo(true)
+    check(equipped_ammo == 0x0B and equipped_rounds == 4,
+          "equipped L36 main detail stays at ROM magazine capacity 11 while HUD rounds remain 04 [C 0x12A8C, 0x36FC; GPGX #40]")
+end
+do
     local held, held_log, held_game = mk({ items = {
         [0] = "model_101t",
         [1] = "armor_clothing",

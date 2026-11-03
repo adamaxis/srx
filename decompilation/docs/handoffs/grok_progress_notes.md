@@ -3,7 +3,7 @@
 This file is kept in the repo so the notes survive if the box is wiped. The box's /workspace/shadowrun/out was lost on 2026-10-31.
 Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 
-## Current state (2026-11-03 08:03 CST)
+## Current state (2026-11-03 08:51 CST)
 - Remote port-fixes: see latest Fixes entry. QA_GREEN (ctest all pass, Lua suites pass). Working playtest_2026-11-01 items one Luna run at a time.
 - In progress: Luna (codex exec, gpt-6-luna, max effort, fast tier off) is fixing aa3b2cb7 forward. Brief is /workspace/briefs/aa3b.md, the earlier partial work is /workspace/briefs/aa3b_wip.diff and stash 'aa3b-wip'.
 - Box toolchain: `. /workspace/tcenv.sh` (conda env /workspace/mamba/envs/srx). Build dirs are /workspace/b2 (Qt) and /workspace/b2n (non-Qt). Full QA is /workspace/qa.sh, which prints QA_GREEN.
@@ -88,6 +88,7 @@ Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 - playtest #35b: #35b: SEGA reveal exact row counts at 14 checkpoints. [C] 0x5D746, 0x5D938->0x5D996, 0x5DAC4->0x0D44->0x5DAFC, 0x5D8BA; GPGX phase-aligned crops 318..2755 all exact
 - playtest #E1b: #E1b: GPGX-measured E1 callback branches fixture + test. [C] 0x5152/0x51E4/0x55B78, 0x52BE/0x5322/0x144CA, 0x53C4/0x5494; GPGX capture_e1_effect_callbacks.py 17-row fixture
 - playtest #39: #39: inventory hover Atk/Def preview audit; add #39-#43 rows, rom_deviations.md. [C] 0x12CEE->0x12148, skill 0x12C74, Atk 0xCF3D4, Def 0xCF610; GPGX same-state + user ref, headless port frame
+- playtest #40: #40: firearm main-panel max ammo vs portrait current rounds. [C] 0x12A8C draws D4540 +0x24 capacity (0xD45C4), portrait 0x36FC live +0x4E; GPGX same-state L36 11/04 fixtures + user refs 2,3
 
 ## Open work, in order
 1. Get ctest green again by fixing aa3b2cb7 forward.

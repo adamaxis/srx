@@ -60411,12 +60411,13 @@ int main(int argc, char** argv) {
                         const bool weapon_item = item_code <
                             static_cast<std::uint8_t>(
                                 srx::ItemId::FRAG_GRENADE);
-                        const bool selected_equipped_weapon = weapon_item &&
-                            profile.equipped_inventory_slot ==
-                                static_cast<std::int8_t>(slot) &&
-                            profile.equipped_item_code == item_code;
+                        // [C] ROM 0x12A8C reads firearm capacity from the
+                        // selected D4540 row's +0x24 detail byte whether or
+                        // not the item is equipped. The separate portrait
+                        // meter at 0x36FC reads live +0x4E. Use the raw ROM
+                        // capacity above as the expected menu pixel value.
                         const auto displayed_value = weapon_item
-                            ? profile.ammo_rounds
+                            ? source_weapon_capacity(item_code)
                             : phase;
                         const auto asset_path =
                             asset_root / "menu" / "field" /
@@ -60425,34 +60426,27 @@ int main(int argc, char** argv) {
                              ".bmp");
                         const QImage asset(QString::fromStdWString(
                             asset_path.wstring()));
-                        QImage empty_ammo_value(16, 8,
-                                                QImage::Format_RGB32);
-                        empty_ammo_value.fill(Qt::black);
-                        const bool value_matches = weapon_item
-                            ? (selected_equipped_weapon &&
-                               asset.size() == QSize(16, 8) &&
-                               region_matches_asset(scene, asset, 120, 56))
-                            : (asset.size() == QSize(16, 8) &&
-                               region_matches_asset(scene, asset, 120, 56));
-                        const bool empty_ammo_matches = weapon_item &&
-                            !selected_equipped_weapon &&
-                            region_matches_asset(scene, empty_ammo_value,
-                                                 120, 56);
-                        if (!value_matches && !empty_ammo_matches) {
+                        const bool value_matches =
+                            asset.size() == QSize(16, 8) &&
+                            region_matches_asset(scene, asset, 120, 56);
+                        if (!value_matches) {
                             std::cerr
                                 << "field profile combat-bar QA: detail "
                                    "value pixels do not match the selected "
-                                   "Lua ammo count or item detail for "
+                                   "ROM capacity or item detail for "
                                 << expected.slug << " slot=" << slot
                                 << " item="
                                 << static_cast<unsigned>(item_code)
                                 << " phase="
                                 << static_cast<unsigned>(phase) << " rounds="
                                 << static_cast<unsigned>(profile.ammo_rounds)
+                                << " expected="
+                                << static_cast<unsigned>(displayed_value)
                                 << '\n';
                             return profile_failure(
-                                "selected detail did not render its named "
-                                "16x8 ammo or item asset at the ROM destination");
+                                "selected firearm did not render its ROM "
+                                "capacity, or item did not render its named "
+                                "16x8 detail asset at the ROM destination");
                         }
                         std::ostringstream frame_name;
                         frame_name << expected.slug << "-slot" << slot
@@ -65205,6 +65199,44 @@ int main(int argc, char** argv) {
                         painter.end();
                         return image;
                     };
+                const auto render_inventory_after_source_input =
+                    [&](const RunnerRecordFields& runner) {
+                    qt_runtime::FieldSceneRuntime fresh_scene(
+                        [](const auto&) {});
+                    if (!fresh_scene.bootstrap(smoke_state)) {
+                        return QImage{};
+                    }
+                    fresh_scene.active_runner_record() = runner;
+                    fresh_scene.refresh_field_hud_for_dump();
+                    if (!fresh_scene.open_command_overview_for_dump()) {
+                        return QImage{};
+                    }
+                    for (std::size_t move = 0U;
+                         move < 7U &&
+                         fresh_scene.command_overview_view()
+                                 .source_state.primary_page != 0U;
+                         ++move) {
+                        const auto previous =
+                            qa_command_inventory_selection(fresh_scene);
+                        tap_qa_controller_button(
+                            fresh_scene,
+                            static_cast<std::uint8_t>(srx::Pad::HELD_LEFT));
+                        settle_qa_command_inventory_item_change(fresh_scene,
+                                                                previous);
+                    }
+                    if (!fresh_scene.command_overview_open() ||
+                        fresh_scene.command_overview_view()
+                                .source_state.primary_page != 0U) {
+                        return QImage{};
+                    }
+                    QImage image(kSceneWidth, kSceneHeight,
+                                 QImage::Format_RGB32);
+                    image.fill(Qt::black);
+                    QPainter painter(&image);
+                    fresh_scene.paint(painter);
+                    painter.end();
+                    return image;
+                };
                 const auto item_factor = [](const std::uint8_t item_code) {
                     const auto* definition =
                         find_us_item_definition(item_code);
@@ -65212,6 +65244,109 @@ int main(int argc, char** argv) {
                                ? std::uint8_t{0}
                                : definition->source_combat_factor;
                 };
+                // Compare the two #40 detail/count pixels with independent
+                // Genesis Plus GX captures. The main value is the ROM L36
+                // capacity (0x12A8C, D45A0 + 0x24 = 11); the right HUD is
+                // live current ammo (0x36FC, +0x4E = 4 when equipped, 0 when
+                // unarmed). These fixtures are emulator frames, not output
+                // produced by this renderer.
+                // [C] GPGX and host CRAM conversion differ by at most 11
+                // channel levels in these digit crops; compare every pixel
+                // with a 12-level palette-conversion tolerance.
+                const auto l36_equipped_gpgx = QImage(
+                    QString::fromStdWString(
+                        (asset_root.parent_path() / "ghidra_conversion" /
+                         "qt_runtime" / "tests" / "qa" / "fixtures" /
+                         "gpgx_us_l36_ammo11_current04.png")
+                            .wstring()));
+                const auto l36_unequipped_gpgx = QImage(
+                    QString::fromStdWString(
+                        (asset_root.parent_path() / "ghidra_conversion" /
+                         "qt_runtime" / "tests" / "qa" / "fixtures" /
+                         "gpgx_us_l36_ammo11_unequipped.png")
+                            .wstring()));
+                const auto gpgx_ammo_pixels_match =
+                    [](const QImage& scene, const QImage& reference) {
+                    constexpr QRect kMainAmmoDigits(120, 56, 16, 8);
+                    constexpr QRect kPortraitAmmoDigits(272, 72, 16, 8);
+                    constexpr int kPaletteConversionTolerance = 12;
+                    const auto region_matches = [&](const QRect& region) {
+                        for (int y = region.top(); y <= region.bottom(); ++y) {
+                            for (int x = region.left(); x <= region.right();
+                                 ++x) {
+                                const auto actual = scene.pixelColor(x, y);
+                                const auto expected = reference.pixelColor(x, y);
+                                const auto delta = [](const int left,
+                                                     const int right) {
+                                    return left > right ? left - right
+                                                        : right - left;
+                                };
+                                if (delta(actual.red(), expected.red()) >
+                                        kPaletteConversionTolerance ||
+                                    delta(actual.green(), expected.green()) >
+                                        kPaletteConversionTolerance ||
+                                    delta(actual.blue(), expected.blue()) >
+                                        kPaletteConversionTolerance) {
+                                    return false;
+                                }
+                            }
+                        }
+                        return true;
+                    };
+                    return scene.size() == QSize(kSceneWidth, kSceneHeight) &&
+                           reference.size() ==
+                               QSize(kSceneWidth, kSceneHeight) &&
+                           region_matches(kMainAmmoDigits) &&
+                           region_matches(kPortraitAmmoDigits);
+                };
+                if (item_factor(3U) != 0x0BU ||
+                    l36_equipped_gpgx.isNull() ||
+                    l36_unequipped_gpgx.isNull()) {
+                    std::cerr << "field action dump: L36 ROM capacity or "
+                                 "independent GPGX reference is missing\n";
+                    return 3;
+                }
+                auto l36_equipped_record =
+                    field_scene.active_runner_record();
+                l36_equipped_record.inventory_item_codes[0U] = 3U;
+                l36_equipped_record.inventory_phase_bytes[0U] = 0U;
+                l36_equipped_record.equipped_inventory_slot = 0;
+                l36_equipped_record.equipped_item_code = 3U;
+                l36_equipped_record.ammo_rounds = 4U;
+                const auto l36_equipped_scene =
+                    render_inventory_after_source_input(l36_equipped_record);
+                auto l36_unequipped_record = l36_equipped_record;
+                l36_unequipped_record.equipped_inventory_slot = -1;
+                l36_unequipped_record.equipped_item_code = 0U;
+                l36_unequipped_record.ammo_rounds = 37U;
+                const auto l36_unequipped_scene =
+                    render_inventory_after_source_input(
+                        l36_unequipped_record);
+                const bool l36_equipped_saved =
+                    l36_equipped_scene.save(QString::fromStdWString(
+                        (*field_action_dump_path /
+                         "l36-equipped-current04.bmp")
+                            .wstring()));
+                const bool l36_unequipped_saved =
+                    l36_unequipped_scene.save(QString::fromStdWString(
+                        (*field_action_dump_path /
+                         "l36-unequipped-current00.bmp")
+                            .wstring()));
+                const bool l36_equipped_matches =
+                    gpgx_ammo_pixels_match(l36_equipped_scene,
+                                           l36_equipped_gpgx);
+                const bool l36_unequipped_matches =
+                    gpgx_ammo_pixels_match(l36_unequipped_scene,
+                                           l36_unequipped_gpgx);
+                if (!l36_equipped_saved || !l36_unequipped_saved ||
+                    !l36_equipped_matches || !l36_unequipped_matches) {
+                    std::cerr << "field action dump: L36 main AMMO and "
+                                 "portrait count pixels differed from the "
+                                 "same-state GPGX captures (equipped="
+                              << l36_equipped_matches << ", unequipped="
+                              << l36_unequipped_matches << ")\n";
+                    return 3;
+                }
                 const auto same_equipment_state =
                     [](const RunnerRecordFields& left,
                        const RunnerRecordFields& right,

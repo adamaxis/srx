@@ -4,6 +4,7 @@
 local E = require("enums")
 local Inv = require("menu.rules.inventory")
 local Items = require("items").by_id
+local ItemDefinitions = require("data.items").by_id
 local P, Section, R, T, S = E.Pad, E.CommandSection, E.MenuRegion, E.MenuTransition, E.MenuSound
 local SECTION_ORDER = {
     Section.INVENTORY_LEFT, Section.INVENTORY_RIGHT, Section.CLIPS,
@@ -187,14 +188,13 @@ end
 
 local function update_inventory_ammo_count(st, ctx)
     st.inventory_ammo_count = nil
-    local record = leader(ctx)
     local selected = selected_inventory_item(st, ctx)
-    if selected and record.equipped_weapon_id and
-       Items[record.equipped_weapon_id] and
-       Items[record.equipped_weapon_id].kind == "firearm" and
-       Inv.same_cell(selected.cell, record.equipped_weapon_cell) and
-       selected.id == record.equipped_weapon_id then
-        st.inventory_ammo_count = record.rounds
+    local definition = selected and ItemDefinitions[selected.id]
+    if definition and definition.kind == E.ItemKind.FIREARM then
+        -- ROM 0x12A8C draws the selected firearm's D4540 +0x24 magazine
+        -- capacity in the main detail row. The portrait HUD independently
+        -- shows live +0x4E through 0x36FC.
+        st.inventory_ammo_count = ctx.game.magazine_capacity(selected.id)
     end
 end
 
