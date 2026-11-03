@@ -3,7 +3,7 @@
 This file is kept in the repo so the notes survive if the box is wiped. The box's /workspace/shadowrun/out was lost on 2026-10-31.
 Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 
-## Current state (2026-11-02 21:37 CST)
+## Current state (2026-11-02 21:57 CST)
 - Remote port-fixes: see latest Fixes entry. QA_GREEN (ctest all pass, Lua suites pass). Working playtest_2026-11-01 items one Luna run at a time.
 - In progress: Luna (codex exec, gpt-6-luna, max effort, fast tier off) is fixing aa3b2cb7 forward. Brief is /workspace/briefs/aa3b.md, the earlier partial work is /workspace/briefs/aa3b_wip.diff and stash 'aa3b-wip'.
 - Box toolchain: `. /workspace/tcenv.sh` (conda env /workspace/mamba/envs/srx). Build dirs are /workspace/b2 (Qt) and /workspace/b2n (non-Qt). Full QA is /workspace/qa.sh, which prints QA_GREEN.
@@ -76,6 +76,7 @@ Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 - playtest #28: #28b-4: ROM text delay for contacts; classify 253 unresolved records. Evidence [C]: 0xEB92->0xECCC->0x21174/0xFE640, 0x1F146, 0x53C90, 0x54402, gates 0xA84C/0xA86E/0xA878; GPGX forced-state first text 22/23/24 = port; enumerator --check
 - playtest #37b: #37b: dialogue framework executor drives all exits. [C] 0xB834->0xBC36/0xBD34 heading 0x09B8; Haggard 0x20FA2->0x23BB4->0x23CF2 forced GPGX r95.state; Renraku 0x2CE0->0x53EE2->0x1F246 lock 0x1E2EC; Stoker 0x173138->0x1F65A
 - playtest #38: #38: generic per-actor post-attack movement lockout. [C] 15-row forced-RAM GPGX fixture (jh0.state) pistol/SMG/shotgun/spell, skill 0/8, Q/I, WR bits 12-14; 0xA8EA, 0xACAE/0xAD1A, 0xABFC, 0xD7EA/0xD81C, 0xB39A/0xB3EE->0xB574, 0xAF7C/0xAFAE/0xAFE2
+- playtest #30: #30: B-button ROM audit (partial) and #38b follow-up row. [C] 0x195C/FFDD22 B=0x1000; Command 0x10EC8->0x10E4E; spell 0xFD72->0xFF5A; PocketSec 0xC2A6 no B; Notebook 0xF236; Johnsons 0xF5C2->0xF592; headless port 1-update measurements
 
 ## Open work, in order
 1. Get ctest green again by fixing aa3b2cb7 forward.
