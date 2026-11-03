@@ -46,25 +46,31 @@ function Startup.advance_title_circuit_lights(completion_state)
     return { title_circuit_lights.phase, title_circuit_lights.countdown }
 end
 
--- The logo's blue fill advances down its 32-pixel mark while a changing
--- partial-coverage band leaves the measured flickering fringe. Values come
--- from independent GPGX frames paired with longplay frames; the host only
--- presents the returned rows and coverage. See the frame audit for each 30-fps
--- sample and the remaining uncertainty about the source random line stream.
-function Startup.sega_logo_reveal(effect_counter, source_frame_countdown)
+-- The source counter steps every other VBlank after its initial countdown.
+-- GPGX measurements show a changing, non-monotonic fringe across all 32 rows;
+-- return source-sized row counts and let the host present that typed state.
+function Startup.sega_logo_reveal(effect_counter, source_logo_phase)
     local R = E.PreTitleLogoReveal
-    local phase = source_frame_countdown % R.SHIMMER_PHASE_COUNT
+    local phase = source_logo_phase % R.SHIMMER_PHASE_COUNT
+    local function result(stage, row_pixels)
+        local values = { stage }
+        for row = 1, R.LOGO_HEIGHT do
+            values[#values + 1] = row_pixels[row]
+        end
+        values[#values + 1] = phase
+        return values
+    end
+    local hidden_rows = {}
+    for row = 1, R.LOGO_HEIGHT do
+        hidden_rows[row] = 0
+    end
     if effect_counter > R.HIDDEN_ABOVE_COUNTER then
-        return { R.STAGE_HIDDEN, 0, 0, 0, 0, phase }
+        return result(R.STAGE_HIDDEN, hidden_rows)
     end
 
     local checkpoints = R.CHECKPOINTS
     if effect_counter <= R.FULL_REVEAL_COUNTER then
-        local full = checkpoints[#checkpoints]
-        return {
-            R.STAGE_COMPLETE, full.full_rows, full.shimmer_rows,
-            full.leading_coverage, full.trailing_coverage, phase,
-        }
+        return result(R.STAGE_COMPLETE, R.FULL_ROW_PIXEL_COUNTS)
     end
 
     for index = 1, #checkpoints - 1 do
@@ -73,23 +79,20 @@ function Startup.sega_logo_reveal(effect_counter, source_frame_countdown)
         if effect_counter <= left.counter and effect_counter >= right.counter then
             local progress = (left.counter - effect_counter) /
                 (left.counter - right.counter)
-            local function blend(first, last)
-                return math.floor(first + (last - first) * progress + 0.5)
+            local row_pixels = {}
+            for row = 1, R.LOGO_HEIGHT do
+                row_pixels[row] = math.floor(
+                    left.row_pixels[row] +
+                    (right.row_pixels[row] - left.row_pixels[row]) * progress +
+                    0.5)
             end
-            return {
-                R.STAGE_SHIMMER,
-                blend(left.full_rows, right.full_rows),
-                blend(left.shimmer_rows, right.shimmer_rows),
-                blend(left.leading_coverage, right.leading_coverage),
-                blend(left.trailing_coverage, right.trailing_coverage),
-                phase,
-            }
+            return result(R.STAGE_SHIMMER, row_pixels)
         end
     end
 
     -- The counter can only move downward through the measured reveal range.
     -- Keep the boundary explicit if an unexpected caller supplies a gap.
-    return { R.STAGE_HIDDEN, 0, 0, 0, 0, phase }
+    return result(R.STAGE_HIDDEN, hidden_rows)
 end
 
 -- ROM 0x5A0B2 advances the four orc map patches before 0x5A146 installs the

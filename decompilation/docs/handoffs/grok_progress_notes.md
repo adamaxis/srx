@@ -3,7 +3,7 @@
 This file is kept in the repo so the notes survive if the box is wiped. The box's /workspace/shadowrun/out was lost on 2026-10-31.
 Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 
-## Current state (2026-11-03 03:24 CST)
+## Current state (2026-11-03 04:00 CST)
 - Remote port-fixes: see latest Fixes entry. QA_GREEN (ctest all pass, Lua suites pass). Working playtest_2026-11-01 items one Luna run at a time.
 - In progress: Luna (codex exec, gpt-6-luna, max effort, fast tier off) is fixing aa3b2cb7 forward. Brief is /workspace/briefs/aa3b.md, the earlier partial work is /workspace/briefs/aa3b_wip.diff and stash 'aa3b-wip'.
 - Box toolchain: `. /workspace/tcenv.sh` (conda env /workspace/mamba/envs/srx). Build dirs are /workspace/b2 (Qt) and /workspace/b2n (non-Qt). Full QA is /workspace/qa.sh, which prints QA_GREEN.
@@ -85,6 +85,7 @@ Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 - playtest #34: #34: pedestrian gate audit, no code change. [C] 0xA800..0xA8AC gate, 0x43B6 alloc; GPGX scene 0x1A frames 1-60 no walker; port headless frame sprite 405/405 px when gated
 - playtest #35: #35: SEGA logo top-down shimmer reveal. [C] 0x5D746, 0x5D938->0x5D996, 0x5DAC4->0x0D44->0x5DAFC, 0x5D8BA; GPGX/port crop px 318/317 1017/1016 1888/1983 2545/2529 2755/2755
 - playtest #34b: #34b: pedestrian visibility audit, no code change. [C] 0xD5538/0x172D1C/0x67A00 default lists, 0xA800..0xA8AC gate; longplay 30fps 20/20; headless frames 18/18 visible
+- playtest #35b: #35b: SEGA reveal exact row counts at 14 checkpoints. [C] 0x5D746, 0x5D938->0x5D996, 0x5DAC4->0x0D44->0x5DAFC, 0x5D8BA; GPGX phase-aligned crops 318..2755 all exact
 
 ## Open work, in order
 1. Get ctest green again by fixing aa3b2cb7 forward.

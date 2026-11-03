@@ -1011,25 +1011,39 @@
             return 3;
         }
         trace << "longplay_frame\trom_frame\teffect_counter\t"
-                 "source_pixels\tport_pixels\trow_profile_error_percent\t"
-                 "image\n";
+                 "source_phase\tsource_phase_countdown\tport_phase\t"
+                 "port_phase_countdown\tport_lightning_phase\t"
+                 "source_pixels\tport_pixels\t"
+                 "row_count_mismatches\timage\n";
 
         struct Sample {
             std::int16_t effect_counter;
             std::uint16_t longplay_frame;
             std::uint16_t rom_frame;
+            std::uint8_t logo_phase;
+            std::int16_t logo_phase_countdown;
             const char* reference;
             std::uint32_t expected_pixels;
         };
-        // GPGX frames e_00240..e_00320 pair with longplay f_0080..f_0120.
-        // Their 110x41-pixel counts and per-row profile are an independent
-        // oracle for the Qt-rendered boot scene, not a re-encoding of assets.
-        constexpr std::array<Sample, 5> kSamples{{
-            {54, 80, 240, "e_00240.png", 318U},
-            {44, 90, 260, "e_00260.png", 1017U},
-            {34, 100, 280, "e_00280.png", 1888U},
-            {24, 110, 300, "e_00300.png", 2545U},
-            {14, 120, 320, "e_00320.png", 2755U},
+        // These GPGX screenshots pair with longplay section 00 frames using
+        // e = 240 + 2*(f - 80). The RAM phase fields are read from the same
+        // emulator capture. Exact row counts catch edge density and phase;
+        // a broad total-pixel tolerance hid the counter-34 defect.
+        constexpr std::array<Sample, 14> kSamples{{
+            {54, 80, 240, 0U, 2, "e_00240.png", 318U},
+            {50, 84, 248, 2U, 2, "e_00248.png", 556U},
+            {46, 88, 256, 4U, 2, "e_00256.png", 857U},
+            {44, 90, 260, 5U, 2, "e_00260.png", 1017U},
+            {42, 92, 264, 0U, 2, "e_00264.png", 1173U},
+            {38, 96, 272, 2U, 2, "e_00272.png", 1540U},
+            {34, 100, 280, 4U, 2, "e_00280.png", 1888U},
+            {30, 104, 288, 0U, 2, "e_00288.png", 2212U},
+            {26, 108, 296, 2U, 2, "e_00296.png", 2500U},
+            {24, 110, 300, 3U, 2, "e_00300.png", 2545U},
+            {22, 112, 304, 4U, 2, "e_00304.png", 2661U},
+            {18, 116, 312, 0U, 2, "e_00312.png", 2728U},
+            {17, 117, 314, 0U, 0, "e_00314.png", 2737U},
+            {14, 120, 320, 2U, 2, "e_00320.png", 2755U},
         }};
         const QRect logo_region(100, 75, 110, 41);
         const auto fail = [](const std::string& message) {
@@ -1080,6 +1094,7 @@
         }
 
         std::uint32_t previous_port_pixels = 0U;
+        bool all_samples_exact = true;
         QImage final_image;
         for (const auto& sample : kSamples) {
             const auto reference_path = reference_directory / sample.reference;
@@ -1088,7 +1103,11 @@
             if (reference.size() != QSize(kSceneWidth, kSceneHeight) ||
                 !advance_until([&] {
                     return state_.pre_title.logo_effect_counter ==
-                           sample.effect_counter;
+                               sample.effect_counter &&
+                           state_.pre_title.logo_phase ==
+                               sample.logo_phase &&
+                           state_.pre_title.logo_phase_countdown ==
+                               sample.logo_phase_countdown;
                 })) {
                 return fail("could not load a source frame or reach counter " +
                             std::to_string(sample.effect_counter));
@@ -1100,33 +1119,27 @@
                 return fail("source reference pixel count changed for " +
                             std::string(sample.reference));
             }
+            const auto port_phase = state_.pre_title.logo_phase;
+            const auto port_lightning_phase =
+                state_.pre_title.sega_lightning_phase;
+            const auto port_phase_countdown =
+                state_.pre_title.logo_phase_countdown;
+            const bool phase_matches =
+                port_phase == sample.logo_phase &&
+                port_lightning_phase == sample.logo_phase &&
+                port_phase_countdown == sample.logo_phase_countdown;
             const auto actual = render_scene();
             const auto actual_rows = row_pixels(actual);
             const auto actual_pixels = total_pixels(actual_rows);
-            std::uint32_t row_profile_error = 0U;
+            std::uint32_t row_count_mismatches = 0U;
             for (std::size_t row = 0U; row < actual_rows.size(); ++row) {
-                const auto source_count = source_rows[row];
-                const auto port_count = actual_rows[row];
-                row_profile_error += source_count > port_count
-                    ? source_count - port_count
-                    : port_count - source_count;
+                row_count_mismatches +=
+                    source_rows[row] == actual_rows[row] ? 0U : 1U;
             }
-            const auto error_percent = static_cast<std::uint32_t>(
-                row_profile_error * 100U / std::max(1U, expected_pixels));
-            const auto pixel_tolerance = std::max(
-                180U, expected_pixels * 22U / 100U);
-            if (actual_pixels + pixel_tolerance < expected_pixels ||
-                actual_pixels > expected_pixels + pixel_tolerance ||
-                error_percent > 34U ||
-                actual_pixels < previous_port_pixels) {
-                return fail("headless frame did not match the GPGX reveal "
-                            "profile at counter " +
-                            std::to_string(sample.effect_counter) +
-                            " (source=" + std::to_string(expected_pixels) +
-                            ", port=" + std::to_string(actual_pixels) +
-                            ", row_error=" +
-                            std::to_string(error_percent) + "%)");
-            }
+            const bool row_profile_matches = row_count_mismatches == 0U;
+            all_samples_exact = all_samples_exact && phase_matches &&
+                                row_profile_matches &&
+                                actual_pixels >= previous_port_pixels;
 
             const auto filename = "counter-" +
                                   std::to_string(sample.effect_counter) +
@@ -1136,9 +1149,26 @@
                 return fail("could not save " + image_path.string());
             }
             trace << sample.longplay_frame << '\t' << sample.rom_frame << '\t'
-                  << sample.effect_counter << '\t' << expected_pixels << '\t'
-                  << actual_pixels << '\t' << error_percent << '\t'
+                  << sample.effect_counter << '\t'
+                  << static_cast<unsigned>(sample.logo_phase) << '\t'
+                  << sample.logo_phase_countdown << '\t'
+                  << static_cast<unsigned>(port_phase) << '\t'
+                  << port_phase_countdown << '\t' << port_lightning_phase
+                  << '\t' << expected_pixels << '\t'
+                  << actual_pixels << '\t' << row_count_mismatches << '\t'
                   << filename << '\n';
+            if (!phase_matches || !row_profile_matches ||
+                actual_pixels < previous_port_pixels) {
+                std::cerr << "SEGA logo reveal QA mismatch at counter "
+                          << sample.effect_counter << " source="
+                          << expected_pixels << " port=" << actual_pixels
+                          << " rows=" << row_count_mismatches
+                          << " phase=" << static_cast<unsigned>(port_phase)
+                          << '/' << port_phase_countdown << " lighting="
+                          << port_lightning_phase << " expected="
+                          << static_cast<unsigned>(sample.logo_phase) << '/'
+                          << sample.logo_phase_countdown << '\n';
+            }
             previous_port_pixels = actual_pixels;
             final_image = actual;
         }
@@ -1148,8 +1178,13 @@
                               "BMP")) {
             return fail("could not save the completed-logo actual.bmp");
         }
+        if (!all_samples_exact) {
+            return fail("headless row profiles and source phases must match "
+                        "all GPGX reveal checkpoints exactly");
+        }
         std::cout << "sega_logo_reveal_qa=passed samples="
-                  << kSamples.size() << " source_pixels=318,1017,1888,2545,2755"
+                  << kSamples.size()
+                  << " exact_row_profiles=1 rom_frames=240..320"
                   << " actual=" << output_directory.string() << '\n';
         return 0;
     }

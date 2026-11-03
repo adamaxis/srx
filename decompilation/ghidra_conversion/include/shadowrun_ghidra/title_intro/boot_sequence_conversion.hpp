@@ -25,10 +25,10 @@ enum class PreTitleLogoRevealStage : std::uint8_t {
 
 struct PreTitleLogoReveal {
     PreTitleLogoRevealStage stage = PreTitleLogoRevealStage::hidden;
-    std::uint8_t fully_revealed_rows = 0U;
-    std::uint8_t shimmer_rows = 0U;
-    std::uint8_t leading_coverage_percent = 0U;
-    std::uint8_t trailing_coverage_percent = 0U;
+    // Lua provides visible source-logo pixels for each of the 32 ROM rows.
+    // This is presentation state measured at the reveal checkpoints, not a
+    // emulated plane or palette.
+    std::array<std::uint8_t, 32U> visible_pixels_by_row{};
     std::uint8_t shimmer_phase = 0U;
 };
 
@@ -53,8 +53,8 @@ struct PreTitleSequenceState {
     // Exact output of the 0x5D996 lightning-batch gate for the frame just
     // built. It can differ from the post-loop presentation stage for one tick.
     bool sega_lightning_batches_active = false;
-    // Lua chooses the top-down logo fill and flicker envelope from the source
-    // effect counter; Qt consumes this as a visual mask only.
+    // Lua chooses per-row logo coverage from the source effect counter and
+    // logo phase; Qt consumes this as a visual mask only.
     PreTitleLogoReveal logo_reveal{};
 
     // 0x5D996 owns these title-phase words. Their initial values are set by

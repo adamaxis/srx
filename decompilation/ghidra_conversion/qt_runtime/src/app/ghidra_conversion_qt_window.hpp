@@ -1186,28 +1186,35 @@ private:
         startup_callbacks_.pre_title.write_horizontal_scroll_stream = no_op;
         startup_callbacks_.pre_title.resolve_logo_reveal =
             [this](const std::int16_t effect_counter,
-                   const std::int16_t source_frame_countdown) {
+                   const std::int16_t source_logo_phase) {
                 const auto values = startup_scripts_.call_integers(
                     "startup", "sega_logo_reveal",
-                    {effect_counter, source_frame_countdown});
-                if (!values.has_value() || values->size() != 6U ||
+                    {effect_counter, source_logo_phase});
+                constexpr std::size_t kRevealRows = 32U;
+                if (!values.has_value() ||
+                    values->size() != kRevealRows + 2U ||
                     (*values)[0] < 0 || (*values)[0] > 2 ||
-                    (*values)[1] < 0 || (*values)[1] > 32 ||
-                    (*values)[2] < 0 || (*values)[2] > 32 ||
-                    (*values)[3] < 0 || (*values)[3] > 100 ||
-                    (*values)[4] < 0 || (*values)[4] > 100 ||
-                    (*values)[5] < 0 || (*values)[5] >= 6) {
+                    (*values)[kRevealRows + 1U] < 0 ||
+                    (*values)[kRevealRows + 1U] >= 6) {
                     throw std::runtime_error(
                         "startup Lua could not resolve the SEGA logo reveal: " +
                         startup_scripts_.failure());
                 }
+                std::array<std::uint8_t, kRevealRows> visible_pixels_by_row{};
+                for (std::size_t row = 0U; row < kRevealRows; ++row) {
+                    const auto visible_pixels = (*values)[row + 1U];
+                    if (visible_pixels < 0 || visible_pixels > 96) {
+                        throw std::runtime_error(
+                            "startup Lua returned an invalid SEGA logo row count");
+                    }
+                    visible_pixels_by_row[row] =
+                        static_cast<std::uint8_t>(visible_pixels);
+                }
                 return PreTitleLogoReveal{
                     static_cast<PreTitleLogoRevealStage>((*values)[0]),
-                    static_cast<std::uint8_t>((*values)[1]),
-                    static_cast<std::uint8_t>((*values)[2]),
-                    static_cast<std::uint8_t>((*values)[3]),
-                    static_cast<std::uint8_t>((*values)[4]),
-                    static_cast<std::uint8_t>((*values)[5]),
+                    visible_pixels_by_row,
+                    static_cast<std::uint8_t>(
+                        (*values)[kRevealRows + 1U]),
                 };
             };
         startup_callbacks_.pre_title.publish_audio_request =
@@ -2102,49 +2109,48 @@ private:
         }
 
         // The independent emulator's full mark spans x=104..199, y=80..111.
-        // Lua supplies the completed rows and the changing fringe coverage;
-        // this small image mask is only the Qt presentation of that state.
+        // Lua supplies source-state row coverage; Qt chooses the within-row
+        // presentation ordering and draws the resulting host image.
         constexpr int kLogoLeft = 104;
         constexpr int kLogoTop = 80;
         constexpr int kLogoWidth = 96;
         constexpr int kLogoHeight = 32;
         auto image = asset->second.copy();
-        const int full_rows = std::min<int>(
-            reveal.fully_revealed_rows, kLogoHeight);
-        const int shimmer_rows = std::min<int>(
-            reveal.shimmer_rows, kLogoHeight - full_rows);
         for (int row = 0; row < kLogoHeight; ++row) {
+            std::array<std::pair<int, int>, kLogoWidth> candidates{};
+            int candidate_count = 0;
             for (int column = 0; column < kLogoWidth; ++column) {
                 const int x = kLogoLeft + column;
                 const int y = kLogoTop + row;
                 const auto pixel = asset->second.pixel(x, y);
-                if ((pixel & 0x00FFFFFFU) == 0U || row < full_rows) {
+                if ((pixel & 0x00FFFFFFU) == 0U) {
                     continue;
                 }
-
-                bool visible = false;
-                if (row < full_rows + shimmer_rows) {
-                    const int fringe_row = row - full_rows;
-                    const int coverage = shimmer_rows <= 1
-                        ? reveal.leading_coverage_percent
-                        : static_cast<int>(reveal.leading_coverage_percent) +
-                              (static_cast<int>(
-                                   reveal.trailing_coverage_percent) -
-                               static_cast<int>(
-                                   reveal.leading_coverage_percent)) *
-                                  fringe_row / (shimmer_rows - 1);
-                    // A stable spatial pattern changes with the Lua phase, so
-                    // the advancing edge glitters without a runtime VDP or
-                    // source-address renderer.
-                    const int sparkle =
-                        (column * 37 + row * 17 +
-                         static_cast<int>(reveal.shimmer_phase) * 23 +
-                         (column * row) % 29) % 100;
-                    visible = sparkle < coverage;
-                }
-                if (!visible) {
-                    image.setPixel(x, y, qRgb(0, 0, 0));
-                }
+                const int sparkle =
+                    (column * 37 + row * 17 +
+                     static_cast<int>(reveal.shimmer_phase) * 23 +
+                     (column * row) % 29) % 100;
+                candidates[static_cast<std::size_t>(candidate_count++)] =
+                    {sparkle, column};
+            }
+            const int visible_count =
+                reveal.visible_pixels_by_row[static_cast<std::size_t>(row)];
+            if (visible_count > candidate_count) {
+                throw std::runtime_error(
+                    "SEGA logo row count exceeds the source logo mask");
+            }
+            std::sort(candidates.begin(),
+                      candidates.begin() + candidate_count,
+                      [](const auto& left, const auto& right) {
+                          return left.first != right.first
+                              ? left.first < right.first
+                              : left.second < right.second;
+                      });
+            for (int index = visible_count; index < candidate_count; ++index) {
+                const int column =
+                    candidates[static_cast<std::size_t>(index)].second;
+                image.setPixel(kLogoLeft + column, kLogoTop + row,
+                               qRgb(0, 0, 0));
             }
         }
         painter.drawImage(record->origin_x, record->origin_y, image);

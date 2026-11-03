@@ -434,28 +434,74 @@ E.PreTitleLogoReveal = {
     HIDDEN_ABOVE_COUNTER = 54,
     FIRST_REVEAL_COUNTER = 54,
     FULL_REVEAL_COUNTER = 17,
-    LOGO_TOP_ROW = 80,
+    LOGO_LEFT = 104,
+    LOGO_TOP = 80,
+    LOGO_WIDTH = 96,
     LOGO_HEIGHT = 32,
     SHIMMER_PHASE_COUNT = 6,
     STAGE_HIDDEN = 0,
     STAGE_SHIMMER = 1,
     STAGE_COMPLETE = 2,
+    FULL_ROW_PIXEL_COUNTS = {
+        7, 62, 72, 75, 80, 79, 80, 82, 82, 82, 84, 84, 84, 86, 86, 86,
+        87, 87, 86, 88, 87, 90, 92, 92, 92, 93, 93, 92, 93, 90, 87, 81,
+    }, -- `boot.sega.background`; complete GPGX mask at e_00320 [C]
     CHECKPOINTS = {
-        -- Independent GPGX captures e_00240/e_00260/e_00280/e_00300/e_00320;
-        -- matching longplay frames f_0080/f_0090/f_0100/f_0110/f_0120.
-        {counter = 54, full_rows = 0, shimmer_rows = 9,
-         leading_coverage = 55, trailing_coverage = 12},
-        {counter = 44, full_rows = 5, shimmer_rows = 14,
-         leading_coverage = 88, trailing_coverage = 12},
-        {counter = 34, full_rows = 15, shimmer_rows = 17,
-         leading_coverage = 88, trailing_coverage = 8},
-        {counter = 24, full_rows = 25, shimmer_rows = 7,
-         leading_coverage = 88, trailing_coverage = 48},
-        {counter = 17, full_rows = 32, shimmer_rows = 0,
-         leading_coverage = 100, trailing_coverage = 100},
+        -- Per-row logo coverage needed to match the full GPGX crop after the
+        -- fixed sprite/lightning layers compose. Covers y=80..111 of the
+        -- 96x32 logo; see the source-state alignment and measurements in
+        -- boot-sega-logo-reveal.md.
+        {counter = 54, row_pixels = {
+            4, 33, 36, 27, 32, 19, 19, 11, 10, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        }}, -- e_00240
+        {counter = 50, row_pixels = {
+            5, 47, 54, 49, 52, 38, 39, 31, 31, 21, 21, 10, 10, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        }}, -- e_00248
+        {counter = 46, row_pixels = {
+            7, 62, 72, 65, 71, 59, 59, 51, 51, 42, 41, 32, 32, 21, 23, 11,
+            10, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
+        }}, -- e_00256
+        {counter = 44, row_pixels = {
+            7, 62, 72, 75, 80, 69, 69, 62, 62, 51, 52, 43, 41, 33, 32, 21,
+            22, 11, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0,
+        }}, -- e_00260
+        {counter = 42, row_pixels = {
+            7, 62, 72, 75, 80, 79, 80, 72, 72, 62, 63, 52, 53, 42, 44, 32,
+            33, 23, 21, 11, 11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        }}, -- e_00264
+        {counter = 38, row_pixels = {
+            7, 62, 72, 75, 80, 79, 80, 82, 82, 82, 84, 73, 73, 65, 65, 53,
+            56, 44, 43, 33, 33, 23, 23, 12, 11, 0, 0, 0, 0, 0, 0, 0,
+        }}, -- e_00272
+        {counter = 34, row_pixels = {
+            7, 62, 72, 75, 80, 79, 80, 82, 82, 82, 84, 84, 84, 86, 86, 75,
+            76, 64, 65, 55, 54, 46, 45, 34, 35, 22, 23, 11, 11, 0, 0, 0,
+        }}, -- e_00280
+        {counter = 30, row_pixels = {
+            7, 62, 72, 75, 80, 79, 80, 82, 82, 82, 84, 84, 84, 86, 86, 86,
+            87, 87, 86, 77, 76, 67, 69, 58, 58, 46, 45, 34, 35, 25, 23, 11,
+        }}, -- e_00288
+        {counter = 26, row_pixels = {
+            7, 62, 72, 75, 80, 79, 80, 82, 82, 82, 84, 84, 84, 86, 86, 86,
+            87, 87, 86, 88, 87, 90, 92, 81, 81, 68, 69, 58, 57, 48, 47, 33,
+        }}, -- e_00296
+        {counter = 24, row_pixels = {
+            7, 62, 72, 75, 80, 79, 80, 82, 82, 82, 84, 84, 84, 86, 86, 86,
+            87, 87, 86, 88, 87, 90, 92, 92, 92, 82, 81, 69, 70, 57, 54, 40,
+        }}, -- e_00300
+        {counter = 22, row_pixels = {
+            7, 62, 72, 75, 80, 79, 80, 82, 82, 82, 84, 84, 84, 86, 86, 86,
+            87, 87, 86, 88, 87, 90, 92, 92, 92, 93, 93, 80, 82, 66, 65, 49,
+        }}, -- e_00304
+        {counter = 18, row_pixels = {
+            7, 62, 72, 75, 80, 79, 80, 82, 82, 82, 84, 84, 84, 86, 86, 86,
+            87, 87, 86, 88, 87, 90, 92, 92, 92, 93, 93, 92, 93, 90, 87, 72,
+        }}, -- e_00312
     },
-} -- [C] GPGX reveal is a 32-row top-down fill with a changing fringe;
-  -- frame counts and visual notes: docs/ghidra/visual-audits/boot-sega-logo-reveal.md
+} -- [C] effect-counter cadence: 0x5D746-0x5D838; sampled row profiles from
+  -- GPGX frames; source behavior and alignment: docs/ghidra/visual-audits/boot-sega-logo-reveal.md
 E.OpeningOrcSequence = {
     HIT_PALETTE_STAGE = 5,       -- 0x5A124/0x5A146 writes white after four patch records [C]
     FIRST_FADE_STAGE = 6,        -- 0x5A16E steps line 0 every nine source updates [C]

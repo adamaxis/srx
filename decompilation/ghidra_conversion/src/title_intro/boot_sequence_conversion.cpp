@@ -528,7 +528,7 @@ PreTitleSequenceResult advance_pre_title_sequence_frame(
     --state.frame_counter;
     if (callbacks.resolve_logo_reveal) {
         state.logo_reveal = callbacks.resolve_logo_reveal(
-            state.logo_effect_counter, state.frame_counter);
+            state.logo_effect_counter, state.logo_phase);
     }
     if (state.frame_counter != -1) {
         return PreTitleSequenceResult::source_complete;
