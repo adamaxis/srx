@@ -1,6 +1,8 @@
 #include "field_scene_runtime.hpp"
 #include "field_scene_runtime_internal.hpp"
 
+#include <variant>
+
 #include "enums.hpp"
 #include "shadowrun_ghidra/scripting/run_location_catalog.hpp"
 #include "shadowrun_ghidra/field/scene_profile_conversion.hpp"
@@ -288,6 +290,9 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
     }
 
     state_.field_scene_buffers = std::move(next_buffers);
+    if (!install_field_obstruction_grid()) {
+        return false;
+    }
     field_map_ = std::move(next_field_map);
     field_map_priority_overlay_ =
         std::move(next_field_map_priority_overlay);
@@ -485,6 +490,9 @@ bool FieldSceneRuntime::restore_world_activity_source_scene(
     // and retain its camera and runner position while replacing the complete
     // resource-scene image.
     state_.field_scene_buffers = snapshot.scene_buffers;
+    if (!install_field_obstruction_grid()) {
+        return false;
+    }
     state_.field_scene_entry = snapshot.scene_entry;
     state_.field_resource_mode = snapshot.scene_buffers.field_resource_mode;
     state_.render_entities = snapshot.render_entities;
@@ -552,6 +560,50 @@ bool FieldSceneRuntime::restore_world_activity_source_scene(
     runtime_state.field_transition_requested = false;
     source_boundary("field.world_activity.source_scene_restored");
     world_activity_return_snapshot_.reset();
+    return true;
+}
+
+bool FieldSceneRuntime::install_field_obstruction_grid() {
+    using ScriptValue = scripting::ScriptPersistentValue;
+
+    const auto& source_rectangles =
+        state_.field_scene_buffers.source_metadata.terrain_collision_rectangles;
+    ScriptValue::Array rectangles;
+    rectangles.reserve(source_rectangles.size());
+    const auto add_integer = [](ScriptValue::Object& rectangle,
+                                const char* name,
+                                const std::int64_t value) {
+        ScriptValue field{};
+        field.value = value;
+        rectangle.emplace(name, std::move(field));
+    };
+    for (const auto& source : source_rectangles) {
+        ScriptValue::Object rectangle;
+        add_integer(rectangle, "left", source.left);
+        add_integer(rectangle, "right", source.right);
+        add_integer(rectangle, "top", source.top);
+        add_integer(rectangle, "bottom", source.bottom);
+        add_integer(rectangle, "value", source.value);
+        ScriptValue item{};
+        item.value = std::move(rectangle);
+        rectangles.push_back(std::move(item));
+    }
+
+    ScriptValue argument{};
+    argument.value = std::move(rectangles);
+    std::vector<ScriptValue> arguments;
+    arguments.push_back(std::move(argument));
+    const auto installed = game_scripts_.call_value(
+        "obstruction_grid", "set_scene", arguments);
+    if (!installed.has_value()) {
+        failure_ = game_scripts_.failure();
+        return false;
+    }
+    const auto* accepted = std::get_if<bool>(&installed->value);
+    if (accepted == nullptr || !*accepted) {
+        failure_ = "field.obstruction_grid.set_scene rejected source rectangles";
+        return false;
+    }
     return true;
 }
 
