@@ -3,7 +3,7 @@
 This file is kept in the repo so the notes survive if the box is wiped. The box's /workspace/shadowrun/out was lost on 2026-10-31.
 Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 
-## Current state (2026-11-03 18:12 CST)
+## Current state (2026-11-03 19:59 CST)
 - Remote port-fixes: see latest Fixes entry. QA_GREEN (ctest all pass, Lua suites pass). Working playtest_2026-11-01 items one Luna run at a time.
 - In progress: Luna (codex exec, gpt-6-luna, max effort, fast tier off) is fixing aa3b2cb7 forward. Brief is /workspace/briefs/aa3b.md, the earlier partial work is /workspace/briefs/aa3b_wip.diff and stash 'aa3b-wip'.
 - Box toolchain: `. /workspace/tcenv.sh` (conda env /workspace/mamba/envs/srx). Build dirs are /workspace/b2 (Qt) and /workspace/b2n (non-Qt). Full QA is /workspace/qa.sh, which prints QA_GREEN.
@@ -97,6 +97,7 @@ Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 - playtest #B478: Restore Lua effect spawn with thin C++ host bridge (b478f30b follow-up). Evidence: ROM 0x15646 / tables 0x15A4C, 0x15A6C, 0x15E56 (verified byte-for-byte) / 0x15D3C; Lua test vs GPGX fixture effect_spawn_gpgx.tsv
 - playtest #K: Karma status/spend screen matches GPGX replay of e8_karma_spend (#K). Evidence: ROM 0xD82A..0xDA12 (preview/costs), 0xD53C..0xD5DA (prompt), 0xD42E..0xD474; GPGX replay reproduced recording RAM exactly; fixtures from GPGX
 - playtest #D: Deck screens: CyberInfo title per ROM, GPGX Test Deck compare. Evidence: ROM 0x18AA6/0x18AB0/0xE3886, 0x59B7E, 0x18B5C; headless GPGX Test Deck captures
+- playtest #34c: Pedestrians: publish default actor list on first service pass after New Game intro (#34c). Evidence: ROM 0x172D1C/0x43B6/0x449A..0x44BC/0xA8EA; GPGX cold-boot real-route trace + frames; A800 closed in both
 
 ## Open work, in order
 1. Get ctest green again by fixing aa3b2cb7 forward.

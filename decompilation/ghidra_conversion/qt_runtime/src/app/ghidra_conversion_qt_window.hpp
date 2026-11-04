@@ -359,7 +359,9 @@ public:
     bool run_headless_replay(
         const std::filesystem::path& frame_dump,
         const std::optional<std::uint64_t> replay_to_frame = std::nullopt,
-        std::string* error = nullptr) {
+        std::string* error = nullptr,
+        const std::optional<std::filesystem::path> debug_trace_dump =
+            std::nullopt) {
         if (!input_log_.replaying()) {
             if (error != nullptr) {
                 *error = "headless replay requires --replay-input";
@@ -375,11 +377,67 @@ public:
             return false;
         }
         host_frame_timer_.stop();
+        std::ofstream debug_trace;
+        if (debug_trace_dump.has_value()) {
+            debug_trace.open(*debug_trace_dump, std::ios::binary | std::ios::trunc);
+            if (!debug_trace) {
+                if (error != nullptr) {
+                    *error = "could not open debug trace: " +
+                             debug_trace_dump->string();
+                }
+                return false;
+            }
+        }
         while (source_frame_index_ < target_frame) {
             apply_recorded_key_inputs();
             const auto completed_frame = source_frame_index_;
             advance_one_source_frame();
             ++source_frame_index_;
+            if (debug_trace.is_open()) {
+                const auto fields = debug_inspection_fields();
+                QJsonObject frame;
+                frame.insert(QStringLiteral("app.source_frame"),
+                             static_cast<double>(source_frame_index_));
+                frame.insert(QStringLiteral("app.phase"),
+                             fields.value(QStringLiteral("app.phase")));
+                for (const auto& key : fields.keys()) {
+                    if (key.startsWith(QStringLiteral("actor.")) ||
+                        key == QStringLiteral("field.scene") ||
+                        key == QStringLiteral("field.mode") ||
+                        key == QStringLiteral("field.player.x") ||
+                        key == QStringLiteral("field.player.y") ||
+                        key == QStringLiteral("field.camera.x") ||
+                        key == QStringLiteral("field.camera.y") ||
+                        key == QStringLiteral("field.world.active") ||
+                        key == QStringLiteral("field.world.pending_effect") ||
+                        key == QStringLiteral("field.world.active_effect") ||
+                        key == QStringLiteral("field.world.frame") ||
+                        key == QStringLiteral("field.actor_count") ||
+                        key == QStringLiteral(
+                            "field.debug.field_activity_lock") ||
+                        key == QStringLiteral(
+                            "field.debug.world_activity_countdown") ||
+                        key == QStringLiteral(
+                            "field.debug.pending_scene_handler") ||
+                        key == QStringLiteral(
+                            "field.debug.scene_transition_requested") ||
+                        key == QStringLiteral("field.ui.dialogue") ||
+                        key == QStringLiteral("field.ui.interaction")) {
+                        frame.insert(key, fields.value(key));
+                    }
+                }
+                debug_trace << QJsonDocument(frame)
+                                   .toJson(QJsonDocument::Compact)
+                                   .constData()
+                            << '\n';
+                if (!debug_trace) {
+                    if (error != nullptr) {
+                        *error = "failed while writing debug trace: " +
+                                 debug_trace_dump->string();
+                    }
+                    return false;
+                }
+            }
             if (input_log_.has_seed_history()) {
                 const auto expected =
                     input_log_.expected_seed_after_frame(completed_frame);
@@ -422,6 +480,16 @@ public:
         // timer path does. A seek stops before the next frame's input boundary.
         if (target_frame == input_log_.recorded_frame_count()) {
             apply_recorded_key_inputs();
+        }
+        if (debug_trace.is_open()) {
+            debug_trace.flush();
+            if (!debug_trace) {
+                if (error != nullptr) {
+                    *error = "failed while flushing debug trace: " +
+                             debug_trace_dump->string();
+                }
+                return false;
+            }
         }
         if (!frame_dump.empty()) {
             const auto frame = render_scene();

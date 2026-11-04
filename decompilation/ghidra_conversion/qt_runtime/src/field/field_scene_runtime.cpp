@@ -3676,6 +3676,7 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
 
 void FieldSceneRuntime::initialize_default_field_actors(
     const std::uint16_t scene_reference) {
+    field_default_actor_population_pending_ = false;
     field_default_actors_.erase(
         std::remove_if(
             field_default_actors_.begin(), field_default_actors_.end(),
@@ -4670,6 +4671,21 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
 void FieldSceneRuntime::advance_default_field_actors(
     const bool source_target_list_service) {
     const auto current_scene = state_.field_scene_buffers.scene_reference;
+    if (source_target_list_service &&
+        field_default_actor_population_pending_) {
+        // New Game enters the field runtime before 0x43B6 publishes its first
+        // +0xE0 list. Perform that generic list pass on the first regular actor
+        // service, after the cold scene-entry transition. ROM route: 0x43B6,
+        // actor record seed: 0x449A..0x44BC.
+        initialize_default_field_actors(current_scene);
+        if (!failure_.empty()) {
+            source_boundary(
+                "field.actor.initial_population_failed");
+            return;
+        }
+        source_boundary(
+            "field.actor.initial_population_on_source_service");
+    }
     publish_pending_world_activity_script_actors(
         current_scene, "actor_service");
     std::vector<DefaultFieldActorPresentation*> ordered_actors;
@@ -11632,8 +11648,14 @@ bool FieldSceneRuntime::bootstrap(
     // scene-entry effects can rewrite either layer.
     reset_field_map_cell_words();
     dispatch_field_map_scene_entry(scene_reference);
-
     ready_ = true;
+    // ROM 0x43B6's initial default-list pass follows the completed New Game
+    // opening's cold field bootstrap. Keep that real route empty through scene
+    // entry, then publish on its first source actor-service pass. Direct QA
+    // scene bootstraps and restored saves do not take this opening continuation.
+    field_default_actor_population_pending_ =
+        startup_state.new_game_opening_completed &&
+        restored_field_state == nullptr;
     scene_music_latch_ = true;   // 0x2830 on the New Game / load entry
     if (field_opening_auto_walk_.active) {
         // Lets the host delay 0x2900's song by the 0x07F0 setup time.

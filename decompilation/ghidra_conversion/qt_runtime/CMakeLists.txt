@@ -1592,6 +1592,23 @@ add_shadowrun_qt_qa_case(
     --field-region-map-pedestrians-qa
     "${CMAKE_CURRENT_BINARY_DIR}/field-region-map-pedestrians-qa")
 
+# Replay new game, the real Stoker interaction, exit, and ordinary field input
+# against the independent per-frame GPGX route capture. This route has no
+# debug teleport or scene-load shortcut.
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+add_test(
+    NAME shadowrun_ghidra_conversion_qt_stoker_exit_pedestrian_route_qa
+    COMMAND "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/tests_lua/tools/verify_stoker_exit_pedestrian_route.py"
+            "$<TARGET_FILE:shadowrun_ghidra_conversion_qt>"
+            "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+            "${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/tests_lua/fixtures/gpgx_stoker_exit_pedestrians"
+            "${CMAKE_CURRENT_BINARY_DIR}/stoker-exit-pedestrian-route-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_stoker_exit_pedestrian_route_qa
+    PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy")
+
 # Check all reachable A800 candidate rows and physical contact through field
 # input without adding these conditional rows to the regional map population.
 add_shadowrun_qt_qa_case(

@@ -6,6 +6,7 @@ int main(int argc, char** argv) {
     try {
         std::optional<std::filesystem::path> explicit_assets;
         std::optional<std::filesystem::path> frame_dump;
+        std::optional<std::filesystem::path> debug_trace_dump;
         std::optional<std::filesystem::path> audio_wav;
         std::optional<std::uint16_t> debug_port;
         std::optional<std::uint64_t> replay_to_frame;
@@ -18,6 +19,7 @@ int main(int argc, char** argv) {
                 std::cout << "usage: shadowrun_ghidra_conversion_qt [--assets <asset-directory>] "
                              "[--debug-frames] [--record-input <file> | --replay-input <file>]\n"
                              "                             [--headless-replay] [--replay-to-frame <n>] [--dump-frame <file>] [--debug-port <port>]\n"
+                             "                             [--dump-debug-trace <file>]\n"
                              "  --debug-frames  Enable Pause, . (step), and Shift+. (step 60) controls.\n"
                              "  --record-input  Record accepted keyboard input for replay from a fresh launch.\n"
                              "  --replay-input  Replay a recorded keyboard session from a fresh launch.\n"
@@ -52,6 +54,14 @@ int main(int argc, char** argv) {
                     throw std::invalid_argument("--dump-frame requires a file path");
                 }
                 frame_dump = std::filesystem::path(argv[++index]);
+                continue;
+            }
+            if (argument == "--dump-debug-trace") {
+                if (index + 1 >= argc) {
+                    throw std::invalid_argument(
+                        "--dump-debug-trace requires a file path");
+                }
+                debug_trace_dump = std::filesystem::path(argv[++index]);
                 continue;
             }
             if (argument == "--replay-to-frame") {
@@ -117,6 +127,10 @@ int main(int argc, char** argv) {
             throw std::invalid_argument(
                 "--dump-frame is only available with --headless-replay");
         }
+        if (debug_trace_dump.has_value() && !headless_replay) {
+            throw std::invalid_argument(
+                "--dump-debug-trace is only available with --headless-replay");
+        }
         if (replay_to_frame.has_value() && !headless_replay &&
             !debug_port.has_value()) {
             throw std::invalid_argument(
@@ -179,6 +193,10 @@ int main(int argc, char** argv) {
                 qt_argument_index += 2;
                 continue;
             }
+            if (argument == "--dump-debug-trace") {
+                qt_argument_index += 2;
+                continue;
+            }
             if (argument == "--replay-to-frame") {
                 qt_argument_index += 2;
                 continue;
@@ -233,7 +251,7 @@ int main(int argc, char** argv) {
             std::string error;
             if (!window.run_headless_replay(
                     frame_dump.value_or(std::filesystem::path{}),
-                    replay_to_frame, &error)) {
+                    replay_to_frame, &error, debug_trace_dump)) {
                 std::cerr << "headless replay: " << error << '\n';
                 return 2;
             }
