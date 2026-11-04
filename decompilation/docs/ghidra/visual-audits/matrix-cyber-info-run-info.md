@@ -27,7 +27,7 @@ the objective's file class and the action selected from signed `FFFBF6`.
 ## CyberInfo selector placement
 
 At `0x18AB0`, the ROM passes the stream at `0xE3886` to the text writer with
-plane address `$C32C`. The ROM bytes begin `20 20 "Cyberdeck Info" 80 5B`,
+plane address `$C32C`. The ROM bytes begin `20 20 "CyberInfo" 80 5B`,
 followed by twelve `5C` glyphs. Each `0x80` advances one eight-pixel tile row.
 The two leading spaces place the visible title at `(192,48)`; `[` and the
 twelve-glyph separator begin at `(176,56)`. Two row controls then place
@@ -36,10 +36,11 @@ Their two leading spaces are source data, not presentation padding to strip.
 The initial cursor base at `$C4AC` is `(176,72)`, with the second row 16 pixels
 below it.
 
-Lua now retains those exact title and option strings. The Qt presenter draws
-the separator and cursor at the ROM origins. The earlier host title
-`Cyberdeck Information` exceeded the source wording and was clipped; the
-source-backed `Cyberdeck Info` now fits through its final glyph.
+Lua retains those exact title and option strings. The Qt presenter draws the
+separator and cursor at the ROM origins. A headless GPGX capture after the ROM
+Debug Test Deck route confirms the visible `CyberInfo` title and both choices
+(`tests_lua/fixtures/gpgx_test_deck/cyberinfo.png`). The prior host title
+`Cyberdeck Info` was longer than the ROM text and did not match the capture.
 
 ### Retained parent Cyberdeck surface
 
@@ -115,8 +116,9 @@ the static labels from `0xE3902`. The Qt presenter draws those labels and
 grouped decimal values at the traced origins. The route CTest writes
 `qt_runtime/field-matrix-cyber-info-qa/deck-stats.bmp` and checks the maker/model rows, every
 label row, and the numeric origins. This verifies the source-position text
-layer; it does not establish full CyberInfo panel art or independent Genesis
-pixel fidelity.
+layer; it does not establish full CyberInfo panel art or pixel equality with
+Genesis Plus GX. A same-state GPGX Test Deck capture is now stored at
+`tests_lua/fixtures/gpgx_test_deck/deck-stats.png`.
 
 ### Deck Stats numeric-cell overwrite audit (2026-10-28)
 
@@ -137,9 +139,10 @@ uses MPCP 6, Hardening 3, Memory 128, Storage 1000, Load/IO 10, Response 5,
 and Persona ratings 2/7/4/1. The Qt route test compares every pixel of each
 rendered 8x8 maker, model, and numeric glyph against the extracted font; it
 checks comma grouping and all ten ROM value origins. Debug and Release route
-tests pass. This closes the host text-cell overlap, while the exact Deck Stats
-panel still has no matching independent Genesis frame; the 320x224 BMP is a
-host QA artifact, not a visual golden.
+tests pass. This closes the host text-cell overlap. The 320x224 BMP remains a
+host QA artifact; the same-state headless Genesis Plus GX reference is
+`tests_lua/fixtures/gpgx_test_deck/deck-stats.png`, and full-frame port/GPGX
+pixel comparison remains open.
 
 ## Cyberdeck chrome palette and layout
 
@@ -324,8 +327,10 @@ edges, both child payloads, Start-only return, unrelated-input stay, retained
 parent cell, and the first shared-palette tick. The
 `shadowrun_ghidra_gameplay_script_menu_route` test separately checks Run Info's
 signed `FFF0E3` negative, zero, and positive branches. Both tests pass in Debug
-and Release. The selector and Deck Stats still lack an independent Genesis
-frame; these state and text-layer checks do not establish visual fidelity.
+and Release. Same-state headless Genesis Plus GX captures for the selector
+and Deck Stats are now stored under `tests_lua/fixtures/gpgx_test_deck/`;
+these state and text-layer checks still do not establish full-frame pixel
+equality with the port.
 
 ## Cyberdeck palette cadence and CyberInfo sound requests (2026-10-27)
 
@@ -424,9 +429,10 @@ dialogue, and the match is unrelated green text. Section 15's highest
 candidate is frame `005390` at 0.2076; it shows the `Jack Out` program detail,
 not Deck Stats. No frame strongly matches both source-positioned label rows.
 This full-rate search closes the earlier sampling gap, but its template score
-is a screening result, not a visual golden. The exact Deck Stats panel remains
-without an independent Genesis comparison; `deck-stats.bmp` remains a host QA
-capture and cannot substitute for that reference.
+is a screening result, not a visual golden. It found no longplay Deck Stats
+frame. A later same-state headless GPGX Test Deck run captured that panel at
+`tests_lua/fixtures/gpgx_test_deck/deck-stats.png`; `deck-stats.bmp` remains a
+host QA capture, and full-frame pixel comparison remains open.
 
 ## Verification
 
@@ -450,8 +456,8 @@ capture and cannot substitute for that reference.
   chrome has an independent visual comparison above; its four ROM palette
   phases are implemented and covered by the route QA. The exact offset to a
   numbered compressed longplay frame is not asserted.
-- Deck Stats follows the same boundary: its fields are source-positioned, but
-  full panel art and an independent Genesis comparison remain open.
+- Deck Stats has a same-state headless GPGX capture, but full-frame pixel
+  comparison against the port remains open.
 - Pull Plug's source-positioned prompt and retained deck chrome were checked
   against independent Section 15 `frame_005400.png`; the complete Matrix traversal viewport
   remains partial.

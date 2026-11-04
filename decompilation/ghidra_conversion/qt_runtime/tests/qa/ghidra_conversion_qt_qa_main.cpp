@@ -44061,10 +44061,13 @@ int main(int argc, char** argv) {
                 tap_qa_controller_button(field_scene, 0x40U);
                 const auto cyber_info_route =
                     field_scene.field_menu_route_snapshot_for_dump();
+                // ROM 0x18AB0 reads 0xE3886, whose bytes spell
+                // "  CyberInfo"; the same-state GPGX capture is
+                // tests_lua/fixtures/gpgx_test_deck/cyberinfo.png.
                 if (field_scene.field_menu_route_screen_for_dump() !=
                         static_cast<std::uint16_t>(
                             srx::MenuScreen::DECK_CYBERINFO) ||
-                    cyber_info_route.top_title != "  Cyberdeck Info" ||
+                    cyber_info_route.top_title != "  CyberInfo" ||
                     cyber_info_route.top_option_labels !=
                         std::vector<std::string>{
                             "  Deck Stats", "  Run Info"} ||
@@ -44121,7 +44124,9 @@ int main(int argc, char** argv) {
                     }
                     return false;
                 };
-                if (!cyber_info_has_green(QRect(296, 48, 8, 8)) ||
+                // The 9-letter ROM title ends at x=256 after its two leading
+                // spaces; x=296 belonged to the stale longer host title.
+                if (!cyber_info_has_green(QRect(256, 48, 8, 8)) ||
                     !cyber_info_has_green(QRect(176, 56, 8, 8)) ||
                     !cyber_info_has_green(QRect(272, 56, 8, 8)) ||
                     !cyber_info_has_green(QRect(192, 72, 80, 8)) ||

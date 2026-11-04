@@ -3352,10 +3352,10 @@ int main() {
     runtime.advance_menu_route(0x4000U); // Open CyberInfo.
     route = runtime.menu_route_snapshot();
     check(route.top_screen == kDeckCyberInfo &&
-              route.top_title == "  Cyberdeck Info" &&
+              route.top_title == "  CyberInfo" &&
               route.top_option_labels ==
                   std::vector<std::string>{"  Deck Stats", "  Run Info"},
-          "CyberInfo presents its two ROM choices", failures);
+          "CyberInfo matches the GPGX selector title and ROM choices", failures);
 
     matrix_deck.model = 0;
     matrix_deck.hardening = 3U;

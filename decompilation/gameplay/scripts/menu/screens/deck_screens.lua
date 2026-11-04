@@ -107,9 +107,9 @@ function CyberInfo.new(args)
 end
 function CyberInfo.enter(st, ctx)
     -- ROM 0x18AB0 reads the padded title/options at 0xE3886 from $C32C.
-    -- The source wording is "Cyberdeck Info", with two leading spaces on
+    -- The source wording is "CyberInfo", with two leading spaces on
     -- each visible line; the 12-glyph separator is placed by the presenter.
-    st.title = "  Cyberdeck Info"
+    st.title = "  CyberInfo"
     st.labels = { "  Deck Stats", "  Run Info" }
     Cyberdeck.update_program_art_state(st, ctx)
     ctx.redraw(R.SUBMENU)
