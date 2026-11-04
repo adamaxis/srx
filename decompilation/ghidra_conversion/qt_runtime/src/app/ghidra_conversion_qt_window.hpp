@@ -402,6 +402,9 @@ public:
                              fields.value(QStringLiteral("app.phase")));
                 for (const auto& key : fields.keys()) {
                     if (key.startsWith(QStringLiteral("actor.")) ||
+                        key.startsWith(QStringLiteral("party.runner.")) ||
+                        key == QStringLiteral("party.active_slot") ||
+                        key == QStringLiteral("field.party_wipe_countdown") ||
                         key == QStringLiteral("field.scene") ||
                         key == QStringLiteral("field.mode") ||
                         key == QStringLiteral("field.player.x") ||

@@ -397,6 +397,8 @@ public:
     std::size_t visible_default_actor_count_for_dump() const;
     std::vector<SceneRunnerPosition>
     active_default_actor_positions_for_dump() const;
+    bool set_default_actor_frozen_for_dump(
+        std::size_t active_actor_index, bool frozen) noexcept;
     std::optional<std::string>
     selected_default_actor_id_for_dump() const;
     std::optional<FieldTargetMarkerDebugState>
@@ -2218,6 +2220,9 @@ private:
         bool animation_complete = false;
         bool transition_started = false;
         bool transition_complete = false;
+#ifdef SHADOWRUN_QT_QA_DRIVER
+        bool frozen_for_qa = false;
+#endif // SHADOWRUN_QT_QA_DRIVER
         std::string ai_package_id;
         std::optional<std::uint8_t> ai_weapon_item_id;
     };

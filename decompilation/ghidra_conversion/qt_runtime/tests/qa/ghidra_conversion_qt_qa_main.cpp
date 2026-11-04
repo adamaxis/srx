@@ -2305,6 +2305,7 @@ int run_field_random_encounter_spawn_qa(
     const auto visible_before =
         field_scene.visible_default_actor_count_for_dump();
     const auto audio_start = field_audio_events.size();
+    const auto boundary_start = source_boundaries.size();
 
     // Scene 2's source sum-3 row is the ordered two-Weenr sequence. Inject
     // its already-bounded 1+2 selector result while leaving ROM content,
@@ -2509,14 +2510,28 @@ int run_field_random_encounter_spawn_qa(
         positions_changed(edge_positions_after_30,
                           edge_positions_after_180) ||
         positions_changed(edge_positions_after_180, actor_positions);
-    // combat-fixes-1: ROM 0x1E25A spawns encounter actors live; the B05E
-    // death cue (0x2E for Weenrs) and C0B2 list belong to 0xB330 only, so an
-    // unhurt encounter must never publish it.
+    // ROM 0x1E25A spawns encounter actors live; a B05E cue is expected only
+    // when 0xB330 handles a zero-meter transition. This long live-AI pass can
+    // also deplete the lone player's meter, so tie 0x2E to that party-down
+    // boundary rather than treating every encounter cue as a spawn cue [C].
     const std::vector<std::uint16_t> expected_entry_audio{};
-    const bool spawn_death_cue_seen = std::find(
+    const auto party_down_transition_count = std::count(
+        source_boundaries.begin() +
+            static_cast<std::ptrdiff_t>(boundary_start),
+        source_boundaries.end(), "field.actor.combat.party_runner_down");
+    const auto party_down_cue_count = std::count(
         field_audio_events.begin() +
             static_cast<std::ptrdiff_t>(audio_start),
-        field_audio_events.end(), 0x002EU) != field_audio_events.end();
+        field_audio_events.end(), 0x002EU);
+    const bool party_down_audio_matches =
+        party_down_cue_count == party_down_transition_count;
+    // GPGX's same cold-boot route shows the Little Chiba wake page after the
+    // 0xC716 recovery (`gpgx_stoker_exit_party_down/frame_21228.png`). During
+    // that source state, the normal field HUD is covered by dialogue.
+    const bool long_source_output_valid =
+        party_down_transition_count == 0
+            ? field_hud_chrome_survives(after_long_source_service, asset_root)
+            : field_scene.dialogue_open();
     bool approach_attack_cued = false;
     for (std::size_t index = audio_start + expected_entry_audio.size();
          index + 1U < field_audio_events.size(); ++index) {
@@ -2528,7 +2543,7 @@ int run_field_random_encounter_spawn_qa(
         }
     }
     if (!after_30_saved || !after_180_saved || !after_480_saved ||
-        !after_1200_saved || !actual_saved || spawn_death_cue_seen ||
+        !after_1200_saved || !actual_saved || !party_down_audio_matches ||
         actor_count_after_480 != actors_after ||
         actor_positions.size() != 2U ||
         !natural_edge_ai_moved ||
@@ -2538,7 +2553,7 @@ int run_field_random_encounter_spawn_qa(
                     field_audio_events.begin() +
                         static_cast<std::ptrdiff_t>(audio_start)) ||
         !field_hud_chrome_survives(after_source_service, asset_root) ||
-        !field_hud_chrome_survives(after_long_source_service, asset_root) ||
+        !long_source_output_valid ||
         visible_after_1200 <= visible_before ||
         approach_action_frame_count < 2U ||
         !approach_action_frames_saved ||
@@ -2557,7 +2572,27 @@ int run_field_random_encounter_spawn_qa(
                   << " edge_ai_moved=" << natural_edge_ai_moved
                   << " attack_cued=" << approach_attack_cued
                   << " action_frames="
-                  << static_cast<unsigned>(approach_action_frame_count);
+                  << static_cast<unsigned>(approach_action_frame_count)
+                  << " party_down_audio=" << party_down_cue_count << '/'
+                  << party_down_transition_count
+                  << " leader={physical="
+                  << static_cast<unsigned>(
+                         field_scene.active_runner_record().delay_meter)
+                  << ",mental="
+                  << static_cast<unsigned>(
+                         field_scene.active_runner_record().behavior_meter)
+                  << ",flags=0x" << std::hex
+                  << (field_scene.active_runner_record().flags >> 8U)
+                  << std::dec << "}";
+        const auto party_down_boundary = std::find_if(
+            source_boundaries.rbegin(), source_boundaries.rend(),
+            [](const auto& boundary) {
+                return boundary.find("party_runner_down") !=
+                       std::string::npos;
+            });
+        if (party_down_boundary != source_boundaries.rend()) {
+            std::cerr << " down_boundary=" << *party_down_boundary;
+        }
         if (edge_positions_at_entry.size() == 2U &&
             actor_positions.size() == 2U &&
             actor_positions_after_1200.size() <= 2U) {
@@ -2580,6 +2615,46 @@ int run_field_random_encounter_spawn_qa(
         }
         std::cerr << '\n';
         return 3;
+    }
+
+    if (party_down_transition_count != 0) {
+        // GPGX's ROM recovery route opens the Little Chiba wake page. Tap the
+        // ordinary A control to dismiss it before the next independent field
+        // checks continue on this same encounter fixture.
+        for (std::uint8_t tap = 0U;
+             tap < 8U && field_scene.dialogue_open(); ++tap) {
+            field_scene.set_controller_port_byte(0x40U);
+            field_scene.advance_frame();
+            field_scene.set_controller_port_byte(0U);
+            field_scene.advance_frame();
+        }
+        if (field_scene.dialogue_open()) {
+            std::cerr << "field random-encounter QA: ordinary A did not dismiss the measured party-wake page\n";
+            return 3;
+        }
+        if (!field_scene.bootstrap_for_scene_dump(startup_state, 2U) ||
+            field_scene.resolve_and_spawn_field_encounter_for_dump(
+                1U, 2U, 0x1234U) != 2U) {
+            std::cerr << "field random-encounter QA: could not restore the visible-AI fixture after party recovery\n";
+            return 3;
+        }
+        bool actor_entry_complete = false;
+        for (std::uint16_t frame = 0U;
+             frame < 160U && !actor_entry_complete; ++frame) {
+            actor_entry_complete =
+                field_scene.default_actor_transition_complete_for_dump(0U) ==
+                    std::optional<bool>{true} &&
+                field_scene.default_actor_transition_complete_for_dump(1U) ==
+                    std::optional<bool>{true};
+            if (!actor_entry_complete) {
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+            }
+        }
+        if (!actor_entry_complete) {
+            std::cerr << "field random-encounter QA: restored visible-AI fixture did not finish source actor entry\n";
+            return 3;
+        }
     }
 
     // Keep the production edge spawn in the captures above. For a separate
@@ -3902,18 +3977,34 @@ int run_field_random_encounter_spawn_qa(
         return 3;
     }
 
-    // Corpse slide at map edges: a dead actor near a profile edge must keep
-    // a constant offset from the map while the camera clamps at the edge and
-    // then unclamps as the runner walks away. Sprites and the plane both use
-    // FFDDxx camera >> 4, so the corpse's map-aligned crop must not change.
-    // Live actors are projected from the same camera every frame.
+    // Stationary actor sprite at map edges: an isolated presentation fixture
+    // must keep a constant offset from the map while the camera clamps at the
+    // edge and then unclamps as the runner walks away. Sprites and the plane
+    // both use FFDDxx camera >> 4, so the map-aligned crop must not change.
     const auto edge_slide = [&](const bool right_edge, std::string& detail) {
+        if (!field_scene.bootstrap_for_scene_dump(startup_state, 2U) ||
+            field_scene.resolve_and_spawn_field_encounter_for_dump(
+                1U, 2U, 0x1234U) != 2U) {
+            detail = "could not create isolated map-edge encounter";
+            return false;
+        }
+        const auto initial_positions =
+            field_scene.active_default_actor_positions_for_dump();
+        if (initial_positions.size() < 2U) {
+            detail = "map-edge encounter lacks two visible actors";
+            return false;
+        }
+        for (std::size_t actor = 0U; actor < initial_positions.size(); ++actor) {
+            if (!field_scene.set_default_actor_frozen_for_dump(actor, true)) {
+                detail = "could not hold map-edge actor presentation";
+                return false;
+            }
+        }
         const auto& profile = field_scene.state().field_scene_buffers.profile;
         if (profile.size() < 6U) {
             detail = "profile";
             return false;
         }
-        field_scene.set_default_actor_physical_meter_for_dump(0U, 0U);
         for (int i = 0; i < 90; ++i) {
             field_scene.set_controller_port_byte(0U);
             field_scene.advance_frame();
@@ -3945,7 +4036,13 @@ int run_field_random_encounter_spawn_qa(
             const auto& b = field_scene.state().field_scene_buffers;
             const auto actors = field_scene.active_default_actor_positions_for_dump();
             if (actors.empty() || (actors.front().x >> 4U) != corpse_px) {
-                detail = "corpse moved frame=" + std::to_string(frame);
+                detail = "corpse moved frame=" + std::to_string(frame) +
+                         " expected=" + std::to_string(corpse_px) +
+                         " actual=" +
+                         (actors.empty()
+                              ? std::string{"none"}
+                              : std::to_string(actors.front().x >> 4U)) +
+                         " active=" + std::to_string(actors.size());
                 return false;
             }
             for (const auto& actor : actors) {

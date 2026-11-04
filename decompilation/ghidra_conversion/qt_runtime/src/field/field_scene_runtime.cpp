@@ -4810,6 +4810,11 @@ void FieldSceneRuntime::advance_default_field_actors(
     // 0x0A8EA services the FF0400..FF0A00 record pool in slot order [C].
     for (auto* actor_record : ordered_actors) {
         auto& actor = *actor_record;
+#ifdef SHADOWRUN_QT_QA_DRIVER
+        if (actor.frozen_for_qa) {
+            continue;
+        }
+#endif // SHADOWRUN_QT_QA_DRIVER
         const bool dynamic_world_actor = actor.temporary_world_encounter ||
                                          actor.world_activity_script_actor;
         const bool dynamic_actor_behavior =
@@ -5645,17 +5650,19 @@ void FieldSceneRuntime::advance_default_field_actors(
                 if (slot >= FieldPartyRosterRuntime::kSlotCount ||
                     !field_party_roster_.slot_active(slot)) {
                     source_boundary("field.actor.combat.party_target_invalid");
+                } else if (static_cast<std::uint8_t>(slot) !=
+                           update.source_record_slot) {
+                    source_boundary("field.actor.combat.party_slot_mismatch");
                 } else {
-                    auto& target_record =
-                        field_party_roster_.records()[slot];
-                    target_record.delay_meter = update.physical_meter;
-                    target_record.behavior_meter = update.mental_meter;
-                    if (slot == field_party_roster_.active_slot()) {
-                        refresh_field_hud_runner_slot();
+                    // Shared party meter bridge also asks Lua's
+                    // PartyDown.enter_runner_down_state when either live
+                    // meter reaches zero (ROM 0xA912..0xAA4C / 0xB330).
+                    // Keep this NPC-hit caller on that same semantic route.
+                    if (!apply_script_combat_meter_update(
+                            update, "field.actor.combat")) {
+                        source_boundary(
+                            "field.actor.combat.party_update_failed");
                     }
-                    source_boundary(update.physical
-                        ? "field.actor.combat.party_physical_meter_changed"
-                        : "field.actor.combat.party_mental_meter_changed");
                 }
             } else {
                 const auto target_actor = std::find_if(

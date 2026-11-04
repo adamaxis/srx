@@ -1,0 +1,9 @@
+# Headless GPGX, same cold-boot `route.lua` plus only ordinary B/A controller input; no RAM writes/state loads.
+frame	scene	leader_flags	physical	mental	companion_one_flags	companion_two_flags	FFE166
+21091	2	0F	10	1	00	00	0000
+21092	2	0F	9	0	00	00	0000
+21103	2	0F	9	0	00	00	0000
+21104	2	1F	9	0	00	00	003B
+21163	2	1F	9	0	00	00	0000
+21180	2	1F	9	0	00	00	0000
+21181	2	0F	9	8	00	00	0000

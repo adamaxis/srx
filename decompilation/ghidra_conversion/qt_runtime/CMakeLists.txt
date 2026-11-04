@@ -1609,6 +1609,21 @@ set_tests_properties(
     PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy")
 
+# Continue that same cold-boot route into a real fight and check the leader's
+# zero-meter/down/recovery path against independent GPGX RAM and frames.
+add_test(
+    NAME shadowrun_ghidra_conversion_qt_party_down_real_combat_route_qa
+    COMMAND "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/tests_lua/tools/verify_party_down_real_combat_route.py"
+            "$<TARGET_FILE:shadowrun_ghidra_conversion_qt>"
+            "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+            "${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/tests_lua/fixtures/gpgx_stoker_exit_party_down"
+            "${CMAKE_CURRENT_BINARY_DIR}/party-down-real-combat-route-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_party_down_real_combat_route_qa
+    PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy")
+
 # Check all reachable A800 candidate rows and physical contact through field
 # input without adding these conditional rows to the regional map population.
 add_shadowrun_qt_qa_case(

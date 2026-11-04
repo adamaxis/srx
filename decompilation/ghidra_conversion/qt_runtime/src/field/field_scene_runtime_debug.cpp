@@ -381,12 +381,23 @@ QJsonObject FieldSceneRuntime::debug_inspection_fields() const {
 
     fields.insert(QStringLiteral("party.active_slot"),
                   static_cast<int>(field_party_roster_.active_slot()));
+    fields.insert(QStringLiteral("field.party_wipe_countdown"),
+                  static_cast<int>(field_party_wipe_countdown_));
     for (std::size_t slot = 0; slot < FieldPartyRosterRuntime::kSlotCount;
          ++slot) {
         const auto prefix =
             QStringLiteral("party.runner.%1.").arg(static_cast<qulonglong>(slot));
         fields.insert(prefix + QStringLiteral("active"),
                       field_party_roster_.slot_active(slot));
+        const auto& record = field_party_roster_.records()[slot];
+        fields.insert(prefix + QStringLiteral("physical_meter"),
+                      record.delay_meter);
+        fields.insert(prefix + QStringLiteral("mental_meter"),
+                      record.behavior_meter);
+        fields.insert(prefix + QStringLiteral("source_flags"),
+                      static_cast<int>(record.flags >> 8U));
+        fields.insert(prefix + QStringLiteral("host_flags"),
+                      static_cast<int>(record.flags & 0x00FFU));
         const auto& name = field_party_roster_.name(slot);
         fields.insert(prefix + QStringLiteral("name"),
                       QString::fromUtf8(name.data(),
@@ -1174,6 +1185,25 @@ FieldSceneRuntime::active_default_actor_positions_for_dump() const {
         }
     }
     return positions;
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
+
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
+bool FieldSceneRuntime::set_default_actor_frozen_for_dump(
+    const std::size_t active_actor_index, const bool frozen) noexcept {
+    const auto current_scene = state_.field_scene_buffers.scene_reference;
+    std::size_t active_index = 0U;
+    for (auto& actor : field_default_actors_) {
+        if (!actor.active || actor.scene_reference != current_scene) {
+            continue;
+        }
+        if (active_index++ == active_actor_index) {
+            actor.frozen_for_qa = frozen;
+            return true;
+        }
+    }
+    return false;
 }
 #endif // SHADOWRUN_QT_QA_DRIVER
 
