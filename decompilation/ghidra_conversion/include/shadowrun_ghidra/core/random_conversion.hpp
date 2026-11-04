@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <vector>
 
 namespace shadowrun::ghidra_conversion {
 
@@ -20,6 +21,34 @@ void warm_reset_source_random_seed(std::uint32_t frame_counter);
 // Debugger hook: called after every advance with (kind, bound, result, seed_after). kind: 0 raw, 1 bounded, 2 dice.
 using SourceRandomObserver = std::function<void(int kind, std::uint16_t bound, std::int32_t result, std::uint16_t seed)>;
 void set_source_random_observer(SourceRandomObserver observer);
+
+// ROM JSR sites to 0x0D3A/0x0D44 verified in disassembly.s and C1a GPGX traces.
+namespace source_random_site {
+inline constexpr std::uint32_t unknown = 0U;
+inline constexpr std::uint32_t dice = 0x0DD0U;
+inline constexpr std::uint32_t actor_pair_collision = 0xEC90U;
+inline constexpr std::uint32_t world_effect_probability = 0x1E1C2U;
+inline constexpr std::uint32_t world_effect_sequence_first = 0x59988U;
+inline constexpr std::uint32_t world_effect_sequence_second = 0x59992U;
+inline constexpr std::uint32_t boot_scroll = 0x5DACEU;
+}  // namespace source_random_site
+
+struct SourceRandomTraceEntry {
+    std::uint64_t draw_index = 0U;
+    std::uint16_t seed_before = 0U;
+    std::uint16_t seed_after = 0U;
+    std::uint32_t rom_site = 0U;
+    std::uint16_t bound = 0U;
+};
+
+// Optional in-memory draw trace (headless QA). Records only draws on the shared FFF9F8 word.
+void set_source_random_trace_enabled(bool enabled);
+void clear_source_random_trace();
+const std::vector<SourceRandomTraceEntry>& source_random_trace();
+
+// Site-tagged draws on the shared FFF9F8 word (ROM 0x0D44 / 0x0D3A).
+std::uint16_t next_source_random_word(std::uint32_t rom_site);
+std::int16_t source_random_bound(std::uint16_t bound, std::uint32_t rom_site);
 
 // ROM 0x0D44: MULU #$20E5, ADDQ.W #1 into FFF9F8. Host holds the seed word.
 std::uint16_t advance_source_random_seed(std::uint16_t& seed);

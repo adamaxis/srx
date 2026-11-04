@@ -1,5 +1,6 @@
 #include "shadowrun_ghidra/core/random_conversion.hpp"
 
+#include <array>
 #include <vector>
 
 namespace {
@@ -66,6 +67,32 @@ int main() {
     if (!expect(advance_source_random_seed(seed) == 0xDF1CU)) {
         return 5;
     }
+
+    // [C] ROM 0x0D44 and verified C1a GPGX trace (gpgx_a.tsv rows 1-13) from seed 0x03D2.
+    constexpr std::array<std::uint16_t, 13> expected{
+        0xAADB, 0x35E8, 0x3889, 0xB28E, 0x7907, 0x2344, 0x0BD5,
+        0x358A, 0x2473, 0xFAE0, 0x6A61, 0x48C6, 0xD91F};
+    source_random_seed() = 0x03D2U;
+    clear_source_random_trace();
+    set_source_random_trace_enabled(true);
+    for (const auto value : expected) {
+        if (!expect(next_source_random_word(source_random_site::actor_pair_collision) == value)) return 6;
+    }
+    source_random_bound(6U, source_random_site::dice);
+    set_source_random_trace_enabled(false);
+    const auto& t = source_random_trace();
+    if (!expect(t.size() == expected.size() + 1U)) return 7;
+    for (std::size_t i = 0; i < expected.size(); ++i) {
+        if (!expect(t[i].draw_index == i + 1U && t[i].seed_after == expected[i] &&
+                    t[i].rom_site == 0xEC90U && t[i].bound == 0U)) return 8;
+        if (i > 0 && !expect(t[i].seed_before == t[i - 1].seed_after)) return 9;
+    }
+    if (!expect(t.back().rom_site == 0x0DD0U && t.back().bound == 6U &&
+                t.back().seed_before == 0xD91FU)) return 10;
+    clear_source_random_trace();
+    source_random_seed() = 0x03D2U;
+    next_source_random_word(0U);
+    if (!expect(source_random_trace().empty())) return 11;
 
     return 0;
 }
