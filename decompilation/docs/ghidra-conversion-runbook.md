@@ -3,7 +3,8 @@
 The active Qt project is `decompilation/ghidra_conversion/`. The surrounding
 `decompilation/` directory holds the shared ROM, Ghidra exports, runtime
 assets, gameplay scripts and world data, and implementation documentation.
-The native port remains archived under `archive/legacy_native_port/`.
+The retired native port was removed; git history keeps it. The asset importer's
+sources live in `decompilation/ghidra_conversion/asset_import/`.
 
 ## Layout
 

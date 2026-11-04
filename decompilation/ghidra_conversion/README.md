@@ -14,8 +14,8 @@ live in the parent `decompilation/` directory.
 - `../docs/ghidra/` contains source audits and implementation status.
 - `tools/map_entity_viewer/` is the standalone Qt map and entity viewer;
   `tools/rom_research/` contains offline research tools.
-- The inactive native port and local Ghidra database are preserved in
-  `../../archive/`.
+- The inactive native port was removed (git history keeps it); the asset
+  importer sources are in `asset_import/`.
 - Gameplay video and numbered frame analysis remain in
   `../../video analysis/`.
 
@@ -43,5 +43,5 @@ the viewer source.
 ## Build output
 
 `build/conversion/` contains the active Ghidra workbench and Qt Release/Debug
-builds. Other archived build outputs are disposable; source and research
-archives live under `../../archive/`.
+builds. Other archived build outputs are disposable; the local Ghidra
+database, if present, is under the ignored `../../archive/`.

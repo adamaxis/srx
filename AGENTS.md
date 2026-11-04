@@ -4,9 +4,9 @@
 
 Current development is exclusively in `decompilation/ghidra_conversion/`.
 Its `CMakeLists.txt` and `CMakePresets.json` build the typed C++/Qt project from
-the Ghidra source analysis. The retired native-port source is preserved under
-`archive/legacy_native_port/`; do not extend or build it unless the user
-explicitly reactivates it. The Ghidra database is archived under
+the Ghidra source analysis. The retired native port was removed (git history keeps it); the asset
+importer's sources live in `decompilation/ghidra_conversion/asset_import/`.
+The local Ghidra database, if present, is under the ignored
 `archive/ghidra_analysis_project/`.
 
 The active project consumes shared files from `decompilation/input/`,

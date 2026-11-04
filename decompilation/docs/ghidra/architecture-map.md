@@ -571,12 +571,11 @@ Root ownership is:
 - decompilation/ghidra_conversion/tools/rom_research/: offline ROM/Ghidra analysis and asset extraction tools.
 - docs/ghidra/: source traces, behavior audits, and reconstruction status.
 
-The older native-port code is retained under
-archive/legacy_native_port/decompilation/. The local Ghidra database is kept
-under archive/ghidra_analysis_project/. Neither archive is an active build
-target. The prior screen-capture analysis is under
-archive/retired_analysis/analysis/retired/webm_ffmpeg_microframes/; current
-longplay evidence remains under video analysis/.
+The older native-port code was removed (git history keeps it); the asset
+importer's sources are in decompilation/ghidra_conversion/asset_import/. The
+local Ghidra database, if present, is under the ignored
+archive/ghidra_analysis_project/. Current longplay evidence remains under
+video analysis/.
 ## 5. What the 910 entries become
 
 The current export/ledger pass is complete only in the narrow source-coverage

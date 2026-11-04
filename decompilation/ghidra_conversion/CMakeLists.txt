@@ -74,7 +74,6 @@ target_link_libraries(shadowrun_gameplay_script_runtime
 # clients link this target directly. It remains outside the native-port CMake
 # graph and does not own native game runtime state.
 add_library(shadowrun_ghidra_conversion_runtime STATIC
-    src/integration/conversion_workbench.cpp
     src/integration/field_session_bootstrap_conversion.cpp
     src/integration/field_session_source_assets_conversion.cpp
     src/integration/field_runtime_coordinator_conversion.cpp
@@ -93,15 +92,6 @@ add_library(shadowrun_ghidra_conversion_integration ALIAS
     shadowrun_ghidra_conversion_runtime)
 add_library(shadowrun_ghidra_conversion_workbench ALIAS
     shadowrun_ghidra_conversion_runtime)
-
-add_executable(shadowrun_ghidra_conversion_runner
-    tools/conversion_runner_main.cpp
-)
-target_link_libraries(shadowrun_ghidra_conversion_runner
-    PRIVATE shadowrun_ghidra_conversion_runtime)
-add_test(NAME shadowrun_ghidra_conversion_runner
-         COMMAND shadowrun_ghidra_conversion_runner
-                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../assets")
 
 # Keep the authoritative Lua gameplay and combat suites in CTest alongside
 # the native conversion checks. The shell runner supplies Lua paths and the
@@ -153,11 +143,11 @@ add_executable(shadowrun_ghidra_startup_record_extract
 )
 
 # The complete asset importer is an explicit offline step. Its decoder support
-# is compiled from the archived extraction implementation, and none of these
+# is compiled from asset_import/ (relocated from the retired native port), and none of these
 # targets are linked into the Qt game executable.
 find_package(ZLIB REQUIRED)
 set(SHADOWRUN_ARCHIVED_ASSET_SOURCE_ROOT
-    "${CMAKE_CURRENT_SOURCE_DIR}/../../archive/legacy_native_port/decompilation")
+    "${CMAKE_CURRENT_SOURCE_DIR}/asset_import")
 add_library(shadowrun_ghidra_asset_import_support STATIC
     "${SHADOWRUN_ARCHIVED_ASSET_SOURCE_ROOT}/src/title_intro/boot.cpp"
     "${SHADOWRUN_ARCHIVED_ASSET_SOURCE_ROOT}/src/core/compression.cpp"

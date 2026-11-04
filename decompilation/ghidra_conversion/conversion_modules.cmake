@@ -263,7 +263,8 @@ foreach(module_id IN LISTS SHADOWRUN_CONVERSION_MODULE_IDS)
     set(module_variable "SHADOWRUN_MODULE_${module_key}")
     set(module_sources "${${module_variable}}")
     if (NOT module_sources)
-        message(FATAL_ERROR "Conversion module has no source files: ${module_id}")
+        # Modules whose sources were all include-unreachable were deleted.
+        continue()
     endif()
     add_library(shadowrun_ghidra_module_${module_id} OBJECT ${module_sources})
     target_include_directories(shadowrun_ghidra_module_${module_id} PUBLIC
