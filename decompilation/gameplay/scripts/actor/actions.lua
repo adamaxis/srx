@@ -6,6 +6,7 @@ local Delay = require("actor.delay")
 local SoundId, SceneId, EntryDelayMax, AiTuning =
     E.SoundId, E.SceneId, E.EntryDelayMax, E.AiTuning
 local ActionMovementLockoutKind = E.ActionMovementLockoutKind
+local WorldTargetSelectionPolicy = E.WorldTargetSelectionPolicy
 local ActionMovementLockoutPasses = E.ActionMovementLockoutPasses
 local states = game.actors
 local TARGET_MARKER_RADIUS_STEP = 8
@@ -253,24 +254,13 @@ local function advance_world_target_selection(state, context)
         return
     end
 
-    local marker_policy = context.target_selection_policy == "marker"
-    state.selected_world_actor_id = nil
-    for _, candidate in ipairs(context.world_target_selection_candidates or {}) do
-        local lifecycle = candidate.actor_facts.lifecycle
-        local available = lifecycle.active == true
-        if not marker_policy then
-            available = available and not lifecycle.dead and
-                not lifecycle.downed and
-                candidate.actor_facts.behavior.escort ~= true and
-                candidate.projected_y_nonzero == true
-        end
-        if available and type(candidate.id) == "string" and
-           candidate.id ~= "" then
-            state.selected_world_actor_id = candidate.id
-            break
-        end
-    end
-
+    local policy = context.target_selection_policy ==
+        WorldTargetSelectionPolicy.MARKER
+        and WorldTargetSelectionPolicy.MARKER or
+            WorldTargetSelectionPolicy.STANDARD
+    state.selected_world_actor_id =
+        R.select_world_service_target(
+            policy, context.world_target_selection_candidates or {})
     state.target_selection_processed = true
 end
 

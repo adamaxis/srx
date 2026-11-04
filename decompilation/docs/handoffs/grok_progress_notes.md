@@ -3,7 +3,7 @@
 This file is kept in the repo so the notes survive if the box is wiped. The box's /workspace/shadowrun/out was lost on 2026-10-31.
 Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 
-## Current state (2026-11-04 01:30 CST)
+## Current state (2026-11-04 11:03 CST)
 - Remote port-fixes: see latest Fixes entry. QA_GREEN (ctest all pass, Lua suites pass). Working playtest_2026-11-01 items one Luna run at a time.
 - In progress: Luna (codex exec, gpt-6-luna, max effort, fast tier off) is fixing aa3b2cb7 forward. Brief is /workspace/briefs/aa3b.md, the earlier partial work is /workspace/briefs/aa3b_wip.diff and stash 'aa3b-wip'.
 - Box toolchain: `. /workspace/tcenv.sh` (conda env /workspace/mamba/envs/srx). Build dirs are /workspace/b2 (Qt) and /workspace/b2n (non-Qt). Full QA is /workspace/qa.sh, which prints QA_GREEN.
@@ -100,6 +100,7 @@ Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 - playtest #34c: Pedestrians: publish default actor list on first service pass after New Game intro (#34c). Evidence: ROM 0x172D1C/0x43B6/0x449A..0x44BC/0xA8EA; GPGX cold-boot real-route trace + frames; A800 closed in both
 - playtest #44: Party down: route NPC-hit meter updates through Lua PartyDown so the player can be downed (#44). Evidence: ROM 0xA912..0xAA4C/0xB330/0xABB6/0x1DDC6->0xC64C; GPGX real-route party-down fixture f21092-21181
 - playtest #45: Dialogue: generic speaker resolution for field system scripts fixes jack-in freeze (#45). Evidence: ROM 0xE43E..0xE48E/0x181F8/0x1822C; headless real-input jack-in QA
+- playtest #47: field: retarget after kill and release held-fire C042 pose per ROM (#47). ROM 0x1DC4C..0x1DD26/0x1DE4C..0x1DE7A/0x0B39A/0x05FDC/0x0600E; GPGX fixture held_fire_target_pose.tsv frames 10280/10292/10293/10315
 
 ## Open work, in order
 1. Get ctest green again by fixing aa3b2cb7 forward.

@@ -13,6 +13,7 @@ local ProjectileAnimationClips =
     require("data.weapon_projectile_animation_clips")
 local source_close_range_threshold = R.source_close_range_threshold   -- from actor/tables.lua
 local VisualProfile = E.ActorVisualProfile
+local WorldTargetSelectionPolicy = E.WorldTargetSelectionPolicy
 local DynamicEncounterVisualProfiles = {
     [VisualProfile.ORK_BANDERSNATCH] = true,
     [VisualProfile.HUMAN_GUARD] = true,
@@ -210,6 +211,37 @@ local function target_is_eligible(candidate, world_actor_pool)
         return false
     end
     return true
+end
+
+-- ROM 0x1DC4C selects only after its caller supplies the source-ordered
+-- candidate records. The field host translates +0x10/+0xB0/+0x0C into these
+-- named facts; Lua owns the eligibility decision and returns a stable ID.
+function R.select_world_service_target(policy, candidates)
+    if type(candidates) ~= "table" or
+       (policy ~= WorldTargetSelectionPolicy.STANDARD and
+        policy ~= WorldTargetSelectionPolicy.MARKER) then
+        return nil
+    end
+    local marker_policy = policy == WorldTargetSelectionPolicy.MARKER
+    for _, candidate in ipairs(candidates) do
+        if type(candidate) == "table" and
+           type(candidate.actor_facts) == "table" and
+           type(candidate.actor_facts.lifecycle) == "table" then
+            local lifecycle = candidate.actor_facts.lifecycle
+            local available = lifecycle.active == true
+            if not marker_policy then
+                local behavior = candidate.actor_facts.behavior or {}
+                available = available and lifecycle.dead ~= true and
+                    lifecycle.downed ~= true and behavior.escort ~= true and
+                    candidate.projected_y_nonzero == true
+            end
+            if available and type(candidate.id) == "string" and
+               candidate.id ~= "" then
+                return candidate.id
+            end
+        end
+    end
+    return nil
 end
 
 local function linked_target(context, state)

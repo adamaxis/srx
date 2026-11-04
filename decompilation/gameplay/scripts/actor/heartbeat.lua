@@ -24,6 +24,11 @@ function ActorAI.should_rebuild_target_lists(frame_counter, encounter_flag)
     return R.should_rebuild_target_lists(frame_counter, encounter_flag)
 end
 
+function ActorAI.select_world_service_target(policy, candidates)
+    local selected_actor_id = R.select_world_service_target(policy, candidates)
+    return { selected_actor_id = selected_actor_id or "" }
+end
+
 function ActorAI.heartbeat(context)
     if type(context) ~= "table" then
         return nil

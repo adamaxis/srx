@@ -2305,6 +2305,10 @@ struct ScriptActorTargetCandidate {
     std::optional<ScriptPartyMemberRole> party_member_role;
 };
 
+struct ScriptWorldTargetSelectionDecision {
+    std::optional<std::string> selected_actor_id;
+};
+
 using ScriptActorRandomBound =
     std::function<std::optional<std::uint16_t>(std::uint16_t)>;
 // True when 0x14D8E leaves carry clear for these linked world coordinates.
@@ -2788,6 +2792,12 @@ public:
         const ScriptPartyWipeRunFailureContext& context);
     std::optional<ScriptActorBehaviorDecision> actor_heartbeat(
         const ScriptActorBehaviorContext& context);
+    // Candidate order and source facts come from the field host; Lua owns the
+    // standard/marker eligibility policy and returns a stable actor identity.
+    std::optional<ScriptWorldTargetSelectionDecision>
+    select_world_service_target(
+        ScriptTargetSelectionPolicy policy,
+        const std::vector<ScriptActorTargetCandidate>& candidates);
     std::optional<ScriptActorTargetListRebuildDecision>
     should_rebuild_actor_target_lists(
         const ScriptActorTargetListRebuildFacts& facts);

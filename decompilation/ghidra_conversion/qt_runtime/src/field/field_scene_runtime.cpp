@@ -6782,8 +6782,8 @@ bool FieldSceneRuntime::apply_scripted_field_entity_target_selection(
         selected = true;
     }
     refresh_world_entity_service_targets();
-    source_boundary(selected ? "field.target.selected_with_b"
-                             : "field.target.no_available_record_with_b");
+    source_boundary(selected ? "field.target.selected"
+                             : "field.target.no_available_record");
     return true;
 }
 
@@ -9495,30 +9495,60 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         // counts it to prove the world pass requested a target selection.
         source_boundary("field.world_logic.select_entity_service_target");
         refresh_world_entity_service_targets();
-        const auto action = select_world_entity_service_target(
+        const auto search_order = world_entity_service_target_search_order(
             field_entity_target_owner_, field_entity_target_records_, false);
-        for (auto& actor : field_default_actors_) {
-            if (!actor.source_record_slot.has_value()) {
+        std::vector<scripting::ScriptActorTargetCandidate> candidates;
+        candidates.reserve(search_order.record_indices.size());
+        for (const auto slot : search_order.record_indices) {
+            if (slot >= field_entity_target_records_.size()) {
                 continue;
             }
-            const auto slot = static_cast<std::size_t>(
-                *actor.source_record_slot);
-            actor.target_selected =
-                    action == EntityServiceTargetAction::selected &&
-                field_entity_target_owner_.selected_target ==
-                    std::optional<std::size_t>{slot};
-            if (actor.target_selected) {
-                actor.source_interaction_flags = static_cast<std::uint8_t>(
-                    actor.source_interaction_flags |
-                    actor_flag_mask(ActorInteractionFlag::service_selection_latch));
-            } else {
-                actor.source_interaction_flags = static_cast<std::uint8_t>(
-                    actor.source_interaction_flags & static_cast<std::uint8_t>(
-                        ~actor_flag_mask(ActorInteractionFlag::service_selection_latch)));
+            const auto& source = field_entity_target_records_[slot];
+            scripting::ScriptActorTargetCandidate candidate{};
+            candidate.service_flags = static_cast<std::uint8_t>(
+                (source.active ? 0x01U : 0U) |
+                (source.service_reserved ? 0x10U : 0U) |
+                (source.effect_locked ? 0x40U : 0U));
+            candidate.interaction_flags = source.selected ? 0x10U : 0U;
+            candidate.behavior_flags = source.high_effect ? 0x80U : 0U;
+            candidate.projected_y_nonzero = source.has_action;
+            const auto actor = std::find_if(
+                field_default_actors_.begin(), field_default_actors_.end(),
+                [this, slot](const auto& value) {
+                    return value.active &&
+                        value.scene_reference ==
+                            state_.field_scene_buffers.scene_reference &&
+                        value.source_record_slot.has_value() &&
+                        static_cast<std::size_t>(
+                            *value.source_record_slot) == slot;
+                });
+            if (actor != field_default_actors_.end()) {
+                candidate.id = actor->actor_instance_id;
+                candidate.world_x = actor->world_position.x;
+                candidate.world_y = actor->world_position.y;
+                candidate.world_activity_actor =
+                    actor->temporary_world_encounter ||
+                    actor->world_activity_script_actor;
             }
+            candidates.push_back(std::move(candidate));
         }
-        refresh_world_entity_service_targets();
-        source_boundary(action == EntityServiceTargetAction::selected
+        const auto selection = game_scripts_.select_world_service_target(
+            search_order.policy ==
+                    EntityServiceTargetSelectionPolicy::marker
+                ? scripting::ScriptTargetSelectionPolicy::marker
+                : scripting::ScriptTargetSelectionPolicy::standard,
+            candidates);
+        if (!selection.has_value()) {
+            failure_ = game_scripts_.failure();
+            source_boundary("field.world_logic.lua_target_selection_failed");
+            return;
+        }
+        if (!apply_scripted_field_entity_target_selection(
+                selection->selected_actor_id)) {
+            source_boundary("field.world_logic.lua_target_apply_failed");
+            return;
+        }
+        source_boundary(selection->selected_actor_id.has_value()
                             ? "field.world_logic.target_selected"
                             : "field.world_logic.no_target_available");
     };

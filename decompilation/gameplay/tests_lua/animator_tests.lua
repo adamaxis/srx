@@ -193,8 +193,9 @@ check(player_clip.animation_frame == 1 and
       "runner strike advances from its named clip duration")
 
 -- ROM 0xB39A selects Joshua's C042 item-action list at 0x784C: one frame,
--- rate 0x80 over a 0x1000 period, then the following 0xA8EA pass selects
--- B45C/C052 even while the separate +0xDC action delay remains positive.
+-- rate 0x80 over a 0x1000 period. The independent GPGX Stoker route fixture
+-- starts its frame-10263 sample two updates into C042; 0x600E marks completion
+-- at +29 and the next 0xA8EA pass selects C052 at +30 while +0xDC is positive.
 local player_weapon_action = {
     animation_id = "idle",
     animation_frame = 0,
@@ -205,9 +206,10 @@ local player_weapon_action = {
 local player_weapon_clip = A.list(E.ActorVisualProfile.FIELD_RUNNER,
                                   A.Clip.ITEM)
 check(player_weapon_clip.frame_count == 1 and
-      player_weapon_clip.frame_duration_updates == 32,
+      player_weapon_clip.frame_duration_updates == 32 and
+      E.PlayerWeaponAnimation.C042_START_ELAPSED_UPDATES == 2,
       "runner C042 metadata keeps its source one-frame, 32-update lifetime")
-for _ = 1, 31 do
+for _ = 1, 29 do
     R.advance_player_animation(player_weapon_action, {
         animation_mode = E.ActorAnimationMode.ATTACK,
         animation_direction_override = E.ActorFacing.EAST,
@@ -217,7 +219,7 @@ check(player_weapon_action.animation_id == "attack" and
       player_weapon_action.animation_frame == 0 and
       player_weapon_action.animation_elapsed_updates == 31 and
       player_weapon_action.player_weapon_animation_complete ~= true,
-      "C042 pose stays visible until its 32nd render update")
+      "C042 pose remains visible through the source frame before completion")
 R.advance_player_animation(player_weapon_action, {
     animation_mode = E.ActorAnimationMode.ATTACK,
     animation_direction_override = E.ActorFacing.EAST,
@@ -245,10 +247,10 @@ R.advance_player_animation(player_weapon_action, {
 })
 check(player_weapon_action.animation_id == "attack" and
       player_weapon_action.animation_frame == 0 and
-      player_weapon_action.animation_elapsed_updates == 1 and
+      player_weapon_action.animation_elapsed_updates == 3 and
       player_weapon_action.player_weapon_animation_complete ~= true and
       player_weapon_action.player_weapon_animation_start_pending == nil,
-      "a later held-fire action restarts C042 from its first update")
+      "a later held-fire action restarts C042 at the measured source phase")
 
 player_clip = { animation_id = "idle", animation_frame = 0,
     animation_elapsed_updates = 0, direction = 0 }

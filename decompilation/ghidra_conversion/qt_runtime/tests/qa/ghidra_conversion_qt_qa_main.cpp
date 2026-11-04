@@ -48263,10 +48263,10 @@ int main(int argc, char** argv) {
                     // The Lua C042 pose flag retires after its finite clip;
                     // that is separate from both the ROM movement return
                     // (GPGX pass 30) and the +0xDC repeat-action gate (51).
-                    // The visible one-frame clip remains through render update
-                    // 32 [C: 0xB39A, fixture post_attack_lockout_gpgx.tsv].
-                    const bool attack_pose_expected = delay_frame <= 30U;
-                    const auto expected_animation_id = delay_frame <= 31U
+                    // GPGX's Stoker-route fixture marks C042 completion at
+                    // +29 and returns to neutral at +30 [C: frame 10292/10293].
+                    const bool attack_pose_expected = delay_frame < 29U;
+                    const auto expected_animation_id = delay_frame < 30U
                         ? "attack"
                         : "idle";
                     if (next_delay >= prior_delay ||
@@ -49096,8 +49096,11 @@ int main(int argc, char** argv) {
                         ? held_fire_runner.animation_action_gate
                         : static_cast<std::int16_t>(
                               held_first_delay - elapsed);
+                    // GPGX Stoker route frame 10263 carries C042 clock
+                    // 0x01E0 and is neutral by frame 10293 (+30); this
+                    // screenshot-backed fixture keeps the hit-to-pose order.
                     const auto expected_animation_id =
-                        (repeated || elapsed <= 31) ? "attack" : "idle";
+                        (repeated || elapsed < 30) ? "attack" : "idle";
                     if (held_fire_runner.ammo_rounds != expected_rounds ||
                         held_fire_runner.animation_action_gate !=
                             expected_gate ||

@@ -121,6 +121,16 @@ E.ActorAnimation = {
 E.ActorAnimationMode = {
     ATTACK = "attack",
 } -- typed field-player animation mode; ROM 0xB39A installs the C042 action pose [C]
+E.PlayerWeaponAnimation = {
+    C042_START_ELAPSED_UPDATES = 2,
+} -- GPGX Stoker route frame 10263 is 30 updates from neutral at 10293 [C]
+E.WorldTargetSelectionPolicy = {
+    STANDARD = "standard",
+    MARKER = "marker",
+} -- ROM 0x1DC4C standard and special target scans [C]
+E.WorldTargetSelectionMode = {
+    DEAD_LINK_RETAINED = 0x0C,
+} -- 0x1DE60..0x1DE70 skips the dead-bit test only for special mode 0x0C [C]
 
 E.Posture   = { FULL_DEFENSE = 0, MEDIUM_DEFENSE = 1, NEUTRAL = 2, MEDIUM_OFFENSE = 3, FULL_OFFENSE = 4 }  -- +0x4D, names 0xD1A05 [C]
 E.MeterSelection = { INACTIVE = 0, SELECTED = 1 }  -- posture/Force marker focus state, 0x10722/0x119CE [C]

@@ -15602,6 +15602,103 @@ GameScriptRuntime::advance_tarislar_tomb_outro(
     return result;
 }
 
+std::optional<ScriptWorldTargetSelectionDecision>
+GameScriptRuntime::select_world_service_target(
+    const ScriptTargetSelectionPolicy policy,
+    const std::vector<ScriptActorTargetCandidate>& candidates) {
+    const auto make_boolean = [](const bool value) {
+        ScriptPersistentValue result{};
+        result.value = value;
+        return result;
+    };
+    const auto make_string = [](std::string value) {
+        ScriptPersistentValue result{};
+        result.value = std::move(value);
+        return result;
+    };
+    const auto make_object = [](ScriptPersistentValue::Object value) {
+        ScriptPersistentValue result{};
+        result.value = std::move(value);
+        return result;
+    };
+
+    ScriptPersistentValue::Array candidate_values;
+    candidate_values.reserve(candidates.size());
+    for (const auto& candidate : candidates) {
+        const auto facts = actor_facts_from_source_flags(
+            candidate.service_flags, candidate.interaction_flags,
+            candidate.behavior_flags, candidate.spawn_state_flags);
+        ScriptPersistentValue::Object lifecycle{
+            {"active", make_boolean(facts.lifecycle.active)},
+            {"dead", make_boolean(facts.lifecycle.dead)},
+            {"downed", make_boolean(facts.lifecycle.downed)},
+        };
+        ScriptPersistentValue::Object behavior{
+            {"escort", make_boolean(facts.behavior.escort)},
+        };
+        ScriptPersistentValue::Object actor_facts{
+            {"lifecycle", make_object(std::move(lifecycle))},
+            {"behavior", make_object(std::move(behavior))},
+        };
+        ScriptPersistentValue::Object candidate_value{
+            {"id", make_string(candidate.id)},
+            {"actor_facts", make_object(std::move(actor_facts))},
+            {"projected_y_nonzero",
+             make_boolean(candidate.projected_y_nonzero)},
+        };
+        candidate_values.push_back(make_object(std::move(candidate_value)));
+    }
+
+    ScriptPersistentValue candidates_value{};
+    candidates_value.value = std::move(candidate_values);
+    auto result = call_value(
+        "actor_ai", "select_world_service_target",
+        {make_string(target_selection_policy_id(policy)),
+         std::move(candidates_value)});
+    if (!result.has_value()) {
+        return std::nullopt;
+    }
+    const auto* object =
+        std::get_if<ScriptPersistentValue::Object>(&result->value);
+    if (object == nullptr) {
+        impl_->failure =
+            "actor_ai.select_world_service_target returned invalid state";
+        return std::nullopt;
+    }
+    const auto selected = object->find("selected_actor_id");
+    if (selected == object->end()) {
+        impl_->failure =
+            "actor_ai.select_world_service_target omitted selected_actor_id";
+        return std::nullopt;
+    }
+    const auto* selected_id =
+        std::get_if<std::string>(&selected->second.value);
+    if (selected_id == nullptr) {
+        impl_->failure =
+            "actor_ai.select_world_service_target returned invalid actor ID";
+        return std::nullopt;
+    }
+
+    ScriptWorldTargetSelectionDecision decision{};
+    if (!selected_id->empty()) {
+        const auto selected_candidate = std::find_if(
+            candidates.begin(), candidates.end(),
+            [&selected_id](const ScriptActorTargetCandidate& candidate) {
+                return candidate.id == *selected_id &&
+                       (candidate.service_flags & 0x01U) != 0U;
+            });
+        if (!valid_identifier(*selected_id) ||
+            selected_candidate == candidates.end()) {
+            impl_->failure =
+                "actor_ai.select_world_service_target selected a missing actor";
+            return std::nullopt;
+        }
+        decision.selected_actor_id = *selected_id;
+    }
+    impl_->failure.clear();
+    return decision;
+}
+
 std::optional<ScriptActorBehaviorDecision>
 GameScriptRuntime::actor_behavior_decision(
     const ScriptActorBehaviorContext& context) {

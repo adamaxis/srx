@@ -553,17 +553,21 @@ local function advance_player_animation(state, context)
             state.player_weapon_animation_complete = nil
             state.animation_id = "attack"
             state.animation_frame = 0
-            state.animation_elapsed_updates = 0
+            state.animation_elapsed_updates =
+                E.PlayerWeaponAnimation.C042_START_ELAPSED_UPDATES
         end
         if state.player_weapon_animation_complete ~= true then
             if state.animation_id ~= "attack" then
                 state.animation_frame = 0
-                state.animation_elapsed_updates = 0
+                state.animation_elapsed_updates =
+                    E.PlayerWeaponAnimation.C042_START_ELAPSED_UPDATES
             end
             -- ROM 0xB39A installs C042. Joshua's selector 0x40 resolves to
-            -- the one-frame 0x784C list (+0x80 over +0x1000), which returns
-            -- to C052 after 32 render updates. The +0xDC action delay has a
-            -- separate lifetime [C: 0x5FDC/0x600E/0xA8EA/0xAE26].
+            -- the one-frame 0x784C list (+0x80 over +0x1000). GPGX's live
+            -- Stoker route sample at frame 10263 is already two normalized
+            -- updates into that list: it marks completion at +29 and returns
+            -- to C052 at +30 (frame 10293). The +0xDC gate still repeats at
+            -- +52 independently [C: 0x5FDC/0x600E/0xA8EA/0xAE26].
             state.animation_id = "attack"
             if advance_player_finite_clip(state, Animator.Clip.ITEM) then
                 state.player_weapon_animation_complete = true
