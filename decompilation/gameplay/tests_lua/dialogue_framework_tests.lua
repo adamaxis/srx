@@ -381,6 +381,133 @@ equal(table.concat(activity_exit, ","),
     "return_to_activity_source,fade,resume_scene_profile",
     "resource exit applies saved-scene, transition, and music policy")
 
+local bound_say_calls = {}
+local native_say = function(...)
+    local arguments = { ... }
+    arguments.n = select("#", ...)
+    bound_say_calls[#bound_say_calls + 1] = arguments
+    return "say-requested"
+end
+game.content = {
+    speakers = {
+        profiles = {
+            [E.DialogueSpeaker.FIELD_NARRATOR] = {
+                text_profile = E.DialogueTextProfile.FIELD_WORLD_EVENT,
+                events = {
+                    cyberspace_no_datajack = {},
+                    fixture_system_event = {},
+                },
+            },
+            fixture_unique_speaker = {
+                text_profile = "fixture.unique_profile",
+                events = { fixture_unique_event = {} },
+            },
+            fixture_system_speaker = {
+                text_profile = E.DialogueTextProfile.FIELD_WORLD_EVENT,
+                events = { fixture_system_event = {} },
+            },
+            fixture_ambiguous_speaker_a = {
+                text_profile = "fixture.ambiguous_a",
+                events = { fixture_ambiguous_event = {} },
+            },
+            fixture_ambiguous_speaker_b = {
+                text_profile = "fixture.ambiguous_b",
+                events = { fixture_ambiguous_event = {} },
+            },
+        },
+    },
+}
+game.ui = { say = native_say }
+package.preload.dialogue_framework_binding_fixture = function()
+    return {
+        mismatched_profile = function()
+            return game.ui.say(
+                "cyberspace_no_datajack",
+                E.DialogueSpeaker.FIELD_NARRATOR,
+                E.DialogueTextProfile.FIELD_MAIN_MENU,
+                "field_npc", 7)
+        end,
+        missing_speaker = function()
+            return game.ui.say(
+                "fixture_unique_event", nil, nil, "field_mode_text", 12)
+        end,
+        missing_system_speaker = function()
+            return game.ui.say("fixture_system_event", nil, nil)
+        end,
+        ambiguous_speaker = function()
+            return game.ui.say("fixture_ambiguous_event", nil, nil)
+        end,
+        fail_after_say = function()
+            game.ui.say(
+                "cyberspace_no_datajack",
+                E.DialogueSpeaker.FIELD_NARRATOR,
+                E.DialogueTextProfile.FIELD_MAIN_MENU)
+            error("fixture handler failure")
+        end,
+    }
+end
+
+local function open_binding_fixture(function_name, source)
+    local binding_task = coroutine.create(function()
+        return DialogueFramework.open(
+            source or E.DialogueSource.FIELD_MENU,
+            "dialogue_framework_binding_fixture", function_name,
+            E.FieldLocationSceneOutcome.NONE,
+            E.DialogueExitBehavior.NONE,
+            E.DialogueTransition.NONE)
+    end)
+    local opened, result = coroutine.resume(binding_task)
+    return opened, result
+end
+
+local opened_binding, binding_result = open_binding_fixture("mismatched_profile")
+assert(opened_binding, binding_result)
+equal(binding_result, "say-requested",
+    "common dialogue binding preserves the native say result")
+equal(bound_say_calls[1][2], E.DialogueSpeaker.FIELD_NARRATOR,
+    "common dialogue binding keeps the catalog speaker for its event")
+equal(bound_say_calls[1][3], E.DialogueTextProfile.FIELD_WORLD_EVENT,
+    "common dialogue binding corrects a mismatched profile from the catalog")
+equal(bound_say_calls[1][4], "field_npc",
+    "common dialogue binding preserves the presentation argument")
+equal(bound_say_calls[1][5], 7,
+    "common dialogue binding preserves the input delay")
+equal(game.ui.say, native_say,
+    "common dialogue binding restores the host function after a task")
+
+local opened_unbound, unbound_result = open_binding_fixture("missing_speaker")
+assert(opened_unbound, unbound_result)
+equal(bound_say_calls[2][2], "fixture_unique_speaker",
+    "common dialogue binding resolves a unique catalog event without a speaker")
+equal(bound_say_calls[2][3], "fixture.unique_profile",
+    "common dialogue binding resolves the unique event's text profile")
+equal(bound_say_calls[2][4], "field_mode_text",
+    "unique event resolution preserves the presentation argument")
+equal(bound_say_calls[2][5], 12,
+    "unique event resolution preserves the input delay")
+
+local opened_system, system_result = open_binding_fixture(
+    "missing_system_speaker", E.DialogueSource.FIELD_EVENT)
+assert(opened_system, system_result)
+equal(bound_say_calls[3][2], E.DialogueSpeaker.FIELD_NARRATOR,
+    "field-event dialogue resolves an ambiguous system event to its narrator")
+equal(bound_say_calls[3][3], E.DialogueTextProfile.FIELD_WORLD_EVENT,
+    "field-event dialogue uses the narrator's catalog text profile")
+
+local opened_ambiguous, ambiguous_result =
+    open_binding_fixture("ambiguous_speaker")
+assert(opened_ambiguous, ambiguous_result)
+equal(bound_say_calls[4][2], nil,
+    "common dialogue binding leaves an ambiguous event unresolved")
+equal(bound_say_calls[4][3], nil,
+    "common dialogue binding does not guess an ambiguous text profile")
+
+local opened_failure = open_binding_fixture("fail_after_say")
+assert(not opened_failure,
+    "common dialogue binding propagates failures from the task")
+equal(game.ui.say, native_say,
+    "common dialogue binding restores the host function after task failure")
+
 local function execute_source_route(source, route_id, task_result, route_data)
     exit_calls = {}
     local descriptor = DialogueFramework.describe(source, route_id, route_data)

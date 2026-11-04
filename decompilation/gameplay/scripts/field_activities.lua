@@ -1,6 +1,7 @@
 -- Shared map/resource activity menus. Lua owns cursor state and the action
 -- selected by the player; the Qt panel only presents each yielded menu frame.
 local FieldActivities = {}
+local E = require("enums")
 local Dialogue = require("dialogue")
 local DialogueGraph = require("dialogue_graph")
 local MatrixPasscodes = require("data.matrix_passcodes")
@@ -296,7 +297,7 @@ local function cyberspace_access_ready()
         return nil, "cyberspace_access_facts_unresolved"
     end
     if not deck_present then
-        game.ui.say("cyberspace_no_deck", "field_narrator", "field.main_menu")
+        game.ui.say("cyberspace_no_deck", E.DialogueSpeaker.FIELD_NARRATOR)
         return false
     end
 
@@ -305,7 +306,7 @@ local function cyberspace_access_ready()
         return nil, "cyberspace_access_facts_unresolved"
     end
     if not mpcp_functional then
-        game.ui.say("cyberspace_no_mpcp", "field_narrator", "field.main_menu")
+        game.ui.say("cyberspace_no_mpcp", E.DialogueSpeaker.FIELD_NARRATOR)
         return false
     end
 
@@ -314,7 +315,7 @@ local function cyberspace_access_ready()
         return nil, "cyberspace_access_facts_unresolved"
     end
     if not datajack_present then
-        game.ui.say("cyberspace_no_datajack", "field_narrator", "field.main_menu")
+        game.ui.say("cyberspace_no_datajack", E.DialogueSpeaker.FIELD_NARRATOR)
         return false
     end
     return true

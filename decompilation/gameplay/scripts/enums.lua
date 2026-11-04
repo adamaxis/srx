@@ -53,6 +53,13 @@ E.DialogueSource = {
     TAXI = "taxi",
     CINEMATIC = "cinematic",
 } -- Source identity for the common Lua dialogue opening framework.
+E.DialogueSpeaker = {
+    FIELD_NARRATOR = "field_narrator",
+} -- Field system narration uses the shared catalog narrator.
+E.DialogueTextProfile = {
+    FIELD_MAIN_MENU = "field.main_menu",
+    FIELD_WORLD_EVENT = "field.world_event",
+} -- ROM 0xE43E..0xE478 selects the no-Datajack field message [C].
 E.DialogueTransition = {
     NONE = "none",
     FADE = "fade",

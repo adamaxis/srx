@@ -13365,7 +13365,8 @@ int main() {
     });
     scripts.set_location_context(
         "activity", "resource_scene", "field.activity", "", "", 26U);
-    auto denied_resource_entry = scripts.start_task(
+    auto denied_resource_entry = scripts.start_dialogue_task(
+        ScriptDialogueSource::field_menu,
         "field_activities", "resource_scene_main_menu");
     denied_resource_entry =
         scripts.complete_native_menu_input("confirm");
@@ -13376,7 +13377,11 @@ int main() {
                         ScriptNativeOperation::Type::ui_say &&
                     denied_resource_entry.operation->dialogue.has_value() &&
                     denied_resource_entry.operation->dialogue->event_id ==
-                        "cyberspace_no_datajack",
+                        "cyberspace_no_datajack" &&
+                    denied_resource_entry.operation->dialogue->speaker_id ==
+                        "field_narrator" &&
+                    denied_resource_entry.operation->dialogue->text_profile ==
+                        "field.world_event",
                 "resource-scene Matrix entry bypassed the ROM datajack gate")) {
         std::cerr << scripts.failure() << '\n';
         return 15;
@@ -13394,6 +13399,26 @@ int main() {
     }
     denied_resource_entry =
         scripts.complete_native_menu_input("cancel");
+    constexpr std::array<std::string_view, 3U> kResourceExitServices{
+        "dialogue_exit.return_to_activity_source",
+        "dialogue_exit.fade",
+        "dialogue_exit.resume_scene_profile",
+    };
+    for (const auto service_id : kResourceExitServices) {
+        if (!expect(denied_resource_entry.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    denied_resource_entry.operation.has_value() &&
+                    denied_resource_entry.operation->type ==
+                        ScriptNativeOperation::Type::service_call &&
+                    denied_resource_entry.operation->service_id == service_id,
+                    "resource-scene exit did not request its common-framework "
+                    "return operation")) {
+            std::cerr << scripts.failure() << '\n';
+            return 15;
+        }
+        denied_resource_entry =
+            scripts.complete_native_service_result("applied");
+    }
     if (!expect(denied_resource_entry.status ==
                         ScriptTaskStep::Status::completed &&
                     denied_resource_entry.result_id == std::optional<

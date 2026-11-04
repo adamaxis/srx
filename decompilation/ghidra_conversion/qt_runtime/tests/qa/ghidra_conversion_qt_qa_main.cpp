@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -8281,6 +8282,87 @@ int run_field_scene26_event31_matrix_entry_qa(
         return 3;
     }
 
+    // ROM 0xE44C branches to Matrix when cyberware +0x90 bit 0 is set; the
+    // bit-clear path renders the field message at 0xC2252. Reach it with the
+    // same field inputs as the Matrix path.
+    constexpr auto kDatajackFlag = std::uint16_t{0x0001U};
+    auto& cyberware_flags = field_scene.active_runner_record().cyberware_flags;
+    cyberware_flags = static_cast<std::uint16_t>(
+        cyberware_flags & static_cast<std::uint16_t>(~kDatajackFlag));
+    const auto boundaries_before_denial = source_boundaries.size();
+    field_scene.set_controller_port_byte(0x40U); // Confirm Cyberspace.
+    field_scene.advance_frame();
+    field_scene.set_controller_port_byte(0U);
+    for (std::uint8_t frame = 0U;
+         frame < 5U &&
+         (!field_scene.dialogue_open() ||
+          field_scene.dialogue_panel().kind !=
+              DialoguePanelKind::information_page);
+         ++frame) {
+        field_scene.advance_frame();
+    }
+    const auto& no_datajack_page = field_scene.dialogue_panel();
+    const bool no_datajack_text_visible = std::any_of(
+        no_datajack_page.text_segments.begin(),
+        no_datajack_page.text_segments.begin() +
+            static_cast<std::ptrdiff_t>(no_datajack_page.text_segment_count),
+        [](const std::string_view text) {
+            return text.find("datajack") != std::string_view::npos;
+        });
+    if (!field_scene.dialogue_open() || !no_datajack_page.source_complete ||
+        no_datajack_page.kind != DialoguePanelKind::field_npc_prompt ||
+        no_datajack_page.option_count != 0U ||
+        !no_datajack_text_visible ||
+        source_boundaries.size() != boundaries_before_denial ||
+        !save("cyberspace-no-datajack-message") || !save("actual")) {
+        std::cerr << "Scene-26 event-31 Matrix QA: no-datajack field input "
+                     "froze before presenting the ROM message (dialogue="
+                  << field_scene.dialogue_open() << ", kind="
+                  << static_cast<int>(no_datajack_page.kind)
+                  << ", boundaries=" << boundaries_before_denial << "->"
+                  << source_boundaries.size() << ", reason="
+                  << no_datajack_page.source_boundary_reason << ")\n";
+        return 3;
+    }
+    for (std::uint8_t frame = 0U; frame < 30U; ++frame) {
+        field_scene.advance_frame();
+        if (!field_scene.dialogue_open() ||
+            field_scene.dialogue_panel().kind !=
+                DialoguePanelKind::field_npc_prompt) {
+            std::cerr << "Scene-26 event-31 Matrix QA: denial page did not "
+                         "remain visible during its closing wait\n";
+            return 3;
+        }
+    }
+    field_scene.set_controller_port_byte(0x40U); // Dismiss the denial page.
+    field_scene.advance_frame();
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame(); // Sample the release before another A edge.
+    for (std::uint8_t frame = 0U;
+         frame < 5U &&
+         (!field_scene.dialogue_open() ||
+          !field_scene.dialogue_panel().cursor_selection);
+         ++frame) {
+        field_scene.advance_frame();
+    }
+    const auto& returned_main_menu = field_scene.dialogue_panel();
+    if (!field_scene.dialogue_open() ||
+        !returned_main_menu.cursor_selection ||
+        returned_main_menu.text_segment_count == 0U ||
+        returned_main_menu.text_segments[0] != "Main Menu" ||
+        returned_main_menu.option_count != 2U ||
+        returned_main_menu.options[0].source_label != "Cyberspace" ||
+        returned_main_menu.options[1].source_label != "Exit" ||
+        source_boundaries.size() != boundaries_before_denial ||
+        !save("cyberspace-no-datajack-returned-main-menu")) {
+        std::cerr << "Scene-26 event-31 Matrix QA: dismissing the no-datajack "
+                     "message did not resume the field menu\n";
+        return 3;
+    }
+
+    // Re-enable the ROM +0x90 Datajack bit and repeat the same field command.
+    cyberware_flags = static_cast<std::uint16_t>(
+        cyberware_flags | kDatajackFlag);
     field_scene.set_controller_port_byte(0x40U); // Confirm Cyberspace.
     field_scene.advance_frame();
     field_scene.set_controller_port_byte(0U);
@@ -8305,7 +8387,16 @@ int run_field_scene26_event31_matrix_entry_qa(
                   << ", node="
                   << (route.top_matrix_node.has_value()
                           ? std::to_string(*route.top_matrix_node)
-                          : "<missing>") << ")\n";
+                          : "<missing>")
+                  << ", dialogue=" << field_scene.dialogue_open()
+                  << ", panel=" << static_cast<int>(
+                         field_scene.dialogue_panel().kind)
+                  << ", selected=" << field_scene.dialogue_panel()
+                         .selected_option
+                  << ", datajack=" << ((field_scene.active_runner_record()
+                         .cyberware_flags & 0x0001U) != 0U)
+                  << ", text="
+                  << field_scene.dialogue_panel().text_segments[0] << ")\n";
         return 3;
     }
 

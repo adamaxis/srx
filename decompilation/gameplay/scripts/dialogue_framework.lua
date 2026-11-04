@@ -209,11 +209,96 @@ local NON_EXIT_TASK_RESULTS = {
     matrix_entry_current = true,
 }
 
+-- Field system scripts can emit narrator events without knowing a speaker.
+-- Resolve those from the shared content catalog; actor and service dialogue
+-- keep their explicit speaker identity.
+local FIELD_NARRATOR_SOURCES = {
+    [E.DialogueSource.FIELD_EVENT] = true,
+    [E.DialogueSource.FIELD_MENU] = true,
+    [E.DialogueSource.FIELD_ACTIVITY] = true,
+    [E.DialogueSource.PARTY_RECOVERY] = true,
+}
+
 local function valid_member(value, enum)
     for _, candidate in pairs(enum) do
         if value == candidate then return true end
     end
     return false
+end
+
+local function resolve_speaker_binding(source, event_id, speaker_id,
+                                       text_profile)
+    local catalog = game and game.content and game.content.speakers
+    local profiles = type(catalog) == "table" and catalog.profiles or nil
+    if type(profiles) ~= "table" or type(event_id) ~= "string" or
+       event_id == "" then
+        return nil
+    end
+
+    local requested = type(speaker_id) == "string" and
+        profiles[speaker_id] or nil
+    if type(requested) == "table" and
+       type(requested.text_profile) == "string" and
+       type(requested.events) == "table" and
+       requested.events[event_id] ~= nil then
+        return speaker_id, requested.text_profile
+    end
+
+    if FIELD_NARRATOR_SOURCES[source] then
+        local narrator = profiles[E.DialogueSpeaker.FIELD_NARRATOR]
+        if type(narrator) == "table" and
+           type(narrator.text_profile) == "string" and
+           type(narrator.events) == "table" and
+           narrator.events[event_id] ~= nil then
+            return E.DialogueSpeaker.FIELD_NARRATOR, narrator.text_profile
+        end
+    end
+
+    local candidate_id
+    local candidate_profile
+    local candidate_count = 0
+    for id, profile in pairs(profiles) do
+        if type(id) == "string" and type(profile) == "table" and
+           type(profile.text_profile) == "string" and
+           type(profile.events) == "table" and
+           profile.events[event_id] ~= nil and
+           (type(text_profile) ~= "string" or text_profile == "" or
+            profile.text_profile == text_profile) then
+            candidate_id = id
+            candidate_profile = profile.text_profile
+            candidate_count = candidate_count + 1
+        end
+    end
+    if candidate_count == 1 then
+        return candidate_id, candidate_profile
+    end
+    return nil
+end
+
+local function install_speaker_binding(source)
+    local ui = game and game.ui
+    local original_say = type(ui) == "table" and ui.say or nil
+    if type(original_say) ~= "function" then
+        return function() end
+    end
+
+    local unpack_values = table.unpack or unpack
+    ui.say = function(...)
+        local arguments = { ... }
+        local argument_count = select("#", ...)
+        local speaker_id, text_profile = resolve_speaker_binding(
+            source, arguments[1], arguments[2], arguments[3])
+        if speaker_id ~= nil then
+            arguments[2] = speaker_id
+            arguments[3] = text_profile
+            argument_count = math.max(argument_count, 3)
+        end
+        return original_say(unpack_values(arguments, 1, argument_count))
+    end
+
+    return function()
+        ui.say = original_say
+    end
 end
 
 local function merge(target, values)
@@ -518,6 +603,7 @@ function DialogueFramework.open(source, module_name, function_name,
         source, route_id, resolved_route_data)
     dialogue.open_count = (dialogue.open_count or 0) + 1
     dialogue.active = descriptor
+    local restore_speaker_binding = install_speaker_binding(source)
     local ok, result = pcall(function()
         local task_result = handler()
         local is_boundary = type(task_result) == "table" and
@@ -527,6 +613,7 @@ function DialogueFramework.open(source, module_name, function_name,
         end
         return task_result
     end)
+    restore_speaker_binding()
     dialogue.last_opening = descriptor
     dialogue.active = previous
     if not ok then error(result, 0) end
