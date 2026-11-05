@@ -8401,8 +8401,8 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 if (bound == 0U) {
                     return std::nullopt;
                 }
-                const auto sample = sample_source_random_bound(
-                    field_random_seed_, bound);
+                const auto sample = source_random_bound(
+                    bound, source_random_site::world_activity_resource_index);
                 if (sample < 0 || sample >= static_cast<std::int16_t>(bound)) {
                     return std::nullopt;
                 }
@@ -8410,7 +8410,8 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
             };
             activity_callbacks.advance_source_prng = [this]()
                 -> std::optional<std::uint16_t> {
-                return advance_source_random_seed(field_random_seed_);
+                return next_source_random_word(
+                    source_random_site::world_activity_marker);
             };
 
             field_security_floor_index_.reset();
