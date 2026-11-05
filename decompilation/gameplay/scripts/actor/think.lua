@@ -43,7 +43,9 @@ local function thon_action_path(state, context)
 
     if cooldown > 0 then
         state.thon_action_cooldown_remaining = cooldown - 1
-        return "thon_idle"
+        -- The kind-15 branch at ROM 0x13920 enters 0x13E40 while its shared
+        -- action timer has not expired; that continuation does not idle it.
+        return "continue_movement"
     end
 
     if state.damage_reaction_active and state.animation_id == "down" then
@@ -177,7 +179,8 @@ local function think_gate(state, context)
         return "skip"
     end
     if facts.roles.pedestrian and world_active then
-        return context.source_projection_active == true and "flee" or "hold"
+        return context.source_projection_active == true and "flee" or
+            "continue_movement"
     end
     if context.source_projection_active == false and
        facts.roles.despawn_offscreen then
@@ -185,7 +188,8 @@ local function think_gate(state, context)
         return "skip"
     end
     if facts.behavior.fleeing then
-        return context.source_projection_active == true and "flee" or "hold"
+        return context.source_projection_active == true and "flee" or
+            "continue_movement"
     end
 
     if context.source_projection_active == false then
@@ -195,7 +199,8 @@ local function think_gate(state, context)
         if context.field_sequence_active == true and
            not facts.lifecycle.ai_runner and
            context.hold_for_ending_activity == true then
-            return "hold"
+            -- The ending-state gate at 0x13996..0x139B0 also reaches 0x13E40.
+            return "continue_movement"
         end
         return "follow_leader"
     end
@@ -659,9 +664,12 @@ local function apply_think_result(state, context, path)
         return true
     elseif path == "thon_busy" or path == "thon_unresolved" then
         return true
-    elseif path == "thon_idle" then
-        -- The 0xB45C idle/stand continuation is represented by set_idle [C].
-        set_idle(state, context)
+    elseif path == "continue_movement" then
+        -- ROM 0x1394A/0x1397A -> 0x13E8C routes an offscreen actor through
+        -- 0x13E40. The Thon and ending-state gates also reach 0x13E40. It
+        -- refreshes the B45C continuation when +0x16 <= 0x3C and otherwise
+        -- leaves it alone; it does not idle the actor. Preserve its typed
+        -- movement state [C].
         return true
     elseif path == "thon_action" then
         local audio_event = state.ai_think_audio_event
@@ -669,10 +677,6 @@ local function apply_think_result(state, context, path)
         return true, audio_event
     elseif path == "flee" then
         apply_flee(state, context)
-        return true
-    elseif path == "hold" then
-        state.watch_bearing_degrees = nil
-        set_idle(state, context)
         return true
     elseif path == "watch" then
         apply_watch(state, context)

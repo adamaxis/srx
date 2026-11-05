@@ -229,9 +229,12 @@ local function copy_state(source)
     return result
 end
 
+-- [C] ROM 0x1394A/0x1397A reaches 0x13E8C; projected +0x0C == 0 then
+-- enters 0x13E40, which retains or refreshes the B45C continuation.
 local think_path_cases = {
     {
-        name = "hold", expected = "hold", projection = false,
+        name = "continue_movement", expected = "continue_movement",
+        projection = false,
         configure = function(s, c)
             c.world_activity_active = true
             c.field_sequence_active = true
@@ -257,7 +260,8 @@ local think_path_cases = {
         configure = function() end,
     },
     {
-        name = "thon_idle", expected = "thon_idle", projection = true,
+        name = "thon_continue_movement",
+        expected = "continue_movement", projection = true,
         visual_profile = E.ActorVisualProfile.THON,
         configure = function(_, c)
             c.animation_blocks_behavior = false

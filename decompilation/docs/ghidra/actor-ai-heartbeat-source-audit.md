@@ -165,6 +165,18 @@ tables in `0x14D6A`; `+0x57` identifies the selected action row. Target
 candidates are collected at `0x1438C` and `0x14446`; actor links are not
 simply the nearest-screen-sprite rule.
 
+The offscreen pedestrian and flee paths retain movement. ROM `0x1394A..0x1395E`
+branches an active pedestrian (`+0x9E.b5`, `FFDF84 != 0`) to `0x13E8C`, and
+`0x1397A..0x13982` branches an actor with `+0xB0.b6` set to the same routine.
+`0x13E8C` checks projected screen Y at `+0x0C`; when it is zero, it branches
+to `0x13E40`. That routine leaves the continuation untouched when `+0x16 >
+0x3C`, and otherwise installs `0xB45C`. `0xB45C` derives a movement vector
+from the actor's current heading through table `0xC052` and performs the
+terrain check at `0xB48C`. Neither route clears actor movement. Lua therefore
+preserves its typed movement intent for this branch; `set_idle` incorrectly
+stopped the actor when it left projection. This is a source-path correction,
+not a claim that the remaining #48 vanish reports have all been reproduced.
+
 The connected Lua motion path uses the item-template `+0x27` profile from
 `0xD4540` or spell-template selector from `0xD4EA0` while the source
 re-target delay is nonzero. The four finite bounds at `0x13E7C` are

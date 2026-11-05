@@ -282,17 +282,17 @@ local thon_context = context({
     ai_random_bound = function() return 0 end,
     action_line_clear = function() return true end,
 })
-local thon_skips = 0
+local thon_waits = 0
 for _ = 1, E.AiTuning.THON_ACTION_INTERVAL do
     local path = R.think_gate(thon_state, thon_context)
-    if path == "thon_idle" then
-        thon_skips = thon_skips + 1
+    if path == "continue_movement" then
+        thon_waits = thon_waits + 1
     end
     thon_context.thon_action_cooldown_remaining =
         thon_state.thon_action_cooldown_remaining
 end
 local thon_fire_path = R.think_gate(thon_state, thon_context)
-check(thon_skips == E.AiTuning.THON_ACTION_INTERVAL and
+check(thon_waits == E.AiTuning.THON_ACTION_INTERVAL and
       thon_fire_path == "thon_action" and
       thon_state.thon_action_cooldown_remaining ==
           E.AiTuning.THON_ACTION_INTERVAL and
@@ -414,8 +414,8 @@ check(R.think_gate(state(), context({ source_projection_active = false,
 check(R.think_gate(state(), context({ source_projection_active = false,
       world_activity_active = true,
       field_sequence_active = true,
-      hold_for_ending_activity = true })) == "hold",
-      "0x13996 ending-state offscreen actor with the host-derived hold policy enters hold")
+      hold_for_ending_activity = true })) == "continue_movement",
+      "0x13996 reaches 0x13E40 without clearing the existing movement continuation")
 check(R.think_gate(state({ actor_facts = {
           lifecycle = { ai_runner = true },
       } }), context({ source_projection_active = false,
@@ -438,11 +438,14 @@ check(R.think_gate(state(), context({ world_activity_active = true })) ==
 local hold_context = context({ source_projection_active = false,
     world_activity_active = true, field_sequence_active = true,
     hold_for_ending_activity = true })
-s = state()
+s = state({ movement_active = true, movement_bearing_degrees = 45,
+            movement_route_distance = 0x500 })
 hold_context.animation_blocks_behavior = false
-check(R.think(s, hold_context) and s.ai_think_path == "hold" and
-      s.animation_id == "idle" and not s.movement_active,
-      "0x13E40 idle pose sets the held idle continuation")
+check(R.think(s, hold_context) and
+      s.ai_think_path == "continue_movement" and s.movement_active and
+      s.movement_bearing_degrees == 45 and
+      s.movement_route_distance == 0x500,
+      "0x13E40 preserves active movement while refreshing B45C when due [C]")
 s = state({ movement_active = true, animation_id = "action" })
 hold_context.animation_blocks_behavior = true
 check(R.think(s, hold_context) and s.animation_id == "action" and
@@ -476,8 +479,22 @@ s = state({ movement_active = true,
             actor_facts = { behavior = { fleeing = true } } })
 check(R.think_gate(s, context({ actor_facts = { behavior =
       { fleeing = true } }, source_projection_active = false,
-      animation_blocks_behavior = true })) == "hold",
-      "0x13E8C offscreen flee route enters 0x13E40")
+      animation_blocks_behavior = true })) == "continue_movement",
+      "0x1397A offscreen flee route reaches 0x13E40 and preserves movement [C]")
+
+s = state({ movement_active = true, movement_bearing_degrees = 270,
+            movement_route_distance = 0x380,
+            actor_facts = { roles = { pedestrian = true } } })
+local offscreen_pedestrian = context({
+    actor_facts = { roles = { pedestrian = true } },
+    world_activity_active = true,
+    source_projection_active = false,
+})
+check(R.think(s, offscreen_pedestrian) and
+      s.ai_think_path == "continue_movement" and s.movement_active and
+      s.movement_bearing_degrees == 270 and
+      s.movement_route_distance == 0x380,
+      "0x1394A offscreen pedestrian path preserves its movement continuation [C]")
 
 check(R.think_gate(state(), context({ actor_behavior_profile = {
       engagement_policy = "patrol", approach_band = "far",
