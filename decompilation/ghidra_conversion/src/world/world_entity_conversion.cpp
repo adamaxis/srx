@@ -763,7 +763,10 @@ std::vector<BuiltSpriteRecord> advance_jitter_effect(
             state.animation.active = false;
             return {};
         }
-        state.random_word = advance_source_random_seed(state.seed);
+        // ROM 0x54C4 advances shared FFF9F8; `seed` mirrors it after the draw.
+        state.random_word =
+            next_source_random_word(source_random_site::jitter_offset);
+        state.seed = source_random_seed();
         auto x = static_cast<std::int16_t>(state.random_word & 7U);
         if ((x & 2) != 0) {
             x = static_cast<std::int16_t>(-x);

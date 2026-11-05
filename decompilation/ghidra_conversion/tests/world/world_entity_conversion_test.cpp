@@ -211,7 +211,7 @@ int main() {
     jitter_sprite = {};
     jitter_sprite.animation = {0, 2, 3, 0, true};
     jitter_sprite.remaining = 1;
-    jitter_sprite.seed = 1;
+    source_random_seed() = 1U;  // C1c setup: draw now reads shared FFF9F8 (same seed)
     jitter_sprite.screen_x = 0x0088U;
     jitter_sprite.screen_y = 0x0098U;
     jitter_sprites = advance_jitter_effect(jitter_sprite, 0U);
