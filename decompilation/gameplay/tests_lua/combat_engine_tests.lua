@@ -80,6 +80,15 @@ local function source_rng(seed)
     end
 end
 
+local function source_rng_with_state(seed)
+    local function draw(bound)
+        -- 0x0D44 advances the seed before 0x0D3A returns the bounded value.
+        seed = (seed * 0x20E5 + 1) & 0xFFFF
+        return (seed * bound) >> 16
+    end
+    return draw, function() return seed end
+end
+
 local function source_rolls(count, difficulty, random_bound)
     -- ROM 0x0DBA..0x0DFA coerces an empty pool to one die and explodes sixes.
     local successes = 0
@@ -241,6 +250,20 @@ local function source_weapon_damage(defender, action, attack_successes,
         value = value - Items.by_id[defender.equipped_armor_id].armor.primary_modifier
     end
     return math.max(value, 0)
+end
+
+local function p46t_weapon_hit(attacker, target, seed)
+    local random_bound, seed_after = source_rng_with_state(seed)
+    local context = {
+        combatant = attacker,
+        projectile_action_id = "model_101t",
+        ai_target_candidates = {},
+        ai_random_bound = random_bound,
+    }
+    local attack_successes = Combat.resolve_weapon_attack_seed(context)
+    local hit = attack_successes ~= nil and Combat.resolve_weapon_hit(
+        context, { attack_successes = attack_successes }, target) or nil
+    return attack_successes, hit, seed_after()
 end
 
 local function source_spell_residual(force, roll_count, spell)
@@ -702,6 +725,160 @@ do
     check(expected_attack == 2 and attack == 2 and expected_damage == 1 and
           hit ~= nil and hit.physical_meter == 9 and hit.mental_meter == 10,
           "seed 0001 Joshua Decker 0x72A1A -> Weenr2 0x1D66A4 differs from measured 2/0/1, 10->9 physical")
+end
+
+-- Playtest #46T: source-controlled gun damage against the default pedestrian.
+-- ROM 0x7291A supplies the selected runner's Body/attributes/skills/posture
+-- and item code +0x66=2; E.ItemId.MODEL_101T is 2 and weapon row 0xD4570
+-- supplies effect 1 / TN 6. Pedestrian template 0x1D6988 supplies Body 2,
+-- Q/I/W 1/2/2, posture 2, physical 10, and armor index 0. The ROM pool
+-- formula is cited at 0x55640/0x12C74; hit/defense/effect at 0x55948..0x559F0;
+-- armor at 0x55E92..0x55EB2; physical decrement/clamp at 0x55A90..0x55A98.
+check(E.ItemId.MODEL_101T == 0x02,
+      "ROM item code 2 must remain E.ItemId.MODEL_101T for #46T")
+
+local function p46t_jake(options)
+    options = options or {}
+    options.party = true
+    options.action = "model_101t"
+    return make_combatant(options)
+end
+
+local function p46t_pedestrian(id)
+    return {
+        id = id,
+        combatant = make_combatant({
+            body = 2, quickness = 1, intelligence = 2, willpower = 2,
+            posture_reduction_percent = 50,
+            physical_meter = 10, mental_meter = 10,
+        }),
+    }
+end
+
+-- Measured GPGX logic-only seed chain, re-run against production Lua before
+-- this permanent test was added. Each attack+defense pair consumes ten draws.
+-- 0x2577's raw effect is 2 but only one point is removed because 0x55A90
+-- clamps the pedestrian's physical meter at zero.
+do
+    clear_actor_states()
+    local attacker = p46t_jake({
+        body = 4, quickness = 3, strength = 4, intelligence = 2,
+        willpower = 4, firearms = 4, pistols = 0,
+        posture_reduction_percent = 50,
+    })
+    local target = p46t_pedestrian("p46t-seed-chain-pedestrian")
+    local meter = 10
+    for _, row in ipairs({
+        { seed = 0xDF65, attack = 3, damage = 3, meter = 7,
+          end_seed = 0x861B },
+        { seed = 0x861B, attack = 1, damage = 1, meter = 6,
+          end_seed = 0x5BA1 },
+        { seed = 0x5BA1, attack = 4, damage = 5, meter = 1,
+          end_seed = 0x2577 },
+        { seed = 0x2577, attack = 1, damage = 2, meter = 0,
+          end_seed = 0x9D1D },
+    }) do
+        local raw_target = p46t_pedestrian(
+            string.format("p46t-raw-seed-%04X", row.seed))
+        local raw_attack, raw_hit, raw_end_seed = p46t_weapon_hit(
+            attacker, raw_target, row.seed)
+        local raw_damage = raw_hit ~= nil and
+            10 - raw_hit.physical_meter or -1
+        target.combatant.physical_meter = meter
+        local attack, hit, end_seed = p46t_weapon_hit(
+            attacker, target, row.seed)
+        local measured_damage = hit ~= nil and
+            meter - hit.physical_meter or -1
+        check(raw_attack == row.attack and raw_damage == row.damage and
+              raw_hit ~= nil and raw_hit.mental_meter == 10 and
+              raw_end_seed == row.end_seed and attack == row.attack and
+              hit ~= nil and measured_damage == math.min(row.damage, meter) and
+              hit.physical_meter == row.meter and hit.mental_meter == 10 and
+              end_seed == row.end_seed,
+              string.format("#46T seed %04X must match ROM attack/damage/meter",
+                            row.seed))
+        meter = hit ~= nil and hit.physical_meter or meter
+    end
+end
+
+-- Additional hand-derived cases exercise the same ROM equations with
+-- controlled seeds/stat variants. Dice below are the successive bounded d6
+-- faces from 0x0D44/0x0D3A; a six explodes per 0x0DBA..0x0DFA. The pedestrian
+-- defense pool remains floor((1+2+2)/2)-floor(2*50/100)+Body2 = 3 at TN6.
+-- 0x0437, source runner stats: attack pool 4+min(4,2)=6; attack dice
+-- 4,2,4,6+3,6+3,2 yield 4 successes at TN4; defense 2,1,2 yields 0.
+-- Thus effect 1+4-0=5, no armor, meter 10->5.
+-- 0x1234, test stats Q/I/W=2/3/3, Firearms/Pistols=2/0, posture=25%:
+-- average4, posture share1, attack pool3; dice 5,6+3,6+3 yield 3
+-- successes; defense 3,6+1,3 yields 1; effect 1+3-1=3, meter 10->7.
+-- 0x4567, test stats Q/I/W=3/3/3, Firearms/Pistols=3/0, posture=25%:
+-- average4, share1, pool4; dice 6+5,4,2,5 yield 3 successes; defense
+-- 2,2,3 yields 0; effect 1+3-0=4, meter 10->6.
+-- 0xBEEF, test stats Q/I/W=5/4/3, Firearms/Pistols=7/4, posture=75%:
+-- average6, share4, pool11; dice 5,2,2,4,3,6+2,2,1,2,6+6+4,1 yield 4
+-- successes; defense 1,4,3 yields 0; effect 1+4-0=5, meter 10->5.
+-- These variants are formula probes, not claims about additional ROM actors.
+for _, row in ipairs({
+    { seed = 0x0437, attacker = {
+        body = 4, quickness = 3, intelligence = 2, willpower = 4,
+        firearms = 4, pistols = 0, posture_reduction_percent = 50,
+    }, attack = 4, damage = 5, meter = 5, end_seed = 0x2EB2 },
+    { seed = 0x1234, attacker = {
+        body = 2, quickness = 2, intelligence = 3, willpower = 3,
+        firearms = 2, pistols = 0, posture_reduction_percent = 25,
+    }, attack = 3, damage = 3, meter = 7, end_seed = 0x76DD },
+    { seed = 0x4567, attacker = {
+        body = 3, quickness = 3, intelligence = 3, willpower = 3,
+        firearms = 3, pistols = 0, posture_reduction_percent = 25,
+    }, attack = 3, damage = 4, meter = 6, end_seed = 0x797F },
+    { seed = 0xBEEF, attacker = {
+        body = 5, quickness = 5, intelligence = 4, willpower = 3,
+        firearms = 7, pistols = 4, posture_reduction_percent = 75,
+    }, attack = 4, damage = 5, meter = 5, end_seed = 0x6DBC },
+}) do
+    clear_actor_states()
+    local attacker = p46t_jake(row.attacker)
+    local target = p46t_pedestrian(string.format("p46t-case-%04X", row.seed))
+    local attack, hit, end_seed = p46t_weapon_hit(attacker, target, row.seed)
+    local damage = hit ~= nil and 10 - hit.physical_meter or -1
+    check(attack == row.attack and damage == row.damage and hit ~= nil and
+          hit.physical_meter == row.meter and hit.mental_meter == 10 and
+          end_seed == row.end_seed,
+          string.format("#46T controlled formula case %04X", row.seed))
+end
+
+-- Exhaust every 16-bit direct seed through the production attack and hit
+-- resolvers. ROM 0x559D0..0x559F0 bounds pre-armor effect to 0..10;
+-- 0x55A02..0x55A12 and 0x55A90..0x55A98 cannot increase it or make a meter
+-- decrement exceed the meter. This unarmored, 10-point pedestrian therefore
+-- must take an integer 0..10 physical damage for every seed.
+do
+    clear_actor_states()
+    local attacker = p46t_jake({
+        body = 4, quickness = 3, strength = 4, intelligence = 2,
+        willpower = 4, firearms = 4, pistols = 0,
+        posture_reduction_percent = 50,
+    })
+    local target = p46t_pedestrian("p46t-all-seeds-pedestrian")
+    local invalid = 0
+    for seed = 0, 0xFFFF do
+        target.combatant.physical_meter = 10
+        target.combatant.mental_meter = 10
+        local attack, hit = p46t_weapon_hit(attacker, target, seed)
+        if attack == nil or hit == nil or
+           hit.physical_meter < 0 or hit.physical_meter > 10 or
+           hit.mental_meter ~= 10 then
+            invalid = invalid + 1
+        else
+            local damage = 10 - hit.physical_meter
+            if damage < 0 or damage > 10 or damage ~= math.floor(damage) then
+                invalid = invalid + 1
+            end
+        end
+    end
+    check(invalid == 0,
+          string.format("#46T damage must stay in ROM range 0..10 for all 65536 seeds (invalid=%d)",
+                        invalid))
 end
 
 print(string.format("combat_engine_tests: %d/%d passed", passed, total))
