@@ -65,8 +65,7 @@ public:
         std::uint16_t event_word,
         std::array<RunnerRecordFields, 3>& party,
         const std::array<bool, 3>& active_slots,
-        std::uint8_t& interaction_selection,
-        std::uint16_t& random_seed);
+        std::uint8_t& interaction_selection);
 
     void close() noexcept;
     void reset_session() noexcept;
@@ -96,8 +95,7 @@ private:
     void dispatch_command(std::uint32_t command,
                          std::array<RunnerRecordFields, 3>& party,
                          const std::array<bool, 3>& active_slots,
-                         std::uint8_t& interaction_selection,
-                         std::uint16_t& random_seed);
+                         std::uint8_t& interaction_selection);
     std::uint8_t best_electronics_skill(
         const std::array<RunnerRecordFields, 3>& party,
         const std::array<bool, 3>& active_slots) const noexcept;

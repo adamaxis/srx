@@ -103,7 +103,7 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x0BD2` | wait_for_vblank | 32 | decompilation/ghidra_conversion/src/core/timing_conversion.cpp | port |
 | `0x0BF2` | latch_controller_events | 50 | decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#ghidra_conversion::latch_controller_events | port |
 | `0x0C24` | wait_for_vblank_frames | 8 | decompilation/ghidra_conversion/src/audio/audio_command_batch_conversion.cpp#ghidra_conversion::wait_for_vblank_frames | port |
-| `0x0D3A` | sample_source_random_bound | 10 | decompilation/ghidra_conversion/qt_runtime/src/field/field_interaction_runtime.cpp#ghidra_conversion::sample_source_random_bound | port |
+| `0x0D3A` | sample_source_random_bound | 10 | decompilation/ghidra_conversion/src/core/random_conversion.cpp#ghidra_conversion::source_random_bound | port |
 | `0x0D44` | advance_source_prng | 22 | decompilation/ghidra_conversion/src/core/random_conversion.cpp#ghidra_conversion::next_source_random_word | port |
 | `0x0D5A` | guard_entity_phase_window | 58 | decompilation/ghidra_conversion/src/entities/entity_action_math_conversion.cpp#ghidra_conversion::add_wound_difficulty_penalty | port |
 | `0x0D94` | wait_for_controller_event | 38 | decompilation/ghidra_conversion/src/core/controller_wait_conversion.cpp#ghidra_conversion::wait_for_controller_event | port |

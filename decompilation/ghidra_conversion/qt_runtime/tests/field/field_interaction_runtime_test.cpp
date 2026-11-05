@@ -77,11 +77,11 @@ bool no_old_paint_remains(const QImage& image) {
 void advance_frames(FieldInteractionRuntime& runtime,
                     std::array<RunnerRecordFields, 3>& party,
                     const std::array<bool, 3>& active_slots,
-                    std::uint8_t& selection, std::uint16_t& seed,
+                    std::uint8_t& selection,
                     const std::uint16_t frames) {
     for (std::uint16_t frame = 0U; frame < frames; ++frame) {
         (void)runtime.advance_controller_events(0U, party, active_slots,
-                                                selection, seed);
+                                                selection);
     }
 }
 
@@ -125,7 +125,9 @@ int main() {
     party[0].flags = 0x0100U;
     const std::array<bool, 3> active_slots{{true, false, false}};
     std::uint8_t selection = 2U;
-    std::uint16_t seed = 0x3456U;
+    // C1c: the runtime draws from shared FFF9F8; alias it (setup only, same seeds).
+    std::uint16_t& seed = source_random_seed();
+    seed = 0x3456U;
 
     // The generic door page waits ten source frames, then A reaches its three
     // action choices. The shared panel fully replaces any previous drawing.
@@ -152,7 +154,7 @@ int main() {
         return 5;
     }
     const auto stable_frame = image.copy();
-    advance_frames(runtime, party, active_slots, selection, seed, 5U);
+    advance_frames(runtime, party, active_slots, selection, 5U);
     image.fill(QColor(255, 0, 255));
     {
         QPainter painter(&image);
@@ -161,9 +163,9 @@ int main() {
     if (image != stable_frame) {
         return 6;
     }
-    advance_frames(runtime, party, active_slots, selection, seed, 5U);
+    advance_frames(runtime, party, active_slots, selection, 5U);
     (void)runtime.advance_controller_events(0x4000U, party, active_slots,
-                                            selection, seed);
+                                            selection);
     if (runtime.panel().option_count != 3U ||
         runtime.panel().options[0].role !=
             DialoguePanelOptionRole::field_use_electronics ||
@@ -178,9 +180,9 @@ int main() {
 
     // Walk away is a terminal menu result. Its next field frame is not drawn
     // underneath the shared full-screen panel.
-    advance_frames(runtime, party, active_slots, selection, seed, 10U);
+    advance_frames(runtime, party, active_slots, selection, 10U);
     if (runtime.advance_controller_events(0x2000U, party, active_slots,
-                                         selection, seed) !=
+                                         selection) !=
             FieldInteractionAdvanceResult::returned_to_field ||
         runtime.open()) {
         return 8;
@@ -198,9 +200,9 @@ int main() {
             FieldInteractionPrompt::electromagnetic_lock_door, selection)) {
         return 9;
     }
-    advance_frames(runtime, party, active_slots, selection, seed, 10U);
+    advance_frames(runtime, party, active_slots, selection, 10U);
     (void)runtime.advance_controller_events(0x4000U, party, active_slots,
-                                            selection, seed);
+                                            selection);
     if (selection != 0xFFU || runtime.panel().option_count != 0U ||
         runtime.panel().text_segments[0].find("Your Maglock Passkey") != 0U ||
         runtime.panel().text_segment_count != 3U ||
@@ -236,9 +238,9 @@ int main() {
         green_pixel_count(image, 48, 176, 256, 16) < 150U) {
         return 22;
     }
-    advance_frames(runtime, party, active_slots, selection, seed, 10U);
+    advance_frames(runtime, party, active_slots, selection, 10U);
     (void)runtime.advance_controller_events(0x4000U, party, active_slots,
-                                            selection, seed);
+                                            selection);
     if (runtime.panel().option_count != 0U ||
         runtime.panel().text_segments[0].empty() ||
         !runtime.open()) {
@@ -286,9 +288,9 @@ int main() {
             FieldInteractionPrompt::building_security_terminal, selection)) {
         return 16;
     }
-    advance_frames(runtime, party, active_slots, selection, seed, 10U);
+    advance_frames(runtime, party, active_slots, selection, 10U);
     (void)runtime.advance_controller_events(0x4000U, party, active_slots,
-                                            selection, seed);
+                                            selection);
     if (runtime.panel().option_count != 0U ||
         std::find(boundaries.begin(), boundaries.end(),
                   "field.security_terminal.floor_index_unavailable") ==
@@ -306,9 +308,9 @@ int main() {
             false, 4U)) {
         return 18;
     }
-    advance_frames(runtime, party, active_slots, selection, seed, 10U);
+    advance_frames(runtime, party, active_slots, selection, 10U);
     (void)runtime.advance_controller_events(0x4000U, party, active_slots,
-                                            selection, seed);
+                                            selection);
     if (runtime.panel().text_segment_count < 2U ||
         runtime.panel().text_segments[1] != *fifth_floor) {
         std::cerr << "floor detail mismatch: count="
@@ -341,12 +343,12 @@ int main() {
             FieldInteractionPrompt::electromagnetic_lock_door, selection)) {
         return 20;
     }
-    advance_frames(runtime, party, active_slots, selection, seed, 10U);
+    advance_frames(runtime, party, active_slots, selection, 10U);
     (void)runtime.advance_controller_events(0x4000U, party, active_slots,
-                                            selection, seed);
-    advance_frames(runtime, party, active_slots, selection, seed, 10U);
+                                            selection);
+    advance_frames(runtime, party, active_slots, selection, 10U);
     (void)runtime.advance_controller_events(0x1000U, party, active_slots,
-                                            selection, seed);
+                                            selection);
     if (party[0].inventory_phase_bytes[2] != 1U ||
         selection != 0xFFU || !runtime.open() ||
         std::find(audio_events.begin(), audio_events.end(), 0x2CU) ==

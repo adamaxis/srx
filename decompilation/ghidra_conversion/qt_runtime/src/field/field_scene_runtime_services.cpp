@@ -1008,8 +1008,7 @@ FieldSceneRuntime::advance_field_interaction(
     }
     const auto result = field_interaction_.advance_controller_events(
         event_word, field_party_roster_.records(), active_slots,
-        field_movement_transition_state_.activity_selection,
-        field_random_seed_);
+        field_movement_transition_state_.activity_selection);
     if (result == FieldInteractionAdvanceResult::returned_to_field) {
         // The source re-enters the field renderer after the prompt callback.
         // This host redraw replaces its full 320x224 image and consumes the

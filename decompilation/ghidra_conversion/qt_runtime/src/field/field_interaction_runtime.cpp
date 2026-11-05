@@ -598,8 +598,7 @@ void FieldInteractionRuntime::dispatch_command(
     const std::uint32_t command,
     std::array<RunnerRecordFields, 3>& party,
     const std::array<bool, 3>& active_slots,
-    std::uint8_t& interaction_selection,
-    std::uint16_t& random_seed) {
+    std::uint8_t& interaction_selection) {
     if (command == 0x10U) {
         bool found_passkey = false;
         for (std::size_t runner = 0U; runner < party.size(); ++runner) {
@@ -642,8 +641,9 @@ void FieldInteractionRuntime::dispatch_command(
         const auto threshold = static_cast<std::int16_t>(has_kit ? 3 : 5);
         const auto successes = count_thresholded_random_rolls(
             trial_count, threshold,
-            [&random_seed](const std::uint16_t bound) {
-                return sample_source_random_bound(random_seed, bound);
+            [](const std::uint16_t bound) {
+                // ROM 0x0DBA dice faces draw via JSR 0x0D3A at 0x0DD0.
+                return source_random_bound(bound, source_random_site::dice);
             });
         if (successes == 0U) {
             begin_security_alert();
@@ -710,8 +710,9 @@ void FieldInteractionRuntime::dispatch_command(
         const auto skill = best_electronics_skill(party, active_slots);
         const auto successes = count_thresholded_random_rolls(
             skill, 5,
-            [&random_seed](const std::uint16_t bound) {
-                return sample_source_random_bound(random_seed, bound);
+            [](const std::uint16_t bound) {
+                // ROM 0x0DBA dice faces draw via JSR 0x0D3A at 0x0DD0.
+                return source_random_bound(bound, source_random_site::dice);
             });
         if (successes == 0U) {
             begin_security_alert();
@@ -744,8 +745,7 @@ FieldInteractionAdvanceResult FieldInteractionRuntime::advance_controller_events
     const std::uint16_t event_word,
     std::array<RunnerRecordFields, 3>& party,
     const std::array<bool, 3>& active_slots,
-    std::uint8_t& interaction_selection,
-    std::uint16_t& random_seed) {
+    std::uint8_t& interaction_selection) {
     if (!panel_.open) {
         return FieldInteractionAdvanceResult::waiting;
     }
@@ -773,10 +773,10 @@ FieldInteractionAdvanceResult FieldInteractionRuntime::advance_controller_events
         },
         [](const ModeTextPromptTextRole) {},
         {}, {}, {},
-        [this, &party, &active_slots, &interaction_selection, &random_seed](
+        [this, &party, &active_slots, &interaction_selection](
             const std::uint32_t command) {
             dispatch_command(command, party, active_slots,
-                             interaction_selection, random_seed);
+                             interaction_selection);
         }};
     const auto step = advance_mode_text_prompt(
         prompt_state_, prompt_,
