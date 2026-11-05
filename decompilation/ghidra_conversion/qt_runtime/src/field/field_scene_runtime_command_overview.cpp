@@ -2224,7 +2224,8 @@ void FieldSceneRuntime::advance_command_overview_first_aid(
         return count_thresholded_random_rolls(
             roll_count, static_cast<std::int16_t>(difficulty),
             [this](const std::uint16_t bound) {
-                return sample_source_random_bound(field_random_seed_, bound);
+                // ROM 0x0DBA dice faces draw via JSR 0x0D3A at 0x0DD0.
+                return source_random_bound(bound, source_random_site::dice);
             });
     };
 

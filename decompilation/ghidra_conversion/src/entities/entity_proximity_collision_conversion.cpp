@@ -134,7 +134,7 @@ EntityProximityInteractionState resolve_entity_proximity_interactions(
         }
         ++state.pairs_resolved;
 
-        // ROM 0xEC9C JSR 0xD44; ANDI #0x7000. Zero: ADDI #0x4000/+0xC000
+        // ROM 0xEC90 JSR 0xD44; 0xEC98 ANDI #0x7000; 0xEC9C BNE. Zero: ADDI #0x4000/+0xC000
         // into +0x92. The following ADD.W of +0x94 is D0 scratch only.
         if (callbacks.advance_random &&
             (callbacks.advance_random() & 0x7000U) == 0U) {

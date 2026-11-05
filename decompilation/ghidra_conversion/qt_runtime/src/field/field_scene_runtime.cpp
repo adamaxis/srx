@@ -6115,7 +6115,8 @@ void FieldSceneRuntime::resolve_default_actor_proximity(
                  source_boundary("field.entities.ilene_contact_resolved");
              }
          },
-         [this] { return advance_source_random_seed(field_random_seed_); }});
+         // ROM 0xEC90: JSR 0x0D44 after the pair-collision BSR at 0xEC8C.
+         [] { return next_source_random_word(source_random_site::actor_pair_collision); }});
     for (std::size_t index = 0U; index < record_actors.size(); ++index) {
         record_actors[index]->source_interaction_flags =
             records[index].collision_flags;
@@ -10099,7 +10100,8 @@ void FieldSceneRuntime::configure_field_menu_route() {
             std::clamp(threshold, 0, 0x7FFF));
         return static_cast<int>(count_thresholded_random_rolls(
             count, difficulty, [this](const std::uint16_t bound) {
-                return sample_source_random_bound(field_random_seed_, bound);
+                // ROM 0x0DBA dice faces draw via JSR 0x0D3A at 0x0DD0.
+                return source_random_bound(bound, source_random_site::dice);
             }));
     };
     bindings.game.pocket_extra_row = [this] {
