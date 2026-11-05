@@ -4087,7 +4087,8 @@ void FieldSceneRuntime::initialize_default_field_actors(
         actor.combatant.physical_meter = actor.physical_meter;
         actor.combatant.equipped_action_code = actor.initial_action_code;
         actor.initial_behavior_delay = static_cast<std::uint8_t>(
-            advance_source_random_seed(field_random_seed_) & 0x000FU);
+            next_source_random_word(
+                source_random_site::actor_spawn_delay) & 0x000FU);
         const auto dynamic_profile_key = actor.script_profile_id + "@" +
             std::to_string(actor.template_offset);
         const auto dynamic_profile_facts =
@@ -4546,7 +4547,8 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
         actor.effect_slot = static_cast<std::uint8_t>(std::distance(
             field_world_effect_slots_occupied_.begin(), effect_slot));
         actor.initial_behavior_delay = static_cast<std::uint8_t>(
-            advance_source_random_seed(field_random_seed_) & 0x000FU);
+            next_source_random_word(
+                source_random_site::actor_spawn_delay) & 0x000FU);
         actor.animation_direction = static_cast<std::uint8_t>(
             field_movement_direction_from_heading(actor.initial_heading));
         actor.movement_state.position_x = actor.world_position.x;
@@ -7030,7 +7032,8 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
             : (outcome.scene_id == 0x37U
                    ? 0x28U
                    : static_cast<std::uint8_t>(
-                         advance_source_random_seed(field_random_seed_) &
+                         next_source_random_word(
+                             source_random_site::actor_spawn_delay) &
                          0x0FU));
         actor.animation_direction = static_cast<std::uint8_t>(
             field_movement_direction_from_heading(actor.initial_heading));

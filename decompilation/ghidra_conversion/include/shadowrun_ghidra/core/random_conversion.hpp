@@ -31,6 +31,8 @@ inline constexpr std::uint32_t world_effect_probability = 0x1E1C2U;
 inline constexpr std::uint32_t world_effect_sequence_first = 0x59988U;
 inline constexpr std::uint32_t world_effect_sequence_second = 0x59992U;
 inline constexpr std::uint32_t boot_scroll = 0x5DACEU;
+// 0x45C6: actor spawn initial behavior delay (JSR 0x0D44; andi #0xF; scene 0x37 -> 0x28; store 0xB6,A1).
+inline constexpr std::uint32_t actor_spawn_delay = 0x45C6U;
 }  // namespace source_random_site
 
 struct SourceRandomTraceEntry {
