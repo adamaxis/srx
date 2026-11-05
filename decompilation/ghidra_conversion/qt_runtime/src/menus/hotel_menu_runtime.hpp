@@ -77,7 +77,7 @@ public:
               const std::array<std::string, 3>& names,
               std::size_t active_runner_slot);
     void close() noexcept;
-    void advance_animation(std::uint16_t& random_seed);
+    void advance_animation();
     HotelMenuEvent advance_controller_events(std::uint16_t events);
     HotelMenuEvent apply_lua_options_result(HotelMenuEvent event,
                                             HotelOption selection);

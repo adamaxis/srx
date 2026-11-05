@@ -1535,9 +1535,8 @@ void FieldSceneRuntime::advance_hospital_grid_effect() {
     }
     advance_random_grid_effect(
         hospital_random_grid_effect_,
-        {[this](const std::uint16_t bound) {
-             const auto value =
-                 sample_source_random_bound(field_random_seed_, bound);
+        {[](const std::uint16_t bound, const std::uint32_t rom_site) {
+             const auto value = source_random_bound(bound, rom_site);
              return static_cast<std::uint16_t>(value < 0 ? 0 : value);
          },
          [this](const RandomGridEffectPlan& plan) {

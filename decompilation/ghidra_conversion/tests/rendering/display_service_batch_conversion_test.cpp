@@ -233,7 +233,7 @@ int main() {
     RandomGridEffectPlan submitted_plan{};
     advance_random_grid_effect(
         grid_state,
-        {[&](const std::uint16_t bound) {
+        {[&](const std::uint16_t bound, std::uint32_t) {
              random_bounds.push_back(bound);
              return random_values[random_index++];
          },
@@ -283,7 +283,7 @@ int main() {
     random_index = 0;
     advance_random_grid_effect(
         grid_state,
-        {[&](const std::uint16_t bound) {
+        {[&](const std::uint16_t bound, std::uint32_t) {
              random_bounds.push_back(bound);
              return random_values[random_index++];
          },

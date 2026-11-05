@@ -161,7 +161,7 @@ void HotelMenuRuntime::reset_page_effect() noexcept {
     animation_frames_ = 0U;
 }
 
-void HotelMenuRuntime::advance_animation(std::uint16_t& random_seed) {
+void HotelMenuRuntime::advance_animation() {
     // ROM 0xEF08 waits through 0xF312, which calls E660 each VBlank. The
     // Hotel Options and checkout wait loops both call E660 (0xCF94 and
     // 0xDABA respectively). The Hotel Karma child pauses the parent loop.
@@ -174,8 +174,8 @@ void HotelMenuRuntime::advance_animation(std::uint16_t& random_seed) {
     }
     advance_random_grid_effect(
         random_grid_effect_,
-        {[&random_seed](const std::uint16_t bound) {
-             const auto value = sample_source_random_bound(random_seed, bound);
+        {[](const std::uint16_t bound, const std::uint32_t rom_site) {
+             const auto value = source_random_bound(bound, rom_site);
              return static_cast<std::uint16_t>(value < 0 ? 0 : value);
          },
          [this](const RandomGridEffectPlan& plan) {

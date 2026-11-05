@@ -1,5 +1,6 @@
 #include "shadowrun_ghidra/rendering/display_service_batch_conversion.hpp"
 
+#include "shadowrun_ghidra/core/random_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_coordinate_conversion.hpp"
 
 #include <algorithm>
@@ -350,34 +351,37 @@ void advance_random_grid_effect(
     const RandomGridEffectCallbacks& callbacks) {
     state.random_samples = 0U;
 
-    const auto sample = [&](const std::uint16_t bound) {
+    const auto sample = [&](const std::uint16_t bound,
+                            const std::uint32_t rom_site) {
         ++state.random_samples;
         if (!callbacks.sample_random || bound == 0U) {
             return static_cast<std::uint16_t>(0U);
         }
         return std::min<std::uint16_t>(
-            callbacks.sample_random(bound), static_cast<std::uint16_t>(bound - 1U));
+            callbacks.sample_random(bound, rom_site), static_cast<std::uint16_t>(bound - 1U));
     };
 
-    const std::uint16_t first = sample(2U);
+    const std::uint16_t first = sample(2U, source_random_site::random_grid_branch);
     state.plan = {};
     state.plan.first_selection_nonzero = first != 0U;
     if (first == 0U) {
         state.plan.primary_source = RandomGridPrimarySource::branch_zero_table;
         state.plan.primary_entry_index =
-            static_cast<std::uint8_t>(sample(8U));
+            static_cast<std::uint8_t>(sample(8U, source_random_site::random_grid_branch_zero_primary));
         state.plan.variant_source =
             RandomGridVariantSource::fixed_three_variant_resources;
         state.plan.variant_entry_index =
-            static_cast<std::uint8_t>(sample(3U));
+            static_cast<std::uint8_t>(sample(3U, source_random_site::random_grid_branch_zero_variant));
     } else {
         state.plan.primary_source = RandomGridPrimarySource::branch_nonzero_table;
         state.plan.primary_entry_index =
-            static_cast<std::uint8_t>(sample(4U));
+            static_cast<std::uint8_t>(sample(
+                4U, source_random_site::random_grid_branch_nonzero_primary));
         state.plan.variant_source =
             RandomGridVariantSource::indexed_four_variant_resources;
         state.plan.variant_entry_index =
-            static_cast<std::uint8_t>(sample(4U));
+            static_cast<std::uint8_t>(sample(
+                4U, source_random_site::random_grid_branch_nonzero_variant));
     }
 
     state.grid_write_requested = true;

@@ -321,7 +321,9 @@ struct RandomGridEffectState {
 };
 
 struct RandomGridEffectCallbacks {
-    std::function<std::uint16_t(std::uint16_t bound)> sample_random;
+    // rom_site: the E660 JSR 0x0D3A address (source_random_site::random_grid_*).
+    std::function<std::uint16_t(std::uint16_t bound, std::uint32_t rom_site)>
+        sample_random;
     std::function<void(const RandomGridEffectPlan& plan)> write_grid;
 };
 

@@ -1168,8 +1168,9 @@ void FieldSceneRuntime::begin_pocket_secretary_dismiss_runner() {
 void FieldSceneRuntime::advance_pocket_secretary_dismiss_runner_effect() {
     advance_random_grid_effect(
         dismiss_runner_random_grid_effect_,
-        {[this](const std::uint16_t bound) {
-             return sample_source_random_bound(field_random_seed_, bound);
+        {[](const std::uint16_t bound, const std::uint32_t rom_site) {
+             return static_cast<std::uint16_t>(
+                 source_random_bound(bound, rom_site));
          },
          [this](const RandomGridEffectPlan& plan) {
              const auto branch_zero =

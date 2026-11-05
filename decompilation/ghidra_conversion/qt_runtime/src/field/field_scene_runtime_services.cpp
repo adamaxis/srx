@@ -2002,7 +2002,7 @@ HotelMenuEvent FieldSceneRuntime::advance_hotel_menu_for_dump(
         (void)process_hotel_karma_screen_events(events);
         return HotelMenuEvent::waiting;
     }
-    hotel_menu_.advance_animation(field_random_seed_);
+    hotel_menu_.advance_animation();
     return process_hotel_menu_events(events);
 }
 #endif // SHADOWRUN_QT_QA_DRIVER

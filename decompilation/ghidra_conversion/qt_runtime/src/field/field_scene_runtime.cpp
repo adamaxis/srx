@@ -13763,7 +13763,7 @@ void FieldSceneRuntime::advance_frame() {
                 field_controller_sample_state_.events);
             return;
         }
-        hotel_menu_.advance_animation(field_random_seed_);
+        hotel_menu_.advance_animation();
         (void)process_hotel_menu_events(
             field_controller_sample_state_.events);
         return;
