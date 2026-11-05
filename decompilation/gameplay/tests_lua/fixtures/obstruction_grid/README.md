@@ -1,6 +1,7 @@
 # GPGX FF1700 obstruction-grid captures
 
 Both files are direct 4096-byte reads of GPGX work RAM `FF1700..FF26FF`; the fixture values do not come from the port.
+The Lua rasterizer used to compare scene rectangles with these captures lives under `tests_lua/support/` and is test-only. Gameplay collision remains in the native field collision service; the runtime does not allocate or query an FF1700-shaped Lua table.
 
 | Fixture | GPGX savestate | Continuation input/frame | Scene | SHA-256 |
 |---|---|---|---:|---|

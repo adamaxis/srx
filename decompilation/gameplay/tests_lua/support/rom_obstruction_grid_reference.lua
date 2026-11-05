@@ -1,14 +1,28 @@
-local E = require("enums")
+-- Test-only reference for ROM FF1700 rasterization. The game runtime keeps
+-- collision queries in the native field host; this module exists solely to
+-- compare decoded scene rectangles with independent GPGX memory captures.
+local Layout = {
+    BYTE_COUNT = 0x1000,
+    INDEX_MASK = 0x0FFF,
+    COORDINATE_STEP = 0x20,
+    ROW_COORDINATE_MASK = 0xFFE0,
+    X_COLUMN_SHIFT = 5,
+    Y_ROW_SHIFT = 1,
+    BYTE_MASK = 0xFF,
+    CLEAR = 0x00,
+    EFFECT_BLOCKING = 0x7F,
+}
 
-local Grid = {}
+local Reference = {
+    BYTE_COUNT = Layout.BYTE_COUNT,
+    BYTE_MASK = Layout.BYTE_MASK,
+    EFFECT_BLOCKING = Layout.EFFECT_BLOCKING,
+}
 local current_grid
 
-local Layout = E.ObstructionGrid
-
--- Build FF1700 from the scene's raw collision rectangles. The source list is
--- already decoded as named rectangle fields by the host; rasterization order
--- and inclusive 0x20-unit bounds follow ROM 0x0EE10..0x0EE84 [C].
-function Grid.build(rectangles)
+-- ROM 0x0EE10..0x0EE84 rasterizes the decoded source rectangles over
+-- inclusive 0x20-unit bounds [C].
+function Reference.build(rectangles)
     assert(type(rectangles) == "table", "collision rectangles must be an array")
 
     local grid = {}
@@ -37,22 +51,20 @@ function Grid.build(rectangles)
     return grid
 end
 
--- The host supplies only the decoded source rectangles. Keep the active map
--- in Lua so subsequent field behavior can query the same authoritative grid.
-function Grid.set_scene(rectangles)
-    current_grid = Grid.build(rectangles)
+function Reference.set_scene(rectangles)
+    current_grid = Reference.build(rectangles)
     return true
 end
 
-function Grid.current()
+function Reference.current()
     return current_grid
 end
 
-function Grid.value_at(index)
+function Reference.value_at(index)
     assert(type(index) == "number" and index >= 0 and
         index < Layout.BYTE_COUNT and index % 1 == 0,
         "obstruction-grid index is outside FF1700")
     return current_grid and current_grid[index + 1] or Layout.CLEAR
 end
 
-return Grid
+return Reference

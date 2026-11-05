@@ -3,27 +3,6 @@
 -- Every value cites its ROM address or RAM location. Logic code uses these names, never raw values.
 local E = {}
 
--- FF1700 is the 64-column, 64-row field obstruction grid. ROM 0xEE10
--- rasterizes scene rectangles; 0x02C2A..0x02C34 updates one pending cell,
--- 0x04A6E/0x04A7E place temporary effect bytes, and 0x04B6C restores them.
-E.ObstructionGrid = {
-    BYTE_COUNT = 0x1000,
-    INDEX_MASK = 0x0FFF,
-    ROW_BYTES = 0x40,
-    COORDINATE_STEP = 0x20,
-    ROW_COORDINATE_MASK = 0xFFE0,
-    X_COLUMN_SHIFT = 5,
-    Y_ROW_SHIFT = 1,
-    BYTE_MASK = 0xFF,
-    CLEAR = 0x00,
-    EFFECT_OVERLAY = 0x7E,
-    EFFECT_BLOCKING = 0x7F,
-    PENDING_VALUE_MASK = 0xE0,
-    PENDING_VALUE_INCREMENT = 0x01,
-    TERRAIN_MARKER = 0xDA,
-    TERRAIN_MARKER_REPLACEMENT = 0x9A,
-} -- ROM 0xEE10, 0x02C2A..0x02C34, 0x04A6E..0x04A7E, 0x04B6C, 0x0EE86 [C]
-
 -- Named outcomes exposed by the field host after it resolves the ROM's
 -- signed package-run result. Gameplay rules consume these states, not a byte.
 E.PackageRunStatus = {

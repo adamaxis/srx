@@ -1876,7 +1876,6 @@ private:
         const std::array<FieldBarrierCollisionCell,
                          kFieldBarrierCollisionCellCount>& cells) noexcept;
     void clear_field_barrier_collision_overlay() noexcept;
-    bool install_field_obstruction_grid();
     std::uint8_t terrain_collision_map_byte(std::uint16_t tile_index) const
         noexcept;
     void source_boundary(std::string_view boundary) const;
