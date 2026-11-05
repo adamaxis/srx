@@ -294,8 +294,9 @@ bool FieldSceneRuntime::project_field_world_interaction() {
 }
 
 std::int16_t FieldSceneRuntime::select_field_world_effect_sequence() {
-    const auto first = sample_source_random_bound(field_random_seed_, 5U);
-    const auto second = sample_source_random_bound(field_random_seed_, 5U);
+    // ROM 0x59986..0x59992: two bound-5 draws from shared FFF9F8.
+    const auto first = source_random_bound(5U, source_random_site::world_effect_sequence_first);
+    const auto second = source_random_bound(5U, source_random_site::world_effect_sequence_second);
     std::optional<double> weighted_selection;
     if (first >= 0 && second >= 0) {
         weighted_selection = field_scene_detail::

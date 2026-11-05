@@ -16,7 +16,7 @@ rom_entry	mapping_kind	implementation	evidence
 0x0BF2	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#ghidra_conversion::latch_controller_events	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x0C24	port	decompilation/ghidra_conversion/src/audio/audio_command_batch_conversion.cpp#ghidra_conversion::wait_for_vblank_frames	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x0D3A	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_interaction_runtime.cpp#ghidra_conversion::sample_source_random_bound	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
-0x0D44	port	decompilation/ghidra_conversion/src/title_intro/boot_sequence_conversion.cpp#ghidra_conversion::advance_source_prng	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0x0D44	port	decompilation/ghidra_conversion/src/core/random_conversion.cpp#ghidra_conversion::next_source_random_word	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x0D5A	port	decompilation/ghidra_conversion/src/entities/entity_action_math_conversion.cpp#ghidra_conversion::add_wound_difficulty_penalty	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x0D94	port	decompilation/ghidra_conversion/src/core/controller_wait_conversion.cpp#ghidra_conversion::wait_for_controller_event	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0x0DBA	port	decompilation/ghidra_conversion/qt_runtime/src/field/field_interaction_runtime.cpp#ghidra_conversion::count_thresholded_random_rolls	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner

@@ -1,3 +1,4 @@
+#include "shadowrun_ghidra/core/random_conversion.hpp"
 #include "shadowrun_ghidra/title_intro/boot_sequence_conversion.hpp"
 
 #include "shadowrun_ghidra/title_intro/title_loop_conversion.hpp"
@@ -336,8 +337,10 @@ void fill_pre_title_horizontal_scroll(
     PreTitleSequenceState& state,
     const PreTitleSequenceCallbacks& callbacks) {
     for (auto& line : state.horizontal_scroll) {
-        line = static_cast<std::uint16_t>(
-            (advance_source_prng(state.random_state) >> 5U) & 0x1FU);
+        // ROM 0x5DACE: JSR 0x0D44 on shared FFF9F8; state.random_state mirrors it.
+        const auto word = next_source_random_word(source_random_site::boot_scroll);
+        state.random_state = word;
+        line = static_cast<std::uint16_t>((word >> 5U) & 0x1FU);
     }
     callbacks.write_horizontal_scroll_stream(state.horizontal_scroll);
 }
