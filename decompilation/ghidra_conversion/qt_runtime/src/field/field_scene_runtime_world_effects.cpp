@@ -395,7 +395,8 @@ void FieldSceneRuntime::advance_field_alarm(const bool direct_raise,
         // ROM 0x1DFC4 calls 0xD44 only after its cadence and state gates. The
         // native adapter preserves PRNG order and translates the unsigned word
         // to a probability in [0, 1); Lua applies the named half-chance rule. [C]
-        const auto random_word = advance_source_random_seed(field_random_seed_);
+        const auto random_word = next_source_random_word(
+            source_random_site::field_alarm_half_chance);
         input.probability_sample =
             static_cast<double>(random_word) / 65536.0;
         result = game_scripts_.evaluate_field_alarm(input);
@@ -579,7 +580,8 @@ void FieldSceneRuntime::trigger_field_world_effect_sequence() {
     // Lua requests this draw only after all state and cadence gates pass.
     // 0x1E1BC..0x1E1CA compares the source unsigned result with FFDE18 [C].
     trigger.probability_sample =
-        static_cast<double>(advance_source_random_seed(field_random_seed_)) /
+        static_cast<double>(next_source_random_word(
+            source_random_site::world_effect_probability)) /
         kSourceRandomRange;
     action = game_scripts_.evaluate_field_encounter_trigger(trigger);
     if (!action.has_value()) {
