@@ -1343,6 +1343,7 @@ end
 
 local saved_movement_probe = game.movement.probe
 local saved_path_query = game.movement.path_is_clear
+local saved_source_path_query = game.movement.source_path_is_clear
 local route_path_query_calls = 0
 game.movement.path_is_clear = function(from_x, from_y, to_x, to_y)
     route_path_query_calls = route_path_query_calls + 1
@@ -1420,6 +1421,60 @@ if obstruction_state.obstruction_route ~= nil then
           "route queue completion reacquires the live target heading [C: 0x149C0]")
 end
 
+-- A clear 0x14914 source corridor drops an existing route before its
+-- waypoint is consumed and resumes movement toward the live target.
+local source_path_query_calls = 0
+game.movement.source_path_is_clear = function()
+    source_path_query_calls = source_path_query_calls + 1
+    return true
+end
+local source_clear_context = movement_fixture(true)
+source_clear_context.movement_state.position_x = 0x2000
+source_clear_context.movement_state.position_y = 0x2000
+source_clear_context.ai_target_candidates = {
+    { id = "party.runner.0", world_x = 0x3000, world_y = 0x2000 },
+}
+source_clear_context.measure_destination = function(x, y)
+    return { bearing_degrees = x == 0x3000 and y == 0x2000 and 45 or 315,
+        distance = 0x500, step_cost = 0x300 }
+end
+game.movement.probe = function(x, y, direction, distance)
+    if direction == nil then
+        return { kind = "clear", blocks_route_fallback = false,
+            terrain_is_clear = true, candidate_x = x, candidate_y = y }
+    end
+    local offsets = {
+        north = { x = 0, y = -1 }, north_east = { x = 1, y = -1 },
+        east = { x = 1, y = 0 }, south_east = { x = 1, y = 1 },
+        south = { x = 0, y = 1 }, south_west = { x = -1, y = 1 },
+        west = { x = -1, y = 0 }, north_west = { x = -1, y = -1 },
+    }
+    local offset = offsets[direction] or { x = 0, y = 0 }
+    return { kind = "clear", blocks_route_fallback = false,
+        terrain_is_clear = true,
+        candidate_x = (x + offset.x * (distance or 0)) % 0x10000,
+        candidate_y = (y + offset.y * (distance or 0)) % 0x10000 }
+end
+local source_clear_route_state = {
+    ai_target_id = "party.runner.0",
+    movement_bearing_degrees = 315,
+    movement_current_bearing_degrees = 315,
+    movement_route_distance = 0x500,
+    obstruction_route = {
+        target_id = "party.runner.0", index = 1,
+        waypoints = { { x = 0x2100, y = 0x1F00 } },
+        target_cell_x = 0x3100, target_cell_y = 0x2100,
+    },
+}
+local source_clear_step = R.advance_entity_movement(
+    source_clear_context, source_clear_route_state)
+check(source_clear_step ~= nil and
+      source_clear_route_state.obstruction_route == nil and
+      source_clear_route_state.movement_bearing_degrees == 45 and
+      source_path_query_calls == 1,
+      "0x14914 clear corridor drops the queued detour and resumes the live target [C]")
+game.movement.source_path_is_clear = saved_source_path_query
+
 -- A blocked route clears the source route flags through 0x149CE -> 0x14756.
 -- The next selection recomputes its first side from live position and target;
 -- the source does not carry Lua's prior waypoint-side choice. [C]
@@ -1479,6 +1534,7 @@ check(failed_replan_step ~= nil and
       "failed obstruction replan clears the stale queue and returns to the live target [C: 0x14756]")
 game.movement.probe = saved_movement_probe
 game.movement.path_is_clear = saved_path_query
+game.movement.source_path_is_clear = saved_source_path_query
 
 local heartbeat_actor_id = "playtest13_dynamic_hellhound"
 local heartbeat_target = {

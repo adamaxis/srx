@@ -1,9 +1,9 @@
 # Enemy obstruction routing
 
-Status: **partial**. The active Lua path policy and typed host geometry query
-are implemented and covered by headless tests. Route selection has not been
-compared with an independent GPGX movement capture, and no field-scene image
-dump defends the visible result.
+Status: **partial**. The active Lua path policy and the source-grid route
+query are implemented and covered by headless tests. Route selection has not
+been compared with an independent GPGX movement capture, and no field-scene
+image dump defends the visible result.
 
 ## Source behavior
 
@@ -16,10 +16,14 @@ dump defends the visible result.
   bypass side; the direction table at `0x148CA` maps zero minor deltas to -Y
   on horizontal routes and -X on vertical routes. `0x14854` tries the opposite
   side only after its first side fails.
-- [C] `0x14914` checks the obstruction line between the actor and target in
-  both directions. `0x14902` groups world coordinates in `0x200`-unit cells;
-  its low six index bits represent X and the next row begins `0x40` cells
-  later. `0x14B4E` projects route cells to their `+0x100` centers.
+- [C] `0x14914` converts both endpoints with `0x14902` and asks `0x1494C` to
+  check two axis-aligned corridors: across the first endpoint's row and then
+  along the second endpoint's column, followed by the same ordering with
+  endpoints swapped. A corridor is blocked by any nonzero cell. The route is
+  blocked only when both corridors contain an obstruction; a clear ordering
+  retains direct movement. `0x14902` groups world coordinates in `0x200`-unit
+  cells; its low six index bits represent X and the next row begins `0x40`
+  cells later. `0x14B4E` projects route cells to their `+0x100` centers.
 - [C] `0x14AF4` retries five heading-rotated direction pairs. Each call to
   `0x14800` walks primary cells until a primary cell is blocked or the active
   map bounds are reached; five is the retry count, not the strip depth.
@@ -62,17 +66,28 @@ failure branch to `0x14756`, which clears both obstruction-route flags. The
 candidate, and checks that movement returns to the target rather than reusing
 the stale point.
 
-`game.movement.path_is_clear(from_x, from_y, to_x, to_y)` is a narrow read-only
-host service. `FieldSceneRuntime` evaluates the active field's typed terrain
-collision model at segment samples, using local collision records and sample
-state. It does not publish movement events or mutate the actor's next movement
-probe. Lua does not receive or construct an `FF1700` raster.
+`game.movement.path_is_clear(from_x, from_y, to_x, to_y)` remains a read-only
+host geometry query for candidate waypoint segments. `FieldSceneRuntime`
+samples the active scene's typed collision model with a local copy of the
+actor's collision state; its fine segment sampling is host policy [H]. It does
+not publish movement events, mutate the actor's next movement probe, or expose
+an `FF1700`-shaped table to Lua.
+
+For an already queued detour, Lua separately calls
+`game.movement.source_path_is_clear(from_x, from_y, to_x, to_y)`. This narrow
+typed service applies the `0x14902/0x14914/0x1494C` cell-corridor rule against
+the active typed terrain map. The cell lookup includes the live player field
+barrier overlay and selected effect-marker replacement. A cell outside the
+imported map is blocked for host safety [H]. If either source corridor is
+clear, Lua retires the queued detour and measures the current target again,
+matching the `0x149C0 -> 0x149CE -> 0x14756` branch. Candidate segment geometry
+and the native scene's out-of-map policy remain [H].
 
 The initial signed side order, opposite-side fallback, blocked-route replan
-state, and heading order/scan bound of the `0x14AF4` retry are [C]. The host's
-geometry sampling and resulting route pixels remain [H]. These are readable
-native waypoint policies, not a claim of matching the source's exact grid
-occupancy or complete waypoint sequence. The referenced
+state, heading order/scan bound of the `0x14AF4` retry, and `0x14914` cell
+query are [C]. The native scene's out-of-map handling and resulting route
+pixels remain [H]. These are readable native waypoint policies, not a claim of
+matching the complete waypoint sequence. The referenced
 `/workspace/shadowrun/out/p49b/repro.txt` route capture is absent from this
 checkout; local obstruction-grid snapshots do not establish enemy route
 fidelity.
@@ -85,15 +100,20 @@ fidelity.
   replan from live position/target, failed-replan cleanup, source signed-side
   and X-tie ordering, target-linked route state, waypoint advancement, and
   target reacquisition.
-- `shadowrun_gameplay_script_runtime_qa`: verifies the Lua planner reaches the
-  typed `ScriptMovementPathQuery` callback through the C++ binding.
-- The complete Debug and Release `shadowrun_gameplay_lua_suites` CTests pass
-  with MSYS `usr/bin` first in `PATH`; `ai_think_tests.lua` reports 365/365
-  and `entity_motion_tests.lua` reports 13/13. Its separate `equiv_heartbeat`
-  output is informational and continues to report the documented pre-split
-  mismatches.
-- Debug and Release CTests pass for `shadowrun_gameplay_actor_ai_rules_qa`,
-  `shadowrun_gameplay_script_runtime_qa`, field movement, and world activity
-  with offscreen Qt and dummy audio.
-- No scene `actual.bmp` was produced for this shared movement mechanism, so
-  the obstruction-routing hill remains partial.
+- `shadowrun_gameplay_script_runtime_qa`: verifies the Lua planner reaches
+  both typed path-query callbacks through the C++ binding, including the
+  source-grid recheck for an active queued route.
+- `entity_route_primitives_conversion_test`: checks the two `0x1494C`
+  corridor orders, the `0x14914` either-clear result, a diagonal-only
+  obstruction that the source query misses, and the runtime cell-query
+  callback contract.
+- Headless Debug and Release root CTest runs passed
+  `shadowrun_gameplay_lua_suites` and
+  `shadowrun_ghidra_entity_route_primitives`. The focused Qt CTest run passed
+  nine checks in both configurations: gameplay Lua suites, script-runtime
+  binding, actor AI rules, field terrain markers, world activity, barrier
+  collision, package-recovery entry, regional pedestrians, and the Stoker
+  exit route. The separate `equiv_heartbeat` output remains informational and
+  reports its documented pre-split mismatches.
+- No route-specific scene `actual.bmp` was produced for this shared movement
+  mechanism, so the obstruction-routing hill remains partial.

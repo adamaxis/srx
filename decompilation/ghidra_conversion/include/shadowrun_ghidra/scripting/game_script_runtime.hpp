@@ -2406,6 +2406,9 @@ struct ScriptActorBehaviorContext {
     std::uint16_t movement_collision_mode = 0;
     ScriptMovementCollisionQuery movement_collision;
     ScriptMovementPathQuery movement_path_clear;
+    // ROM 0x14914 route-queue visibility query over source terrain cells.
+    // Candidate waypoint geometry remains a separate host path query.
+    ScriptMovementPathQuery movement_source_path_clear;
     ScriptMovementRouteLookup movement_route_lookup;
     ScriptMovementCollisionRecovery movement_collision_recovery;
     // The field-player B7B8 path dispatches mode/map events before BADE's

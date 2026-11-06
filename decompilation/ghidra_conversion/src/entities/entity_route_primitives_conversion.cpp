@@ -396,32 +396,49 @@ bool is_obstruction_path_blocked(
     const std::int32_t start_tile,
     const std::int32_t target_tile,
     const std::vector<std::uint8_t>& obstruction_map) {
-    const auto occupied = [&obstruction_map](const std::int32_t tile) {
+    return is_obstruction_path_blocked(
+        start_tile, target_tile, obstruction_map.size(),
+        [&obstruction_map](const std::uint16_t tile) {
+            return obstruction_map[tile] != 0U;
+        });
+}
+
+bool is_obstruction_path_blocked(
+    const std::int32_t start_tile,
+    const std::int32_t target_tile,
+    const std::size_t map_cell_count,
+    const ObstructionCellQuery& is_occupied) {
+    const auto occupied = [&](const std::int32_t tile) {
+        // The source reads its fixed 4 KiB work grid without a bounds check.
+        // Native scene data may be smaller, so the host treats an unavailable
+        // cell as blocked rather than reading outside the imported map [H].
         return tile < 0 ||
-            tile >= static_cast<std::int32_t>(obstruction_map.size()) ||
-            obstruction_map[static_cast<std::size_t>(tile)] != 0U;
+            static_cast<std::size_t>(tile) >= map_cell_count ||
+            !is_occupied ||
+            is_occupied(static_cast<std::uint16_t>(tile));
     };
 
-    if ((target_tile & 0x003FU) == (start_tile & 0x003FU)) {
-        auto tile = target_tile;
-        const auto target_row = target_tile & 0xFFC0;
-        const auto start_row = start_tile & 0xFFC0;
-        const auto row_step = start_row < target_row ? -0x40 : 0x40;
-        while ((tile & 0xFFC0) != start_row) {
-            tile += row_step;
-            if (occupied(tile)) {
-                return true;
-            }
+    // ROM 0x1494C starts at D4, walks one cell at a time across its row to
+    // D5's column, then walks from D5 along that column back to D4's row.
+    auto tile = start_tile;
+    auto column = start_tile & 0x003F;
+    const auto target_column = target_tile & 0x003F;
+    const auto column_step = column < target_column ? 1 : -1;
+    while (column != target_column) {
+        tile += column_step;
+        column += column_step;
+        if (occupied(tile)) {
+            return true;
         }
-        return false;
     }
 
-    auto tile = start_tile;
-    const auto target_column = target_tile & 0x003FU;
-    const auto column_step =
-        (start_tile & 0x003FU) < target_column ? 1 : -1;
-    while ((tile & 0x003FU) != target_column) {
-        tile += column_step;
+    tile = target_tile;
+    auto row = target_tile & 0xFFC0;
+    const auto target_row = start_tile & 0xFFC0;
+    const auto row_step = row > target_row ? -0x40 : 0x40;
+    while (row != target_row) {
+        tile += row_step;
+        row += row_step;
         if (occupied(tile)) {
             return true;
         }
@@ -435,13 +452,31 @@ bool is_entity_path_blocked(
     const std::uint16_t target_x,
     const std::uint16_t target_y,
     const std::vector<std::uint8_t>& obstruction_map) {
+    return is_entity_path_blocked(
+        entity_x, entity_y, target_x, target_y, obstruction_map.size(),
+        [&obstruction_map](const std::uint16_t tile) {
+            return obstruction_map[tile] != 0U;
+        });
+}
+
+bool is_entity_path_blocked(
+    const std::uint16_t entity_x,
+    const std::uint16_t entity_y,
+    const std::uint16_t target_x,
+    const std::uint16_t target_y,
+    const std::size_t map_cell_count,
+    const ObstructionCellQuery& is_occupied) {
     const auto target_tile = compute_obstruction_grid_index(target_x, target_y);
     const auto entity_tile = compute_obstruction_grid_index(entity_x, entity_y);
 
+    // ROM 0x14914's first 0x1494C pass preserves carry when its corridor has
+    // no occupied cell. It repeats with the two endpoints swapped only when
+    // that first corridor is blocked. The caller sees a blocked route only if
+    // both corridor orders encounter an obstruction.
     return is_obstruction_path_blocked(
-               target_tile, entity_tile, obstruction_map) ||
+               target_tile, entity_tile, map_cell_count, is_occupied) &&
         is_obstruction_path_blocked(
-            entity_tile, target_tile, obstruction_map);
+            entity_tile, target_tile, map_cell_count, is_occupied);
 }
 
 std::uint16_t compute_obstruction_grid_index(

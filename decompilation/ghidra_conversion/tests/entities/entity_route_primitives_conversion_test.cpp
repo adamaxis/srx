@@ -191,14 +191,17 @@ int main() {
                 completed.heading == 0x4000U)) {
         return 48;
     }
-    std::vector<std::uint8_t> path_blocked_map(128, 0U);
-    path_blocked_map[2] = 1U;
+    // ROM 0x14914 reports a queued route blocked only when both endpoint
+    // orderings of the 0x1494C L-corridor walk encounter occupied cells.
+    std::vector<std::uint8_t> path_blocked_map(256, 0U);
+    path_blocked_map[2U * 64U + 2U] = 1U;
+    path_blocked_map[1U * 64U + 3U] = 1U;
     RouteQueueState blocked_route_queue{{2U, 0xFFFFU}, 0U};
     const auto path_blocked = advance_obstruction_route_queue(
         0x0400U,
-        0x0100U,
+        0x0200U,
         0x0600U,
-        0x0100U,
+        0x0400U,
         0x0AU,
         blocked_route_queue,
         path_blocked_map);
@@ -329,17 +332,62 @@ int main() {
 
     std::vector<std::uint8_t> world_map(256, 0U);
     if (!expect(!is_entity_path_blocked(
-                    0x0200U, 0x0100U, 0x0400U, 0x0100U, world_map))) {
+                    0x0200U, 0x0100U, 0x0800U, 0x0100U, world_map))) {
         return 31;
     }
-    const auto target_tile = compute_obstruction_grid_index(0x0400U, 0x0100U);
-    if (!expect(target_tile < world_map.size())) {
+    const auto target_tile = compute_obstruction_grid_index(0x0800U, 0x0100U);
+    const auto interior_tile = static_cast<std::uint16_t>(target_tile - 2U);
+    if (!expect(target_tile < world_map.size() &&
+                interior_tile < world_map.size())) {
         return 32;
     }
-    world_map[target_tile - 1U] = 1U;
+    // 0x1494C includes the destination cell and excludes its starting cell;
+    // this interior blocker is observed by both same-row route directions.
+    world_map[interior_tile] = 1U;
     if (!expect(is_entity_path_blocked(
-                    0x0200U, 0x0100U, 0x0400U, 0x0100U, world_map))) {
+                    0x0200U, 0x0100U, 0x0800U, 0x0100U, world_map))) {
         return 33;
+    }
+
+    // ROM 0x14914 tests two L-shaped corridors, not a sampled diagonal.
+    // A diagonal-only cell and a blocker in just one corridor leave the other
+    // corridor clear; blockers in both make the path blocked.
+    std::vector<std::uint8_t> diagonal_map(4096U, 0U);
+    constexpr std::uint16_t kDiagonalEntityX = 0x0200U;
+    constexpr std::uint16_t kDiagonalEntityY = 0x0200U;
+    constexpr std::uint16_t kDiagonalTargetX = 0x0800U;
+    constexpr std::uint16_t kDiagonalTargetY = 0x0800U;
+    const auto first_corridor_cell = static_cast<std::uint16_t>(4U * 64U + 2U);
+    const auto second_corridor_cell = static_cast<std::uint16_t>(1U * 64U + 3U);
+    const auto diagonal_only_cell = static_cast<std::uint16_t>(2U * 64U + 2U);
+    diagonal_map[diagonal_only_cell] = 0x7FU;
+    if (!expect(!is_entity_path_blocked(
+                    kDiagonalEntityX, kDiagonalEntityY,
+                    kDiagonalTargetX, kDiagonalTargetY, diagonal_map))) {
+        return 54;
+    }
+    diagonal_map.assign(diagonal_map.size(), 0U);
+    diagonal_map[static_cast<std::size_t>(4U * 64U + 2U)] = 0x7FU;
+    if (!expect(!is_entity_path_blocked(
+                    kDiagonalEntityX, kDiagonalEntityY,
+                    kDiagonalTargetX, kDiagonalTargetY, diagonal_map))) {
+        return 55;
+    }
+    diagonal_map[first_corridor_cell] = 0x7FU;
+    diagonal_map[second_corridor_cell] = 0x7FU;
+    if (!expect(is_entity_path_blocked(
+                    kDiagonalEntityX, kDiagonalEntityY,
+                    kDiagonalTargetX, kDiagonalTargetY, diagonal_map))) {
+        return 56;
+    }
+    const auto callback_path_blocked = is_entity_path_blocked(
+        kDiagonalEntityX, kDiagonalEntityY,
+        kDiagonalTargetX, kDiagonalTargetY, diagonal_map.size(),
+        [&diagonal_map](const std::uint16_t tile) {
+            return diagonal_map[tile] != 0U;
+        });
+    if (!expect(callback_path_blocked)) {
+        return 57;
     }
 
     const auto no_route_request = update_entity_axis_relation_state(

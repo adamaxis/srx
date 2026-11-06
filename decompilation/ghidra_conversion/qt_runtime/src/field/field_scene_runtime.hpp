@@ -1912,6 +1912,9 @@ private:
         const DefaultFieldActorPresentation& actor,
         std::uint16_t from_x, std::uint16_t from_y,
         std::uint16_t to_x, std::uint16_t to_y);
+    bool actor_source_route_clear(
+        std::uint16_t from_x, std::uint16_t from_y,
+        std::uint16_t to_x, std::uint16_t to_y);
     void set_field_barrier_collision_overlay(
         const std::array<FieldBarrierCollisionCell,
                          kFieldBarrierCollisionCellCount>& cells) noexcept;

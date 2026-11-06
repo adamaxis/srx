@@ -192,6 +192,14 @@ void FieldSceneRuntime::provide_source_profile_patrol_movement_services(
             return actor_navigation_path_clear(
                 actor, from_x, from_y, to_x, to_y);
         };
+    context.movement_source_path_clear =
+        [this](const std::uint16_t from_x,
+               const std::uint16_t from_y,
+               const std::uint16_t to_x,
+               const std::uint16_t to_y) {
+            return actor_source_route_clear(
+                from_x, from_y, to_x, to_y);
+        };
     context.movement_route_lookup = [this, &actor](
         const std::uint16_t route_key) {
         if ((route_key & 0x03U) != 0U ||

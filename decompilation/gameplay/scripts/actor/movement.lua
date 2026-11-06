@@ -804,6 +804,18 @@ local function apply_obstruction_waypoint(context, state, movement_state)
         end
         return false
     end
+    local source_path_is_clear = game.movement.source_path_is_clear
+    if type(source_path_is_clear) == "function" and
+       source_path_is_clear(
+           movement_state.position_x, movement_state.position_y,
+           target.world_x, target.world_y) == true then
+        -- ROM 0x149C0 -> 0x149CE clears its route flags when 0x14914 finds
+        -- either source corridor unobstructed. Rejoin the live target vector.
+        state.obstruction_route = nil
+        measure_and_store_destination(
+            context, state, target.world_x, target.world_y)
+        return false
+    end
     local waypoint = route.waypoints[route.index]
     if type(route.index) ~= "number" or route.index < 1 or
        route.index % 1 ~= 0 or waypoint == nil then

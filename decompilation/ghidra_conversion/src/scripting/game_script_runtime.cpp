@@ -6012,6 +6012,41 @@ struct GameScriptRuntime::Impl {
         }
     }
 
+    static int movement_source_path_clear(lua_State* lua) {
+        auto* self = from_upvalue(lua);
+        std::uint32_t from_x = 0U;
+        std::uint32_t from_y = 0U;
+        std::uint32_t to_x = 0U;
+        std::uint32_t to_y = 0U;
+        if (self == nullptr || self->active_actor_context == nullptr ||
+            lua_gettop(lua) != 4 ||
+            !read_integer(lua, 1, 0xFFFFU, from_x) ||
+            !read_integer(lua, 2, 0xFFFFU, from_y) ||
+            !read_integer(lua, 3, 0xFFFFU, to_x) ||
+            !read_integer(lua, 4, 0xFFFFU, to_y)) {
+            return luaL_error(
+                lua,
+                "game.movement.source_path_is_clear expects two world positions during an actor heartbeat");
+        }
+        const auto& query =
+            self->active_actor_context->movement_source_path_clear;
+        if (!query) {
+            lua_pushnil(lua);
+            return 1;
+        }
+        try {
+            lua_pushboolean(
+                lua, query(static_cast<std::uint16_t>(from_x),
+                           static_cast<std::uint16_t>(from_y),
+                           static_cast<std::uint16_t>(to_x),
+                           static_cast<std::uint16_t>(to_y)));
+            return 1;
+        } catch (...) {
+            return luaL_error(lua,
+                              "native source movement path query failed");
+        }
+    }
+
     static int actor_random_bound(lua_State* lua) {
         auto* self = from_upvalue(lua);
         std::uint32_t bound = 0U;
@@ -7205,6 +7240,9 @@ struct GameScriptRuntime::Impl {
         lua_pushlightuserdata(state, this);
         lua_pushcclosure(state, movement_path_clear, 1);
         lua_setfield(state, -2, "path_is_clear");
+        lua_pushlightuserdata(state, this);
+        lua_pushcclosure(state, movement_source_path_clear, 1);
+        lua_setfield(state, -2, "source_path_is_clear");
         lua_pushlightuserdata(state, this);
         lua_pushcclosure(state, movement_follow_route_step_clear, 1);
         lua_setfield(state, -2, "follow_route_step_clear");

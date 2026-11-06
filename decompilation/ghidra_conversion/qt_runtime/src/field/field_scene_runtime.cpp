@@ -5214,6 +5214,14 @@ void FieldSceneRuntime::advance_default_field_actors(
                         return actor_navigation_path_clear(
                             actor, from_x, from_y, to_x, to_y);
                     };
+                context.movement_source_path_clear =
+                    [this](const std::uint16_t from_x,
+                           const std::uint16_t from_y,
+                           const std::uint16_t to_x,
+                           const std::uint16_t to_y) {
+                        return actor_source_route_clear(
+                            from_x, from_y, to_x, to_y);
+                    };
                 context.movement_route_lookup =
                     [this, &actor](const std::uint16_t route_key) {
                         if ((route_key & 0x03U) != 0U ||
@@ -12231,10 +12239,9 @@ bool FieldSceneRuntime::actor_navigation_path_clear(
     const DefaultFieldActorPresentation& actor,
     const std::uint16_t from_x, const std::uint16_t from_y,
     const std::uint16_t to_x, const std::uint16_t to_y) {
-    // ROM 0x14914 checks the obstruction line between actor and target in both
-    // directions [C]. The host checks the active scene's typed terrain model
-    // at fine intervals [H], using local copies so speculative samples cannot
-    // publish a movement event or alter the actor's next collision probe.
+    // Candidate corridor geometry remains a typed host terrain query [H].
+    // ROM 0x14914 is a distinct source-grid rule used only to retire an
+    // existing obstruction route; keep that rule in actor_source_route_clear.
     constexpr std::int32_t kSampleSpacing = 32;
     const auto delta_x = static_cast<std::int32_t>(to_x) - from_x;
     const auto delta_y = static_cast<std::int32_t>(to_y) - from_y;
@@ -12260,6 +12267,20 @@ bool FieldSceneRuntime::actor_navigation_path_clear(
         }
     }
     return true;
+}
+
+bool FieldSceneRuntime::actor_source_route_clear(
+    const std::uint16_t from_x, const std::uint16_t from_y,
+    const std::uint16_t to_x, const std::uint16_t to_y) {
+    // ROM 0x14914 checks two source-ordered corridors. One clear ordering
+    // retires the queued detour through 0x149CE -> 0x14756 [C].
+    const auto& collision_map =
+        state_.field_scene_buffers.source_metadata.terrain_collision_map;
+    return !is_entity_path_blocked(
+        from_x, from_y, to_x, to_y, collision_map.size(),
+        [this](const std::uint16_t tile_index) {
+            return terrain_collision_map_byte(tile_index) != 0U;
+        });
 }
 
 std::optional<scripting::ScriptActorBehaviorDecision>

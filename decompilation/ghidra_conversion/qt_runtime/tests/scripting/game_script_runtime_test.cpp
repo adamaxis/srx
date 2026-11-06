@@ -9275,6 +9275,7 @@ int main() {
     obstruction_target.world_y = 0x1800U;
     obstruction_target.heading = 0x2000U;
     std::uint32_t obstruction_path_query_count = 0U;
+    std::uint32_t source_route_query_count = 0U;
     obstruction_route_actor.measure_destination =
         [](const std::uint16_t, const std::uint16_t)
             -> std::optional<ScriptActorDestinationMeasurement> {
@@ -9292,6 +9293,14 @@ int main() {
             from_y == 0x1800U && to_y == 0x1800U;
         return !crosses_wall;
     };
+    obstruction_route_actor.movement_source_path_clear =
+        [&source_route_query_count](const std::uint16_t,
+                                   const std::uint16_t,
+                                   const std::uint16_t,
+                                   const std::uint16_t) {
+            ++source_route_query_count;
+            return false;
+        };
     obstruction_route_actor.movement_collision =
         [](const std::uint16_t, const std::uint16_t) {
         return ScriptMovementCollisionResult{0x7FU, 0x7FU};
@@ -9301,13 +9310,20 @@ int main() {
         finish_encounter_entry(obstruction_route_actor);
     const bool obstruction_route_primed = obstruction_route_entered &&
         prime_encounter_movement(obstruction_route_actor);
+    const auto source_route_binding =
+        obstruction_route_primed
+            ? scripts.actor_heartbeat(obstruction_route_actor)
+            : std::nullopt;
     if (!expect(
-            obstruction_route_primed && obstruction_path_query_count > 0U,
-            "dynamic actor Lua route policy did not call the typed host path query")) {
+            obstruction_route_primed && obstruction_path_query_count > 0U &&
+                source_route_binding.has_value() &&
+                source_route_query_count > 0U,
+            "dynamic actor Lua route policy did not call both typed host path queries")) {
         std::cerr << scripts.failure() << " entered="
                   << obstruction_route_entered << " primed="
                   << obstruction_route_primed << " path_queries="
-                  << obstruction_path_query_count << '\n';
+                  << obstruction_path_query_count << " source_route_queries="
+                  << source_route_query_count << '\n';
         return 24;
     }
 

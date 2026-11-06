@@ -1,7 +1,9 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <vector>
 
@@ -175,22 +177,37 @@ RouteQueueAdvance advance_obstruction_route_queue(
     RouteQueueState& route,
     const std::vector<std::uint8_t>& obstruction_map);
 
-// ROM 0x1494C: walk the source's horizontal or vertical grid line between
-// two packed obstruction indices and report whether an occupied tile blocks
-// the walk. The packed grid uses six low bits for the column and 0x40 rows.
+using ObstructionCellQuery = std::function<bool(std::uint16_t)>;
+
+// ROM 0x1494C: test one source-ordered, axis-aligned corridor between packed
+// obstruction cells. The corridor walks across the start row, then along the
+// target column; any occupied cell blocks that corridor. The packed grid uses
+// six low bits for the column and 0x40 rows.
 bool is_obstruction_path_blocked(
     std::int32_t start_tile,
     std::int32_t target_tile,
     const std::vector<std::uint8_t>& obstruction_map);
+bool is_obstruction_path_blocked(
+    std::int32_t start_tile,
+    std::int32_t target_tile,
+    std::size_t map_cell_count,
+    const ObstructionCellQuery& is_occupied);
 
-// ROM 0x14914: convert entity and target positions to packed grid indices,
-// then check the obstruction line in both source directions.
+// ROM 0x14914: return true only when both source-ordered corridors contain an
+// obstruction. A clear corridor in either direction clears the route.
 bool is_entity_path_blocked(
     std::uint16_t entity_x,
     std::uint16_t entity_y,
     std::uint16_t target_x,
     std::uint16_t target_y,
     const std::vector<std::uint8_t>& obstruction_map);
+bool is_entity_path_blocked(
+    std::uint16_t entity_x,
+    std::uint16_t entity_y,
+    std::uint16_t target_x,
+    std::uint16_t target_y,
+    std::size_t map_cell_count,
+    const ObstructionCellQuery& is_occupied);
 
 // ROM 0x14902: map world coordinates into the source obstruction-grid index.
 // The source grid uses 0x200 horizontal units and a 0x40-byte row stride.
