@@ -119,6 +119,38 @@ check(type(decision) == "table" and decision.selected_actor_id == "" and
       dead.target_flags == 0x75 and dead.pad == 0x0040,
       "GPGX frame 10280 clears dead slot 3 and Lua's world-service callback finds no eligible next record [C]")
 
+-- The recorded GPGX route has no second live hostile. Exercise the missing
+-- candidate permutation separately against the source-ordered list contract:
+-- ROM 0x1DC4C scans eligible actor slots after clearing the prior target.
+-- These rows are synthetic policy inputs, not a second emulator capture.
+local function make_eligible(candidate)
+    candidate.actor_facts.lifecycle.active = true
+    candidate.actor_facts.lifecycle.dead = false
+    candidate.actor_facts.lifecycle.downed = false
+    candidate.actor_facts.behavior.escort = false
+    candidate.projected_y_nonzero = true
+end
+
+local next_hostiles = source_candidates(dead)
+make_eligible(next_hostiles[2])
+make_eligible(next_hostiles[3])
+local second_hostile = ActorAI.select_world_service_target(
+    E.WorldTargetSelectionPolicy.STANDARD, next_hostiles)
+check(second_hostile.selected_actor_id == "gpgx_stoker_slot_4",
+      "after slot 3 is dead, the first eligible source-ordered hostile in slot 4 is selected [C: 0x1DC4C]")
+
+next_hostiles[2].actor_facts.lifecycle.dead = true
+local third_hostile = ActorAI.select_world_service_target(
+    E.WorldTargetSelectionPolicy.STANDARD, next_hostiles)
+check(third_hostile.selected_actor_id == "gpgx_stoker_slot_5",
+      "a dead slot 4 is skipped and the next eligible hostile in slot 5 is selected [C: 0x1DC4C]")
+
+next_hostiles[3].actor_facts.lifecycle.downed = true
+local no_eligible_hostile = ActorAI.select_world_service_target(
+    E.WorldTargetSelectionPolicy.STANDARD, next_hostiles)
+check(no_eligible_hostile.selected_actor_id == "",
+      "a downed slot 5 is excluded after the other hostile dies [C: 0x1DC4C]")
+
 local pose = {
     animation_id = "idle",
     animation_frame = 0,
