@@ -587,7 +587,7 @@ assert(not opener_source:find("script_runtime_->start_task(", 1, true),
     "FieldDialogueRuntime must not start raw Lua tasks")
 
 local direct_starts = assert(io.popen(
-    "rg -n '\\.start_task[[:space:]]*\\(' " ..
+    "rg -n \"\\.start_task[[:space:]]*\\(\" " ..
     "decompilation/ghidra_conversion/qt_runtime/src", "r"))
 local allowed_non_dialogue_start = 0
 for line in direct_starts:lines() do
