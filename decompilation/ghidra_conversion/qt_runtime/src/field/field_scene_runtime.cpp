@@ -5202,14 +5202,6 @@ void FieldSceneRuntime::advance_default_field_actors(
                             collision_code,
                             actor.movement_terrain_collision_code};
                     };
-                context.movement_path_clear =
-                    [this, &actor](const std::uint16_t from_x,
-                                   const std::uint16_t from_y,
-                                   const std::uint16_t to_x,
-                                   const std::uint16_t to_y) {
-                        return actor_navigation_path_clear(
-                            actor, from_x, from_y, to_x, to_y);
-                    };
                 context.movement_source_path_clear =
                     [this](const std::uint16_t from_x,
                            const std::uint16_t from_y,
@@ -12229,40 +12221,6 @@ std::int16_t FieldSceneRuntime::evaluate_field_collision(
         };
     return evaluate_entity_collision(entity_collision_record, candidate_x,
                                      candidate_y, collision_evaluator);
-}
-
-bool FieldSceneRuntime::actor_navigation_path_clear(
-    const DefaultFieldActorPresentation& actor,
-    const std::uint16_t from_x, const std::uint16_t from_y,
-    const std::uint16_t to_x, const std::uint16_t to_y) {
-    // Candidate corridor geometry remains a typed host terrain query [H].
-    // ROM 0x14914 is a distinct source-grid rule used only to retire an
-    // existing obstruction route; keep that rule in actor_source_route_clear.
-    constexpr std::int32_t kSampleSpacing = 32;
-    const auto delta_x = static_cast<std::int32_t>(to_x) - from_x;
-    const auto delta_y = static_cast<std::int32_t>(to_y) - from_y;
-    const auto span = std::max(std::abs(delta_x), std::abs(delta_y));
-    const auto sample_count = std::max(
-        1, (span + kSampleSpacing - 1) / kSampleSpacing);
-
-    auto collision_record = actor.movement_collision_record;
-    auto sample_state = actor.movement_sample_state;
-    auto terrain_code = actor.movement_terrain_collision_code;
-    for (std::int32_t sample = 1; sample <= sample_count; ++sample) {
-        const auto x = static_cast<std::uint16_t>(
-            static_cast<std::int32_t>(from_x) +
-            (delta_x * sample) / sample_count);
-        const auto y = static_cast<std::uint16_t>(
-            static_cast<std::int32_t>(from_y) +
-            (delta_y * sample) / sample_count);
-        const auto collision = evaluate_field_collision(
-            x, y, collision_record, sample_state,
-            actor.source_record_flags, false, &terrain_code);
-        if (collision != 0) {
-            return false;
-        }
-    }
-    return true;
 }
 
 bool FieldSceneRuntime::actor_source_route_clear(

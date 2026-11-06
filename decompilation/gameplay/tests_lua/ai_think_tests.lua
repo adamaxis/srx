@@ -1173,8 +1173,8 @@ end
 -- ROM 0x148D2 keeps X as the dominant axis on ties and chooses a signed
 -- minor-axis step; table 0x148CA maps the zero-delta defaults to -Y/-X.
 -- 0x14854 tries that side before its opposite, while 0x14914 checks the line.
--- These synthetic walls check candidate ordering, not source occupancy or a
--- full GPGX route [C/H].
+-- These mock responses exercise the typed source-cell corridor boundary, not
+-- imported map occupancy or a full GPGX route [C/H].
 local function vertical_wall_path_clear(wall_x, wall_top, wall_bottom)
     return function(from_x, from_y, to_x, to_y)
         if from_x == to_x then
@@ -1424,10 +1424,9 @@ for _, route_case in ipairs(route_heading_cases) do
 end
 
 local saved_movement_probe = game.movement.probe
-local saved_path_query = game.movement.path_is_clear
 local saved_source_path_query = game.movement.source_path_is_clear
 local route_path_query_calls = 0
-game.movement.path_is_clear = function(from_x, from_y, to_x, to_y)
+game.movement.source_path_is_clear = function(from_x, from_y, to_x, to_y)
     route_path_query_calls = route_path_query_calls + 1
     return wall_path_clear(from_x, from_y, to_x, to_y)
 end
@@ -1468,6 +1467,14 @@ check(blocked_route_step ~= nil and
 if obstruction_state.obstruction_route ~= nil then
     local first_waypoint =
         obstruction_state.obstruction_route.waypoints[1]
+    game.movement.source_path_is_clear = function(
+        from_x, from_y, to_x, to_y)
+        if from_x == first_waypoint.x and from_y == first_waypoint.y and
+           to_x == 0x3000 and to_y == 0x2000 then
+            return false
+        end
+        return wall_path_clear(from_x, from_y, to_x, to_y)
+    end
     obstruction_context.movement_state.position_x = first_waypoint.x
     obstruction_context.movement_state.position_y = first_waypoint.y
     game.movement.probe = function(x, y, direction, distance)
@@ -1489,7 +1496,7 @@ if obstruction_state.obstruction_route ~= nil then
           next_route_step.outcome == "accepted" and
           obstruction_state.obstruction_route ~= nil and
           obstruction_state.obstruction_route.index == 2,
-          "reaching the entry waypoint advances to the corridor exit [H]")
+          "a still-blocked source corridor advances from the entry waypoint to the corridor exit [C/H]")
     local exit_waypoint =
         obstruction_state.obstruction_route.waypoints[2]
     obstruction_context.movement_state.position_x = exit_waypoint.x
@@ -1571,7 +1578,7 @@ stale_route_context.measure_destination = function(x, y)
     return { bearing_degrees = bearing, distance = 0x500,
         step_cost = 0x300 }
 end
-game.movement.path_is_clear = wall_path_clear
+game.movement.source_path_is_clear = wall_path_clear
 game.movement.probe = function(x, y, direction)
     if direction == nil then
         return { kind = "clear", blocks_route_fallback = false,
@@ -1605,7 +1612,7 @@ check(replan_step ~= nil and
 -- If every path is now blocked, the failed selection discards the old queue
 -- and restores the live target heading rather than steering at the stale point.
 -- [C: 0x14ADE -> 0x14756]
-game.movement.path_is_clear = function() return false end
+game.movement.source_path_is_clear = function() return false end
 local failed_replan_step = R.advance_entity_movement(
     stale_route_context, stale_route_state)
 check(failed_replan_step ~= nil and
@@ -1615,7 +1622,6 @@ check(failed_replan_step ~= nil and
       stale_route_state.movement_current_bearing_degrees == 45,
       "failed obstruction replan clears the stale queue and returns to the live target [C: 0x14756]")
 game.movement.probe = saved_movement_probe
-game.movement.path_is_clear = saved_path_query
 game.movement.source_path_is_clear = saved_source_path_query
 
 local heartbeat_actor_id = "playtest13_dynamic_hellhound"

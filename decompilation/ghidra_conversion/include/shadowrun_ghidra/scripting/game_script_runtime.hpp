@@ -2133,10 +2133,9 @@ struct ScriptMovementCollisionRecoveryResult {
 
 using ScriptMovementCollisionQuery =
     std::function<ScriptMovementCollisionResult(std::uint16_t, std::uint16_t)>;
-// Read-only geometry query used by Lua path policy. The host checks a segment
-// against the active scene's collision model without publishing movement
-// state or changing the actor's persistent collision sample.
-using ScriptMovementPathQuery = std::function<bool(
+// ROM 0x14914 checks the source-cell corridors used by obstruction routes,
+// including candidate waypoint legs and already queued routes.
+using ScriptMovementSourcePathQuery = std::function<bool(
     std::uint16_t from_x, std::uint16_t from_y,
     std::uint16_t to_x, std::uint16_t to_y)>;
 using ScriptMovementRouteLookup =
@@ -2405,10 +2404,7 @@ struct ScriptActorBehaviorContext {
     std::uint8_t world_scene_state = 0;
     std::uint16_t movement_collision_mode = 0;
     ScriptMovementCollisionQuery movement_collision;
-    ScriptMovementPathQuery movement_path_clear;
-    // ROM 0x14914 route-queue visibility query over source terrain cells.
-    // Candidate waypoint geometry remains a separate host path query.
-    ScriptMovementPathQuery movement_source_path_clear;
+    ScriptMovementSourcePathQuery movement_source_path_clear;
     ScriptMovementRouteLookup movement_route_lookup;
     ScriptMovementCollisionRecovery movement_collision_recovery;
     // The field-player B7B8 path dispatches mode/map events before BADE's

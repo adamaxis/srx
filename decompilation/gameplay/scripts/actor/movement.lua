@@ -644,9 +644,9 @@ local function navigation_cell_center(coordinate)
 end
 
 local function choose_obstruction_waypoint(
-    from_x, from_y, target_x, target_y, path_is_clear, source_heading)
-    if type(path_is_clear) ~= "function" or
-       path_is_clear(from_x, from_y, target_x, target_y) == true then
+    from_x, from_y, target_x, target_y, source_path_is_clear, source_heading)
+    if type(source_path_is_clear) ~= "function" or
+       source_path_is_clear(from_x, from_y, target_x, target_y) == true then
         return nil
     end
 
@@ -661,7 +661,8 @@ local function choose_obstruction_waypoint(
     -- ROM 0x148D2 selects the greater target axis for its first obstruction
     -- scan; ties stay on X. Its signed minor-axis direction is the first
     -- 0x14854 side probe; 0x148CA defaults zero deltas to -Y/-X [C]. The host
-    -- route stores a typed waypoint and checks it through read-only geometry.
+    -- route stores typed world waypoints; each candidate leg uses the same
+    -- source-cell corridor query as an already queued route.
     local horizontal = absolute_x >= absolute_y
     local side_delta = horizontal and delta_y or delta_x
     local first_side = side_delta > 0 and 1 or -1
@@ -683,9 +684,12 @@ local function choose_obstruction_waypoint(
                waypoint_y >= 0 and waypoint_y <= 0xFFFF and
                exit_x >= 0 and exit_x <= 0xFFFF and
                exit_y >= 0 and exit_y <= 0xFFFF and
-               path_is_clear(from_x, from_y, waypoint_x, waypoint_y) == true and
-               path_is_clear(waypoint_x, waypoint_y, exit_x, exit_y) == true and
-               path_is_clear(exit_x, exit_y, target_x, target_y) == true then
+               source_path_is_clear(from_x, from_y,
+                                    waypoint_x, waypoint_y) == true and
+               source_path_is_clear(waypoint_x, waypoint_y,
+                                    exit_x, exit_y) == true and
+               source_path_is_clear(exit_x, exit_y,
+                                    target_x, target_y) == true then
                 return {
                     waypoints = waypoint_x == exit_x and
                         waypoint_y == exit_y
@@ -703,8 +707,9 @@ local function choose_obstruction_waypoint(
     -- advances one primary cell until the map edge or a blocked primary cell;
     -- five is the number of direction pairs, not a five-cell depth limit.
     -- Keep that policy as named directions and host world positions: Lua
-    -- stores one waypoint and typed terrain queries check candidate segments.
-    -- Direction order and scan bounds are [C]; host geometry remains [H].
+    -- stores one waypoint and the typed source-cell query checks candidate
+    -- segments. Direction order and scan bounds are [C]; candidate placement
+    -- remains [H].
     local heading_octant = type(source_heading) == "number" and
         Bearing.octant(source_heading, false) or nil
     local facing_octant = heading_octant ~= nil and
@@ -729,8 +734,8 @@ local function choose_obstruction_waypoint(
                    waypoint_y < 0 or waypoint_y > 0xFFFF then
                     break
                 end
-                if path_is_clear(scan_from_x, scan_from_y,
-                                 waypoint_x, waypoint_y) ~= true then
+                if source_path_is_clear(scan_from_x, scan_from_y,
+                                        waypoint_x, waypoint_y) ~= true then
                     break
                 end
                 scan_from_x, scan_from_y = waypoint_x, waypoint_y
@@ -740,8 +745,8 @@ local function choose_obstruction_waypoint(
                     secondary_direction.y * NAVIGATION_CELL_SIZE
                 if adjacent_x >= 0 and adjacent_x <= 0xFFFF and
                    adjacent_y >= 0 and adjacent_y <= 0xFFFF and
-                   path_is_clear(waypoint_x, waypoint_y,
-                                 adjacent_x, adjacent_y) == true then
+                   source_path_is_clear(waypoint_x, waypoint_y,
+                                        adjacent_x, adjacent_y) == true then
                     return {
                         waypoints = { { x = waypoint_x, y = waypoint_y } },
                         target_cell_x = target_cell_x,
@@ -863,7 +868,8 @@ local function plan_obstruction_waypoint(context, state, movement_state)
     end
     local waypoint = choose_obstruction_waypoint(
         movement_state.position_x, movement_state.position_y,
-        target.world_x, target.world_y, game.movement.path_is_clear,
+        target.world_x, target.world_y,
+        game.movement.source_path_is_clear,
         state.movement_current_bearing_degrees)
     if waypoint == nil then
         -- ROM 0x14ADE reaches 0x14756 after the rotating-strip candidates

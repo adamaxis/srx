@@ -9260,10 +9260,9 @@ int main() {
         return false;
     };
 
-    // Exercise the typed path-query binding through the dynamic actor Lua
-    // heartbeat. The synthetic wall isolates the host/Lua boundary; the
-    // source route contract is traced at ROM 0x14682..0x149C0, while an
-    // independent GPGX route capture remains unavailable.
+    // Exercise the typed source-cell corridor binding through both candidate
+    // planning and queued-route validation. The synthetic wall isolates the
+    // host/Lua boundary; an independent GPGX route capture remains unavailable.
     auto obstruction_route_actor = make_encounter_reaction_context(
         "field_scene_2_encounter_obstruction_route_binding");
     obstruction_route_actor.initial_heading = 0x2000U;
@@ -9274,32 +9273,23 @@ int main() {
     obstruction_target.world_x = 0x3000U;
     obstruction_target.world_y = 0x1800U;
     obstruction_target.heading = 0x2000U;
-    std::uint32_t obstruction_path_query_count = 0U;
     std::uint32_t source_route_query_count = 0U;
     obstruction_route_actor.measure_destination =
         [](const std::uint16_t, const std::uint16_t)
             -> std::optional<ScriptActorDestinationMeasurement> {
         return ScriptActorDestinationMeasurement{0x2000U, 0x0500U, 0x0300U};
     };
-    obstruction_route_actor.movement_path_clear =
-        [&obstruction_path_query_count](const std::uint16_t from_x,
-                                        const std::uint16_t from_y,
-                                        const std::uint16_t to_x,
-                                        const std::uint16_t to_y) {
-        ++obstruction_path_query_count;
-        const bool crosses_wall =
-            ((from_x <= 0x2800U && to_x >= 0x2800U) ||
-             (to_x <= 0x2800U && from_x >= 0x2800U)) &&
-            from_y == 0x1800U && to_y == 0x1800U;
-        return !crosses_wall;
-    };
     obstruction_route_actor.movement_source_path_clear =
-        [&source_route_query_count](const std::uint16_t,
-                                   const std::uint16_t,
-                                   const std::uint16_t,
-                                   const std::uint16_t) {
+        [&source_route_query_count](const std::uint16_t from_x,
+                                    const std::uint16_t from_y,
+                                    const std::uint16_t to_x,
+                                    const std::uint16_t to_y) {
             ++source_route_query_count;
-            return false;
+            const bool crosses_wall =
+                ((from_x <= 0x2800U && to_x >= 0x2800U) ||
+                 (to_x <= 0x2800U && from_x >= 0x2800U)) &&
+                from_y == 0x1800U && to_y == 0x1800U;
+            return !crosses_wall;
         };
     obstruction_route_actor.movement_collision =
         [](const std::uint16_t, const std::uint16_t) {
@@ -9315,14 +9305,12 @@ int main() {
             ? scripts.actor_heartbeat(obstruction_route_actor)
             : std::nullopt;
     if (!expect(
-            obstruction_route_primed && obstruction_path_query_count > 0U &&
-                source_route_binding.has_value() &&
-                source_route_query_count > 0U,
-            "dynamic actor Lua route policy did not call both typed host path queries")) {
+            obstruction_route_primed && source_route_binding.has_value() &&
+                source_route_query_count > 1U,
+            "dynamic actor Lua route policy did not use the typed source-cell corridor query for candidate and queued routes")) {
         std::cerr << scripts.failure() << " entered="
                   << obstruction_route_entered << " primed="
-                  << obstruction_route_primed << " path_queries="
-                  << obstruction_path_query_count << " source_route_queries="
+                  << obstruction_route_primed << " source_route_queries="
                   << source_route_query_count << '\n';
         return 24;
     }

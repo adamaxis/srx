@@ -38,26 +38,23 @@ image dump defends the visible result.
 Lua stores a target-linked list of typed world waypoints in the actor's
 existing `game.actors[actor_id]` state. On a fresh blocked dynamic-actor
 movement step, it checks the dominant axis and tries the signed minor-axis
-side first, then checks whether the direct and parallel world segments are
-clear through the host query. It advances the waypoint index as the actor
-enters each waypoint cell and measures the live target again when the route
-ends. When a queued segment becomes blocked, ROM `0x149C0 -> 0x149CE ->
+side first, then checks each candidate leg with the typed source-cell corridor
+query. It advances the waypoint index as the actor enters each waypoint cell
+and measures the live target again when the route ends. When a queued segment
+becomes blocked, ROM `0x149C0 -> 0x149CE ->
 0x14756` clears the two route flags. The next `0x14682` selection derives its
 first side again from the live position and target; the source does not retain
 a prior side choice. Lua now recomputes from the live state instead of
-flipping a host-only side field [C]. The host's segment sampling and route
-geometry remain [H].
+flipping a host-only side field [C]. Candidate waypoint placement remains [H].
 
 When no parallel corridor is usable, Lua tries a strip from the actor's
 current heading. The source rotation order follows `0x14AF4`, and each scan is
-bounded by the source grid dimension and the active scene's typed collision
-query. Lua represents the candidate as a world waypoint, advances the terrain
-query one cell at a time, and checks each candidate's adjacent open cell. The
-incremental query keeps long scans from repeatedly sweeping the full distance
-from the actor. A regression reaches the first open adjacent cell at depth
-six, beyond the five direction-pair retry count. This gives an actor a local
-step to replan from around a blocked route without exposing the source raster
-to Lua.
+bounded by the source grid dimension. Lua represents candidates as typed
+world waypoints and checks each segment with the same source-cell corridor
+query used by the queued route. The route does not expose the source raster to
+Lua. A regression reaches the first open adjacent cell at depth six, beyond
+the five direction-pair retry count. This gives an actor a local step to
+replan from around a blocked route.
 
 If a replan cannot find a clear candidate, Lua drops the previous waypoint
 queue and restores the live target heading. This follows ROM `0x14ADE`'s
@@ -66,54 +63,46 @@ failure branch to `0x14756`, which clears both obstruction-route flags. The
 candidate, and checks that movement returns to the target rather than reusing
 the stale point.
 
-`game.movement.path_is_clear(from_x, from_y, to_x, to_y)` remains a read-only
-host geometry query for candidate waypoint segments. `FieldSceneRuntime`
-samples the active scene's typed collision model with a local copy of the
-actor's collision state; its fine segment sampling is host policy [H]. It does
-not publish movement events, mutate the actor's next movement probe, or expose
-an `FF1700`-shaped table to Lua.
-
-For an already queued detour, Lua separately calls
-`game.movement.source_path_is_clear(from_x, from_y, to_x, to_y)`. This narrow
-typed service applies the `0x14902/0x14914/0x1494C` cell-corridor rule against
-the active typed terrain map. The cell lookup includes the live player field
-barrier overlay and selected effect-marker replacement. A cell outside the
+Lua calls
+`game.movement.source_path_is_clear(from_x, from_y, to_x, to_y)` for candidate
+legs and queued-route validation. The typed host service applies the
+`0x14902/0x14914/0x1494C` cell-corridor rule against the active terrain map.
+The cell lookup includes the live player field barrier overlay, the selected
+effect-marker replacement, and map-event counter updates. A cell outside the
 imported map is blocked for host safety [H]. If either source corridor is
 clear, Lua retires the queued detour and measures the current target again,
-matching the `0x149C0 -> 0x149CE -> 0x14756` branch. Candidate segment geometry
-and the native scene's out-of-map policy remain [H].
+matching the `0x149C0 -> 0x149CE -> 0x14756` branch. The candidate waypoint
+placement and native out-of-map policy remain [H]. The former 32-unit sampled
+host collision sweep was removed so candidate planning and queued validation
+use one obstacle definition.
 
 The initial signed side order, opposite-side fallback, blocked-route replan
 state, heading order/scan bound of the `0x14AF4` retry, and `0x14914` cell
-query are [C]. The native scene's out-of-map handling and resulting route
-pixels remain [H]. These are readable native waypoint policies, not a claim of
-matching the complete waypoint sequence. The referenced
+query are [C]. Candidate waypoint placement, native out-of-map handling, and
+resulting route pixels remain [H]. These are readable native waypoint
+policies, not a claim of matching the complete waypoint sequence. The referenced
 `/workspace/shadowrun/out/p49b/repro.txt` route capture is absent from this
 checkout; local obstruction-grid snapshots do not establish enemy route
 fidelity.
 
 ## Validation
 
-- `ai_think_tests.lua`: synthetic horizontal and vertical obstructions, clear
-  direct path, sealed corridor, source opposite-side fallback, heading-oriented
+- `ai_think_tests.lua`: mock source-corridor responses for horizontal and
+  vertical obstructions, clear direct path, sealed corridor, source opposite-side fallback, heading-oriented
   strip fallback including a first opening at strip depth six, blocked-route
   replan from live position/target, failed-replan cleanup, source signed-side
   and X-tie ordering, target-linked route state, waypoint advancement, and
   target reacquisition.
-- `shadowrun_gameplay_script_runtime_qa`: verifies the Lua planner reaches
-  both typed path-query callbacks through the C++ binding, including the
-  source-grid recheck for an active queued route.
+- `shadowrun_gameplay_script_runtime_qa`: verifies the Lua planner uses the
+  typed source-cell corridor callback through the C++ binding for both
+  candidate legs and an active queued route.
 - `entity_route_primitives_conversion_test`: checks the two `0x1494C`
   corridor orders, the `0x14914` either-clear result, a diagonal-only
   obstruction that the source query misses, and the runtime cell-query
   callback contract.
-- Headless Debug and Release root CTest runs passed
-  `shadowrun_gameplay_lua_suites` and
-  `shadowrun_ghidra_entity_route_primitives`. The focused Qt CTest run passed
-  nine checks in both configurations: gameplay Lua suites, script-runtime
-  binding, actor AI rules, field terrain markers, world activity, barrier
-  collision, package-recovery entry, regional pedestrians, and the Stoker
-  exit route. The separate `equiv_heartbeat` output remains informational and
-  reports its documented pre-split mismatches.
+- The focused headless Qt CTest run passed in Debug and Release for the
+  gameplay Lua suites, script-runtime binding, actor AI rules, world activity,
+  and field-barrier collision. The separate `equiv_heartbeat` output remains
+  informational and reports its documented pre-split mismatches.
 - No route-specific scene `actual.bmp` was produced for this shared movement
   mechanism, so the obstruction-routing hill remains partial.
