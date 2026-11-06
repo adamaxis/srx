@@ -6137,7 +6137,12 @@ void FieldSceneRuntime::resolve_default_actor_proximity(
             records[index].activity_flags;
     }
     field_pending_world_effect_ = world.pending_world_effect;
+    const bool world_effect_active_changed =
+        field_world_effect_active_ != world.world_effect_active;
     field_world_effect_active_ = world.world_effect_active;
+    if (world_effect_active_changed) {
+        refresh_effect_terrain_marker_cell();
+    }
     if (proximity.pairs_resolved != 0U) {
         source_boundary("field.entities.resolve_proximity");
     }
@@ -8286,6 +8291,14 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
 
             WorldActivityRoutineInput input{};
             input.initial_scene_id = *selected_scene;
+            input.resource_overrides.force_index_five_marker_zero =
+                field_effect_marker_context_
+                    .force_index_five_marker_zero;
+            input.resource_overrides.force_index_two_marker_three =
+                field_effect_marker_context_
+                    .force_index_two_marker_three;
+            input.resource_overrides.force_index_four =
+                field_world_effect_active_;
             input.routed_destination_mode = routed_destination_mode;
             input.mode_event_code =
                 field_movement_transition_state_.mode_event_code;
@@ -8298,12 +8311,18 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 break;
             case FieldLocationResourceEntryOverride::index_five_marker_zero:
                 input.resource_overrides.force_index_five_marker_zero = true;
+                field_effect_marker_context_.force_index_five_marker_zero =
+                    true;
                 break;
             case FieldLocationResourceEntryOverride::index_two_marker_three:
                 input.resource_overrides.force_index_two_marker_three = true;
+                field_effect_marker_context_.force_index_two_marker_three =
+                    true;
                 break;
             case FieldLocationResourceEntryOverride::index_four:
                 input.resource_overrides.force_index_four = true;
+                field_world_effect_active_ = true;
+                refresh_effect_terrain_marker_cell();
                 break;
             }
             // The Scene-3/event-3 story route leaves FFE180 armed through
@@ -8499,9 +8518,18 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 field_selected_effect_index_ =
                     world_activity_routine_state_
                         .selected_resource_random_index;
+                field_effect_marker_ordinal_ =
+                    world_activity_routine_state_.resource_marker_ordinal;
+                field_effect_marker_context_.force_index_five_marker_zero =
+                    world_activity_routine_state_.resource_overrides
+                        .force_index_five_marker_zero;
+                field_effect_marker_context_.force_index_two_marker_three =
+                    world_activity_routine_state_.resource_overrides
+                        .force_index_two_marker_three;
                 field_security_floor_index_ = static_cast<std::uint8_t>(
                     world_activity_routine_state_
                         .selected_resource_random_index);
+                refresh_effect_terrain_marker_cell();
                 if (ordinary_resource_entry_profile_applies &&
                     world_activity_routine_state_.scene_id == *selected_scene) {
                     const auto& placement =
@@ -8564,6 +8592,12 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
             // Lua owns the selected contact option. This flow only needs the
             // semantic fact that a selection exists and whether a live escort
             // remains in the current field scene.
+            // ROM 0x1E43C clears FFE180/FFE182/FFE184/FFE187 before it scans
+            // the selected contact's world-activity result.
+            field_world_effect_active_ = false;
+            field_pending_world_effect_ = false;
+            field_effect_marker_context_ = {};
+            refresh_effect_terrain_marker_cell();
             const auto conditional_selection =
                 game_scripts_.consume_conditional_actor_selection();
             if (!conditional_selection.has_value()) {
@@ -10740,6 +10774,9 @@ bool FieldSceneRuntime::bootstrap(
     field_security_floor_index_.reset();
     field_active_effect_index_.reset(); // FFF0C8 is field-session state.
     field_selected_effect_index_.reset(); // FFE12C is field-session state.
+    field_effect_marker_context_ = {};
+    field_effect_marker_ordinal_ = 0U;
+    field_effect_terrain_marker_cell_.reset();
     field_activity_continuation_ = MovementModeTransitionContinuation::none;
     field_projected_terrain_mark_count_ = 0U;
     field_terrain_sample_state_ = {};
@@ -11160,7 +11197,10 @@ bool FieldSceneRuntime::bootstrap(
                 return true;
             }
             if (name == "world_effect_active") {
-                field_world_effect_active_ = value;
+                if (field_world_effect_active_ != value) {
+                    field_world_effect_active_ = value;
+                    refresh_effect_terrain_marker_cell();
+                }
                 return true;
             }
             if (name == "wanderer_vigore_jarl_intro_seen") {
@@ -11950,6 +11990,32 @@ void FieldSceneRuntime::clear_field_barrier_collision_overlay() noexcept {
     field_barrier_presentation_origin_.reset();
 }
 
+void FieldSceneRuntime::refresh_effect_terrain_marker_cell() noexcept {
+    const auto& collision_map =
+        state_.field_scene_buffers.source_metadata.terrain_collision_map;
+    if (!field_active_effect_index_.has_value() ||
+        !field_selected_effect_index_.has_value()) {
+        field_effect_terrain_marker_cell_.reset();
+        return;
+    }
+
+    TerrainMarkerReplacementState replacement{};
+    replacement.field_mode = field_movement_transition_state_.world_mode;
+    replacement.effect_context_active = static_cast<std::uint8_t>(
+        field_effect_marker_context_.force_index_five_marker_zero);
+    replacement.alternate_effect_context = static_cast<std::uint8_t>(
+        field_effect_marker_context_.force_index_two_marker_three);
+    // [H] FFFBED==4 is another ROM 0xEE86 gate, but the active field runtime
+    // does not yet publish that handler-index fact into typed state.
+    replacement.effect_handler_index = 0U;
+    replacement.selected_effect_index = *field_selected_effect_index_;
+    replacement.active_effect_index = *field_active_effect_index_;
+    replacement.marker_ordinal = field_effect_marker_ordinal_;
+    replacement.world_effect_active = field_world_effect_active_;
+    field_effect_terrain_marker_cell_ =
+        select_effect_terrain_marker_cell(collision_map, replacement);
+}
+
 std::uint8_t FieldSceneRuntime::terrain_collision_map_byte(
     const std::uint16_t tile_index) const noexcept {
     const auto& collision_map =
@@ -11968,6 +12034,14 @@ std::uint8_t FieldSceneRuntime::terrain_collision_map_byte(
                 return cell.code;
             }
         }
+    }
+    // ROM 0xEE86 changes only its selected projected-terrain marker. Keep the
+    // imported map immutable and resolve that one semantic cell at query time.
+    constexpr std::uint8_t kProjectedTerrainMarker = 0xDAU;
+    constexpr std::uint8_t kSelectedEffectTerrainMarker = 0x9AU;
+    if (field_effect_terrain_marker_cell_ == tile_index &&
+        collision_map[tile_index] == kProjectedTerrainMarker) {
+        return kSelectedEffectTerrainMarker;
     }
     return collision_map[tile_index];
 }

@@ -70,6 +70,7 @@ WorldActivityResult run_world_activity_routine(
     state.scene_id = input.initial_scene_id;
     state.world_flags = input.world_flags;
     state.contact_flags = input.contact_flags;
+    state.resource_overrides = input.resource_overrides;
 
     if (input.timeout_override != 0U) {
         state.timeout_requested = true;

@@ -1045,6 +1045,7 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
     field_camera_follow_.vertical_step = 0;
     field_movement_transition_state_.scene_id = restored.scene;
     field_movement_transition_state_.world_mode = restored.mode;
+    refresh_effect_terrain_marker_cell();
     field_world_activity_timeout_state_ = WorldActivityTimeoutState{};
     field_world_activity_timeout_state_.scene_id = restored.scene;
     world_frame_logic_state_.world_mode = restored.scene;

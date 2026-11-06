@@ -1937,3 +1937,26 @@ This covers one real class/race profile and its current cyberware state; it
 does not establish the hit probability for other runner profiles. The overall
 hill remains partial pending the broader equipment/profile routes and an
 independent Genesis appearance comparison.
+
+## Projected terrain marker selection (partial, 2026-11-06)
+
+ROM `0x029BC` invokes `0x0EE10`; its `FFDF8A` gate rebuilds the `FF1700` field
+and calls `0x0EE86` for the negative terrain entry. ROM `0x0EE86` requires
+`FFDF40==2`, one of `FFE184`, `FFE187`, or `FFFBED==4`, equal `FFE12C` and
+`FFF0C8`, and clear `FFE180`; it sign-extends `FFE185` and changes the selected
+`0xDA` cell to `0x9A`. The live field runtime now retains the typed selector
+facts across scene loads and exposes the chosen cell as a read-only collision
+query override. The imported map remains unchanged. The source clears the
+selector flags at `0x1E43C` and `0x2A64`.
+
+`shadowrun_ghidra_conversion_qt_field_world_activity_qa` checks Scene 26's
+fourth `0xDA` cell with matching active/selected indices and `FFE187` state,
+then verifies the collision query reports the replacement, `FFE180` suppresses
+it, every other marker remains unchanged, and the imported map is unchanged.
+This case seeds those source facts through
+the QA surface; it does not establish an ordinary-input producer for
+`FFE187`. `FFFBED==4`, full `FFDF8A` map rebuilding, and independent Genesis
+collision evidence remain open, so the hill stays partial. Debug and Release
+headless CTests pass for the Scene-26 runtime case, terrain-map selector, and
+world-activity selector-state conversion. See the
+[projected-terrain marker audit](visual-audits/terrain-marker-runtime-integration-2026-11-06.md).

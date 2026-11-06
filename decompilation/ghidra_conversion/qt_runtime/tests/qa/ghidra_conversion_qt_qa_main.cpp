@@ -1418,6 +1418,96 @@ int run_field_world_activity_qa(
     }
     const auto& activity = field_scene.world_activity_state_for_dump();
     const auto floor = field_scene.security_floor_index_for_dump();
+
+    // ROM 0xEE86 replaces the selected FFE185 occurrence only when a
+    // resource-context flag is active, FFE12C equals FFF0C8, and FFE180 is
+    // clear. Exercise the live query with the Scene-26 source resource map;
+    // the runtime must expose one typed cell override without mutating the
+    // imported collision map.
+    const auto& source_collision_map =
+        field_scene.source_terrain_collision_map_for_dump();
+    const auto source_collision_map_before = source_collision_map;
+    std::vector<std::size_t> projected_marker_cells;
+    for (std::size_t index = 0U; index < source_collision_map.size(); ++index) {
+        if (source_collision_map[index] == 0xDAU) {
+            projected_marker_cells.push_back(index);
+        }
+    }
+    std::optional<std::size_t> expected_effect_marker_cell;
+    if (activity.resource_marker_ordinal < projected_marker_cells.size()) {
+        expected_effect_marker_cell =
+            projected_marker_cells[activity.resource_marker_ordinal];
+    }
+    const auto prior_active_index =
+        field_scene.active_effect_index_for_dump();
+    const auto prior_selected_index =
+        field_scene.selected_effect_index_for_dump();
+    const auto prior_world_effect_active =
+        field_scene.world_effect_active_for_dump();
+    const auto prior_pending_world_effect =
+        field_scene.pending_world_effect_for_dump();
+    field_scene.seed_effect_terrain_marker_context_for_dump(
+        false, true, activity.resource_marker_ordinal);
+    field_scene.seed_conditional_actor_effect_facts_for_dump(
+        false, false, std::uint16_t{2U}, std::uint16_t{2U});
+    bool effect_marker_query_matches =
+        expected_effect_marker_cell.has_value() &&
+        field_scene.selected_effect_terrain_marker_cell_for_dump() ==
+            expected_effect_marker_cell;
+    for (const auto marker_cell : projected_marker_cells) {
+        const auto expected_code =
+            marker_cell == expected_effect_marker_cell.value_or(
+                               std::numeric_limits<std::size_t>::max())
+                ? 0x9AU
+                : 0xDAU;
+        effect_marker_query_matches =
+            effect_marker_query_matches &&
+            field_scene.terrain_collision_map_byte_for_dump(
+                static_cast<std::uint16_t>(marker_cell)) == expected_code;
+    }
+    effect_marker_query_matches =
+        effect_marker_query_matches &&
+        source_collision_map == source_collision_map_before;
+    field_scene.seed_conditional_actor_effect_facts_for_dump(
+        true, false, std::uint16_t{2U}, std::uint16_t{2U});
+    const bool world_effect_suppresses_marker =
+        !field_scene.selected_effect_terrain_marker_cell_for_dump().has_value() &&
+        std::all_of(
+            projected_marker_cells.begin(), projected_marker_cells.end(),
+            [&field_scene](const std::size_t cell) {
+                return field_scene.terrain_collision_map_byte_for_dump(
+                           static_cast<std::uint16_t>(cell)) == 0xDAU;
+            });
+    field_scene.seed_effect_terrain_marker_context_for_dump(
+        false, false, activity.resource_marker_ordinal);
+    field_scene.seed_conditional_actor_effect_facts_for_dump(
+        prior_world_effect_active, prior_pending_world_effect,
+        prior_active_index, prior_selected_index);
+    if (!effect_marker_query_matches || !world_effect_suppresses_marker ||
+        field_scene.selected_effect_terrain_marker_cell_for_dump().has_value()) {
+        std::cerr << "field world-activity QA: 0xEE86 typed collision-cell "
+                     "override diverged"
+                  << " source_markers=" << projected_marker_cells.size()
+                  << " ordinal="
+                  << static_cast<unsigned>(activity.resource_marker_ordinal)
+                  << " expected=";
+        if (expected_effect_marker_cell.has_value()) {
+            std::cerr << *expected_effect_marker_cell;
+        } else {
+            std::cerr << "none";
+        }
+        std::cerr << " selected=";
+        if (field_scene.selected_effect_terrain_marker_cell_for_dump()
+                .has_value()) {
+            std::cerr << *field_scene
+                               .selected_effect_terrain_marker_cell_for_dump();
+        } else {
+            std::cerr << "none";
+        }
+        std::cerr << "\n";
+        return 3;
+    }
+
     const auto resource_scene_entry = render_field();
     if (!save("resource-scene-entry.bmp", resource_scene_entry)) {
         std::cerr << "field world-activity QA: resource-scene entry dump failed\n";

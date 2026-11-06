@@ -619,6 +619,8 @@ void FieldSceneRuntime::start_field_party_wake_transition() {
     field_runtime_state_.world_activity_transition_marker = 0U; // FFE18F
     field_world_effect_active_ = false; // FFE180
     field_pending_world_effect_ = false; // FFE182
+    field_effect_marker_context_ = {}; // FFE184/FFE187, ROM 0x2A70/0x2A76
+    refresh_effect_terrain_marker_cell();
     world_activity_request_outcome_.reset();
     field_mode_exit_transition_state_.effect_animation_marker = 0U; // FFE182
     field_mode_exit_transition_state_.mode_five_effect_marker = 0U; // FFE183

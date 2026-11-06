@@ -4,31 +4,65 @@
 
 namespace shadowrun::ghidra_conversion {
 
-bool replace_nth_terrain_marker(
-    std::array<std::uint8_t, 0x1000>& map,
+namespace {
+
+bool marker_replacement_enabled(
     const TerrainMarkerReplacementState& state) {
-    if (state.field_mode != 2U ||
-        (state.effect_context_active == 0U &&
-         state.alternate_effect_context == 0U &&
-         state.effect_handler_index != 4U) ||
-        state.selected_effect_index != state.active_effect_index ||
-        state.world_effect_active) {
-        return false;
+    return state.field_mode == 2U &&
+           (state.effect_context_active != 0U ||
+            state.alternate_effect_context != 0U ||
+            state.effect_handler_index == 4U) &&
+           state.selected_effect_index == state.active_effect_index &&
+           !state.world_effect_active;
+}
+
+template <typename TerrainRange>
+std::optional<std::size_t> select_effect_terrain_marker_cell(
+    const TerrainRange& terrain,
+    const TerrainMarkerReplacementState& state) {
+    if (!marker_replacement_enabled(state)) {
+        return std::nullopt;
     }
 
     auto remaining = static_cast<std::int16_t>(
         static_cast<std::int8_t>(state.marker_ordinal));
-    for (auto& value : map) {
-        if (value != 0xDAU) {
+    for (std::size_t index = 0U; index < terrain.size(); ++index) {
+        if (terrain[index] != 0xDAU) {
             continue;
         }
         --remaining;
         if (remaining < 0) {
-            value = 0x9AU;
-            return true;
+            return index;
         }
     }
-    return false;
+    return std::nullopt;
+}
+
+} // namespace
+
+std::optional<std::size_t> select_effect_terrain_marker_cell(
+    const std::vector<std::uint8_t>& terrain,
+    const TerrainMarkerReplacementState& state) {
+    return select_effect_terrain_marker_cell<std::vector<std::uint8_t>>(
+        terrain, state);
+}
+
+std::optional<std::size_t> select_effect_terrain_marker_cell(
+    const std::array<std::uint8_t, 0x1000>& terrain,
+    const TerrainMarkerReplacementState& state) {
+    return select_effect_terrain_marker_cell<std::array<std::uint8_t, 0x1000>>(
+        terrain, state);
+}
+
+bool replace_nth_terrain_marker(
+    std::array<std::uint8_t, 0x1000>& map,
+    const TerrainMarkerReplacementState& state) {
+    const auto selected = select_effect_terrain_marker_cell(map, state);
+    if (!selected.has_value()) {
+        return false;
+    }
+    map[*selected] = 0x9AU;
+    return true;
 }
 
 void replace_nth_terrain_marker(

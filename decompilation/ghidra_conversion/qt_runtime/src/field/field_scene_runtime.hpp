@@ -15,6 +15,7 @@
 #include "shadowrun_ghidra/field/field_viewport_conversion.hpp"
 #include "shadowrun_ghidra/field/field_coordinate_conversion.hpp"
 #include "shadowrun_ghidra/field/field_movement_input_conversion.hpp"
+#include "shadowrun_ghidra/field/terrain_map_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_animation_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_route_primitives_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_service_target_conversion.hpp"
@@ -105,6 +106,11 @@ constexpr std::size_t field_scene_profile_word_index(
 struct FieldFramePresentationState {
     std::uint8_t frame = 0U;
     bool redraw_requested = false;
+};
+
+struct FieldEffectMarkerContext {
+    bool force_index_five_marker_zero = false; // FFE184
+    bool force_index_two_marker_three = false; // FFE187
 };
 
 enum class FieldWorldFactFlag : std::uint8_t {
@@ -562,6 +568,30 @@ public:
         field_pending_world_effect_ = pending_world_effect;
         field_active_effect_index_ = active_effect_index;
         field_selected_effect_index_ = selected_effect_index;
+        refresh_effect_terrain_marker_cell();
+    }
+    void seed_effect_terrain_marker_context_for_dump(
+        const bool force_index_five_marker_zero,
+        const bool force_index_two_marker_three,
+        const std::uint8_t marker_ordinal) noexcept {
+        field_effect_marker_context_ = FieldEffectMarkerContext{
+            force_index_five_marker_zero,
+            force_index_two_marker_three};
+        field_effect_marker_ordinal_ = marker_ordinal;
+        refresh_effect_terrain_marker_cell();
+    }
+    std::optional<std::size_t>
+    selected_effect_terrain_marker_cell_for_dump() const noexcept {
+        return field_effect_terrain_marker_cell_;
+    }
+    const std::array<std::uint8_t, 0x1000>&
+    source_terrain_collision_map_for_dump() const noexcept {
+        return state_.field_scene_buffers.source_metadata
+            .terrain_collision_map;
+    }
+    std::uint8_t terrain_collision_map_byte_for_dump(
+        const std::uint16_t tile_index) const noexcept {
+        return terrain_collision_map_byte(tile_index);
     }
     bool world_effect_active_for_dump() const noexcept {
         return field_world_effect_active_;
@@ -1880,6 +1910,7 @@ private:
         const std::array<FieldBarrierCollisionCell,
                          kFieldBarrierCollisionCellCount>& cells) noexcept;
     void clear_field_barrier_collision_overlay() noexcept;
+    void refresh_effect_terrain_marker_cell() noexcept;
     std::uint8_t terrain_collision_map_byte(std::uint16_t tile_index) const
         noexcept;
     void source_boundary(std::string_view boundary) const;
@@ -2962,6 +2993,11 @@ private:
     // floor with the resource's selected index after the routine state resets.
     std::optional<std::uint16_t> field_active_effect_index_;
     std::optional<std::uint16_t> field_selected_effect_index_;
+    // Typed source facts consumed by ROM 0xEE86. These survive child-scene
+    // reloads and are cleared at the source's explicit 0x1E43C/0x2A64 sites.
+    FieldEffectMarkerContext field_effect_marker_context_{};
+    std::uint8_t field_effect_marker_ordinal_ = 0U; // FFE185
+    std::optional<std::size_t> field_effect_terrain_marker_cell_;
     // ROM FFFC40: separate world-activity facts, including Spirit Eyes
     // component-request markers at bits 0..2.
     std::uint32_t field_auxiliary_flags_ = 0;

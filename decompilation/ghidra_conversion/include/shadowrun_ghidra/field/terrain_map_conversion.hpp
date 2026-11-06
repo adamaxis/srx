@@ -1,8 +1,10 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <vector>
 
 #include "shadowrun_ghidra/field/terrain_workflow_conversion.hpp"
@@ -30,6 +32,17 @@ struct TerrainMarkerReplacementState {
     std::uint8_t marker_ordinal = 0;              // FFE185
     bool world_effect_active = false;             // FFE180
 };
+
+// ROM 0xEE86 scans the rebuilt collision field for the selected occurrence
+// of a projected-terrain marker. The live host keeps that selection as a
+// typed cell fact and applies its event behavior in the collision query,
+// rather than copying or mutating the source collision grid at runtime.
+std::optional<std::size_t> select_effect_terrain_marker_cell(
+    const std::vector<std::uint8_t>& terrain,
+    const TerrainMarkerReplacementState& state);
+std::optional<std::size_t> select_effect_terrain_marker_cell(
+    const std::array<std::uint8_t, 0x1000>& terrain,
+    const TerrainMarkerReplacementState& state);
 
 // ROM 0xEE10: clear the 64x64 terrain-code map, rasterize each inclusive
 // rectangle in 32-unit steps, and invoke the explicit post-processing

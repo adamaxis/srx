@@ -59,12 +59,20 @@ int main() {
     marker_state.selected_effect_index = 4;
     marker_state.active_effect_index = 4;
     marker_state.marker_ordinal = 1;
+    const std::vector<std::uint8_t> vector_markers{
+        0xDA, 0x00, 0xDA, 0xDA};
+    const auto selected_vector_marker =
+        select_effect_terrain_marker_cell(vector_markers, marker_state);
+    if (!expect(selected_vector_marker == std::optional<std::size_t>{2U})) {
+        return 3;
+    }
+
     std::array<std::uint8_t, 0x1000> gated_markers{};
     gated_markers[2] = 0xDA;
     gated_markers[5] = 0xDA;
     if (!expect(replace_nth_terrain_marker(gated_markers, marker_state)) ||
         !expect(gated_markers[2] == 0xDA && gated_markers[5] == 0x9A)) {
-        return 3;
+        return 4;
     }
     auto mismatched_word_state = marker_state;
     mismatched_word_state.selected_effect_index = 0x0100U;
@@ -73,11 +81,21 @@ int main() {
     if (!expect(!replace_nth_terrain_marker(
                     mismatched_word_markers, mismatched_word_state)) ||
         !expect(mismatched_word_markers == gated_markers)) {
-        return 4;
+        return 5;
     }
     marker_state.world_effect_active = true;
     if (!expect(!replace_nth_terrain_marker(gated_markers, marker_state))) {
-        return 4;
+        return 6;
+    }
+    marker_state.effect_context_active = 0U;
+    marker_state.alternate_effect_context = 0U;
+    marker_state.effect_handler_index = 4U;
+    marker_state.marker_ordinal = 0xFFU;
+    marker_state.world_effect_active = false;
+    const auto signed_negative_ordinal =
+        select_effect_terrain_marker_cell(vector_markers, marker_state);
+    if (!expect(signed_negative_ordinal == std::optional<std::size_t>{0U})) {
+        return 7;
     }
 
     std::array<std::uint8_t, 0x1000> markers{};
@@ -90,7 +108,7 @@ int main() {
     if (!expect(markers[3] == 0x9A &&
                 markers[7] == 0xDA &&
                 markers[9] == 0x9B)) {
-        return 5;
+        return 8;
     }
 
     std::vector<std::uint16_t> work_map(20U, 0U);
@@ -99,12 +117,12 @@ int main() {
                 work_map[3] == 2U && work_map[6] == 2U &&
                 work_map[7] == 2U && work_map[8] == 2U &&
                 work_map[0] == 0U && work_map[9] == 0U)) {
-        return 6;
+        return 9;
     }
 
     fill_terrain_work_region(work_map, 4U, 4U, 5U, 19U);
     if (!expect(work_map[19] == 2U)) {
-        return 7;
+        return 10;
     }
 
     std::vector<std::uint16_t> source(20U, 0U);
@@ -116,14 +134,14 @@ int main() {
     if (!expect(destination[6] == 11U && destination[7] == 12U &&
                 destination[8] == 13U && destination[11] == 16U &&
                 destination[12] == 17U && destination[13] == 18U)) {
-        return 8;
+        return 11;
     }
 
     std::vector<std::uint16_t> layer_destination(4U, 0U);
     copy_terrain_layer(layer_destination, source, 4U);
     if (!expect(layer_destination[0] == 10U &&
                 layer_destination[3] == 13U)) {
-        return 9;
+        return 12;
     }
 
     return 0;

@@ -78,6 +78,11 @@ int main() {
                 resource_state.resource_random_index_bound == 6U &&
                 resource_state.selected_resource_random_index == 2U &&
                 resource_state.resource_marker_ordinal == 3U &&
+                resource_state.resource_overrides
+                    .force_index_two_marker_three &&
+                !resource_state.resource_overrides
+                    .force_index_five_marker_zero &&
+                !resource_state.resource_overrides.force_index_four &&
                 resource_state.resource_cursor.cursor == -2 &&
                 resource_state.resource_cursor.resource_index == 0x4567U &&
                 resource_state.world_activity_effect_words_cleared &&
@@ -105,7 +110,13 @@ int main() {
                     WorldActivityResult::resource_activity_ready &&
                 overridden_resource_state.resource_random_index_bound == 5U &&
                 overridden_resource_state.selected_resource_random_index == 4U &&
-                overridden_resource_state.resource_marker_ordinal == 3U)) {
+                overridden_resource_state.resource_marker_ordinal == 3U &&
+                overridden_resource_state.resource_overrides
+                    .force_index_five_marker_zero &&
+                overridden_resource_state.resource_overrides
+                    .force_index_two_marker_three &&
+                overridden_resource_state.resource_overrides
+                    .force_index_four)) {
         return 16;
     }
 

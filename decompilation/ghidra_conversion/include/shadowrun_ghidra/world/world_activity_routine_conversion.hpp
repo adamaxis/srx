@@ -69,6 +69,9 @@ struct WorldActivityRoutineState {
     std::uint16_t selected_resource_random_index = 0; // FFE12C
     std::uint8_t resource_marker_ordinal = 0; // FFE185
     std::uint16_t default_resource_word = 0; // initial FFF0C8 value
+    // Keep the source selector flags alongside their selected index/ordinal;
+    // 0x0EE86 consumes these facts on a later collision-field refresh.
+    WorldActivityResourceOverrides resource_overrides{};
     SceneResourceCursorState resource_cursor{};
     std::optional<std::size_t> selected_world_script;
     bool selected_scene_ten_variant_script = false;

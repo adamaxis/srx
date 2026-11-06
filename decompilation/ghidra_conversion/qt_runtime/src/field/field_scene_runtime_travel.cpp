@@ -261,6 +261,7 @@ bool FieldSceneRuntime::open_field_elevator_selector(
     // retain the source word in the field facts consumed by A800.
     field_active_effect_index_ =
         field_elevator_floor_group_->entry_floor;
+    refresh_effect_terrain_marker_cell();
     field_elevator_script_destination_ =
         game_scripts_.resolve_elevator_destination(
             *field_elevator_floor_group_,
@@ -454,6 +455,7 @@ void FieldSceneRuntime::advance_field_elevator_selector() {
         // the selector's displayed current-floor label during the animation.
         field_active_effect_index_ =
             field_elevator_selector_.current_floor();
+        refresh_effect_terrain_marker_cell();
         source_boundary("field.elevator.current_floor_changed");
     }
     if (update.animation_started) {
@@ -493,6 +495,7 @@ void FieldSceneRuntime::advance_field_elevator_selector() {
         }
         field_active_effect_index_ =
             field_elevator_selector_.current_floor();
+        refresh_effect_terrain_marker_cell();
         field_elevator_pending_destination_ = destination;
         if (field_scene_transition_.begin_fade_out()) {
             source_boundary("field.elevator.destination_fade_out_started");

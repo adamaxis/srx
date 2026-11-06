@@ -299,6 +299,7 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
     // its Lua selector sees the same source state on resource-scene entry.
     field_movement_transition_state_.world_mode =
         same_scene && !force_scene_entry ? prior_world_mode : *interaction_mode;
+    refresh_effect_terrain_marker_cell();
     if (!same_scene || field_world_activity_scene_entry_pending_ ||
         force_scene_entry) {
         initialize_default_field_actors(scene_reference);
