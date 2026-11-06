@@ -870,7 +870,10 @@ local function plan_obstruction_waypoint(context, state, movement_state)
         movement_state.position_x, movement_state.position_y,
         target.world_x, target.world_y,
         game.movement.source_path_is_clear,
-        state.movement_current_bearing_degrees)
+        -- ROM 0x14AF4 rotates from actor +0x34, the measured destination
+        -- heading written at 0x145FC. +0x2E is the actor's current facing and
+        -- may still be slewing toward that destination.
+        state.movement_bearing_degrees)
     if waypoint == nil then
         -- ROM 0x14ADE reaches 0x14756 after the rotating-strip candidates
         -- fail; that path clears both obstruction-route flags. Drop the

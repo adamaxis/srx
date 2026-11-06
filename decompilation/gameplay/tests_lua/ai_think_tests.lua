@@ -1312,6 +1312,55 @@ for _, strip_case in ipairs(heading_strip_cases) do
           heading_strip_route.waypoints[1].y == strip_case[3],
           string.format("0x14AF4 strip starts in source cardinal order at heading %d", strip_case[1]))
 end
+
+-- ROM 0x14AF4 reads actor +0x34, which 0x145FC fills with the measured
+-- destination heading. The actor's current +0x2E facing can still be turning
+-- toward it; strip order follows the destination heading. [C]
+local saved_heading_probe = game.movement.probe
+local saved_heading_path_query = game.movement.source_path_is_clear
+game.movement.source_path_is_clear = function(from_x, from_y, to_x, to_y)
+    return (from_x == 0x2000 and from_y == 0x2000 and
+            to_x == 0x2300 and to_y == 0x2100) or
+        (from_x == 0x2300 and from_y == 0x2100 and
+         to_x == 0x2300 and to_y == 0x2300) or
+        (from_x == 0x2000 and from_y == 0x2000 and
+         to_x == 0x1F00 and to_y == 0x2100) or
+        (from_x == 0x1F00 and from_y == 0x2100 and
+         to_x == 0x1F00 and to_y == 0x1F00)
+end
+game.movement.probe = function(x, y)
+    return { kind = "blocked", blocks_route_fallback = true,
+        terrain_is_clear = false, candidate_x = x, candidate_y = y }
+end
+local destination_heading_context = movement_fixture(true)
+destination_heading_context.movement_state.position_x = 0x2000
+destination_heading_context.movement_state.position_y = 0x2000
+destination_heading_context.ai_target_candidates = {
+    { id = "party.runner.0", world_x = 0x3000, world_y = 0x2000 },
+}
+destination_heading_context.measure_destination = function(x, y)
+    local is_target = x == 0x3000 and y == 0x2000
+    return { bearing_degrees = is_target and 90 or 0,
+        distance = 0x500, step_cost = 0x300 }
+end
+local destination_heading_state = {
+    ai_target_id = "party.runner.0",
+    movement_bearing_degrees = 90,
+    movement_current_bearing_degrees = 270,
+    movement_route_distance = 0x1000,
+}
+R.advance_entity_movement(
+    destination_heading_context, destination_heading_state)
+local destination_heading_waypoint =
+    destination_heading_state.obstruction_route ~= nil and
+    destination_heading_state.obstruction_route.waypoints[1] or nil
+check(destination_heading_waypoint ~= nil and
+      destination_heading_waypoint.x == 0x2300 and
+      destination_heading_waypoint.y == 0x2100,
+      "0x14AF4 rotates obstruction strips from the destination heading, not the current facing [C]")
+game.movement.probe = saved_heading_probe
+game.movement.source_path_is_clear = saved_heading_path_query
+
 local rotated_heading_strip_route = R.choose_obstruction_waypoint(
     0x2000, 0x2000, 0x3000, 0x2000,
     function(from_x, from_y, to_x, to_y)
