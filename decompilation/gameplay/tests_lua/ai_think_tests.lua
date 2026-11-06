@@ -1198,6 +1198,55 @@ if obstruction_state.obstruction_route ~= nil then
           obstruction_state.movement_bearing_degrees == 45,
           "route queue completion reacquires the live target heading [C: 0x149C0]")
 end
+
+-- ROM 0x14ADE clears the obstruction-route flags through 0x14756 when every
+-- rotating strip candidate is blocked. A failed replan must discard Lua's
+-- prior waypoint queue and restore the live target heading instead of
+-- repeatedly steering at the stale point. [C]
+local stale_route_context = movement_fixture(true)
+stale_route_context.movement_state.position_x = 0x2000
+stale_route_context.movement_state.position_y = 0x2000
+stale_route_context.ai_target_candidates = {
+    { id = "party.runner.0", world_x = 0x3000, world_y = 0x2000 },
+}
+stale_route_context.measure_destination = function(x, y)
+    local bearing = x == 0x3000 and y == 0x2000 and 45 or 315
+    return { bearing_degrees = bearing, distance = 0x500,
+        step_cost = 0x300 }
+end
+game.movement.path_is_clear = function() return false end
+game.movement.probe = function(x, y, direction)
+    if direction == nil then
+        return { kind = "clear", blocks_route_fallback = false,
+            terrain_is_clear = true, candidate_x = x, candidate_y = y }
+    end
+    return { kind = "blocked", blocks_route_fallback = true,
+        terrain_is_clear = false, candidate_x = x, candidate_y = y }
+end
+local stale_route_state = {
+    ai_target_id = "party.runner.0",
+    movement_bearing_degrees = 315,
+    movement_current_bearing_degrees = 315,
+    movement_route_distance = 0x500,
+    obstruction_route = {
+        target_id = "party.runner.0",
+        index = 1,
+        waypoints = { { x = 0x2100, y = 0x1F00 } },
+        side = -1,
+        origin_cell_x = 0x2100,
+        origin_cell_y = 0x2100,
+        target_cell_x = 0x3100,
+        target_cell_y = 0x2100,
+    },
+}
+local failed_replan_step = R.advance_entity_movement(
+    stale_route_context, stale_route_state)
+check(failed_replan_step ~= nil and
+      failed_replan_step.outcome == "reset" and
+      stale_route_state.obstruction_route == nil and
+      stale_route_state.movement_bearing_degrees == 45 and
+      stale_route_state.movement_current_bearing_degrees == 45,
+      "failed obstruction replan clears the stale queue and returns to the live target [C: 0x14756]")
 game.movement.probe = saved_movement_probe
 game.movement.path_is_clear = saved_path_query
 

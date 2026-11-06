@@ -29,6 +29,13 @@ segments are clear, then steers through the selected corridor. It advances
 the waypoint index as the actor enters each waypoint cell and measures the
 live target again when the route ends.
 
+If a replan cannot find a clear candidate, Lua drops the previous waypoint
+queue and restores the live target heading. This follows ROM `0x14ADE`'s
+failure branch to `0x14756`, which clears both obstruction-route flags. The
+`ai_think_tests.lua` regression starts with a queued detour, blocks every
+candidate, and checks that movement returns to the target rather than reusing
+the stale point.
+
 `game.movement.path_is_clear(from_x, from_y, to_x, to_y)` is a narrow read-only
 host service. `FieldSceneRuntime` evaluates the active field's typed terrain
 collision model at segment samples, using local collision records and sample

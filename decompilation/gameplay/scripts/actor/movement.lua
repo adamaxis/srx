@@ -796,6 +796,13 @@ local function plan_obstruction_waypoint(context, state, movement_state)
         target.world_x, target.world_y, game.movement.path_is_clear,
         state.obstruction_route)
     if waypoint == nil then
+        -- ROM 0x14ADE reaches 0x14756 after the rotating-strip candidates
+        -- fail; that path clears both obstruction-route flags. Drop the
+        -- previous Lua queue and resume measuring the live target so a stale
+        -- waypoint cannot keep pulling the actor toward a blocked cell. [C]
+        state.obstruction_route = nil
+        measure_and_store_destination(
+            context, state, target.world_x, target.world_y)
         return false
     end
     waypoint.target_id = target.id
