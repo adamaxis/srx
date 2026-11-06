@@ -658,49 +658,110 @@ local function choose_obstruction_waypoint(
         return nil
     end
 
-    -- ROM 0x148D2 selects the greater target axis for its first obstruction
-    -- scan; ties stay on X. Its signed minor-axis direction is the first
-    -- 0x14854 side probe; 0x148CA defaults zero deltas to -Y/-X [C]. The host
-    -- route stores typed world waypoints; each candidate leg uses the same
-    -- source-cell corridor query as an already queued route.
+    -- ROM 0x148D2 selects the greater target axis, with X on ties. D7 is the
+    -- dominant direction; D6 is the minor direction (0x148CA defaults it to
+    -- -Y for horizontal routes and -X for vertical routes). 0x148AA scans
+    -- along D7 and 0x146C8..0x146E2 queues the first step when that ray has an
+    -- open cell [C]. The caller uses D5 as its origin index, but 0x148D2
+    -- writes abs(deltaX) to D5 at 0x148E8; this host uses the actor's typed
+    -- current cell as the intended origin [H] pending an independent route
+    -- trace that resolves that source register use.
     local horizontal = absolute_x >= absolute_y
-    local side_delta = horizontal and delta_y or delta_x
-    local first_side = side_delta > 0 and 1 or -1
+    local major_direction
+    local minor_direction
+    if horizontal then
+        major_direction = {
+            x = delta_x > 0 and 1 or -1,
+            y = 0,
+        }
+        minor_direction = {
+            x = 0,
+            y = delta_y > 0 and 1 or -1,
+        }
+    else
+        major_direction = {
+            x = 0,
+            y = delta_y > 0 and 1 or -1,
+        }
+        minor_direction = {
+            x = delta_x > 0 and 1 or -1,
+            y = 0,
+        }
+    end
     local origin_cell_x = navigation_cell_center(from_x)
     local origin_cell_y = navigation_cell_center(from_y)
     local target_cell_x = navigation_cell_center(target_x)
     local target_cell_y = navigation_cell_center(target_y)
-    for cell_offset = 1, NAVIGATION_MAX_CELLS do
-        local offset = cell_offset * NAVIGATION_CELL_SIZE
-        for side_attempt = 1, 2 do
-            local side = side_attempt == 1 and first_side or -first_side
-            local waypoint_x = horizontal and origin_cell_x or
-                origin_cell_x + side * offset
-            local waypoint_y = horizontal and
-                origin_cell_y + side * offset or origin_cell_y
-            local exit_x = horizontal and target_cell_x or waypoint_x
-            local exit_y = horizontal and waypoint_y or target_cell_y
-            if waypoint_x >= 0 and waypoint_x <= 0xFFFF and
-               waypoint_y >= 0 and waypoint_y <= 0xFFFF and
-               exit_x >= 0 and exit_x <= 0xFFFF and
-               exit_y >= 0 and exit_y <= 0xFFFF and
-               source_path_is_clear(from_x, from_y,
-                                    waypoint_x, waypoint_y) == true and
-               source_path_is_clear(waypoint_x, waypoint_y,
-                                    exit_x, exit_y) == true and
-               source_path_is_clear(exit_x, exit_y,
-                                    target_x, target_y) == true then
-                return {
-                    waypoints = waypoint_x == exit_x and
-                        waypoint_y == exit_y
-                        and { { x = waypoint_x, y = waypoint_y } }
-                        or { { x = waypoint_x, y = waypoint_y },
-                             { x = exit_x, y = exit_y } },
-                    target_cell_x = target_cell_x,
-                    target_cell_y = target_cell_y,
-                }
+
+    local function inside_world(x, y)
+        return x >= 0 and x <= 0xFFFF and y >= 0 and y <= 0xFFFF
+    end
+    local function new_route(waypoints)
+        return {
+            waypoints = waypoints,
+            target_cell_x = target_cell_x,
+            target_cell_y = target_cell_y,
+            strategy = "dominant_axis_bypass",
+        }
+    end
+
+    -- 0x148AA walks the D7 ray until it finds an occupied cell. If the first
+    -- D7 neighbor is open, 0x146C8..0x146E2 queues that first step. The host
+    -- path query owns occupancy, so one typed adjacent-cell query captures
+    -- the route choice without exposing the source map array to Lua.
+    local major_x = origin_cell_x + major_direction.x * NAVIGATION_CELL_SIZE
+    local major_y = origin_cell_y + major_direction.y * NAVIGATION_CELL_SIZE
+    if inside_world(major_x, major_y) and
+       source_path_is_clear(from_x, from_y, major_x, major_y) == true then
+        return new_route({ { x = major_x, y = major_y } })
+    end
+
+    -- With the first D7 step blocked, ROM 0x14854 scans D6, first in its
+    -- signed direction and then in the opposite direction. It selects the
+    -- first open D6 cell whose D7 neighbor is also open (0x14864..0x1487C),
+    -- and the caller queues that pair at 0x146FE..0x14702. The host query owns
+    -- occupancy; this bounded typed scan avoids exposing FF1700 or an
+    -- unbounded source-table walk to Lua. Bounds remain a host policy [H].
+    local function find_minor_bypass(direction)
+        local scan_x, scan_y = origin_cell_x, origin_cell_y
+        for cell_offset = 1, NAVIGATION_MAX_CELLS do
+            local candidate_x = origin_cell_x +
+                direction.x * cell_offset * NAVIGATION_CELL_SIZE
+            local candidate_y = origin_cell_y +
+                direction.y * cell_offset * NAVIGATION_CELL_SIZE
+            if not inside_world(candidate_x, candidate_y) or
+               source_path_is_clear(scan_x, scan_y,
+                                    candidate_x, candidate_y) ~= true then
+                return nil
             end
+
+            local side_x = candidate_x +
+                major_direction.x * NAVIGATION_CELL_SIZE
+            local side_y = candidate_y +
+                major_direction.y * NAVIGATION_CELL_SIZE
+            if inside_world(side_x, side_y) and
+               source_path_is_clear(candidate_x, candidate_y,
+                                    side_x, side_y) == true then
+                return new_route({
+                    { x = candidate_x, y = candidate_y },
+                    { x = side_x, y = side_y },
+                })
+            end
+            scan_x, scan_y = candidate_x, candidate_y
         end
+        return nil
+    end
+
+    local bypass = find_minor_bypass(minor_direction)
+    if bypass ~= nil then
+        return bypass
+    end
+    bypass = find_minor_bypass({
+        x = -minor_direction.x,
+        y = -minor_direction.y,
+    })
+    if bypass ~= nil then
+        return bypass
     end
 
     -- ROM 0x14AF4 retries five heading-rotated strips. Each 0x14800 scan

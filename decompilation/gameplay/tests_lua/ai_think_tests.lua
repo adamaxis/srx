@@ -1170,11 +1170,41 @@ game.movement.probe = function(x, y, direction, distance)
         candidate_y = (y + offset.y * distance) % 0x10000 }
 end
 
--- ROM 0x148D2 keeps X as the dominant axis on ties and chooses a signed
--- minor-axis step; table 0x148CA maps the zero-delta defaults to -Y/-X.
--- 0x14854 tries that side before its opposite, while 0x14914 checks the line.
--- These mock responses exercise the typed source-cell corridor boundary, not
--- imported map occupancy or a full GPGX route [C/H].
+-- ROM 0x148D2 selects D7 as the dominant axis (X on ties) and D6 as the
+-- signed minor axis; 0x148AA checks the first D7 step, then 0x14854 scans D6
+-- and tests each candidate's D7 neighbor. These mocks exercise the typed
+-- host corridor query, not imported map occupancy or a full GPGX route. The
+-- root's D5 origin register remains unresolved because 0x148D2 writes D5
+-- before 0x14682 uses it [C/H].
+local dominant_axis_cases = {
+    { "east", 0x3000, 0x2000, 0x2300, 0x2100 },
+    { "south", 0x2000, 0x3000, 0x2100, 0x2300 },
+    { "west", 0x1000, 0x2000, 0x1F00, 0x2100 },
+    { "north", 0x2000, 0x1000, 0x2100, 0x1F00 },
+    { "south-east tie", 0x3000, 0x3000, 0x2300, 0x2100 },
+    { "north-east tie", 0x3000, 0x1000, 0x2300, 0x2100 },
+    { "south-west tie", 0x1000, 0x3000, 0x1F00, 0x2100 },
+    { "north-west tie", 0x1000, 0x1000, 0x1F00, 0x2100 },
+}
+for _, route_case in ipairs(dominant_axis_cases) do
+    local expected_x, expected_y = route_case[4], route_case[5]
+    local route = R.choose_obstruction_waypoint(
+        0x2000, 0x2000, route_case[2], route_case[3],
+        function(from_x, from_y, to_x, to_y)
+            if from_x == 0x2000 and from_y == 0x2000 and
+               to_x == route_case[2] and to_y == route_case[3] then
+                return false
+            end
+            return from_x == 0x2000 and from_y == 0x2000 and
+                to_x == expected_x and to_y == expected_y
+        end)
+    check(route ~= nil and #route.waypoints == 1 and
+          route.waypoints[1].x == expected_x and
+          route.waypoints[1].y == expected_y,
+          string.format("0x148D2 selects the first D7 step for %s [C/H]",
+                        route_case[1]))
+end
+
 local function vertical_wall_path_clear(wall_x, wall_top, wall_bottom)
     return function(from_x, from_y, to_x, to_y)
         if from_x == to_x then
@@ -1195,12 +1225,35 @@ end
 local wall_path_clear = vertical_wall_path_clear(0x2800, 0x1F80, 0x2080)
 local wall_route = R.choose_obstruction_waypoint(
     0x2000, 0x2000, 0x3000, 0x2000, wall_path_clear)
-check(wall_route ~= nil and #wall_route.waypoints == 2 and
-      wall_route.waypoints[1].x == 0x2100 and
-      wall_route.waypoints[1].y == 0x1F00 and
-      wall_route.waypoints[2].x == 0x3100 and
-      wall_route.waypoints[2].y == 0x1F00,
-      "0x14854 tries the source -Y side first for a zero minor delta [C/H]")
+check(wall_route ~= nil and #wall_route.waypoints == 1 and
+      wall_route.strategy == "dominant_axis_bypass" and
+      wall_route.waypoints[1].x == 0x2300 and
+      wall_route.waypoints[1].y == 0x2100,
+      "0x148AA queues the first open +X cell for a horizontal target [C/H]")
+
+local two_cell_bypass_path_clear = function(
+    from_x, from_y, to_x, to_y)
+    if from_x == 0x2000 and from_y == 0x2000 and
+       ((to_x == 0x3000 and to_y == 0x2000) or
+        (to_x == 0x2300 and to_y == 0x2100)) then
+        return false
+    end
+    return (from_x == 0x2100 and from_y == 0x2100 and
+            to_x == 0x2100 and to_y == 0x1F00) or
+        (from_x == 0x2100 and from_y == 0x1F00 and
+         to_x == 0x2300 and to_y == 0x1F00)
+end
+local two_cell_bypass_route = R.choose_obstruction_waypoint(
+    0x2000, 0x2000, 0x3000, 0x2000,
+    two_cell_bypass_path_clear)
+check(two_cell_bypass_route ~= nil and
+      #two_cell_bypass_route.waypoints == 2 and
+      two_cell_bypass_route.waypoints[1].x == 0x2100 and
+      two_cell_bypass_route.waypoints[1].y == 0x1F00 and
+      two_cell_bypass_route.waypoints[2].x == 0x2300 and
+      two_cell_bypass_route.waypoints[2].y == 0x1F00,
+      "0x14854 queues the first clear -Y cell and its open +X neighbor [C/H]")
+
 local opposite_side_only_route = R.choose_obstruction_waypoint(
     0x2000, 0x2000, 0x3000, 0x2000,
     function(from_x, from_y, to_x, to_y)
@@ -1209,45 +1262,94 @@ local opposite_side_only_route = R.choose_obstruction_waypoint(
             return false
         end
         if from_x == 0x2000 and from_y == 0x2000 and
+           to_x == 0x2300 and to_y == 0x2100 then
+            return false
+        end
+        if from_x == 0x2100 and from_y == 0x2100 and
            to_x == 0x2100 and to_y == 0x1F00 then
             return false
         end
-        return true
+        return (from_x == 0x2100 and from_y == 0x2100 and
+                to_x == 0x2100 and to_y == 0x2300) or
+            (from_x == 0x2100 and from_y == 0x2300 and
+             to_x == 0x2300 and to_y == 0x2300)
     end)
 check(opposite_side_only_route ~= nil and
-      opposite_side_only_route.waypoints[1].y == 0x2300,
-      "0x14854 tries the opposite side only after its signed first side fails [C/H]")
-local positive_y_side_route = R.choose_obstruction_waypoint(
-    0x2000, 0x2000, 0x3000, 0x2100, wall_path_clear)
-check(positive_y_side_route ~= nil and
-      positive_y_side_route.waypoints[1].y == 0x2300,
-      "0x148D2 selects +Y first when the horizontal target is south [C/H]")
+      #opposite_side_only_route.waypoints == 2 and
+      opposite_side_only_route.waypoints[1].x == 0x2100 and
+      opposite_side_only_route.waypoints[1].y == 0x2300 and
+      opposite_side_only_route.waypoints[2].x == 0x2300 and
+      opposite_side_only_route.waypoints[2].y == 0x2300,
+      "0x14854 retries +Y only after its initial -Y scan fails [C/H]")
+
+local positive_y_minor_route = R.choose_obstruction_waypoint(
+    0x2000, 0x2000, 0x3000, 0x2100,
+    function(from_x, from_y, to_x, to_y)
+        if from_x == 0x2000 and from_y == 0x2000 and
+           ((to_x == 0x3000 and to_y == 0x2100) or
+            (to_x == 0x2300 and to_y == 0x2100)) then
+            return false
+        end
+        return (from_x == 0x2100 and from_y == 0x2100 and
+                to_x == 0x2100 and to_y == 0x2300) or
+            (from_x == 0x2100 and from_y == 0x2300 and
+             to_x == 0x2300 and to_y == 0x2300)
+    end)
+check(positive_y_minor_route ~= nil and
+      positive_y_minor_route.waypoints[1].x == 0x2100 and
+      positive_y_minor_route.waypoints[1].y == 0x2300 and
+      positive_y_minor_route.waypoints[2].x == 0x2300 and
+      positive_y_minor_route.waypoints[2].y == 0x2300,
+      "0x14854 follows the positive minor direction for a southern target [C/H]")
+local positive_x_minor_route = R.choose_obstruction_waypoint(
+    0x2000, 0x2000, 0x2100, 0x3000,
+    function(from_x, from_y, to_x, to_y)
+        if from_x == 0x2000 and from_y == 0x2000 and
+           ((to_x == 0x2100 and to_y == 0x3000) or
+            (to_x == 0x2100 and to_y == 0x2300)) then
+            return false
+        end
+        return (from_x == 0x2100 and from_y == 0x2100 and
+                to_x == 0x2300 and to_y == 0x2100) or
+            (from_x == 0x2300 and from_y == 0x2100 and
+             to_x == 0x2300 and to_y == 0x2300)
+    end)
+check(positive_x_minor_route ~= nil and
+      #positive_x_minor_route.waypoints == 2 and
+      positive_x_minor_route.waypoints[1].x == 0x2300 and
+      positive_x_minor_route.waypoints[1].y == 0x2100 and
+      positive_x_minor_route.waypoints[2].x == 0x2300 and
+      positive_x_minor_route.waypoints[2].y == 0x2300,
+      "0x14854 follows the positive X minor direction for a southern target [C/H]")
 check(R.choose_obstruction_waypoint(
           0x2000, 0x2000, 0x3000, 0x2000,
           function() return true end) == nil,
       "clear direct path does not create an obstruction waypoint [C: 0x14914]")
 local sealed_wall_route = R.choose_obstruction_waypoint(
     0x2000, 0x2000, 0x3000, 0x2000,
-    function(from_x, from_y, to_x, to_y)
-        local crosses_wall =
-            (from_x <= 0x2800 and to_x >= 0x2800) or
-            (to_x <= 0x2800 and from_x >= 0x2800)
-        return not crosses_wall
-    end)
+    function() return false end)
 check(sealed_wall_route == nil,
-      "host waypoint policy gives up when the synthetic wall seals both sides [H]")
+      "host waypoint policy gives up when every source corridor is blocked [H]")
 local vertical_route = R.choose_obstruction_waypoint(
     0x2000, 0x2000, 0x2000, 0x3000,
     function(from_x, from_y, to_x, to_y)
-        if from_x == to_x and from_x == 0x2000 then
-            return math.max(from_y, to_y) < 0x2800
+        if from_x == 0x2000 and from_y == 0x2000 and
+           ((to_x == 0x2000 and to_y == 0x3000) or
+            (to_x == 0x2100 and to_y == 0x2300)) then
+            return false
         end
-        return true
+        return (from_x == 0x2100 and from_y == 0x2100 and
+                to_x == 0x1F00 and to_y == 0x2100) or
+            (from_x == 0x1F00 and from_y == 0x2100 and
+             to_x == 0x1F00 and to_y == 0x2300)
     end)
 check(vertical_route ~= nil and
+      #vertical_route.waypoints == 2 and
       vertical_route.waypoints[1].x == 0x1F00 and
-      vertical_route.waypoints[2].x == 0x1F00,
-      "0x148D2 uses its -X default for a vertical path with zero X delta [C/H]")
+      vertical_route.waypoints[1].y == 0x2100 and
+      vertical_route.waypoints[2].x == 0x1F00 and
+      vertical_route.waypoints[2].y == 0x2300,
+      "0x14854 uses the -X default for a vertical path with zero X delta [C/H]")
 local horizontal_wall_path_clear = function(from_x, from_y, to_x, to_y)
     if from_y == to_y then
         if from_y ~= 0x2800 then return true end
@@ -1265,8 +1367,9 @@ end
 local positive_x_side_route = R.choose_obstruction_waypoint(
     0x2000, 0x2000, 0x2100, 0x3000, horizontal_wall_path_clear)
 check(positive_x_side_route ~= nil and
-      positive_x_side_route.waypoints[1].x == 0x2300,
-      "0x148D2 selects +X first when the vertical target is east [C/H]")
+      positive_x_side_route.waypoints[1].x == 0x2100 and
+      positive_x_side_route.waypoints[1].y == 0x2300,
+      "0x148AA selects the +Y major step for a vertical target east of the actor [C/H]")
 local tied_axis_route = R.choose_obstruction_waypoint(
     0x2000, 0x2000, 0x3000, 0x3000,
     function(from_x, from_y, to_x, to_y)
@@ -1274,22 +1377,18 @@ local tied_axis_route = R.choose_obstruction_waypoint(
            to_x == 0x3000 and to_y == 0x3000 then
             return false
         end
-        return (from_x == 0x2000 and from_y == 0x2000 and
-                to_x == 0x2100 and to_y == 0x2300) or
-            (from_x == 0x2100 and from_y == 0x2300 and
-             to_x == 0x3100 and to_y == 0x2300) or
-            (from_x == 0x3100 and from_y == 0x2300 and
-             to_x == 0x3000 and to_y == 0x3000)
+        return from_x == 0x2000 and from_y == 0x2000 and
+            to_x == 0x2300 and to_y == 0x2100
     end)
 check(tied_axis_route ~= nil and
-      tied_axis_route.waypoints[1].x == 0x2100 and
-      tied_axis_route.waypoints[1].y == 0x2300,
-      "0x148D2 keeps X as the major axis on a diagonal tie [C/H]")
+      tied_axis_route.waypoints[1].x == 0x2300 and
+      tied_axis_route.waypoints[1].y == 0x2100,
+      "0x148D2 keeps X as the dominant axis on a tie [C/H]")
 local heading_strip_cases = {
-    { 0,   0x2100, 0x1F00, 0x2300, 0x1F00 },
-    { 45,  0x2100, 0x1F00, 0x2300, 0x1F00 },
-    { 90,  0x2300, 0x2100, 0x2300, 0x2300 },
-    { 135, 0x2300, 0x2100, 0x2300, 0x2300 },
+    { 0,   0x1F00, 0x2100, 0x1F00, 0x1F00 },
+    { 45,  0x1F00, 0x2100, 0x1F00, 0x1F00 },
+    { 90,  0x1F00, 0x2100, 0x1F00, 0x1F00 },
+    { 135, 0x1F00, 0x2100, 0x1F00, 0x1F00 },
     { 180, 0x2100, 0x2300, 0x1F00, 0x2300 },
     { 225, 0x2100, 0x2300, 0x1F00, 0x2300 },
     { 270, 0x1F00, 0x2100, 0x1F00, 0x1F00 },
@@ -1299,10 +1398,23 @@ for _, strip_case in ipairs(heading_strip_cases) do
     local heading_strip_route = R.choose_obstruction_waypoint(
         0x2000, 0x2000, 0x3000, 0x2000,
         function(from_x, from_y, to_x, to_y)
+            if from_x == 0x2000 and from_y == 0x2000 and
+               ((to_x == 0x3000 and to_y == 0x2000) or
+                (to_x == 0x2300 and to_y == 0x2100)) then
+                return false
+            end
+            if to_x == from_x + 0x200 and to_y == from_y and
+               from_x == 0x2100 then
+                return false
+            end
             return (from_x == 0x2000 and from_y == 0x2000 and
                     to_x == strip_case[2] and to_y == strip_case[3]) or
                 (from_x == strip_case[2] and from_y == strip_case[3] and
-                 to_x == strip_case[4] and to_y == strip_case[5])
+                 to_x == strip_case[4] and to_y == strip_case[5]) or
+                (from_x == 0x2100 and from_y == 0x2100 and
+                 to_x == 0x2100 and (to_y == 0x1F00 or to_y == 0x2300)) or
+                (from_x == 0x2100 and to_x == 0x2100 and
+                 from_y ~= to_y)
         end,
         strip_case[1])
     check(heading_strip_route ~= nil and
@@ -1310,7 +1422,7 @@ for _, strip_case in ipairs(heading_strip_cases) do
           #heading_strip_route.waypoints == 1 and
           heading_strip_route.waypoints[1].x == strip_case[2] and
           heading_strip_route.waypoints[1].y == strip_case[3],
-          string.format("0x14AF4 strip starts in source cardinal order at heading %d", strip_case[1]))
+          string.format("0x14AF4 selects the first usable strip in source order at heading %d", strip_case[1]))
 end
 
 -- ROM 0x14AF4 reads actor +0x34, which 0x145FC fills with the measured
@@ -1319,14 +1431,25 @@ end
 local saved_heading_probe = game.movement.probe
 local saved_heading_path_query = game.movement.source_path_is_clear
 game.movement.source_path_is_clear = function(from_x, from_y, to_x, to_y)
+    if from_x == 0x2000 and from_y == 0x2000 and
+       ((to_x == 0x3000 and to_y == 0x2000) or
+        (to_x == 0x2300 and to_y == 0x2100)) then
+        return false
+    end
+    if from_x == 0x2100 and to_x == 0x2300 and from_y == to_y then
+        return false
+    end
+    if from_x == 0x2100 and to_x == 0x2100 and from_y ~= to_y then
+        return true
+    end
     return (from_x == 0x2000 and from_y == 0x2000 and
-            to_x == 0x2300 and to_y == 0x2100) or
-        (from_x == 0x2300 and from_y == 0x2100 and
-         to_x == 0x2300 and to_y == 0x2300) or
-        (from_x == 0x2000 and from_y == 0x2000 and
-         to_x == 0x1F00 and to_y == 0x2100) or
+            to_x == 0x1F00 and to_y == 0x2100) or
         (from_x == 0x1F00 and from_y == 0x2100 and
-         to_x == 0x1F00 and to_y == 0x1F00)
+         to_x == 0x1F00 and to_y == 0x1F00) or
+        (from_x == 0x2000 and from_y == 0x2000 and
+         to_x == 0x2100 and to_y == 0x2300) or
+        (from_x == 0x2100 and from_y == 0x2300 and
+         to_x == 0x1F00 and to_y == 0x2300)
 end
 game.movement.probe = function(x, y)
     return { kind = "blocked", blocks_route_fallback = true,
@@ -1340,13 +1463,13 @@ destination_heading_context.ai_target_candidates = {
 }
 destination_heading_context.measure_destination = function(x, y)
     local is_target = x == 0x3000 and y == 0x2000
-    return { bearing_degrees = is_target and 90 or 0,
+    return { bearing_degrees = is_target and 0 or 180,
         distance = 0x500, step_cost = 0x300 }
 end
 local destination_heading_state = {
     ai_target_id = "party.runner.0",
-    movement_bearing_degrees = 90,
-    movement_current_bearing_degrees = 270,
+    movement_bearing_degrees = 0,
+    movement_current_bearing_degrees = 180,
     movement_route_distance = 0x1000,
 }
 R.advance_entity_movement(
@@ -1355,7 +1478,7 @@ local destination_heading_waypoint =
     destination_heading_state.obstruction_route ~= nil and
     destination_heading_state.obstruction_route.waypoints[1] or nil
 check(destination_heading_waypoint ~= nil and
-      destination_heading_waypoint.x == 0x2300 and
+      destination_heading_waypoint.x == 0x1F00 and
       destination_heading_waypoint.y == 0x2100,
       "0x14AF4 rotates obstruction strips from the destination heading, not the current facing [C]")
 game.movement.probe = saved_heading_probe
@@ -1364,6 +1487,16 @@ game.movement.source_path_is_clear = saved_heading_path_query
 local rotated_heading_strip_route = R.choose_obstruction_waypoint(
     0x2000, 0x2000, 0x3000, 0x2000,
     function(from_x, from_y, to_x, to_y)
+        if from_x == 0x2000 and from_y == 0x2000 and
+           ((to_x == 0x3000 and to_y == 0x2000) or
+            (to_x == 0x2100 and to_y == 0x1F00)) then
+            return false
+        end
+        if from_x == 0x2100 and from_y == 0x2100 and
+           ((to_x == 0x2300 and to_y == 0x2100) or
+            (to_x == 0x1F00 and to_y == 0x2100)) then
+            return false
+        end
         return (from_x == 0x2000 and from_y == 0x2000 and
                 to_x == 0x1F00 and to_y == 0x2100) or
             (from_x == 0x1F00 and from_y == 0x2100 and
@@ -1379,46 +1512,58 @@ local deep_heading_strip_route = R.choose_obstruction_waypoint(
     0x2000, 0x2000, 0x3000, 0x2000,
     function(from_x, from_y, to_x, to_y)
         if from_x == 0x2000 and from_y == 0x2000 and
-           to_x == 0x2100 and to_y == 0x1F00 then
+           ((to_x == 0x3000 and to_y == 0x2000) or
+            (to_x == 0x2300 and to_y == 0x2100)) then
+            return false
+        end
+        if from_x == 0x2100 and to_x == 0x2300 and from_y == to_y then
+            return false
+        end
+        if from_x == 0x2000 and from_y == 0x2000 and
+           to_x == 0x1F00 and to_y == 0x2100 then
             return true
         end
-        if from_x == 0x2100 and to_x == 0x2100 and
-           to_y == from_y - 0x200 and to_y >= 0x1500 then
+        if from_y == 0x2100 and to_y == 0x2100 and
+           to_x == from_x - 0x200 and to_x >= 0x1500 then
             return true
         end
-        return from_x == 0x2100 and from_y == 0x1500 and
-            to_x == 0x2300 and to_y == 0x1500
+        return from_x == 0x1500 and from_y == 0x2100 and
+            to_x == 0x1500 and to_y == 0x1F00
     end,
-    0)
+    270)
 check(deep_heading_strip_route ~= nil and
       deep_heading_strip_route.strategy == "heading_oriented_strip" and
-      deep_heading_strip_route.waypoints[1].x == 0x2100 and
-      deep_heading_strip_route.waypoints[1].y == 0x1500,
-      "0x14800 scans past five blocked adjacent cells before 0x14AF4 accepts the sixth [C]")
+      deep_heading_strip_route.waypoints[1].x == 0x1500 and
+      deep_heading_strip_route.waypoints[1].y == 0x2100,
+      "0x14800 scans past five blocked side cells before 0x14AF4 accepts the sixth [C]")
 
 local strip_blocked_tail_route = R.choose_obstruction_waypoint(
     0x2000, 0x2000, 0x3000, 0x2000,
     function(from_x, from_y, to_x, to_y)
         if from_x == 0x2000 and from_y == 0x2000 and
-           to_x == 0x3000 and to_y == 0x2000 then
+           ((to_x == 0x3000 and to_y == 0x2000) or
+            (to_x == 0x2300 and to_y == 0x2100)) then
+            return false
+        end
+        if from_x == 0x2100 and to_x == 0x2300 and from_y == to_y then
             return false
         end
         if from_x == 0x2000 and from_y == 0x2000 and
-           to_x == 0x2100 and to_y == 0x1F00 then
+           to_x == 0x1F00 and to_y == 0x2100 then
             return true
         end
-        if from_x == 0x2100 and to_x == 0x2100 and
-           to_y == from_y - 0x200 then
-            return to_y > 0x1700
+        if from_y == 0x2100 and to_y == 0x2100 and
+           to_x == from_x - 0x200 then
+            return to_x >= 0x1700
         end
         return false
     end,
-    0)
+    270)
 check(strip_blocked_tail_route ~= nil and
       strip_blocked_tail_route.strategy == "heading_oriented_strip" and
       #strip_blocked_tail_route.waypoints == 1 and
-      strip_blocked_tail_route.waypoints[1].x == 0x2100 and
-      strip_blocked_tail_route.waypoints[1].y == 0x1900,
+      strip_blocked_tail_route.waypoints[1].x == 0x1700 and
+      strip_blocked_tail_route.waypoints[1].y == 0x2100,
       "0x14800 returns the last open primary cell when the next strip cell is blocked [C]")
 
 movement_bearing_case(337.5, 7, true,
@@ -1502,7 +1647,7 @@ local saved_source_path_query = game.movement.source_path_is_clear
 local route_path_query_calls = 0
 game.movement.source_path_is_clear = function(from_x, from_y, to_x, to_y)
     route_path_query_calls = route_path_query_calls + 1
-    return wall_path_clear(from_x, from_y, to_x, to_y)
+    return two_cell_bypass_path_clear(from_x, from_y, to_x, to_y)
 end
 game.movement.probe = function(x, y, direction)
     if direction == nil then
@@ -1639,8 +1784,8 @@ check(source_clear_step ~= nil and
 game.movement.source_path_is_clear = saved_source_path_query
 
 -- A blocked route clears the source route flags through 0x149CE -> 0x14756.
--- The next selection recomputes its first side from live position and target;
--- the source does not carry Lua's prior waypoint-side choice. [C]
+-- The next selection recomputes its first dominant step from live position
+-- and target; the source does not carry Lua's prior waypoint choice. [C/H]
 local stale_route_context = movement_fixture(true)
 stale_route_context.movement_state.position_x = 0x2000
 stale_route_context.movement_state.position_y = 0x2000
@@ -1680,8 +1825,9 @@ local replan_step = R.advance_entity_movement(
 check(replan_step ~= nil and
       replan_step.outcome == "reset" and
       stale_route_state.obstruction_route ~= nil and
-      stale_route_state.obstruction_route.waypoints[1].y == 0x1F00,
-      "blocked-route replan uses the source first side from live position and target [C: 0x149CE -> 0x14756 -> 0x14682]")
+      stale_route_state.obstruction_route.waypoints[1].x == 0x2300 and
+      stale_route_state.obstruction_route.waypoints[1].y == 0x2100,
+      "blocked-route replan recomputes the source first dominant step from live position and target [C/H: 0x149CE -> 0x14756 -> 0x14682]")
 
 -- If every path is now blocked, the failed selection discards the old queue
 -- and restores the live target heading rather than steering at the stale point.
