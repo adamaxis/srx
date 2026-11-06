@@ -111,4 +111,65 @@ for id, weapon in pairs(Weapons.by_id) do
 end
 assert(firearm_count == 12, "weapon delay coverage missed a firearm row")
 
+-- The GPGX action capture keeps the finite pose duration separate from the
+-- repeat-action gate: Quickness, Intelligence, and Wired Reflexes change the
+-- latter, while weapon skill does not. Weapon poses complete on pass 29 and
+-- movement resumes on pass 30. Spell poses use passes 57/58. This catches a
+-- stale 31/32 interpretation of the C042 samples.
+local lockout_file = assert(io.open(
+    "decompilation/gameplay/tests_lua/fixtures/post_attack_lockout_gpgx.tsv",
+    "r"))
+local lockout_headers
+local lockout_rows = {}
+for line in lockout_file:lines() do
+    if line ~= "" and line:sub(1, 1) ~= "#" then
+        local values = {}
+        for value in (line .. "\t"):gmatch("(.-)\t") do
+            values[#values + 1] = value
+        end
+        if lockout_headers == nil then
+            lockout_headers = values
+        else
+            local row = {}
+            for index, name in ipairs(lockout_headers) do
+                row[name] = values[index]
+            end
+            row.pose_complete_pass = assert(
+                tonumber(row.pose_complete_pass))
+            row.first_movement_pass = assert(
+                tonumber(row.first_movement_pass))
+            lockout_rows[row.case] = row
+            local expected_pose = row.action_kind == "spell" and 57 or 29
+            local expected_movement = row.action_kind == "spell" and 58 or 30
+            assert(row.pose_complete_pass == expected_pose and
+                   row.first_movement_pass == expected_movement,
+                   "GPGX pose/movement timing changed for " .. row.case)
+        end
+    end
+end
+lockout_file:close()
+assert(lockout_rows.pistol_skill0 ~= nil and
+       lockout_rows.pistol_skill8 ~= nil and
+       lockout_rows.pistol_wr4 ~= nil and
+       lockout_rows.pistol_wr8 ~= nil and
+       lockout_rows.pistol_wr12 ~= nil and
+       lockout_rows.pistol_higher_attributes ~= nil and
+       lockout_rows.spell_sorcery0 ~= nil,
+       "GPGX lockout capture lost a profile-permutation case")
+assert(lockout_rows.pistol_skill0.source_action_gate ==
+           lockout_rows.pistol_skill8.source_action_gate and
+       lockout_rows.pistol_skill0.pose_complete_pass ==
+           lockout_rows.pistol_skill8.pose_complete_pass,
+       "weapon skill changed the source action gate or finite pose")
+assert(lockout_rows.pistol_wr4.source_action_gate == "43" and
+       lockout_rows.pistol_wr8.source_action_gate == "35" and
+       lockout_rows.pistol_wr12.source_action_gate == "27" and
+       lockout_rows.pistol_wr4.first_movement_pass ==
+           lockout_rows.pistol_wr12.first_movement_pass,
+       "Wired Reflexes changed the pose duration instead of the action gate")
+assert(lockout_rows.pistol_skill0.first_movement_pass ==
+           lockout_rows.pistol_higher_attributes.first_movement_pass and
+       lockout_rows.spell_sorcery0.first_movement_pass == 58,
+       "attribute or spell permutation changed the captured pose boundary")
+
 print("shared actor/player delay calculations: ok")
