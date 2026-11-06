@@ -463,10 +463,13 @@ Scene `0x23` (35), corp guard source order 1, has position list `0x1DC3D6` in
 profile list `0x1DC380`. Its first segment runs from `(0x6080,0x4C80)` toward
 `(0x4C00,0x1A80)`. The ROM metric at `0x15D3C` returns heading `0xF000` and
 distance `0x3C40`. B574 truncates `0xF000` to direction 7; the rounded BABC
-selector would choose direction 0. The Lua movement selector now includes the
-typed `source_actor_has_waypoint_data` fact, preserving the existing rounded
-player/controller branch while applying the B574 selector to routed default
-actors.
+selector would choose direction 0. Lua resolves the source route from the
+stable actor identity in the generated `data/actor_patrol_routes.lua` table.
+The generator preserves identities for every scene that shares a default
+profile list, while keeping route coordinates tied to their ROM position
+pointers. This applies the B574 selector to routed default actors and keeps
+the rounded player/controller branch without serializing a second patrol
+boolean into Lua.
 
 The Lua `ai_think_tests` asserts the accepted movement step and C062 selector
 for this live `+0x10=0x05` route shape. A sweep of all 379 directed default

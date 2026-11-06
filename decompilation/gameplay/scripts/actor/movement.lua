@@ -3,6 +3,7 @@
 local R = require("actor.registry")
 local E = require("enums")
 local Bearing = require("bearing")
+local ActorPatrolRoutes = require("actor.patrol_routes")
 local EntityMotion = require("entity_motion")
 local SoundId, EntryDelayMax, AiTuning =
     E.SoundId, E.EntryDelayMax, E.AiTuning
@@ -470,10 +471,11 @@ local function movement_octant_selector(context)
     -- 0x142AE selects a tagged actor's next waypoint and 0x145A2 installs the
     -- B574 continuation. Its generic B5BE movement selector and B6BA-B6DE
     -- C062 walk selector truncate for routed default actors too: 0x44BC gives
-    -- them +0x10=0x05, so THINK alone cannot identify that path. The player
-    -- BABC path keeps its existing flag-gated rounded selector.
+    -- them +0x10=0x05, so THINK alone cannot identify that path. Lua resolves
+    -- the actor's route from its stable ID. The player BABC path keeps its
+    -- existing flag-gated rounded selector.
     if context.dynamic_world_encounter_actor == true or
-       context.source_actor_has_waypoint_data == true or
+       ActorPatrolRoutes.has_route(context.actor_id) or
        actor_lifecycle(context).thinking_enabled then
         return walk_direction_from_bearing_degrees
     end

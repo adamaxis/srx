@@ -9,6 +9,7 @@ local ActionKind = R.ActionKind   -- from actor/tables.lua
 local ActorApproachDistanceBounds = R.ActorApproachDistanceBounds -- from actor/tables.lua
 local profiles = R.profiles   -- from actor/tables.lua
 local ActorProfileCatalog = require("data.actor_profiles")
+local ActorPatrolRoutes = require("actor.patrol_routes")
 local ProjectileAnimationClips =
     require("data.weapon_projectile_animation_clips")
 local source_close_range_threshold = R.source_close_range_threshold   -- from actor/tables.lua
@@ -182,9 +183,11 @@ local function source_profile(context)
     end
     -- ROM 0x142AE takes the default-list waypoint branch for records carrying
     -- its route behavior flag. 0x44BC initializes that route for list actors,
-    -- independent of sprite kind or the +0x9E pedestrian flag.
+    -- independent of sprite kind or the +0x9E pedestrian flag. Patrol
+    -- capability comes from stable-ID membership in Lua's extracted route
+    -- data, not a duplicate host boolean.
     local source_profile_patrol =
-        context.source_actor_has_waypoint_data == true
+        ActorPatrolRoutes.has_route(context.actor_id)
     local resolved_profile = {}
     for key, value in pairs(profile) do
         resolved_profile[key] = value

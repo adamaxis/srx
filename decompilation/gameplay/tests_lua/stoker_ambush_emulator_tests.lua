@@ -217,7 +217,6 @@ for order, slot in ipairs({ 6, 7, 8 }) do
         action_code = source.action_code,
         actor_facts = actor_facts(),
         dynamic_world_encounter_actor = true,
-        source_actor_has_waypoint_data = false,
         source_record_slot = slot,
         has_live_actor_record = true,
         source_record_flags = source.actor_flags,

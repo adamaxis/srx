@@ -1898,14 +1898,16 @@ coordinate units, or `10/16 = 0.625` map pixels per service pass. The value
 is retained for this leg; `+0xC8` is the distance measured when the waypoint
 was selected, not the remaining distance recomputed on every movement pass.
 
-The active runtime carries the route fact as typed
-`source_actor_has_waypoint_data`, separate from `source_record_flags`: the
-default-actor initializer currently seeds that generic byte as `0x05`, while
-the ROM byte for this tagged route is `0x25`. Lua receives the typed route fact
-and selects the same 10-unit vector for a pedestrian with `+0x10` bit 1 clear
-when the stored route distance is at least `0x460` and `FFDF84` is zero. This
-trace found no lost waypoint branch in that path; the generic flag byte is not
-a byte-for-byte mirror of the ROM record. `advance_default_field_actors()`
+The native field adapter retains waypoint-table membership for host service
+setup and the narrow default-guard item-action check. Lua resolves patrol
+behavior from the actor's stable ID in `data/actor_patrol_routes.lua`; it no
+longer receives a duplicate `source_actor_has_waypoint_data` flag. The
+default-actor initializer seeds its generic behavior byte as `0x05`, while
+the ROM byte for this tagged route is `0x25`. Lua selects the same 10-unit
+vector for a pedestrian with `+0x10` bit 1 clear when the stored route
+distance is at least `0x460` and `FFDF84` is zero. This trace found no lost
+waypoint branch in that path; the generic flag byte is not a byte-for-byte
+mirror of the ROM record. `advance_default_field_actors()`
 runs from the field entity-service callback, while
 `advance_default_field_actor_animations()` runs separately at the render-pass
 tail. This keeps waypoint decisions and movement on the behavior heartbeat,

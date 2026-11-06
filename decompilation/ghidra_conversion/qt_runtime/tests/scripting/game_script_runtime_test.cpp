@@ -9608,7 +9608,6 @@ int main() {
         // Scene-55 default-list actors enter the same source-profile resolver
         // used by dynamic templates, while retaining their ordinary pool slot.
         caster.dynamic_world_encounter_actor = true;
-        caster.source_actor_has_waypoint_data = true;
         caster.source_actor_slot = 0U;
         caster.world_position = ScriptWorldPosition{0x0A00, 0x0800};
         caster.thon_action_cooldown_remaining = 0U;

@@ -175,15 +175,15 @@ check(wounded ~= nil and wounded.id == "party.runner.two",
       "0x13C20 continues to the next party role when the first is not wounded [C]")
 
 -- ROM 0x1A342 allocates field actor records and 0x44BC copies their
--- identity into the actor state [C]. Lua receives live membership as a fact.
+-- identity into actor state [C]. Patrol membership is resolved from that
+-- stable identity against the extracted route records.
 local field_actor_context = {
-    actor_id = "pedestrian.test",
+    actor_id = "field_scene_2_actor_0",
     profile_id = "pedestrian_k0b_none00",
     visual_profile_id = E.ActorVisualProfile.PEDESTRIAN_RAT_SHAMAN,
     action_kind = R.ActionKind.none,
     initial_bearing_degrees = 92.8125,
     entry_delay = 0,
-    source_actor_has_waypoint_data = true,
     live_field_actor = true,
     actor_facts = actor_facts(),
 }
@@ -192,11 +192,15 @@ local field_actor_state = R.initial_state(
     field_actor_context, field_actor_profile)
 field_actor_context.actor_id = "pedestrian.detached"
 field_actor_context.live_field_actor = false
+local detached_actor_profile = R.source_profile(field_actor_context)
 local detached_actor_state = R.initial_state(
-    field_actor_context, R.source_profile(field_actor_context))
+    field_actor_context, detached_actor_profile)
 check(field_actor_profile ~= nil and field_actor_state ~= nil and
+      field_actor_profile.source_profile_patrol == true and
       field_actor_state.live_field_actor == true and
       field_actor_state.movement_current_bearing_degrees == 92.8125 and
+      detached_actor_profile ~= nil and
+      detached_actor_profile.source_profile_patrol == false and
       detached_actor_state ~= nil and
       detached_actor_state.live_field_actor == false and
       detached_actor_state.movement_current_bearing_degrees == nil,
@@ -207,8 +211,13 @@ check(field_actor_profile ~= nil and field_actor_state ~= nil and
 -- negative. The Lua bootstrap call creates state before the first behavior
 -- service, so the first thought must occur on service pass delay+1 [C].
 local previous_heartbeat_think = R.think
-for _, delay_case in ipairs({ 0, 1, 15 }) do
-    local delay_actor_id = "pedestrian.startup_delay." .. delay_case
+local delay_actor_ids = {
+    "field_scene_2_actor_0",
+    "field_scene_2_actor_1",
+    "field_scene_2_actor_2",
+}
+for delay_index, delay_case in ipairs({ 0, 1, 15 }) do
+    local delay_actor_id = delay_actor_ids[delay_index]
     local delay_context = {
         actor_id = delay_actor_id,
         profile_id = "pedestrian_k0b_none00",
@@ -216,7 +225,6 @@ for _, delay_case in ipairs({ 0, 1, 15 }) do
         action_kind = R.ActionKind.none,
         initial_bearing_degrees = 0,
         entry_delay = delay_case,
-        source_actor_has_waypoint_data = true,
         live_field_actor = true,
         actor_facts = actor_facts({ roles = { pedestrian = true } }),
         phase = "behavior",
@@ -687,6 +695,7 @@ check(R.think_gate(state({ actor_facts = {
       "follow_leader", "0x1450E formation follow is selected by escort [C]")
 
 local ActorWaypointRoutes = require("data.actor_patrol_routes")
+local ActorPatrolRoutes = require("actor.patrol_routes")
 local routes_use_actor_ids = true
 for actor_id, route in pairs(ActorWaypointRoutes) do
     if type(actor_id) ~= "string" or actor_id == "" or
@@ -701,6 +710,79 @@ local patrol_actor_id = "field_scene_5_actor_0"
 local patrol_route = ActorWaypointRoutes[patrol_actor_id]
 check(patrol_route ~= nil,
       "actor route data contains the ROM 0x679F0 patrol path [C]")
+
+-- The default waypoint manifest includes every scene/source-order identity.
+-- Shared profile lists must retain all stable actor IDs in the Lua data table.
+local route_manifest = io.open(
+    ROOT .. "/decompilation/assets/field/entities/default-actor-waypoints.tsv",
+    "rb")
+local manifest_route_ids = {}
+local manifest_missing_route
+local manifest_malformed = false
+if route_manifest ~= nil then
+    local first_line = true
+    for line in route_manifest:lines() do
+        if first_line then
+            first_line = false
+        elseif line ~= "" then
+            local scene, source_order = line:match("^(%d+)\t(%d+)\t")
+            if scene == nil or source_order == nil then
+                manifest_malformed = true
+            else
+                local actor_id = string.format(
+                    "field_scene_%d_actor_%d", tonumber(scene),
+                    tonumber(source_order))
+                manifest_route_ids[actor_id] = true
+                if manifest_missing_route == nil and
+                   not ActorPatrolRoutes.has_route(actor_id) then
+                    manifest_missing_route = actor_id
+                end
+            end
+        end
+    end
+    route_manifest:close()
+end
+local manifest_route_count = 0
+for _ in pairs(manifest_route_ids) do
+    manifest_route_count = manifest_route_count + 1
+end
+check(route_manifest ~= nil and not manifest_malformed and
+      manifest_route_count > 0 and manifest_missing_route == nil,
+      "every source waypoint manifest identity resolves to Lua patrol data [C]")
+
+-- The ROM profile lists at 0x1D7BD4, 0x1DA82E, 0x1DB5DE, 0x1DBBE8, and
+-- 0x1DCB1C reuse the same source route rows for multiple scene identities.
+local shared_route_aliases = {
+    { "field_scene_24_actor_0", "field_scene_22_actor_0" },
+    { "field_scene_24_actor_1", "field_scene_22_actor_1" },
+    { "field_scene_29_actor_0", "field_scene_28_actor_0" },
+    { "field_scene_33_actor_0", "field_scene_32_actor_0" },
+    { "field_scene_33_actor_1", "field_scene_32_actor_1" },
+    { "field_scene_34_actor_0", "field_scene_31_actor_0" },
+    { "field_scene_37_actor_0", "field_scene_36_actor_0" },
+}
+local shared_routes_match = true
+for _, alias_pair in ipairs(shared_route_aliases) do
+    local alias = ActorPatrolRoutes.for_actor(alias_pair[1])
+    local source = ActorPatrolRoutes.for_actor(alias_pair[2])
+    if alias == nil or source == nil or
+       alias.initial.x ~= source.initial.x or
+       alias.initial.y ~= source.initial.y or
+       #alias.points ~= #source.points then
+        shared_routes_match = false
+        break
+    end
+    for point_index, point in ipairs(source.points) do
+        local alias_point = alias.points[point_index]
+        if alias_point.x ~= point.x or alias_point.y ~= point.y then
+            shared_routes_match = false
+            break
+        end
+    end
+    if not shared_routes_match then break end
+end
+check(shared_routes_match,
+      "shared ROM default lists retain every scene actor identity and route [C]")
 if patrol_route ~= nil then
     local route_context = context({
         actor_id = patrol_actor_id,
@@ -1278,8 +1360,8 @@ movement_bearing_case(337.5, 0, false,
 -- Its 0x44BC-published +0x10 is 0x05, so THINK is clear even though it is a
 -- routed actor. [C: ROM route/template tables and disassembly]
 local route_actor_context = movement_fixture(false)
+route_actor_context.actor_id = "field_scene_35_actor_1"
 route_actor_context.visual_profile_id = E.ActorVisualProfile.HUMAN_GUARD
-route_actor_context.source_actor_has_waypoint_data = true
 route_actor_context.actor_facts.roles.reinforcement = true
 route_actor_context.movement_actor_facts.lifecycle.active = true
 route_actor_context.combatant = { attributes = { quickness = 19 } }
@@ -1308,8 +1390,8 @@ local regional_pedestrian_speed_cases = {
 }
 for _, speed_case in ipairs(regional_pedestrian_speed_cases) do
     local speed_context = movement_fixture(false)
+    speed_context.actor_id = "field_scene_20_actor_5"
     speed_context.visual_profile_id = E.ActorVisualProfile.PEDESTRIAN_RAT_SHAMAN
-    speed_context.source_actor_has_waypoint_data = true
     speed_context.actor_facts.roles.pedestrian = true
     speed_context.movement_actor_facts.lifecycle.active = true
     speed_context.combatant = { attributes = { quickness = 1 } }

@@ -103,14 +103,21 @@ for _, row in ipairs(default_rows) do
         default_lists[list_offset] = list
     end
     local existing = list[source_order]
+    local route_id = string.format("field_scene_%d_actor_%d",
+                                   number(row, "scene"), source_order)
     if existing ~= nil then
         assert(existing.position_offset == position_offset,
                "default actor scenes disagree on a shared source record")
+        if not existing.route_id_set[route_id] then
+            existing.route_ids[#existing.route_ids + 1] = route_id
+            existing.route_id_set[route_id] = true
+        end
     else
         list[source_order] = {
-            scene = number(row, "scene"),
             source_order = source_order,
             position_offset = position_offset,
+            route_ids = { route_id },
+            route_id_set = { [route_id] = true },
         }
     end
 end
@@ -132,10 +139,13 @@ for list_offset, rows in pairs(default_lists) do
         local position_offset = L(cursor + 4)
         assert(position_offset == row.position_offset,
                "default actor +0xE0 pointer disagrees with ROM")
-        local route_id = string.format("field_scene_%d_actor_%d",
-                                       row.scene, row.source_order)
-        add_source(route_id, list_offset, row.source_order, position_offset,
-                   tagged_template)
+        -- Several scene profiles reuse one ROM actor list. Keep every
+        -- scene/source-order identity even though the position pointer and
+        -- route itself are shared.
+        for _, route_id in ipairs(row.route_ids) do
+            add_source(route_id, list_offset, row.source_order,
+                       position_offset, tagged_template)
+        end
 
         local next_record = cursor + 8
         if L(next_record) == 2 then

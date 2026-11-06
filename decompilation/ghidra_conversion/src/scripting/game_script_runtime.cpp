@@ -12300,8 +12300,6 @@ GameScriptRuntime::actor_heartbeat(
         lua_pushnil(state);
     }
     lua_setfield(state, -2, "visual_profile_id");
-    lua_pushboolean(state, context.source_actor_has_waypoint_data);
-    lua_setfield(state, -2, "source_actor_has_waypoint_data");
     lua_pushlstring(state, action_kind.data(), action_kind.size());
     lua_setfield(state, -2, "action_kind");
     if (action_item_id.has_value()) {

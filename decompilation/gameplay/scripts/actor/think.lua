@@ -4,7 +4,7 @@ local E = require("enums")
 local I = require("lib.int68k")
 local Bearing = require("bearing")
 local EntityMotion = require("entity_motion")
-local ActorWaypointRoutes = require("data.actor_patrol_routes")
+local ActorPatrolRoutes = require("actor.patrol_routes")
 local u16 = I.u16
 local AiTuning = E.AiTuning
 local ActionKind = R.ActionKind
@@ -378,7 +378,7 @@ local function actor_spawn_record(context)
     if type(actor_id) ~= "string" or actor_id == "" then
         return nil
     end
-    return ActorWaypointRoutes[actor_id]
+    return ActorPatrolRoutes.for_actor(actor_id)
 end
 
 local function set_route_target(state, position)

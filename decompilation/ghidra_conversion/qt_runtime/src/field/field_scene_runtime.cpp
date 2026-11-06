@@ -4188,8 +4188,6 @@ void FieldSceneRuntime::initialize_default_field_actors(
             actor.source_default_dynamic_profile;
         context.source_default_item_action_profile =
             actor.source_default_item_action_profile;
-        context.source_actor_has_waypoint_data =
-            actor.source_actor_has_waypoint_data;
         context.movement_scene_id = scene_reference;
         context.combatant = actor.combatant;
         context.actor_behavior_profile =
@@ -4840,8 +4838,6 @@ void FieldSceneRuntime::advance_default_field_actors(
                 : actor.initial_heading,
             false,
         };
-        context.source_actor_has_waypoint_data =
-            actor.source_actor_has_waypoint_data;
         context.source_think_suppressed = field_think_token_claimed_;
         context.actor_motion_suppressed = state_.field_lock != 0U;
         context.thon_action_cooldown_remaining =
@@ -13566,8 +13562,6 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
                 context.live_field_actor = true;
             }
         }
-        context.source_actor_has_waypoint_data =
-            actor.source_actor_has_waypoint_data;
         context.combatant = actor.combatant;
         context.actor_behavior_profile =
             scripting::script_actor_behavior_profile_from_source_posture(

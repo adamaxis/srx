@@ -2423,9 +2423,6 @@ struct ScriptActorBehaviorContext {
     // Narrowly validates item-action results for routed default-list actors
     // that keep their static profile policy.
     bool source_default_item_action_profile = false;
-    // Lua receives the resolved waypoint capability, not the template's
-    // source sprite selector.
-    bool source_actor_has_waypoint_data = false;
     // ROM world-activity script lists may create non-encounter actors in the
     // same runtime pool. Keep that provenance explicit for Lua profile rules.
     bool world_activity_script_actor = false;
