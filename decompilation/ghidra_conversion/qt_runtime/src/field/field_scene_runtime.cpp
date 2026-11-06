@@ -4843,6 +4843,7 @@ void FieldSceneRuntime::advance_default_field_actors(
         context.source_actor_has_waypoint_data =
             actor.source_actor_has_waypoint_data;
         context.source_think_suppressed = field_think_token_claimed_;
+        context.actor_motion_suppressed = state_.field_lock != 0U;
         context.thon_action_cooldown_remaining =
             field_thon_action_cooldown_remaining_;
         context.walk_fast_enabled = field_walk_fast_enabled_;
@@ -7966,6 +7967,18 @@ void FieldSceneRuntime::configure_callbacks() {
     };
     world_frame_callbacks_.finalize_entity_templates = [this] {
         source_boundary("field.world.finalize_entity_templates");
+        if (!field_default_actor_population_pending_) {
+            return;
+        }
+        initialize_default_field_actors(
+            state_.field_scene_buffers.scene_reference);
+        if (!failure_.empty()) {
+            source_boundary(
+                "field.actor.initial_population_failed");
+            return;
+        }
+        source_boundary(
+            "field.actor.initial_population_on_scene_entry");
     };
     world_frame_callbacks_.service_scene_effect = [this] {
         source_boundary("field.world.service_scene_effect");
@@ -11676,6 +11689,15 @@ bool FieldSceneRuntime::bootstrap(
         source_boundary("field.bootstrap.dynamic_actor_assets_missing");
         return false;
     }
+    const bool initial_new_game_field_entry =
+        startup_state.new_game_opening_completed &&
+        restored_field_state == nullptr;
+    // ROM 0x0281E sets FFDF8A before the first 0x02900 pass. That refresh
+    // calls 0x04388/0x043B6, which publishes the scene list before the 31
+    // warmup services at 0x08C0. FFE186==2 enables the field-list branch.
+    world_frame_state_.field_refresh_pending = true;
+    world_frame_state_.world_scene_state = 2U;
+    field_default_actor_population_pending_ = initial_new_game_field_entry;
     const auto result = integration::bootstrap_field_session(
         input_, state_, callbacks_);
     if (result != integration::FieldSessionBootstrapResult::field_ready) {
@@ -11683,6 +11705,10 @@ bool FieldSceneRuntime::bootstrap(
                    integration::field_session_bootstrap_phase_name(
                        state_.phase);
         source_boundary("field.bootstrap.incomplete");
+        return false;
+    }
+    if (!failure_.empty()) {
+        source_boundary("field.bootstrap.actor_population_failed");
         return false;
     }
 
@@ -11745,13 +11771,6 @@ bool FieldSceneRuntime::bootstrap(
     reset_field_map_cell_words();
     dispatch_field_map_scene_entry(scene_reference);
     ready_ = true;
-    // ROM 0x43B6's initial default-list pass follows the completed New Game
-    // opening's cold field bootstrap. Keep that real route empty through scene
-    // entry, then publish on its first source actor-service pass. Direct QA
-    // scene bootstraps and restored saves do not take this opening continuation.
-    field_default_actor_population_pending_ =
-        startup_state.new_game_opening_completed &&
-        restored_field_state == nullptr;
     scene_music_latch_ = true;   // 0x2830 on the New Game / load entry
     if (field_opening_auto_walk_.active) {
         // Lets the host delay 0x2900's song by the 0x07F0 setup time.

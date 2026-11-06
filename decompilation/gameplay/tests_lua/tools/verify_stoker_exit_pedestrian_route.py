@@ -195,6 +195,18 @@ def main() -> int:
              f"first Scene-2 frame {scene_rows[0].get('app.source_frame')} "
              f"has field.actor_count={first_count}")
 
+    # ROM 0x0281E's initial FFDF8A refresh enters 0x02900 and
+    # 0x04388/0x043B6 before 0x08C0's 31 warmup services. The independent
+    # cold-boot GPGX trace has all three default records active at frame 8035;
+    # positions remain fixed through frame 8134, and slot 3 first moves at
+    # frame 8138. Require the port to publish them during its first Scene-2
+    # field row; its application frame counter uses a
+    # different startup phase and is not directly compared to GPGX's counter.
+    if first_ped_row is not scene_rows[0]:
+        fail("port deferred Scene-2 default actors past initial scene entry; "
+             f"first scene row={scene_rows[0].get('app.source_frame')} "
+             f"first active row={first_ped_row.get('app.source_frame')}")
+
     port_spawn = port_pedestrians(first_ped_row)
     for slot, source in source_spawn.items():
         actual = port_spawn[slot]

@@ -8,9 +8,10 @@ ROM-seeded item/spell/none action class and code; the host renders the returned
 idle, walk, or action state. The initial `+0xB6` delay gates behavior, not a
 spawn animation. `0xC0B2` is selected by the zero-meter behavior transition at
 `0xB330`. In the scene-`0x14` default-list QA route, only the first seven of
-eight rows become active. New Game bootstrap does not activate the scene-2
-profile list. The scene-`0x14` mode-1 zero-meter completion branch is
-source-traced, but the physical-entry route does not exercise it; general AI,
+eight rows become active. New Game's initial scene-2 refresh activates the
+profile list before the 31 warmup services. The scene-`0x14` mode-1 zero-meter
+completion branch is source-traced, but the physical-entry route does not
+exercise it; general AI,
 obstacle avoidance, actor interaction, collision targets, hits, status, and
 damage remain partial. `LOADOUT-01` remains partial.
 
@@ -624,19 +625,30 @@ used at runtime.
 The runtime population is never inferred from gameplay-video frames. The
 extracted rows are ROM list entries with named `corp_guard` or `pedestrian`
 templates, source positions, and initial behavior data; no corpse-specific
-template or death-state placement is present in this table. New Game's first
-scene-2 entry keeps those three profile rows inactive, as the ROM lifecycle
-does. A later scene entry may activate only the rows belonging to that scene.
-Until the actor death/drop path is connected, these live profile rows must not
-be converted into dead-body scenery or supplemented with actors seen in a
-longplay.
+template or death-state placement is present in this table. New Game's initial
+scene-2 refresh activates all three pedestrian rows before the 31 warmup
+services, as confirmed by the cold-boot GPGX capture at frame 8035. Their live
+records remain stationary during warmup: `0xAC84` calls `0x13904`, then
+`0xAC9E` checks `FFE18A` and redirects the actor continuation through `0xAE5E`
+to the idle collision path at `0xB45C`. Scene-2 pedestrian records have
+`+0x10=0x25`, so this source branch applies. The typed host passes the existing
+field lock into Lua to suppress only movement during that interval. A later
+scene entry activates only the rows belonging to that scene. Until the actor
+death/drop path is connected, live profile rows must not be converted into
+dead-body scenery or supplemented with actors seen in a longplay.
 
-New Game's `0x075E` setup enters scene 2 and performs its warmup without the
-later `0x02900 -> 0x04388 -> 0x043B6` world-frame list-finalization path. The
-Qt bootstrap therefore keeps extracted scene-2 definitions inactive and draws
-no profile actors on the opening street. On an actual scene change,
-`FieldSceneRuntime` activates that destination's profile list and resets each
-Lua instance by stable scene/source-order ID. Each field behavior-service pass
+New Game's `0x075E` setup calls `0x0281E`, sets `FFDF8A`, then enters
+`0x02900` before `0x2B34` selects the scene profile. The refresh branch at
+`0x291C..0x2968` calls `0x04388`; its `0x043B6` path processes the pending
+lists and scene default list while `FFE186==2`. `0x0EE10` clears `FFDF8A`
+before the 31 warmup services at `0x08C0`. The cold-boot GPGX route independently
+shows Scene-2 slots 3–5 active at frame 8035; their positions remain unchanged
+through frame 8134, and slot 3 first moves at frame 8138. The Qt runtime now
+publishes the New Game scene list in that initial refresh; direct QA scene
+bootstraps remain outside this startup-specific path.
+On later scene entries, `FieldSceneRuntime` activates that destination's
+profile list and resets each Lua instance by stable scene/source-order ID. Each
+field behavior-service pass
 calls Lua once per active profile actor. The compositor sorts actors by
 effective Y depth with source order as the stable tie-break, draws the
 Lua-selected idle, walk, action, or down-state frame, then redraws the shared

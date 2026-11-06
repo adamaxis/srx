@@ -12317,6 +12317,8 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "spawn");
     lua_pushboolean(state, context.movement_allowed);
     lua_setfield(state, -2, "movement_allowed");
+    lua_pushboolean(state, context.actor_motion_suppressed);
+    lua_setfield(state, -2, "actor_motion_suppressed");
     lua_pushboolean(state, context.combat_confirm_held);
     lua_setfield(state, -2, "combat_confirm_held");
     lua_pushboolean(state, context.combat_action_ready);
@@ -14409,6 +14411,7 @@ GameScriptRuntime::actor_heartbeat(
     lua_pop(state, 1);
     if (context.movement_services_available &&
         context.phase == ScriptActorHeartbeatPhase::behavior &&
+        !context.actor_motion_suppressed &&
         context.movement_allowed && decision.movement_heading.has_value() &&
         !decision.movement_step.has_value() &&
         !decision.ai_target_engaged) {

@@ -530,6 +530,7 @@ function ActorAI.heartbeat(context)
                     -- +0x34 heading by 0x0800 and advances using +0xC8, which
                     -- 0x145A2 measured to the selected route destination.
                     if state.transition_complete and state.movement_active and
+                       context.actor_motion_suppressed ~= true and
                        not R.action_movement_locked(state) then
                         state.movement_current_bearing_degrees = R.approach_bearing_degrees(
                             state.movement_current_bearing_degrees,

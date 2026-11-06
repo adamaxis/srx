@@ -2527,6 +2527,9 @@ struct ScriptActorBehaviorContext {
     // This actor occupies an active gameplay record, including party members.
     // Lua uses the fact for shared actor services, not the record's index.
     bool has_live_actor_record = false;
+    // ROM 0xAC84 runs 0x13904, then 0xAC9E replaces the actor continuation
+    // with its idle collision check while the field-entry settling lock is set.
+    bool actor_motion_suppressed = false;
 };
 
 enum class ScriptTarislarTombOutroStep {

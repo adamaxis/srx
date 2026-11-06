@@ -12,14 +12,19 @@ pedestrian slots 3–5 at frame 8035. At frame 10000, slot 3 is visible on its
 Scene-2 patrol route. Numbered `gpgx-frame-*.png` captures show the source route.
 The final GPGX savestate is `/workspace/shadowrun/emu/doors/bug34c_stoker_exit_route.state`.
 
-In the headless port replay, the first completed field frame containing slots
-3–5 is 8132. Their initial positions match GPGX exactly (`3480,2200`,
-`5300,3700`, `6280,1900`), and their `+0x9E` flags match at `20`. The
-port's typed `+0x10` service flags are `05` while GPGX has `25`; that bit is
-still represented differently by the port's actor lifecycle model. Port first
-spawn is 97 frames later than GPGX frame 8035, and later patrol positions also
-differ, so this fixture supports the default-population fix but does not
-establish exact cadence or movement equivalence. The A800 gate remains closed
+GPGX activates Scene-2 slots 3, 4, and 5 at frame 8035. Their positions are
+unchanged at frame 8134; slot 3 first moves at frame 8138. The ROM source order
+is `0x0281E -> 0x02900 -> 0x04388 -> 0x043B6`; the refresh flag is consumed by
+`0x0EE10`, before the 31 warmup services at `0x08C0`. The actor path at
+`0xAC84 -> 0x13904 -> 0xAC9E -> 0xAE5E -> 0xB45C` keeps these active records on
+the idle collision continuation while `FFE18A` is set. The port labels its
+initial `field_ready` presentation phase at a different point in startup, so
+its application frame counter is not a direct offset from GPGX's `retro_run`
+counter. The route CTest checks publication in the first Scene-2 field row,
+the source positions and `+0x9E` flags, and the first movement vector. The
+port's typed `+0x10` service flags are `05` while GPGX has `25`; that bit
+remains a separate actor-lifecycle question, and the test does not establish
+exact cadence or full patrol-path equivalence. The A800 gate remains closed
 in both traces.
 
 `port_route_frames.jsonl.gz` is the headless Qt replay's completed-frame trace

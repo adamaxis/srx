@@ -2742,8 +2742,7 @@ private:
     std::vector<std::array<SpellEffectArtwork, 5>>
         field_spell_effect_images_by_scene_;
     std::vector<DefaultFieldActorPresentation> field_default_actors_;
-    // Cold boot publishes the first default list during its first source actor
-    // service pass, after the scene-entry transition has completed.
+    // Cold boot publishes the first default list in the source scene refresh.
     bool field_default_actor_population_pending_ = false;
     // The ROM lists hold record pointers and refresh on separate FFDF88
     // phases. Cache source record identity only; actor facts are read live.
