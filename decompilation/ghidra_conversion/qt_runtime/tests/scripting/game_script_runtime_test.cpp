@@ -5955,21 +5955,11 @@ int main() {
     const auto hound_effect_spawn =
         scripts.actor_heartbeat(hound_effect_context);
     hound_effect_context.spawn = false;
-    auto hound_entry = scripts.actor_heartbeat(hound_effect_context);
-    hound_effect_context.phase = ScriptActorHeartbeatPhase::render;
-    for (std::uint8_t frame = 0U; frame < 12U; ++frame) {
-        hound_entry = scripts.actor_heartbeat(hound_effect_context);
-    }
-    hound_effect_context.phase = ScriptActorHeartbeatPhase::behavior;
-    std::optional<ScriptActorBehaviorDecision> hound_effect_start;
-    for (std::uint8_t service = 0U;
-         service < 100U &&
-         (!hound_effect_start.has_value() ||
-          !hound_effect_start->target_motion_effect_slot_request.has_value());
-         ++service) {
-        hound_effect_start =
-            scripts.actor_heartbeat(hound_effect_context);
-    }
+    // ROM 0x13904 decrements +0xB6 and enters the due behavior on that same
+    // actor-service pass. With this fixture's zero delay, the first service
+    // reaches the Hell Hound's 0x14D04 close-target path [C].
+    const auto hound_effect_start =
+        scripts.actor_heartbeat(hound_effect_context);
 
     std::array<std::uint8_t, 4> hound_effect_visible_counts{};
     bool hound_effect_released = false;
@@ -6012,7 +6002,6 @@ int main() {
     }
     if (!expect(
             hound_effect_spawn.has_value() &&
-                hound_entry.has_value() &&
                 hound_effect_start.has_value() &&
                 hound_effect_start->target_motion_effect_slot_request == 0U &&
                 hound_effect_start->action_delay == 90 &&
@@ -6068,9 +6057,14 @@ int main() {
                 return trace;
             }
             context.spawn = false;
-            if (!scripts.actor_heartbeat(context).has_value()) {
+            const auto entry_start = scripts.actor_heartbeat(context);
+            if (!entry_start.has_value()) {
                 return trace;
             }
+            // 0x13904 runs behavior on the same service pass that expires
+            // +0xB6. Preserve that first due decision in the route trace;
+            // later render passes are independent heartbeats [C].
+            trace.push_back(*entry_start);
             context.phase = ScriptActorHeartbeatPhase::render;
             for (std::uint8_t frame = 0U; frame < 12U; ++frame) {
                 if (!scripts.actor_heartbeat(context).has_value()) {
@@ -6241,43 +6235,14 @@ int main() {
     c0a2_action_context.spawn = false;
     const auto c0a2_entry_start =
         scripts.actor_heartbeat(c0a2_action_context);
-    c0a2_action_context.phase = ScriptActorHeartbeatPhase::render;
-    for (std::uint8_t frame = 0U; frame < 12U; ++frame) {
-        (void)scripts.actor_heartbeat(c0a2_action_context);
-    }
-    c0a2_action_context.phase = ScriptActorHeartbeatPhase::behavior;
-    std::optional<ScriptActorBehaviorDecision> c0a2_action_start;
-    for (std::uint8_t pass = 0U; pass < 100U; ++pass) {
-        const auto decision = scripts.actor_heartbeat(c0a2_action_context);
-        if (!decision.has_value()) {
-            break;
-        }
-        if (decision->animation_id == "action") {
-            c0a2_action_start = decision;
-            break;
-        }
-    }
+    // The zero-delay first service enters 0xB1DC/C0A2 on the same pass that
+    // 0x13904 expires +0xB6; this is the action start, before render cadence.
+    const auto c0a2_action_start = c0a2_entry_start;
     const auto c0a2_alternate_spawn =
         scripts.actor_heartbeat(c0a2_alternate_context);
     c0a2_alternate_context.spawn = false;
-    (void)scripts.actor_heartbeat(c0a2_alternate_context);
-    c0a2_alternate_context.phase = ScriptActorHeartbeatPhase::render;
-    for (std::uint8_t frame = 0U; frame < 12U; ++frame) {
-        (void)scripts.actor_heartbeat(c0a2_alternate_context);
-    }
-    c0a2_alternate_context.phase = ScriptActorHeartbeatPhase::behavior;
-    std::optional<ScriptActorBehaviorDecision> c0a2_alternate_action_start;
-    for (std::uint8_t pass = 0U; pass < 100U; ++pass) {
-        const auto decision =
-            scripts.actor_heartbeat(c0a2_alternate_context);
-        if (!decision.has_value()) {
-            break;
-        }
-        if (decision->animation_id == "action") {
-            c0a2_alternate_action_start = decision;
-            break;
-        }
-    }
+    const auto c0a2_alternate_action_start =
+        scripts.actor_heartbeat(c0a2_alternate_context);
     c0a2_action_context.phase = ScriptActorHeartbeatPhase::render;
     std::optional<ScriptActorBehaviorDecision> c0a2_action_frame_zero;
     std::optional<ScriptActorBehaviorDecision> c0a2_action_frame_one;
@@ -6421,6 +6386,29 @@ int main() {
                 generic_boundary_rejected &&
                 gargoyle_frame_two_hold != gargoyle_frame_two_motion.end(),
             "Lua actor motion failed item/spell routes, six 21-pass route updates, B574 cadence, close target ranges, C0A2 action cadence, kind-C bands, or the kind-D frame-two hold")) {
+        std::cerr << "motion checks: item_initial="
+                  << (item_one_initial != nullptr)
+                  << " item_expired=" << (item_one_expired != nullptr)
+                  << " item_slew=" << item_one_heading_slews_between_route_updates
+                  << " bear=" << (bear_totem_initial != nullptr)
+                  << " mage_unresolved="
+                  << (mage_spell_unresolved != mage_spell_motion.end())
+                  << " mage_after=" << (mage_spell_after_delay != nullptr)
+                  << " close_stop=" << close_route_stopped
+                  << " spell_catalog=" << spell_motion_catalog_matches
+                  << " hound_bands=" << (hound_close_engagement != nullptr)
+                  << ',' << (hound_mid_engagement != nullptr)
+                  << ',' << (hound_outer_engagement != nullptr)
+                  << " hound_far=" << hound_far_keeps_pursuit
+                  << " gargoyle=" << (gargoyle_engagement != nullptr)
+                  << " wendigo=" << (wendigo_engagement != nullptr)
+                  << " generic=" << (generic_engagement != nullptr)
+                  << " c0a2=" << c0a2_action_contract
+                  << " generic_boundary=" << generic_boundary_rejected
+                  << " gargoyle_frame2="
+                  << (gargoyle_frame_two_hold !=
+                      gargoyle_frame_two_motion.end())
+                  << '\n';
         const auto print_motion_trace = [](const char* label,
                                            const auto& trace) {
             std::cerr << label << " samples=" << trace.size();
@@ -6576,8 +6564,16 @@ int main() {
         }
         context.spawn = false;
         effect_target_context.spawn = false;
-        if (!scripts.actor_heartbeat(context).has_value()) {
+        const auto entry_start = scripts.actor_heartbeat(context);
+        if (!entry_start.has_value()) {
             return failed();
+        }
+        // 0x13904 enters behavior on the same service pass that expires
+        // +0xB6; 0xA8EA advances +0xDC before the 0x13FFE spell gate. Keep a
+        // dispatch from that first due pass instead of sampling a later wait.
+        std::optional<ScriptActorBehaviorDecision> first_due_dispatch;
+        if (entry_start->source_action_dispatch.has_value()) {
+            first_due_dispatch = entry_start;
         }
         context.phase = ScriptActorHeartbeatPhase::render;
         for (std::uint8_t frame = 0U; frame < 12U; ++frame) {
@@ -6587,7 +6583,13 @@ int main() {
         }
         context.phase = ScriptActorHeartbeatPhase::behavior;
         for (std::uint8_t pass = 0U; pass < 120U; ++pass) {
-            const auto decision = scripts.actor_heartbeat(context);
+            std::optional<ScriptActorBehaviorDecision> decision;
+            if (first_due_dispatch.has_value()) {
+                decision = first_due_dispatch;
+                first_due_dispatch.reset();
+            } else {
+                decision = scripts.actor_heartbeat(context);
+            }
             if (!decision.has_value()) {
                 return failed();
             }
@@ -8012,8 +8014,23 @@ int main() {
             return failed();
         }
         context.spawn = false;
-        if (!scripts.actor_heartbeat(context).has_value()) {
+        const auto entry_start = scripts.actor_heartbeat(context);
+        if (!entry_start.has_value()) {
             return failed();
+        }
+        const auto is_decision = [&row](
+                                     const ScriptActorBehaviorDecision& value) {
+            return (row.decision == CatalogDecision::item_gated &&
+                    value.source_action_dispatch.has_value()) ||
+                (row.decision == CatalogDecision::unarmed &&
+                 value.animation_id == "action") ||
+                (row.decision == CatalogDecision::hound_effect &&
+                 value.target_motion_effect_slot_request.has_value());
+        };
+        // ROM 0x13904 enters its due behavior on this service pass, so an
+        // item gate, C0A2 strike, or Hound effect can be the first decision.
+        if (is_decision(*entry_start)) {
+            return entry_start;
         }
         context.phase = ScriptActorHeartbeatPhase::render;
         for (std::uint8_t frame = 0U; frame < 12U; ++frame) {
@@ -8027,14 +8044,7 @@ int main() {
             if (!decision.has_value()) {
                 return failed();
             }
-            const bool found =
-                (row.decision == CatalogDecision::item_gated &&
-                 decision->source_action_dispatch.has_value()) ||
-                (row.decision == CatalogDecision::unarmed &&
-                 decision->animation_id == "action") ||
-                (row.decision == CatalogDecision::hound_effect &&
-                 decision->target_motion_effect_slot_request.has_value());
-            if (found) {
+            if (is_decision(*decision)) {
                 return decision;
             }
         }
@@ -8226,23 +8236,10 @@ int main() {
     const auto combat_probe_spawn =
         scripts.actor_heartbeat(combat_probe_context);
     combat_probe_context.spawn = false;
-    (void)scripts.actor_heartbeat(combat_probe_context);
-    combat_probe_context.phase = ScriptActorHeartbeatPhase::render;
-    for (std::uint8_t frame = 0U; frame < 12U; ++frame) {
-        (void)scripts.actor_heartbeat(combat_probe_context);
-    }
-    combat_probe_context.phase = ScriptActorHeartbeatPhase::behavior;
-    std::optional<ScriptActorBehaviorDecision> combat_probe_action;
-    for (std::uint8_t pass = 0U; pass < 100U; ++pass) {
-        const auto decision = scripts.actor_heartbeat(combat_probe_context);
-        if (!decision.has_value()) {
-            break;
-        }
-        if (decision->animation_id == "action") {
-            combat_probe_action = decision;
-            break;
-        }
-    }
+    // ROM 0x13904 reaches the due close-target decision on this first service
+    // pass; 0x14C7C accepts it and 0xB284 resolves the reaction in sequence.
+    const auto combat_probe_action =
+        scripts.actor_heartbeat(combat_probe_context);
     if (!expect(
             combat_probe_spawn.has_value() &&
                 combat_probe_action.has_value() &&
@@ -8263,6 +8260,24 @@ int main() {
                 combat_probe_action->hit_spark_spawn_request->world_y ==
                     combat_target.world_y,
             "Lua did not resolve the ROM close-target reaction into the typed party meter update")) {
+        std::cerr << "combat probe: "
+                  << (combat_probe_action.has_value()
+                          ? combat_probe_action->animation_id
+                          : "missing")
+                  << " engaged="
+                  << (combat_probe_action.has_value() &&
+                      combat_probe_action->ai_target_engaged)
+                  << " meter="
+                  << (combat_probe_action.has_value() &&
+                      combat_probe_action->combat_meter_update.has_value())
+                  << " audio="
+                  << (combat_probe_action.has_value() &&
+                      combat_probe_action->audio_event.has_value())
+                  << " delay="
+                  << (combat_probe_action.has_value()
+                          ? combat_probe_action->action_delay
+                          : -999)
+                  << '\n';
         std::cerr << scripts.failure() << '\n';
         return 67;
     }
