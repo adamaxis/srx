@@ -654,9 +654,9 @@ local function choose_obstruction_waypoint(
     end
 
     -- ROM 0x148D2 selects the greater target axis for its first obstruction
-    -- scan; ties stay on X [C]. The host route stores a typed world waypoint
-    -- and probes open parallel corridors through the read-only geometry
-    -- service; corridor selection remains [H] pending the missing GPGX trace.
+    -- scan; ties stay on X. Its signed minor-axis direction is the first
+    -- 0x14854 side probe; 0x148CA defaults zero deltas to -Y/-X [C]. The host
+    -- route stores a typed waypoint and checks it through read-only geometry.
     local horizontal = absolute_x >= absolute_y
     local side_delta = horizontal and delta_y or delta_x
     local first_side = side_delta > 0 and 1 or -1
@@ -666,6 +666,8 @@ local function choose_obstruction_waypoint(
        previous_waypoint.origin_cell_x == origin_cell_x and
        previous_waypoint.origin_cell_y == origin_cell_y and
        type(previous_waypoint.side) == "number" then
+        -- Host retry policy: alternate sides after a failed plan at this cell.
+        -- Exact source equivalence for repeated replans remains [H].
         first_side = -previous_waypoint.side
     end
 

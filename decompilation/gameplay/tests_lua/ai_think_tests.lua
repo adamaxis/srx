@@ -1023,10 +1023,11 @@ game.movement.probe = function(x, y, direction, distance)
         candidate_y = (y + offset.y * distance) % 0x10000 }
 end
 
--- ROM 0x148D2 chooses the dominant axis, 0x14854 probes paired clear
--- corridors, and 0x14914 checks the obstruction line. This synthetic wall
--- fixture checks the native waypoint policy only; it is not a GPGX route
--- capture or a claim that the full route matches the emulator.
+-- ROM 0x148D2 keeps X as the dominant axis on ties and chooses a signed
+-- minor-axis step; table 0x148CA maps the zero-delta defaults to -Y/-X.
+-- 0x14854 tries that side before its opposite, while 0x14914 checks the line.
+-- These synthetic walls check candidate ordering, not source occupancy or a
+-- full GPGX route [C/H].
 local function vertical_wall_path_clear(wall_x, wall_top, wall_bottom)
     return function(from_x, from_y, to_x, to_y)
         if from_x == to_x then
@@ -1053,7 +1054,13 @@ check(wall_route ~= nil and wall_route.side == -1 and
       wall_route.waypoints[1].y == 0x1F00 and
       wall_route.waypoints[2].x == 0x3100 and
       wall_route.waypoints[2].y == 0x1F00,
-      "host waypoint policy finds a clear parallel corridor in the synthetic wall [H]")
+      "0x14854 tries the source -Y side first for a zero minor delta [C/H]")
+local positive_y_side_route = R.choose_obstruction_waypoint(
+    0x2000, 0x2000, 0x3000, 0x2100, wall_path_clear)
+check(positive_y_side_route ~= nil and
+      positive_y_side_route.side == 1 and
+      positive_y_side_route.waypoints[1].y == 0x2300,
+      "0x148D2 selects +Y first when the horizontal target is south [C/H]")
 check(R.choose_obstruction_waypoint(
           0x2000, 0x2000, 0x3000, 0x2000,
           function() return true end) == nil,
@@ -1079,7 +1086,45 @@ local vertical_route = R.choose_obstruction_waypoint(
 check(vertical_route ~= nil and vertical_route.side == -1 and
       vertical_route.waypoints[1].x == 0x1F00 and
       vertical_route.waypoints[2].x == 0x1F00,
-      "host waypoint policy detours a vertical path along the other axis [H]")
+      "0x148D2 uses its -X default for a vertical path with zero X delta [C/H]")
+local horizontal_wall_path_clear = function(from_x, from_y, to_x, to_y)
+    if from_y == to_y then
+        if from_y ~= 0x2800 then return true end
+        return math.max(from_x, to_x) < 0x1F80 or
+            math.min(from_x, to_x) > 0x2080
+    end
+    local crosses_wall =
+        (from_y <= 0x2800 and to_y >= 0x2800) or
+        (to_y <= 0x2800 and from_y >= 0x2800)
+    if not crosses_wall then return true end
+    local portion = (0x2800 - from_y) / (to_y - from_y)
+    local crossing_x = from_x + (to_x - from_x) * portion
+    return crossing_x < 0x1F80 or crossing_x > 0x2080
+end
+local positive_x_side_route = R.choose_obstruction_waypoint(
+    0x2000, 0x2000, 0x2100, 0x3000, horizontal_wall_path_clear)
+check(positive_x_side_route ~= nil and
+      positive_x_side_route.side == 1 and
+      positive_x_side_route.waypoints[1].x == 0x2300,
+      "0x148D2 selects +X first when the vertical target is east [C/H]")
+local tied_axis_route = R.choose_obstruction_waypoint(
+    0x2000, 0x2000, 0x3000, 0x3000,
+    function(from_x, from_y, to_x, to_y)
+        if from_x == 0x2000 and from_y == 0x2000 and
+           to_x == 0x3000 and to_y == 0x3000 then
+            return false
+        end
+        return (from_x == 0x2000 and from_y == 0x2000 and
+                to_x == 0x2100 and to_y == 0x2300) or
+            (from_x == 0x2100 and from_y == 0x2300 and
+             to_x == 0x3100 and to_y == 0x2300) or
+            (from_x == 0x3100 and from_y == 0x2300 and
+             to_x == 0x3000 and to_y == 0x3000)
+    end)
+check(tied_axis_route ~= nil and
+      tied_axis_route.waypoints[1].x == 0x2100 and
+      tied_axis_route.waypoints[1].y == 0x2300,
+      "0x148D2 keeps X as the major axis on a diagonal tie [C/H]")
 local alternate_side_route = R.choose_obstruction_waypoint(
     0x2000, 0x2000, 0x3000, 0x2000, wall_path_clear,
     { side = -1, origin_cell_x = 0x2100, origin_cell_y = 0x2100 })
