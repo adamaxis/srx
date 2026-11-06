@@ -863,6 +863,37 @@ local function current_world_target(context, state)
     return nil
 end
 
+local function current_obstruction_target(context, state)
+    local target = current_world_target(context, state)
+    if target ~= nil then
+        return target
+    end
+
+    -- ROM 0x142AE places ordinary source patrol waypoints in the same
+    -- +0x96/+0x98 movement target used by 0x145A2. Their stable actor ID maps
+    -- to extracted route data; keep that target in Lua state rather than
+    -- requiring the dynamic-combat target-candidate interface.
+    if not ActorPatrolRoutes.has_route(context.actor_id) then
+        return nil
+    end
+    local route_target = state.ai_route_target
+    if type(route_target) ~= "table" or
+       type(route_target.x) ~= "number" or
+       type(route_target.y) ~= "number" then
+        return nil
+    end
+    return {
+        id = "patrol-route:" .. tostring(state.ai_waypoint_index or 0),
+        world_x = route_target.x,
+        world_y = route_target.y,
+    }
+end
+
+local function obstruction_routing_available(context)
+    return context.dynamic_world_encounter_actor == true or
+        ActorPatrolRoutes.has_route(context.actor_id)
+end
+
 local function measure_and_store_destination(context, state, x, y)
     if type(context.measure_destination) ~= "function" then
         return false
@@ -884,11 +915,11 @@ end
 
 local function apply_obstruction_waypoint(context, state, movement_state)
     local route = state.obstruction_route
-    if context.dynamic_world_encounter_actor ~= true or
+    if not obstruction_routing_available(context) or
        type(route) ~= "table" or type(route.waypoints) ~= "table" then
         return false
     end
-    local target = current_world_target(context, state)
+    local target = current_obstruction_target(context, state)
     if target == nil or target.id ~= route.target_id or
        navigation_cell_center(target.world_x) ~= route.target_cell_x or
        navigation_cell_center(target.world_y) ~= route.target_cell_y then
@@ -947,10 +978,10 @@ local function apply_obstruction_waypoint(context, state, movement_state)
 end
 
 local function plan_obstruction_waypoint(context, state, movement_state)
-    if context.dynamic_world_encounter_actor ~= true then
+    if not obstruction_routing_available(context) then
         return false
     end
-    local target = current_world_target(context, state)
+    local target = current_obstruction_target(context, state)
     if target == nil then
         return false
     end

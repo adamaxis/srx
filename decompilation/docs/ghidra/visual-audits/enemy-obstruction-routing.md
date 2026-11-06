@@ -41,17 +41,27 @@ image dump defends the visible result.
   records that source boundary in
   [field-enemy-stacking-trace.md](field-enemy-stacking-trace.md). This change
   leaves target selection and line-of-sight policy intact.
+- [C] Obstruction routing is not limited to dynamic encounters. `0x142AE`
+  loads a default patrol actor's next `+0xE0` waypoint into `+0x96/+0x98`;
+  after a blocked shared movement pass, `0xBB66` marks `+0xB8=-1`, and
+  `0x145A2 -> 0x14BA6` takes the negative-state branch at `0x14BF8` into
+  `0x14682`. These are ordinary source actor records using the same terrain
+  route selector.
 
 ## Host implementation
 
 Lua stores a target-linked list of typed world waypoints in the actor's
-existing `game.actors[actor_id]` state. On a fresh blocked dynamic-actor
-movement step, it checks the first D7 (dominant-axis) neighbor. When clear,
-that one typed waypoint is queued. When blocked, it scans D6 (the signed
-minor axis), then the opposite direction, and queues the first clear minor
-candidate plus its clear D7 neighbor. Each candidate leg uses the typed
-source-cell corridor query. It advances the waypoint index as the actor enters
-each waypoint cell and measures the live target again when the route ends.
+existing `game.actors[actor_id]` state. On a blocked movement reset, it uses
+the live target candidate for a dynamic actor or the current Lua-owned
+`ai_route_target` for an actor with extracted patrol-route data. The route
+target remains identified by the actor and patrol cursor; Lua does not expose
+the source record's `+0x96/+0x98` fields. It checks the first D7
+(dominant-axis) neighbor. When clear, that one typed waypoint is queued. When
+blocked, it scans D6 (the signed minor axis), then the opposite direction,
+and queues the first clear minor candidate plus its clear D7 neighbor. Each
+candidate leg uses the typed source-cell corridor query. It advances the
+waypoint index as the actor enters each waypoint cell and measures the live
+target again when the route ends.
 When a queued segment becomes blocked, ROM `0x149C0 -> 0x149CE ->
 0x14756` clears the two route flags. The next `0x14682` selection derives its
 route again from live position and target; the source does not retain a prior
@@ -119,8 +129,9 @@ fidelity.
   clear direct path, sealed corridor, heading-oriented strip fallback
   including an opening at depth six, last-open-cell retention, live-position
   replan, failed-replan cleanup, target-linked route state, waypoint
-  advancement, and target reacquisition. These mocks validate the typed
-  policy, not imported occupancy or an independent Genesis route.
+  advancement, target reacquisition, and a blocked default patrol route using
+  `field_scene_20_actor_0`. These mocks validate the typed policy, not imported
+  occupancy or an independent Genesis route.
 - `shadowrun_gameplay_script_runtime_qa`: verifies the Lua planner uses the
   typed source-cell corridor callback through the C++ binding for both
   candidate legs and an active queued route.
@@ -132,5 +143,8 @@ fidelity.
   gameplay Lua suites, script-runtime binding, actor AI rules, world activity,
   and field-barrier collision. The separate `equiv_heartbeat` output remains
   informational and reports its documented pre-split mismatches.
+- After adding default-patrol routing coverage, Debug and Release
+  `shadowrun_gameplay_actor_ai_rules_qa` and
+  `shadowrun_gameplay_script_runtime_qa` both pass headlessly.
 - No route-specific scene `actual.bmp` was produced for this shared movement
   mechanism, so the obstruction-routing hill remains partial.

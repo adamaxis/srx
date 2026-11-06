@@ -1729,6 +1729,46 @@ if obstruction_state.obstruction_route ~= nil then
           "route queue completion reacquires the live target heading [C: 0x149C0]")
 end
 
+-- ROM 0x142AE advances source default patrol targets through +0x96/+0x98.
+-- A blocked normal movement pass sets +0xB8=-1 at 0xBB66; the shared
+-- 0x14BA6 axis service then enters 0x14682 without a dynamic-encounter gate.
+local patrol_route_query_calls = 0
+local patrol_previous_path_query = game.movement.source_path_is_clear
+game.movement.source_path_is_clear = function(from_x, from_y, to_x, to_y)
+    patrol_route_query_calls = patrol_route_query_calls + 1
+    return two_cell_bypass_path_clear(from_x, from_y, to_x, to_y)
+end
+local patrol_obstruction_context = movement_fixture(false)
+patrol_obstruction_context.actor_id = "field_scene_20_actor_0"
+patrol_obstruction_context.movement_state.position_x = 0x2000
+patrol_obstruction_context.movement_state.position_y = 0x2000
+patrol_obstruction_context.measure_destination = function(x, y)
+    return { bearing_degrees = x == 0x3000 and y == 0x2000 and 45 or 315,
+        distance = 0x500, step_cost = 0x300 }
+end
+local patrol_obstruction_state = {
+    ai_route_target = { x = 0x3000, y = 0x2000 },
+    ai_waypoint_index = 4,
+    movement_bearing_degrees = 22.5,
+    movement_current_bearing_degrees = 22.5,
+    movement_route_distance = 0x1000,
+}
+local patrol_reset_step = R.reset_blocked_movement(
+    patrol_obstruction_context, patrol_obstruction_state,
+    patrol_obstruction_context.movement_state)
+check(patrol_reset_step ~= nil and
+      patrol_obstruction_state.obstruction_route ~= nil and
+      patrol_obstruction_state.obstruction_route.target_id == "patrol-route:4" and
+      patrol_route_query_calls > 0,
+      "blocked source patrol movement routes toward its current ROM waypoint [C: 0x142AE, 0xBB66, 0x14BA6, 0x14682]")
+local patrol_next_step = R.advance_entity_movement(
+    patrol_obstruction_context, patrol_obstruction_state)
+check(patrol_next_step ~= nil and patrol_next_step.outcome == "accepted" and
+      patrol_obstruction_state.obstruction_route ~= nil and
+      patrol_obstruction_state.obstruction_route.index == 1,
+      "source patrol detours remain active through the shared movement pass [C: 0x149C0]")
+game.movement.source_path_is_clear = patrol_previous_path_query
+
 -- A clear 0x14914 source corridor drops an existing route before its
 -- waypoint is consumed and resumes movement toward the live target.
 local source_path_query_calls = 0
