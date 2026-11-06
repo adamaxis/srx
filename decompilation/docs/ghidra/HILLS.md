@@ -1815,12 +1815,15 @@ selectors, while the directional C082 spell assets follow Thon's target
 heading. Lua's `0x13A4C` period path selects the linked party runner and pose.
 Debug/Release `shadowrun_ghidra_conversion_qt_field_scene55_thon_actor_qa`
 checks all three source rows and record slots, visible actors, Thon's target,
-and C082 selector, then writes `scene55-spawn.bmp` and `actual.bmp` under
-`qt_runtime/field-scene55-thon-actor-qa`. Both builds and the actor-focused
-regression set pass; the inspected captures are internal renderer outputs,
-not independent Genesis images. The `0x13A4C` clear-line branch now calls the
-typed `0x1033E` spell resolver and queues the linked target's delayed `0x15830`
-effect; blocked-line and failed-roll branches retain the C082 pose without
+and C082 selector. The timing check captures the spell pose during its
+58 actor-service-pass `+0xDC` delay (`0xABFC`, decremented by `0xA8EA`), then
+verifies the next pass returns to idle without moving Thon. The Debug and
+Release route cases pass and write `scene55-spawn.bmp`, `actual.bmp`, and
+`spell-complete.bmp` under `qt_runtime/field-scene55-thon-actor-qa`. The
+inspected captures are internal renderer outputs, not independent Genesis
+images. The `0x13A4C` clear-line branch now calls the typed `0x1033E` spell
+resolver and queues the linked target's delayed `0x15830` effect; blocked-line
+and failed-roll branches retain the C082 pose without
 reserving a target effect. `FFE186 == 3` returns before the line probe, then
 keeps the same pose path. Debug/Release `shadowrun_gameplay_script_runtime_qa`
 uses the Scene-55 Thon template's combat facts to check a successful applied

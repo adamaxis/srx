@@ -21874,10 +21874,13 @@ int run_field_scene55_thon_actor_qa(
         return 3;
     }
 
-    // FFE188 starts cleared at scene load and the ROM reloads Thon's shared
-    // eight-tick period at 0x13A66. The 0x13A4C path aims via 0xAE6E and sets
-    // C082 via 0xAF7C/0xAFAE; it does not enter route movement at 0x13D0C [C].
-    for (std::size_t frame = 0U; frame < 60U; ++frame) {
+    // FFE188 starts cleared at scene load; 0x13A66 reloads Thon's shared
+    // eight-tick period. 0x13A4C aims via 0xAE6E and installs C082 through
+    // 0xAF7C/0xAFAE, which reload +0xDC via 0xABFC; 0xA8EA consumes the delay
+    // once per actor-service pass. This path does not enter route movement at
+    // 0x13D0C [C].
+    // Sample after the 58th active C082 pass; the next pass consumes +0xDC.
+    for (std::size_t frame = 0U; frame < 59U; ++frame) {
         field_scene.advance_frame();
     }
     const auto target = field_scene.default_actor_ai_target_id_for_dump(0U);
@@ -21910,6 +21913,25 @@ int run_field_scene55_thon_actor_qa(
                   << " animation="
                   << field_scene.default_actor_animation_id_for_dump(0U)
                          .value_or("<none>")
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+    field_scene.advance_frame();
+    const auto completed_positions =
+        field_scene.active_default_actor_positions_for_dump();
+    const auto completed_animation =
+        field_scene.default_actor_animation_id_for_dump(0U);
+    const auto completed = render_qa_field(field_scene);
+    if (completed_animation != std::optional<std::string>{"idle"} ||
+        completed_positions.size() != kSourcePositions.size() ||
+        completed_positions[0].x != kSourcePositions[0].x ||
+        completed_positions[0].y != kSourcePositions[0].y ||
+        completed.isNull() ||
+        !completed.save(QString::fromStdWString(
+            (output / "spell-complete.bmp").wstring()))) {
+        std::cerr << "Scene-55 Thon QA: C082 delay did not return to idle "
+                     "without moving Thon animation="
+                  << completed_animation.value_or("<none>")
                   << " failure=" << field_scene.failure() << '\n';
         return 3;
     }
