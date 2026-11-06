@@ -621,7 +621,9 @@ end
 -- ROM 0x14902 groups world coordinates in 0x200-unit cells. Lua retains
 -- ordinary world positions and a short typed waypoint list, not FF1700 data.
 local NAVIGATION_CELL_SIZE = 512
--- [H] Bound the host corridor search to the source grid's 64-cell dimension.
+-- ROM 0x14902 stores each X cell in the low six index bits and advances Y
+-- rows by 0x40 cells. A host scan cannot cross more than one source-grid row
+-- or column; the active scene's collision service supplies the tighter edge.
 local NAVIGATION_MAX_CELLS = 64
 local navigation_cardinal_offsets = {
     north = { x = 0, y = -1 },
@@ -702,10 +704,12 @@ local function choose_obstruction_waypoint(
         end
     end
 
-    -- ROM 0x14AF4 retries short open strips from the actor's current heading,
-    -- rotating its cardinal search order after each miss. Keep that policy
-    -- as named directions and host world positions: Lua stores one waypoint
-    -- and the typed terrain service checks the candidate cells. [C]/[H]
+    -- ROM 0x14AF4 retries five heading-rotated strips. Each 0x14800 scan
+    -- advances one primary cell until the map edge or a blocked primary cell;
+    -- five is the number of direction pairs, not a five-cell depth limit.
+    -- Keep that policy as named directions and host world positions: Lua
+    -- stores one waypoint and typed terrain queries check candidate segments.
+    -- Direction order and scan bounds are [C]; host geometry remains [H].
     local heading_octant = type(source_heading) == "number" and
         Bearing.octant(source_heading, false) or nil
     local facing_octant = heading_octant ~= nil and
@@ -720,7 +724,7 @@ local function choose_obstruction_waypoint(
             local secondary_direction =
                 navigation_cardinal_offsets[
                     cardinal_by_octant[secondary_octant]]
-            for cell_depth = 1, 5 do
+            for cell_depth = 1, NAVIGATION_MAX_CELLS do
                 local waypoint_x = origin_cell_x +
                     primary_direction.x * cell_depth * NAVIGATION_CELL_SIZE
                 local waypoint_y = origin_cell_y +

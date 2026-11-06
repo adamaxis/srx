@@ -1084,6 +1084,23 @@ check(rotated_heading_strip_route ~= nil and
       rotated_heading_strip_route.waypoints[1].x == 0x1F00 and
       rotated_heading_strip_route.waypoints[1].y == 0x2100,
       "0x14AF4 rotates to the next open strip after its first direction is blocked [C]")
+local deep_heading_strip_route = R.choose_obstruction_waypoint(
+    0x2000, 0x2000, 0x3000, 0x2000,
+    function(from_x, from_y, to_x, to_y)
+        if from_x == 0x2000 and from_y == 0x2000 and
+           to_x == 0x2100 and to_y <= 0x1F00 and to_y >= 0x1500 and
+           (0x2100 - to_y) % 0x200 == 0 then
+            return true
+        end
+        return from_x == 0x2100 and from_y == 0x1500 and
+            to_x == 0x2300 and to_y == 0x1500
+    end,
+    nil, 0)
+check(deep_heading_strip_route ~= nil and
+      deep_heading_strip_route.strategy == "heading_oriented_strip" and
+      deep_heading_strip_route.waypoints[1].x == 0x2100 and
+      deep_heading_strip_route.waypoints[1].y == 0x1500,
+      "0x14800 scans past five blocked adjacent cells before 0x14AF4 accepts the sixth [C]")
 
 movement_bearing_case(337.5, 7, true,
     "enemy B574/C062 truncates 0xF000 with THINK clear to direction 7 / selector 0x3C [C]")
