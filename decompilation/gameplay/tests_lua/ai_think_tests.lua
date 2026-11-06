@@ -202,6 +202,49 @@ check(field_actor_profile ~= nil and field_actor_state ~= nil and
       detached_actor_state.movement_current_bearing_degrees == nil,
       "source patrol movement starts only for a live field actor [C]")
 
+-- ROM 0x44BC seeds +0xB6 in the range 0..15; 0x13904 decrements it and
+-- enters its behavior dispatch on the same pass that the result becomes
+-- negative. The Lua bootstrap call creates state before the first behavior
+-- service, so the first thought must occur on service pass delay+1 [C].
+local previous_heartbeat_think = R.think
+for _, delay_case in ipairs({ 0, 1, 15 }) do
+    local delay_actor_id = "pedestrian.startup_delay." .. delay_case
+    local delay_context = {
+        actor_id = delay_actor_id,
+        profile_id = "pedestrian_k0b_none00",
+        visual_profile_id = E.ActorVisualProfile.PEDESTRIAN_RAT_SHAMAN,
+        action_kind = R.ActionKind.none,
+        initial_bearing_degrees = 0,
+        entry_delay = delay_case,
+        source_actor_has_waypoint_data = true,
+        live_field_actor = true,
+        actor_facts = actor_facts({ roles = { pedestrian = true } }),
+        phase = "behavior",
+        spawn = true,
+    }
+    local initialized = ActorAI.heartbeat(delay_context)
+    delay_context.spawn = false
+    local think_count = 0
+    local first_think_pass
+    R.think = function()
+        think_count = think_count + 1
+        return true
+    end
+    local service_result
+    for service_pass = 1, delay_case + 1 do
+        service_result = ActorAI.heartbeat(delay_context)
+        if first_think_pass == nil and think_count ~= 0 then
+            first_think_pass = service_pass
+        end
+    end
+    R.think = previous_heartbeat_think
+    check(initialized ~= nil and service_result ~= nil and
+          first_think_pass == delay_case + 1,
+          string.format(
+              "0x13904 enters the first due think on pass %d for +0xB6=%d [C]",
+              delay_case + 1, delay_case))
+end
+
 local world_due, runner_due = R.should_rebuild_target_lists(
     E.AiTuning.WORLD_TARGET_LIST_PHASE, 0)
 check(world_due and not runner_due,

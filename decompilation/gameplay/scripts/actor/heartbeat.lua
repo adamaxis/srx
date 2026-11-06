@@ -357,17 +357,18 @@ function ActorAI.heartbeat(context)
             state.movement_step = nil
             if profile.dynamic_encounter_only or profile.source_profile_patrol then
                 if not state.transition_complete then
-                    -- Source-profile list actors and dynamic encounters wait
-                    -- on the seeded +0xB6 behavior delay before 0x13904
-                    -- starts their patrol or target policy.
+                    -- 0x13904 subtracts the seeded +0xB6 delay. When it
+                    -- becomes negative, the source reloads +0x14 and continues
+                    -- into behavior on that same actor-service pass [C].
                     state.transition_started = true
-                    if state.entry_delay == 0 then
+                    if state.entry_delay > 0 then
+                        state.entry_delay = state.entry_delay - 1
+                    else
                         state.transition_complete = true
                         state.behavior_timer = 0
-                    else
-                        state.entry_delay = state.entry_delay - 1
                     end
-                else
+                end
+                if state.transition_complete then
                     local think_handled, think_audio_event =
                         R.think(state, context)
                     if think_audio_event ~= nil then

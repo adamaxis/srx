@@ -143,13 +143,16 @@ check(alarm_result ~= nil and
       state.actor_facts.roles.despawn_offscreen == true,
       "0x1E09A promotes the reinforcement to off-window retirement [C]")
 
--- The first service completes the entry delay; the next due 0x13904 think
--- starts +0xB6 at 0x14. The following off-window thought is due on pass 21.
+-- With +0xB6 seeded to zero, 0x13904 decrements it below zero and enters
+-- behavior on the first service pass. That due thought loads +0x14; the next
+-- service pass counts it down once [C: 0x13904].
 local entered = run_phase(context, "behavior", true)
+local first_thought_timer = state.behavior_timer
 local thought = run_phase(context, "behavior", true)
 check(entered ~= nil and thought ~= nil and
-      state.behavior_timer == E.AiTuning.THINK_FRAMES,
-      "source think period starts at E.AiTuning.THINK_FRAMES [C: 0x13904]")
+      first_thought_timer == E.AiTuning.THINK_FRAMES and
+      state.behavior_timer == E.AiTuning.THINK_FRAMES - 1,
+      "0x13904 starts +0x14 on the first due pass [C]")
 
 local seed = 0x0437
 local function source_random(bound)

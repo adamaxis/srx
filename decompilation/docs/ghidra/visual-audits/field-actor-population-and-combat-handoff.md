@@ -1,17 +1,18 @@
 # Field actor population and combat handoff audit
 
-**Status:** ROM population, initial behavior entry, direction, animation,
-action/item codes, sound-request paths, and the seven-record ordinary actor
-allocation limit are traced for profile-selected actors in scenes 2 and
+**Status:** ROM population, initial idle state, first-think delay, direction,
+action/item codes, down-state sound requests, and the seven-record ordinary
+actor allocation limit are traced for profile-selected actors in scenes 2 and
 `0x14`. Lua selects a package by stable source-template profile ID and the
-ROM-seeded item/spell/none action class and code; native C++ presents its
-finite entry animation. In the scene-`0x14` default-list QA route, only the
-first seven of eight rows become active. New Game bootstrap does not activate
-the scene-2 profile list. The scene-`0x14` mode-1 post-entry completion branch
-is now source-traced and checked for a no-spawn result; general post-entry
-behavior, pending-list occupancy, the paired effect-slot pool, actor movement,
-interaction, collision targets, hits, status, and damage are not implemented.
-`LOADOUT-01` remains partial.
+ROM-seeded item/spell/none action class and code; the host renders the returned
+idle, walk, or action state. The initial `+0xB6` delay gates behavior, not a
+spawn animation. `0xC0B2` is selected by the zero-meter behavior transition at
+`0xB330`. In the scene-`0x14` default-list QA route, only the first seven of
+eight rows become active. New Game bootstrap does not activate the scene-2
+profile list. The scene-`0x14` mode-1 zero-meter completion branch is
+source-traced, but the physical-entry route does not exercise it; general AI,
+obstacle avoidance, actor interaction, collision targets, hits, status, and
+damage remain partial. `LOADOUT-01` remains partial.
 
 ## Source path
 
@@ -541,29 +542,42 @@ line 3 for pedestrians. `0x44BC` copies that template word to entity byte
 `+0x2C`; it is separate from `0x600E`'s selector and frame-index words at
 `+0x16` and `+0x1E`. The profile overrides touch `+0x2E` or `+0x9E`, not
 those animation words, so the state-zero frame choice is supported at
-initialization. Those overrides may affect later live behavior that this
-initial transition slice does not implement.
+initialization.
 
-The entry behavior is separate from ordinary directional walking. `0xA8EA`
-services the default records before the field camera and render pass;
-`0xAC84` sends records with the default behavior flags through `0x13904`.
-For the supported default-record path, `0x13904` subtracts the initial
-`+0xB6` delay (the low nibble of the source PRNG result, 0 through 15), then
-checks the zero `+0x16` animation selector and zero `+0x9C` state. It sets the
-entry flag and calls `0xB330`. `0xB330` requests the kind-indexed cue from
-`0xB05E`, selects the directional C0B2 list, and resets the animation state.
-Kind 5 requests event `0x2E`; kind 11 requests `0x2F`. The audio tables map
-these to silent table-2 slots 46 and 47, so the source makes a request but no
-audible sample or playback duration is defined for either cue.
+### Default-list startup idle and behavior cadence
 
-The selected C0B2 lists for the used directions are finite two-frame lists
-(`0x8002` marker, `0x0200` increment, `0x1000` period). The initial idle
-increment contributes a `-16` accumulator carry on the activation frame;
-then each transition pose remains for nine field updates. The final pose stays
-selected while the 20-count behavior timer is serviced; the next zero check
-completes on the 21st update after activation. This covers only the observed
-initial transition. `0xAB02` and later action, movement, collision, and damage
-branches remain outside the Lua heartbeat slice.
+`0x44BC` copies the actor template's physical and mental meters to live
+`+0x4C` and `+0x9C`, sets the ordinary service byte `+0x10=0x05`, and installs
+the selected route pointer at `+0xE0` (`0x44D8..0x44EA`, `0x450A`,
+`0x45AE..0x45B2`). It seeds `+0xB6` from the source PRNG low nibble at
+`0x45C6..0x45E0`, giving an initial value from 0 through 15 [C]. `0xA8EA`
+routes ordinary service records through `0xAC84`; its clear `+0x10` bit 3
+selects `0x13904` (`0xAC84..0xAC9E`).
+
+`0x13904` decrements `+0xB6`. A nonnegative result returns; once the result is
+negative and the shared think token is free, the routine reloads `+0x14` and
+continues into the actor behavior dispatch in that same service pass
+(`0x13904..0x13920`). Thus `+0xB6` is an initial AI scheduling delay, and later
+thoughts are 21 actor-service passes apart. Lua's `entry_delay` and
+`transition_complete` are host names for this timer gate; they do not denote
+an image transition. For the Scene-2 pedestrian template `0x1D6988`, the
+extracted physical and mental meters are both 10, so the actor does not take
+the zero-meter path at startup.
+
+The default actor record begins in the idle state: its active continuation
+`0xB45C` selects the directional `0xC052` state and evaluates the initial
+collision (`0xB45C..0xB48C`). Route movement is selected later through
+`0x142AE` and `0x145A2`, which installs the `0xB574` movement continuation.
+This is ordinary idle-to-walk behavior, not a finite spawn sequence [C].
+
+`0xB330` is reached from the `0xA8EA` zero-`+0x9C` or zero-`+0x4C` branches
+(`0xA94A..0xAA4C`, `0xA978..0xAA4C`, `0xAA02..0xAA4C`). It requests the
+kind-indexed cue from `0xB05E`, selects the directional `0xC0B2` list, and
+resets the animation state (`0xB330..0xB388`). Kind 5 requests event `0x2E`;
+kind 11 requests `0x2F`. The audio tables map these to silent table-2 slots 46
+and 47. This cue and the `0xC0B2` down-state frames belong to the zero-meter
+behavior transition, not normal actor startup. The current default-list
+physical-entry QA keeps both meters nonzero and does not exercise this branch.
 
 The offline actor table now gives each active record a stable Lua profile ID
 built from the source template name, entity kind, action-table class, and
@@ -577,15 +591,15 @@ initial delay, and source heading to `gameplay/scripts/actor/heartbeat.lua`. Lua
 selects the `corp_guard_k05_item06` package for the kind-5 guard and
 `pedestrian_k0b_none00` for the kind-11 pedestrian. The guard package binds
 item 6 (Max-Power / Heavy Pistol); the pedestrian has no active item action.
-Each actor now receives a Lua heartbeat on each field behavior-service pass.
-The script owns the entry delay, directional C0B2 choice, two-frame timer,
-terminal hold, and cue request; C++ stores only the latest returned pose for
-rendering and forwards the cue to the audio host. This replaces the prior
-`FieldActorBehaviorState` C++ timer/animation implementation for this entry
-branch. Combat targeting, attack decisions, actual NPC weapon firing,
-collision outcomes, and damage are not implemented by these profiles yet. Lua
-route movement is enabled for default-list records with extracted waypoint
-data; other NPC movement and collision branches remain open.
+Each actor receives a Lua heartbeat on each field behavior-service pass. Lua
+owns the initial think delay, first due behavior pass, route policy, and
+animation state. The ordinary initial pose is the source idle state; C++ stores
+the latest returned pose for rendering. This replaces the prior
+`FieldActorBehaviorState` C++ timer/animation implementation. Combat targeting,
+attack decisions, actual NPC weapon firing, collision outcomes, and damage are
+not implemented by these profiles yet. Lua route movement is enabled for
+default-list records with extracted waypoint data; other NPC movement and
+collision branches remain open.
 
 The existing field entity catalog is not these actors: the importer currently
 decodes the live Joshua template at `0x7291A` (kind 3). `0x4658` updates the
@@ -600,13 +614,12 @@ The offline `shadowrun_graphics_extract --all-assets` step writes
 `0x172D1C` and `0x1D91DA`. It preserves list order, world position,
 template/position/list provenance, source-derived Lua profile ID, item/spell/
 none action class and code, palette line, source heading, and ordered
-overrides. It writes individually named idle
-images and two C0B2 transition frames for each kind and direction used by
-these lists. Scene 2 uses direction
-0; scene `0x14` also uses directions 2 and 6 because source-order records 3 and
-4 override heading at `+0x2E`. Images preserve signed descriptor origins and
-are direct assets consumed by the runtime; no ROM or VDP state is used at
-runtime.
+overrides. It writes individually named idle images and the two-frame C0B2
+down-state lists for each kind and direction used by these records. Scene 2
+uses direction 0; scene `0x14` also uses directions 2 and 6 because source-order
+records 3 and 4 override heading at `+0x2E`. Images preserve signed descriptor
+origins and are direct assets consumed by the runtime; no ROM or VDP state is
+used at runtime.
 
 The runtime population is never inferred from gameplay-video frames. The
 extracted rows are ROM list entries with named `corp_guard` or `pedestrian`
@@ -626,12 +639,12 @@ no profile actors on the opening street. On an actual scene change,
 Lua instance by stable scene/source-order ID. Each field behavior-service pass
 calls Lua once per active profile actor. The compositor sorts actors by
 effective Y depth with source order as the stable tie-break, draws the
-Lua-selected idle or transition frame, then redraws the shared HUD. The
-The scene-`0x14` physical-entry QA now runs against this Lua ownership path.
-It captures entry, transition, and post-entry frames, and checks Lua actor
-snapshots, audio requests, full-screen UI state, and visible guard pixels at
-each named checkpoint. Those internal Debug/Release captures establish
-renderer consistency only; they are not an independent Genesis visual golden.
+Lua-selected idle, walk, action, or down-state frame, then redraws the shared
+HUD. The scene-`0x14` physical-entry QA runs against this Lua ownership path.
+It captures the initial idle state and later think-delay checkpoints, and
+checks actor snapshots, audio requests, full-screen UI state, and visible guard
+pixels. Those internal Debug/Release captures establish renderer consistency
+only; they are not an independent Genesis visual golden.
 
 The dedicated C++ `FieldActorBehaviorState` and its test target have been
 removed. The broader AI source trace, exact call cadence, animation/render
@@ -693,35 +706,36 @@ result, and its entity-population callback remains an explicit source
 boundary. The coordinator's current `field_mode` value comes from the scene
 resource mode, so it cannot stand in for `FFFBF9`. Separately, the two
 profile-selected default lists at `0x172D1C` and `0x1D91DA` are extracted as
-named typed data and their state-zero and initial-transition images are drawn
+named typed data and their state-zero idle and down-state images are drawn
 by the live Qt field compositor. That presentation does not allocate or update
 the ROM's live entity records. Keep special list `0x1E552` separate until an
 actual event path selects it.
 
-## Scene-`0x14` post-entry completion branch
+## Scene-`0x14` zero-meter transition completion branch
 
-The source path after the two-frame transition is not a generic idle callback.
-`0xA8EA` reaches `0xAB02` from five completion branches. For these default-list
-actors, the initialized service byte at `+0x10` is `0x05`, so bit 3 is clear
-and `0xAB02` calls `0x16B98`. The weighted-spawn routine first handles special
-kind 7/12/13 cases; for ordinary kinds it admits only world modes 0 and 2.
-The scene-`0x14` route is world mode 1 (`0x1684C`), so `0x16B98` returns before
-checking projection capacity, selecting a random table row, or creating an
-additional scene entity. Control returns to `0xAB02`, which sets service bit 6
-on the completing actor. The spawn countdown and deferred-activity path only
-run if the spawned record returns `+0x9E` bit 6; this route does not set that
-bit. The linked-record propagation and field activity countdown gates are
-also not activated by these default records. In particular, completion does
-not request the entry sound a second time.
+When a default-list actor reaches zero in `+0x9C` or `+0x4C`, `0xA8EA` enters
+`0xB330`; the selected C0B2 list then reaches the completion path. The
+`0xA9CC..0xAA48` checks call `0xAB02` after that transition is active and its
+terminal frame is selected. For these default-list actors, the initialized
+service byte at `+0x10` is `0x05`, so bit 3 is clear and `0xAB02` calls
+`0x16B98`. The weighted-spawn routine first handles special kind 7/12/13
+cases; for ordinary kinds it admits only world modes 0 and 2. The scene-`0x14`
+route is world mode 1 (`0x1684C`), so `0x16B98` returns before checking
+projection capacity, selecting a random table row, or creating an additional
+scene entity. Control returns to `0xAB02`, which sets service bit 6 on the
+completing actor. The spawn countdown and deferred-activity path only run if
+the spawned record returns `+0x9E` bit 6; this route does not set that bit.
+The linked-record propagation and field activity countdown gates are also
+not activated by these default records. This is a source trace; physical-entry
+QA does not drive an actor meter to zero and does not exercise this branch.
 
-The Qt physical-entry QA advances the source behavior loop through ticks 41
-to 82 after the transition checkpoint at 40. At ticks 61 and 82 it confirms
-seven active profile actors, two visible guards, seven completed entry
-transitions, the guard transition frame still selected, unchanged entry cue
-counts, and no dialogue/shop/field prompt overlay. Two full-screen guard
-regions are pixel-identical to tick 40. This is evidence that the tested Qt
-route remains stable through the traced no-spawn branch; it does not establish
-general NPC idle, movement, attack, or independent-ROM visual fidelity.
+The scene-`0x14` physical-entry QA records `actor-animation.tsv` at frames 0,
+8, 30, 40, 61, and 82. It shows seven host think-delay gates started by frame
+8 and completed by frame 30, while guard directions 2 and 6 remain on their
+one-frame idle pose and the C0B2 cue counts stay at zero. Field captures also
+check visible guards and the absence of dialogue/shop overlays. These are
+internal Qt checks; they do not establish the zero-meter completion branch or
+independent-ROM visual fidelity.
 
 ## Visual verification questions
 
@@ -742,16 +756,16 @@ general NPC idle, movement, attack, or independent-ROM visual fidelity.
 3. **Are the visuals correct?** Named assets use the traced kind, selector,
    palette, descriptor, frame, and signed origin. The exact live projection
    slot assignment through `0x481E` remains unresolved.
-4. **Is it animated, and when?** Each active row has a delay of zero through
-   fifteen field updates;
-   each of two C0B2 frames lasts nine updates. The final frame
-   stays selected through the 21-update behavior check. The inactive eighth
-   row gets no behavior or render heartbeat. For this mode-1 route, the
-   completed transition's weighted-spawn branch returns without adding an
-   actor. Later actor states are still open.
-5. **Is there a sound effect, and how long?** Entry requests `0x2E` or `0x2F`
-   by actor kind. Both map to silent slots, so neither has audible playback
-   duration. Other actor sounds are unresolved.
+4. **Is it animated, and when?** Each active row has an initial behavior
+   delay of zero through fifteen passes. The source idle state remains
+   selected until movement or another behavior changes it; later think checks
+   are 21 actor-service passes apart. C0B2 is the zero-meter down-state list,
+   not a spawn sequence. The inactive eighth row gets no behavior or render
+   heartbeat.
+5. **Is there a sound effect, and how long?** The zero-meter C0B2 transition
+   requests `0x2E` or `0x2F` by actor kind. Both map to silent slots, so neither
+   has audible playback duration. The physical-entry QA leaves these cues
+   unrequested. Other actor sounds are unresolved.
 6. **Are the rest of the screen and state correct?** All 45 current full-screen
    route captures were reviewed at 320x224 across five contact sheets, with
    the two post-entry frames also inspected individually. Map, runner, HUD,
@@ -760,9 +774,9 @@ general NPC idle, movement, attack, or independent-ROM visual fidelity.
 7. **Do multiple frames support the interpretation?** The route includes
    entry and frames 8, 30, 40, 61, and 82, with matching typed state
    checkpoints; the actor-package trace records the seven source slots and
-   inactive eighth row. Frame 30 differs from entry; frame 40 reaches the
-   completed transition, and frames 61 and 82 retain the same guard regions
-   and cue counts. No same-scene Genesis visual golden is available.
+   inactive eighth row. The internal animation trace shows the idle pose held
+   while the think-delay gates open. No same-scene Genesis visual golden is
+   available.
 8. **Are new graphics drawn over stale UI?** Scene loading replaces the map;
    active actors draw in the map's entity pass; the HUD is redrawn afterwards.
    Full-screen routes confirm the previous panel and controls are gone. The
@@ -771,15 +785,15 @@ general NPC idle, movement, attack, or independent-ROM visual fidelity.
 
 ## Next implementation slice
 
-The named default-list data and the initial idle-to-C0B2 transition reach the
-Qt field compositor. Lua route patrol also runs for default-list actors with
-extracted waypoints; Scene 20 and Scene 40 guards now cover several `0x142AE`
-route-list paths. Continue with the other `0x13904` branches,
-post-transition `0xAB02`, the live `0x4658` record update, and kind-specific
-action dispatch. Keep actor targeting outside combat until collision, hit,
-damage, and retirement paths are traced and connected. The hill remains
-partial; exact independent Genesis captures for these scene actors are not
-identified.
+The named default-list data, source idle state, and first-think scheduling
+reach the Qt field compositor. Lua route patrol also runs for default-list
+actors with extracted waypoints; Scene 20 and Scene 40 guards now cover
+several `0x142AE` route-list paths. Continue with other `0x13904` branches,
+the zero-meter `0xB330`/`0xAB02` path, the live `0x4658` record update, and
+kind-specific action dispatch. Keep actor targeting outside combat until
+collision, hit, damage, and retirement paths are traced and connected. The
+hill remains partial; exact independent Genesis captures for these scene
+actors are not identified.
 
 ## Map-viewer actor population evidence
 
