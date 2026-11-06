@@ -644,12 +644,7 @@ local function navigation_cell_center(coordinate)
 end
 
 local function choose_obstruction_waypoint(
-    from_x, from_y, target_x, target_y, source_path_is_clear, source_heading)
-    if type(source_path_is_clear) ~= "function" or
-       source_path_is_clear(from_x, from_y, target_x, target_y) == true then
-        return nil
-    end
-
+    from_x, from_y, target_x, target_y, source_cell_is_clear, source_heading)
     local delta_x = target_x - from_x
     local delta_y = target_y - from_y
     local absolute_x = math.abs(delta_x)
@@ -661,8 +656,9 @@ local function choose_obstruction_waypoint(
     -- ROM 0x148D2 selects the greater target axis, with X on ties. D7 is the
     -- dominant direction; D6 is the minor direction (0x148CA defaults it to
     -- -Y for horizontal routes and -X for vertical routes). 0x148AA scans
-    -- along D7 and 0x146C8..0x146E2 queues the first step when that ray has an
-    -- open cell [C]. The caller uses D5 as its origin index, but 0x148D2
+    -- along D7 to the first occupied cell and returns the preceding open
+    -- cell; 0x146C8..0x146E2 queues that result [C]. The caller uses D5 as
+    -- its origin index, but 0x148D2
     -- writes abs(deltaX) to D5 at 0x148E8; this host uses the actor's typed
     -- current cell as the intended origin [H] pending an independent route
     -- trace that resolves that source register use.
@@ -705,33 +701,48 @@ local function choose_obstruction_waypoint(
         }
     end
 
-    -- 0x148AA walks the D7 ray until it finds an occupied cell. If the first
-    -- D7 neighbor is open, 0x146C8..0x146E2 queues that first step. The host
-    -- path query owns occupancy, so one typed adjacent-cell query captures
-    -- the route choice without exposing the source map array to Lua.
-    local major_x = origin_cell_x + major_direction.x * NAVIGATION_CELL_SIZE
-    local major_y = origin_cell_y + major_direction.y * NAVIGATION_CELL_SIZE
-    if inside_world(major_x, major_y) and
-       source_path_is_clear(from_x, from_y, major_x, major_y) == true then
-        return new_route({ { x = major_x, y = major_y } })
+    -- The caller reaches 0x14682 after a blocked movement pass. The selector
+    -- scans map cells directly; 0x14914 is only used later by 0x149C0 to
+    -- validate an already-active route. Keep those as separate host facts.
+    -- 0x148AA tests individual cells until nonzero, then returns the previous
+    -- cell (0x148B6..0x148C8).
+    if type(source_cell_is_clear) ~= "function" then
+        return nil
+    end
+    local last_open_major_x
+    local last_open_major_y
+    for cell_offset = 1, NAVIGATION_MAX_CELLS do
+        local major_x = origin_cell_x +
+            major_direction.x * cell_offset * NAVIGATION_CELL_SIZE
+        local major_y = origin_cell_y +
+            major_direction.y * cell_offset * NAVIGATION_CELL_SIZE
+        if not inside_world(major_x, major_y) or
+           source_cell_is_clear(major_x, major_y) ~= true then
+            break
+        end
+        last_open_major_x, last_open_major_y = major_x, major_y
+    end
+    if last_open_major_x ~= nil then
+        return new_route({ {
+            x = last_open_major_x,
+            y = last_open_major_y,
+        } })
     end
 
     -- With the first D7 step blocked, ROM 0x14854 scans D6, first in its
     -- signed direction and then in the opposite direction. It selects the
     -- first open D6 cell whose D7 neighbor is also open (0x14864..0x1487C),
-    -- and the caller queues that pair at 0x146FE..0x14702. The host query owns
-    -- occupancy; this bounded typed scan avoids exposing FF1700 or an
-    -- unbounded source-table walk to Lua. Bounds remain a host policy [H].
+    -- and the caller queues that pair at 0x146FE..0x14702. The typed cell
+    -- query keeps FF1700 and its source-grid storage out of Lua. Bounds remain
+    -- a host policy for these unchecked source probes [H].
     local function find_minor_bypass(direction)
-        local scan_x, scan_y = origin_cell_x, origin_cell_y
         for cell_offset = 1, NAVIGATION_MAX_CELLS do
             local candidate_x = origin_cell_x +
                 direction.x * cell_offset * NAVIGATION_CELL_SIZE
             local candidate_y = origin_cell_y +
                 direction.y * cell_offset * NAVIGATION_CELL_SIZE
             if not inside_world(candidate_x, candidate_y) or
-               source_path_is_clear(scan_x, scan_y,
-                                    candidate_x, candidate_y) ~= true then
+               source_cell_is_clear(candidate_x, candidate_y) ~= true then
                 return nil
             end
 
@@ -740,14 +751,12 @@ local function choose_obstruction_waypoint(
             local side_y = candidate_y +
                 major_direction.y * NAVIGATION_CELL_SIZE
             if inside_world(side_x, side_y) and
-               source_path_is_clear(candidate_x, candidate_y,
-                                    side_x, side_y) == true then
+               source_cell_is_clear(side_x, side_y) == true then
                 return new_route({
                     { x = candidate_x, y = candidate_y },
                     { x = side_x, y = side_y },
                 })
             end
-            scan_x, scan_y = candidate_x, candidate_y
         end
         return nil
     end
@@ -768,9 +777,9 @@ local function choose_obstruction_waypoint(
     -- advances one primary cell until the map edge or a blocked primary cell;
     -- five is the number of direction pairs, not a five-cell depth limit.
     -- Keep that policy as named directions and host world positions: Lua
-    -- stores one waypoint and the typed source-cell query checks candidate
-    -- segments. Direction order, scan bounds and the returned previous cell
-    -- when a strip ends are [C].
+    -- stores one waypoint and asks the typed map service about each candidate
+    -- cell. Direction order and returned previous cell are [C]; scan bounds
+    -- are a host policy [H].
     local function route_to_last_open_strip_cell(x, y)
         if navigation_cell_center(x) == origin_cell_x and
            navigation_cell_center(y) == origin_cell_y then
@@ -814,13 +823,11 @@ local function choose_obstruction_waypoint(
                     if route ~= nil then return route end
                     break
                 end
-                if source_path_is_clear(scan_from_x, scan_from_y,
-                                        waypoint_x, waypoint_y) ~= true then
+                if source_cell_is_clear(waypoint_x, waypoint_y) ~= true then
                     -- 0x14800 likewise returns the preceding primary cell
                     -- when that cell is occupied (0x1483A..0x14852) [C].
-                    -- The typed path query reports both occupied terrain and
-                    -- map-edge cells as blocked, so retain the last traversed
-                    -- cell instead of discarding this source fallback.
+                    -- Retain the last traversed cell rather than discarding
+                    -- this source fallback.
                     local route = route_to_last_open_strip_cell(
                         scan_from_x, scan_from_y)
                     if route ~= nil then return route end
@@ -833,8 +840,7 @@ local function choose_obstruction_waypoint(
                     secondary_direction.y * NAVIGATION_CELL_SIZE
                 if adjacent_x >= 0 and adjacent_x <= 0xFFFF and
                    adjacent_y >= 0 and adjacent_y <= 0xFFFF and
-                   source_path_is_clear(waypoint_x, waypoint_y,
-                                        adjacent_x, adjacent_y) == true then
+                   source_cell_is_clear(adjacent_x, adjacent_y) == true then
                     return {
                         waypoints = { { x = waypoint_x, y = waypoint_y } },
                         target_cell_x = target_cell_x,
@@ -988,7 +994,7 @@ local function plan_obstruction_waypoint(context, state, movement_state)
     local waypoint = choose_obstruction_waypoint(
         movement_state.position_x, movement_state.position_y,
         target.world_x, target.world_y,
-        game.movement.source_path_is_clear,
+        game.movement.source_cell_is_clear,
         -- ROM 0x14AF4 rotates from actor +0x34, the measured destination
         -- heading written at 0x145FC. +0x2E is the actor's current facing and
         -- may still be slewing toward that destination.

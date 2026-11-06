@@ -1,9 +1,9 @@
 # Enemy obstruction routing
 
-Status: **partial**. The active Lua path policy and the source-grid route
-query are implemented and covered by headless tests. Route selection has not
-been compared with an independent GPGX movement capture, and no field-scene
-image dump defends the visible result.
+Status: **partial**. The active Lua route policy uses typed path and map-cell
+queries and is covered by headless tests. Route selection has not been
+compared with an independent GPGX movement capture, and no field-scene image
+dump defends the visible result.
 
 ## Source behavior
 
@@ -14,11 +14,13 @@ image dump defends the visible result.
 - [C] `0x148D2` selects D7 as the greater absolute target axis, with X taking
   ties, and D6 as the signed minor axis. ROM words at `0x148CA` are
   `-0x40, +1, +0x40, -1`; they map zero minor deltas to -Y on horizontal
-  routes and -X on vertical routes. `0x148AA` scans along D7 until it finds
-  an occupied cell. If the first D7 neighbor is open, its caller queues that
-  first step (`0x146C8..0x146E2`). If it is occupied, `0x14854` scans D6,
-  tests each clear candidate's D7 neighbor, and retries from the origin in
-  the opposite D6 direction when the first scan fails (`0x14864..0x148A8`).
+  routes and -X on vertical routes. `0x148AA` scans along D7 until its first
+  occupied cell, backs up one D7 step, and returns the last open cell
+  (`0x148B6..0x148C8`). When that differs from D5, `0x146C8..0x146E2` queues
+  that returned cell; it does not queue only the first neighbor. If D7 is
+  blocked immediately, `0x14854` scans D6, tests each candidate cell and its
+  D7 neighbor, and retries from the origin in the opposite D6 direction when
+  the first scan fails (`0x14864..0x148A8`).
 - [C/H] `0x148D2` writes `abs(actorX - targetX)` to D5 at `0x148E8`, then
   returns to `0x14682`, where D5 is immediately used as an `FF1700` grid index
   (`0x146B8`) and as the starting index for `0x148AA`/`0x14854`. The ROM
@@ -55,28 +57,27 @@ existing `game.actors[actor_id]` state. On a blocked movement reset, it uses
 the live target candidate for a dynamic actor or the current Lua-owned
 `ai_route_target` for an actor with extracted patrol-route data. The route
 target remains identified by the actor and patrol cursor; Lua does not expose
-the source record's `+0x96/+0x98` fields. It checks the first D7
-(dominant-axis) neighbor. When clear, that one typed waypoint is queued. When
-blocked, it scans D6 (the signed minor axis), then the opposite direction,
-and queues the first clear minor candidate plus its clear D7 neighbor. Each
-candidate leg uses the typed source-cell corridor query. It advances the
-waypoint index as the actor enters each waypoint cell and measures the live
-target again when the route ends.
+the source record's `+0x96/+0x98` fields. The typed map-cell query scans D7
+through the last open cell and stops at the first blocked cell, matching
+`0x148AA`; it then checks D6 candidates and their D7 neighbors, matching
+`0x14854`. The same fact query checks primary and adjacent cells in the
+heading-rotated strips from `0x14800`. Lua stores those results as ordinary
+world waypoints. It advances the waypoint index as the actor enters each
+waypoint cell and measures the live target again when the route ends.
 When a queued segment becomes blocked, ROM `0x149C0 -> 0x149CE ->
 0x14756` clears the two route flags. The next `0x14682` selection derives its
 route again from live position and target; the source does not retain a prior
 side choice. Lua recomputes from live state instead of flipping a host-only
-side field [C]. Candidate waypoint placement remains [H], including the
-unresolved source D5 origin dataflow above.
+side field [C]. The D7/D6/strip probe order is source-confirmed, but the
+starting cell remains [H] because `0x148D2` leaves `abs(actorX-targetX)` in D5
+before `0x14682` treats D5 as a grid index.
 
 When no paired bypass is usable, Lua tries strips in the source heading order
-from `0x14AF4`. It represents candidates as typed world waypoints and checks
-each segment with the same source-cell corridor query used by the queued
-route. The route does not expose the source raster to Lua. A regression
-reaches the first open adjacent cell at depth six, beyond the five direction
-pairs. The native 64-cell scan cap and out-of-world handling are host policies
-[H]; exact source boundary behavior depends on active map data and remains
-under review.
+from `0x14AF4`. It represents candidates as typed world waypoints and asks the
+map service about each primary and adjacent cell. A regression reaches an
+opening at depth six, beyond the five direction pairs. The native 64-cell
+scan cap and out-of-world handling are host policies [H]; exact source
+boundary behavior depends on active map data and remains under review.
 
 The strip terminus now preserves the last traversable primary cell. ROM
 `0x14800` advances the primary index while the primary cell is open and the
@@ -99,46 +100,52 @@ candidate, and checks that movement returns to the target rather than reusing
 the stale point.
 
 Lua calls
-`game.movement.source_path_is_clear(from_x, from_y, to_x, to_y)` for candidate
-legs and queued-route validation. The typed host service applies the
-`0x14902/0x14914/0x1494C` cell-corridor rule against the active terrain map.
-The cell lookup includes the live player field barrier overlay, the selected
-effect-marker replacement, and map-event counter updates. A cell outside the
-imported map is blocked for host safety [H]. If either source corridor is
-clear, Lua retires the queued detour and measures the current target again,
-matching the `0x149C0 -> 0x149CE -> 0x14756` branch. The candidate waypoint
-placement and native out-of-map policy remain [H]. The former 32-unit sampled
-host collision sweep was removed so candidate planning and queued validation
-use one obstacle definition.
+`game.movement.source_cell_is_clear(x, y)` for the direct FF1700-style cell
+probes in `0x148AA`, `0x14854`, and `0x14800`. The C++ adapter converts the
+typed world position with `0x14902` and reads the active terrain map through
+the named host service, including the live field-barrier overlay and selected
+effect-marker replacement. It does not expose FF1700 or a raster array to
+Lua. `game.movement.source_path_is_clear(from_x, from_y, to_x, to_y)` remains
+the separate `0x14914/0x1494C` two-corridor query for an active route. If
+either corridor is clear, Lua retires the queued detour and measures the
+current target again, matching the
+`0x149C0 -> 0x149CE -> 0x14756` branch. A cell outside the imported map is
+blocked for host safety [H]. The D5 origin and native out-of-map policy remain
+[H]. The former 32-unit sampled host collision sweep was removed.
 
-The D7 dominant-axis first step, signed D6 scan, opposite-D6 fallback,
+ROM `0x14682` enters candidate selection without calling `0x14914`; it scans
+the direct cells used by its `0x148AA/0x14854/0x14800` helpers. The Lua
+planner now follows that separation: source-cell facts choose waypoints, and
+the path query only validates a waypoint queue that is already active [C].
+
+The D7 last-open-cell return, signed D6 probes, opposite-D6 fallback,
 blocked-route replan state, heading order and scan-termination result of the
-`0x14AF4` retry, and `0x14914` cell query are [C]. The typed host query still
-treats a cell outside the imported collision map as blocked [H]. The source
-D5 origin anomaly, ordinary first-bypass placement, host scan bounds, and
-resulting route pixels remain unverified. These are readable native waypoint
-policies, not a claim of matching the complete waypoint sequence. The referenced
+`0x14AF4` retry, and `0x14914` path query are [C]. The typed host query treats
+a cell outside the imported collision map as blocked [H]. The source D5 origin
+anomaly, host scan bounds, and resulting route pixels remain unverified. These
+are readable native waypoint policies, not a claim of matching the complete
+waypoint sequence. The referenced
 `/workspace/shadowrun/out/p49b/repro.txt` route capture is absent from this
 checkout; local obstruction-grid snapshots do not establish enemy route
 fidelity.
 
 ## Validation
 
-- `ai_think_tests.lua`: mock source-corridor responses for positive and
-  negative major directions, signed minor bypasses, opposite-D6 fallback,
+- `ai_think_tests.lua`: mock typed cell facts and source-corridor responses
+  for positive and negative major directions, multi-cell last-open placement,
+  signed minor bypasses, opposite-D6 fallback,
   clear direct path, sealed corridor, heading-oriented strip fallback
   including an opening at depth six, last-open-cell retention, live-position
   replan, failed-replan cleanup, target-linked route state, waypoint
   advancement, target reacquisition, and a blocked default patrol route using
   `field_scene_20_actor_0`. These mocks validate the typed policy, not imported
   occupancy or an independent Genesis route.
-- `shadowrun_gameplay_script_runtime_qa`: verifies the Lua planner uses the
-  typed source-cell corridor callback through the C++ binding for both
-  candidate legs and an active queued route.
+- `shadowrun_gameplay_script_runtime_qa`: verifies the Lua planner receives
+  the separate typed map-cell and source-corridor callbacks through the C++
+  binding.
 - `entity_route_primitives_conversion_test`: checks the two `0x1494C`
-  corridor orders, the `0x14914` either-clear result, a diagonal-only
-  obstruction that the source query misses, and the runtime cell-query
-  callback contract.
+  corridor orders, the `0x14914` either-clear result, and a diagonal-only
+  obstruction that the source query misses.
 - The focused headless Qt CTest run passed in Debug and Release for the
   gameplay Lua suites, script-runtime binding, actor AI rules, world activity,
   and field-barrier collision. The separate `equiv_heartbeat` output remains

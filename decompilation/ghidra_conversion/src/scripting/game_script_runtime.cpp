@@ -6013,6 +6013,35 @@ struct GameScriptRuntime::Impl {
         }
     }
 
+    static int movement_source_cell_clear(lua_State* lua) {
+        auto* self = from_upvalue(lua);
+        std::uint32_t world_x = 0U;
+        std::uint32_t world_y = 0U;
+        if (self == nullptr || self->active_actor_context == nullptr ||
+            lua_gettop(lua) != 2 ||
+            !read_integer(lua, 1, 0xFFFFU, world_x) ||
+            !read_integer(lua, 2, 0xFFFFU, world_y)) {
+            return luaL_error(
+                lua,
+                "game.movement.source_cell_is_clear expects world x/y coordinates during an actor heartbeat");
+        }
+        const auto& query =
+            self->active_actor_context->movement_source_cell_clear;
+        if (!query) {
+            lua_pushnil(lua);
+            return 1;
+        }
+        try {
+            lua_pushboolean(
+                lua, query(static_cast<std::uint16_t>(world_x),
+                           static_cast<std::uint16_t>(world_y)));
+            return 1;
+        } catch (...) {
+            return luaL_error(lua,
+                              "native source movement cell query failed");
+        }
+    }
+
     static int actor_random_bound(lua_State* lua) {
         auto* self = from_upvalue(lua);
         std::uint32_t bound = 0U;
@@ -7206,6 +7235,9 @@ struct GameScriptRuntime::Impl {
         lua_pushlightuserdata(state, this);
         lua_pushcclosure(state, movement_source_path_clear, 1);
         lua_setfield(state, -2, "source_path_is_clear");
+        lua_pushlightuserdata(state, this);
+        lua_pushcclosure(state, movement_source_cell_clear, 1);
+        lua_setfield(state, -2, "source_cell_is_clear");
         lua_pushlightuserdata(state, this);
         lua_pushcclosure(state, movement_follow_route_step_clear, 1);
         lua_setfield(state, -2, "follow_route_step_clear");

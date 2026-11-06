@@ -5274,6 +5274,16 @@ void FieldSceneRuntime::advance_default_field_actors(
                         return actor_source_route_clear(
                             from_x, from_y, to_x, to_y);
                     };
+                context.movement_source_cell_clear =
+                    [this](const std::uint16_t world_x,
+                           const std::uint16_t world_y) {
+                        // ROM 0x14902 maps world positions to the cells read
+                        // directly by 0x148AA/0x14854/0x14800. Keep occupancy
+                        // in the typed map service, including live overlays.
+                        const auto cell_index =
+                            compute_obstruction_grid_index(world_x, world_y);
+                        return terrain_collision_map_byte(cell_index) == 0U;
+                    };
                 context.movement_route_lookup =
                     [this, &actor](const std::uint16_t route_key) {
                         if ((route_key & 0x03U) != 0U ||
