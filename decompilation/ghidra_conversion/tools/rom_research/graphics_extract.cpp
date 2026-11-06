@@ -8655,6 +8655,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         std::array<std::uint8_t, 10> combat_action_phase_extension{};
         std::array<std::uint8_t, 4> combat_action_skills{};
         std::uint8_t combat_auxiliary_roll_bonus = 0U;
+        bool source_group_leader = false;
     };
     std::vector<DefaultActorSceneList> default_actor_lists;
     default_actor_lists.reserve(shadowrun::rom::kFieldModeCount);
@@ -8861,6 +8862,12 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 source_list.list_offset,
                 "-",
             };
+            // ROM 0x449E sets live +0x10 bit 5 when the list's template
+            // pointer carries the root tag. Keep the recovered behavior fact
+            // in extracted data instead of making the runtime inspect ROM
+            // pointer bits.
+            record.source_group_leader =
+                (tagged_template & 0x80000000U) != 0U;
             read_default_actor_combat_facts(template_offset, record);
             ++type_counts[actor_name];
 
@@ -9084,6 +9091,29 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         if (!actor_table) {
             throw std::runtime_error(
                 "cannot write profile-selected default actor table");
+        }
+    }
+
+    // Keep the root-tag-derived actor fact in a new extracted sidecar. The
+    // existing default-actors.tsv is a tracked asset and remains untouched.
+    {
+        const auto fact_table_path =
+            root / "field/entities/default-actor-source-facts.tsv";
+        std::filesystem::create_directories(fact_table_path.parent_path());
+        std::ofstream fact_table(fact_table_path, std::ios::binary);
+        if (!fact_table) {
+            throw std::runtime_error(
+                "cannot create default actor source fact table");
+        }
+        fact_table << "scene\tsource_order\tgroup_leader\n";
+        for (const auto& actor : default_actor_records) {
+            fact_table << actor.scene_id << '\t' << actor.source_order << '\t'
+                       << (actor.source_group_leader ? "true" : "false")
+                       << '\n';
+        }
+        if (!fact_table) {
+            throw std::runtime_error(
+                "cannot write default actor source fact table");
         }
     }
 

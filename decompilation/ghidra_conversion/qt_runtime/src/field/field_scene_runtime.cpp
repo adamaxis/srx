@@ -66,6 +66,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <limits>
+#include <map>
 #include <set>
 #include <sstream>
 #include <stdexcept>
@@ -2409,6 +2410,53 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
         }
         return static_cast<std::uint16_t>(parsed);
     };
+    constexpr std::string_view kActorSourceFactHeader =
+        "scene\tsource_order\tgroup_leader";
+    std::ifstream actor_source_facts(
+        catalog.asset_root / "field/entities/default-actor-source-facts.tsv",
+        std::ios::binary);
+    if (!actor_source_facts) {
+        failure_ = "missing extracted default actor source facts";
+        return false;
+    }
+    if (!std::getline(actor_source_facts, line) ||
+        line != kActorSourceFactHeader) {
+        failure_ = "default actor source facts header is invalid";
+        return false;
+    }
+    std::map<std::pair<std::uint16_t, std::uint16_t>, bool>
+        group_leader_by_actor;
+    while (std::getline(actor_source_facts, line)) {
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+        }
+        if (line.empty()) {
+            continue;
+        }
+        std::vector<std::string> fields;
+        std::istringstream row(line);
+        std::string field;
+        while (std::getline(row, field, '\t')) {
+            fields.push_back(std::move(field));
+        }
+        if (fields.size() != 3U ||
+            (fields[2] != "true" && fields[2] != "false")) {
+            failure_ = "default actor source fact row is malformed";
+            return false;
+        }
+        try {
+            const auto key = std::make_pair(parse_word(fields[0]),
+                                            parse_word(fields[1]));
+            if (!group_leader_by_actor.emplace(
+                    key, fields[2] == "true").second) {
+                failure_ = "default actor source fact is duplicated";
+                return false;
+            }
+        } catch (const std::exception&) {
+            failure_ = "default actor source fact scene/order is invalid";
+            return false;
+        }
+    }
     std::set<std::pair<std::uint16_t, std::uint16_t>> actors_with_waypoints;
     constexpr std::string_view kWaypointTableAlias =
         "field.entities.default.actor.waypoints";
@@ -2477,6 +2525,14 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
             DefaultFieldActorPresentation actor;
             actor.scene_reference = parse_word(fields[0]);
             actor.source_order = parse_word(fields[1]);
+            const auto group_leader_fact = group_leader_by_actor.find(
+                {actor.scene_reference, actor.source_order});
+            if (group_leader_fact == group_leader_by_actor.end()) {
+                failure_ = "default actor source fact is missing";
+                return false;
+            }
+            actor.source_group_leader = group_leader_fact->second;
+            group_leader_by_actor.erase(group_leader_fact);
             actor.entity_kind = parse_word(fields[2]);
             actor.source_actor_has_waypoint_data =
                 actors_with_waypoints.find(
@@ -2684,6 +2740,10 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
     } catch (const std::exception& error) {
         failure_ = std::string("cannot parse default field actor table: ") +
                    error.what();
+        return false;
+    }
+    if (!group_leader_by_actor.empty()) {
+        failure_ = "default actor source facts do not match actor table";
         return false;
     }
     if (scene_record_counts[0] != 3U || scene_record_counts[1] != 8U) {
@@ -4077,16 +4137,20 @@ void FieldSceneRuntime::initialize_default_field_actors(
         actor.movement_state.collision_extent = 0U;
         actor.movement_terrain_collision_code = 0U;
         actor.movement_state_initialized = true;
-        // ROM 0x44BC copies the common +0x10 service byte 0x05 before it
-        // publishes a template actor into the seven world-actor records.
+        // ROM 0x44BC initializes +0x10 to 0x05. The root-tag branch at
+        // 0x449E sets bit 5 for tagged default-list actors.
         actor.source_record_flags = static_cast<std::uint8_t>(
             actor_flag_mask(ActorServiceFlag::active) |
-            actor_flag_mask(ActorServiceFlag::unresolved_service_bit_2));
+            actor_flag_mask(ActorServiceFlag::unresolved_service_bit_2) |
+            (actor.source_group_leader
+                 ? actor_flag_mask(ActorServiceFlag::activity_probe_enabled)
+                 : 0U));
         actor.source_behavior_flags = 0U;
         actor.combatant.record_type = static_cast<std::uint16_t>(
             *actor.source_record_slot);
         actor.combatant.source_flags = actor.source_record_flags;
         actor.combatant.interaction_flags = actor.source_interaction_flags;
+        actor.initial_combatant.source_flags = actor.source_record_flags;
         actor.combatant.physical_meter = actor.physical_meter;
         actor.combatant.equipped_action_code = actor.initial_action_code;
         actor.initial_behavior_delay = static_cast<std::uint8_t>(

@@ -208,6 +208,8 @@ def main() -> int:
              f"first active row={first_ped_row.get('app.source_frame')}")
 
     port_spawn = port_pedestrians(first_ped_row)
+    # ROM 0x44BC initializes +0x10 to 0x05 and 0x449E adds bit 5 for a
+    # root-tagged list entry; GPGX frame 8035 records 0x25 for slots 3-5.
     for slot, source in source_spawn.items():
         actual = port_spawn[slot]
         if actual["x"] != source["x"] or actual["y"] != source["y"]:
@@ -216,6 +218,11 @@ def main() -> int:
         if actual["spawn_flags"] != source["spawn_flags"]:
             fail(f"slot {slot} +0x9E flags {actual['spawn_flags']:02X} "
                  f"do not match GPGX {source['spawn_flags']:02X}")
+        if (source["entity_flags"] & 0x20) == 0:
+            fail(f"GPGX slot {slot} lost the root-tagged +0x10 bit-5 fact")
+        if actual["entity_flags"] != source["entity_flags"]:
+            fail(f"slot {slot} +0x10 flags {actual['entity_flags']:02X} "
+                 f"do not match GPGX {source['entity_flags']:02X}")
 
     # ROM 0xB610 selects the BE62 (10-unit) vector for a live +0x9E bit-5
     # pedestrian when FFDF84 is clear. The independent GPGX route captures
@@ -246,6 +253,14 @@ def main() -> int:
     port_exit_peds = port_pedestrians(port_exit)
     if set(port_exit_peds) != set(source_exit):
         fail("port lost a default pedestrian slot after the Stoker exit route")
+    # The same source flags persist in GPGX frame 10000 after AI services;
+    # ROM 0x142CE consumes bit 5 to select the actor route-list branch.
+    for slot, source in source_exit.items():
+        actual = port_exit_peds[slot]
+        if actual["entity_flags"] != source["entity_flags"]:
+            fail(f"slot {slot} post-exit +0x10 flags "
+                 f"{actual['entity_flags']:02X} do not match GPGX "
+                 f"{source['entity_flags']:02X}")
     camera_x = int(port_exit["field.camera.x"])
     camera_y = int(port_exit["field.camera.y"])
     visible = [

@@ -2199,6 +2199,7 @@ private:
         std::uint32_t position_offset = 0;
         std::uint32_t list_offset = 0;
         std::uint32_t selection_cell_offset = 0;
+        bool source_group_leader = false;
         std::uint8_t source_record_flags = 0;
         std::uint8_t source_interaction_flags = 0;
         std::uint8_t source_behavior_flags = 0;

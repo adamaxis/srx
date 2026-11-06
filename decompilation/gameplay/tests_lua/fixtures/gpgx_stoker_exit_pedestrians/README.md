@@ -21,11 +21,16 @@ the idle collision continuation while `FFE18A` is set. The port labels its
 initial `field_ready` presentation phase at a different point in startup, so
 its application frame counter is not a direct offset from GPGX's `retro_run`
 counter. The route CTest checks publication in the first Scene-2 field row,
-the source positions and `+0x9E` flags, and the first movement vector. The
-port's typed `+0x10` service flags are `05` while GPGX has `25`; that bit
-remains a separate actor-lifecycle question, and the test does not establish
-exact cadence or full patrol-path equivalence. The A800 gate remains closed
-in both traces.
+the source positions and `+0x9E` flags, the first movement vector, and the
+live `+0x10` flags at activation and after Stoker's exit. ROM `0x44BC`
+initializes the service byte to `0x05`; the root-tag branch at `0x449E` sets
+bit 5 for tagged default-list templates, producing `0x25`. The extracted
+`default-actor-source-facts.tsv` carries this as a named `group_leader` fact,
+joined to actor definitions by scene and source order. Scene-2 slots 3-5 match
+GPGX at activation and after the exit; the untagged Scene-33 source row stays
+false. ROM `0x142CE` uses bit 5 to select its route-list branch. These checks
+do not establish exact cadence or full patrol-path equivalence. The A800 gate
+remains closed in both traces.
 
 `port_route_frames.jsonl.gz` is the headless Qt replay's completed-frame trace
 from the same input route. It contains typed port scene/actor state (including

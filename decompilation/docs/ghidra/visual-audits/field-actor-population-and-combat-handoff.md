@@ -633,12 +633,22 @@ scene-2 refresh activates all three pedestrian rows before the 31 warmup
 services, as confirmed by the cold-boot GPGX capture at frame 8035. Their live
 records remain stationary during warmup: `0xAC84` calls `0x13904`, then
 `0xAC9E` checks `FFE18A` and redirects the actor continuation through `0xAE5E`
-to the idle collision path at `0xB45C`. Scene-2 pedestrian records have
-`+0x10=0x25`, so this source branch applies. The typed host passes the existing
-field lock into Lua to suppress only movement during that interval. A later
-scene entry activates only the rows belonging to that scene. Until the actor
-death/drop path is connected, live profile rows must not be converted into
-dead-body scenery or supplemented with actors seen in a longplay.
+to the idle collision path at `0xB45C`. ROM `0x44BC` initializes the actor
+service byte at `+0x10` to `0x05`; the root-tag branch at `0x449E` sets bit 5
+for tagged default-list templates, so the three Scene-2 pedestrians have
+`+0x10=0x25`. The extractor records this named `group_leader` fact in
+`default-actor-source-facts.tsv`, keyed by scene and source order, and the
+runtime joins it to the typed actor definition. The untagged Scene-33 actor at
+source order 1 stays false and retains `0x05`. Actor AI uses bit 5 at
+`0x142CE` to select the route-list branch. The paired cold-boot QA checks
+`+0x10` against GPGX at initial publication and after Stoker's exit; Debug and
+Release each pass the route, regional map, and conditional-scene pedestrian
+checks. The test does not establish exact cadence or full patrol-path
+equivalence. The typed host passes the existing field lock into Lua to
+suppress only movement during warmup. A later scene entry activates only the
+rows belonging to that scene. Until the actor death/drop path is connected,
+live profile rows must not be converted into dead-body scenery or
+supplemented with actors seen in a longplay.
 
 New Game's `0x075E` setup calls `0x0281E`, sets `FFDF8A`, then enters
 `0x02900` before `0x2B34` selects the scene profile. The refresh branch at
