@@ -1396,6 +1396,31 @@ check(deep_heading_strip_route ~= nil and
       deep_heading_strip_route.waypoints[1].y == 0x1500,
       "0x14800 scans past five blocked adjacent cells before 0x14AF4 accepts the sixth [C]")
 
+local strip_blocked_tail_route = R.choose_obstruction_waypoint(
+    0x2000, 0x2000, 0x3000, 0x2000,
+    function(from_x, from_y, to_x, to_y)
+        if from_x == 0x2000 and from_y == 0x2000 and
+           to_x == 0x3000 and to_y == 0x2000 then
+            return false
+        end
+        if from_x == 0x2000 and from_y == 0x2000 and
+           to_x == 0x2100 and to_y == 0x1F00 then
+            return true
+        end
+        if from_x == 0x2100 and to_x == 0x2100 and
+           to_y == from_y - 0x200 then
+            return to_y > 0x1700
+        end
+        return false
+    end,
+    0)
+check(strip_blocked_tail_route ~= nil and
+      strip_blocked_tail_route.strategy == "heading_oriented_strip" and
+      #strip_blocked_tail_route.waypoints == 1 and
+      strip_blocked_tail_route.waypoints[1].x == 0x2100 and
+      strip_blocked_tail_route.waypoints[1].y == 0x1900,
+      "0x14800 returns the last open primary cell when the next strip cell is blocked [C]")
+
 movement_bearing_case(337.5, 7, true,
     "enemy B574/C062 truncates 0xF000 with THINK clear to direction 7 / selector 0x3C [C]")
 movement_bearing_case(22.5, 0, true,

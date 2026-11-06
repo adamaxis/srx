@@ -119,3 +119,6 @@ Tags: [C] = confirmed from the ROM or emulator, [H] = hypothesis.
 - #23 diagonals: fixed in 0ad99223 (ROM 0x19D2) [C].
 - #10 vid phones, #21 Gunderson booth: likely fixed by dd41821a (field contact/B7B8 transition regression from c073dda6); vid_phone QA passes, needs an in-game retest [H].
 - #9 building exit placement: not addressed.
+
+## 2026-11-06 local progress
+- playtest #49: preserved the last traversable heading-strip waypoint when the source scan in ROM 0x14800 stops at an occupied or out-of-bounds primary cell; the 0x14AF4 caller queues it when it differs from the start cell (0x14B22..0x14B48). Added the `ai_think_tests.lua` regression. Headless Debug/Release `shadowrun_gameplay_actor_ai_rules_qa` and `shadowrun_gameplay_script_runtime_qa` pass. #49 remains partial; ordinary bypass placement and independent route capture remain open.

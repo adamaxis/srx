@@ -56,6 +56,19 @@ Lua. A regression reaches the first open adjacent cell at depth six, beyond
 the five direction-pair retry count. This gives an actor a local step to
 replan from around a blocked route.
 
+The strip terminus now preserves the last traversable primary cell. ROM
+`0x14800` advances the primary index while the primary cell is open and the
+neighboring side cell remains blocked; when the next primary cell is occupied
+or beyond the map bounds, it subtracts one primary step and returns the prior
+index (`0x14812..0x14852`). `0x14AF4` then accepts that result if it differs
+from the starting cell and stores it as the one-entry route (`0x14B22..0x14B48`).
+Lua now keeps the last clear typed waypoint when its next source-cell query is
+blocked or outside the imported map, and queues it if it is outside the
+actor's starting cell. The new `ai_think_tests.lua` case checks a multi-cell
+strip whose next primary cell is blocked and asserts that the preceding open
+cell is retained. This implements the source's scan-termination placement;
+the independent scene route remains unverified.
+
 If a replan cannot find a clear candidate, Lua drops the previous waypoint
 queue and restores the live target heading. This follows ROM `0x14ADE`'s
 failure branch to `0x14756`, which clears both obstruction-route flags. The
@@ -77,10 +90,12 @@ host collision sweep was removed so candidate planning and queued validation
 use one obstacle definition.
 
 The initial signed side order, opposite-side fallback, blocked-route replan
-state, heading order/scan bound of the `0x14AF4` retry, and `0x14914` cell
-query are [C]. Candidate waypoint placement, native out-of-map handling, and
-resulting route pixels remain [H]. These are readable native waypoint
-policies, not a claim of matching the complete waypoint sequence. The referenced
+state, heading order/scan bound and scan-termination result of the `0x14AF4`
+retry, and `0x14914` cell query are [C]. The typed host query still treats a
+cell outside the imported collision map as blocked [H], and ordinary
+first-bypass placement plus resulting route pixels remain unverified. These
+are readable native waypoint policies, not a claim of matching the complete
+waypoint sequence. The referenced
 `/workspace/shadowrun/out/p49b/repro.txt` route capture is absent from this
 checkout; local obstruction-grid snapshots do not establish enemy route
 fidelity.

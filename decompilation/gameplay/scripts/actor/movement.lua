@@ -708,8 +708,20 @@ local function choose_obstruction_waypoint(
     -- five is the number of direction pairs, not a five-cell depth limit.
     -- Keep that policy as named directions and host world positions: Lua
     -- stores one waypoint and the typed source-cell query checks candidate
-    -- segments. Direction order and scan bounds are [C]; candidate placement
-    -- remains [H].
+    -- segments. Direction order, scan bounds and the returned previous cell
+    -- when a strip ends are [C].
+    local function route_to_last_open_strip_cell(x, y)
+        if navigation_cell_center(x) == origin_cell_x and
+           navigation_cell_center(y) == origin_cell_y then
+            return nil
+        end
+        return {
+            waypoints = { { x = x, y = y } },
+            target_cell_x = target_cell_x,
+            target_cell_y = target_cell_y,
+            strategy = "heading_oriented_strip",
+        }
+    end
     local heading_octant = type(source_heading) == "number" and
         Bearing.octant(source_heading, false) or nil
     local facing_octant = heading_octant ~= nil and
@@ -732,10 +744,25 @@ local function choose_obstruction_waypoint(
                     primary_direction.y * cell_depth * NAVIGATION_CELL_SIZE
                 if waypoint_x < 0 or waypoint_x > 0xFFFF or
                    waypoint_y < 0 or waypoint_y > 0xFFFF then
+                    -- ROM 0x14800 backs D1 up by one primary step when the
+                    -- next grid coordinate leaves the active map. 0x14AF4
+                    -- accepts that last in-map cell unless it is still the
+                    -- starting cell (0x14B22..0x14B48) [C].
+                    local route = route_to_last_open_strip_cell(
+                        scan_from_x, scan_from_y)
+                    if route ~= nil then return route end
                     break
                 end
                 if source_path_is_clear(scan_from_x, scan_from_y,
                                         waypoint_x, waypoint_y) ~= true then
+                    -- 0x14800 likewise returns the preceding primary cell
+                    -- when that cell is occupied (0x1483A..0x14852) [C].
+                    -- The typed path query reports both occupied terrain and
+                    -- map-edge cells as blocked, so retain the last traversed
+                    -- cell instead of discarding this source fallback.
+                    local route = route_to_last_open_strip_cell(
+                        scan_from_x, scan_from_y)
+                    if route ~= nil then return route end
                     break
                 end
                 scan_from_x, scan_from_y = waypoint_x, waypoint_y
