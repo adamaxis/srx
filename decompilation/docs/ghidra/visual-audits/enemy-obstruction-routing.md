@@ -36,11 +36,13 @@ live target again when the route ends.
 When no parallel corridor is usable, Lua tries a strip from the actor's
 current heading. The source rotation order follows `0x14AF4`, and each scan is
 bounded by the source grid dimension and the active scene's typed collision
-query. Lua represents the candidate as a world waypoint, and the terrain
-service checks the candidate and its adjacent open cell. A regression reaches
-the first open adjacent cell at depth six, beyond the five direction-pair
-retry count. This gives an actor a local step to replan from around a blocked
-route without exposing the source raster to Lua.
+query. Lua represents the candidate as a world waypoint, advances the terrain
+query one cell at a time, and checks each candidate's adjacent open cell. The
+incremental query keeps long scans from repeatedly sweeping the full distance
+from the actor. A regression reaches the first open adjacent cell at depth
+six, beyond the five direction-pair retry count. This gives an actor a local
+step to replan from around a blocked route without exposing the source raster
+to Lua.
 
 If a replan cannot find a clear candidate, Lua drops the previous waypoint
 queue and restores the live target heading. This follows ROM `0x14ADE`'s

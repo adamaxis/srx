@@ -724,6 +724,7 @@ local function choose_obstruction_waypoint(
             local secondary_direction =
                 navigation_cardinal_offsets[
                     cardinal_by_octant[secondary_octant]]
+            local scan_from_x, scan_from_y = from_x, from_y
             for cell_depth = 1, NAVIGATION_MAX_CELLS do
                 local waypoint_x = origin_cell_x +
                     primary_direction.x * cell_depth * NAVIGATION_CELL_SIZE
@@ -733,10 +734,11 @@ local function choose_obstruction_waypoint(
                    waypoint_y < 0 or waypoint_y > 0xFFFF then
                     break
                 end
-                if path_is_clear(from_x, from_y,
+                if path_is_clear(scan_from_x, scan_from_y,
                                  waypoint_x, waypoint_y) ~= true then
                     break
                 end
+                scan_from_x, scan_from_y = waypoint_x, waypoint_y
                 local adjacent_x = waypoint_x +
                     secondary_direction.x * NAVIGATION_CELL_SIZE
                 local adjacent_y = waypoint_y +

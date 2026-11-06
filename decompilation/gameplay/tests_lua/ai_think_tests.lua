@@ -1088,8 +1088,11 @@ local deep_heading_strip_route = R.choose_obstruction_waypoint(
     0x2000, 0x2000, 0x3000, 0x2000,
     function(from_x, from_y, to_x, to_y)
         if from_x == 0x2000 and from_y == 0x2000 and
-           to_x == 0x2100 and to_y <= 0x1F00 and to_y >= 0x1500 and
-           (0x2100 - to_y) % 0x200 == 0 then
+           to_x == 0x2100 and to_y == 0x1F00 then
+            return true
+        end
+        if from_x == 0x2100 and to_x == 0x2100 and
+           to_y == from_y - 0x200 and to_y >= 0x1500 then
             return true
         end
         return from_x == 0x2100 and from_y == 0x1500 and
