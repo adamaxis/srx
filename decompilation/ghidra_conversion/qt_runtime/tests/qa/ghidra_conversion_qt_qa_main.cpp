@@ -1816,9 +1816,74 @@ int run_field_world_activity_qa(
                      "pixels over the source field\n";
         return 3;
     }
+
+    // [C] ROM 0xEE86 also selects the marker for run handler 4, whose Current
+    // Run row dispatches to package recovery at 0x1E87A. The field runtime
+    // should derive this gate from the accepted Lua run identity without
+    // changing the imported collision map.
+    if (!field_scene.seed_current_run_for_dump("package_recovery")) {
+        std::cerr << "field world-activity QA: could not seed the accepted "
+                     "package-recovery run\n";
+        return 3;
+    }
+    field_scene.seed_conditional_actor_effect_facts_for_dump(
+        false, false, std::uint16_t{2U}, std::uint16_t{2U});
+    field_scene.seed_effect_terrain_marker_context_for_dump(
+        false, false, activity.resource_marker_ordinal);
+    const auto package_recovery_marker_capture = render_field_scene();
+    bool package_recovery_marker_matches =
+        field_scene.active_run_offer_variant_id_for_dump() ==
+            std::optional<std::string>{"package_recovery_two_site_pool"} &&
+        field_scene.field_scene_reference_for_dump() == 0x1AU &&
+        field_scene.field_interaction_mode_for_dump() == 2U &&
+        expected_effect_marker_cell.has_value() &&
+        field_scene.selected_effect_terrain_marker_cell_for_dump() ==
+            expected_effect_marker_cell;
+    for (const auto marker_cell : projected_marker_cells) {
+        const auto expected_code = marker_cell ==
+                expected_effect_marker_cell.value_or(
+                    std::numeric_limits<std::size_t>::max())
+            ? 0x9AU
+            : 0xDAU;
+        package_recovery_marker_matches =
+            package_recovery_marker_matches &&
+            field_scene.terrain_collision_map_byte_for_dump(
+                static_cast<std::uint16_t>(marker_cell)) == expected_code;
+    }
+    package_recovery_marker_matches = package_recovery_marker_matches &&
+        source_collision_map == source_collision_map_before &&
+        !package_recovery_marker_capture.isNull() &&
+        save("package-recovery-marker-actual.bmp",
+             package_recovery_marker_capture);
+    if (!package_recovery_marker_matches) {
+        std::cerr << "field world-activity QA: accepted package recovery did "
+                     "not select only its source ordinal marker"
+                  << " variant="
+                  << field_scene.active_run_offer_variant_id_for_dump()
+                         .value_or("missing")
+                  << " mode="
+                  << field_scene.field_interaction_mode_for_dump()
+                  << " selected=";
+        if (field_scene.selected_effect_terrain_marker_cell_for_dump()
+                .has_value()) {
+            std::cerr << *field_scene
+                               .selected_effect_terrain_marker_cell_for_dump();
+        } else {
+            std::cerr << "none";
+        }
+        std::cerr << " expected=";
+        if (expected_effect_marker_cell.has_value()) {
+            std::cerr << *expected_effect_marker_cell;
+        } else {
+            std::cerr << "none";
+        }
+        std::cerr << "\n";
+        return 3;
+    }
     std::cout << "field_world_activity_qa=passed scene=0x1A bound=3 floor=2 cursor=0x18 terminal_floor_text=third-floor artifacts="
               << output.string()
               << " extraction_pages=success-more/success-follow-up/failure "
+                 "package_recovery_marker=selected "
                  "source_scan=1E43C callback=1F16A"
               << '\n';
     return 0;

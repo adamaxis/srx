@@ -24,9 +24,9 @@ using TerrainMapPostProcess =
 
 struct TerrainMarkerReplacementState {
     std::uint16_t field_mode = 0;                 // FFDF40
-    std::uint8_t effect_context_active = 0;       // FFE184
-    std::uint8_t alternate_effect_context = 0;    // FFE187
-    std::uint8_t effect_handler_index = 0;        // FFFBED
+    bool effect_context_active = false;           // FFE184
+    bool alternate_effect_context = false;        // FFE187
+    bool package_recovery_active = false;         // FFFBED's run identity
     std::uint16_t selected_effect_index = 0;      // FFE12C
     std::uint16_t active_effect_index = 0;        // FFF0C8
     std::uint8_t marker_ordinal = 0;              // FFE185

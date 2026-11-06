@@ -12020,15 +12020,24 @@ void FieldSceneRuntime::refresh_effect_terrain_marker_cell() noexcept {
         return;
     }
 
+    const auto active_run_id = game_scripts_.active_run_id();
+    if (!active_run_id.has_value() && !game_scripts_.failure().empty()) {
+        field_effect_terrain_marker_cell_.reset();
+        failure_ = game_scripts_.failure();
+        return;
+    }
+
     TerrainMarkerReplacementState replacement{};
     replacement.field_mode = field_movement_transition_state_.world_mode;
-    replacement.effect_context_active = static_cast<std::uint8_t>(
-        field_effect_marker_context_.force_index_five_marker_zero);
-    replacement.alternate_effect_context = static_cast<std::uint8_t>(
-        field_effect_marker_context_.force_index_two_marker_three);
-    // [H] FFFBED==4 is another ROM 0xEE86 gate, but the active field runtime
-    // does not yet publish that handler-index fact into typed state.
-    replacement.effect_handler_index = 0U;
+    replacement.effect_context_active =
+        field_effect_marker_context_.force_index_five_marker_zero;
+    replacement.alternate_effect_context =
+        field_effect_marker_context_.force_index_two_marker_three;
+    // [C] ROM 0xEE86 admits FFFBED==4. The run initializer at 0x1E69C
+    // dispatches its selected handler, and Current Run maps handler 4 to
+    // 0x1E87A; Lua retains accepted run state as package_recovery.
+    replacement.package_recovery_active = active_run_id ==
+        std::optional<std::string>{"package_recovery"};
     replacement.selected_effect_index = *field_selected_effect_index_;
     replacement.active_effect_index = *field_active_effect_index_;
     replacement.marker_ordinal = field_effect_marker_ordinal_;
@@ -14096,6 +14105,11 @@ void FieldSceneRuntime::advance_frame() {
                 (void)dispatch_dialogue_outcome(*outcome);
             }
         } else if (result == FieldDialogueAdvanceResult::returned_to_field) {
+            // A completed Johnson dialogue may accept or retire a run in Lua.
+            // Refresh the collision-cell fact before field movement resumes;
+            // ROM 0xEE10/0xEE86 applies this selector during field collision
+            // map preparation, and the host derives the gate from run state.
+            refresh_effect_terrain_marker_cell();
             hospital_service_session_active_ = false;
             source_boundary("field.dialogue.returned_to_field");
             if (pending_field_encounter_outcome_.has_value() &&

@@ -9,9 +9,9 @@ namespace {
 bool marker_replacement_enabled(
     const TerrainMarkerReplacementState& state) {
     return state.field_mode == 2U &&
-           (state.effect_context_active != 0U ||
-            state.alternate_effect_context != 0U ||
-            state.effect_handler_index == 4U) &&
+           (state.effect_context_active ||
+            state.alternate_effect_context ||
+            state.package_recovery_active) &&
            state.selected_effect_index == state.active_effect_index &&
            !state.world_effect_active;
 }

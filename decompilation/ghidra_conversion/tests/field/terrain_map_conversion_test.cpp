@@ -89,14 +89,24 @@ int main() {
     }
     marker_state.effect_context_active = 0U;
     marker_state.alternate_effect_context = 0U;
-    marker_state.effect_handler_index = 4U;
     marker_state.marker_ordinal = 0xFFU;
     marker_state.world_effect_active = false;
+    if (!expect(!select_effect_terrain_marker_cell(
+                     vector_markers, marker_state).has_value())) {
+        return 7;
+    }
+    marker_state.package_recovery_active = true;
     const auto signed_negative_ordinal =
         select_effect_terrain_marker_cell(vector_markers, marker_state);
     if (!expect(signed_negative_ordinal == std::optional<std::size_t>{0U})) {
-        return 7;
+        return 8;
     }
+    marker_state.world_effect_active = true;
+    if (!expect(!select_effect_terrain_marker_cell(
+                     vector_markers, marker_state).has_value())) {
+        return 9;
+    }
+    marker_state.world_effect_active = false;
 
     std::array<std::uint8_t, 0x1000> markers{};
     markers.fill(0);
@@ -108,7 +118,7 @@ int main() {
     if (!expect(markers[3] == 0x9A &&
                 markers[7] == 0xDA &&
                 markers[9] == 0x9B)) {
-        return 8;
+        return 10;
     }
 
     std::vector<std::uint16_t> work_map(20U, 0U);
@@ -117,12 +127,12 @@ int main() {
                 work_map[3] == 2U && work_map[6] == 2U &&
                 work_map[7] == 2U && work_map[8] == 2U &&
                 work_map[0] == 0U && work_map[9] == 0U)) {
-        return 9;
+        return 11;
     }
 
     fill_terrain_work_region(work_map, 4U, 4U, 5U, 19U);
     if (!expect(work_map[19] == 2U)) {
-        return 10;
+        return 12;
     }
 
     std::vector<std::uint16_t> source(20U, 0U);
@@ -134,14 +144,14 @@ int main() {
     if (!expect(destination[6] == 11U && destination[7] == 12U &&
                 destination[8] == 13U && destination[11] == 16U &&
                 destination[12] == 17U && destination[13] == 18U)) {
-        return 11;
+        return 13;
     }
 
     std::vector<std::uint16_t> layer_destination(4U, 0U);
     copy_terrain_layer(layer_destination, source, 4U);
     if (!expect(layer_destination[0] == 10U &&
                 layer_destination[3] == 13U)) {
-        return 12;
+        return 14;
     }
 
     return 0;

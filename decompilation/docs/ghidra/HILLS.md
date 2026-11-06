@@ -1952,14 +1952,19 @@ facts across scene loads and exposes the chosen cell as a read-only collision
 query override. The imported map remains unchanged. The source clears the
 selector flags at `0x1E43C` and `0x2A64`.
 
+The `FFFBED == 4` arm is now represented by the named active Lua run
+`package_recovery`. ROM `0x1E69C` selects the handler, and the Current Run table
+at `0xF3DFA` maps handler 4 to `0x1E87A`. The field runtime refreshes its
+cached marker fact when a completed dialogue returns to field movement.
+
 `shadowrun_ghidra_conversion_qt_field_world_activity_qa` checks Scene 26's
 fourth `0xDA` cell with matching active/selected indices and `FFE187` state,
 then verifies the collision query reports the replacement, `FFE180` suppresses
-it, every other marker remains unchanged, and the imported map is unchanged.
-This case seeds those source facts through
-the QA surface; it does not establish an ordinary-input producer for
-`FFE187`. `FFFBED==4`, full `FFDF8A` map rebuilding, and independent Genesis
-collision evidence remain open, so the hill stays partial. Debug and Release
-headless CTests pass for the Scene-26 runtime case, terrain-map selector, and
-world-activity selector-state conversion. See the
+it, every other marker remains unchanged, and the imported map is unchanged. A
+second QA-seeded case activates package recovery by its Lua run ID and checks
+the same ordinal gate without either effect-context flag. Both cases preserve
+the imported map. Neither is an ordinary-input route comparison. Complete
+`FFDF8A` map rebuilding and independent Genesis collision evidence remain
+open, so the hill stays partial. Debug and Release headless CTests pass for the
+Scene-26 runtime case and standalone terrain-map selector. See the
 [projected-terrain marker audit](visual-audits/terrain-marker-runtime-integration-2026-11-06.md).
