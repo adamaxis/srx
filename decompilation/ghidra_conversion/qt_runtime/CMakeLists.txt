@@ -692,6 +692,15 @@ add_shadowrun_qt_qa_case(
     --field-scene10-generic-contact-qa
     "${CMAKE_CURRENT_BINARY_DIR}/field-scene10-generic-contact-qa")
 
+# Exercise the same source bit-4 contact after ordinary movement from a
+# documented seeded host point; this guards live input-to-dialogue routing in
+# addition to the focused first-visible timing fixture above.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_scene10_generic_contact_input_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-scene10-generic-contact-input-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-scene10-generic-contact-input-qa")
+
 # The bulk ROM importer supplies generic dialogue routes for Ricky and the
 # hireable runner Marrs. Verify both first-visible updates and save the
 # resulting dialogue frame per scene.

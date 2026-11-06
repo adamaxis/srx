@@ -15759,7 +15759,8 @@ int run_scene10_northwest_contact_qa(
 
 int run_scene10_default_generic_contact_qa(
     const StartupIntegrationState& startup_state,
-    const std::filesystem::path& output) {
+    const std::filesystem::path& output,
+    const bool input_driven_approach) {
     std::error_code output_error;
     std::filesystem::remove_all(output, output_error);
     if (output_error) {
@@ -15817,28 +15818,121 @@ int run_scene10_default_generic_contact_qa(
         return 3;
     }
 
-    // Put the controlled runner on the ROM-authored NPC position before the
-    // first actor-service update. The first update is therefore the first
-    // overlap service frame; this measures host dispatch latency, not an
-    // emulator-driven/natural approach.
-    field_scene.set_field_entity_world_position_for_dump(
-        actor->world_position.x, actor->world_position.y);
-    field_scene.set_controller_port_byte(0U);
-    field_scene.advance_frame();
-    if (field_scene.dialogue_open()) {
-        std::cerr << "Scene-10 generic-contact QA: first text appeared before "
-                     "the measured frame 23\n";
-        return 3;
-    }
+    std::uint16_t first_overlap_update = 1U;
     std::uint16_t dialogue_update = 1U;
-    for (std::uint16_t update = 2U; update <= 23U; ++update) {
+    if (!input_driven_approach) {
+        // Preserve the forced-overlap fixture as a narrow timing check.
+        field_scene.set_field_entity_world_position_for_dump(
+            actor->world_position.x, actor->world_position.y);
+        field_scene.set_controller_port_byte(0U);
         field_scene.advance_frame();
-        dialogue_update = update;
-        if (update < 23U && field_scene.dialogue_open()) {
+        if (field_scene.dialogue_open()) {
             std::cerr << "Scene-10 generic-contact QA: first text appeared "
-                         "before measured update 23 (update=" << update
-                      << ")\n";
+                         "before the measured frame 23\n";
             return 3;
+        }
+        for (std::uint16_t update = 2U; update <= 23U; ++update) {
+            field_scene.advance_frame();
+            dialogue_update = update;
+            if (update < 23U && field_scene.dialogue_open()) {
+                std::cerr << "Scene-10 generic-contact QA: first text "
+                             "appeared before measured update 23 (update="
+                          << update << ")\n";
+                return 3;
+            }
+        }
+    } else {
+        // [C] ROM 0xEBDA..0xEC46 uses a half-open +/-0x40 window for an
+        // unlinked actor pair; 0xECCC selects bit-4 generic contact on that
+        // overlap pass. The source actor is loaded from the Scene-10 list
+        // (0x17034 -> position row 0x1704A). The (0x0500,0x05AA) start is a
+        // seeded host approach point [H], chosen outside the separate
+        // northwest event-30 rectangle and aligned with the actor after field
+        // entry's initial northward steps. This QA drives approach with
+        // ordinary Right input instead of writing overlap state.
+        constexpr std::uint16_t kProbeStartX = 0x0500U;
+        constexpr std::uint16_t kProbeStartY = 0x05AAU;
+        constexpr std::uint16_t kContactRadius = 0x0040U;
+        constexpr std::uint16_t kApproachLimit = 180U;
+        constexpr std::uint8_t kRightInput = 0x08U;
+        field_scene.set_field_entity_world_position_for_dump(
+            kProbeStartX, kProbeStartY);
+        field_scene.set_field_entity_heading_for_dump(
+            static_cast<std::uint16_t>(srx::v(srx::Heading::RIGHT)));
+        field_scene.set_controller_nibble(0U);
+        std::ofstream route_trace(output / "input-route.tsv");
+        if (!route_trace) {
+            std::cerr << "Scene-10 generic-contact QA: could not create "
+                         "input-route.tsv\n";
+            return 3;
+        }
+        route_trace << "update\trunner_x\trunner_y\tin_contact_window\n";
+        const auto in_contact_window = [kContactRadius](
+            const std::uint16_t runner, const std::uint16_t npc) {
+            const auto value = static_cast<std::int32_t>(runner);
+            const auto center = static_cast<std::int32_t>(npc);
+            return value >= center - kContactRadius &&
+                   value < center + kContactRadius;
+        };
+        first_overlap_update = 0U;
+        for (std::uint16_t update = 1U; update <= kApproachLimit; ++update) {
+            field_scene.set_controller_nibble(kRightInput);
+            field_scene.advance_frame();
+            const auto position = field_scene.field_entity_world_position();
+            const bool overlap =
+                in_contact_window(position.x, actor->world_position.x) &&
+                in_contact_window(position.y, actor->world_position.y);
+            route_trace << update << '\t' << position.x << '\t'
+                        << position.y << '\t' << static_cast<unsigned>(overlap)
+                        << '\n';
+            if (field_scene.dialogue_open()) {
+                std::cerr << "Scene-10 generic-contact QA: dialogue opened "
+                             "before the bit-4 actor window; position="
+                          << position.x << ',' << position.y
+                          << " overlap=" << overlap << " segments="
+                          << static_cast<unsigned>(field_scene.dialogue_panel()
+                                                       .text_segment_count)
+                          << " boundaries=";
+                for (const auto& boundary : boundaries) {
+                    std::cerr << boundary << ',';
+                }
+                std::cerr << '\n';
+                return 3;
+            }
+            if (overlap) {
+                first_overlap_update = update;
+                break;
+            }
+        }
+        route_trace.flush();
+        if (first_overlap_update == 0U) {
+            const auto position = field_scene.field_entity_world_position();
+            std::cerr << "Scene-10 generic-contact QA: ordinary Right input "
+                         "did not reach the source contact window in "
+                      << kApproachLimit << " updates (runner=" << position.x
+                      << ',' << position.y << ")\n";
+            return 3;
+        }
+
+        // Stop on first overlap. ROM dispatches the selected activity from
+        // this collision pass; the measured text reveal follows 22 updates
+        // later (source probe progress notes #28b-4).
+        field_scene.set_controller_nibble(0U);
+        if (field_scene.dialogue_open()) {
+            std::cerr << "Scene-10 generic-contact QA: text opened on the "
+                         "overlap update, before the measured delay\n";
+            return 3;
+        }
+        for (std::uint16_t delay = 1U; delay <= 22U; ++delay) {
+            field_scene.advance_frame();
+            dialogue_update = static_cast<std::uint16_t>(
+                first_overlap_update + delay);
+            if (delay < 22U && field_scene.dialogue_open()) {
+                std::cerr << "Scene-10 generic-contact QA: contact text "
+                             "appeared before measured offset 22 (offset="
+                          << delay << ")\n";
+                return 3;
+            }
         }
     }
 
@@ -15856,9 +15950,9 @@ int run_scene10_default_generic_contact_qa(
                 "She seems occupied with some fetishes.") !=
                 std::string_view::npos;
     }
-    const auto generic_opened = std::find(
+    const auto generic_open_count = std::count(
         boundaries.begin(), boundaries.end(),
-        "field.world_activity.generic_contact_dialogue_opened");
+        std::string("field.world_activity.generic_contact_dialogue_opened"));
     const auto timeout =
         field_scene.world_activity_request_timeout_for_dump();
     const auto resource_countdown =
@@ -15867,27 +15961,37 @@ int run_scene10_default_generic_contact_qa(
     const bool actual_saved = !actual.isNull() &&
         actual.save(QString::fromStdString(
             (output / "actual.bmp").string()));
-    if (!field_scene.dialogue_open() || dialogue_update != 23U ||
+    const auto expected_dialogue_update = static_cast<std::uint16_t>(
+        first_overlap_update + 22U);
+    if (!field_scene.dialogue_open() ||
+        dialogue_update != expected_dialogue_update ||
         !dialogue.source_complete ||
-        !has_first_line || !has_question ||
-        generic_opened == boundaries.end() || timeout != 59U ||
+        !has_first_line || !has_question || generic_open_count != 1 ||
+        timeout != 59U ||
         resource_countdown != 59U || !actual_saved) {
         std::cerr << "Scene-10 generic-contact QA: contact text did not first "
-                     "appear on measured update 23; "
+                     "appear 22 updates after first overlap; "
                   << "dialogue=" << field_scene.dialogue_open()
                   << " complete=" << dialogue.source_complete
                   << " line=" << has_first_line
                   << " question=" << has_question
+                  << " generic_open_count=" << generic_open_count
                   << " timeout=" << static_cast<unsigned>(timeout)
                   << " countdown=" << resource_countdown
                   << " failure=" << field_scene.failure() << '\n';
         return 3;
     }
-    std::cout << "scene10_generic_contact=passed first_overlap_update=1 "
+    std::cout << "scene10_generic_contact=passed approach="
+              << (input_driven_approach ? "right_input" : "co_located")
+              << " first_overlap_update=" << first_overlap_update << ' '
               << "dialogue_update=" << dialogue_update << " delta=22 timeout="
               << static_cast<unsigned>(timeout)
               << " resource_countdown=" << resource_countdown
-              << " response=scene_10_default_neutral\n";
+              << " response=scene_10_default_neutral";
+    if (input_driven_approach) {
+        std::cout << " route_trace=" << (output / "input-route.tsv").string();
+    }
+    std::cout << '\n';
     return 0;
 }
 
@@ -40029,6 +40133,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_scene10_generic_contact_qa_path;
         std::optional<std::filesystem::path>
+            field_scene10_generic_contact_input_qa_path;
+        std::optional<std::filesystem::path>
             field_bulk_generic_contacts_qa_path;
         std::optional<std::filesystem::path>
             field_crime_mall_ilene_gate_qa_path;
@@ -40385,6 +40491,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_scene10_generic_contact_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-scene10-generic-contact-input-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_scene10_generic_contact_input_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -42582,7 +42695,13 @@ int main(int argc, char** argv) {
             }
             if (field_scene10_generic_contact_qa_path.has_value()) {
                 return run_scene10_default_generic_contact_qa(
-                    smoke_state, *field_scene10_generic_contact_qa_path);
+                    smoke_state, *field_scene10_generic_contact_qa_path,
+                    false);
+            }
+            if (field_scene10_generic_contact_input_qa_path.has_value()) {
+                return run_scene10_default_generic_contact_qa(
+                    smoke_state,
+                    *field_scene10_generic_contact_input_qa_path, true);
             }
             if (field_bulk_generic_contacts_qa_path.has_value()) {
                 return run_bulk_generic_field_contacts_qa(
