@@ -29,6 +29,12 @@ segments are clear, then steers through the selected corridor. It advances
 the waypoint index as the actor enters each waypoint cell and measures the
 live target again when the route ends.
 
+When no parallel corridor is usable, Lua tries a short strip from the actor's
+current heading. The source rotation order follows `0x14AF4`; Lua represents
+the candidate as a world waypoint, and the typed terrain service checks the
+candidate and its adjacent open cell. This gives an actor a local step to
+replan from around a blocked route without exposing the source raster to Lua.
+
 If a replan cannot find a clear candidate, Lua drops the previous waypoint
 queue and restores the live target heading. This follows ROM `0x14ADE`'s
 failure branch to `0x14756`, which clears both obstruction-route flags. The
@@ -42,9 +48,10 @@ collision model at segment samples, using local collision records and sample
 state. It does not publish movement events or mutate the actor's next movement
 probe. Lua does not receive or construct an `FF1700` raster.
 
-The corridor search's side order and host sampling remain [H]. They are a
-readable native policy informed by the source route, not a claim of matching
-the source's internal algorithm or exact waypoint sequence. The referenced
+The parallel-corridor side order and host geometry sampling remain [H]. The
+heading order of the `0x14AF4` strip retry is [C]. These are readable native
+waypoint policies, not a claim of matching the source's internal grid walk or
+exact waypoint sequence. The referenced
 `/workspace/shadowrun/out/p49b/repro.txt` route capture is absent from this
 checkout; local obstruction-grid snapshots do not establish enemy route
 fidelity.
@@ -52,8 +59,9 @@ fidelity.
 ## Validation
 
 - `ai_think_tests.lua`: synthetic horizontal and vertical obstructions, clear
-  direct path, sealed corridor, opposite-side retry, target-linked route state,
-  waypoint advancement, and target reacquisition.
+  direct path, sealed corridor, opposite-side retry, heading-oriented strip
+  fallback, failed-replan cleanup, target-linked route state, waypoint
+  advancement, and target reacquisition.
 - `shadowrun_gameplay_script_runtime_qa`: verifies the Lua planner reaches the
   typed `ScriptMovementPathQuery` callback through the C++ binding.
 - The complete `run_lua_suites.sh` run passes; `ai_think_tests.lua` reports

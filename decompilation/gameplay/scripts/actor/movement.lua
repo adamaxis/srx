@@ -623,6 +623,12 @@ end
 local NAVIGATION_CELL_SIZE = 512
 -- [H] Bound the host corridor search to the source grid's 64-cell dimension.
 local NAVIGATION_MAX_CELLS = 64
+local navigation_cardinal_offsets = {
+    north = { x = 0, y = -1 },
+    east = { x = 1, y = 0 },
+    south = { x = 0, y = 1 },
+    west = { x = -1, y = 0 },
+}
 
 local function navigation_cell_center(coordinate)
     return math.floor(coordinate / NAVIGATION_CELL_SIZE) *
@@ -630,7 +636,8 @@ local function navigation_cell_center(coordinate)
 end
 
 local function choose_obstruction_waypoint(
-    from_x, from_y, target_x, target_y, path_is_clear, previous_waypoint)
+    from_x, from_y, target_x, target_y, path_is_clear, previous_waypoint,
+    source_heading)
     if type(path_is_clear) ~= "function" or
        path_is_clear(from_x, from_y, target_x, target_y) == true then
         return nil
@@ -691,6 +698,58 @@ local function choose_obstruction_waypoint(
                     target_cell_x = target_cell_x,
                     target_cell_y = target_cell_y,
                 }
+            end
+        end
+    end
+
+    -- ROM 0x14AF4 retries short open strips from the actor's current heading,
+    -- rotating its cardinal search order after each miss. Keep that policy
+    -- as named directions and host world positions: Lua stores one waypoint
+    -- and the typed terrain service checks the candidate cells. [C]/[H]
+    local heading_octant = type(source_heading) == "number" and
+        Bearing.octant(source_heading, false) or nil
+    local facing_octant = heading_octant ~= nil and
+        (heading_octant & 0x6) or nil
+    if facing_octant ~= nil then
+        for rotation = 0, 4 do
+            local primary_octant = (facing_octant - rotation * 2) & 0x7
+            local secondary_octant = (primary_octant + 2) & 0x7
+            local primary_direction =
+                navigation_cardinal_offsets[
+                    cardinal_by_octant[primary_octant]]
+            local secondary_direction =
+                navigation_cardinal_offsets[
+                    cardinal_by_octant[secondary_octant]]
+            for cell_depth = 1, 5 do
+                local waypoint_x = origin_cell_x +
+                    primary_direction.x * cell_depth * NAVIGATION_CELL_SIZE
+                local waypoint_y = origin_cell_y +
+                    primary_direction.y * cell_depth * NAVIGATION_CELL_SIZE
+                if waypoint_x < 0 or waypoint_x > 0xFFFF or
+                   waypoint_y < 0 or waypoint_y > 0xFFFF then
+                    break
+                end
+                if path_is_clear(from_x, from_y,
+                                 waypoint_x, waypoint_y) ~= true then
+                    break
+                end
+                local adjacent_x = waypoint_x +
+                    secondary_direction.x * NAVIGATION_CELL_SIZE
+                local adjacent_y = waypoint_y +
+                    secondary_direction.y * NAVIGATION_CELL_SIZE
+                if adjacent_x >= 0 and adjacent_x <= 0xFFFF and
+                   adjacent_y >= 0 and adjacent_y <= 0xFFFF and
+                   path_is_clear(waypoint_x, waypoint_y,
+                                 adjacent_x, adjacent_y) == true then
+                    return {
+                        waypoints = { { x = waypoint_x, y = waypoint_y } },
+                        origin_cell_x = origin_cell_x,
+                        origin_cell_y = origin_cell_y,
+                        target_cell_x = target_cell_x,
+                        target_cell_y = target_cell_y,
+                        strategy = "heading_oriented_strip",
+                    }
+                end
             end
         end
     end
@@ -794,7 +853,7 @@ local function plan_obstruction_waypoint(context, state, movement_state)
     local waypoint = choose_obstruction_waypoint(
         movement_state.position_x, movement_state.position_y,
         target.world_x, target.world_y, game.movement.path_is_clear,
-        state.obstruction_route)
+        state.obstruction_route, state.movement_current_bearing_degrees)
     if waypoint == nil then
         -- ROM 0x14ADE reaches 0x14756 after the rotating-strip candidates
         -- fail; that path clears both obstruction-route flags. Drop the

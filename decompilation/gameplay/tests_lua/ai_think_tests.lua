@@ -1043,6 +1043,47 @@ local alternate_side_route = R.choose_obstruction_waypoint(
 check(alternate_side_route ~= nil and alternate_side_route.side == 1 and
       alternate_side_route.waypoints[1].y == 0x2300,
       "host waypoint policy retries the opposite side after a blocked corridor [H]")
+local heading_strip_cases = {
+    { 0,   0x2100, 0x1F00, 0x2300, 0x1F00 },
+    { 45,  0x2100, 0x1F00, 0x2300, 0x1F00 },
+    { 90,  0x2300, 0x2100, 0x2300, 0x2300 },
+    { 135, 0x2300, 0x2100, 0x2300, 0x2300 },
+    { 180, 0x2100, 0x2300, 0x1F00, 0x2300 },
+    { 225, 0x2100, 0x2300, 0x1F00, 0x2300 },
+    { 270, 0x1F00, 0x2100, 0x1F00, 0x1F00 },
+    { 315, 0x1F00, 0x2100, 0x1F00, 0x1F00 },
+}
+for _, strip_case in ipairs(heading_strip_cases) do
+    local heading_strip_route = R.choose_obstruction_waypoint(
+        0x2000, 0x2000, 0x3000, 0x2000,
+        function(from_x, from_y, to_x, to_y)
+            return (from_x == 0x2000 and from_y == 0x2000 and
+                    to_x == strip_case[2] and to_y == strip_case[3]) or
+                (from_x == strip_case[2] and from_y == strip_case[3] and
+                 to_x == strip_case[4] and to_y == strip_case[5])
+        end,
+        nil, strip_case[1])
+    check(heading_strip_route ~= nil and
+          heading_strip_route.strategy == "heading_oriented_strip" and
+          #heading_strip_route.waypoints == 1 and
+          heading_strip_route.waypoints[1].x == strip_case[2] and
+          heading_strip_route.waypoints[1].y == strip_case[3],
+          string.format("0x14AF4 strip starts in source cardinal order at heading %d", strip_case[1]))
+end
+local rotated_heading_strip_route = R.choose_obstruction_waypoint(
+    0x2000, 0x2000, 0x3000, 0x2000,
+    function(from_x, from_y, to_x, to_y)
+        return (from_x == 0x2000 and from_y == 0x2000 and
+                to_x == 0x1F00 and to_y == 0x2100) or
+            (from_x == 0x1F00 and from_y == 0x2100 and
+             to_x == 0x1F00 and to_y == 0x1F00)
+    end,
+    nil, 0)
+check(rotated_heading_strip_route ~= nil and
+      rotated_heading_strip_route.strategy == "heading_oriented_strip" and
+      rotated_heading_strip_route.waypoints[1].x == 0x1F00 and
+      rotated_heading_strip_route.waypoints[1].y == 0x2100,
+      "0x14AF4 rotates to the next open strip after its first direction is blocked [C]")
 
 movement_bearing_case(337.5, 7, true,
     "enemy B574/C062 truncates 0xF000 with THINK clear to direction 7 / selector 0x3C [C]")
