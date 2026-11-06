@@ -14,15 +14,15 @@ namespace shadowrun::ghidra_conversion {
 struct WorldFrameState {
     // ROM FFE172: the audio command service is requested for this frame.
     bool audio_command_frame_pending = false;
-    // ROM FFDF8A: the field/world refresh record remains pending until the
-    // terrain-copy-suppressed branch consumes it.
+    // ROM FFDF8A: the field/world refresh record is cleared by the
+    // collision-map rebuild at 0x0EE10 after either terrain-copy branch.
     bool field_refresh_pending = false;
     // ROM FFDCA0: a live effect record must be restored before refresh.
     bool effect_record_active = false;
     // ROM FFE191: a pending world-effect transition is consumed in refresh.
     bool effect_transition_pending = false;
-    // ROM FFE171: nonzero suppresses the terrain copy and consumes the
-    // FFDF8A refresh record; zero takes the copy path and leaves refresh set.
+    // ROM FFE171: nonzero suppresses the terrain copy and clears FFDF8A
+    // before 0x0EE10; zero copies terrain, then 0x0EE10 clears FFDF8A.
     bool terrain_copy_suppression_pending = false;
     // ROM FFDF40 == 2: process the queued terrain work entries.
     bool terrain_work_mode_active = false;

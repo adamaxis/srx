@@ -47,6 +47,9 @@ void run_world_frame_services(WorldFrameState& state,
             call_once(callbacks.process_terrain_entries);
         }
     }
+    // ROM 0x0EE10 clears FFDF8A before rebuilding the terrain collision map,
+    // including after the ordinary terrain-copy branch above.
+    state.field_refresh_pending = false;
     call_once(callbacks.rebuild_collision_map);
     if (state.world_scene_state > 1U) {
         call_once(callbacks.load_scene_resources);

@@ -24,7 +24,8 @@ int main() {
     source_callbacks.reset_decoded_entity_stream_cursors =
         [&] { events.push_back(18); };
     run_world_frame_services(world, source_callbacks);
-    if (world.audio_command_frame_pending || !world.field_refresh_pending ||
+    // ROM 0x0EE10 clears FFDF8A on the normal terrain-copy path too.
+    if (world.audio_command_frame_pending || world.field_refresh_pending ||
         world.world_effect_event_lock || world.effect_transition_pending ||
         world.entity_source_stream_decode_pending || events.size() != 18 ||
         events[0] != 1 || events[1] != 2 || events[16] != 18 ||
