@@ -9245,6 +9245,57 @@ int main() {
         return false;
     };
 
+    // Exercise the typed path-query binding through the dynamic actor Lua
+    // heartbeat. The synthetic wall isolates the host/Lua boundary; the
+    // source route contract is traced at ROM 0x14682..0x149C0, while an
+    // independent GPGX route capture remains unavailable.
+    auto obstruction_route_actor = make_encounter_reaction_context(
+        "field_scene_2_encounter_obstruction_route_binding");
+    obstruction_route_actor.initial_heading = 0x2000U;
+    obstruction_route_actor.world_activity_active = false;
+    configure_encounter_movement(obstruction_route_actor, 0x0700U);
+    auto& obstruction_target =
+        obstruction_route_actor.ai_target_candidates.front();
+    obstruction_target.world_x = 0x3000U;
+    obstruction_target.world_y = 0x1800U;
+    obstruction_target.heading = 0x2000U;
+    std::uint32_t obstruction_path_query_count = 0U;
+    obstruction_route_actor.measure_destination =
+        [](const std::uint16_t, const std::uint16_t)
+            -> std::optional<ScriptActorDestinationMeasurement> {
+        return ScriptActorDestinationMeasurement{0x2000U, 0x0500U, 0x0300U};
+    };
+    obstruction_route_actor.movement_path_clear =
+        [&obstruction_path_query_count](const std::uint16_t from_x,
+                                        const std::uint16_t from_y,
+                                        const std::uint16_t to_x,
+                                        const std::uint16_t to_y) {
+        ++obstruction_path_query_count;
+        const bool crosses_wall =
+            ((from_x <= 0x2800U && to_x >= 0x2800U) ||
+             (to_x <= 0x2800U && from_x >= 0x2800U)) &&
+            from_y == 0x1800U && to_y == 0x1800U;
+        return !crosses_wall;
+    };
+    obstruction_route_actor.movement_collision =
+        [](const std::uint16_t, const std::uint16_t) {
+        return ScriptMovementCollisionResult{0x7FU, 0x7FU};
+    };
+    const bool obstruction_route_entered =
+        scripts.actor_heartbeat(obstruction_route_actor).has_value() &&
+        finish_encounter_entry(obstruction_route_actor);
+    const bool obstruction_route_primed = obstruction_route_entered &&
+        prime_encounter_movement(obstruction_route_actor);
+    if (!expect(
+            obstruction_route_primed && obstruction_path_query_count > 0U,
+            "dynamic actor Lua route policy did not call the typed host path query")) {
+        std::cerr << scripts.failure() << " entered="
+                  << obstruction_route_entered << " primed="
+                  << obstruction_route_primed << " path_queries="
+                  << obstruction_path_query_count << '\n';
+        return 24;
+    }
+
     for (std::uint8_t posture = 0U; posture < 9U; ++posture) {
         const auto expected_band = posture < 3U
             ? ScriptActorApproachBand::far

@@ -618,13 +618,211 @@ local function movement_probe_is_blocked(probe)
     return probe.collision.blocks_route_fallback
 end
 
+-- ROM 0x14902 groups world coordinates in 0x200-unit cells. Lua retains
+-- ordinary world positions and a short typed waypoint list, not FF1700 data.
+local NAVIGATION_CELL_SIZE = 512
+-- [H] Bound the host corridor search to the source grid's 64-cell dimension.
+local NAVIGATION_MAX_CELLS = 64
+
+local function navigation_cell_center(coordinate)
+    return math.floor(coordinate / NAVIGATION_CELL_SIZE) *
+        NAVIGATION_CELL_SIZE + NAVIGATION_CELL_SIZE // 2
+end
+
+local function choose_obstruction_waypoint(
+    from_x, from_y, target_x, target_y, path_is_clear, previous_waypoint)
+    if type(path_is_clear) ~= "function" or
+       path_is_clear(from_x, from_y, target_x, target_y) == true then
+        return nil
+    end
+
+    local delta_x = target_x - from_x
+    local delta_y = target_y - from_y
+    local absolute_x = math.abs(delta_x)
+    local absolute_y = math.abs(delta_y)
+    if absolute_x == 0 and absolute_y == 0 then
+        return nil
+    end
+
+    -- ROM 0x148D2 selects the greater target axis for its first obstruction
+    -- scan; ties stay on X [C]. The host route stores a typed world waypoint
+    -- and probes open parallel corridors through the read-only geometry
+    -- service; corridor selection remains [H] pending the missing GPGX trace.
+    local horizontal = absolute_x >= absolute_y
+    local side_delta = horizontal and delta_y or delta_x
+    local first_side = side_delta > 0 and 1 or -1
+    local origin_cell_x = navigation_cell_center(from_x)
+    local origin_cell_y = navigation_cell_center(from_y)
+    if type(previous_waypoint) == "table" and
+       previous_waypoint.origin_cell_x == origin_cell_x and
+       previous_waypoint.origin_cell_y == origin_cell_y and
+       type(previous_waypoint.side) == "number" then
+        first_side = -previous_waypoint.side
+    end
+
+    local target_cell_x = navigation_cell_center(target_x)
+    local target_cell_y = navigation_cell_center(target_y)
+    for cell_offset = 1, NAVIGATION_MAX_CELLS do
+        local offset = cell_offset * NAVIGATION_CELL_SIZE
+        for side_attempt = 1, 2 do
+            local side = side_attempt == 1 and first_side or -first_side
+            local waypoint_x = horizontal and origin_cell_x or
+                origin_cell_x + side * offset
+            local waypoint_y = horizontal and
+                origin_cell_y + side * offset or origin_cell_y
+            local exit_x = horizontal and target_cell_x or waypoint_x
+            local exit_y = horizontal and waypoint_y or target_cell_y
+            if waypoint_x >= 0 and waypoint_x <= 0xFFFF and
+               waypoint_y >= 0 and waypoint_y <= 0xFFFF and
+               exit_x >= 0 and exit_x <= 0xFFFF and
+               exit_y >= 0 and exit_y <= 0xFFFF and
+               path_is_clear(from_x, from_y, waypoint_x, waypoint_y) == true and
+               path_is_clear(waypoint_x, waypoint_y, exit_x, exit_y) == true and
+               path_is_clear(exit_x, exit_y, target_x, target_y) == true then
+                return {
+                    waypoints = waypoint_x == exit_x and
+                        waypoint_y == exit_y
+                        and { { x = waypoint_x, y = waypoint_y } }
+                        or { { x = waypoint_x, y = waypoint_y },
+                             { x = exit_x, y = exit_y } },
+                    side = side,
+                    origin_cell_x = origin_cell_x,
+                    origin_cell_y = origin_cell_y,
+                    target_cell_x = target_cell_x,
+                    target_cell_y = target_cell_y,
+                }
+            end
+        end
+    end
+    return nil
+end
+
+local function current_world_target(context, state)
+    if type(state.ai_target_id) ~= "string" or
+       type(context.ai_target_candidates) ~= "table" then
+        return nil
+    end
+    for _, candidate in ipairs(context.ai_target_candidates) do
+        if candidate.id == state.ai_target_id and
+           type(candidate.world_x) == "number" and
+           type(candidate.world_y) == "number" then
+            return candidate
+        end
+    end
+    return nil
+end
+
+local function measure_and_store_destination(context, state, x, y)
+    if type(context.measure_destination) ~= "function" then
+        return false
+    end
+    local measured = context.measure_destination(x, y)
+    if type(measured) ~= "table" or
+       type(measured.bearing_degrees) ~= "number" or
+       type(measured.distance) ~= "number" then
+        return false
+    end
+    state.movement_bearing_degrees = measured.bearing_degrees
+    state.movement_route_distance = measured.distance
+    state.movement_current_bearing_degrees =
+        R.approach_bearing_degrees(
+            state.movement_current_bearing_degrees,
+            state.movement_bearing_degrees)
+    return true
+end
+
+local function apply_obstruction_waypoint(context, state, movement_state)
+    local route = state.obstruction_route
+    if context.dynamic_world_encounter_actor ~= true or
+       type(route) ~= "table" or type(route.waypoints) ~= "table" then
+        return false
+    end
+    local target = current_world_target(context, state)
+    if target == nil or target.id ~= route.target_id or
+       navigation_cell_center(target.world_x) ~= route.target_cell_x or
+       navigation_cell_center(target.world_y) ~= route.target_cell_y then
+        state.obstruction_route = nil
+        if target ~= nil then
+            measure_and_store_destination(
+                context, state, target.world_x, target.world_y)
+        end
+        return false
+    end
+    local waypoint = route.waypoints[route.index]
+    if type(route.index) ~= "number" or route.index < 1 or
+       route.index % 1 ~= 0 or waypoint == nil then
+        state.obstruction_route = nil
+        measure_and_store_destination(
+            context, state, target.world_x, target.world_y)
+        return false
+    end
+    while waypoint ~= nil and
+          navigation_cell_center(movement_state.position_x) ==
+              navigation_cell_center(waypoint.x) and
+          navigation_cell_center(movement_state.position_y) ==
+              navigation_cell_center(waypoint.y) do
+        route.index = route.index + 1
+        waypoint = route.waypoints[route.index]
+    end
+    if waypoint == nil then
+        state.obstruction_route = nil
+        -- 0x149C0 returns to the live target heading when its route queue
+        -- reaches the terminator. Re-measure the current target so movement
+        -- does not keep the bearing of the last detour point [C].
+        measure_and_store_destination(
+            context, state, target.world_x, target.world_y)
+        return false
+    end
+    if not measure_and_store_destination(
+           context, state, waypoint.x, waypoint.y) then
+        state.obstruction_route = nil
+        measure_and_store_destination(
+            context, state, target.world_x, target.world_y)
+        return false
+    end
+    return true
+end
+
+local function plan_obstruction_waypoint(context, state, movement_state)
+    if context.dynamic_world_encounter_actor ~= true then
+        return false
+    end
+    local target = current_world_target(context, state)
+    if target == nil then
+        return false
+    end
+    local waypoint = choose_obstruction_waypoint(
+        movement_state.position_x, movement_state.position_y,
+        target.world_x, target.world_y, game.movement.path_is_clear,
+        state.obstruction_route)
+    if waypoint == nil then
+        return false
+    end
+    waypoint.target_id = target.id
+    waypoint.index = 1
+    state.obstruction_route = waypoint
+    local first_waypoint = waypoint.waypoints[1]
+    if first_waypoint == nil then
+        state.obstruction_route = nil
+        return false
+    end
+    if not measure_and_store_destination(
+           context, state, first_waypoint.x, first_waypoint.y) then
+        state.obstruction_route = nil
+        return false
+    end
+    state.movement_active = true
+    return true
+end
+
 local function commit_movement_candidate(movement_state, probe)
     movement_state.position_x = probe.candidate_x
     movement_state.position_y = probe.candidate_y
     movement_state.clear_pending_event = true
 end
 
-local function reset_blocked_movement(state, movement_state)
+local function reset_blocked_movement(context, state, movement_state)
+    plan_obstruction_waypoint(context, state, movement_state)
     movement_state.route_facts.path_active = false
     movement_state.bearing_degrees = state.movement_bearing_degrees
     movement_state.mark_reset_after_block = true
@@ -651,14 +849,6 @@ local function advance_entity_movement(context, state)
        state.movement_current_bearing_degrees == nil then
         return nil
     end
-
-    local movement_step_distance =
-        creature_movement_step_distance(context, state)
-    if type(movement_step_distance) ~= "number" or
-       movement_step_distance <= 0 then
-        return nil
-    end
-
     local movement_state = {}
     for key, value in pairs(context.movement_state) do
         movement_state[key] = value
@@ -672,6 +862,17 @@ local function advance_entity_movement(context, state)
     movement_state.mark_directional_fallback = false
     movement_state.clear_collision_recovery = false
     movement_state.clear_pending_event = false
+    apply_obstruction_waypoint(context, state, movement_state)
+    movement_state.bearing_degrees = state.movement_current_bearing_degrees
+    movement_state.animation_bearing_degrees = movement_state.bearing_degrees
+
+    local movement_step_distance =
+        creature_movement_step_distance(context, state)
+    if type(movement_step_distance) ~= "number" or
+       movement_step_distance <= 0 then
+        return nil
+    end
+
     if context.dynamic_world_encounter_actor == true then
         movement_state.collision_extent =
             context.visual_profile_id == VisualProfile.GARGOYLE and
@@ -766,7 +967,7 @@ local function advance_entity_movement(context, state)
             }
         end
         local reset = reset_blocked_movement(
-            state, movement_state)
+            context, state, movement_state)
         state.animation_id = "idle"
         return reset
     end
@@ -799,7 +1000,7 @@ local function advance_entity_movement(context, state)
         end
         if movement_probe_is_blocked(selected) then
             local reset = reset_blocked_movement(
-                state, movement_state)
+                context, state, movement_state)
             state.animation_id = "idle"
             return reset
         end
@@ -843,6 +1044,7 @@ R.creature_movement_step_distance = creature_movement_step_distance
 R.probe_movement = probe_movement
 R.route_direction_for_bearing_degrees = route_direction_for_bearing_degrees
 R.movement_probe_is_blocked = movement_probe_is_blocked
+R.choose_obstruction_waypoint = choose_obstruction_waypoint
 R.commit_movement_candidate = commit_movement_candidate
 R.reset_blocked_movement = reset_blocked_movement
 R.advance_entity_movement = advance_entity_movement

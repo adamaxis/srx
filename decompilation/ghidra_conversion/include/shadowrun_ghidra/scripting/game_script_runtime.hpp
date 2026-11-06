@@ -2133,6 +2133,12 @@ struct ScriptMovementCollisionRecoveryResult {
 
 using ScriptMovementCollisionQuery =
     std::function<ScriptMovementCollisionResult(std::uint16_t, std::uint16_t)>;
+// Read-only geometry query used by Lua path policy. The host checks a segment
+// against the active scene's collision model without publishing movement
+// state or changing the actor's persistent collision sample.
+using ScriptMovementPathQuery = std::function<bool(
+    std::uint16_t from_x, std::uint16_t from_y,
+    std::uint16_t to_x, std::uint16_t to_y)>;
 using ScriptMovementRouteLookup =
     std::function<ScriptMovementRouteFacts(std::uint16_t)>;
 using ScriptMovementCollisionRecovery =
@@ -2399,6 +2405,7 @@ struct ScriptActorBehaviorContext {
     std::uint8_t world_scene_state = 0;
     std::uint16_t movement_collision_mode = 0;
     ScriptMovementCollisionQuery movement_collision;
+    ScriptMovementPathQuery movement_path_clear;
     ScriptMovementRouteLookup movement_route_lookup;
     ScriptMovementCollisionRecovery movement_collision_recovery;
     // The field-player B7B8 path dispatches mode/map events before BADE's

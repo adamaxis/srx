@@ -1872,6 +1872,10 @@ private:
         std::uint16_t* terrain_collision_code_output = nullptr,
         bool* terrain_boundary_active_output = nullptr,
         bool* outside_bounds_output = nullptr);
+    bool actor_navigation_path_clear(
+        const DefaultFieldActorPresentation& actor,
+        std::uint16_t from_x, std::uint16_t from_y,
+        std::uint16_t to_x, std::uint16_t to_y);
     void set_field_barrier_collision_overlay(
         const std::array<FieldBarrierCollisionCell,
                          kFieldBarrierCollisionCellCount>& cells) noexcept;

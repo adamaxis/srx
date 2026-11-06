@@ -979,6 +979,71 @@ game.movement.probe = function(x, y, direction, distance)
         candidate_x = (x + offset.x * distance) % 0x10000,
         candidate_y = (y + offset.y * distance) % 0x10000 }
 end
+
+-- ROM 0x148D2 chooses the dominant axis, 0x14854 probes paired clear
+-- corridors, and 0x14914 checks the obstruction line. This synthetic wall
+-- fixture checks the native waypoint policy only; it is not a GPGX route
+-- capture or a claim that the full route matches the emulator.
+local function vertical_wall_path_clear(wall_x, wall_top, wall_bottom)
+    return function(from_x, from_y, to_x, to_y)
+        if from_x == to_x then
+            if from_x ~= wall_x then return true end
+            return math.max(from_y, to_y) < wall_top or
+                math.min(from_y, to_y) > wall_bottom
+        end
+        local crosses_wall =
+            (from_x <= wall_x and to_x >= wall_x) or
+            (to_x <= wall_x and from_x >= wall_x)
+        if not crosses_wall then return true end
+        local portion = (wall_x - from_x) / (to_x - from_x)
+        local crossing_y = from_y + (to_y - from_y) * portion
+        return crossing_y < wall_top or crossing_y > wall_bottom
+    end
+end
+
+local wall_path_clear = vertical_wall_path_clear(0x2800, 0x1F80, 0x2080)
+local wall_route = R.choose_obstruction_waypoint(
+    0x2000, 0x2000, 0x3000, 0x2000, wall_path_clear)
+check(wall_route ~= nil and wall_route.side == -1 and
+      #wall_route.waypoints == 2 and
+      wall_route.waypoints[1].x == 0x2100 and
+      wall_route.waypoints[1].y == 0x1F00 and
+      wall_route.waypoints[2].x == 0x3100 and
+      wall_route.waypoints[2].y == 0x1F00,
+      "host waypoint policy finds a clear parallel corridor in the synthetic wall [H]")
+check(R.choose_obstruction_waypoint(
+          0x2000, 0x2000, 0x3000, 0x2000,
+          function() return true end) == nil,
+      "clear direct path does not create an obstruction waypoint [C: 0x14914]")
+local sealed_wall_route = R.choose_obstruction_waypoint(
+    0x2000, 0x2000, 0x3000, 0x2000,
+    function(from_x, from_y, to_x, to_y)
+        local crosses_wall =
+            (from_x <= 0x2800 and to_x >= 0x2800) or
+            (to_x <= 0x2800 and from_x >= 0x2800)
+        return not crosses_wall
+    end)
+check(sealed_wall_route == nil,
+      "host waypoint policy gives up when the synthetic wall seals both sides [H]")
+local vertical_route = R.choose_obstruction_waypoint(
+    0x2000, 0x2000, 0x2000, 0x3000,
+    function(from_x, from_y, to_x, to_y)
+        if from_x == to_x and from_x == 0x2000 then
+            return math.max(from_y, to_y) < 0x2800
+        end
+        return true
+    end)
+check(vertical_route ~= nil and vertical_route.side == -1 and
+      vertical_route.waypoints[1].x == 0x1F00 and
+      vertical_route.waypoints[2].x == 0x1F00,
+      "host waypoint policy detours a vertical path along the other axis [H]")
+local alternate_side_route = R.choose_obstruction_waypoint(
+    0x2000, 0x2000, 0x3000, 0x2000, wall_path_clear,
+    { side = -1, origin_cell_x = 0x2100, origin_cell_y = 0x2100 })
+check(alternate_side_route ~= nil and alternate_side_route.side == 1 and
+      alternate_side_route.waypoints[1].y == 0x2300,
+      "host waypoint policy retries the opposite side after a blocked corridor [H]")
+
 movement_bearing_case(337.5, 7, true,
     "enemy B574/C062 truncates 0xF000 with THINK clear to direction 7 / selector 0x3C [C]")
 movement_bearing_case(22.5, 0, true,
@@ -1054,6 +1119,87 @@ for _, route_case in ipairs(route_heading_cases) do
           string.format("default routed B574 bearing %.5f degrees truncates to %d [C]",
                         route_case[1], route_case[2]))
 end
+
+local saved_movement_probe = game.movement.probe
+local saved_path_query = game.movement.path_is_clear
+local route_path_query_calls = 0
+game.movement.path_is_clear = function(from_x, from_y, to_x, to_y)
+    route_path_query_calls = route_path_query_calls + 1
+    return wall_path_clear(from_x, from_y, to_x, to_y)
+end
+game.movement.probe = function(x, y, direction)
+    if direction == nil then
+        return { kind = "clear", blocks_route_fallback = false,
+            terrain_is_clear = true, candidate_x = x, candidate_y = y }
+    end
+    return { kind = "blocked", blocks_route_fallback = true,
+        terrain_is_clear = false, candidate_x = x, candidate_y = y }
+end
+local obstruction_context = movement_fixture(true)
+obstruction_context.movement_state.position_x = 0x2000
+obstruction_context.movement_state.position_y = 0x2000
+obstruction_context.ai_target_candidates = {
+    { id = "party.runner.0", world_x = 0x3000, world_y = 0x2000 },
+}
+obstruction_context.measure_destination = function(x, y)
+    local bearing = x == 0x3000 and y == 0x2000 and 45 or 315
+    return { bearing_degrees = bearing, distance = 0x500,
+        step_cost = 0x300 }
+end
+local obstruction_state = {
+    ai_target_id = "party.runner.0",
+    movement_bearing_degrees = 22.5,
+    movement_current_bearing_degrees = 22.5,
+    movement_route_distance = 0x1000,
+}
+local blocked_route_step = R.advance_entity_movement(
+    obstruction_context, obstruction_state)
+check(blocked_route_step ~= nil and
+      blocked_route_step.outcome == "reset" and
+      route_path_query_calls > 0 and
+      obstruction_state.obstruction_route ~= nil and
+      obstruction_state.obstruction_route.target_id == "party.runner.0" and
+      obstruction_state.obstruction_route.index == 1,
+      "blocked dynamic actor movement stores a target-linked obstruction route [H]")
+if obstruction_state.obstruction_route ~= nil then
+    local first_waypoint =
+        obstruction_state.obstruction_route.waypoints[1]
+    obstruction_context.movement_state.position_x = first_waypoint.x
+    obstruction_context.movement_state.position_y = first_waypoint.y
+    game.movement.probe = function(x, y, direction, distance)
+        local offsets = {
+            north = { x = 0, y = -1 }, north_east = { x = 1, y = -1 },
+            east = { x = 1, y = 0 }, south_east = { x = 1, y = 1 },
+            south = { x = 0, y = 1 }, south_west = { x = -1, y = 1 },
+            west = { x = -1, y = 0 }, north_west = { x = -1, y = -1 },
+        }
+        local offset = offsets[direction] or { x = 0, y = 0 }
+        return { kind = "clear", blocks_route_fallback = false,
+            terrain_is_clear = true,
+            candidate_x = (x + offset.x * (distance or 0)) % 0x10000,
+            candidate_y = (y + offset.y * (distance or 0)) % 0x10000 }
+    end
+    local next_route_step = R.advance_entity_movement(
+        obstruction_context, obstruction_state)
+    check(next_route_step ~= nil and
+          next_route_step.outcome == "accepted" and
+          obstruction_state.obstruction_route ~= nil and
+          obstruction_state.obstruction_route.index == 2,
+          "reaching the entry waypoint advances to the corridor exit [H]")
+    local exit_waypoint =
+        obstruction_state.obstruction_route.waypoints[2]
+    obstruction_context.movement_state.position_x = exit_waypoint.x
+    obstruction_context.movement_state.position_y = exit_waypoint.y
+    local resumed_chase_step = R.advance_entity_movement(
+        obstruction_context, obstruction_state)
+    check(resumed_chase_step ~= nil and
+          resumed_chase_step.outcome == "accepted" and
+          obstruction_state.obstruction_route == nil and
+          obstruction_state.movement_bearing_degrees == 45,
+          "route queue completion reacquires the live target heading [C: 0x149C0]")
+end
+game.movement.probe = saved_movement_probe
+game.movement.path_is_clear = saved_path_query
 
 local heartbeat_actor_id = "playtest13_dynamic_hellhound"
 local heartbeat_target = {
