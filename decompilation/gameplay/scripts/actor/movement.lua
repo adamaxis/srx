@@ -504,7 +504,7 @@ local function creature_movement_step_distance(context, state)
     -- 0xACAE installs 0xB574 when +0x10 bit 1 is set. Bit 1 clear is the
     -- distance-band path at 0xB6E4.
     local targets_world = lifecycle.ai_runner == true
-    local high_effect = context.actor_facts.behavior.escort == true
+    local escort_behavior = context.actor_facts.behavior.escort == true
     local activity = context.world_activity_active == true
     local step
 
@@ -518,20 +518,24 @@ local function creature_movement_step_distance(context, state)
         step = 40
     else
         step = 30
-        if not targets_world and not high_effect then
+        if not targets_world and not escort_behavior then
             step = 18
         end
         local skip_quickness = false
         if context.actor_facts.roles.pedestrian then
-            step = 22
-            if activity then
-                skip_quickness = true
-            else
-                step = 10
-            end
+            -- This is the live +0x9E bit-5 movement branch, not actor-kind
+            -- classification. ROM 0xB610 selects BE82 (22) while FFDF84 is
+            -- active and BE62 (10) while it is clear [C].
+            skip_quickness = true
+            step = activity and 22 or 10
         end
         if not skip_quickness then
-            if activity and high_effect then
+            -- With +0x9E bit 5 clear, ROM 0xB5EA..0xB608 first selects the
+            -- ordinary 18-unit BEA2 vector or the 30-unit BEC2 vector from
+            -- +0x10 bit 3 / +0xB0 bit 7. Only nonzero FFDF84 enters B63E..B662:
+            -- +0xB0 bit 7 selects BE82 (22), otherwise +0x78 indexes BDF2.
+            -- Keep the controlled-runner path separate [C].
+            if activity and escort_behavior then
                 step = 22
             elseif activity then
                 local quickness = combat_quickness

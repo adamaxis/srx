@@ -1845,6 +1845,18 @@ truncated differences, and all ten distinct affected headings. The larger
 actor hill remains partial: this test does not cover a complete Scene-35 route,
 all waypoint collision branches, or an independent Genesis visual.
 
+The pedestrian vector selector is now covered across its live source
+conditions. Scene-20 default row 5 at ROM list `0x1D91DA` uses template
+`0x1D6988` and route `0x1D922E`; with `+0x9E` bit 5 clear and `FFDF84` clear,
+ROM `0xB5EA..0xB6E4` selects the 18-unit far vector. The field pedestrian QA
+checks that vector and three southbound route steps after the actor turns from
+its initial heading, and writes `scene-20-pedestrian-route-actual.bmp`. The
+cold-boot GPGX route independently records the flagged Scene-2 pedestrian's
+first `(-10,-10)` step; the port route records the same first vector. This
+confirms the two vector branches on those tested paths, not full route timing,
+collision, combat/death animation, or Scene-20 visual fidelity. See playtest
+item 50 for the open comparisons.
+
 ## Scene-34 record-90 Electronics no-skill branch (partial, 2026-10-27)
 
 The physical Scene-3/30/34 route now covers ordinary New Game Samurai input at

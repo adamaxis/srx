@@ -986,6 +986,71 @@ local function movement_fixture(dynamic_actor)
     }
 end
 
+-- ROM 0xB610 sends +0x9E bit-5 records through BE82/BE62. Otherwise B5EA
+-- chooses the base vector, and only nonzero FFDF84 reaches the +0xB0 bit-7 /
+-- Quickness selector at 0xB62A..0xB664. Scene 20's kind-11 template has
+-- +0x9E clear and Quickness 1 (template 0x1D6988 +0x2A; live +0x78 is copied
+-- at 0x454A). Its far route uses the default BEA2 vector (18) with FFDF84
+-- clear, or Quickness 1's BDF2 vector (9) when FFDF84 is nonzero. Scene 0/2/5
+-- pedestrians with +0x9E bit 5 use 10 or 22 by FFDF84. B6E4's shorter-route
+-- bands replace the base.
+local source_quickness_steps = { 9, 9, 12, 16, 19, 22, 25, 27, 29, 31 }
+local function source_movement_step(pedestrian_role, escort_behavior,
+                                    world_active, quickness, route_distance,
+                                    thinking_enabled)
+    local speed_context = {
+        dynamic_world_encounter_actor = true,
+        visual_profile_id = E.ActorVisualProfile.PEDESTRIAN_RAT_SHAMAN,
+        actor_facts = actor_facts({
+            lifecycle = { active = true,
+                         thinking_enabled = thinking_enabled == true,
+                         ai_runner = false },
+            behavior = { escort = escort_behavior == true },
+            roles = { pedestrian = pedestrian_role == true },
+        }),
+        combatant = { attributes = { quickness = quickness } },
+        world_activity_active = world_active == true,
+        movement_default_step_distance = 18,
+    }
+    return R.creature_movement_step_distance(speed_context, {
+        movement_route_distance = route_distance,
+    })
+end
+
+for quickness = 0, 9 do
+    for _, world_active in ipairs({ false, true }) do
+        local expected = world_active and
+            source_quickness_steps[quickness + 1] or 18
+        check(source_movement_step(false, false, world_active, quickness,
+                                   0x460, false) == expected,
+              string.format(
+                  "ROM 0xB5EA..0xB662 selects Quickness %d only for nonzero FFDF84 (active=%s)",
+                  quickness, tostring(world_active)))
+    end
+end
+check(source_movement_step(false, false, false, 1, 0x500, false) == 18 and
+      source_movement_step(false, false, true, 1, 0x500, false) == 9,
+      "Scene-20 kind-11 far route uses BEA2 at clear FFDF84 and Quickness 1 at nonzero FFDF84 [C]")
+check(source_movement_step(false, true, false, 1, 0x500, false) == 30 and
+      source_movement_step(false, true, true, 1, 0x500, false) == 22,
+      "0xB5F0 / 0xB63E selects BEC2 while FFDF84 is clear and BE82 while nonzero [C]")
+check(source_movement_step(true, false, true, 9, 0x500, false) == 22 and
+      source_movement_step(true, false, false, 9, 0x500, false) == 10,
+      "0xB610 uses the special pedestrian vector by FFDF84 state [C]")
+for _, band in ipairs({
+    { 0x00FF, 8 }, { 0x0100, 10 }, { 0x01FF, 10 },
+    { 0x0200, 15 }, { 0x035F, 15 }, { 0x0360, 20 },
+    { 0x045F, 20 }, { 0x0460, 18 },
+}) do
+    check(source_movement_step(false, false, false, 1, band[1], false) ==
+              band[2],
+          string.format("0xB6E4 distance band at %04X selects %d",
+                        band[1], band[2]))
+end
+check(source_movement_step(false, false, true, 9, 0x0100, false) == 10 and
+      source_movement_step(false, false, true, 9, 0x0100, true) == 31,
+      "0xB666 skips the distance bands when +0x10 bit 1 is set [C]")
+
 local function movement_bearing_case(bearing_degrees, expected_direction,
                                      dynamic_actor, description)
     local movement_context = movement_fixture(dynamic_actor)

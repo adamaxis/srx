@@ -102,6 +102,24 @@ def port_pedestrians(row: dict[str, object]) -> dict[int, dict[str, int]]:
     return result
 
 
+def first_movement_step(rows, slot: int, actors, frame_key: str):
+    previous_position = None
+    for row in rows:
+        actor = actors(row).get(slot)
+        if actor is None:
+            previous_position = None
+            continue
+        position = (actor["x"], actor["y"])
+        if previous_position is not None and position != previous_position:
+            return {
+                "frame": int(row[frame_key]),
+                "dx": position[0] - previous_position[0],
+                "dy": position[1] - previous_position[1],
+            }
+        previous_position = position
+    return None
+
+
 def main() -> int:
     if len(sys.argv) != 5:
         fail("usage: verify_stoker_exit_pedestrian_route.py EXE ASSETS FIXTURE OUTPUT")
@@ -187,6 +205,28 @@ def main() -> int:
             fail(f"slot {slot} +0x9E flags {actual['spawn_flags']:02X} "
                  f"do not match GPGX {source['spawn_flags']:02X}")
 
+    # ROM 0xB610 selects the BE62 (10-unit) vector for a live +0x9E bit-5
+    # pedestrian when FFDF84 is clear. The independent GPGX route captures
+    # this row's first step as (-10,-10); check the port's first step against
+    # that same source observation. Spawn-frame offsets differ, so this checks
+    # the vector, not movement cadence or total route timing.
+    source_rows = sorted(gpgx_frames.values(), key=lambda row: int(row["frame"]))
+    source_first_step = first_movement_step(
+        source_rows, 3, parse_source_slots, "frame")
+    port_rows = sorted(scene_rows, key=lambda row: int(row["app.source_frame"]))
+    port_first_step = first_movement_step(
+        port_rows, 3, port_pedestrians, "app.source_frame")
+    if source_first_step is None or port_first_step is None:
+        fail("GPGX and port route traces must both contain slot 3 movement")
+    if (source_first_step["dx"], source_first_step["dy"]) != (-10, -10):
+        fail("GPGX Scene-2 slot 3 first movement vector changed from (-10,-10) "
+             f"at source frame {source_first_step['frame']}")
+    if (port_first_step["dx"], port_first_step["dy"]) != (
+            source_first_step["dx"], source_first_step["dy"]):
+        fail("port Scene-2 slot 3 first movement vector "
+             f"({port_first_step['dx']},{port_first_step['dy']}) does not "
+             f"match GPGX ({source_first_step['dx']},{source_first_step['dy']})")
+
     port_exit = next((row for row in scene_rows
                       if row.get("app.source_frame") == 10001), None)
     if port_exit is None:
@@ -211,6 +251,9 @@ def main() -> int:
         fail("headless route replay did not save its actual.bmp frame")
     print("stoker_exit_pedestrian_route=passed source_slots=3,4,5 "
           f"port_visible_slots={','.join(map(str, visible))} "
+          f"first_vector={source_first_step['dx']},{source_first_step['dy']} "
+          f"gpgx_first_move={source_first_step['frame']} "
+          f"port_first_move={port_first_step['frame']} "
           "gpgx_spawn_frame=8035 gpgx_exit_frame=10000")
     return 0
 

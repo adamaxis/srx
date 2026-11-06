@@ -24653,6 +24653,18 @@ int run_field_pedestrian_scenes_qa(
         FieldWorldActorSlot::slot_7, FieldWorldActorSlot::slot_8,
         FieldWorldActorSlot::slot_9,
     }};
+    // ROM list 0x1D91DA row 5 points to the kind-11 template at 0x1D6988
+    // and the route beginning at 0x1D922E: (0x1600,0x0580) ->
+    // (0x1600,0x0A80). Its +0x9E bit 5 and +0xB0 bit 7 are clear; with
+    // +0x10=0x05 and FFDF84 clear, B5EA/B60A/B62A/B666/B6E4 retain BEA2's
+    // 18-unit far vector. ROM 0x145A2 selects the route bearing and 0xB574
+    // turns +0x2E by 0x0800 per service pass while still applying that vector,
+    // so the initial north-facing steps need not point toward the waypoint.
+    // This checks the vector and the settled southbound route, not GPGX pixels.
+    constexpr std::size_t kScene20MovingPedestrianOrder = 5U;
+    constexpr std::uint16_t kScene20MovingPedestrianTargetX = 0x1600U;
+    constexpr std::uint16_t kScene20MovingPedestrianTargetY = 0x0A80U;
+    constexpr std::uint16_t kScene20ExpectedPedestrianStep = 18U;
     field_scene.set_field_entity_world_position_for_dump(0x5000U, 0x7000U);
     if (!field_scene.seed_current_run_for_dump("ghoul_bounty")) {
         std::cerr << "Pedestrian scenes QA: no-run initializer could not be "
@@ -24715,6 +24727,23 @@ int run_field_pedestrian_scenes_qa(
                      "route start frame\n";
         return 3;
     }
+    const auto& scene20_pedestrian_start =
+        scene20_guard_starts[kScene20MovingPedestrianOrder];
+    field_scene.set_field_camera_world_position_for_dump(
+        static_cast<std::uint16_t>(scene20_pedestrian_start.x - 0x0800U),
+        scene20_pedestrian_start.y >= 0x0800U
+            ? static_cast<std::uint16_t>(scene20_pedestrian_start.y - 0x0800U)
+            : 0U);
+    const auto scene20_pedestrian_start_image = render_qa_field(field_scene);
+    const auto scene20_pedestrian_start_bitmap =
+        output / "scene-20-pedestrian-route-start.bmp";
+    if (scene20_pedestrian_start_image.isNull() ||
+        !scene20_pedestrian_start_image.save(QString::fromStdWString(
+            scene20_pedestrian_start_bitmap.wstring()))) {
+        std::cerr << "Pedestrian scenes QA: could not save Scene-20 "
+                     "pedestrian route start frame\n";
+        return 3;
+    }
     const auto distance_to_scene20_target =
         [&kScene20GuardTargets](const std::size_t order,
                                const SceneRunnerPosition& position) {
@@ -24728,6 +24757,12 @@ int run_field_pedestrian_scenes_qa(
         };
     std::array<std::uint32_t, 3> scene20_initial_distances{};
     std::array<std::optional<std::size_t>, 3> scene20_progress_frames{};
+    std::optional<std::size_t> scene20_pedestrian_first_step_frame;
+    std::optional<std::uint16_t> scene20_pedestrian_first_step;
+    std::optional<SceneRunnerPosition> scene20_pedestrian_first_step_position;
+    std::size_t scene20_pedestrian_southbound_steps = 0U;
+    std::vector<std::string> scene20_pedestrian_trace;
+    auto previous_scene20_pedestrian = scene20_pedestrian_start;
     for (std::size_t order = 0U; order < kScene20GuardStarts.size(); ++order) {
         scene20_initial_distances[order] = distance_to_scene20_target(
             order, scene20_guard_starts[order]);
@@ -24749,9 +24784,60 @@ int run_field_pedestrian_scenes_qa(
                 scene20_progress_frames[order] = frame + 1U;
             }
         }
+        const auto& pedestrian =
+            positions[kScene20MovingPedestrianOrder];
+        const auto delta = [](const std::uint16_t before,
+                             const std::uint16_t after) {
+            return before >= after
+                       ? static_cast<std::uint16_t>(before - after)
+                       : static_cast<std::uint16_t>(after - before);
+        };
+        const auto step_x = delta(previous_scene20_pedestrian.x, pedestrian.x);
+        const auto step_y = delta(previous_scene20_pedestrian.y, pedestrian.y);
+        if (pedestrian.x != previous_scene20_pedestrian.x ||
+            pedestrian.y != previous_scene20_pedestrian.y) {
+            const auto direction = field_scene.default_actor_direction_for_dump(
+                static_cast<std::uint16_t>(kScene20MovingPedestrianOrder));
+            const auto target = field_scene.default_actor_ai_target_id_for_dump(
+                static_cast<std::uint16_t>(kScene20MovingPedestrianOrder));
+            const auto target_distance =
+                field_scene.default_actor_ai_target_distance_for_dump(
+                    static_cast<std::uint16_t>(
+                        kScene20MovingPedestrianOrder));
+            std::ostringstream sample;
+            sample << "frame=" << frame + 1U << " pos=" << pedestrian.x
+                   << ',' << pedestrian.y << " dir="
+                   << (direction.has_value()
+                           ? std::to_string(*direction)
+                           : std::string("missing"))
+                   << " target="
+                   << (target.has_value() ? *target : std::string("none"))
+                   << " target_distance="
+                   << (target_distance.has_value()
+                           ? std::to_string(*target_distance)
+                           : std::string("missing"));
+            scene20_pedestrian_trace.push_back(sample.str());
+        }
+        if (step_x == 0U && step_y == kScene20ExpectedPedestrianStep &&
+            pedestrian.y > previous_scene20_pedestrian.y) {
+            ++scene20_pedestrian_southbound_steps;
+        } else if (pedestrian.x != previous_scene20_pedestrian.x ||
+                   pedestrian.y != previous_scene20_pedestrian.y) {
+            scene20_pedestrian_southbound_steps = 0U;
+        }
+        if (!scene20_pedestrian_first_step_frame.has_value() &&
+            (pedestrian.x != previous_scene20_pedestrian.x ||
+             pedestrian.y != previous_scene20_pedestrian.y)) {
+            scene20_pedestrian_first_step_frame = frame + 1U;
+            scene20_pedestrian_first_step_position = pedestrian;
+            scene20_pedestrian_first_step = std::max(step_x, step_y);
+        }
+        previous_scene20_pedestrian = pedestrian;
         if (std::all_of(scene20_progress_frames.begin(),
                         scene20_progress_frames.end(),
-                        [](const auto& frame) { return frame.has_value(); })) {
+                        [](const auto& frame) { return frame.has_value(); }) &&
+            scene20_pedestrian_first_step_frame.has_value() &&
+            scene20_pedestrian_southbound_steps >= 3U) {
             break;
         }
     }
@@ -24762,11 +24848,17 @@ int run_field_pedestrian_scenes_qa(
         scene20_guard_finals[3].y != scene20_guard_starts[3].y ||
         scene20_guard_finals[4].x != scene20_guard_starts[4].x ||
         scene20_guard_finals[4].y != scene20_guard_starts[4].y ||
+        !scene20_pedestrian_first_step_frame.has_value() ||
+        scene20_pedestrian_first_step !=
+            std::optional<std::uint16_t>{kScene20ExpectedPedestrianStep} ||
+        scene20_pedestrian_southbound_steps < 3U ||
+        scene20_guard_finals[kScene20MovingPedestrianOrder].y <=
+            scene20_pedestrian_start.y ||
         std::any_of(scene20_progress_frames.begin(),
                     scene20_progress_frames.end(),
                     [](const auto& frame) { return !frame.has_value(); })) {
-        std::cerr << "Pedestrian scenes QA: one or more Scene-20 guards did "
-                     "not progress toward their ROM patrol waypoint; frames=";
+        std::cerr << "Pedestrian scenes QA: Scene-20 guard/pedestrian route "
+                     "progress or source step mismatch; guard_frames=";
         for (std::size_t order = 0U;
              order < scene20_progress_frames.size(); ++order) {
             if (order != 0U) std::cerr << ',';
@@ -24774,7 +24866,31 @@ int run_field_pedestrian_scenes_qa(
                               ? std::to_string(*scene20_progress_frames[order])
                               : std::string("missing"));
         }
-        std::cerr << " failure=" << field_scene.failure() << '\n';
+        std::cerr << " pedestrian_step="
+                  << (scene20_pedestrian_first_step.has_value()
+                          ? std::to_string(*scene20_pedestrian_first_step)
+                          : std::string("missing"))
+                  << " first_position="
+                  << (scene20_pedestrian_first_step_position.has_value()
+                          ? std::to_string(
+                                scene20_pedestrian_first_step_position->x) +
+                                "," + std::to_string(
+                                    scene20_pedestrian_first_step_position->y)
+                          : std::string("missing"))
+                  << " final_position="
+                  << (scene20_guard_finals.size() >
+                              kScene20MovingPedestrianOrder
+                          ? std::to_string(scene20_guard_finals[
+                                               kScene20MovingPedestrianOrder].x) +
+                                "," + std::to_string(scene20_guard_finals[
+                                    kScene20MovingPedestrianOrder].y)
+                          : std::string("missing"))
+                  << " southbound_steps="
+                  << scene20_pedestrian_southbound_steps
+                  << " failure=" << field_scene.failure() << '\n';
+        for (const auto& sample : scene20_pedestrian_trace) {
+            std::cerr << "  Scene-20 pedestrian trace: " << sample << '\n';
+        }
         return 3;
     }
     field_scene.set_field_camera_world_position_for_dump(
@@ -24826,6 +24942,49 @@ int run_field_pedestrian_scenes_qa(
                          return *lhs < *rhs;
                      })
               << " actual=" << scene20_guard_final_bitmap.string() << '\n';
+
+    field_scene.set_field_camera_world_position_for_dump(
+        static_cast<std::uint16_t>(scene20_pedestrian_start.x - 0x0800U),
+        scene20_pedestrian_start.y >= 0x0800U
+            ? static_cast<std::uint16_t>(
+                  scene20_pedestrian_start.y - 0x0800U)
+            : 0U);
+    const auto scene20_pedestrian_final_image = render_qa_field(field_scene);
+    const auto scene20_pedestrian_final_bitmap =
+        output / "scene-20-pedestrian-route-actual.bmp";
+    if (scene20_pedestrian_final_image.isNull() ||
+        !scene20_pedestrian_final_image.save(QString::fromStdWString(
+            scene20_pedestrian_final_bitmap.wstring()))) {
+        std::cerr << "Pedestrian scenes QA: could not save Scene-20 "
+                     "pedestrian route frame\n";
+        return 3;
+    }
+    std::ofstream scene20_pedestrian_route_manifest(
+        output / "scene-20-pedestrian-route.tsv", std::ios::trunc);
+    scene20_pedestrian_route_manifest
+        << "scene\tlist_offset\tposition_offset\tsource_order\tprofile"
+           "\tstart_x\tstart_y\ttarget_x\ttarget_y\tfinal_x\tfinal_y"
+           "\tfirst_max_axis_step\tsouthbound_steps\tfirst_step_frame\n"
+        << "20\t0x1D91DA\t0x1D922E\t5\tpedestrian_k0b_none00\t0x"
+        << std::hex << scene20_pedestrian_start.x << "\t0x"
+        << scene20_pedestrian_start.y << "\t0x"
+        << kScene20MovingPedestrianTargetX << "\t0x"
+        << kScene20MovingPedestrianTargetY << "\t0x"
+        << scene20_guard_finals[kScene20MovingPedestrianOrder].x << "\t0x"
+        << scene20_guard_finals[kScene20MovingPedestrianOrder].y << '\t'
+        << std::dec << *scene20_pedestrian_first_step << '\t'
+        << scene20_pedestrian_southbound_steps << '\t'
+        << *scene20_pedestrian_first_step_frame << '\n';
+    if (!scene20_pedestrian_route_manifest) {
+        std::cerr << "Pedestrian scenes QA: could not write Scene-20 "
+                     "pedestrian route manifest\n";
+        return 3;
+    }
+    std::cout << "field_scene20_pedestrian_speed_qa=passed source_order=5 "
+              << "step=" << *scene20_pedestrian_first_step
+              << " frame=" << *scene20_pedestrian_first_step_frame
+              << " actual=" << scene20_pedestrian_final_bitmap.string()
+              << '\n';
 
     // ROM 0xA800 gives the active FFE180 story list precedence and selects
     // 0xA8AE only at active effect index 4. This route has one extracted

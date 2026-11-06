@@ -216,6 +216,9 @@ void set_script_ammunition_facts(
 scripting::ScriptActorFacts actor_facts_from_field_record(
     const std::uint8_t lifecycle, const std::uint8_t interaction,
     const std::uint8_t behavior, const std::uint8_t roles) {
+    // The pedestrian fact represents live +0x9E bit 5, which selects the
+    // BE82/BE62 movement vectors at 0xB610. It is not entity-kind identity:
+    // kind-11 records can spawn with this bit clear after list overrides [C].
     return {
         { (lifecycle & 0x01U) != 0U, (lifecycle & 0x02U) != 0U,
           (lifecycle & 0x08U) != 0U, (lifecycle & 0x10U) != 0U,
@@ -259,7 +262,7 @@ std::uint8_t behavior_flags_from_facts(
     if (facts.in_target_band) result |= 0x10U;
     if (facts.route_transition) result |= 0x20U;
     if (facts.fleeing) result |= 0x40U;
-    if (facts.escort) result |= 0x80U;
+    if (facts.escort) result |= 0x80U; // live +0xB0 bit 7; vector branch 0xB63E [C]
     return result;
 }
 
