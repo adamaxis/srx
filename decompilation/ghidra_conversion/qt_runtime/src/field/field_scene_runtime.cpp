@@ -8078,8 +8078,10 @@ void FieldSceneRuntime::configure_callbacks() {
     callbacks_.entity_behavior_frames.dispatch_entity_action_candidates =
         [this] {
             source_boundary("field.entities.dispatch_action_candidates");
-            // ROM 0x08C0 warmup runs 0x0A8EA but does not call the 0x13874
-            // target-list coordinator. Preserve the already cached identities.
+            // ROM 0x08C0 calls 0x0A8EA on every warmup pass, and 0x0A8EA
+            // starts with 0x13874 clearing FFE175. Reset the shared think gate
+            // without rebuilding the already cached typed target identities.
+            field_think_token_claimed_ = false;
             advance_default_field_actors(false);
             advance_field_hit_spark_behaviors();
         };
