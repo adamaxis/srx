@@ -19,7 +19,8 @@ add_test(NAME shadowrun_ghidra_conversion_qt_actor_animation_art_qa
          COMMAND shadowrun_ghidra_actor_animation_art_qa)
 set_tests_properties(shadowrun_ghidra_conversion_qt_actor_animation_art_qa
     PROPERTIES ENVIRONMENT
-        "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy")
+        "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy"
+        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")
 
 set(SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/app"

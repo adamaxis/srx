@@ -35,7 +35,7 @@
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/conversion/qt/debug",
       "environment": {
-        "PATH": "C:/msys64/ucrt64/bin;C:/Qt/6.9.1/mingw_64/bin;$penv{PATH}"
+        "PATH": "C:/msys64/usr/bin;C:/msys64/ucrt64/bin;C:/Qt/6.9.1/mingw_64/bin;$penv{PATH}"
       },
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
@@ -52,7 +52,7 @@
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/conversion/qt/release",
       "environment": {
-        "PATH": "C:/msys64/ucrt64/bin;C:/Qt/6.9.1/mingw_64/bin;$penv{PATH}"
+        "PATH": "C:/msys64/usr/bin;C:/msys64/ucrt64/bin;C:/Qt/6.9.1/mingw_64/bin;$penv{PATH}"
       },
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
@@ -140,6 +140,9 @@
       "name": "ghidra-conversion-qt-debug-tests",
       "displayName": "Run Ghidra Conversion Qt QA and Tests (Debug)",
       "configurePreset": "ghidra-conversion-qt-debug",
+      "environment": {
+        "PATH": "C:/msys64/usr/bin;C:/msys64/ucrt64/bin;C:/Qt/6.9.1/mingw_64/bin;$penv{PATH}"
+      },
       "output": {
         "outputOnFailure": true
       }
@@ -148,6 +151,9 @@
       "name": "ghidra-conversion-qt-release-tests",
       "displayName": "Run Ghidra Conversion Qt QA and Tests (Release)",
       "configurePreset": "ghidra-conversion-qt-release",
+      "environment": {
+        "PATH": "C:/msys64/usr/bin;C:/msys64/ucrt64/bin;C:/Qt/6.9.1/mingw_64/bin;$penv{PATH}"
+      },
       "output": {
         "outputOnFailure": true
       }
