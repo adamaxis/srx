@@ -1113,17 +1113,31 @@ end
 local wall_path_clear = vertical_wall_path_clear(0x2800, 0x1F80, 0x2080)
 local wall_route = R.choose_obstruction_waypoint(
     0x2000, 0x2000, 0x3000, 0x2000, wall_path_clear)
-check(wall_route ~= nil and wall_route.side == -1 and
-      #wall_route.waypoints == 2 and
+check(wall_route ~= nil and #wall_route.waypoints == 2 and
       wall_route.waypoints[1].x == 0x2100 and
       wall_route.waypoints[1].y == 0x1F00 and
       wall_route.waypoints[2].x == 0x3100 and
       wall_route.waypoints[2].y == 0x1F00,
       "0x14854 tries the source -Y side first for a zero minor delta [C/H]")
+local opposite_side_only_route = R.choose_obstruction_waypoint(
+    0x2000, 0x2000, 0x3000, 0x2000,
+    function(from_x, from_y, to_x, to_y)
+        if from_x == 0x2000 and from_y == 0x2000 and
+           to_x == 0x3000 and to_y == 0x2000 then
+            return false
+        end
+        if from_x == 0x2000 and from_y == 0x2000 and
+           to_x == 0x2100 and to_y == 0x1F00 then
+            return false
+        end
+        return true
+    end)
+check(opposite_side_only_route ~= nil and
+      opposite_side_only_route.waypoints[1].y == 0x2300,
+      "0x14854 tries the opposite side only after its signed first side fails [C/H]")
 local positive_y_side_route = R.choose_obstruction_waypoint(
     0x2000, 0x2000, 0x3000, 0x2100, wall_path_clear)
 check(positive_y_side_route ~= nil and
-      positive_y_side_route.side == 1 and
       positive_y_side_route.waypoints[1].y == 0x2300,
       "0x148D2 selects +Y first when the horizontal target is south [C/H]")
 check(R.choose_obstruction_waypoint(
@@ -1148,7 +1162,7 @@ local vertical_route = R.choose_obstruction_waypoint(
         end
         return true
     end)
-check(vertical_route ~= nil and vertical_route.side == -1 and
+check(vertical_route ~= nil and
       vertical_route.waypoints[1].x == 0x1F00 and
       vertical_route.waypoints[2].x == 0x1F00,
       "0x148D2 uses its -X default for a vertical path with zero X delta [C/H]")
@@ -1169,7 +1183,6 @@ end
 local positive_x_side_route = R.choose_obstruction_waypoint(
     0x2000, 0x2000, 0x2100, 0x3000, horizontal_wall_path_clear)
 check(positive_x_side_route ~= nil and
-      positive_x_side_route.side == 1 and
       positive_x_side_route.waypoints[1].x == 0x2300,
       "0x148D2 selects +X first when the vertical target is east [C/H]")
 local tied_axis_route = R.choose_obstruction_waypoint(
@@ -1190,12 +1203,6 @@ check(tied_axis_route ~= nil and
       tied_axis_route.waypoints[1].x == 0x2100 and
       tied_axis_route.waypoints[1].y == 0x2300,
       "0x148D2 keeps X as the major axis on a diagonal tie [C/H]")
-local alternate_side_route = R.choose_obstruction_waypoint(
-    0x2000, 0x2000, 0x3000, 0x2000, wall_path_clear,
-    { side = -1, origin_cell_x = 0x2100, origin_cell_y = 0x2100 })
-check(alternate_side_route ~= nil and alternate_side_route.side == 1 and
-      alternate_side_route.waypoints[1].y == 0x2300,
-      "host waypoint policy retries the opposite side after a blocked corridor [H]")
 local heading_strip_cases = {
     { 0,   0x2100, 0x1F00, 0x2300, 0x1F00 },
     { 45,  0x2100, 0x1F00, 0x2300, 0x1F00 },
@@ -1215,7 +1222,7 @@ for _, strip_case in ipairs(heading_strip_cases) do
                 (from_x == strip_case[2] and from_y == strip_case[3] and
                  to_x == strip_case[4] and to_y == strip_case[5])
         end,
-        nil, strip_case[1])
+        strip_case[1])
     check(heading_strip_route ~= nil and
           heading_strip_route.strategy == "heading_oriented_strip" and
           #heading_strip_route.waypoints == 1 and
@@ -1231,7 +1238,7 @@ local rotated_heading_strip_route = R.choose_obstruction_waypoint(
             (from_x == 0x1F00 and from_y == 0x2100 and
              to_x == 0x1F00 and to_y == 0x1F00)
     end,
-    nil, 0)
+    0)
 check(rotated_heading_strip_route ~= nil and
       rotated_heading_strip_route.strategy == "heading_oriented_strip" and
       rotated_heading_strip_route.waypoints[1].x == 0x1F00 and
@@ -1251,7 +1258,7 @@ local deep_heading_strip_route = R.choose_obstruction_waypoint(
         return from_x == 0x2100 and from_y == 0x1500 and
             to_x == 0x2300 and to_y == 0x1500
     end,
-    nil, 0)
+    0)
 check(deep_heading_strip_route ~= nil and
       deep_heading_strip_route.strategy == "heading_oriented_strip" and
       deep_heading_strip_route.waypoints[1].x == 0x2100 and
@@ -1413,10 +1420,9 @@ if obstruction_state.obstruction_route ~= nil then
           "route queue completion reacquires the live target heading [C: 0x149C0]")
 end
 
--- ROM 0x14ADE clears the obstruction-route flags through 0x14756 when every
--- rotating strip candidate is blocked. A failed replan must discard Lua's
--- prior waypoint queue and restore the live target heading instead of
--- repeatedly steering at the stale point. [C]
+-- A blocked route clears the source route flags through 0x149CE -> 0x14756.
+-- The next selection recomputes its first side from live position and target;
+-- the source does not carry Lua's prior waypoint-side choice. [C]
 local stale_route_context = movement_fixture(true)
 stale_route_context.movement_state.position_x = 0x2000
 stale_route_context.movement_state.position_y = 0x2000
@@ -1428,7 +1434,7 @@ stale_route_context.measure_destination = function(x, y)
     return { bearing_degrees = bearing, distance = 0x500,
         step_cost = 0x300 }
 end
-game.movement.path_is_clear = function() return false end
+game.movement.path_is_clear = wall_path_clear
 game.movement.probe = function(x, y, direction)
     if direction == nil then
         return { kind = "clear", blocks_route_fallback = false,
@@ -1447,12 +1453,22 @@ local stale_route_state = {
         index = 1,
         waypoints = { { x = 0x2100, y = 0x1F00 } },
         side = -1,
-        origin_cell_x = 0x2100,
-        origin_cell_y = 0x2100,
         target_cell_x = 0x3100,
         target_cell_y = 0x2100,
     },
 }
+local replan_step = R.advance_entity_movement(
+    stale_route_context, stale_route_state)
+check(replan_step ~= nil and
+      replan_step.outcome == "reset" and
+      stale_route_state.obstruction_route ~= nil and
+      stale_route_state.obstruction_route.waypoints[1].y == 0x1F00,
+      "blocked-route replan uses the source first side from live position and target [C: 0x149CE -> 0x14756 -> 0x14682]")
+
+-- If every path is now blocked, the failed selection discards the old queue
+-- and restores the live target heading rather than steering at the stale point.
+-- [C: 0x14ADE -> 0x14756]
+game.movement.path_is_clear = function() return false end
 local failed_replan_step = R.advance_entity_movement(
     stale_route_context, stale_route_state)
 check(failed_replan_step ~= nil and

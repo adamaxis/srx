@@ -642,8 +642,7 @@ local function navigation_cell_center(coordinate)
 end
 
 local function choose_obstruction_waypoint(
-    from_x, from_y, target_x, target_y, path_is_clear, previous_waypoint,
-    source_heading)
+    from_x, from_y, target_x, target_y, path_is_clear, source_heading)
     if type(path_is_clear) ~= "function" or
        path_is_clear(from_x, from_y, target_x, target_y) == true then
         return nil
@@ -666,15 +665,6 @@ local function choose_obstruction_waypoint(
     local first_side = side_delta > 0 and 1 or -1
     local origin_cell_x = navigation_cell_center(from_x)
     local origin_cell_y = navigation_cell_center(from_y)
-    if type(previous_waypoint) == "table" and
-       previous_waypoint.origin_cell_x == origin_cell_x and
-       previous_waypoint.origin_cell_y == origin_cell_y and
-       type(previous_waypoint.side) == "number" then
-        -- Host retry policy: alternate sides after a failed plan at this cell.
-        -- Exact source equivalence for repeated replans remains [H].
-        first_side = -previous_waypoint.side
-    end
-
     local target_cell_x = navigation_cell_center(target_x)
     local target_cell_y = navigation_cell_center(target_y)
     for cell_offset = 1, NAVIGATION_MAX_CELLS do
@@ -700,9 +690,6 @@ local function choose_obstruction_waypoint(
                         and { { x = waypoint_x, y = waypoint_y } }
                         or { { x = waypoint_x, y = waypoint_y },
                              { x = exit_x, y = exit_y } },
-                    side = side,
-                    origin_cell_x = origin_cell_x,
-                    origin_cell_y = origin_cell_y,
                     target_cell_x = target_cell_x,
                     target_cell_y = target_cell_y,
                 }
@@ -755,8 +742,6 @@ local function choose_obstruction_waypoint(
                                  adjacent_x, adjacent_y) == true then
                     return {
                         waypoints = { { x = waypoint_x, y = waypoint_y } },
-                        origin_cell_x = origin_cell_x,
-                        origin_cell_y = origin_cell_y,
                         target_cell_x = target_cell_x,
                         target_cell_y = target_cell_y,
                         strategy = "heading_oriented_strip",
@@ -865,7 +850,7 @@ local function plan_obstruction_waypoint(context, state, movement_state)
     local waypoint = choose_obstruction_waypoint(
         movement_state.position_x, movement_state.position_y,
         target.world_x, target.world_y, game.movement.path_is_clear,
-        state.obstruction_route, state.movement_current_bearing_degrees)
+        state.movement_current_bearing_degrees)
     if waypoint == nil then
         -- ROM 0x14ADE reaches 0x14756 after the rotating-strip candidates
         -- fail; that path clears both obstruction-route flags. Drop the

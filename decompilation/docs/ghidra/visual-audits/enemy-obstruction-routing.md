@@ -37,8 +37,12 @@ movement step, it checks the dominant axis and tries the signed minor-axis
 side first, then checks whether the direct and parallel world segments are
 clear through the host query. It advances the waypoint index as the actor
 enters each waypoint cell and measures the live target again when the route
-ends. Reversing the side after a failed replan in the same cell is host policy
-and remains [H].
+ends. When a queued segment becomes blocked, ROM `0x149C0 -> 0x149CE ->
+0x14756` clears the two route flags. The next `0x14682` selection derives its
+first side again from the live position and target; the source does not retain
+a prior side choice. Lua now recomputes from the live state instead of
+flipping a host-only side field [C]. The host's segment sampling and route
+geometry remain [H].
 
 When no parallel corridor is usable, Lua tries a strip from the actor's
 current heading. The source rotation order follows `0x14AF4`, and each scan is
@@ -64,11 +68,11 @@ collision model at segment samples, using local collision records and sample
 state. It does not publish movement events or mutate the actor's next movement
 probe. Lua does not receive or construct an `FF1700` raster.
 
-The initial signed side order and the heading order/scan bound of the
-`0x14AF4` retry are [C]. The host's geometry sampling, repeated-replan side
-choice, and resulting route pixels remain [H]. These are readable native
-waypoint policies, not a claim of matching the source's exact grid occupancy
-or complete waypoint sequence. The referenced
+The initial signed side order, opposite-side fallback, blocked-route replan
+state, and heading order/scan bound of the `0x14AF4` retry are [C]. The host's
+geometry sampling and resulting route pixels remain [H]. These are readable
+native waypoint policies, not a claim of matching the source's exact grid
+occupancy or complete waypoint sequence. The referenced
 `/workspace/shadowrun/out/p49b/repro.txt` route capture is absent from this
 checkout; local obstruction-grid snapshots do not establish enemy route
 fidelity.
@@ -76,18 +80,20 @@ fidelity.
 ## Validation
 
 - `ai_think_tests.lua`: synthetic horizontal and vertical obstructions, clear
-  direct path, sealed corridor, opposite-side retry, heading-oriented strip
-  fallback including a first opening at strip depth six, failed-replan cleanup,
-  source signed-side and X-tie ordering, target-linked route state, waypoint
-  advancement, and target reacquisition.
+  direct path, sealed corridor, source opposite-side fallback, heading-oriented
+  strip fallback including a first opening at strip depth six, blocked-route
+  replan from live position/target, failed-replan cleanup, source signed-side
+  and X-tie ordering, target-linked route state, waypoint advancement, and
+  target reacquisition.
 - `shadowrun_gameplay_script_runtime_qa`: verifies the Lua planner reaches the
   typed `ScriptMovementPathQuery` callback through the C++ binding.
-- The complete `run_lua_suites.sh` run passes; `ai_think_tests.lua` reports
-  326/326 and `entity_motion_tests.lua` reports 13/13. Its separate
-  `equiv_heartbeat` output is informational and continues to report the
-  documented pre-split mismatches.
-- The Debug and Release focused CTest runs pass for
-  `shadowrun_gameplay_lua_suites` and
-  `shadowrun_gameplay_script_runtime_qa` with offscreen Qt and dummy audio.
+- The complete Debug and Release `shadowrun_gameplay_lua_suites` CTests pass
+  with MSYS `usr/bin` first in `PATH`; `ai_think_tests.lua` reports 365/365
+  and `entity_motion_tests.lua` reports 13/13. Its separate `equiv_heartbeat`
+  output is informational and continues to report the documented pre-split
+  mismatches.
+- Debug and Release CTests pass for `shadowrun_gameplay_actor_ai_rules_qa`,
+  `shadowrun_gameplay_script_runtime_qa`, field movement, and world activity
+  with offscreen Qt and dummy audio.
 - No scene `actual.bmp` was produced for this shared movement mechanism, so
   the obstruction-routing hill remains partial.
