@@ -1,38 +1,44 @@
-# Rendering R2/R8/R9 plan: 3 name tables + VdpModel
+# Field rendering research: host compositor and QA mirror
 
-Source: /workspace/shadowrun/docs/21_rendering_entity_model.md §2 (R2, R9) and §3.
-Status: R1, R2 runtime mirror, R3, R4, R6 latch, R7 H40 SAT limits, R8 opt-in field compose, R9 base scroll input, and R10 are implemented. R11 remains [H] and out of scope.
+Historical source: `/workspace/shadowrun/docs/21_rendering_entity_model.md` §2
+(R2, R9) and §3; that linked file is unavailable in this checkout.
+Status: R1, R3, R4, R9 base scroll input, and R10 are implemented. The R2/R6/R7/R8 VDP mirror is now QA-only; it is not part of the game executable. R11 remains [H] and out of scope.
 
 ## Status
-- **Done — R2 live mirror, default off:** `FieldSceneRuntime` recognizes
-  `SRX_VDP_MODEL=1` or a QA override. With the flag enabled, field bootstrap
+- **QA diagnostic — R2 live mirror:** only the headless QA executable builds
+  `FieldVdpMirror`. With the test override enabled, field bootstrap
   and scene-buffer rebuilds load extracted Plane-A/Plane-B images into a
   `VdpModel` and stream the camera window through `PlaneStreamer`. The mirror
   derives indexed patterns and CRAM colors from those RGB images; priority is
   inferred from the extracted overlay [H]. The normal path retains the
-  flattened images and allocates no mirror.
-- **Done — runtime cell writes:** terrain marks and world-effect map writes
-  refresh the mirror using `PlaneStreamer::write_metatile` alongside the
-  existing flattened cell repaint. A headless CTest boots scenes 2 and 26,
-  exercises a live scene-2 cell write, and reports pixel mismatch counts for
-  `VdpModel::compose` against the current flattened-map composition. It is an
+  flattened images. The interactive game target does not compile the mirror,
+  model, frame latch, sprite-limit helper, or plane streamer.
+- **QA diagnostic — cell-write synchronization:** terrain marks and
+  world-effect map writes refresh the optional mirror through
+  `PlaneStreamer::write_metatile` alongside the host asset repaint. A headless
+  CTest boots scenes 2 and 26, exercises a live scene-2 cell write, and
+  compares `VdpModel::compose` against the current flattened-map composition.
+  This checks the diagnostic mirror only; gameplay consumes the host map and
+  priority-overlay images directly. It is an
   internal synchronization check using the same extracted scene assets; it is
   not an independent visual-correctness claim.
-- **Done — R9 base scroll:** the mirror uses the camera for Plane A and the
-  camera plus the tracked Plane-B-minus-Plane-A vertical bias for Plane B.
+- **Done — R9 base scroll:** the game renderer uses the shared field camera
+  for its named map and priority overlay. The QA mirror replays the camera for
+  Plane A and the camera plus the tracked Plane-B-minus-Plane-A vertical bias
+  for Plane B.
   `0x1AB0` copies FFE00A to FFDD0E (0x1AA8 clears FFE00A first) [C]; `0x3CF2..0x3CFE` advance FFDD0A and FFDD0E by the same
   field-camera step [C]. `FieldCameraFollowState` tracks the A/B step biases,
   whose difference is zero in the 23 captured field save states [C, emulator].
   The independent increment at `0x26E2` is outside the field
   path [C]. Field plane B offset is zero in the captured field states.
-- **Done — R6 frame latch in the opt-in mirror:** each completed `advance_frame`
+- **QA diagnostic — R6 frame latch:** each completed QA `advance_frame`
   tick stages its field camera scroll and pending SAT pieces. The next tick
   latches them before field logic and streams the mirror from that displayed
   scroll. ROM `0x0BD2` is the main-loop VBlank wait; `0x1872` services the
   display-frame transfers after the wait, including SAT then H/V scroll [C].
   Mapping the host `advance_frame` boundary to that source wait is the runtime
   scheduling hypothesis [H]. Disabled mirror runs allocate no latch.
-- **Done — R7 H40 limits in the opt-in mirror:** each latched SAT list runs
+- **QA diagnostic — R7 H40 limits:** each latched QA SAT list runs
   through `apply_vdp_sprite_limits`, retaining per-piece visible scanlines,
   pieces rejected by the 80-entry cap, and scanline counts that reached the
   20-sprite and 320-visible-pixel limits [C: H40 VDP].
@@ -40,65 +46,68 @@ Status: R1, R2 runtime mirror, R3, R4, R6 latch, R7 H40 SAT limits, R8 opt-in fi
   the reverse draw loop when the mirror is enabled. ROM 0x5B1E stably orders
   the source SAT and lower SAT indices win overlap [C]; representing each
   extracted host sprite image as one SAT piece is [H].
-- **Done — R8 opt-in field compose:** with `SRX_VDP_MODEL=1` (or the QA
-  override), `paint_field_scene` composes Plane B/A and the existing field
-  sprite callback through `VdpModel::compose`; the default path retains the
-  legacy flattened map compositor. Scene 2 and 26 QA compares complete field
+- **QA diagnostic — R8 field compose:** the QA override can compose Plane B/A
+  and the existing field-sprite callback through `VdpModel::compose`. Scene 2
+  and 26 QA compares complete field
   renders and requires zero pixel differences. VDP priority order is [C];
-  reconstructing plane words from extracted assets remains [H].
+  reconstructing plane words from extracted assets remains [H]. The game
+  always uses named map and priority-overlay assets through the host
+  compositor.
 - **Left:** R5 fade writes into CRAM remain pending.
 Hook points below are given by function name, because FSR line numbers move with the thinning work.
 
-## Problem
-- R2 [C]: the field map is one pre-flattened image (`field_map_`) plus one high-priority overlay image
-  (`field_map_priority_overlay_`). Sprites are painted between the two layers in `paint_field_map_composition`
-  (qt_runtime/src/field/field_map_composition.cpp). This is only correct while tiles never change.
-  The ROM writes tiles at runtime: 0x406A..0x41A2 metatile writes, with priority inverted through FFDF58.
-- R9 [C writes / H scenes]: planes A and B are flattened together. Planes A and B scroll identically, except for
-  the plane B offset writes. [C] 0x1AB0 copies FFE00A -> FFDD0E, and 0x26E2 does `addq #1, FFDD0E` then sets FFEF14 bit 3.
-  [H] Which scenes use the plane B offset visibly is not yet known.
+## Source facts and host solution
+- **R2 [C]:** the interactive renderer consumes the named `field_map_` and
+  `field_map_priority_overlay_` images. Actors are composed between them by
+  `paint_field_map_composition` (`qt_runtime/src/field/field_map_composition.cpp`).
+  Live typed layer-word changes repaint the affected host image cell through
+  `repaint_field_map_cell`; they do not require runtime name tables. The ROM
+  writer paths include `0x406A..0x41A2`, with priority inverted through
+  `FFDF58`.
+- **R9 [C, emulator]:** `0x1AB0` copies `FFE00A -> FFDD0E`, and `0x26E2`
+  increments `FFDD0E` and sets `FFEF14` bit 3. In 23 captured field save
+  states, Plane A/B scroll deltas were equal; the field step at
+  `0x3CF2..0x3CFE` advances both equally. This supports the current field
+  renderer's shared camera input. Which other scene classes visibly use a
+  separate plane-B offset remains [H].
 
-## Target model
-- `VdpModel` (new, qt_runtime/src/rendering/vdp_model.{hpp,cpp}, pure C++ with no Qt in its state):
+## QA diagnostic model (not runtime architecture)
+- `VdpModel` (`qt_runtime/src/rendering/vdp_model.{hpp,cpp}`) is compiled only
+  into the headless QA executable. Its diagnostic state includes:
   - VRAM tile store: 0x800 patterns of 8x8 4bpp.
   - CRAM: 4x16 words.
   - Name tables A, B and window: 64x32 words each. Each word holds priority, palette, vflip, hflip and the 11-bit tile index.
   - Scroll: per-plane H/V scroll words.
   - `compose(QImage&)` paints the planes in priority order: B low, A low, sprites low, B high, A high, window, sprites high.
-- `PlaneStreamer`: a port of 0x2C92 (normal viewport, FFE100, FF2700) and 0x2CB2 (alternate, FFE102, FF4700, FFDF58=0x8000)
-  through 0x3D18/0x3D4A. It writes name-table words into VdpModel, including the FFDF58 priority rule.
-  - The conversion logic already exists in src/field/field_viewport_conversion.cpp (`render_normal_field_viewport`,
-    `render_alternate_field_viewport`) and include/.../field_entity_render_batch_conversion.hpp (0x3D18 notes).
-    The streamer should call these functions rather than re-derive them.
+- `PlaneStreamer` reconstructs viewport writes for diagnostic comparisons. It
+  is not called by the interactive game. The diagnostic plane-word inference
+  from extracted RGB assets remains [H].
 
-## Concrete hook points (current code)
-1. **Asset load — done**
-   - Where: `FieldSceneRuntime::bootstrap` (loads `field_map_` / `field_map_priority_overlay_` by alias) and
-     `transition_to_field_destination` (field_scene_runtime_transitions.cpp, `.priority.overlay` alias).
-   - Change: the opt-in mirror loads the scene's extracted primary/secondary plane images and streams them through `PlaneStreamer`; the flattened images remain the field renderer's input.
-2. **Runtime tile writes — done**
-   - Where: the door, terrain-mark and metatile write paths that today only toggle state. Find them by ROM 0x406A..0x41A2.
-   - Change: `repaint_field_map_cell` writes both mirrored plane cells with `PlaneStreamer::write_metatile`; map reset rebuilds the mirror from the current scene assets.
-3. **Scroll — field path done**
-   - Where: the camera_x/camera_y source used by `paint_field_scene`.
-   - Change: feed plane A from the camera and plane B from the camera plus the tracked B-minus-A vertical bias. The current field path keeps the biases equal.
-4. **Compose — opt-in path done**
-   - Where: `paint_field_scene` -> `paint_field_map_composition(painter, field_map_, field_map_priority_overlay_, ...)`.
-  - Change: when the mirror is enabled, call `VdpModel::compose(...)` with the existing field sprite painter as the low-priority callback. The disabled branch keeps `paint_field_map_composition` unchanged. `paint_field_scene_entities` stages its ordered sprite bounds for the next SAT latch.
-5. **Fades (R5); latch (R6) wired to the opt-in mirror**
-   - Where: VdpModel's CRAM and `FieldVdpMirror::latch_vblank`.
-   - Change: 0x1088/0x10D6 saturating fades still need CRAM writes. The R6
-     latch applies pending SAT/scroll before field logic on the next host tick;
-     opt-in composition uses the latched scroll while preserving the field
-     renderer's sprite callback.
+## Current implementation
+- The game loads individually named scene map and priority-overlay assets in
+  `FieldSceneRuntime::bootstrap` and
+  `transition_to_field_destination` (`field_scene_runtime_transitions.cpp`).
+- Terrain marks and world-effect tile writes update typed layer words and
+  repaint the changed host-map cell. Optional `PlaneStreamer` synchronization
+  remains only in QA.
+- `paint_field_scene` always uses `paint_field_map_composition` in the game
+  executable. The QA executable can opt into the mirror to compare the same
+  host scene render; this is an internal synchronization check, not independent
+  visual proof.
+- Frame-latch and H40 sprite-limit checks are QA diagnostics. Their ROM source
+  notes remain useful provenance, but these models do not drive game output.
+- The mirror does not implement R5 CRAM fade writes. This remains a diagnostic
+  limitation and is not part of the interactive renderer's architecture.
 
-## Order of work
-1. VdpModel with unit tests: name-table word decode and the priority compose order. **Done.**
-2. Static-scene parity against the current flattened images for field modes 0, 2, and 26. **Done as a mirror/parity check only.**
-3. PlaneStreamer runtime metatile writes and headless field-scene QA. **Done.**
-4. Capture the field B-minus-A vertical offset. **Done: zero in 23 field save states; nonzero title offset is outside the field path.**
-5. Compose swap in `paint_field_scene`. **Done for the opt-in mirror; legacy
-   path remains in use when disabled.**
+## Diagnostic work history
+1. Pure C++ mirror primitives retain focused tests for name-table decoding,
+   sprite limits, frame latching, and composition order.
+2. Scene 2 and 26 mirror comparisons remain internal parity checks against the
+   same extracted assets used by the host renderer.
+3. Live cell-write synchronization remains covered by headless QA.
+4. Field Plane A/B scroll equality was checked in 23 emulator save states.
+5. The earlier optional compose swap has been removed from the game target;
+   production always uses named assets and the host compositor.
 
 
 ## FFDD0E (plane B vertical scroll) capture, 2026-10-25

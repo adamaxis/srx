@@ -51,7 +51,6 @@ set(SHADOWRUN_GHIDRA_QT_GAME_SOURCES
     src/field/field_scene_runtime_travel.cpp
     src/field/field_scene_runtime_shop_paint.cpp
     src/field/field_scene_runtime_world_effects.cpp
-    src/field/field_vdp_mirror.cpp
     src/field/field_map_composition.cpp
     src/field/matrix_map_presenter.cpp
     src/field/elevator_selector_runtime.cpp
@@ -63,10 +62,6 @@ set(SHADOWRUN_GHIDRA_QT_GAME_SOURCES
     src/field/field_menu_text_catalog.cpp
     src/field/field_command_overview_bridge.cpp
     src/rendering/genesis_image_compositor.cpp
-    src/rendering/vdp_sprite_limits.cpp
-    src/rendering/vdp_frame_latch.cpp
-    src/rendering/vdp_model.cpp
-    src/rendering/plane_streamer.cpp
     src/rendering/numeric_visual_renderer.cpp
     src/dialogue/dialogue_panel.cpp
     src/dialogue/dialogue_panel_presenter.cpp
@@ -79,6 +74,16 @@ set(SHADOWRUN_GHIDRA_QT_GAME_SOURCES
     src/audio/audio_playback.cpp
     src/audio/qt_audio_sink.cpp
     ${SHADOWRUN_GHIDRA_AUDIO_CORE_SOURCES})
+
+# The reconstructed VDP mirror is retained as a diagnostic in the headless
+# QA harness only. The game executable renders the named field-map and
+# priority-overlay assets through the ordinary Qt composition path.
+set(SHADOWRUN_GHIDRA_QT_QA_DIAGNOSTIC_SOURCES
+    src/field/field_vdp_mirror.cpp
+    src/rendering/vdp_sprite_limits.cpp
+    src/rendering/vdp_frame_latch.cpp
+    src/rendering/vdp_model.cpp
+    src/rendering/plane_streamer.cpp)
 
 add_executable(shadowrun_frame_debugger_test
     tests/debug/frame_debugger_test.cpp)
@@ -154,6 +159,7 @@ add_executable(shadowrun_ghidra_conversion_qt
 add_executable(shadowrun_ghidra_conversion_qt_qa
     tests/qa/ghidra_conversion_qt_qa_main.cpp
     ${SHADOWRUN_GHIDRA_QT_GAME_SOURCES}
+    ${SHADOWRUN_GHIDRA_QT_QA_DIAGNOSTIC_SOURCES}
 )
 target_include_directories(shadowrun_ghidra_conversion_qt_qa
     PRIVATE ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS})

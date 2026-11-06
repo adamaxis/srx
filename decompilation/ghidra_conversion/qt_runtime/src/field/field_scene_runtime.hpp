@@ -68,7 +68,9 @@
 #include "elevator_selector_runtime.hpp"
 #include "tarislar_credits_title_return_runtime.hpp"
 #include "field_menu_text_catalog.hpp"
+#ifdef SHADOWRUN_QT_QA_DRIVER
 #include "field_vdp_mirror.hpp"
+#endif
 #include "game_save_snapshot.hpp"
 #include "game_save_store.hpp"
 #include "shop_menu_runtime.hpp"
@@ -350,9 +352,11 @@ public:
         std::uint16_t scene_reference);
     bool reenter_field_scene_for_dump(std::uint16_t scene_reference);
     void advance_frame();
-    // Combat integration may submit the source-ordered SAT pieces for the
-    // next opt-in VDP-mirror frame. The mirror is the only owner of this list.
+#ifdef SHADOWRUN_QT_QA_DRIVER
+    // Diagnostic-only: the QA executable can compare source-ordered actor
+    // bounds against the offline VDP mirror. The game executable has no VDP.
     void stage_field_sat_pieces(std::vector<VdpSpritePiece> pieces);
+#endif
     void set_controller_nibble(std::uint8_t dpad_nibble) noexcept;
     // Host audio entry points beyond play_sfx/stop_sfx (constructor
     // callbacks): play_music 0x530EA, op 0x20 attenuation 0x5315E, and the
@@ -1883,8 +1887,10 @@ private:
     bool mark_field_terrain_cell(std::size_t cell);
     void reset_field_map_cell_words();
     bool repaint_field_map_cell(std::size_t cell);
+#ifdef SHADOWRUN_QT_QA_DRIVER
     void rebuild_field_vdp_mirror();
     void stage_field_vdp_frame();
+#endif
     std::size_t apply_world_effect_layer_writes(
         bool layer_b_target, const std::vector<MapWordWrite>& writes);
     void paint_field_console_background(QPainter& painter) const;
@@ -2474,9 +2480,11 @@ private:
     QImage field_map_;
     QImage field_map_priority_overlay_;
     QImage field_building_transition_source_image_;
+#ifdef SHADOWRUN_QT_QA_DRIVER
     bool field_vdp_mirror_enabled_ = false;
     bool field_vdp_mirror_qa_override_ = false;
     std::unique_ptr<FieldVdpMirror> field_vdp_mirror_;
+#endif
     // The extracted map image is a pure function of the (FF2700, FF4700)
     // word pair of each 32x32 cell (checked on every extracted scene). Keep
     // the pair each image cell currently shows, so a changed FF2700 word can

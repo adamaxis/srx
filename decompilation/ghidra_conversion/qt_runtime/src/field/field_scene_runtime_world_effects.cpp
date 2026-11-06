@@ -701,7 +701,9 @@ void FieldSceneRuntime::reset_field_map_cell_words() {
     const auto& layer_b = state_.field_scene_buffers.layer_b;
     if (field_map_.isNull() || field_map_.width() % kCellPixels != 0 ||
         field_map_.height() % kCellPixels != 0) {
+#ifdef SHADOWRUN_QT_QA_DRIVER
         rebuild_field_vdp_mirror();
+#endif
         return;
     }
     const auto columns =
@@ -713,7 +715,9 @@ void FieldSceneRuntime::reset_field_map_cell_words() {
     if (cells > layer_a.size() || cells > layer_b.size() ||
         (row_stride_bytes != 0U && row_stride_bytes != columns * 2U)) {
         source_boundary("field.terrain.map_cell_geometry_mismatch");
+#ifdef SHADOWRUN_QT_QA_DRIVER
         rebuild_field_vdp_mirror();
+#endif
         return;
     }
     field_map_cell_columns_ = columns;
@@ -721,9 +725,12 @@ void FieldSceneRuntime::reset_field_map_cell_words() {
     for (std::size_t index = 0U; index < cells; ++index) {
         field_map_cell_words_.emplace_back(layer_a[index], layer_b[index]);
     }
+#ifdef SHADOWRUN_QT_QA_DRIVER
     rebuild_field_vdp_mirror();
+#endif
 }
 
+#ifdef SHADOWRUN_QT_QA_DRIVER
 void FieldSceneRuntime::rebuild_field_vdp_mirror() {
     if (!field_vdp_mirror_enabled_) {
         field_vdp_mirror_.reset();
@@ -769,6 +776,7 @@ void FieldSceneRuntime::stage_field_vdp_frame() {
             field_camera_follow_.vertical_bias_b -
             field_camera_follow_.vertical_bias_a));
 }
+#endif
 
 bool FieldSceneRuntime::repaint_field_map_cell(const std::size_t cell) {
     constexpr int kCellPixels = 32;
@@ -817,11 +825,13 @@ bool FieldSceneRuntime::repaint_field_map_cell(const std::size_t cell) {
         painter.drawImage(target.topLeft(), block);
     }
     field_map_cell_words_[cell] = wanted;
+#ifdef SHADOWRUN_QT_QA_DRIVER
     if (field_vdp_mirror_ &&
         !field_vdp_mirror_->write_metatile_cell(
             cell, *donor, field_map_cell_columns_)) {
         source_boundary("field.vdp_mirror.metatile_write_failed");
     }
+#endif
     return true;
 }
 

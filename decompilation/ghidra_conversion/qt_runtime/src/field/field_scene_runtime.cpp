@@ -10569,12 +10569,14 @@ void FieldSceneRuntime::advance_field_menu_route() {
 
 bool FieldSceneRuntime::bootstrap(
     const integration::StartupIntegrationState& startup_state) {
+#ifdef SHADOWRUN_QT_QA_DRIVER
     if (!field_vdp_mirror_qa_override_) {
         const auto* mirror_flag = std::getenv("SRX_VDP_MODEL");
         field_vdp_mirror_enabled_ =
             mirror_flag != nullptr && std::string_view(mirror_flag) == "1";
     }
     field_vdp_mirror_.reset();
+#endif
     ready_ = false;
     title_return_requested_ = false;
     failure_.clear();
@@ -13798,15 +13800,16 @@ void FieldSceneRuntime::advance_frame() {
     if (!ready_) {
         return;
     }
-    // ROM 0x0BD2 is the main-loop VBlank wait and 0x1872 services the
-    // displayed-frame transfers after it. Latch the prior tick's staged
-    // scroll/SAT here, before this tick's field logic [C]. The host tick
-    // boundary standing in for that wait is a scheduling match [H].
+#ifdef SHADOWRUN_QT_QA_DRIVER
+    // The QA-only mirror stages field scroll and actor bounds on one host
+    // tick, then checks their next-tick presentation against the ROM's
+    // 0x0BD2/0x1872 ordering [C]. This diagnostic does not drive game output.
     if (field_vdp_mirror_ &&
         field_vdp_mirror_->frame_latch().has_pending_frame() &&
         !field_vdp_mirror_->latch_vblank()) {
         source_boundary("field.vdp_mirror.vblank_stream_failed");
     }
+#endif
     service_scene_music_latch();
     if (field_building_scene_transition_active_) {
         advance_field_building_scene_transition();
@@ -15394,9 +15397,9 @@ void FieldSceneRuntime::advance_frame() {
     if (result == integration::FieldRuntimeFrameResult::callback_unresolved) {
         source_boundary("field.runtime.callback_unresolved");
     }
-    // The completed 60 Hz host tick has built its next displayed scroll state;
-    // the next advance_frame call publishes it at the VBlank-equivalent.
+#ifdef SHADOWRUN_QT_QA_DRIVER
     stage_field_vdp_frame();
+#endif
 }
 
 void FieldSceneRuntime::paint_field_scene_entities(
@@ -15802,9 +15805,9 @@ void FieldSceneRuntime::paint_field_scene_entities(
                          }
                          return left.source_order < right.source_order;
                      });
-    // ROM 0x5B1E orders the source SAT before the reverse painter loop; the
-    // mirror consumes the same ordered pieces at its next 0x1872 VBlank
-    // latch. Paint-only HUD clipping is a second pass and must not replace it.
+    // ROM 0x5B1E orders the source SAT before the reverse painter loop.
+#ifdef SHADOWRUN_QT_QA_DRIVER
+    // Keep its extracted bounds only in the diagnostic QA executable.
     if (field_vdp_mirror_ && clip_rect.isEmpty()) {
         std::vector<VdpSpritePiece> pieces;
         pieces.reserve(sprites.size());
@@ -15818,6 +15821,7 @@ void FieldSceneRuntime::paint_field_scene_entities(
         }
         field_vdp_mirror_->stage_sat_pieces(std::move(pieces));
     }
+#endif
     if (!clip_rect.isEmpty()) {
         painter.save();
         painter.setClipRect(clip_rect, Qt::IntersectClip);
@@ -19891,6 +19895,7 @@ void FieldSceneRuntime::paint_field_scene(QPainter& painter) const {
     // ROM 0x481E builds ordinary field actors with sprite priority clear.
     // Preserve the source map's high-priority tiles over those actors; the
     // same draw order must hold for every scene loaded from a map resource.
+#ifdef SHADOWRUN_QT_QA_DRIVER
     if (field_vdp_mirror_) {
         QImage composed(VdpModel::kDisplayWidth, VdpModel::kDisplayHeight,
                         QImage::Format_ARGB32_Premultiplied);
@@ -19907,7 +19912,9 @@ void FieldSceneRuntime::paint_field_scene(QPainter& painter) const {
             },
             {}, displayed);
         painter.drawImage(0, 0, composed);
-    } else {
+    } else
+#endif
+    {
         paint_field_map_composition(
             painter, field_map_, field_map_priority_overlay_,
             QRect(viewport_x, viewport_y, 320, 224),
