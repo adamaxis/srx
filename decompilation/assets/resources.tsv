@@ -415,6 +415,7 @@ cinematics.tarislar.tomb.sprites.list.1efd48	cinematics/tarislar-tomb/sprites/li
 cinematics.tarislar.tomb.sprites.list.1efd6a	cinematics/tarislar-tomb/sprites/list-1efd6a.bmp	image	-29	-30
 cyberspace.matrix.system.map.background	cyberspace/matrix/system-map-background.bmp	image	0	0
 cyberspace.matrix.system.map.font	cyberspace/matrix/system-map-font.bmp	image	0	0
+cyberspace.matrix.cyberinfo.cursor	cyberspace/matrix/cyberinfo-cursor.png	image	0	0
 cyberspace.matrix.traversal.background.theme.1	cyberspace/matrix/traversal-background-theme-1.bmp	image	0	0
 cyberspace.matrix.node.action.cursor.color.1	cyberspace/matrix/node-action-cursor-color-1.bmp	image	0	0
 cyberspace.matrix.traversal.background.theme.2	cyberspace/matrix/traversal-background-theme-2.bmp	image	0	0

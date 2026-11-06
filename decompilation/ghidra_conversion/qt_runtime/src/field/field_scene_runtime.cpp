@@ -7369,6 +7369,9 @@ bool FieldSceneRuntime::load_command_overview_assets(
                     "cyberspace.matrix.system.map.font",
                     matrix_map_font_) ||
         matrix_map_font_.size() != QSize(128, 48) ||
+        !load_image(catalog, "cyberspace.matrix.cyberinfo.cursor",
+                    matrix_cyber_info_cursor_) ||
+        matrix_cyber_info_cursor_.size() != QSize(8, 8) ||
         !load_image(catalog, "cyberspace.matrix.cyberdeck.panel",
                     matrix_cyberdeck_panel_) ||
         matrix_cyberdeck_panel_.size() != QSize(320, 224) ||
@@ -18077,8 +18080,15 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                 const auto y = (cyber_info_selector ? 72 : 80) +
                                static_cast<int>(option) * 16;
                 if (routed_menu.top_row == static_cast<int>(option)) {
-                    draw_matrix_text(cyber_info_selector ? 176 : 160,
-                                     y, "> ");
+                    if (cyber_info_selector) {
+                        // ROM 0x18B10 calls 0xC376. Its first 0x85AB write
+                        // clears the previous row; the following 0x85FF
+                        // write selects this row's visible cursor tile.
+                        painter.drawImage(QPoint(176, y),
+                                          matrix_cyber_info_cursor_);
+                    } else {
+                        draw_matrix_text(160, y, "> ");
+                    }
                 }
                 draw_matrix_text(176, y,
                                  routed_menu.top_option_labels[option]);

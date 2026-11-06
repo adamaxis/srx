@@ -42,6 +42,28 @@ Debug Test Deck route confirms the visible `CyberInfo` title and both choices
 (`tests_lua/fixtures/gpgx_test_deck/cyberinfo.png`). The prior host title
 `Cyberdeck Info` was longer than the ROM text and did not match the capture.
 
+### CyberInfo selection cursor tile (2026-11-06)
+
+ROM `0x18B10` calls `0xC376` with the selector row in `FFF0DC`. The helper
+writes `0x85AB` at the previous row, advances/clamps `FFF0DC`, then writes
+`0x85FF` at the selected row (`0xC376..0xC3A6`). At initial row 0 both writes
+target the same cell, leaving `0x85FF` visible. Its pattern index is `$5FF`;
+`0xC0C2` loads the 85-tile stream at `0xC1064` into VRAM `$B560`, covering
+patterns `$5AB..$5FF`. The visible cursor is therefore the final title-font
+tile, with palette line 0. Matrix entry `0x181F8` copies common palette
+`0xE2E3A` before the deck-specific palette-line-1 replacement at `0x17F80`.
+[C]
+
+The extracted `$5FF` tile's 8x8 mask matches every foreground pixel in the
+independent GPGX capture at `(176,72)`. The current port had used a generic
+`>` glyph instead. The extractor now emits the source tile as a transparent
+named PNG, and the Qt presenter draws it at `(176,72)` or `(176,88)` from the
+typed selector row. QA checks the source mask in both positions and confirms
+Down clears the previous row. The transparent PNG stores the CRAM-decoded
+source color `(36,219,36)`; the composed headless frame and GPGX fixture both
+show the cursor as `(32,206,32)`, so the rendered cursor color matches the
+capture.
+
 ### Retained parent Cyberdeck surface
 
 ROM `0x18AA6` calls `0x1897C`, which fills the right panel beginning at Plane-A

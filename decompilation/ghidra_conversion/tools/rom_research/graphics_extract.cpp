@@ -4346,33 +4346,28 @@ shadowrun::graphics::RgbaImage compose_matrix_node_action_background(
 }
 
 template <typename Palette>
-shadowrun::graphics::RgbaImage compose_matrix_node_action_cursor(
+shadowrun::graphics::RgbaImage compose_matrix_title_font_tile(
     const std::vector<std::uint8_t>& title_font_resource,
-    const Palette& palette) {
+    const Palette& palette, const std::uint16_t name_word) {
     constexpr std::size_t kPatternBase = 0x05ABU;
     constexpr std::size_t kPatternCount = 0x55U;
-    constexpr std::uint16_t kCursorWord = 0x85FFU;
-    constexpr std::size_t kCursorPattern = kCursorWord & 0x07FFU;
+    const auto pattern = static_cast<std::size_t>(name_word & 0x07FFU);
     if (title_font_resource.size() != kPatternCount * 32U ||
-        kCursorPattern < kPatternBase ||
-        kCursorPattern - kPatternBase >= kPatternCount) {
+        pattern < kPatternBase ||
+        pattern - kPatternBase >= kPatternCount) {
         throw std::runtime_error(
-            "Matrix node-action cursor source tile is unavailable");
+            "Matrix title-font source tile is unavailable");
     }
 
-    // 0xC0C2 uploads 85 title-font patterns from 0xC1064 at VRAM $B560
-    // (pattern $5AB). 0xC376 writes $85FF for the selected row, selecting
-    // the final pattern ($5FF) with palette line 0. The security-color
-    // setup at 0x566D8 supplies that line from the corresponding 0xE2D52
-    // palette record. This is an offline tile extraction; Qt receives only
-    // the named 8x8 image.
+    // This is an offline tile extraction; Qt receives only the named 8x8
+    // image and does not reproduce the ROM's name-table writes.
     const auto patterns = shadowrun::graphics::decode_tile_atlas(
         title_font_resource, 0U, kPatternCount, palette, 16U, 0U);
     if (patterns.width != 128U || patterns.height != 48U) {
         throw std::runtime_error(
-            "Matrix node-action cursor atlas has invalid dimensions");
+            "Matrix title-font atlas has invalid dimensions");
     }
-    const auto pattern_index = kCursorPattern - kPatternBase;
+    const auto pattern_index = pattern - kPatternBase;
     const auto source_x = (pattern_index % 16U) * 8U;
     const auto source_y = (pattern_index / 16U) * 8U;
     shadowrun::graphics::RgbaImage cursor{
@@ -4387,6 +4382,19 @@ shadowrun::graphics::RgbaImage compose_matrix_node_action_cursor(
         }
     }
     return cursor;
+}
+
+template <typename Palette>
+shadowrun::graphics::RgbaImage compose_matrix_node_action_cursor(
+    const std::vector<std::uint8_t>& title_font_resource,
+    const Palette& palette) {
+    // 0xC0C2 uploads 85 title-font patterns from 0xC1064 at VRAM $B560
+    // (pattern $5AB). 0xC376 writes $85FF for the selected row, selecting
+    // the final pattern ($5FF) with palette line 0. The security-color
+    // setup at 0x566D8 supplies that line from the corresponding 0xE2D52
+    // palette record.
+    return compose_matrix_title_font_tile(title_font_resource, palette,
+                                          0x85FFU);
 }
 
 shadowrun::graphics::RgbaImage compose_matrix_traversal_background(
@@ -7384,6 +7392,18 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             "from 0xE2D52[" + std::to_string(theme) + "]",
             false, manifest, written, missing, blank);
     }
+    write_catalog_asset(
+        root, "cyberspace/matrix/cyberinfo-cursor.png",
+        compose_matrix_title_font_tile(
+            matrix_title_font_resource,
+            shadowrun::graphics::read_genesis_palette(rom, 0x0E2E3AU),
+            0x85FFU),
+        "sprite",
+        "0xC0C2 loads 0xC1064 at VRAM $B560 (pattern $5AB); "
+        "0x18B10/0xC376 writes 0x85AB to clear the old cell then "
+        "0x85FF at the selected row (pattern $5FF, palette line 0); "
+        "palette line 0 from 0xE2E3A",
+        false, manifest, written, missing, blank);
     write_catalog_asset(
         root, "cyberspace/matrix/traversal-hud-frame.png",
         compose_matrix_traversal_hud_frame(rom, matrix_menu_patterns),

@@ -2528,6 +2528,7 @@ private:
     QImage command_overview_magic_panel_background_;
     QImage matrix_map_background_;
     QImage matrix_map_font_;
+    QImage matrix_cyber_info_cursor_;
     std::array<QImage, 4> matrix_cyberdeck_backgrounds_{};
     QImage matrix_cyberdeck_panel_;
     QImage matrix_cyberdeck_runner_detail_headers_;

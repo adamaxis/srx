@@ -44767,6 +44767,33 @@ int main(int argc, char** argv) {
                     }
                     return false;
                 };
+                const auto cyber_info_cursor_matches =
+                    [](const QImage& image, const int top) {
+                    // ROM 0x18B10 -> 0xC376 writes 0x85AB to erase the
+                    // previous cell, then 0x85FF at the selected row. The
+                    // final 0x5FF tile mask matches the independent GPGX
+                    // fixture at (176,72) pixel for pixel.
+                    constexpr std::array<std::uint8_t, 8> kCursorRows{{
+                        0x08U, 0x0CU, 0x66U, 0x3FU,
+                        0x3FU, 0x66U, 0x0CU, 0x08U,
+                    }};
+                    if (image.size() != QSize(kSceneWidth, kSceneHeight)) {
+                        return false;
+                    }
+                    const QColor cursor_color(32, 206, 32);
+                    for (int y = 0; y < 8; ++y) {
+                        for (int x = 0; x < 8; ++x) {
+                            const bool expected =
+                                (kCursorRows[static_cast<std::size_t>(y)] &
+                                 (0x80U >> x)) != 0U;
+                            if ((image.pixelColor(176 + x, top + y) ==
+                                 cursor_color) != expected) {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                };
                 // The 9-letter ROM title ends at x=256 after its two leading
                 // spaces; x=296 belonged to the stale longer host title.
                 if (!cyber_info_has_green(QRect(256, 48, 8, 8)) ||
@@ -44774,13 +44801,23 @@ int main(int argc, char** argv) {
                     !cyber_info_has_green(QRect(272, 56, 8, 8)) ||
                     !cyber_info_has_green(QRect(192, 72, 80, 8)) ||
                     !cyber_info_has_green(QRect(192, 88, 64, 8)) ||
-                    !cyber_info_has_green(QRect(176, 72, 8, 8))) {
+                    !cyber_info_cursor_matches(cyber_info_image, 72)) {
                     std::cerr << "Matrix CyberInfo QA: ROM-padded title, "
-                                 "separator, choices, or cursor is missing "
-                                 "from its source row\n";
+                                 "separator, choices, or extracted 0x85FF "
+                                 "cursor tile is missing from its source row\n";
                     return 3;
                 }
                 tap_qa_controller_button(field_scene, 0x02U);
+                const auto run_info_selection_image =
+                    capture("cyber-info-run-info-selected");
+                if (!full_cyberdeck_frame(run_info_selection_image) ||
+                    !cyber_info_cursor_matches(run_info_selection_image, 88) ||
+                    cyber_info_cursor_matches(run_info_selection_image, 72)) {
+                    std::cerr << "Matrix CyberInfo QA: Down did not clear the "
+                                 "Deck Stats cursor and draw the ROM 0x85FF "
+                                 "tile on Run Info\n";
+                    return 3;
+                }
                 tap_qa_controller_button(field_scene, 0x40U);
                 auto route = field_scene.field_menu_route_snapshot_for_dump();
                 if (!route.top_matrix_run_info.has_value() ||
