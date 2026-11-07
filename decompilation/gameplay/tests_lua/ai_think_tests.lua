@@ -1772,6 +1772,61 @@ check(patrol_next_step ~= nil and patrol_next_step.outcome == "accepted" and
       "source patrol detours remain active through the shared movement pass [C: 0x149C0]")
 game.movement.source_path_is_clear = patrol_previous_path_query
 
+-- ROM 0x13904 links target-relative movement through 0x13D0C, which installs
+-- the shared 0x145A2 route service. When blocked, that route reaches 0x14682;
+-- eligibility follows the typed ai_runner fact rather than encounter status.
+local linked_actor_previous_cell_query = game.movement.source_cell_is_clear
+local linked_actor_previous_path_query = game.movement.source_path_is_clear
+local linked_actor_previous_probe = game.movement.probe
+local linked_actor_cell_queries = 0
+local linked_actor_cells = source_cell_query({
+    { 0x2100, 0x1F00 }, { 0x2300, 0x1F00 },
+})
+game.movement.source_cell_is_clear = function(x, y)
+    linked_actor_cell_queries = linked_actor_cell_queries + 1
+    return linked_actor_cells(x, y)
+end
+game.movement.source_path_is_clear = function(from_x, from_y, to_x, to_y)
+    return two_cell_bypass_path_clear(from_x, from_y, to_x, to_y)
+end
+game.movement.probe = function(x, y, direction)
+    if direction == nil then
+        return { kind = "clear", blocks_route_fallback = false,
+            terrain_is_clear = true, candidate_x = x, candidate_y = y }
+    end
+    return { kind = "blocked", blocks_route_fallback = true,
+        terrain_is_clear = false, candidate_x = x, candidate_y = y }
+end
+local linked_actor_context = movement_fixture(false)
+linked_actor_context.actor_id = "field_scene_20_target_linked_actor"
+linked_actor_context.actor_facts.lifecycle.ai_runner = true
+linked_actor_context.movement_state.position_x = 0x2000
+linked_actor_context.movement_state.position_y = 0x2000
+linked_actor_context.ai_target_candidates = {
+    { id = "party.runner.0", world_x = 0x3000, world_y = 0x2000 },
+}
+linked_actor_context.measure_destination = function(x, y)
+    return { bearing_degrees = x == 0x3000 and y == 0x2000 and 45 or 315,
+        distance = 0x500, step_cost = 0x300 }
+end
+local linked_actor_state = {
+    ai_target_id = "party.runner.0",
+    movement_bearing_degrees = 22.5,
+    movement_current_bearing_degrees = 22.5,
+    movement_route_distance = 0x1000,
+}
+local linked_actor_step = R.advance_entity_movement(
+    linked_actor_context, linked_actor_state)
+check(linked_actor_step ~= nil and
+      linked_actor_step.outcome == "reset" and
+      linked_actor_cell_queries > 0 and
+      linked_actor_state.obstruction_route ~= nil and
+      linked_actor_state.obstruction_route.target_id == "party.runner.0",
+      "blocked linked-target movement replans for a typed ai_runner without encounter or patrol metadata [C: 0x13904, 0x13D0C, 0x145A2, 0x14682]")
+game.movement.source_cell_is_clear = linked_actor_previous_cell_query
+game.movement.source_path_is_clear = linked_actor_previous_path_query
+game.movement.probe = linked_actor_previous_probe
+
 -- ROM 0x13E9E installs the projected flee-boundary point as the movement
 -- target, then 0x13E8C enters 0x145A2; a blocked pass reaches 0x14682 through
 -- 0x14BA6. It has no patrol route and is not dynamic, but retains a stale

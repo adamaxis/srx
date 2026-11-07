@@ -938,7 +938,13 @@ local function current_obstruction_target(context, state)
 end
 
 local function obstruction_routing_available(context, state)
+    local actor_facts = context.actor_facts
+    local lifecycle = type(actor_facts) == "table" and actor_facts.lifecycle
+    local linked_world_target = type(lifecycle) == "table" and
+        lifecycle.ai_runner == true and
+        current_world_target(context, state) ~= nil
     return context.dynamic_world_encounter_actor == true or
+        linked_world_target or
         current_flee_boundary_target(context, state) ~= nil or
         ActorPatrolRoutes.has_route(context.actor_id)
 end

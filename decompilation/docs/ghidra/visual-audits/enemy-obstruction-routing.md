@@ -58,6 +58,13 @@ dump defends the visible result.
   `0x145A2 -> 0x14BA6` takes the negative-state branch at `0x14BF8` into
   `0x14682`. These are ordinary source actor records using the same terrain
   route selector.
+- [C] `0x13904` can retain a linked target at `+0xA2` and enter `0x13D0C`,
+  which measures target-relative movement and hands its destination to
+  `0x145A2`. The source target-list selector at `0x14492` uses the seven-actor
+  pool when actor `+0x10` bit 3 is set; the typed host fact for that condition
+  is `lifecycle.ai_runner`. Blocked movement reaches the shared `0x14682`
+  selector, so this path does not require dynamic-encounter or patrol-list
+  metadata.
 - [C] The visible flee pass also uses the shared movement target: `0x13E9E`
   derives the field-boundary destination and stores it at `+0x96/+0x98`, then
   `0x13E8C -> 0x145A2 -> 0x14BA6` reaches `0x14682` when movement is blocked.
@@ -66,10 +73,12 @@ dump defends the visible result.
 
 Lua stores a target-linked list of typed world waypoints in the actor's
 existing `game.actors[actor_id]` state. On a blocked movement reset, it uses
-the live target candidate for a dynamic actor or the current Lua-owned
-`ai_route_target` for an actor with extracted patrol-route data. The route
-target remains identified by the actor and patrol cursor; Lua does not expose
-the source record's `+0x96/+0x98` fields. The typed map-cell query scans D7
+the live target candidate for a dynamic actor or for an actor whose typed
+`lifecycle.ai_runner` fact selects the linked world-target pool. It also uses
+the current Lua-owned `ai_route_target` for an actor with extracted
+patrol-route data. The route target remains identified by the actor and patrol
+cursor; Lua does not expose the source record's `+0x96/+0x98` fields. The
+typed map-cell query scans D7
 through the last open cell and stops at the first blocked cell, matching
 `0x148AA`; it then checks D6 candidates and their D7 neighbors, matching
 `0x14854`. The same fact query checks primary and adjacent cells in the
@@ -181,6 +190,11 @@ fidelity.
   `shadowrun_gameplay_actor_ai_rules_qa` pass in headless Debug and Release.
   This verifies target plumbing and typed waypoint policy; it does not prove
   imported occupancy or independent Genesis route pixels.
+- A non-dynamic actor with typed `lifecycle.ai_runner=true`, no patrol route,
+  and a live linked target now enters the shared blocked-route planner. The
+  Lua regression forces the movement probe to block and checks that the
+  planner queues a waypoint for the retained target. This validates semantic
+  eligibility; its collision facts are test inputs.
 - `shadowrun_gameplay_script_runtime_qa`: verifies the Lua planner receives
   the separate typed map-cell and source-corridor callbacks through the C++
   binding.
