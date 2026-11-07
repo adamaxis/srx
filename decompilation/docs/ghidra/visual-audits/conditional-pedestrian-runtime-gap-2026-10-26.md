@@ -2211,3 +2211,40 @@ the direct/computed `FFDF42` producer or prove the automatic physical route
 from A800 contact into `0x1E43C`; the physical contact QA still stops at its
 documented continuation seam. Its BMPs are internal regression captures, not
 independent Genesis evidence.
+
+### Cold-boot Stoker-exit pedestrian timing cross-check (2026-11-06)
+
+**[C]** The controller-only fixture in
+`decompilation/gameplay/tests_lua/fixtures/gpgx_stoker_exit_pedestrians/`
+records every GPGX frame from the US ROM and a separate headless port replay.
+After the A input at GPGX frame 9300 closes the leave reply, slots 5, 4, and 3
+first change position at frames 9442, 9445, and 9452. The independent
+`gpgx-frame-09400.png` is still fully black; `gpgx-frame-09517.png` shows the
+field beginning to reveal. In the port trace, all three actor positions first
+change at `app.source_frame=9362`; its debug world-activity countdown remains
+60 through frame 9361 and is 0 at 9362. That countdown is a port diagnostic,
+not a value recorded by the GPGX fixture.
+
+**[C]** Later coordinates show that the reported speed difference is not
+supported by these route segments. Port slot 4 at application frames 9452 and
+9600 is at `(0x5300,0x3354)` and `(0x5300,0x2D8C)`; GPGX records the same
+positions at frames 9518 and 9666. Port slot 5 at application frames 9452 and
+9600 is at `(0x6280,0x14E6)` and `(0x6280,0x0F14)`; GPGX records those same
+positions at frames 9523 and 9672. Slot 4's checkpoint intervals are both 148
+frame labels and accumulate the same `-1480` Y displacement. Slot 5 reaches
+the same coordinates with offsets 71 and 72; its source checkpoint interval
+is one frame longer than the port's, so it corroborates route progress without
+providing an exact rate measurement.
+The ROM movement path at `0xB574 -> 0xBADE` and the existing Scene-2 audit's
+10-unit vector trace remain consistent with these measurements. This
+comparison does not record `FFDF84` for the post-exit frames, so it does not
+prove which live speed table branch was selected there.
+
+**[H]** The 66-to-72-frame coordinate offsets and the black GPGX frames point
+to return-transition timing as the reason that the actors are farther along
+in the port at the same nominal timeline labels. They do not justify changing
+the pedestrian step size. Ordinary fade timing is intentionally approximate
+in this project. Slot 3 has no repeated exact coordinate match after the
+first checkpoint, and combat/death animation permutations are still open, so
+this evidence does not close playtest item #50 or establish full-route visual
+equivalence.
