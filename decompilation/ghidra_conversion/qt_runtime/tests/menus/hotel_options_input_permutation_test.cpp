@@ -103,8 +103,8 @@ bool check_status_acknowledgement_masks() {
     const std::array<std::string, 3> names{"Joshua", "David", "Jack"};
     for (std::uint16_t mask = 0U; mask < 256U; ++mask) {
         HotelMenuRuntime runtime;
-        std::array<RunnerRecordFields, 3> records{};
-        runtime.open(records, names, 0U);
+        const std::array<bool, kHotelPartySlotCount> medical_attention{};
+        runtime.open(names, medical_attention);
         if (runtime.phase() != HotelMenuPhase::entity_status) {
             std::cerr << "Hotel status mask setup failed\n";
             return false;
@@ -129,8 +129,8 @@ bool check_status_acknowledgement_masks() {
     }
 
     HotelMenuRuntime held_runtime;
-    std::array<RunnerRecordFields, 3> held_records{};
-    held_runtime.open(held_records, names, 0U);
+    const std::array<bool, kHotelPartySlotCount> held_medical_attention{};
+    held_runtime.open(names, held_medical_attention);
     if (held_runtime.advance_controller_events(0x00FFU) !=
             HotelMenuEvent::waiting ||
         held_runtime.phase() != HotelMenuPhase::entity_status) {
@@ -220,9 +220,9 @@ bool check_checkout_masks(GameScriptRuntime& scripts) {
 
 bool check_checkout_edge_latch_sequence(GameScriptRuntime& scripts) {
     HotelMenuRuntime runtime;
-    std::array<RunnerRecordFields, 3> records{};
     const std::array<std::string, 3> names{"Joshua", "David", "Jack"};
-    runtime.open(records, names, 0U);
+    const std::array<bool, kHotelPartySlotCount> medical_attention{};
+    runtime.open(names, medical_attention);
     if (!reset_options(scripts)) {
         std::cerr << "Hotel Lua Options reset failed before checkout path\n";
         return false;
@@ -291,8 +291,8 @@ bool check_checkout_edge_latch_sequence(GameScriptRuntime& scripts) {
     }
 
     HotelMenuRuntime stayed_runtime;
-    std::array<RunnerRecordFields, 3> stayed_records{};
-    stayed_runtime.open(stayed_records, names, 0U);
+    const std::array<bool, kHotelPartySlotCount> stayed_medical_attention{};
+    stayed_runtime.open(names, stayed_medical_attention);
     if (stayed_runtime.advance_controller_events(0x0100U) !=
             HotelMenuEvent::status_acknowledged ||
         !reset_options(scripts)) {

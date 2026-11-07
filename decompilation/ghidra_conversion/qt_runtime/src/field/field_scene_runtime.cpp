@@ -294,6 +294,40 @@ void set_script_animation_facts(
     context.can_start_item_action = ordinary_pose;
 }
 
+void apply_matrix_font_name_word_flips(QImage& font) {
+    // ROM 0xC1320 names the startup/matrix glyphs. ')' is word 0x0DB3 and
+    // '>' is word 0x0DC6: the same tiles as '(' (0x05B3) and '<' (0x05C6)
+    // with the VDP horizontal-flip bit. [C] An atlas extracted before that
+    // bit was baked still stores the raw tile, so the cyberdeck detail
+    // panel draws ')' one column left of the GPGX capture. Mirror only
+    // while the cell still matches its unflipped source.
+    if (font.size() != QSize(128, 48)) {
+        return;
+    }
+    font = font.convertToFormat(QImage::Format_ARGB32);
+    const auto cell = [](const int glyph) {
+        return QRect((glyph % 16) * 8, (glyph / 16) * 8, 8, 8);
+    };
+    const auto same = [&font, &cell](const int left, const int right) {
+        return font.copy(cell(left)) == font.copy(cell(right));
+    };
+    const auto mirror = [&font, &cell](const int source, const int dest) {
+        const auto flipped = font.copy(cell(source)).mirrored(true, false);
+        QPainter painter(&font);
+        painter.drawImage(cell(dest).topLeft(), flipped);
+    };
+    constexpr int kOpenParen = 0x28 - 0x20;
+    constexpr int kCloseParen = 0x29 - 0x20;
+    constexpr int kLessThan = 0x3C - 0x20;
+    constexpr int kGreaterThan = 0x3E - 0x20;
+    if (same(kOpenParen, kCloseParen)) {
+        mirror(kOpenParen, kCloseParen);
+    }
+    if (same(kLessThan, kGreaterThan)) {
+        mirror(kLessThan, kGreaterThan);
+    }
+}
+
 void make_random_grid_black_transparent(QImage& image) {
     image = image.convertToFormat(QImage::Format_ARGB32);
     for (int y = 0; y < image.height(); ++y) {
@@ -7392,6 +7426,7 @@ bool FieldSceneRuntime::load_command_overview_assets(
         failure_ = "Matrix source artwork is unavailable";
         return false;
     }
+    apply_matrix_font_name_word_flips(matrix_map_font_);
     for (std::size_t theme = 0U;
          theme < matrix_traversal_backgrounds_.size(); ++theme) {
         const auto alias = "cyberspace.matrix.traversal.background.theme." +
@@ -9380,7 +9415,10 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         }
         if (continuation ==
             MovementModeTransitionContinuation::event_29_world_activity) {
-            if (!open_field_elevator_selector(
+            // 0x58D94 may already have been presented when 0x1E2E0 accepted
+            // the contact. A second open is the same selector.
+            if (!field_elevator_selector_.is_open() &&
+                !open_field_elevator_selector(
                     FieldCollisionEventCode::event_29)) {
                 source_boundary("field.elevator.selector_open_unresolved");
             }
@@ -12009,6 +12047,25 @@ bool FieldSceneRuntime::recover_blocked_field_movement(
         };
     transition_callbacks.begin_world_activity_if_idle =
         [this](const MovementModeTransitionContinuation continuation) {
+            // ROM 0xB8A6/0x1E2E0 installs 0x58D94 only while FFE11C is idle,
+            // and 0x0B34 calls that handler on the next eligible pass.
+            // FFE166's expiry arms FFE11C through 0x1DDEA/0x1E2EC. The host
+            // countdown for that expiry does not install a visible handler,
+            // so a leftover timer was rejecting Scene 30's floor contact
+            // while the selector stayed closed. Drop that empty arm and
+            // present 0x58D94 when the contact is accepted. [C]
+            const bool event_29_contact =
+                continuation == MovementModeTransitionContinuation::
+                                   event_29_world_activity;
+            if (event_29_contact &&
+                !field_elevator_selector_.is_open() &&
+                !dialogue_open() && !field_interaction_open() &&
+                !shop_menu_open() &&
+                !field_runtime_state_.pending_field_scene_handler &&
+                field_world_activity_state_.timeout != 0U) {
+                field_world_activity_state_.timeout = 0U;
+                world_frame_logic_state_.resource_countdown = 0U;
+            }
             const auto started = begin_world_activity_if_idle(
                 field_world_activity_state_,
                 static_cast<std::uint16_t>(continuation));
@@ -12016,6 +12073,12 @@ bool FieldSceneRuntime::recover_blocked_field_movement(
                 world_frame_logic_state_.resource_countdown =
                     field_world_activity_state_.timeout;
                 record_field_activity_start(continuation);
+                if (event_29_contact &&
+                    !open_field_elevator_selector(
+                        FieldCollisionEventCode::event_29)) {
+                    source_boundary(
+                        "field.elevator.selector_open_unresolved");
+                }
             }
             return started;
         };
@@ -13315,8 +13378,12 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
         // converts here instead of leaking byte semantics into Lua.
         projectile_movement.attack_successes = static_cast<std::uint16_t>(
             std::max<int>(record.action_result, 0));
+        // The fire frame queues the projectile after this service, then the
+        // render pass (field coordinator: behavior, then render) marks the
+        // animation script initialized. Gating 0x55640 on that flag skipped
+        // the roll and left +0x9F at 0 for every later hit. [C]
         context.projectile_attack_seed_pending =
-            primary_record && !script_initialized;
+            primary_record && !spawn.primary_attack_seed_resolved;
         if (primary_record) {
             context.combatant = spawn.shooter_facts;
             if (spawn.shooter_party_slot.has_value() &&
@@ -13419,6 +13486,9 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
             return;
         }
         script_initialized = true;
+        if (context.projectile_attack_seed_pending) {
+            spawn.primary_attack_seed_resolved = true;
+        }
         const auto& movement = decision->projectile_movement->state;
         const auto projectile_outcome =
             decision->projectile_movement->outcome;

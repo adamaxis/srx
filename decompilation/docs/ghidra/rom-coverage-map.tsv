@@ -217,7 +217,7 @@ rom_entry	mapping_kind	implementation	evidence
 0xEDFA	port	decompilation/ghidra_conversion/src/field/terrain_probe_conversion.cpp#ghidra_conversion::decode_terrain_tile_window	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0xEE10	port	decompilation/ghidra_conversion/src/field/terrain_map_conversion.cpp#ghidra_conversion::rebuild_terrain_collision_map	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0xEE86	port	decompilation/ghidra_conversion/src/field/terrain_map_conversion.cpp#ghidra_conversion::replace_nth_terrain_marker	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
-0xEF08	port	decompilation/ghidra_conversion/qt_runtime/src/menus/hotel_menu_runtime.cpp#ghidra_conversion::service_hotel_entity_status	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
+0xEF08	port	decompilation/gameplay/scripts/hotel.lua#Hotel.service_party_status;decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime_services.cpp#apply_hotel_status_effects	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0xF236	port	decompilation/gameplay/scripts/menu/screens/pocket_secretary.lua	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0xF2E2	port	decompilation/gameplay/scripts/menu/screens/pocket_secretary.lua	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner
 0xF312	port	decompilation/gameplay/scripts/menu/screens/pocket_secretary.lua	decompilation/docs/ghidra/decompiled-function-status.tsv:native_owner

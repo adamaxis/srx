@@ -305,7 +305,7 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0xEDFA` | decode_terrain_tile_window | 22 | decompilation/ghidra_conversion/src/field/terrain_probe_conversion.cpp#ghidra_conversion::decode_terrain_tile_window | port |
 | `0xEE10` | rebuild_terrain_collision_map | 118 | decompilation/ghidra_conversion/src/field/terrain_map_conversion.cpp#ghidra_conversion::rebuild_terrain_collision_map | port |
 | `0xEE86` | replace_nth_terrain_marker | 120 | decompilation/ghidra_conversion/src/field/terrain_map_conversion.cpp#ghidra_conversion::replace_nth_terrain_marker | port |
-| `0xEF08` | service_hotel_entity_status | 172 | decompilation/ghidra_conversion/qt_runtime/src/menus/hotel_menu_runtime.cpp#ghidra_conversion::service_hotel_entity_status | port |
+| `0xEF08` | service_hotel_entity_status | 172 | decompilation/gameplay/scripts/hotel.lua#Hotel.service_party_status;decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime_services.cpp#apply_hotel_status_effects | port |
 | `0xF236` | Notebook menu loop | — | decompilation/gameplay/scripts/menu/screens/pocket_secretary.lua | port |
 | `0xF2E2` | Notebook Current Run handler | — | decompilation/gameplay/scripts/menu/screens/pocket_secretary.lua | port |
 | `0xF312` | wait_for_controller_event | 44 | decompilation/gameplay/scripts/menu/screens/pocket_secretary.lua | port |
