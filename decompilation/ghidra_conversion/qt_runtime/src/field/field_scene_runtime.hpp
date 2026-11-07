@@ -2164,6 +2164,11 @@ private:
         FieldFramePresentationState primary_animation{};
         bool primary_animation_complete = false;
         bool primary_animation_script_initialized = false;
+        // ROM 0x15012 / 0x55640 writes +0x9F when the primary record is
+        // created. The render pass may initialize the animation script on
+        // the fire frame, before this roll's behavior service. That animation
+        // flag must not consume the roll. [C]
+        bool primary_attack_seed_resolved = false;
         bool primary_active = false;
         std::optional<std::uint16_t> primary_slot;
         SpawnEntityRecordState source_record{};

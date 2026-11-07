@@ -13315,8 +13315,12 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
         // converts here instead of leaking byte semantics into Lua.
         projectile_movement.attack_successes = static_cast<std::uint16_t>(
             std::max<int>(record.action_result, 0));
+        // The fire frame queues the projectile after this service, then the
+        // render pass (field coordinator: behavior, then render) marks the
+        // animation script initialized. Gating 0x55640 on that flag skipped
+        // the roll and left +0x9F at 0 for every later hit. [C]
         context.projectile_attack_seed_pending =
-            primary_record && !script_initialized;
+            primary_record && !spawn.primary_attack_seed_resolved;
         if (primary_record) {
             context.combatant = spawn.shooter_facts;
             if (spawn.shooter_party_slot.has_value() &&
@@ -13419,6 +13423,9 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
             return;
         }
         script_initialized = true;
+        if (context.projectile_attack_seed_pending) {
+            spawn.primary_attack_seed_resolved = true;
+        }
         const auto& movement = decision->projectile_movement->state;
         const auto projectile_outcome =
             decision->projectile_movement->outcome;

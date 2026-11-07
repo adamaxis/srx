@@ -1728,6 +1728,8 @@ void FieldSceneRuntime::advance_field_weapon_projectile_animations() {
             return;
         }
 
+        // Animation init only. The 0x55640 attack roll stays on the behavior
+        // service via primary_attack_seed_resolved. [C]
         script_initialized = true;
         animation.frame = decision->animation_frame;
         animation_complete = decision->animation_complete;
