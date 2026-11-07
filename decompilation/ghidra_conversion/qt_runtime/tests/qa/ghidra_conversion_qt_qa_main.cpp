@@ -50922,8 +50922,10 @@ int main(int argc, char** argv) {
                 // runs and build configurations. This is a test fixture seed,
                 // not a claim about the ROM's unresolved live seed source.
                 field_scene.set_source_random_seed_for_dump(0x51A7U);
-                field_scene.active_runner_record().delay_meter = 2U;
-                field_scene.active_runner_record().behavior_meter = 0U;
+                // Keep the live New Game meters from the selected ROM
+                // template. All three records at 0x7291A start +0x4C and
+                // +0x9C at 10; the ordered party service at 0xA8F0..0xAACC
+                // downs an active runner when either meter reaches zero.
                 field_scene.active_runner_record().attributes[0U] = 1U;
                 field_scene.active_runner_record().karma = 50U;
                 field_scene.active_runner_record().cyberware_flags =
@@ -50975,11 +50977,15 @@ int main(int argc, char** argv) {
                     advance_field_frame();
                 };
                 const auto spawn = field_scene.field_entity_world_position();
+                const auto& new_game_runner =
+                    field_scene.active_runner_record();
                 const auto& source_collision_rectangles = field_scene.state()
                     .field_scene_buffers.source_metadata
                     .terrain_collision_rectangles;
                 if (field_scene.field_scene_reference_for_dump() != 2U ||
                     spawn.x != 0x3CE0U || spawn.y != 0x2D00U ||
+                    new_game_runner.delay_meter != 10U ||
+                    new_game_runner.behavior_meter != 10U ||
                     source_collision_rectangles.size() <= 91U ||
                     source_collision_rectangles[91U].value != 0xC2U ||
                     field_scene.field_funds_for_dump() != 20U) {
@@ -51046,14 +51052,44 @@ int main(int argc, char** argv) {
                     }
                 }
                 field_scene.set_controller_nibble(0U);
-                if (!doorway_contact ||
-                    field_scene.field_terrain_collision_code_for_dump() !=
-                        0xFFC2U ||
-                    field_scene.field_mode_event_code_for_dump() != 2U ||
-                    field_scene.field_runtime_state_for_dump().field_mode !=
-                        2U ||
+                const auto doorway_position =
+                    field_scene.field_entity_world_position();
+                const auto doorway_collision =
+                    field_scene.field_terrain_collision_code_for_dump();
+                const auto doorway_event =
+                    field_scene.field_mode_event_code_for_dump();
+                const auto doorway_mode =
+                    field_scene.field_runtime_state_for_dump().field_mode;
+                const auto doorway_scene =
+                    field_scene.field_scene_reference_for_dump();
+                if (!doorway_contact || doorway_collision != 0xFFC2U ||
+                    doorway_event != 2U || doorway_mode != 2U ||
                     capture(output / "doorway-trigger" / "actual.bmp").isNull()) {
-                    std::cerr << "field Hotel QA: ordinary Up did not reach scene-2 Stoker collision record 91\n";
+                    std::cerr << "field Hotel QA: ordinary Up did not reach scene-2 Stoker collision record 91"
+                              << " contact=" << doorway_contact
+                              << " scene=" << doorway_scene
+                              << " position=0x" << std::hex
+                              << doorway_position.x << ",0x"
+                              << doorway_position.y
+                              << " collision=0x" << doorway_collision
+                              << " event=" << std::dec
+                              << static_cast<unsigned>(doorway_event)
+                              << " mode="
+                              << static_cast<unsigned>(doorway_mode)
+                              << " frame=" << route_frame
+                              << " interaction="
+                              << field_scene.field_interaction_transition_active_for_dump()
+                              << " pending="
+                              << field_scene.field_transition_pending_for_dump()
+                              << " dialogue=" << field_scene.dialogue_open()
+                              << " dialogue_actor="
+                              << field_scene.dialogue_panel().actor_name;
+                    const auto& doorway_panel = field_scene.dialogue_panel();
+                    if (doorway_panel.text_segment_count > 0U) {
+                        std::cerr << " dialogue_text="
+                                  << doorway_panel.text_segments[0];
+                    }
+                    std::cerr << '\n';
                     return 3;
                 }
                 mark_route("stoker-collision-record-91", "Up");
@@ -51151,14 +51187,17 @@ int main(int argc, char** argv) {
                     advance_field_frame();
                 }
                 auto status = capture(output / "status" / "actual.bmp");
+                // The New Game runner starts with delay meter 10 at +0x4C
+                // in the ROM template (0x7291A). Hotel 0xEF1C..0xEF76 only
+                // writes a medical-attention row below 3; with no such row,
+                // 0xEFA4 writes recovery rows at y=56, 64, and 72.
                 if (status.isNull() ||
-                    !image_has_green_ink(status, 88, 40, 48, 8) ||
-                    !image_has_green_ink(status, 32, 48, 240, 8) ||
-                    !image_has_green_ink(status, 32, 80, 224, 8) ||
-                    !image_region_has_color(status, 88, 40, 48, 8,
-                                            QColor(32, 206, 32)) ||
-                    image_has_green_ink(status, 32, 40, 48, 8) ||
-                    image_has_green_ink(status, 32, 56, 240, 24)) {
+                    image_has_green_ink(status, 88, 40, 48, 8) ||
+                    image_has_green_ink(status, 32, 48, 240, 8) ||
+                    !image_has_green_ink(status, 32, 56, 240, 8) ||
+                    !image_has_green_ink(status, 32, 64, 240, 8) ||
+                    !image_has_green_ink(status, 32, 72, 240, 8) ||
+                    image_has_green_ink(status, 32, 80, 224, 8)) {
                     std::cerr << "field Hotel QA: status page text or full redraw is incorrect\n";
                     return 3;
                 }
