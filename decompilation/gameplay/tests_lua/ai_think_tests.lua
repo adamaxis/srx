@@ -1772,6 +1772,52 @@ check(patrol_next_step ~= nil and patrol_next_step.outcome == "accepted" and
       "source patrol detours remain active through the shared movement pass [C: 0x149C0]")
 game.movement.source_path_is_clear = patrol_previous_path_query
 
+-- ROM 0x13E9E installs the projected flee-boundary point as the movement
+-- target, then 0x13E8C enters 0x145A2; a blocked pass reaches 0x14682 through
+-- 0x14BA6. This target is held in Lua state and has no combat-link ID or patrol
+-- route, so verify the shared eligibility gate accepts this non-dynamic actor
+-- and the planner resolves the named flee destination.
+local flee_previous_cell_query = game.movement.source_cell_is_clear
+local flee_previous_probe = game.movement.probe
+game.movement.source_cell_is_clear = source_cell_query({
+    { 0x2300, 0x2100 },
+})
+game.movement.probe = function(x, y, direction)
+    if direction == nil then
+        return { kind = "clear", blocks_route_fallback = false,
+            terrain_is_clear = true, candidate_x = x, candidate_y = y }
+    end
+    return { kind = "blocked", blocks_route_fallback = true,
+        terrain_is_clear = false, candidate_x = x, candidate_y = y }
+end
+local flee_obstruction_context = movement_fixture(false)
+flee_obstruction_context.actor_id = "field_scene_20_unlisted_flee_actor"
+flee_obstruction_context.movement_state.position_x = 0x2000
+flee_obstruction_context.movement_state.position_y = 0x2000
+flee_obstruction_context.measure_destination = function(x, y)
+    return { bearing_degrees = x == 0x3000 and y == 0x2000 and 45 or 315,
+        distance = 0x500, step_cost = 0x300 }
+end
+local flee_obstruction_state = {
+    actor_facts = actor_facts({ behavior = { fleeing = true } }),
+    flee_target_x = 0x3000,
+    flee_target_y = 0x2000,
+    movement_bearing_degrees = 45,
+    movement_current_bearing_degrees = 45,
+    movement_route_distance = 0x1000,
+}
+local flee_obstruction_step = R.advance_entity_movement(
+    flee_obstruction_context, flee_obstruction_state)
+check(flee_obstruction_step ~= nil and
+      flee_obstruction_step.outcome == "reset" and
+      flee_obstruction_state.obstruction_route ~= nil and
+      flee_obstruction_state.obstruction_route.target_id == "flee-boundary" and
+      flee_obstruction_state.obstruction_route.waypoints[1].x == 0x2300 and
+      flee_obstruction_state.obstruction_route.waypoints[1].y == 0x2100,
+      "blocked visible flee movement routes toward its boundary destination [C: 0x13E9E, 0x13E8C, 0x145A2, 0x14BA6, 0x14682]")
+game.movement.source_cell_is_clear = flee_previous_cell_query
+game.movement.probe = flee_previous_probe
+
 -- A clear 0x14914 source corridor drops an existing route before its
 -- waypoint is consumed and resumes movement toward the live target.
 local source_path_query_calls = 0

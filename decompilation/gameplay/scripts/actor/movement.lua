@@ -888,10 +888,36 @@ local function current_world_target(context, state)
     return nil
 end
 
+local function current_flee_boundary_target(context, state)
+    local actor_facts = state.actor_facts
+    local behavior = type(actor_facts) == "table" and actor_facts.behavior
+    if context.source_projection_active == true and
+       type(behavior) == "table" and behavior.fleeing == true and
+       type(state.flee_target_x) == "number" and
+       type(state.flee_target_y) == "number" then
+        return {
+            id = "flee-boundary",
+            world_x = state.flee_target_x,
+            world_y = state.flee_target_y,
+        }
+    end
+    return nil
+end
+
 local function current_obstruction_target(context, state)
     local target = current_world_target(context, state)
     if target ~= nil then
         return target
+    end
+
+    -- A visible flee pass keeps its boundary destination in Lua state. ROM
+    -- 0x13E9E writes that destination to +0x96/+0x98, then 0x13E8C enters
+    -- 0x145A2; a blocked step reaches the shared 0x14682 selector through
+    -- 0x14BA6. Resolve the semantic target here so flee movement can use the
+    -- same native waypoint policy without exposing those record offsets.
+    local flee_target = current_flee_boundary_target(context, state)
+    if flee_target ~= nil then
+        return flee_target
     end
 
     -- ROM 0x142AE places ordinary source patrol waypoints in the same
@@ -914,8 +940,9 @@ local function current_obstruction_target(context, state)
     }
 end
 
-local function obstruction_routing_available(context)
+local function obstruction_routing_available(context, state)
     return context.dynamic_world_encounter_actor == true or
+        current_flee_boundary_target(context, state) ~= nil or
         ActorPatrolRoutes.has_route(context.actor_id)
 end
 
@@ -940,7 +967,7 @@ end
 
 local function apply_obstruction_waypoint(context, state, movement_state)
     local route = state.obstruction_route
-    if not obstruction_routing_available(context) or
+    if not obstruction_routing_available(context, state) or
        type(route) ~= "table" or type(route.waypoints) ~= "table" then
         return false
     end
@@ -1003,7 +1030,7 @@ local function apply_obstruction_waypoint(context, state, movement_state)
 end
 
 local function plan_obstruction_waypoint(context, state, movement_state)
-    if not obstruction_routing_available(context) then
+    if not obstruction_routing_available(context, state) then
         return false
     end
     local target = current_obstruction_target(context, state)
