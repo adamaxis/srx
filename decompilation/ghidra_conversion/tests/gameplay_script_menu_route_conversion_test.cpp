@@ -22,6 +22,7 @@ extern "C" {
 #include <limits>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -41,6 +42,7 @@ using shadowrun::ghidra_conversion::scripting::ScriptMenuRouteStartArguments;
 using shadowrun::ghidra_conversion::scripting::ScriptPersistentValue;
 using shadowrun::ghidra_conversion::scripting::ScriptMatrixRunState;
 using shadowrun::ghidra_conversion::scripting::ScriptMatrixRunStatus;
+using shadowrun::ghidra_conversion::scripting::ScriptMatrixRunInfoKind;
 using shadowrun::ghidra_conversion::scripting::ScriptMatrixRunNode;
 using shadowrun::ghidra_conversion::scripting::ScriptMatrixRunAction;
 using shadowrun::ghidra_conversion::scripting::ScriptMatrixRunObjective;
@@ -3390,7 +3392,7 @@ int main() {
         return false;
     };
     check(deck_stats_painted && has_deck_stats_ink(184, 24, 88) &&
-              has_deck_stats_ink(184, 32, 56) &&
+              has_deck_stats_ink(208, 32, 56) &&
               has_deck_stats_ink(160, 40, 128) &&
               has_deck_stats_ink(160, 48, 112) &&
               has_deck_stats_ink(280, 48, 8) &&
@@ -3407,8 +3409,8 @@ int main() {
           "Deck Stats text occupies ROM model and value-row positions",
           failures);
     const auto matches_matrix_glyph_sequence =
-        [&deck_stats_actual, &map_font](const int x, const int y,
-                                        const std::string& text) {
+        [&map_font](const QImage& actual, const int x, const int y,
+                    const std::string& text) {
             for (std::size_t index = 0U; index < text.size(); ++index) {
                 const auto code =
                     static_cast<unsigned char>(text[index]);
@@ -3418,12 +3420,12 @@ int main() {
                 const auto source_y = (glyph / 16) * 8;
                 for (int dy = 0; dy < 8; ++dy) {
                     for (int dx = 0; dx < 8; ++dx) {
-                        const auto actual_color = deck_stats_actual.pixelColor(
+                        const auto actual_color = actual.pixelColor(
                             x + static_cast<int>(index) * 8 + dx, y + dy);
                         const auto source_color = map_font.pixelColor(
                             source_x + dx, source_y + dy);
                         if (actual_color.rgb() != source_color.rgb()) {
-                            std::cerr << "Deck Stats glyph mismatch: text='"
+                            std::cerr << "Matrix text glyph mismatch: text='"
                                       << text << "' glyph=" << index
                                       << " char='" << text[index]
                                       << "' at ("
@@ -3444,11 +3446,15 @@ int main() {
             return true;
         };
     bool deck_stats_numbers_match = deck_stats_painted &&
-        matches_matrix_glyph_sequence(184, 24, "Cyber Shack") &&
-        matches_matrix_glyph_sequence(184, 32, "PCD-500") &&
-        matches_matrix_glyph_sequence(288, 72, "Mp") &&
-        matches_matrix_glyph_sequence(288, 80, "Mp") &&
-        matches_matrix_glyph_sequence(288, 88, "Mp");
+        matches_matrix_glyph_sequence(deck_stats_actual, 184, 24,
+                                      "Cyber Shack") &&
+        // [C] ROM 0x18BA2 starts the maker/model stream at $C1AE; the source
+        // row at 0x1AB100 places the model at x=208 on y=32.
+        matches_matrix_glyph_sequence(deck_stats_actual, 208, 32,
+                                      "PCD-500") &&
+        matches_matrix_glyph_sequence(deck_stats_actual, 288, 72, "Mp") &&
+        matches_matrix_glyph_sequence(deck_stats_actual, 288, 80, "Mp") &&
+        matches_matrix_glyph_sequence(deck_stats_actual, 288, 88, "Mp");
     const std::array<int, 10> deck_stats_value_rows{
         48, 56, 72, 80, 88, 104, 120, 128, 136, 144};
     const std::array<std::string, 10> expected_deck_stats_numbers{
@@ -3459,7 +3465,7 @@ int main() {
         const auto& text = expected_deck_stats_numbers[index];
         const auto x = 280 - static_cast<int>(text.size() - 1U) * 8;
         deck_stats_numbers_match = matches_matrix_glyph_sequence(
-            x, deck_stats_value_rows[index], text);
+            deck_stats_actual, x, deck_stats_value_rows[index], text);
     }
     check(deck_stats_numbers_match,
           "Deck Stats shows each source record value at its ROM right edge with grouped thousands",
@@ -3524,6 +3530,81 @@ int main() {
               (run_info_artifact_dir / "active-text-layer.bmp").string())),
           "Run Info active text layer is written", failures);
 #endif
+
+    // ROM 0x18CED selects the Datastore file class from 0xE4060 and
+    // 0x18CD4 writes the matching action from 0xE44C8 at its separate row.
+    const std::array<std::pair<ScriptMatrixRunAction, std::string_view>, 3>
+        datastore_run_actions{{
+            {ScriptMatrixRunAction::delete_file, "Delete File"},
+            {ScriptMatrixRunAction::upload_file, "Upload File"},
+            {ScriptMatrixRunAction::download_file, "Download File"},
+        }};
+    for (const auto& [action, action_label] : datastore_run_actions) {
+        matrix_world_state.run->status = ScriptMatrixRunStatus::active;
+        matrix_world_state.run->objective.node =
+            ScriptMatrixRunNode::datastore;
+        matrix_world_state.run->objective.action = action;
+        matrix_world_state.run->objective.file_class = "Retail Control";
+        runtime.advance_menu_route(0x4000U); // Reopen CyberInfo.
+        runtime.advance_menu_route(0x0200U); // Run Info.
+        runtime.advance_menu_route(0x4000U);
+        route = runtime.menu_route_snapshot();
+        check(route.top_matrix_run_info.has_value() &&
+                  route.top_matrix_run_info->kind ==
+                      ScriptMatrixRunInfoKind::active &&
+                  route.top_matrix_run_info->node == "Datastore" &&
+                  route.top_matrix_run_info->node_function ==
+                      "Retail Control" &&
+                  route.top_matrix_run_info->action ==
+                      std::string(action_label),
+              "Run Info routes the active Datastore objective through Lua "
+                  "with its ROM class and action",
+              failures);
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+        if (action == ScriptMatrixRunAction::download_file) {
+            QImage datastore_actual(320, 224, QImage::Format_ARGB32);
+            datastore_actual.fill(QColor(0, 0, 0));
+            QPainter datastore_painter(&datastore_actual);
+            const bool datastore_painted = paint_matrix_run_info_text(
+                datastore_painter, map_font, route);
+            datastore_painter.end();
+            bool right_edge_clear = true;
+            for (int y = 72; y < 80; ++y) {
+                for (int x = 288; x < 320; ++x) {
+                    right_edge_clear = right_edge_clear &&
+                        datastore_actual.pixelColor(x, y) == QColor(0, 0, 0);
+                }
+            }
+            for (int y = 96; y < 104; ++y) {
+                for (int x = 296; x < 320; ++x) {
+                    right_edge_clear = right_edge_clear &&
+                        datastore_actual.pixelColor(x, y) == QColor(0, 0, 0);
+                }
+            }
+            const bool datastore_glyphs_match =
+                matches_matrix_glyph_sequence(
+                    datastore_actual, 160, 48, "Node:") &&
+                matches_matrix_glyph_sequence(
+                    datastore_actual, 208, 48, "Datastore") &&
+                matches_matrix_glyph_sequence(
+                    datastore_actual, 160, 64, "Node Function:") &&
+                matches_matrix_glyph_sequence(
+                    datastore_actual, 176, 72, "Retail Control") &&
+                matches_matrix_glyph_sequence(
+                    datastore_actual, 160, 88, "Action:") &&
+                matches_matrix_glyph_sequence(
+                    datastore_actual, 192, 96, "Download File");
+            check(datastore_painted && datastore_glyphs_match &&
+                      right_edge_clear &&
+                      datastore_actual.save(QString::fromStdString(
+                          (run_info_artifact_dir /
+                           "active-datastore-text-layer.bmp").string())),
+                  "Run Info renders the longest source file class and all "
+                  "Datastore fields at ROM positions without right-edge spill",
+                  failures);
+        }
+#endif
+    }
 
     matrix_world_state.run->status = ScriptMatrixRunStatus::inactive;
     runtime.advance_menu_route(0x4000U); // Reopen CyberInfo.

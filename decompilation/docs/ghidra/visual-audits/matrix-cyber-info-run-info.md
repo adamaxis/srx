@@ -504,6 +504,27 @@ other surrounding content; the test saves per-screen diff images and does
 not treat those residuals as a full-screen match. The captures are
 `cyberdeck.bmp`, `cyber-info.bmp`, and `actual.bmp` in the QA output folder.
 
+### Active Datastore Run Info permutations (2026-11-06)
+
+`[C]` ROM `0x18CED` selects a Datastore class from the fixed records at
+`0xE4060`; ROM `0x18CD4` selects the action text from `0xE44C8`. The Lua rules
+test now exercises every class ID `0..46` with Delete File, Upload File, and
+Download File (141 active-run combinations), retaining node, action, and class
+through `D.run_info`.
+
+The Qt route test enters Run Info through the CyberInfo selector for each of
+the three actions. It checks typed active state and renders the longest class,
+`Retail Control`, at `(176,72)`, with Datastore at `(208,48)` and Download File
+at `(192,96)`. Exact source-font masks and the blank right-edge cells are
+asserted. The Deck Stats model check was also corrected to `(208,32)`: ROM
+`0x18BA2` starts the maker/model stream at `$C1AE`, and the row at `0x1AB100`
+places the model three character cells after the maker. The host renderer
+already used that source position.
+
+No independent GPGX frame with an active Datastore objective is available, so
+this closes the Lua/action and host-placement permutations only; it does not
+establish independent pixel fidelity for that active branch.
+
 ## Verification
 
 - `shadowrun_ghidra_conversion_qt_field_matrix_gpgx_test_deck_qa` passes in

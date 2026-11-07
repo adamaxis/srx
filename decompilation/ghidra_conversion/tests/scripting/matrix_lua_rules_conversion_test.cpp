@@ -63,6 +63,7 @@ local E = require("enums")
 local MX = require("menu.rules.matrix")
 local C = require("menu.rules.matrix_combat")
 local D = require("menu.rules.deck")
+local MatrixFileClasses = require("data.matrix_file_classes")
 local Move = require("menu.rules.matrix_move")
 local Actions = require("menu.rules.node_actions")
 local Programs = require("menu.rules.matrix_programs")
@@ -1589,6 +1590,37 @@ eq(download_info.action, E.MatrixRunAction.DOWNLOAD_FILE,
     "download objective uses the Download File action")
 eq(download_info.file_class, "Security Files",
     "Run Info retains the requested datastore category")
+local datastore_run_actions = {
+    E.MatrixRunAction.DELETE_FILE,
+    E.MatrixRunAction.UPLOAD_FILE,
+    E.MatrixRunAction.DOWNLOAD_FILE,
+}
+-- [C] ROM 0x18CED reads file classes from 0xE4060; 0x18CD4 selects one of
+-- the three Datastore action strings. Each 16-byte source row leaves at most
+-- 14 glyphs for the value beginning at pixel x=176.
+local datastore_run_permutations = 0
+for file_class_id = 0, 46 do
+    local file_class = MatrixFileClasses[file_class_id]
+    eq(type(file_class) == "string" and #file_class <= 14, true,
+        "ROM 0xE4060 file class " .. file_class_id ..
+        " remains within its 14-glyph Run Info cell")
+    for _, action in ipairs(datastore_run_actions) do
+        local info = D.run_info(matrix_run(
+            E.MatrixRunStatus.ACTIVE, "datastore", action,
+            file_class, nil, 30))
+        eq(info.status, "active",
+            "datastore class/action stays on the active Run Info path")
+        eq(info.node, "datastore",
+            "datastore class/action retains its node kind")
+        eq(info.action, action,
+            "datastore Run Info retains its selected ROM action")
+        eq(info.file_class, file_class,
+            "datastore Run Info retains source class " .. file_class_id)
+        datastore_run_permutations = datastore_run_permutations + 1
+    end
+end
+eq(datastore_run_permutations, 141,
+    "Run Info covers all 47 ROM datastore classes across three actions")
 local slots = {
     [0] = { status = 6, phase = 0, timer = 0 },
     [1] = { status = 6, phase = 0, timer = 0 },
