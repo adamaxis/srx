@@ -2142,6 +2142,10 @@ using ScriptMovementSourcePathQuery = std::function<bool(
 // that fact query separate from 0x14914's two-corridor path test.
 using ScriptMovementSourceCellQuery =
     std::function<bool(std::uint16_t world_x, std::uint16_t world_y)>;
+// ROM 0x14800 has descriptor bounds for its primary strip cell. Keep this
+// geometry fact separate from the unchecked 0x148AA/0x14854 map-byte probes.
+using ScriptMovementSourceStripBoundsQuery =
+    std::function<bool(std::uint16_t world_x, std::uint16_t world_y)>;
 using ScriptMovementRouteLookup =
     std::function<ScriptMovementRouteFacts(std::uint16_t)>;
 using ScriptMovementCollisionRecovery =
@@ -2410,6 +2414,8 @@ struct ScriptActorBehaviorContext {
     ScriptMovementCollisionQuery movement_collision;
     ScriptMovementSourcePathQuery movement_source_path_clear;
     ScriptMovementSourceCellQuery movement_source_cell_clear;
+    ScriptMovementSourceStripBoundsQuery
+        movement_source_strip_primary_in_bounds;
     ScriptMovementRouteLookup movement_route_lookup;
     ScriptMovementCollisionRecovery movement_collision_recovery;
     // The field-player B7B8 path dispatches mode/map events before BADE's

@@ -82,6 +82,8 @@ struct FieldMapSourceDescriptor {
     std::uint16_t terrain_y_exclusive_upper = 0;
     std::uint16_t terrain_x_inclusive_lower = 0;
     std::uint16_t terrain_y_inclusive_lower = 0;
+    // ROM descriptor word +0x24, used as the active field-plane byte stride.
+    std::uint16_t field_row_stride_bytes = 0;
     // Copied from the descriptor's event-table pointer when the scene has one.
     bool event_table_available = false;
     std::array<std::uint8_t, kFieldMapEventTableByteCount>

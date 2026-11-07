@@ -9277,6 +9277,7 @@ int main() {
     obstruction_target.heading = 0x2000U;
     std::uint32_t source_route_query_count = 0U;
     std::uint32_t source_cell_query_count = 0U;
+    std::uint32_t source_strip_bound_query_count = 0U;
     obstruction_route_actor.measure_destination =
         [](const std::uint16_t, const std::uint16_t)
             -> std::optional<ScriptActorDestinationMeasurement> {
@@ -9298,7 +9299,20 @@ int main() {
         [&source_cell_query_count](const std::uint16_t world_x,
                                   const std::uint16_t world_y) {
             ++source_cell_query_count;
-            return world_y == 0x1900U && world_x < 0x2900U;
+            return (world_x == 0x1900U && world_y == 0x1900U) ||
+                (world_x == 0x1700U &&
+                 (world_y == 0x1900U || world_y == 0x1700U));
+        };
+    obstruction_route_actor.movement_source_strip_primary_in_bounds =
+        [&source_strip_bound_query_count](
+            const std::uint16_t world_x, const std::uint16_t world_y) {
+            ++source_strip_bound_query_count;
+            // The synthetic case exposes the typed callback through Lua: its
+            // north strip is outside the accepted region, while the west
+            // strip remains available. ROM bounds are covered by the source
+            // primitive test and the imported Scene 2 descriptor.
+            return world_x < 0x1900U ||
+                (world_x == 0x1900U && world_y == 0x1900U);
         };
     obstruction_route_actor.movement_collision =
         [](const std::uint16_t, const std::uint16_t) {
@@ -9316,13 +9330,15 @@ int main() {
     if (!expect(
             obstruction_route_primed && source_route_binding.has_value() &&
                 source_route_query_count > 0U &&
-                source_cell_query_count > 0U,
-            "dynamic actor Lua route policy did not use the separate typed cell and corridor queries")) {
+                source_cell_query_count > 0U &&
+                source_strip_bound_query_count > 0U,
+            "dynamic actor Lua route policy did not use the separate typed cell, corridor, and strip-bound queries")) {
         std::cerr << scripts.failure() << " entered="
                   << obstruction_route_entered << " primed="
                   << obstruction_route_primed << " source_route_queries="
                   << source_route_query_count << " source_cell_queries="
-                  << source_cell_query_count << '\n';
+                  << source_cell_query_count << " source_strip_bound_queries="
+                  << source_strip_bound_query_count << '\n';
         return 24;
     }
 

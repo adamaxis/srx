@@ -627,9 +627,9 @@ end
 -- ROM 0x14902 groups world coordinates in 0x200-unit cells. Lua retains
 -- ordinary world positions and a short typed waypoint list, not FF1700 data.
 local NAVIGATION_CELL_SIZE = 512
--- ROM 0x14902 stores each X cell in the low six index bits and advances Y
--- rows by 0x40 cells. A host scan cannot cross more than one source-grid row
--- or column; the active scene's collision service supplies the tighter edge.
+-- The direct 0x148AA/0x14854 probes have no descriptor-bound check in ROM.
+-- Keep their bounded host scan explicit [H]. The separate 0x14800 strip scan
+-- uses the active scene's typed descriptor bounds and has no fixed depth cap.
 local NAVIGATION_MAX_CELLS = 64
 local navigation_cardinal_offsets = {
     north = { x = 0, y = -1 },
@@ -644,7 +644,8 @@ local function navigation_cell_center(coordinate)
 end
 
 local function choose_obstruction_waypoint(
-    from_x, from_y, target_x, target_y, source_cell_is_clear, source_heading)
+    from_x, from_y, target_x, target_y, source_cell_is_clear, source_heading,
+    source_strip_primary_cell_is_in_bounds)
     local delta_x = target_x - from_x
     local delta_y = target_y - from_y
     local absolute_x = math.abs(delta_x)
@@ -776,12 +777,11 @@ local function choose_obstruction_waypoint(
     end
 
     -- ROM 0x14AF4 retries five heading-rotated strips. Each 0x14800 scan
-    -- advances one primary cell until the map edge or a blocked primary cell;
-    -- five is the number of direction pairs, not a five-cell depth limit.
-    -- Keep that policy as named directions and host world positions: Lua
-    -- stores one waypoint and asks the typed map service about each candidate
-    -- cell. Direction order and returned previous cell are [C]; scan bounds
-    -- are a host policy [H].
+    -- advances one primary cell until a primary collision or descriptor edge;
+    -- five is the number of direction pairs, not a scan-depth limit. The
+    -- descriptor-bound query is separate from the direct FF1700 map facts.
+    -- Direction order, descriptor comparisons, and returning the previous
+    -- primary cell are [C: 0x14812..0x14852, 0x14AF4].
     local function route_to_last_open_strip_cell(x, y)
         if navigation_cell_center(x) == origin_cell_x and
            navigation_cell_center(y) == origin_cell_y then
@@ -798,7 +798,8 @@ local function choose_obstruction_waypoint(
         Bearing.octant(source_heading, false) or nil
     local facing_octant = heading_octant ~= nil and
         (heading_octant & 0x6) or nil
-    if facing_octant ~= nil then
+    if facing_octant ~= nil and
+       type(source_strip_primary_cell_is_in_bounds) == "function" then
         for rotation = 0, 4 do
             local primary_octant = (facing_octant - rotation * 2) & 0x7
             local secondary_octant = (primary_octant + 2) & 0x7
@@ -809,7 +810,8 @@ local function choose_obstruction_waypoint(
                 navigation_cardinal_offsets[
                     cardinal_by_octant[secondary_octant]]
             local scan_from_x, scan_from_y = from_x, from_y
-            for cell_depth = 1, NAVIGATION_MAX_CELLS do
+            local cell_depth = 1
+            while true do
                 local waypoint_x = origin_cell_x +
                     primary_direction.x * cell_depth * NAVIGATION_CELL_SIZE
                 local waypoint_y = origin_cell_y +
@@ -820,6 +822,17 @@ local function choose_obstruction_waypoint(
                     -- next grid coordinate leaves the active map. 0x14AF4
                     -- accepts that last in-map cell unless it is still the
                     -- starting cell (0x14B22..0x14B48) [C].
+                    local route = route_to_last_open_strip_cell(
+                        scan_from_x, scan_from_y)
+                    if route ~= nil then return route end
+                    break
+                end
+                if source_strip_primary_cell_is_in_bounds(
+                       waypoint_x, waypoint_y) ~= true then
+                    -- ROM 0x14816..0x14836 returns the previous D1 when the
+                    -- next primary cell exceeds the selected descriptor's
+                    -- width or Y upper bound; 0x14B22..0x14B48 accepts that
+                    -- previous cell when it differs from the origin [C].
                     local route = route_to_last_open_strip_cell(
                         scan_from_x, scan_from_y)
                     if route ~= nil then return route end
@@ -850,6 +863,7 @@ local function choose_obstruction_waypoint(
                         strategy = "heading_oriented_strip",
                     }
                 end
+                cell_depth = cell_depth + 1
             end
         end
     end
@@ -1000,7 +1014,8 @@ local function plan_obstruction_waypoint(context, state, movement_state)
         -- ROM 0x14AF4 rotates from actor +0x34, the measured destination
         -- heading written at 0x145FC. +0x2E is the actor's current facing and
         -- may still be slewing toward that destination.
-        state.movement_bearing_degrees)
+        state.movement_bearing_degrees,
+        game.movement.source_strip_primary_cell_is_in_bounds)
     if waypoint == nil then
         -- ROM 0x14ADE reaches 0x14756 after the rotating-strip candidates
         -- fail; that path clears both obstruction-route flags. Drop the

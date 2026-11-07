@@ -487,6 +487,20 @@ std::uint16_t compute_obstruction_grid_index(
     return static_cast<std::uint16_t>(row_offset + (world_x >> 9U));
 }
 
+bool obstruction_strip_primary_cell_in_bounds(
+    const std::uint16_t cell_index,
+    const std::uint16_t field_row_stride_bytes,
+    const std::uint16_t terrain_y_exclusive_upper) noexcept {
+    // ROM 0x14812 rejects a negative D1 before testing either scene bound.
+    if ((cell_index & 0x8000U) != 0U) {
+        return false;
+    }
+    const auto column = static_cast<std::uint16_t>(cell_index & 0x003FU);
+    const auto row = static_cast<std::uint16_t>(cell_index >> 6U);
+    return column <= field_row_stride_bytes &&
+        row <= static_cast<std::uint16_t>(terrain_y_exclusive_upper >> 5U);
+}
+
 ObstructionTileProjection decode_obstruction_tile_projection(
     const std::uint16_t packed_tile,
     const std::uint16_t reference_tile) {

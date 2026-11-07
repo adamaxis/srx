@@ -1912,6 +1912,8 @@ private:
     bool actor_source_route_clear(
         std::uint16_t from_x, std::uint16_t from_y,
         std::uint16_t to_x, std::uint16_t to_y);
+    bool field_strip_primary_cell_in_bounds(
+        std::uint16_t world_x, std::uint16_t world_y) const noexcept;
     void set_field_barrier_collision_overlay(
         const std::array<FieldBarrierCollisionCell,
                          kFieldBarrierCollisionCellCount>& cells) noexcept;

@@ -39,6 +39,14 @@ dump defends the visible result.
 - [C] `0x14AF4` retries five heading-rotated direction pairs. Each call to
   `0x14800` walks primary cells until a primary cell is blocked or the active
   map bounds are reached; five is the retry count, not the strip depth.
+- [C] Scene setup at `0x3074` selects the scene descriptor from the `0x3232`
+  table and copies its 48 words to `FFDDC6` (`0x3092..0x30AA`). Descriptor
+  `+0x0E` is therefore `FFDDD4`, and `+0x24` is `FFDDEA`. Before reading the
+  primary cell, `0x14816..0x14836` rejects negative D1, compares its low-six
+  column to `FFDDEA`, then compares its row to `FFDDD4 >> 5`. The adjacent
+  side-cell read at `0x14842..0x1484A` has no corresponding bound check. Scene
+  2's descriptor at `0x172C80` contains `+0x0E=0x0518` and `+0x24=0x0078`;
+  these exact source values are kept in the typed field metadata.
 - [C] The ordinary movement collision path checks terrain and does not test
   another actor's coordinates. The independent field-enemy stacking trace
   records that source boundary in
@@ -76,9 +84,10 @@ before `0x14682` indexes the map [C].
 When no paired bypass is usable, Lua tries strips in the source heading order
 from `0x14AF4`. It represents candidates as typed world waypoints and asks the
 map service about each primary and adjacent cell. A regression reaches an
-opening at depth six, beyond the five direction pairs. The native 64-cell
-scan cap and out-of-world handling are host policies [H]; exact source
-boundary behavior depends on active map data and remains under review.
+opening at depth six, beyond the five direction pairs. The 64-cell cap remains
+a host policy for unchecked `0x148AA` and `0x14854` probes [H]. The `0x14800`
+strip scan instead uses a typed `source_strip_primary_cell_is_in_bounds` query
+from the active field descriptor and has no fixed depth cap.
 
 The strip terminus now preserves the last traversable primary cell. ROM
 `0x14800` advances the primary index while the primary cell is open and the
@@ -102,11 +111,14 @@ the stale point.
 
 Lua calls
 `game.movement.source_cell_is_clear(x, y)` for the direct FF1700-style cell
-probes in `0x148AA`, `0x14854`, and `0x14800`. The C++ adapter converts the
-typed world position with `0x14902` and reads the active terrain map through
-the named host service, including the live field-barrier overlay and selected
-effect-marker replacement. It does not expose FF1700 or a raster array to
-Lua. `game.movement.source_path_is_clear(from_x, from_y, to_x, to_y)` remains
+probes in `0x148AA`, `0x14854`, and `0x14800`. For the primary cell in the
+`0x14800` strip only, Lua separately asks
+`game.movement.source_strip_primary_cell_is_in_bounds(x, y)`. The C++ adapter
+converts that position with `0x14902` and checks the typed field descriptor
+values using the source comparisons. The cell query reads the active terrain
+map through the named host service, including the live field-barrier overlay
+and selected effect-marker replacement. Neither query exposes FF1700 or a
+raster array to Lua. `game.movement.source_path_is_clear(from_x, from_y, to_x, to_y)` remains
 the separate `0x14914/0x1494C` two-corridor query for an active route. If
 either corridor is clear, Lua retires the queued detour and measures the
 current target again, matching the
@@ -121,10 +133,11 @@ planner now follows that separation: source-cell facts choose waypoints, and
 the path query only validates a waypoint queue that is already active [C].
 
 The actor-origin lookup, D7 last-open-cell return, signed D6 probes,
-opposite-D6 fallback, blocked-route replan state, heading order and
-scan-termination result of the `0x14AF4` retry, and `0x14914` path query are
-[C]. The typed host query treats a cell outside the imported collision map as
-blocked [H]. Host scan bounds and resulting route pixels remain unverified.
+opposite-D6 fallback, blocked-route replan state, heading order, descriptor
+edge comparison and previous-cell return of the `0x14AF4` retry, and `0x14914`
+path query are [C]. The typed host cell query treats a cell outside the
+imported collision map as blocked [H]. The unchecked `0x148AA/0x14854` cap,
+coordinate-wrap edge cases, and resulting route pixels remain unverified.
 These are readable native waypoint policies, not a claim of matching the
 complete waypoint sequence. The referenced
 `/workspace/shadowrun/out/p49b/repro.txt` route capture is absent from this
@@ -156,5 +169,15 @@ fidelity.
 - After adding default-patrol routing coverage, Debug and Release
   `shadowrun_gameplay_actor_ai_rules_qa` and
   `shadowrun_gameplay_script_runtime_qa` both pass headlessly.
+- A Lua regression scans a 70-cell primary strip to an opening, beyond the
+  previous host-only 64-cell cap. The scan now asks the typed field-descriptor
+  bound before each primary-cell probe; adjacent side-cell probes retain the
+  source's unchecked behavior.
+- `entity_route_primitives_conversion_test` checks negative-index rejection
+  and the descriptor row/column comparisons. The field source-assets test
+  verifies Scene 2's imported `+0x0E=0x0518` and `+0x24=0x0078` values.
+- Headless Debug and Release passed the focused Qt Lua/runtime tests (2/2 in
+  each configuration) and the route-primitives/source-assets tests (2/2 in
+  each configuration). These are focused checks, not full-suite results.
 - No route-specific scene `actual.bmp` was produced for this shared movement
   mechanism, so the obstruction-routing hill remains partial.

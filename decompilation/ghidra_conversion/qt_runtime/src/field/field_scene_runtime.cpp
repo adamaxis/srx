@@ -5284,6 +5284,12 @@ void FieldSceneRuntime::advance_default_field_actors(
                             compute_obstruction_grid_index(world_x, world_y);
                         return terrain_collision_map_byte(cell_index) == 0U;
                     };
+                context.movement_source_strip_primary_in_bounds =
+                    [this](const std::uint16_t world_x,
+                           const std::uint16_t world_y) {
+                        return field_strip_primary_cell_in_bounds(
+                            world_x, world_y);
+                    };
                 context.movement_route_lookup =
                     [this, &actor](const std::uint16_t route_key) {
                         if ((route_key & 0x03U) != 0U ||
@@ -12147,6 +12153,20 @@ std::uint8_t FieldSceneRuntime::terrain_collision_map_byte(
         return kSelectedEffectTerrainMarker;
     }
     return collision_map[tile_index];
+}
+
+bool FieldSceneRuntime::field_strip_primary_cell_in_bounds(
+    const std::uint16_t world_x,
+    const std::uint16_t world_y) const noexcept {
+    const auto& metadata = state_.field_scene_buffers.source_metadata;
+    if (!metadata.available || metadata.field_row_stride_bytes == 0U) {
+        return false;
+    }
+    const auto cell_index =
+        compute_obstruction_grid_index(world_x, world_y);
+    return obstruction_strip_primary_cell_in_bounds(
+        cell_index, metadata.field_row_stride_bytes,
+        metadata.terrain_y_exclusive_upper);
 }
 
 std::int16_t FieldSceneRuntime::evaluate_field_collision(

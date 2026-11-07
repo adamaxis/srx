@@ -71,6 +71,8 @@ struct FieldSceneSourceMetadata {
     std::uint16_t terrain_y_exclusive_upper = 0;
     std::uint16_t terrain_x_inclusive_lower = 0;
     std::uint16_t terrain_y_inclusive_lower = 0;
+    // ROM descriptor +0x24, copied to FFDDEA by the field-mode setup path.
+    std::uint16_t field_row_stride_bytes = 0;
     bool event_table_available = false;
     std::array<std::uint8_t, 32> event_mode_table{};
     // ROM 0x167AE samples this upper bound for FFE12C after a resource-scene

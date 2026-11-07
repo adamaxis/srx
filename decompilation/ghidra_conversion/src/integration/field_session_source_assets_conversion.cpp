@@ -180,6 +180,8 @@ FieldMapSourceDescriptor decode_field_map_descriptor(
         read_big_endian_word(descriptor_bytes, 0x10U);
     descriptor.terrain_y_inclusive_lower =
         read_big_endian_word(descriptor_bytes, 0x12U);
+    descriptor.field_row_stride_bytes =
+        read_big_endian_word(descriptor_bytes, 0x24U);
     if (event_table_bytes.has_value()) {
         descriptor.event_table_available = true;
         std::copy(event_table_bytes->begin(), event_table_bytes->end(),
@@ -513,6 +515,8 @@ std::optional<FieldSceneBufferInput> make_field_scene_input(
         scene.descriptor.terrain_x_inclusive_lower;
     input.source_metadata.terrain_y_inclusive_lower =
         scene.descriptor.terrain_y_inclusive_lower;
+    input.source_metadata.field_row_stride_bytes =
+        scene.descriptor.field_row_stride_bytes;
     input.source_metadata.event_table_available =
         scene.descriptor.event_table_available;
     input.source_metadata.event_mode_table = scene.descriptor.event_mode_table;

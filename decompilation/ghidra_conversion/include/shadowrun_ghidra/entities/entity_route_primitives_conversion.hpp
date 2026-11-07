@@ -215,6 +215,15 @@ std::uint16_t compute_obstruction_grid_index(
     std::uint16_t world_x,
     std::uint16_t world_y);
 
+// ROM 0x14812..0x14836 checks the primary strip cell against the selected
+// field descriptor before reading FF1700. The source compares the low six
+// index bits with the descriptor's byte stride at +0x24 and the index row
+// with the descriptor's Y upper bound at +0x0E, shifted right by five.
+bool obstruction_strip_primary_cell_in_bounds(
+    std::uint16_t cell_index,
+    std::uint16_t field_row_stride_bytes,
+    std::uint16_t terrain_y_exclusive_upper) noexcept;
+
 // ROM 0x14B4E: decode the packed tile coordinate and select the direction
 // from that tile toward the reference tile. Horizontal slots are 2/6 and
 // vertical slots are 4/0 for negative/positive relative movement.

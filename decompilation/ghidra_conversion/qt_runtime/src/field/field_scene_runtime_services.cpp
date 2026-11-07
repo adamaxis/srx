@@ -200,6 +200,11 @@ void FieldSceneRuntime::provide_source_profile_patrol_movement_services(
                 compute_obstruction_grid_index(world_x, world_y);
             return terrain_collision_map_byte(cell_index) == 0U;
         };
+    context.movement_source_strip_primary_in_bounds =
+        [this](const std::uint16_t world_x,
+               const std::uint16_t world_y) {
+            return field_strip_primary_cell_in_bounds(world_x, world_y);
+        };
     context.movement_route_lookup = [this, &actor](
         const std::uint16_t route_key) {
         if ((route_key & 0x03U) != 0U ||

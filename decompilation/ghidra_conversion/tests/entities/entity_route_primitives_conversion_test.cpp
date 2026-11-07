@@ -256,6 +256,21 @@ int main() {
                 0U)) {
         return 16;
     }
+    // ROM 0x3074 copies the Scene 2 descriptor to FFDDC6. Its +0x24 stride
+    // is 0x0078 and +0x0E Y upper bound is 0x0518; 0x14816..0x14836 uses
+    // those values for primary strip cells only.
+    if (!expect(obstruction_strip_primary_cell_in_bounds(
+                    0x0A10U, 0x0078U, 0x0518U)) ||
+        !expect(!obstruction_strip_primary_cell_in_bounds(
+                    0x0A40U, 0x0078U, 0x0518U)) ||
+        !expect(!obstruction_strip_primary_cell_in_bounds(
+                    0x0A41U, 0x0078U, 0x0518U)) ||
+        !expect(!obstruction_strip_primary_cell_in_bounds(
+                    0x8000U, 0x0078U, 0x0518U)) ||
+        !expect(!obstruction_strip_primary_cell_in_bounds(
+                    0x0A11U, 0x0010U, 0x0518U))) {
+        return 58;
+    }
 
     const auto same_tile = decode_obstruction_tile_projection(0, 0);
     if (!expect(same_tile.world_x == 0x0100U &&

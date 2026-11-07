@@ -1187,6 +1187,21 @@ local function source_cell_query(open_cells)
         return open[tostring(x) .. ":" .. tostring(y)] == true
     end
 end
+-- Scene 2's descriptor is at ROM 0x172C80: +0x24 is the 0x0078 field-plane
+-- row stride and +0x0E is the 0x0518 Y upper bound. ROM 0x3074 copies those
+-- fields to FFDDEA/FFDDD4; 0x14816..0x14836 checks this only for strip-primary
+-- candidates. This is intentionally separate from direct FF1700 cell facts.
+local function scene_two_strip_cell_in_bounds(x, y)
+    if x < 0 or x > 0xFFFF or y < 0 or y > 0xFFFF then
+        return false
+    end
+    local cell_index = (y >> 9) * 0x40 + (x >> 9)
+    if cell_index >= 0x8000 then
+        return false
+    end
+    return (cell_index & 0x3F) <= 0x78 and
+        (cell_index >> 6) <= (0x0518 >> 5)
+end
 local blocked_source_candidates = source_cell_query({})
 local saved_global_source_cell_query = game.movement.source_cell_is_clear
 game.movement.source_cell_is_clear = blocked_source_candidates
@@ -1362,7 +1377,7 @@ for _, strip_case in ipairs(heading_strip_cases) do
         0x2000, 0x2000, 0x3000, 0x2000, source_cell_query({
             { strip_case[2], strip_case[3] },
             { strip_case[4], strip_case[5] },
-        }), strip_case[1])
+        }), strip_case[1], scene_two_strip_cell_in_bounds)
     check(heading_strip_route ~= nil and
           heading_strip_route.strategy == "heading_oriented_strip" and
           #heading_strip_route.waypoints == 1 and
@@ -1377,9 +1392,13 @@ end
 local saved_heading_probe = game.movement.probe
 local saved_heading_path_query = game.movement.source_path_is_clear
 local saved_heading_cell_query = game.movement.source_cell_is_clear
+local saved_heading_strip_bounds_query =
+    game.movement.source_strip_primary_cell_is_in_bounds
 game.movement.source_cell_is_clear = source_cell_query({
     { 0x1F00, 0x2100 }, { 0x1F00, 0x1F00 },
 })
+game.movement.source_strip_primary_cell_is_in_bounds =
+    scene_two_strip_cell_in_bounds
 game.movement.source_path_is_clear = function(from_x, from_y, to_x, to_y)
     if from_x == 0x2000 and from_y == 0x2000 and
        ((to_x == 0x3000 and to_y == 0x2000) or
@@ -1434,10 +1453,13 @@ check(destination_heading_waypoint ~= nil and
 game.movement.probe = saved_heading_probe
 game.movement.source_path_is_clear = saved_heading_path_query
 game.movement.source_cell_is_clear = saved_heading_cell_query
+game.movement.source_strip_primary_cell_is_in_bounds =
+    saved_heading_strip_bounds_query
 
 local rotated_heading_strip_route = R.choose_obstruction_waypoint(
     0x2000, 0x2000, 0x3000, 0x2000,
-    source_cell_query({ { 0x1F00, 0x2100 }, { 0x1F00, 0x1F00 } }), 0)
+    source_cell_query({ { 0x1F00, 0x2100 }, { 0x1F00, 0x1F00 } }), 0,
+    scene_two_strip_cell_in_bounds)
 check(rotated_heading_strip_route ~= nil and
       rotated_heading_strip_route.strategy == "heading_oriented_strip" and
       rotated_heading_strip_route.waypoints[1].x == 0x1F00 and
@@ -1448,18 +1470,39 @@ local deep_heading_strip_route = R.choose_obstruction_waypoint(
         { 0x1F00, 0x2100 }, { 0x1D00, 0x2100 }, { 0x1B00, 0x2100 },
         { 0x1900, 0x2100 }, { 0x1700, 0x2100 }, { 0x1500, 0x2100 },
         { 0x1500, 0x1F00 },
-    }), 270)
+    }), 270, scene_two_strip_cell_in_bounds)
 check(deep_heading_strip_route ~= nil and
       deep_heading_strip_route.strategy == "heading_oriented_strip" and
       deep_heading_strip_route.waypoints[1].x == 0x1500 and
       deep_heading_strip_route.waypoints[1].y == 0x2100,
       "0x14800 scans past five blocked side cells before 0x14AF4 accepts the sixth [C]")
 
+local long_strip_bound_query_count = 0
+local function long_strip_cell_is_in_bounds(x, y)
+    long_strip_bound_query_count = long_strip_bound_query_count + 1
+    return scene_two_strip_cell_in_bounds(x, y)
+end
+local function long_strip_cell_is_clear(x, y)
+    if x == 0xA100 and y == 0x2100 then return true end
+    if y == 0x2100 and x < 0xA100 then return true end
+    return x == 0x1500 and y == 0x1F00
+end
+local long_heading_strip_route = R.choose_obstruction_waypoint(
+    0xA000, 0x2000, 0xB000, 0x2000,
+    long_strip_cell_is_clear, 270, long_strip_cell_is_in_bounds)
+check(long_heading_strip_route ~= nil and
+      long_heading_strip_route.strategy == "heading_oriented_strip" and
+      #long_heading_strip_route.waypoints == 1 and
+      long_heading_strip_route.waypoints[1].x == 0x1500 and
+      long_heading_strip_route.waypoints[1].y == 0x2100 and
+      long_strip_bound_query_count > 64,
+      "0x14800 continues beyond 64 primary cells to the descriptor edge or opening [C]")
+
 local strip_blocked_tail_route = R.choose_obstruction_waypoint(
     0x2000, 0x2000, 0x3000, 0x2000, source_cell_query({
         { 0x1F00, 0x2100 }, { 0x1D00, 0x2100 }, { 0x1B00, 0x2100 },
         { 0x1900, 0x2100 }, { 0x1700, 0x2100 },
-    }), 270)
+    }), 270, scene_two_strip_cell_in_bounds)
 check(strip_blocked_tail_route ~= nil and
       strip_blocked_tail_route.strategy == "heading_oriented_strip" and
       #strip_blocked_tail_route.waypoints == 1 and
