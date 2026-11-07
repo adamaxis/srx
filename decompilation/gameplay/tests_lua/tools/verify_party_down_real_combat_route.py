@@ -116,12 +116,16 @@ def main() -> int:
         fail("real encounter did not reduce either leader meter to zero")
     first_zero = zeros[0]
     zero_frame = int(first_zero["app.source_frame"])
-    down_rows = [row for row in rows if zero_frame <= int(row["app.source_frame"]) <= zero_frame + 16
+    if int(leader(first_zero, "source_flags") or 0) & 0x10:
+        fail(f"leader entered the ROM +0x10.4 down state on the same pass its meter reached zero at frame {zero_frame}")
+    down_rows = [row for row in rows if zero_frame < int(row["app.source_frame"]) <= zero_frame + 16
                  and (int(leader(row, "source_flags") or 0) & 0x10) != 0]
     if not down_rows:
-        fail(f"leader meter reached zero at frame {zero_frame} but ROM +0x10.4 down state did not start")
+        fail(f"leader meter reached zero at frame {zero_frame} but ROM +0x10.4 down state did not start on a later actor-service pass")
     down = down_rows[0]
     down_frame = int(down["app.source_frame"])
+    if int(down.get("field.party_wipe_countdown", 0)) != 59:
+        fail(f"lone leader down transition at frame {down_frame} did not expose the first serviced FFE166 value 0x003B")
     countdown_rows = [row for row in rows if down_frame <= int(row["app.source_frame"]) <= down_frame + 2
                       and int(row.get("field.party_wipe_countdown", 0)) > 0]
     if not countdown_rows:

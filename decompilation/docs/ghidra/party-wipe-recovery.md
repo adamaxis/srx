@@ -86,6 +86,27 @@ countdown does not survive a ROM save load [C]. Whether the save writer
 separately copies the countdown is not traced [H]. The native game snapshot
 also leaves this transient out.
 
+## Zero-meter transition timing
+
+`0x0AB4` enters `0xA8EA` before the world-actor service. `0xA8EA` walks the
+sixteen live records in slot order (`0xA8F0..0xAACC`); the party slots precede
+world-actor slots. Its zero-meter branches set the down transition bit and call
+`0xB330` only while servicing the party record (`0xA94A..0xAA4C`). Therefore,
+an NPC hit that reduces a party meter to zero after that party slot was
+serviced becomes eligible on the next actor-service pass. This follows the
+source-ordered host loop, where `advance_field_movement()` runs before
+`advance_default_field_actors(true)` [C].
+
+The independent GPGX fixture samples the leader at frame 21092 with mental
+meter 0 and source flags `0x0F`; at frame 21104 the down bit is set (`0x1F`)
+and FFE166 is `0x003B` (`gpgx_party_down_frames.tsv`, screenshots
+`frame_21092.png` and `frame_21104.png`). The samples establish that the down
+state follows the zero-meter sample, while leaving its exact onset within that
+12-frame interval unresolved [C]. The real-combat route QA now requires the
+port's zero-meter row to remain up, the down state to begin on a later service
+pass, and the first lone-party countdown value to be 59, matching the captured
+FFE166 sample.
+
 ## Checks
 
 `party_down_tests.lua` covers types 1, 2, 4, and 5; type 5's bit-7 guard; the

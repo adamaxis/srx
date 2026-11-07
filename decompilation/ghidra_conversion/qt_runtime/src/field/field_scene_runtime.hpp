@@ -1838,6 +1838,7 @@ private:
     void resolve_field_party_wipe();
     void complete_field_party_wipe();
     void start_field_party_wake_transition();
+    bool service_party_runner_zero_meter_transitions();
     void advance_field_movement();
     void advance_field_actor_animation();
     void advance_default_field_actor_animations();

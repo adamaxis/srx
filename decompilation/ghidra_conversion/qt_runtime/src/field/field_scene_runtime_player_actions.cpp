@@ -645,8 +645,85 @@ void FieldSceneRuntime::start_field_party_wake_transition() {
 }
 
 
+bool FieldSceneRuntime::service_party_runner_zero_meter_transitions() {
+    auto& records = field_party_roster_.records();
+    constexpr auto kActiveStatus = static_cast<std::uint8_t>(
+        srx::ActorStatus::ACTIVE);
+    constexpr auto kDownStatus = static_cast<std::uint8_t>(
+        srx::ActorStatus::DOWN);
+    constexpr auto kDeadStatus = static_cast<std::uint8_t>(
+        srx::ActorStatus::DEAD);
+
+    // ROM 0xA8F0..0xAACC services active actor records in slot order. The
+    // zero-meter branches at 0xA94A..0xAA4C install B330 during that pass.
+    // Field host order runs this party pass before default/world actors, so a
+    // later NPC hit is observed here on the next service pass [C].
+    for (std::size_t slot = 0U;
+         slot < FieldPartyRosterRuntime::kSlotCount; ++slot) {
+        auto& target = records[slot];
+        const auto lifecycle = static_cast<std::uint8_t>(target.flags >> 8U);
+        if (!field_party_roster_.slot_active(slot) ||
+            (lifecycle & kActiveStatus) == 0U ||
+            (lifecycle & kDownStatus) != 0U ||
+            (lifecycle & kDeadStatus) != 0U ||
+            (target.delay_meter != 0U && target.behavior_meter != 0U)) {
+            continue;
+        }
+
+        scripting::ScriptPartyRunnerDownContext down_context{};
+        down_context.target =
+            static_cast<scripting::ScriptPartyMemberRole>(slot);
+        down_context.physical_meter = target.delay_meter;
+        down_context.mental_meter = target.behavior_meter;
+        for (std::size_t member = 0U; member < records.size(); ++member) {
+            const auto member_lifecycle = static_cast<std::uint8_t>(
+                records[member].flags >> 8U);
+            down_context.party[member] = {
+                field_party_roster_.slot_active(member) &&
+                    (member_lifecycle & kActiveStatus) != 0U,
+                (member_lifecycle & kDownStatus) != 0U,
+                (member_lifecycle & kDeadStatus) != 0U};
+        }
+
+        const auto down = game_scripts_.party_runner_down(down_context);
+        if (!down.has_value()) {
+            failure_ = game_scripts_.failure();
+            source_boundary("field.actor.combat.party_runner_down_failed");
+            return false;
+        }
+        if (!down->downed) {
+            continue;
+        }
+
+        // ROM 0xB330 sets +0x10.4 and selects the directional C0B2 pose;
+        // the host keeps the typed lifecycle bit and its audio boundary.
+        target.flags |= kRunnerFlagsDown;
+        const auto down_audio = runner_down_audio_event(target.kind);
+        if (down_audio.has_value() && source_audio_event_callback_) {
+            source_audio_event_callback_(*down_audio);
+        }
+        if (down->party_wipe_imminent) {
+            // ROM 0xABF2 arms 60 passes; the following 0x1DDC6 service in
+            // this host iteration consumes the first pass (GPGX frame 21104:
+            // FFE166=0x003B) [C].
+            field_party_wipe_countdown_ = 60U;
+            source_boundary(
+                "field.actor.combat.party_wipe_countdown_started");
+        }
+        source_boundary("field.actor.combat.party_runner_down");
+        if (slot == field_party_roster_.active_slot()) {
+            refresh_field_hud_runner_slot();
+        }
+    }
+    return true;
+}
+
+
 void FieldSceneRuntime::advance_field_movement() {
     if (!field_entity_.active) {
+        return;
+    }
+    if (!service_party_runner_zero_meter_transitions()) {
         return;
     }
     if (field_party_wipe_countdown_ != 0U) {
@@ -1263,51 +1340,6 @@ bool FieldSceneRuntime::apply_script_combat_meter_update(
                 (target.flags & 0x00ffU) |
                 (static_cast<std::uint16_t>(
                      update.source_record_flags) << 8U));
-        }
-        if ((target.flags & kRunnerFlagsDown) == 0U) {
-            // ROM 0xA912..0xAA02 checks both +0x4C and +0x9C before
-            // 0xAFF2 enters 0xB330. Lua decides whether either meter is zero;
-            // audio and the native countdown stay in their host systems [C].
-            const auto& records = field_party_roster_.records();
-            scripting::ScriptPartyRunnerDownContext down_context{};
-            down_context.target =
-                static_cast<scripting::ScriptPartyMemberRole>(slot);
-            down_context.physical_meter = target.delay_meter;
-            down_context.mental_meter = target.behavior_meter;
-            constexpr auto kActiveStatus = static_cast<std::uint8_t>(
-                srx::ActorStatus::ACTIVE);
-            constexpr auto kDownStatus = static_cast<std::uint8_t>(
-                srx::ActorStatus::DOWN);
-            constexpr auto kDeadStatus = static_cast<std::uint8_t>(
-                srx::ActorStatus::DEAD);
-            for (std::size_t member = 0U; member < records.size(); ++member) {
-                const auto lifecycle = static_cast<std::uint8_t>(
-                    records[member].flags >> 8U);
-                down_context.party[member] = {
-                    field_party_roster_.slot_active(member) &&
-                        (lifecycle & kActiveStatus) != 0U,
-                    (lifecycle & kDownStatus) != 0U,
-                    (lifecycle & kDeadStatus) != 0U};
-            }
-            const auto down = game_scripts_.party_runner_down(down_context);
-            if (!down.has_value()) {
-                failure_ = game_scripts_.failure();
-                report("party_runner_down_failed");
-                return false;
-            }
-            if (down->downed) {
-                target.flags |= kRunnerFlagsDown;
-                const auto down_audio = runner_down_audio_event(target.kind);
-                if (down_audio.has_value() && source_audio_event_callback_) {
-                    source_audio_event_callback_(*down_audio);
-                }
-                if (down->party_wipe_imminent) {
-                    // ROM 0xABF2 arms 60 field passes before recovery [C].
-                    field_party_wipe_countdown_ = 60U;
-                    report("party_wipe_countdown_started");
-                }
-                report("party_runner_down");
-            }
         }
         if (slot == field_party_roster_.active_slot()) {
             refresh_field_hud_runner_slot();
