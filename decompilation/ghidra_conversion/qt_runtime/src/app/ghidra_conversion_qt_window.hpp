@@ -1438,11 +1438,18 @@ private:
                 audio_playback_->fade_out();
             }
         };
-        startup_callbacks_.opening_intro.service_audio_command =
+        startup_callbacks_.opening_intro.play_music =
             [this](const std::uint16_t command) {
                 // 0x59C72/0x59C92/0x59CB8 use play_music 0x530EA [C].
                 if (audio_playback_) {
                     audio_playback_->play_music(command);
+                }
+            };
+        startup_callbacks_.opening_intro.play_sound_effect =
+            [this](const std::uint16_t event) {
+                // 0x59FAA/0x5A134/0x5A2BE use play_sfx 0x530DE [C].
+                if (audio_playback_) {
+                    audio_playback_->play_sfx(event);
                 }
             };
         startup_callbacks_.opening_intro.service_audio = no_op;

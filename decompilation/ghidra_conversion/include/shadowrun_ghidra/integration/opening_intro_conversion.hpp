@@ -248,7 +248,12 @@ struct OpeningIntroCallbacks {
     std::function<void()> sample_controller;
     std::function<void()> latch_controller_events;
     std::function<void()> prepare_mode_entry;
-    std::function<void(std::uint16_t)> service_audio_command;
+    // The opening calls the ROM's music and sound-effect entry points
+    // separately: 0x530EA is gated by FFFC08, while 0x530DE is gated by
+    // FFFC0A. Keep the host requests typed so music settings cannot suppress
+    // an intro effect.
+    std::function<void(std::uint16_t)> play_music;
+    std::function<void(std::uint16_t)> play_sound_effect;
     std::function<void()> service_audio;
     // 0x131C: prepare_title_resources drives the current palette toward
     // black before a new title resource set is installed. This is a source

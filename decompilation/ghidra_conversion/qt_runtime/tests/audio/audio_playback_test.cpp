@@ -102,6 +102,33 @@ int main(int argc, char** argv) {
               "newly mapped id " + std::to_string(id));
     }
 
+    // Intro music and effects have different ROM gates. The opening's SFX
+    // requests 0x2E/0x46/0x2F use 0x530DE (FFFC0A); stage music uses 0x530EA
+    // (FFFC08). A disabled music setting must not mute an enabled SFX request,
+    // and a disabled SFX setting must not suppress field music.
+    AudioPlaybackService intro_audio(
+        resolver, AudioPlaybackService::Output::null);
+    intro_audio.set_music_enabled(false);
+    intro_audio.set_sfx_enabled(true);
+    const auto effect_events_before = intro_audio.events().size();
+    intro_audio.play_sfx(0x2EU);
+    const auto& effect_events_after = intro_audio.events();
+    check(effect_events_after.size() == effect_events_before + 1U &&
+              effect_events_after.back().op == AudioOp::start &&
+              effect_events_after.back().id == 0x2EU &&
+              intro_audio.playing_channel_count_for_event(0x2EU) == 1U &&
+              !intro_audio.mixer().music_id().has_value(),
+          "opening effect 0x2E follows the SFX gate while music is disabled");
+    intro_audio.set_sfx_enabled(false);
+    const auto before_muted_effect = intro_audio.events().size();
+    intro_audio.play_sfx(0x2FU);
+    check(intro_audio.events().size() == before_muted_effect,
+          "opening effect follows the SFX disable setting");
+    intro_audio.set_music_enabled(true);
+    intro_audio.play_music(0x0FU);
+    check(intro_audio.mixer().music_id() == 0x0FU,
+          "field-profile music follows the music gate while SFX is disabled");
+
     // Starts, stops, one-shot composites and unmapped ids, all logged.
     playback.play_sfx(0x24U);
     playback.advance_frame();

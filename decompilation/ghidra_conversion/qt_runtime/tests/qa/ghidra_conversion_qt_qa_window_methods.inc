@@ -250,8 +250,9 @@
                            "opening.latch_controller_events");
         record_qa_boundary(opening.prepare_mode_entry,
                            "opening.prepare_mode_entry");
-        record_qa_boundary(opening.service_audio_command,
-                           "opening.service_audio_command");
+        record_qa_boundary(opening.play_music, "opening.play_music");
+        record_qa_boundary(opening.play_sound_effect,
+                           "opening.play_sound_effect");
         record_qa_boundary(opening.service_audio, "opening.service_audio");
         record_qa_boundary(opening.fade_palette_to_black,
                            "opening.fade_palette_to_black");

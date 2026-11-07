@@ -87,16 +87,16 @@ python decompilation/ghidra_conversion/tools/rom_research/audio/extract_genesis_
   --ids 16,18 --sequence 0x12,0x10 --seconds 90
 ```
 
-The extractor reports `one-shot/no loop seen` for both IDs. The 90-second
-traces contain the same chip-write counts and end times as the 40-second
-traces: 906 chip writes with the final YM write at 12.833673 seconds for
-`0x10`, and 6,404 writes with the final YM write at 19.004830 seconds for
+The 90-second traces contain the same chip-write counts and end times as the
+40-second traces: 906 chip writes with the final YM write at 12.833673 seconds
+for `0x10`, and 6,404 writes with the final YM write at 19.004830 seconds for
 `0x12`. No later chip writes or return to a channel's original stream start
-appears in the rest of either trace. The FLACs end two seconds after those
-final writes for the release tail, so neither intro asset needs a loop point.
-This establishes one-shot source streams in the 90-second ROM-driver probe;
-that probe itself does not establish host playback. The Release process
-capture is documented below.
+appears in the rest of either trace. Current asset policy keeps `0x12` as a
+60-second observation render because the ROM holds that resource through the
+field handoff; its audio-bearing source stream ends at the measured write
+boundary, and the host stops it at the source `FF 16` transition. Neither intro
+asset has a loop point. This distinguishes observation-file duration from the
+shorter span with source chip activity.
 
 ## Independent audio evidence
 
@@ -104,11 +104,11 @@ Reference: `video analysis/long_gameplay_video_early_sections_ffmpeg_30fps_320x2
 The extracted assets were compared with that independent recording using
 normalized cross-correlation after mono mixing and resampling to 11.025 kHz:
 
-| Asset | Measured duration | Strong matches in section 02 audio |
-|---|---:|---|
-| `title-stage-1.flac` | 14.8337 s | 0.4487 at 2.431 s; 0.4487 at 2.737 s |
-| `title-stage-3.flac` | 21.0048 s | 0.4977 at 34.844 s |
-| `effect-016.flac` | 2.7505 s | best score 0.0682 at 24.292 s |
+| Asset | Render policy / audible source span | Strong matches in section 02 audio |
+|---|---|---|
+| `title-stage-1.flac` | 14.8337 s one-shot | 0.4487 at 2.431 s; 0.4487 at 2.737 s |
+| `title-stage-3.flac` | 60 s observation render; source writes end at 19.0048 s | 0.4977 at 34.844 s |
+| `effect-016.flac` | 2.7505 s one-shot | best score 0.0682 at 24.292 s |
 
 This supports the stage-1 and stage-3 asset identities and start order. The
 stage-2 silence conclusion comes from the ROM-driven exact-pair trace; the
@@ -140,13 +140,16 @@ the capture noise floor through the stage-2 interval; its measured RMS there
 is approximately `1.0e-5`.
 
 The stage-3 waveform begins at 33.938 s. Matched 0.2-0.8 s windows across
-source offsets 0-20.2 s score at least 0.93, with most above 0.98; the full
-21.0048 s asset aligns at 0.976 correlation. Its audible samples end by
-54.87 s, followed by the capture noise floor. Thus the normal Qt route starts
+source offsets 0-20.2 s score at least 0.93, with most above 0.98; the
+source-audio portion aligns at 0.976 correlation. Its audible samples end by
+54.87 s, followed by the capture noise floor, while the 60-second observation
+file continues with silence. Thus the normal Qt route starts
 the right first track at entry, stays silent for the source-silent second
-request, starts the third track at its entry, and stops after its one-shot.
-The actual process capture verifies Qt playback; the ROM/Z80 paired-command
-trace remains the evidence for the Genesis driver's lack of stage-2 notes.
+request, and starts the third track at its entry. The stage-3 source activity
+becomes quiet before the later `FF 16` field-handoff reset stops its still
+active resource. The actual process capture verifies Qt playback; the ROM/Z80
+paired-command trace remains the evidence for the Genesis driver's lack of
+stage-2 notes.
 
 ## Verification
 
@@ -159,19 +162,21 @@ trace remains the evidence for the Genesis driver's lack of stage-2 notes.
   request. It also starts `0x10`, applies the source `FF 16` reset, and checks
   that `0x11` stays unmapped and the prior channel is no longer playing.
   Debug and Release pass. Debug measured 21 ms start latency and 14,833 ms
-  duration for `0x10`, and 23 ms / 21,004 ms for `0x12`. The normal-control
-  Release capture above separately verifies the app's rendered audio stream.
+  duration for `0x10`; `0x12` reports its 60-second observation duration. The
+  normal-control Release capture above separately verifies the app's rendered
+  audio stream.
 - `shadowrun_ghidra_conversion_qt_startup_qa` passes in Debug and Release and
   writes 118 full-screen `320x224` BMPs per configuration. All 118 names,
   dimensions, and SHA-256 hashes match across configurations. I reviewed every
   whole-screen image in both configurations; no visual code changed in this
   audio slice and no new control, stale layer, or redraw overlap appeared.
 - Neither intro track has a row in `assets/audio/loop-points.tsv`. The source
-  trace reports each as a one-shot: chip writes stop after 12.833673 seconds
-  (`0x10`) and 19.004830 seconds (`0x12`), with no restart in 90 seconds. Qt
-  stops any remaining playback at source `FF 16` boundaries. Process-specific
-  loopback now verifies the normal opening route; endpoint captures for other
-  mapped routes and other global audio lifetimes remain open.
+  trace has no restart in 90 seconds; chip writes stop after 12.833673 seconds
+  (`0x10`) and 19.004830 seconds (`0x12`). The `0x12` observation render
+  continues with silence until the host follows the source `FF 16` boundary.
+  Process-specific loopback now verifies the normal opening route; endpoint
+  captures for other mapped routes and other global audio lifetimes remain
+  open.
 
 ## Eight-question review
 
@@ -193,11 +198,14 @@ trace remains the evidence for the Genesis driver's lack of stage-2 notes.
    wilderness, tri-vid, and airport audits.
 4. **Is it animated, and should it be?** The scene's existing animations
    continue unchanged. The source resets audio channels at stage entry/handoff.
-   The 90-second ROM trace reports the stage-1 and stage-3 tracks as one-shots;
-   no within-stage repeat was observed.
+   The 90-second ROM trace shows no within-stage repeat. Stage 3 remains active
+   through the field handoff even though its last source chip write occurs
+   before that boundary.
 5. **Does it have sound, and how long does it play?** Qt starts event `0x10`
    on the default output with a 14,833 ms decoded duration and starts event
-   `0x12` with a 21,004 ms duration. The ROM-driven `0x11` pair has no YM
+   `0x12` from its 60-second observation render. The audible `0x12` chip-write
+   sequence ends at 19.004830 s in the source trace; the file's remaining time
+   is silent. The ROM-driven `0x11` pair has no YM
    key-on or PSG tone sequence, so the host correctly leaves it silent. The
    source `FF 16` reset stops the preceding host track at the stage handoff.
    The Release process-loopback route starts the stage-1 waveform at

@@ -716,8 +716,8 @@ void begin_stage2(OpeningIntroState& state,
                   const OpeningIntroCallbacks& callbacks) {
     set_stage(state, callbacks, OpeningIntroStage::stage2_palette_fade_out);
     invoke(callbacks.prepare_mode_entry);
-    if (callbacks.service_audio_command) {
-        callbacks.service_audio_command(0x11U);
+    if (callbacks.play_music) {
+        callbacks.play_music(0x11U);
     }
     source_boundary(callbacks, "0x59D7C.begin_stage2");
     invoke(callbacks.fade_palette_to_black);
@@ -848,8 +848,8 @@ void advance_animation_services(OpeningIntroState& state,
         advance_title_intro_persistent_sequence(
             state.persistent, plan.persistent_phases,
             {[&callbacks](const std::uint16_t event) {
-                 if (callbacks.service_audio_command) {
-                     callbacks.service_audio_command(event);
+                 if (callbacks.play_sound_effect) {
+                     callbacks.play_sound_effect(event);
                  }
              },
              [&state, &callbacks](const std::uint16_t, const std::uint16_t) {
@@ -1032,8 +1032,8 @@ void begin_orchestrator(OpeningIntroState& state,
     set_stage(state, callbacks,
               OpeningIntroStage::orchestrator_palette_fade_out);
     invoke(callbacks.prepare_mode_entry);
-    if (callbacks.service_audio_command) {
-        callbacks.service_audio_command(0x12U);
+    if (callbacks.play_music) {
+        callbacks.play_music(0x12U);
     }
     source_boundary(callbacks, "0x5AA96.begin_trivid_orchestrator");
     // ROM 0x5AA96 has no 0x1406/0x131C: after 0x53126 it clears both planes
@@ -1258,8 +1258,8 @@ OpeningIntroStartResult begin_opening_intro(
         callbacks.clear_presentation();
     }
     callbacks.sample_controller();
-    if (callbacks.service_audio_command) {
-        callbacks.service_audio_command(0x10U);
+    if (callbacks.play_music) {
+        callbacks.play_music(0x10U);
     }
     source_boundary(callbacks, "0x59C5E.begin_opening_intro");
 
@@ -1394,8 +1394,8 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
         advance_title_intro_overlay(
             state.overlay, plan.overlay_phases, plan.final_overlay_descriptor,
             {[&callbacks](const std::uint16_t event) {
-                 if (callbacks.service_audio_command) {
-                     callbacks.service_audio_command(event);
+                 if (callbacks.play_sound_effect) {
+                     callbacks.play_sound_effect(event);
                  }
              },
              [&callbacks] {
@@ -1444,8 +1444,8 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
                  source_boundary(callbacks, "0x5A1BE.sequence_final_overlay");
              },
              [&callbacks](const std::uint16_t event) {
-                 if (callbacks.service_audio_command) {
-                     callbacks.service_audio_command(event);
+                 if (callbacks.play_sound_effect) {
+                     callbacks.play_sound_effect(event);
                  }
              }});
         sample_and_latch(callbacks);
