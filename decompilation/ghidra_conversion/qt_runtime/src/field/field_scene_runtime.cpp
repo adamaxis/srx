@@ -9415,7 +9415,10 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         }
         if (continuation ==
             MovementModeTransitionContinuation::event_29_world_activity) {
-            if (!open_field_elevator_selector(
+            // 0x58D94 may already have been presented when 0x1E2E0 accepted
+            // the contact. A second open is the same selector.
+            if (!field_elevator_selector_.is_open() &&
+                !open_field_elevator_selector(
                     FieldCollisionEventCode::event_29)) {
                 source_boundary("field.elevator.selector_open_unresolved");
             }
@@ -12044,6 +12047,25 @@ bool FieldSceneRuntime::recover_blocked_field_movement(
         };
     transition_callbacks.begin_world_activity_if_idle =
         [this](const MovementModeTransitionContinuation continuation) {
+            // ROM 0xB8A6/0x1E2E0 installs 0x58D94 only while FFE11C is idle,
+            // and 0x0B34 calls that handler on the next eligible pass.
+            // FFE166's expiry arms FFE11C through 0x1DDEA/0x1E2EC. The host
+            // countdown for that expiry does not install a visible handler,
+            // so a leftover timer was rejecting Scene 30's floor contact
+            // while the selector stayed closed. Drop that empty arm and
+            // present 0x58D94 when the contact is accepted. [C]
+            const bool event_29_contact =
+                continuation == MovementModeTransitionContinuation::
+                                   event_29_world_activity;
+            if (event_29_contact &&
+                !field_elevator_selector_.is_open() &&
+                !dialogue_open() && !field_interaction_open() &&
+                !shop_menu_open() &&
+                !field_runtime_state_.pending_field_scene_handler &&
+                field_world_activity_state_.timeout != 0U) {
+                field_world_activity_state_.timeout = 0U;
+                world_frame_logic_state_.resource_countdown = 0U;
+            }
             const auto started = begin_world_activity_if_idle(
                 field_world_activity_state_,
                 static_cast<std::uint16_t>(continuation));
@@ -12051,6 +12073,12 @@ bool FieldSceneRuntime::recover_blocked_field_movement(
                 world_frame_logic_state_.resource_countdown =
                     field_world_activity_state_.timeout;
                 record_field_activity_start(continuation);
+                if (event_29_contact &&
+                    !open_field_elevator_selector(
+                        FieldCollisionEventCode::event_29)) {
+                    source_boundary(
+                        "field.elevator.selector_open_unresolved");
+                }
             }
             return started;
         };
