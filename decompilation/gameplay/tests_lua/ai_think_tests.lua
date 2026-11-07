@@ -1173,11 +1173,13 @@ end
 -- ROM 0x148D2 selects D7 as the dominant axis (X on ties) and D6 as the
 -- signed minor axis. 0x148AA scans D7 to the first occupied cell, while
 -- 0x14854 probes individual D6 and D7 cells. These mocks exercise the typed
--- host map facts, not imported map occupancy or a full GPGX route. The root's
--- D5 origin register remains unresolved because 0x148D2 writes D5 before
--- 0x14682 uses it [C/H].
+-- host map facts, not imported map occupancy or a full GPGX route. All these
+-- selector cases start at world (0x2000,0x2000), whose source grid cell center
+-- is (0x2100,0x2100); the fixture keeps that origin open unless the explicit
+-- blocked-origin case below says otherwise [C: 0x148FE..0x14912, 0x146B8].
 local function source_cell_query(open_cells)
     local open = {}
+    open["8448:8448"] = true
     for _, cell in ipairs(open_cells or {}) do
         open[tostring(cell[1]) .. ":" .. tostring(cell[2])] = true
     end
@@ -1185,9 +1187,22 @@ local function source_cell_query(open_cells)
         return open[tostring(x) .. ":" .. tostring(y)] == true
     end
 end
-local blocked_source_cells = source_cell_query({})
+local blocked_source_candidates = source_cell_query({})
 local saved_global_source_cell_query = game.movement.source_cell_is_clear
-game.movement.source_cell_is_clear = blocked_source_cells
+game.movement.source_cell_is_clear = blocked_source_candidates
+
+local blocked_origin_queries = 0
+local blocked_origin_route = R.choose_obstruction_waypoint(
+    0x2000, 0x2000, 0x3000, 0x2000,
+    function(x, y)
+        blocked_origin_queries = blocked_origin_queries + 1
+        return x ~= 0x2100 or y ~= 0x2100
+    end)
+check(blocked_origin_route == nil and blocked_origin_queries == 1,
+      "0x146B8 clears route selection when the actor's current FF1700 cell is occupied [C]")
+check(R.choose_obstruction_waypoint(
+    0x2000, 0x2000, 0x3000, 0x2000, nil) == nil,
+      "obstruction routing waits for the typed source-cell query")
 
 local dominant_axis_cases = {
     { "east", 0x3000, 0x2000, 0x2300, 0x2100 },
@@ -1303,7 +1318,7 @@ check(selector_cell_scan ~= nil and
       "0x14682 scans source cells without a 0x14914 prefilter [C]")
 local sealed_wall_route = R.choose_obstruction_waypoint(
     0x2000, 0x2000, 0x3000, 0x2000,
-    blocked_source_cells)
+    blocked_source_candidates)
 check(sealed_wall_route == nil,
       "host waypoint policy gives up when every source corridor is blocked [H]")
 local vertical_route = R.choose_obstruction_waypoint(
@@ -1784,7 +1799,7 @@ check(replan_step ~= nil and
 -- and restores the live target heading rather than steering at the stale point.
 -- [C: 0x14ADE -> 0x14756]
 game.movement.source_path_is_clear = function() return false end
-game.movement.source_cell_is_clear = blocked_source_cells
+game.movement.source_cell_is_clear = blocked_source_candidates
 local failed_replan_step = R.advance_entity_movement(
     stale_route_context, stale_route_state)
 check(failed_replan_step ~= nil and

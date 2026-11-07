@@ -21,12 +21,13 @@ dump defends the visible result.
   blocked immediately, `0x14854` scans D6, tests each candidate cell and its
   D7 neighbor, and retries from the origin in the opposite D6 direction when
   the first scan fails (`0x14864..0x148A8`).
-- [C/H] `0x148D2` writes `abs(actorX - targetX)` to D5 at `0x148E8`, then
-  returns to `0x14682`, where D5 is immediately used as an `FF1700` grid index
-  (`0x146B8`) and as the starting index for `0x148AA`/`0x14854`. The ROM
-  register dataflow is confirmed, but the intended origin represented by that
-  value remains unresolved. The typed host implementation uses the actor's
-  current cell as its origin [H]; it does not reproduce this register anomaly.
+- [C] `0x148D2` first stores `abs(actorX-targetX)` in D5 at `0x148E8` for the
+  dominant-axis comparison. At `0x148FE` it restores the saved actor X/Y pair;
+  execution falls through to `0x14902`, which converts those actor coordinates
+  to a grid index and overwrites D5 at `0x14910`. Back in `0x14682`, `0x146B8`
+  checks that actor-origin cell in `FF1700` before scanning. A blocked origin
+  goes directly to `0x14756`, clearing both route flags. The Lua planner now
+  queries that typed origin cell before testing any detour candidates.
 - [C] `0x14914` converts both endpoints with `0x14902` and asks `0x1494C` to
   check two axis-aligned corridors: across the first endpoint's row and then
   along the second endpoint's column, followed by the same ordering with
@@ -68,9 +69,9 @@ When a queued segment becomes blocked, ROM `0x149C0 -> 0x149CE ->
 0x14756` clears the two route flags. The next `0x14682` selection derives its
 route again from live position and target; the source does not retain a prior
 side choice. Lua recomputes from live state instead of flipping a host-only
-side field [C]. The D7/D6/strip probe order is source-confirmed, but the
-starting cell remains [H] because `0x148D2` leaves `abs(actorX-targetX)` in D5
-before `0x14682` treats D5 as a grid index.
+side field [C]. The start cell is the actor's current `+0/+4` coordinates,
+converted by `0x14902`; `0x148D2`'s temporary absolute X delta is replaced
+before `0x14682` indexes the map [C].
 
 When no paired bypass is usable, Lua tries strips in the source heading order
 from `0x14AF4`. It represents candidates as typed world waypoints and asks the
@@ -110,21 +111,22 @@ the separate `0x14914/0x1494C` two-corridor query for an active route. If
 either corridor is clear, Lua retires the queued detour and measures the
 current target again, matching the
 `0x149C0 -> 0x149CE -> 0x14756` branch. A cell outside the imported map is
-blocked for host safety [H]. The D5 origin and native out-of-map policy remain
-[H]. The former 32-unit sampled host collision sweep was removed.
+blocked for host safety [H]. The selector now checks the typed actor-origin
+cell first, matching `0x146B8`; if occupied it drops route selection without
+probing a detour. The former 32-unit sampled host collision sweep was removed.
 
 ROM `0x14682` enters candidate selection without calling `0x14914`; it scans
 the direct cells used by its `0x148AA/0x14854/0x14800` helpers. The Lua
 planner now follows that separation: source-cell facts choose waypoints, and
 the path query only validates a waypoint queue that is already active [C].
 
-The D7 last-open-cell return, signed D6 probes, opposite-D6 fallback,
-blocked-route replan state, heading order and scan-termination result of the
-`0x14AF4` retry, and `0x14914` path query are [C]. The typed host query treats
-a cell outside the imported collision map as blocked [H]. The source D5 origin
-anomaly, host scan bounds, and resulting route pixels remain unverified. These
-are readable native waypoint policies, not a claim of matching the complete
-waypoint sequence. The referenced
+The actor-origin lookup, D7 last-open-cell return, signed D6 probes,
+opposite-D6 fallback, blocked-route replan state, heading order and
+scan-termination result of the `0x14AF4` retry, and `0x14914` path query are
+[C]. The typed host query treats a cell outside the imported collision map as
+blocked [H]. Host scan bounds and resulting route pixels remain unverified.
+These are readable native waypoint policies, not a claim of matching the
+complete waypoint sequence. The referenced
 `/workspace/shadowrun/out/p49b/repro.txt` route capture is absent from this
 checkout; local obstruction-grid snapshots do not establish enemy route
 fidelity.
@@ -132,7 +134,8 @@ fidelity.
 ## Validation
 
 - `ai_think_tests.lua`: mock typed cell facts and source-corridor responses
-  for positive and negative major directions, multi-cell last-open placement,
+  for occupied-origin rejection, positive and negative major directions,
+  multi-cell last-open placement,
   signed minor bypasses, opposite-D6 fallback,
   clear direct path, sealed corridor, heading-oriented strip fallback
   including an opening at depth six, last-open-cell retention, live-position

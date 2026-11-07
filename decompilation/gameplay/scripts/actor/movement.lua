@@ -652,16 +652,18 @@ local function choose_obstruction_waypoint(
     if absolute_x == 0 and absolute_y == 0 then
         return nil
     end
+    if type(source_cell_is_clear) ~= "function" then
+        return nil
+    end
 
     -- ROM 0x148D2 selects the greater target axis, with X on ties. D7 is the
     -- dominant direction; D6 is the minor direction (0x148CA defaults it to
     -- -Y for horizontal routes and -X for vertical routes). 0x148AA scans
     -- along D7 to the first occupied cell and returns the preceding open
-    -- cell; 0x146C8..0x146E2 queues that result [C]. The caller uses D5 as
-    -- its origin index, but 0x148D2
-    -- writes abs(deltaX) to D5 at 0x148E8; this host uses the actor's typed
-    -- current cell as the intended origin [H] pending an independent route
-    -- trace that resolves that source register use.
+    -- cell; 0x146C8..0x146E2 queues that result [C]. 0x148D2 compares the
+    -- absolute axis deltas in D5, restores the actor XY pair at 0x148FE, then
+    -- falls through to 0x14902, which overwrites D5 with the actor's grid
+    -- index at 0x14910. 0x146B8 rejects a blocked origin before any scan [C].
     local horizontal = absolute_x >= absolute_y
     local major_direction
     local minor_direction
@@ -686,6 +688,9 @@ local function choose_obstruction_waypoint(
     end
     local origin_cell_x = navigation_cell_center(from_x)
     local origin_cell_y = navigation_cell_center(from_y)
+    if source_cell_is_clear(origin_cell_x, origin_cell_y) ~= true then
+        return nil
+    end
     local target_cell_x = navigation_cell_center(target_x)
     local target_cell_y = navigation_cell_center(target_y)
 
@@ -706,9 +711,6 @@ local function choose_obstruction_waypoint(
     -- validate an already-active route. Keep those as separate host facts.
     -- 0x148AA tests individual cells until nonzero, then returns the previous
     -- cell (0x148B6..0x148C8).
-    if type(source_cell_is_clear) ~= "function" then
-        return nil
-    end
     local last_open_major_x
     local last_open_major_y
     for cell_offset = 1, NAVIGATION_MAX_CELLS do
