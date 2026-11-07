@@ -1268,6 +1268,41 @@ check(wall_route ~= nil and #wall_route.waypoints == 1 and
       wall_route.waypoints[1].y == 0x2100,
       "0x148AA returns the last clear cell at 0x148B6..0x148C8 for the 0x146C8..0x146E2 queue [C/H]")
 
+-- ROM 0x148AA advances D1 at 0x148B6..0x148C0 until FF1700 reports an
+-- occupied cell; this loop has no 64-cell scan counter.
+local long_major_scan_queries = 0
+local long_major_route = R.choose_obstruction_waypoint(
+    0x2000, 0x2000, 0xFF00, 0x2000,
+    function(x, y)
+        long_major_scan_queries = long_major_scan_queries + 1
+        return x ~= 0xA500 or y ~= 0x2100
+    end)
+check(long_major_route ~= nil and
+      long_major_route.waypoints[1].x == 0xA300 and
+      long_major_route.waypoints[1].y == 0x2100 and
+      long_major_scan_queries == 67,
+      "0x148AA reaches the 65th clear cell before the first occupied cell [C]")
+
+-- ROM 0x14854 advances D6 at 0x14864..0x1487C without a scan-depth counter,
+-- checking each minor cell and its D7 neighbor before accepting the pair.
+local long_minor_scan_queries = 0
+local long_minor_route = R.choose_obstruction_waypoint(
+    0x2000, 0x2000, 0xFF00, 0x3000,
+    function(x, y)
+        long_minor_scan_queries = long_minor_scan_queries + 1
+        if x == 0x2300 and y == 0x2100 then return false end
+        if x == 0x2300 then return y == 0xA300 end
+        return true
+    end)
+check(long_minor_route ~= nil and
+      #long_minor_route.waypoints == 2 and
+      long_minor_route.waypoints[1].x == 0x2100 and
+      long_minor_route.waypoints[1].y == 0xA300 and
+      long_minor_route.waypoints[2].x == 0x2300 and
+      long_minor_route.waypoints[2].y == 0xA300 and
+      long_minor_scan_queries == 132,
+      "0x14854 scans 65 clear minor cells before accepting their D7 neighbor [C]")
+
 local two_cell_bypass_path_clear = function(
     from_x, from_y, to_x, to_y)
     if from_x == 0x2000 and from_y == 0x2000 and

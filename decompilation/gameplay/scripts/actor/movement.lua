@@ -628,9 +628,9 @@ end
 -- ordinary world positions and a short typed waypoint list, not FF1700 data.
 local NAVIGATION_CELL_SIZE = 512
 -- The direct 0x148AA/0x14854 probes have no descriptor-bound check in ROM.
--- Keep their bounded host scan explicit [H]. The separate 0x14800 strip scan
--- uses the active scene's typed descriptor bounds and has no fixed depth cap.
-local NAVIGATION_MAX_CELLS = 64
+-- 0x148AA and 0x14854 have no source scan-depth counter. Stop on the typed
+-- collision query or the host's 16-bit world-coordinate boundary; do not add
+-- a fixed grid-depth cap. The separate 0x14800 strip uses descriptor bounds.
 local navigation_cardinal_offsets = {
     north = { x = 0, y = -1 },
     east = { x = 1, y = 0 },
@@ -714,7 +714,8 @@ local function choose_obstruction_waypoint(
     -- cell (0x148B6..0x148C8).
     local last_open_major_x
     local last_open_major_y
-    for cell_offset = 1, NAVIGATION_MAX_CELLS do
+    local cell_offset = 1
+    while true do
         local major_x = origin_cell_x +
             major_direction.x * cell_offset * NAVIGATION_CELL_SIZE
         local major_y = origin_cell_y +
@@ -724,6 +725,7 @@ local function choose_obstruction_waypoint(
             break
         end
         last_open_major_x, last_open_major_y = major_x, major_y
+        cell_offset = cell_offset + 1
     end
     if last_open_major_x ~= nil then
         return new_route({ {
@@ -739,7 +741,8 @@ local function choose_obstruction_waypoint(
     -- query keeps FF1700 and its source-grid storage out of Lua. Bounds remain
     -- a host policy for these unchecked source probes [H].
     local function find_minor_bypass(direction)
-        for cell_offset = 1, NAVIGATION_MAX_CELLS do
+        local cell_offset = 1
+        while true do
             local candidate_x = origin_cell_x +
                 direction.x * cell_offset * NAVIGATION_CELL_SIZE
             local candidate_y = origin_cell_y +
@@ -760,8 +763,8 @@ local function choose_obstruction_waypoint(
                     { x = side_x, y = side_y },
                 })
             end
+            cell_offset = cell_offset + 1
         end
-        return nil
     end
 
     local bypass = find_minor_bypass(minor_direction)

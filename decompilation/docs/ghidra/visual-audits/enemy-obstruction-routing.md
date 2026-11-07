@@ -84,10 +84,14 @@ before `0x14682` indexes the map [C].
 When no paired bypass is usable, Lua tries strips in the source heading order
 from `0x14AF4`. It represents candidates as typed world waypoints and asks the
 map service about each primary and adjacent cell. A regression reaches an
-opening at depth six, beyond the five direction pairs. The 64-cell cap remains
-a host policy for unchecked `0x148AA` and `0x14854` probes [H]. The `0x14800`
-strip scan instead uses a typed `source_strip_primary_cell_is_in_bounds` query
-from the active field descriptor and has no fixed depth cap.
+opening at depth six, beyond the five direction pairs. The direct `0x148AA`
+and `0x14854` loops have no source scan-depth counter [C], and Lua no longer
+adds a 64-cell limit. Those scans stop when the typed cell query finds a
+blocker or when the candidate reaches the host's `0..0xFFFF` coordinate edge;
+that edge policy remains [H] because ROM word-wrap and out-of-map behavior
+have not been independently verified. The `0x14800` strip scan instead uses
+a typed `source_strip_primary_cell_is_in_bounds` query from the active field
+descriptor and has no fixed depth cap.
 
 The strip terminus now preserves the last traversable primary cell. ROM
 `0x14800` advances the primary index while the primary cell is open and the
@@ -173,6 +177,11 @@ fidelity.
   previous host-only 64-cell cap. The scan now asks the typed field-descriptor
   bound before each primary-cell probe; adjacent side-cell probes retain the
   source's unchecked behavior.
+- The direct `0x148AA` and `0x14854` scans also have no ROM depth counter. The
+  Lua D7 regression passes 65 clear cells, stops at the next blocked cell, and
+  returns the preceding open waypoint; the D6 regression passes 65 candidates
+  before it accepts the adjacent D7 cell. Both direct scans stop at the host
+  16-bit coordinate edge [H].
 - `entity_route_primitives_conversion_test` checks negative-index rejection
   and the descriptor row/column comparisons. The field source-assets test
   verifies Scene 2's imported `+0x0E=0x0518` and `+0x24=0x0078` values.
