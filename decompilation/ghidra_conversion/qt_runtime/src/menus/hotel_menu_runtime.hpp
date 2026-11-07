@@ -1,9 +1,7 @@
 #pragma once
 
-#include "shadowrun_ghidra/menus/hotel_entity_status_conversion.hpp"
 #include "shadowrun_ghidra/menus/hotel_options_menu_conversion.hpp"
 #include "shadowrun_ghidra/rendering/display_service_batch_conversion.hpp"
-#include "shadowrun_ghidra/session/runner_record_access_conversion.hpp"
 
 #include <QImage>
 
@@ -17,6 +15,8 @@
 class QPainter;
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
+
+inline constexpr std::size_t kHotelPartySlotCount = 3U;
 
 enum class HotelMenuPhase {
     closed,
@@ -73,9 +73,9 @@ public:
                                            std::string_view,
                                            HotelMenuPaletteLine)>;
 
-    void open(std::array<RunnerRecordFields, 3>& records,
-              const std::array<std::string, 3>& names,
-              std::size_t active_runner_slot);
+    void open(const std::array<std::string, kHotelPartySlotCount>& names,
+              const std::array<bool, kHotelPartySlotCount>&
+                  medical_attention_rows);
     void close() noexcept;
     void advance_animation();
     HotelMenuEvent advance_controller_events(std::uint16_t events);
@@ -107,7 +107,7 @@ public:
     HotelCheckoutSelection checkout_selection() const noexcept {
         return checkout_selection_;
     }
-    const std::array<bool, kHotelEntityStatusRecordCount>&
+    const std::array<bool, kHotelPartySlotCount>&
     medical_attention_rows() const noexcept {
         return medical_attention_rows_;
     }
@@ -122,9 +122,9 @@ private:
     HotelMenuPhase phase_ = HotelMenuPhase::closed;
     HotelOption option_selection_ = HotelOption::karma_screen;
     HotelCheckoutSelection checkout_selection_ = HotelCheckoutSelection::no;
-    std::array<bool, kHotelEntityStatusRecordCount>
+    std::array<bool, kHotelPartySlotCount>
         medical_attention_rows_{};
-    std::array<std::string, kHotelEntityStatusRecordCount> entity_names_{};
+    std::array<std::string, kHotelPartySlotCount> entity_names_{};
     std::size_t medical_attention_count_ = 0U;
     RandomGridEffectState random_grid_effect_{};
     std::array<std::int8_t, 12> random_grid_cells_{};

@@ -53122,6 +53122,77 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 mark_route("command-overview-returned-to-field", "Start");
+
+                // Exercise each Hotel recovery branch through the live
+                // Lua-to-native boundary. The rule at ROM 0xEF08 chooses
+                // medical attention below 3, +1 recovery at 3..4, and +2 at
+                // 5 or above; 0x3674/0x37EC apply the shared meter effects.
+                const auto run_hotel_status_case =
+                    [&](const std::string_view label,
+                        const std::uint8_t initial_physical,
+                        const std::uint8_t expected_physical,
+                        const bool expect_medical,
+                        const bool expect_recovery_marker) {
+                        auto& runner = field_scene.active_runner_record();
+                        runner.delay_meter = initial_physical;
+                        runner.behavior_meter = 4U;
+                        runner.flags = static_cast<std::uint16_t>(
+                            runner.flags | 0x1000U);
+                        field_scene.refresh_field_hud_for_dump();
+                        if (!field_scene.dispatch_dialogue_service_for_dump(
+                                "hotel.options", "origin") ||
+                            !field_scene.hotel_menu_open() ||
+                            field_scene.hotel_menu_phase() !=
+                                HotelMenuPhase::entity_status) {
+                            std::cerr << "field Hotel QA: Lua status policy "
+                                         "did not reopen for case " << label
+                                      << '\n';
+                            return false;
+                        }
+                        const auto& serviced =
+                            field_scene.active_runner_record();
+                        const bool recovery_marker_set =
+                            (serviced.flags & 0x1000U) != 0U;
+                        for (int frame = 0; frame < 5; ++frame) {
+                            field_scene.advance_frame();
+                        }
+                        const auto status = capture(
+                            output / ("status-policy-" + std::string(label)) /
+                            "actual.bmp");
+                        const bool status_text_matches =
+                            !status.isNull() &&
+                            (expect_medical
+                                ? image_has_green_ink(status, 88, 40, 48, 8) &&
+                                      image_has_green_ink(status, 32, 48, 240, 8) &&
+                                      image_has_green_ink(status, 32, 80, 240, 8)
+                                : !image_has_green_ink(status, 88, 40, 48, 8) &&
+                                      !image_has_green_ink(status, 32, 48, 240, 8) &&
+                                      image_has_green_ink(status, 32, 56, 240, 8));
+                        if (serviced.delay_meter != expected_physical ||
+                            serviced.behavior_meter != 10U ||
+                            recovery_marker_set != expect_recovery_marker ||
+                            !status_text_matches) {
+                            std::cerr << "field Hotel QA: Lua/native status "
+                                         "effects differ for case " << label
+                                      << " (physical="
+                                      << static_cast<unsigned>(
+                                             serviced.delay_meter)
+                                      << ", mental="
+                                      << static_cast<unsigned>(
+                                             serviced.behavior_meter)
+                                      << ", marker=" << recovery_marker_set
+                                      << ", pixels=" << status_text_matches
+                                      << ")\n";
+                            return false;
+                        }
+                        return true;
+                    };
+                if (!run_hotel_status_case("medical", 2U, 2U, true, true) ||
+                    !run_hotel_status_case("one-point", 4U, 5U, false, false) ||
+                    !run_hotel_status_case("two-point", 5U, 7U, false, false)) {
+                    return 3;
+                }
+
                 route.close();
                 if (sequence_capture_failed) {
                     std::cerr << "field Hotel QA: one or more sequential full-screen frames could not be written\n";

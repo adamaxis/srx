@@ -143,6 +143,47 @@ function Hotel.text_keys()
     }
 end
 
+-- ROM 0xEF08 services active runners before the Hotel Options loop. Physical
+-- meter values below 3 get the medical-attention copy; values 3..4 recover by
+-- one point and values 5..255 by two. Every active runner also receives ten
+-- points of mental recovery, while only the recovery branches clear the
+-- pending Hotel recovery marker. The host applies these named effects through
+-- the shared field-meter services; Lua owns the party-status decision.
+function Hotel.service_party_status(party)
+    if type(party) ~= "table" or type(party.runners) ~= "table" then
+        error("Hotel party status needs an ordered runner list")
+    end
+
+    local decisions = {}
+    for _, runner in ipairs(party.runners) do
+        if type(runner) ~= "table" or type(runner.active) ~= "boolean" or
+           type(runner.physical_meter) ~= "number" or
+           runner.physical_meter % 1 ~= 0 or runner.physical_meter < 0 or
+           runner.physical_meter > 255 then
+            error("Hotel runner status facts are invalid")
+        end
+
+        local decision = {
+            medical_attention = false,
+            physical_meter_delta = 0,
+            mental_meter_delta = 0,
+            clear_recovery_request = false,
+        }
+        if runner.active then
+            decision.mental_meter_delta = 10
+            if runner.physical_meter < 3 then
+                decision.medical_attention = true
+            else
+                decision.physical_meter_delta =
+                    runner.physical_meter < 5 and 1 or 2
+                decision.clear_recovery_request = true
+            end
+        end
+        decisions[#decisions + 1] = decision
+    end
+    return { runners = decisions }
+end
+
 -- Page staging, in VBlanks. 0xCF38 -> 0xCFFE redraws the frame and decodes
 -- the 0xC1064 font (0xC0C2) before any text: the status text shows 4 frames
 -- after the frame and sidebar (emulator +8122 frame, +8126 text), and each

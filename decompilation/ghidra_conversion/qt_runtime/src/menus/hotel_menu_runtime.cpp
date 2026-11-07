@@ -1,7 +1,6 @@
 #include "hotel_menu_runtime.hpp"
 
 #include "shadowrun_ghidra/core/random_conversion.hpp"
-#include "shadowrun_ghidra/field/field_hud_conversion.hpp"
 
 #include <QPainter>
 #include <QRect>
@@ -32,94 +31,17 @@ HotelOptionsInputFrame hotel_input_from_events(const std::uint16_t events) {
 } // namespace
 
 void HotelMenuRuntime::open(
-    std::array<RunnerRecordFields, 3>& records,
-    const std::array<std::string, 3>& names,
-    const std::size_t active_runner_slot) {
+    const std::array<std::string, kHotelPartySlotCount>& names,
+    const std::array<bool, kHotelPartySlotCount>& medical_attention_rows) {
     option_selection_ = HotelOption::karma_screen;
     checkout_selection_ = HotelCheckoutSelection::no;
-    medical_attention_rows_.fill(false);
+    medical_attention_rows_ = medical_attention_rows;
     entity_names_ = names;
-    medical_attention_count_ = 0U;
+    medical_attention_count_ = static_cast<std::size_t>(
+        std::count(medical_attention_rows_.begin(),
+                   medical_attention_rows_.end(), true));
     animation_frames_ = 0U;
     reset_page_effect();
-
-    std::array<HotelEntityStatusRecord, kHotelEntityStatusRecordCount>
-        status_records{};
-    for (std::size_t slot = 0; slot < status_records.size(); ++slot) {
-        status_records[slot].status_flags = static_cast<std::uint8_t>(
-            records[slot].flags >> 8U);
-        status_records[slot].delay_meter = records[slot].delay_meter;
-        status_records[slot].display_name = names[slot];
-    }
-
-    const auto advance_behavior =
-        [&records, active_runner_slot](
-            const std::size_t slot, HotelEntityStatusRecord& status,
-            const std::uint8_t amount) {
-            if (slot >= records.size()) {
-                return;
-            }
-            auto& runner = records[slot];
-            FieldHudMentalMeterState meter{};
-            meter.slot_word = static_cast<std::uint16_t>(slot);
-            meter.flags_byte = status.status_flags;
-            meter.meter = static_cast<std::int8_t>(runner.behavior_meter);
-            meter.primary_runner = slot == active_runner_slot;
-            const auto plan = advance_field_hud_mental_meter(
-                meter, static_cast<std::int8_t>(amount));
-            runner.behavior_meter = static_cast<std::uint8_t>(meter.meter);
-            if (plan.forward_delay_meter) {
-                FieldHudDelayMeterState delay{};
-                delay.slot_word = static_cast<std::uint16_t>(slot);
-                delay.flags_byte = status.status_flags;
-                delay.meter = static_cast<std::int8_t>(runner.delay_meter);
-                (void)advance_field_hud_delay_meter(delay,
-                                                    plan.delay_delta);
-                runner.delay_meter = static_cast<std::uint8_t>(delay.meter);
-                status.delay_meter = runner.delay_meter;
-            }
-        };
-    const auto advance_delay = [&records](
-                                  const std::size_t slot,
-                                  HotelEntityStatusRecord& status,
-                                  const std::uint8_t amount) {
-        if (slot >= records.size()) {
-            return;
-        }
-        auto& runner = records[slot];
-        FieldHudDelayMeterState delay{};
-        delay.slot_word = static_cast<std::uint16_t>(slot);
-        delay.flags_byte = status.status_flags;
-        delay.meter = static_cast<std::int8_t>(runner.delay_meter);
-        (void)advance_field_hud_delay_meter(
-            delay, static_cast<std::int8_t>(amount));
-        runner.delay_meter = static_cast<std::uint8_t>(delay.meter);
-        status.delay_meter = runner.delay_meter;
-    };
-
-    service_hotel_entity_status(
-        status_records,
-        HotelEntityStatusCallbacks{
-            {},
-            advance_behavior,
-            advance_delay,
-            [this](const std::size_t slot, const std::string&) {
-                if (slot < medical_attention_rows_.size()) {
-                    medical_attention_rows_[slot] = true;
-                    ++medical_attention_count_;
-                }
-            },
-            {},
-            [] {},
-            {}});
-
-    for (std::size_t slot = 0; slot < status_records.size(); ++slot) {
-        records[slot].flags = static_cast<std::uint16_t>(
-            (static_cast<std::uint16_t>(status_records[slot].status_flags)
-             << 8U) |
-            (records[slot].flags & 0x00FFU));
-        records[slot].delay_meter = status_records[slot].delay_meter;
-    }
     phase_ = HotelMenuPhase::entity_status;
     presented_phase_ = phase_;
     open_frames_ = 0U;

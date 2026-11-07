@@ -137,6 +137,160 @@ scripting::ScriptPersistentValue karma_runner_profile(
     return result;
 }
 
+struct HotelStatusDecision {
+    bool medical_attention = false;
+    std::uint8_t physical_meter_delta = 0U;
+    std::uint8_t mental_meter_delta = 0U;
+    bool clear_recovery_request = false;
+};
+
+using HotelStatusDecisions =
+    std::array<HotelStatusDecision, kHotelPartySlotCount>;
+
+scripting::ScriptPersistentValue hotel_party_status_facts(
+    const std::array<RunnerRecordFields, kHotelPartySlotCount>& records) {
+    using Value = scripting::ScriptPersistentValue;
+    Value::Array runners;
+    runners.reserve(records.size());
+    for (const auto& runner : records) {
+        const auto status_flags = static_cast<std::uint8_t>(
+            runner.flags >> 8U);
+        Value::Object fact;
+        Value active;
+        active.value = (status_flags & 0x01U) != 0U;
+        fact.emplace("active", std::move(active));
+        Value physical_meter;
+        physical_meter.value = static_cast<std::int64_t>(runner.delay_meter);
+        fact.emplace("physical_meter", std::move(physical_meter));
+        Value runner_value;
+        runner_value.value = std::move(fact);
+        runners.emplace_back(std::move(runner_value));
+    }
+
+    Value party_value;
+    Value::Object party;
+    Value runners_value;
+    runners_value.value = std::move(runners);
+    party.emplace("runners", std::move(runners_value));
+    party_value.value = std::move(party);
+    return party_value;
+}
+
+std::optional<HotelStatusDecisions> hotel_status_decisions(
+    const std::optional<scripting::ScriptPersistentValue>& result) {
+    using Value = scripting::ScriptPersistentValue;
+    const auto* party = result.has_value()
+        ? std::get_if<Value::Object>(&result->value)
+        : nullptr;
+    if (party == nullptr) {
+        return std::nullopt;
+    }
+    const auto runners_field = party->find("runners");
+    if (runners_field == party->end()) {
+        return std::nullopt;
+    }
+    const auto* runners =
+        std::get_if<Value::Array>(&runners_field->second.value);
+    if (runners == nullptr || runners->size() != kHotelPartySlotCount) {
+        return std::nullopt;
+    }
+
+    const auto boolean_field = [](const Value::Object& object,
+                                  const char* key) -> std::optional<bool> {
+        const auto found = object.find(key);
+        if (found == object.end()) {
+            return std::nullopt;
+        }
+        const auto* value = std::get_if<bool>(&found->second.value);
+        return value == nullptr ? std::nullopt
+                                : std::optional<bool>(*value);
+    };
+    const auto integer_field = [](const Value::Object& object,
+                                  const char* key)
+        -> std::optional<std::int64_t> {
+        const auto found = object.find(key);
+        if (found == object.end()) {
+            return std::nullopt;
+        }
+        const auto* value = std::get_if<std::int64_t>(&found->second.value);
+        return value == nullptr ? std::nullopt
+                                : std::optional<std::int64_t>(*value);
+    };
+
+    HotelStatusDecisions decisions{};
+    for (std::size_t slot = 0; slot < decisions.size(); ++slot) {
+        const auto* decision =
+            std::get_if<Value::Object>(&(*runners)[slot].value);
+        if (decision == nullptr) {
+            return std::nullopt;
+        }
+        const auto medical = boolean_field(*decision, "medical_attention");
+        const auto physical_delta =
+            integer_field(*decision, "physical_meter_delta");
+        const auto mental_delta =
+            integer_field(*decision, "mental_meter_delta");
+        const auto clear_request =
+            boolean_field(*decision, "clear_recovery_request");
+        if (!medical.has_value() || !physical_delta.has_value() ||
+            *physical_delta < 0 || *physical_delta > 2 ||
+            !mental_delta.has_value() || *mental_delta < 0 ||
+            *mental_delta > 10 || !clear_request.has_value()) {
+            return std::nullopt;
+        }
+        decisions[slot] = HotelStatusDecision{
+            *medical, static_cast<std::uint8_t>(*physical_delta),
+            static_cast<std::uint8_t>(*mental_delta), *clear_request};
+    }
+    return decisions;
+}
+
+void apply_hotel_status_effects(
+    RunnerRecordFields& runner,
+    const std::size_t slot,
+    const std::size_t active_runner_slot,
+    const HotelStatusDecision& decision) {
+    auto status_flags = static_cast<std::uint8_t>(runner.flags >> 8U);
+
+    // Lua selects the Hotel-specific deltas. These shared services preserve
+    // their source-derived caps, active-record gates, signed-byte behavior,
+    // and overflow forwarding from 0x3674 and 0x37EC [C].
+    if (decision.physical_meter_delta != 0U) {
+        FieldHudDelayMeterState delay{};
+        delay.slot_word = static_cast<std::uint16_t>(slot);
+        delay.flags_byte = status_flags;
+        delay.meter = static_cast<std::int8_t>(runner.delay_meter);
+        (void)advance_field_hud_delay_meter(
+            delay, static_cast<std::int8_t>(decision.physical_meter_delta));
+        runner.delay_meter = static_cast<std::uint8_t>(delay.meter);
+    }
+
+    if (decision.mental_meter_delta != 0U) {
+        FieldHudMentalMeterState mental{};
+        mental.slot_word = static_cast<std::uint16_t>(slot);
+        mental.flags_byte = status_flags;
+        mental.meter = static_cast<std::int8_t>(runner.behavior_meter);
+        mental.primary_runner = slot == active_runner_slot;
+        const auto plan = advance_field_hud_mental_meter(
+            mental, static_cast<std::int8_t>(decision.mental_meter_delta));
+        runner.behavior_meter = static_cast<std::uint8_t>(mental.meter);
+        if (plan.forward_delay_meter) {
+            FieldHudDelayMeterState delay{};
+            delay.slot_word = static_cast<std::uint16_t>(slot);
+            delay.flags_byte = status_flags;
+            delay.meter = static_cast<std::int8_t>(runner.delay_meter);
+            (void)advance_field_hud_delay_meter(delay, plan.delay_delta);
+            runner.delay_meter = static_cast<std::uint8_t>(delay.meter);
+        }
+    }
+
+    if (decision.clear_recovery_request) {
+        status_flags = static_cast<std::uint8_t>(status_flags & ~0x10U);
+    }
+    runner.flags = static_cast<std::uint16_t>(
+        (static_cast<std::uint16_t>(status_flags) << 8U) |
+        (runner.flags & 0x00FFU));
+}
+
 } // namespace
 
 void FieldSceneRuntime::provide_source_profile_patrol_movement_services(
@@ -1088,8 +1242,27 @@ void FieldSceneRuntime::begin_hotel_menu() {
     for (std::size_t slot = 0; slot < names.size(); ++slot) {
         names[slot] = field_party_roster_.name(slot);
     }
-    hotel_menu_.open(field_party_roster_.records(), names,
-                     field_party_roster_.active_slot());
+
+    auto& records = field_party_roster_.records();
+    const auto status_result = game_scripts_.call_value(
+        "hotel", "service_party_status", {hotel_party_status_facts(records)});
+    const auto status_decisions = hotel_status_decisions(status_result);
+    if (!status_decisions.has_value()) {
+        failure_ = game_scripts_.failure().empty()
+            ? "Lua Hotel party-status decision is invalid"
+            : game_scripts_.failure();
+        source_boundary("field.hotel.entity_status_script_failed");
+        return;
+    }
+
+    std::array<bool, kHotelPartySlotCount> medical_attention_rows{};
+    for (std::size_t slot = 0; slot < records.size(); ++slot) {
+        const auto& decision = (*status_decisions)[slot];
+        medical_attention_rows[slot] = decision.medical_attention;
+        apply_hotel_status_effects(records[slot], slot,
+                                  field_party_roster_.active_slot(), decision);
+    }
+    hotel_menu_.open(names, medical_attention_rows);
     refresh_field_hud_runner_slot();
     source_boundary("field.hotel.entity_status.opened");
 }
