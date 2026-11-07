@@ -226,13 +226,14 @@ fidelity.
   each configuration). These are focused checks, not full-suite results.
 - `shadowrun_ghidra_conversion_qt_field_random_encounter_spawn_qa` now resets
   Scene 2, spawns the ordered Weenr pair, and moves one live actor toward the
-  controlled runner across an imported-map wall. The fixture checks the
+  controlled runner across a terrain-record wall. The fixture checks the
   blocked row 14 corridor (cells 27..33), the clear row 12 detour, the live
   `party.runner.0` link, clear occupied cells during movement, and lateral
   progress past the wall. Its `obstruction-route/route.tsv` and
   `obstruction-route/actual.bmp` are headless internal port artifacts. The
-  imported cell layout and route pixels remain [H] until checked against an
-  independent Genesis capture; #49 remains partial.
+  collision cells are confirmed by the ROM terrain-record stream; route
+  pixels and movement remain [H] until checked against an independent Genesis
+  capture. #49 remains partial.
 - The focused field encounter CTest passes in headless Debug and Release. The
   Debug and Release `obstruction-route/actual.bmp` files have matching SHA-256
   `8261A58F77F75333BFCDB5F185FCC8118AC62860D4165ED566488AB3587E5517`.
@@ -252,6 +253,13 @@ The headless Debug and Release routes both reach distance `508` at route frame
 run emits 45 route samples plus `obstruction-route/actual.bmp`; both full-screen
 images have SHA-256
 `5CDAF8061A18BB3E56E6E6445A6C782AE9B7507D2CFAA8889090091F14693B99`.
-This proves the integrated port path in this imported Scene-2 fixture. The
-collision-map layout and route pixels remain [H] without an independent
+This proves the integrated port path in this Scene-2 fixture. The collision
+layout also matches the ROM source data: the table at `0x172DAA` ends at
+`0x17319C`; record `0x172EEA` has bounds x `0x0360..0x043F`, y
+`0x01A0..0x027F`, and value `0x007F`. The terrain-map conversion rasterizes
+those bounds into grid columns 27..33 and rows 13..19. ROM `0x14902` maps the
+fixture's world positions to 64-cell rows, and `0x14914` treats the nonzero
+cells as obstructions. The tested row-12 corridor and column-34 return leg
+have no covering collision record in the full table. Thus the collision-cell
+claims are [C]; route pixels and movement remain [H] without an independent
 Genesis route capture, so item #49 remains partial.

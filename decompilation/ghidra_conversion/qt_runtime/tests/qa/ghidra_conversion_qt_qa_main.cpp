@@ -2467,10 +2467,12 @@ int run_field_obstruction_route_qa(
         return 3;
     }
 
-    // [H: imported map data] Scene 2 has a wall row at grid row 14, columns
-    // 27..33, with a clear row 12 corridor around it. [C] ROM 0x14902 maps
-    // named world positions to 0x200-unit cells; 0x14914 checks both axis
-    // orders and reports the direct row blocked.
+    // [C] Scene 2's ROM terrain records start at 0x172DAA and end at the
+    // 0x17319C sentinel. Record 0x172EEA covers raw x 0x0360..0x043F and
+    // y 0x01A0..0x027F with value 0x007F, producing blocked grid cells in
+    // columns 27..33, rows 13..19. The full record stream leaves the tested
+    // row-12 corridor and column-34 return leg clear. ROM 0x14902 maps world
+    // positions to 0x200-unit cells; 0x14914 checks both axis orders.
     constexpr std::uint16_t kStartColumn = 26U;
     constexpr std::uint16_t kTargetColumn = 34U;
     constexpr std::uint16_t kWallRow = 14U;
