@@ -350,6 +350,30 @@ bool FieldSceneRuntime::seed_cyberspace_access_for_dump() {
     return true;
 }
 
+bool FieldSceneRuntime::seed_gpgx_test_deck_state_for_dump() {
+    if (!ready_ || !cyberdeck_available_) {
+        return false;
+    }
+
+    // [C] ROM 0x59B7E installs the Test Deck's six typed fields and twelve
+    // program ratings. The independent GPGX Test Deck capture shows the
+    // untouched persona ratings are 3 and all five active slots remain empty.
+    // [H] The empty footer pixels in cyberdeck.png appear to match status row
+    // 0 rather than the typed slot constructor's default status 6.
+    install_test_deck();
+    auto deck = field_matrix_deck_record_.value_or(CyberdeckRecord{});
+    deck.persona = std::array<std::uint8_t, 4U>{3U, 3U, 3U, 3U};
+    deck.active_programs =
+        std::array<std::int8_t, 5U>{-1, -1, -1, -1, -1};
+    field_matrix_deck_record_ = std::move(deck);
+    field_matrix_program_slots_.fill(
+        scripting::ScriptCyberdeckProgramSlot{});
+    for (auto& slot : field_matrix_program_slots_) {
+        slot.status = 0U;
+    }
+    return true;
+}
+
 bool FieldSceneRuntime::seed_cyberdeck_reference_frame_for_dump() {
     if (!ready_ || !cyberdeck_available_) {
         return false;

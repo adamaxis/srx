@@ -17441,6 +17441,28 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                     current_x += 8;
                 }
             };
+            const auto draw_matrix_program_detail_values =
+                [&painter, &draw_matrix_text](
+                    const std::array<std::string, 3>& values) {
+                    // ROM 0x18942/0x18958/0x1896C pass $C3C0/$C2C4/$C344
+                    // to 0xC216. Each address is the rightmost digit cell;
+                    // the formatter writes toward the left and replaces the
+                    // dotted label cells covered by the number.
+                    constexpr std::array<int, 3> kRightmostX{{272, 272, 256}};
+                    constexpr std::array<int, 3> kRowY{{40, 48, 56}};
+                    for (std::size_t line = 0U; line < values.size(); ++line) {
+                        const auto& value = values[line];
+                        if (value.empty()) continue;
+                        const auto digit_count =
+                            static_cast<int>(value.size());
+                        const auto left = kRightmostX[line] -
+                                          (digit_count - 1) * 8;
+                        painter.fillRect(QRect(left, kRowY[line], digit_count * 8,
+                                               8),
+                                         Qt::black);
+                        draw_matrix_text(left, kRowY[line], value);
+                    }
+                };
             const auto draw_matrix_compact_text = [this, &painter](
                                                       const int x,
                                                       const int y,
@@ -17456,6 +17478,9 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                     painter.drawImage(
                         QPoint(current_x, y), matrix_map_font_,
                         QRect((glyph % 16) * 8, (glyph / 16) * 8, 8, 8));
+                    // The runner's compact labels retain the spacing visible
+                    // in the independent GPGX Test Deck capture. Program
+                    // titles use the imported source tile strips below.
                     current_x += 5;
                 }
             };
@@ -17512,9 +17537,10 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                         }
                         if (end == std::string::npos) break;
                         start = end + 1U;
-                        if (line < 12 && start == text.size()) {
-                            ++line;
-                        }
+                        // The ROM description stream at 0xE31F2 uses an
+                        // explicit 0x80 paragraph advance after the wrapped
+                        // sentence. The pipe marker preserves that blank row.
+                        if (line < 12) ++line;
                     }
                 };
 
@@ -17711,35 +17737,23 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                     painter.drawImage(
                         184, 16, matrix_cyberdeck_program_icons_[selected]);
                     if (selected < 12U) {
-                        if (selected < routed_menu.top_option_labels.size()) {
-                            draw_matrix_compact_text(
-                                216, 24,
-                                routed_menu.top_option_labels[selected]);
-                            if (routed_menu
-                                    .top_matrix_deck_program_ratings_present) {
-                                draw_matrix_text(
-                                    264, 24,
-                                    std::to_string(routed_menu
-                                                       .top_matrix_deck_program_ratings[
-                                                           selected]));
-                            }
-                        }
+                        // ROM 0x1882E selects the six-cell title strip from
+                        // the 0xD9EE8 table. The offline extractor publishes
+                        // that source art as an individually named asset.
+                        painter.drawImage(
+                            216, 24,
+                            matrix_cyberdeck_detail_strips_[selected]);
+                        // 0x1A16A writes its two common label grids from
+                        // D9ED4/D9EDE. This image is their offline extraction.
+                        painter.drawImage(
+                            0, 0, matrix_cyberdeck_runner_detail_headers_);
                         if (routed_menu
-                                .top_matrix_deck_program_detail_values_present) {
-                            constexpr std::array<int, 3> kValueX{{272, 272,
-                                                                 256}};
-                            for (std::size_t line = 0U;
-                                 line < routed_menu
-                                            .top_matrix_deck_program_detail_values
-                                            .size();
-                                 ++line) {
-                                draw_matrix_text(
-                                    kValueX[line],
-                                    40 + static_cast<int>(line) * 8,
-                                    routed_menu
-                                        .top_matrix_deck_program_detail_values[
-                                            line]);
-                            }
+                                .top_matrix_deck_program_ratings_present) {
+                            draw_matrix_text(
+                                264, 24,
+                                std::to_string(routed_menu
+                                                   .top_matrix_deck_program_ratings[
+                                                       selected]));
                         }
                     } else if (selected < routed_menu.top_option_labels.size()) {
                         draw_matrix_compact_text(
@@ -17760,18 +17774,10 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                             }
                         }
                         if (routed_menu
-                                .top_matrix_deck_runner_detail_labels_present) {
-                            for (std::size_t line = 0U;
-                                 line < routed_menu
-                                            .top_matrix_deck_runner_detail_labels
-                                            .size();
-                                 ++line) {
-                                draw_matrix_compact_text(
-                                    152, 72 + static_cast<int>(line) * 8,
-                                    routed_menu
-                                        .top_matrix_deck_runner_detail_labels[
-                                            line]);
-                            }
+                                .top_matrix_deck_program_detail_values_present) {
+                            draw_matrix_program_detail_values(
+                                routed_menu
+                                    .top_matrix_deck_program_detail_values);
                         }
                         if (routed_menu
                                 .top_matrix_deck_runner_details_present) {
@@ -17861,11 +17867,22 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                         184, 16,
                         matrix_cyberdeck_program_icons_[
                             static_cast<std::size_t>(program)]);
+                    if (program < 12) {
+                        painter.drawImage(
+                            0, 0, matrix_cyberdeck_runner_detail_headers_);
+                    }
                     if (routed_menu
                             .top_matrix_deck_parent_program_name_present) {
-                        draw_matrix_compact_text(
-                            216, 24,
-                            routed_menu.top_matrix_deck_parent_program_name);
+                        if (program < 12) {
+                            painter.drawImage(
+                                216, 24,
+                                matrix_cyberdeck_detail_strips_[
+                                    static_cast<std::size_t>(program)]);
+                        } else {
+                            draw_matrix_compact_text(
+                                216, 24,
+                                routed_menu.top_matrix_deck_parent_program_name);
+                        }
                     }
                     if (program < 12 &&
                         routed_menu
@@ -17890,31 +17907,9 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                     }
                     if (routed_menu
                             .top_matrix_deck_program_detail_values_present) {
-                        constexpr std::array<int, 3> kValueX{{272, 272, 256}};
-                        for (std::size_t line = 0U;
-                             line < routed_menu
-                                        .top_matrix_deck_program_detail_values
-                                        .size();
-                             ++line) {
-                            draw_matrix_text(
-                                kValueX[line],
-                                40 + static_cast<int>(line) * 8,
-                                routed_menu
-                                    .top_matrix_deck_program_detail_values[line]);
-                        }
-                    }
-                    if (routed_menu
-                            .top_matrix_deck_runner_detail_labels_present) {
-                        for (std::size_t line = 0U;
-                             line < routed_menu
-                                        .top_matrix_deck_runner_detail_labels
-                                        .size();
-                             ++line) {
-                            draw_matrix_compact_text(
-                                152, 72 + static_cast<int>(line) * 8,
-                                routed_menu
-                                    .top_matrix_deck_runner_detail_labels[line]);
-                        }
+                        draw_matrix_program_detail_values(
+                            routed_menu
+                                .top_matrix_deck_program_detail_values);
                     }
                     if (routed_menu
                             .top_matrix_deck_runner_details_present) {

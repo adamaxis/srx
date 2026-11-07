@@ -1787,6 +1787,16 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_matrix_cyber_info_
                  --field-matrix-cyber-info-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-matrix-cyber-info-qa")
 
+# Drive the production field terminal, System Search, jack-in, and CyberInfo
+# route from ROM Test Deck state, then compare the right-panel pixels and
+# source-foreground masks against independent headless GPGX captures. Full RGB
+# diffs remain available to show remaining palette-phase/footer differences.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_matrix_gpgx_test_deck_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-matrix-gpgx-test-deck-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-matrix-gpgx-test-deck-qa"
+                 "${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/tests_lua/fixtures/gpgx_test_deck")
+
 # Drive the ROM-timed Matrix entry stream from a deterministic System 2 SPU
 # state. Full 320x224 captures at each visual anchor protect the model growth,
 # bottom footer, and source-derived setup/entry durations.

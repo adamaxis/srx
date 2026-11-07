@@ -625,6 +625,7 @@ public:
         return field_dialogue_.story_page_text_key_for_dump();
     }
     bool seed_cyberspace_access_for_dump();
+    bool seed_gpgx_test_deck_state_for_dump();
     bool seed_cyberdeck_reference_frame_for_dump();
     bool seed_cyberdeck_pull_plug_reference_for_dump();
     bool seed_matrix_storage_files_for_dump();

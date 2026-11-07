@@ -24,7 +24,9 @@ test writes `deck-stats.bmp`. These checks validate the traced text layers.
 The 2026-10-28 glyph audit verifies all ten live numeric cells and all six
 maker/model rows; the presenter clears the dotted label cells that ROM
 `0xC216` replaces, while preserving the `Mp` suffix. Debug and Release pass.
-The Deck Stats panel still lacks an independent Genesis comparison.
+The same-state GPGX Test Deck route now compares the full right detail panel
+pixel for pixel in Cyberdeck, CyberInfo, and Deck Stats; all three panels
+match. Full-frame RGB residuals remain, so the Matrix hill stays partial.
 The CyberInfo selector also now follows the exact padded stream at `0xE3886`:
 title at `(192,48)`, bracketed separator at `(176,56)`, choices at `(192,72)`
 and `(192,88)`, and cursor base `$C4AC`. The full CyberInfo frame is captured
@@ -49,8 +51,9 @@ at 30 fps against the ROM-positioned `MPCP` and `Load/IO Spd` text rows. The
 strongest combined mask score is 0.2757 on a Stoker dialogue page; Section 15's
 highest score is 0.2076 on the `Jack Out` detail page. A known Cyberdeck frame
 scores 0.0747 and the host Deck Stats capture scores 1.0000 as a positive
-control. No frame strongly matches both rows, so the exact `0x18B5C` Deck Stats
-page still lacks an independent Genesis comparison. See the
+control. No longplay frame strongly matches both rows. The same-state GPGX
+Test Deck comparison now verifies the full right panel, while full-frame RGB
+residuals and ordinary gameplay coverage remain open. See the
 [CyberInfo and Deck Stats audit](visual-audits/matrix-cyber-info-run-info.md).
 The same audit traces `0x18AA6` input priority through `0xC376`: Up before
 Down, A/B/C to the selected child, and Start back to the selected program.

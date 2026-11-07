@@ -25,6 +25,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <initializer_list>
 #include <iostream>
 #include <iterator>
 #include <iomanip>
@@ -40358,6 +40359,8 @@ int main(int argc, char** argv) {
             field_vid_phone_passage_qa_path;
         std::optional<std::filesystem::path>
             field_matrix_cyber_info_qa_path;
+        std::optional<std::array<std::filesystem::path, 2>>
+            field_matrix_gpgx_test_deck_qa_paths;
         std::optional<std::filesystem::path>
             field_matrix_traversal_entry_qa_path;
         std::optional<std::uint8_t> field_command_page;
@@ -41482,6 +41485,15 @@ int main(int argc, char** argv) {
                 field_smoke = true;
                 field_matrix_cyber_info_qa_path =
                     std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-matrix-gpgx-test-deck-qa" &&
+                index + 2 < argc) {
+                field_smoke = true;
+                field_matrix_gpgx_test_deck_qa_paths =
+                    std::array<std::filesystem::path, 2>{
+                        std::filesystem::path(argv[++index]),
+                        std::filesystem::path(argv[++index])};
             }
             if (std::string(argv[index]) ==
                     "--field-matrix-traversal-entry-qa" &&
@@ -42740,6 +42752,7 @@ int main(int argc, char** argv) {
                 field_riannons_magic_shop_entry_qa_path.has_value() ||
                 field_dr_bobs_clinic_entry_qa_path.has_value() ||
                 field_matrix_cyber_info_qa_path.has_value() ||
+                field_matrix_gpgx_test_deck_qa_paths.has_value() ||
                 field_matrix_traversal_entry_qa_path.has_value() ||
                 field_wylie_gala_inn_qa_path.has_value() ||
                 field_council_island_inn_qa_path.has_value() ||
@@ -42883,6 +42896,219 @@ int main(int argc, char** argv) {
             // entry cues during the 31 bootstrap ticks are checked by the
             // scene-actor route and must not masquerade as input-driven audio.
             field_audio_events.clear();
+            if (field_matrix_gpgx_test_deck_qa_paths.has_value()) {
+                const auto& paths = *field_matrix_gpgx_test_deck_qa_paths;
+                const auto& output = paths[0];
+                const auto& reference_directory = paths[1];
+                std::filesystem::create_directories(output);
+                std::error_code clear_error;
+                clear_qa_bitmap_artifacts(output, clear_error);
+                if (clear_error) {
+                    std::cerr << "Matrix GPGX Test Deck QA: could not clear "
+                                 "old captures: "
+                              << clear_error.message() << '\n';
+                    return 3;
+                }
+                const auto capture_and_compare =
+                    [&field_scene, &output, &reference_directory](
+                        const std::string_view capture_name,
+                        const std::string_view reference_name,
+                        const std::initializer_list<
+                            std::pair<std::string_view, QRect>>
+                            foreground_regions) {
+                    const auto actual = render_qa_field(field_scene);
+                    const auto output_name =
+                        std::string(capture_name) + ".bmp";
+                    if (actual.size() != QSize(kSceneWidth, kSceneHeight) ||
+                        !save_qa_image(output, output_name, actual)) {
+                        std::cerr << "Matrix GPGX Test Deck QA: failed to "
+                                     "write full frame " << output_name
+                                  << '\n';
+                        return false;
+                    }
+                    const auto reference_path =
+                        reference_directory / reference_name;
+                    const QImage reference(QString::fromStdString(
+                        reference_path.string()));
+                    if (reference.size() !=
+                        QSize(kSceneWidth, kSceneHeight)) {
+                        std::cerr << "Matrix GPGX Test Deck QA: reference is "
+                                     "not a 320x224 image: "
+                                  << reference_path.string() << '\n';
+                        return false;
+                    }
+                    const auto mismatch_count =
+                        emulator_reference_pixel_mismatches(
+                            actual, reference, actual.rect(), 0);
+                    const auto detail_panel_mismatches =
+                        emulator_reference_pixel_mismatches(
+                            actual, reference, QRect(152, 16, 144, 152), 0);
+                    bool foreground_matches =
+                        detail_panel_mismatches == 0U;
+                    std::cout << "Matrix GPGX Test Deck QA: " << capture_name
+                              << " exact_rgb_differences=" << mismatch_count
+                              << " detail_panel_rgb_differences="
+                              << detail_panel_mismatches;
+                    for (const auto& [region_name, region] :
+                         foreground_regions) {
+                        const auto mask_mismatches =
+                            reference_green_mask_mismatches(
+                                actual, reference.copy(region), region);
+                        std::cout << " green_mask[" << region_name << "]="
+                                  << mask_mismatches;
+                        foreground_matches =
+                            foreground_matches && mask_mismatches == 0U;
+                    }
+                    std::cout << '\n';
+                    if (mismatch_count != 0U) {
+                        QImage difference(kSceneWidth, kSceneHeight,
+                                          QImage::Format_RGB32);
+                        const auto actual_rgb =
+                            actual.convertToFormat(QImage::Format_RGB32);
+                        const auto reference_rgb =
+                            reference.convertToFormat(QImage::Format_RGB32);
+                        for (int y = 0; y < kSceneHeight; ++y) {
+                            for (int x = 0; x < kSceneWidth; ++x) {
+                                difference.setPixelColor(
+                                    x, y,
+                                    actual_rgb.pixelColor(x, y) ==
+                                            reference_rgb.pixelColor(x, y)
+                                        ? QColor(Qt::black)
+                                        : QColor(255, 0, 255));
+                            }
+                        }
+                        const auto difference_name =
+                            std::string(capture_name) + "-vs-gpgx-diff.bmp";
+                        save_qa_image(output, difference_name, difference);
+                        std::cout << "Matrix GPGX Test Deck QA: exact RGB "
+                                     "difference image is "
+                                  << difference_name << '\n';
+                    }
+                    return foreground_matches;
+                };
+                if (field_scene.field_scene_reference_for_dump() != 2U ||
+                    !field_scene.seed_cyberspace_access_for_dump() ||
+                    !field_scene.seed_gpgx_test_deck_state_for_dump() ||
+                    !field_scene.open_ordinary_field_terminal_for_dump(
+                        1U << 2U, 12000U) ||
+                    !field_scene.dialogue_open() ||
+                    !field_scene.field_dialogue_uses_console_layout_for_dump()) {
+                    std::cerr << "Matrix GPGX Test Deck QA: ordinary field "
+                                 "terminal did not open from the seeded "
+                                 "Scene-2 deck state\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x02U);
+                tap_qa_controller_button(field_scene, 0x02U);
+                tap_qa_controller_button(field_scene, 0x40U);
+                tap_qa_controller_button(field_scene, 0x02U);
+                tap_qa_controller_button(field_scene, 0x40U);
+                if (!field_scene.matrix_search_route_active_for_dump()) {
+                    std::cerr << "Matrix GPGX Test Deck QA: terminal did not "
+                                 "enter System Search\n";
+                    return 3;
+                }
+                std::uint32_t search_frames = 0U;
+                while (field_scene.matrix_search_route_active_for_dump() &&
+                       search_frames < 500U) {
+                    field_scene.advance_frame();
+                    ++search_frames;
+                }
+                if (field_scene.matrix_search_route_active_for_dump() ||
+                    field_scene.field_menu_route_screen_for_dump() !=
+                        static_cast<std::uint16_t>(
+                            srx::MenuScreen::MATRIX_ENTRY)) {
+                    std::cerr << "Matrix GPGX Test Deck QA: System Search "
+                                 "did not select a system; frames="
+                              << search_frames << '\n';
+                    return 3;
+                }
+                for (std::uint32_t frame = 0U; frame < 21U; ++frame) {
+                    field_scene.advance_frame();
+                }
+                if (field_scene.field_menu_route_screen_for_dump() !=
+                    static_cast<std::uint16_t>(srx::MenuScreen::CYBERDECK)) {
+                    std::cerr << "Matrix GPGX Test Deck QA: jack-in did not "
+                                 "reach Cyberdeck\n";
+                    return 3;
+                }
+                const auto expected_ratings = [] {
+                    std::array<std::uint8_t, 12U> values{};
+                    values.fill(4U);
+                    return values;
+                }();
+                constexpr std::array<std::int8_t, 5U> kEmptyActiveSlots{{
+                    -1, -1, -1, -1, -1}};
+                constexpr std::array<std::uint8_t, 5U> kEmptySlotStatuses{{
+                    0U, 0U, 0U, 0U, 0U}};
+                auto route = field_scene.field_menu_route_snapshot_for_dump();
+                if (!route.top_matrix_deck_program_ratings_present ||
+                    route.top_matrix_deck_program_ratings != expected_ratings ||
+                    !route.top_matrix_deck_active_programs_present ||
+                    route.top_matrix_deck_active_programs !=
+                        kEmptyActiveSlots ||
+                    !route.top_matrix_deck_program_slot_status_present ||
+                    route.top_matrix_deck_program_slot_status !=
+                        kEmptySlotStatuses) {
+                    std::cerr << "Matrix GPGX Test Deck QA: ROM Test Deck "
+                                 "ratings, empty slots, or settled slot "
+                                 "statuses disagree with the independent "
+                                 "fixture\n";
+                    return 3;
+                }
+                bool visual_match = capture_and_compare(
+                    "cyberdeck", "cyberdeck.png",
+                    {{"program-title", QRect(216, 24, 48, 8)},
+                     {"detail-panel", QRect(152, 16, 144, 152)},
+                     {"program-grid", QRect(0, 0, 144, 176)}});
+                for (int step = 0; step < 3; ++step) {
+                    tap_qa_controller_button(field_scene, 0x02U);
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                route = field_scene.field_menu_route_snapshot_for_dump();
+                if (field_scene.field_menu_route_screen_for_dump() !=
+                        static_cast<std::uint16_t>(
+                            srx::MenuScreen::DECK_CYBERINFO) ||
+                    route.top_matrix_deck_parent_column != 0 ||
+                    route.top_matrix_deck_parent_row != 3 ||
+                    route.top_title != "  CyberInfo") {
+                    std::cerr << "Matrix GPGX Test Deck QA: CyberInfo was "
+                                 "not reached from the ROM-selected row\n";
+                    return 3;
+                }
+                visual_match = capture_and_compare(
+                                   "cyber-info", "cyberinfo.png",
+                                   {{"full-screen", QRect(0, 0, kSceneWidth,
+                                                           kSceneHeight)}}) &&
+                               visual_match;
+                tap_qa_controller_button(field_scene, 0x40U);
+                route = field_scene.field_menu_route_snapshot_for_dump();
+                if (!route.top_matrix_deck_stats.has_value() ||
+                    route.top_matrix_deck_stats->manufacturer !=
+                        "Allegiance" ||
+                    route.top_matrix_deck_stats->model != "Alpha" ||
+                    route.top_matrix_deck_stats->values !=
+                        std::array<unsigned int, 10U>{
+                            6U, 1U, 200U, 1000U, 50U, 1U, 3U, 3U, 3U, 3U}) {
+                    std::cerr << "Matrix GPGX Test Deck QA: Deck Stats typed "
+                                 "record does not match the independently "
+                                 "captured GPGX values\n";
+                    return 3;
+                }
+                visual_match = capture_and_compare(
+                                   "actual", "deck-stats.png",
+                                   {{"full-screen", QRect(0, 0, kSceneWidth,
+                                                           kSceneHeight)}}) &&
+                               visual_match;
+                if (!visual_match) {
+                    return 3;
+                }
+                std::cout << "field_matrix_gpgx_test_deck_qa=passed "
+                          << "search_frames=" << search_frames
+                          << " foreground_masks=matched "
+                          << "exact_rgb_differences=reported\n";
+                return 0;
+            }
             if (field_mitsuhama_after_hours_entry_qa_path.has_value()) {
                 return run_field_mitsuhama_after_hours_entry_qa(
                     field_scene, asset_root,

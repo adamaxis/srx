@@ -137,9 +137,9 @@ Lua now returns the live Cyberdeck record with the ROM maker/model labels and
 the static labels from `0xE3902`. The Qt presenter draws those labels and
 grouped decimal values at the traced origins. The route CTest writes
 `qt_runtime/field-matrix-cyber-info-qa/deck-stats.bmp` and checks the maker/model rows, every
-label row, and the numeric origins. This verifies the source-position text
-layer; it does not establish full CyberInfo panel art or pixel equality with
-Genesis Plus GX. A same-state GPGX Test Deck capture is now stored at
+label row, and the numeric origins. At the time of this original route check
+it verified the source-position text layer only. The later same-state GPGX
+comparison below also checks every pixel of the right detail panel against
 `tests_lua/fixtures/gpgx_test_deck/deck-stats.png`.
 
 ### Deck Stats numeric-cell overwrite audit (2026-10-28)
@@ -456,8 +456,60 @@ frame. A later same-state headless GPGX Test Deck run captured that panel at
 `tests_lua/fixtures/gpgx_test_deck/deck-stats.png`; `deck-stats.bmp` remains a
 host QA capture, and full-frame pixel comparison remains open.
 
+## Same-state GPGX Test Deck route audit (2026-11-06)
+
+The independent headless Genesis Plus GX captures under
+`tests_lua/fixtures/gpgx_test_deck/` come from the ROM Debug-menu Test Deck
+action. The fixture records all twelve ratings as 4, an empty five-slot active
+program list, selected Attack size/free-memory/load values `(32, 200, 1)`,
+and the Deck Stats record. The new Qt route QA reaches that state through the
+ordinary field terminal, System Search, and the ROM's 20-VBlank jack-in, then
+writes full 320x224 frames under
+`build/conversion/qt/<config>/qt_runtime/field-matrix-gpgx-test-deck-qa/`.
+
+`[C]` The ROM pass at `0x19856` reads five status bytes beginning at `FFF0ED`
+and selects three-tile rows from `0xD84D6`; initialization at `0x177B0` writes
+status 6 and timer 1. `[H]` The empty footer pixels in the independent
+`cyberdeck.png` capture appear to match the status-0 row. The screenshot seed
+represents that observed state explicitly, while the runtime caller and
+timing that produce it remain open for a separate trace.
+
+The detail panel follows the ROM's static and numeric drawing paths:
+
+- Program titles use the six-tile art table at `0xD9EE8`; Runner Info labels
+  use the two common header grids at `0xD9ED4` and `0xD9EDE` written by
+  `0x1A16A`.
+- The values at `0x18942`, `0x18958`, and `0x1896C` pass `$C2C4`, `$C344`,
+  and `$C3C0` to formatter `0xC216`. Those are rightmost digit cells; the
+  formatter writes toward the left and covers the dotted label cells beneath
+  the value.
+- Cyberdeck descriptions come from `0xE31F2` through text writer `0xC160`.
+  The explicit paragraph control advances a blank row after the wrapped
+  sentence; the host now preserves that gap.
+- The default maker/model row at `0x1AB100` has three spaces between its row
+  control and `Alpha`, placing the model at `(208,32)` after the stream starts
+  at `$C1AE`.
+- Font extraction now applies the horizontal and vertical tile flips encoded
+  in the `0xC1320` glyph words. In particular, `)` uses word `0x0DB3`, which
+  references tile `$5B3` with horizontal flip set.
+
+`shadowrun_ghidra_conversion_qt_field_matrix_gpgx_test_deck_qa` follows the
+live field route and compares its captures to the independent GPGX PNGs. The
+Release run reports exact RGB differences of 172 for Cyberdeck, 1,274 for
+CyberInfo, and 359 for Deck Stats. In all three frames the complete right
+detail panel is pixel-identical (`0` RGB differences); the selected title,
+detail, grid, and full-screen green masks also match their named regions.
+Residual full-frame RGB differences remain in the left grid and footer or
+other surrounding content; the test saves per-screen diff images and does
+not treat those residuals as a full-screen match. The captures are
+`cyberdeck.bmp`, `cyber-info.bmp`, and `actual.bmp` in the QA output folder.
+
 ## Verification
 
+- `shadowrun_ghidra_conversion_qt_field_matrix_gpgx_test_deck_qa` passes in
+  Debug and Release with `QT_QPA_PLATFORM=offscreen`, `SRX_HEADLESS=1`, and
+  dummy SDL audio. The full-frame counts and zero-difference right panels are
+  recorded above; this is a focused route check, not project-wide QA.
 - `shadowrun_ghidra_gameplay_script_menu_route` and
   `shadowrun_ghidra_conversion_qt_field_matrix_cyber_info_qa` pass in Debug
   and Release.
@@ -478,8 +530,9 @@ host QA capture, and full-frame pixel comparison remains open.
   chrome has an independent visual comparison above; its four ROM palette
   phases are implemented and covered by the route QA. The exact offset to a
   numbered compressed longplay frame is not asserted.
-- Deck Stats has a same-state headless GPGX capture, but full-frame pixel
-  comparison against the port remains open.
+- Deck Stats has a same-state headless GPGX capture. Its right detail panel is
+  pixel-identical; full-frame RGB still differs as reported in the audit
+  above.
 - Pull Plug's source-positioned prompt and retained deck chrome were checked
   against independent Section 15 `frame_005400.png`; the complete Matrix traversal viewport
   remains partial.

@@ -6369,7 +6369,12 @@ RgbaImage decode_genesis_startup_font(
         const auto entry = read_rom_u16(
             rom, 0xC1320U + table_index * 2U,
             "Genesis startup font table is truncated");
+        // The VDP name word includes horizontal/vertical flip flags as well
+        // as the tile index; preserve those attributes in the extracted
+        // host glyph rather than carrying them into runtime rendering.
         const auto tile_index = static_cast<std::size_t>(entry & 0x07FFU);
+        const bool flip_x = (entry & 0x0800U) != 0U;
+        const bool flip_y = (entry & 0x1000U) != 0U;
         if (tile_index * 32U + 32U > startup.pattern_vram.size()) {
             throw std::out_of_range("Genesis startup font tile is truncated");
         }
@@ -6379,7 +6384,10 @@ RgbaImage decode_genesis_startup_font(
         const auto atlas_y = (character / kAtlasColumns) * 8U;
         for (std::size_t y = 0; y < 8U; ++y) {
             for (std::size_t x = 0; x < 8U; ++x) {
-                const auto color_index = tile.pixels[y * 8U + x];
+                const auto source_x = flip_x ? 7U - x : x;
+                const auto source_y = flip_y ? 7U - y : y;
+                const auto color_index =
+                    tile.pixels[source_y * 8U + source_x];
                 auto color = startup.palette[16U + color_index];
                 color.alpha = color_index == 0U ? 0U : 255U;
                 atlas.pixels[(atlas_y + y) * atlas.width + atlas_x + x] =

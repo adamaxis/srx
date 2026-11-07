@@ -619,10 +619,11 @@ bool paint_matrix_deck_stats_text(
         return value;
     };
 
-    // ROM 0x18BA2 writes maker/model rows at $C1AE. Each source 0x80
-    // separator advances one name-table row, or eight pixels.
+    // ROM 0x18BA2 starts the maker/model stream at $C1AE. The default row at
+    // 0x1AB100 has three spaces after its 0x80 row control before "Alpha", so
+    // the model begins 24 pixels to the right of the maker at (208,32).
     draw_text(184, 24, stats.manufacturer);
-    draw_text(184, 32, stats.model);
+    draw_text(208, 32, stats.model);
 
     // The ROM text stream at 0xE3902 starts with a 12-glyph header rule and
     // then writes the complete dotted labels. Calls at 0x18BA2..0x18C16

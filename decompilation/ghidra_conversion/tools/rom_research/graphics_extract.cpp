@@ -12380,6 +12380,29 @@ int main(int argc, char** argv) {
             return 1;
         }
     }
+    if (argc == 4 &&
+        std::string(argv[3]) == "--matrix-text-font-assets") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const std::filesystem::path root(argv[2]);
+            const auto startup_font = root / "menu" / "startup" / "font.bmp";
+            const auto matrix_font = root / "cyberspace" / "matrix" /
+                                     "system-map-font.bmp";
+            std::filesystem::create_directories(startup_font.parent_path());
+            std::filesystem::create_directories(matrix_font.parent_path());
+            shadowrun::graphics::write_bmp32(
+                startup_font.string(),
+                shadowrun::graphics::decode_genesis_startup_font(rom));
+            shadowrun::graphics::write_bmp32(
+                matrix_font.string(), decode_matrix_map_font(rom, 0x15FCB6U));
+            std::cout << "startup and Matrix text font assets extracted to "
+                      << root.string() << '\n';
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
     if (argc == 4 && std::string(argv[3]) == "--all-assets") {
         try {
             const auto rom = read_file(argv[1]);
@@ -14134,6 +14157,8 @@ int main(int argc, char** argv) {
                      "--title-boot-assets\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <asset-dir> "
                      "--all-assets\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <out-dir> "
+                     "--matrix-text-font-assets\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <asset-dir> "
                       "--field-player-hit-spark-assets\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <asset-dir> "
