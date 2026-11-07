@@ -53,10 +53,32 @@ not show the Halloweeners target record 94 at `0x173156` (map cells
 `x=1664..1695`, `y=1152..1183`), so that side remains unverified against
 longplay.
 
+### Halloweeners-side target capture
+
+The independent longplay frame
+`video analysis/long_gameplay_video_rest_ffmpeg_30fps_320x224/section_14_source_2520-2820/frame_002670.png`
+is source time 43:29. Matching its 256-pixel field viewport to the decoded
+Scene-2 map locates the camera origin at `(1444,1088)` (normalized grayscale
+correlation `0.953`). This puts record 94's map cell at screen `(220,64)`.
+ROM record 94 at `0x173156` is `0680 069F 0480 049F 00C9`; its bounds cover
+map cell column 52, row 36. That cell uses primary `0x01CD` at `0x16EAEA` and
+secondary `0x020E` at `0x16FE9A`. Its GPGX crop and `mode-2.bmp` have 443/1024
+identical pixels, mean absolute RGB difference `1.49`, maximum difference
+`36`; the capture shows the expected dark open cell without a separator decal.
+
+The immediately southern cells in column 52 also use secondary `0x020E`:
+row 37 is primary `0x0039` at `0x16EB62` / secondary `0x020E` at `0x16FF12`,
+and row 38 is primary `0x00AF` at `0x16EBDA` / secondary `0x020E` at
+`0x16FF8A`. Their GPGX-to-map mean absolute RGB differences are `3.55` and
+`5.84`, respectively. The capture therefore supports the ROM map at the
+Halloweeners entry cell and its next two visible cells. It does not identify
+which other “odd separator/decal slots” the original report meant, so no
+runtime or asset change is supported and the report remains partial pending
+those exact coordinates.
+
 ## Remaining
 
-The extracted map and the two GPGX views agree on the inspected Shiawase-side
-separators. This audit does not establish whether another reported "odd slot"
-refers to a different cell or to the Halloweeners target. Keep playtest item
-#51 partial until that location is compared against an independent frame or
-the exact reproduction coordinates are recorded.
+The extracted map and GPGX views agree on the inspected Shiawase-side
+separators and the Halloweeners entry cell. This audit does not establish
+whether another reported “odd slot” refers to a different cell. Keep playtest
+item #51 partial until the exact reproduction coordinates are recorded.
