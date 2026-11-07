@@ -82,7 +82,9 @@ behavior facts say it is fleeing. That target comes from `0x13E9E` and joins
 the same `0x145A2 -> 0x14BA6 -> 0x14682` route; no source record offsets are
 exposed to Lua [C]. The shared host eligibility gate admits this projected
 fleeing state even when the actor is neither marked as a dynamic encounter nor
-registered with a default patrol route, matching the source's shared caller.
+registered with a default patrol route. The flee destination takes precedence
+over a retained combat-target link because the ROM writes the flee destination
+into the shared movement target before this caller [C].
 When a queued segment becomes blocked, ROM `0x149C0 -> 0x149CE ->
 0x14756` clears the two route flags. The next `0x14682` selection derives its
 route again from live position and target; the source does not retain a prior
@@ -172,9 +174,10 @@ fidelity.
   occupancy or an independent Genesis route.
 - The flee regression uses a non-dynamic projected actor with no patrol route
   at `(0x2000,0x2000)` and the source-derived boundary target
-  `(0x3000,0x2000)`. It blocks the direct step and verifies that shared route
-  eligibility lets the selector queue the last open cell `(0x2300,0x2100)`
-  under target ID `flee-boundary`. Full Lua suites and
+  `(0x3000,0x2000)`, while retaining a combat target at `(0x5000,0x2000)`.
+  It blocks the direct step and verifies that shared route eligibility lets
+  the selector queue the last open cell `(0x2300,0x2100)` under target ID
+  `flee-boundary`. Full Lua suites and
   `shadowrun_gameplay_actor_ai_rules_qa` pass in headless Debug and Release.
   This verifies target plumbing and typed waypoint policy; it does not prove
   imported occupancy or independent Genesis route pixels.

@@ -1774,9 +1774,8 @@ game.movement.source_path_is_clear = patrol_previous_path_query
 
 -- ROM 0x13E9E installs the projected flee-boundary point as the movement
 -- target, then 0x13E8C enters 0x145A2; a blocked pass reaches 0x14682 through
--- 0x14BA6. This target is held in Lua state and has no combat-link ID or patrol
--- route, so verify the shared eligibility gate accepts this non-dynamic actor
--- and the planner resolves the named flee destination.
+-- 0x14BA6. It has no patrol route and is not dynamic, but retains a stale
+-- combat-link ID. Verify shared eligibility and flee-target precedence.
 local flee_previous_cell_query = game.movement.source_cell_is_clear
 local flee_previous_probe = game.movement.probe
 game.movement.source_cell_is_clear = source_cell_query({
@@ -1792,6 +1791,9 @@ game.movement.probe = function(x, y, direction)
 end
 local flee_obstruction_context = movement_fixture(false)
 flee_obstruction_context.actor_id = "field_scene_20_unlisted_flee_actor"
+flee_obstruction_context.ai_target_candidates = {
+    { id = "stale-combat-target", world_x = 0x5000, world_y = 0x2000 },
+}
 flee_obstruction_context.movement_state.position_x = 0x2000
 flee_obstruction_context.movement_state.position_y = 0x2000
 flee_obstruction_context.measure_destination = function(x, y)
@@ -1800,6 +1802,7 @@ flee_obstruction_context.measure_destination = function(x, y)
 end
 local flee_obstruction_state = {
     actor_facts = actor_facts({ behavior = { fleeing = true } }),
+    ai_target_id = "stale-combat-target",
     flee_target_x = 0x3000,
     flee_target_y = 0x2000,
     movement_bearing_degrees = 45,

@@ -905,19 +905,16 @@ local function current_flee_boundary_target(context, state)
 end
 
 local function current_obstruction_target(context, state)
-    local target = current_world_target(context, state)
-    if target ~= nil then
-        return target
-    end
-
-    -- A visible flee pass keeps its boundary destination in Lua state. ROM
-    -- 0x13E9E writes that destination to +0x96/+0x98, then 0x13E8C enters
-    -- 0x145A2; a blocked step reaches the shared 0x14682 selector through
-    -- 0x14BA6. Resolve the semantic target here so flee movement can use the
-    -- same native waypoint policy without exposing those record offsets.
+    -- The flee branch writes its own boundary destination to +0x96/+0x98 at
+    -- 0x13E9E, replacing any earlier combat target before shared movement.
     local flee_target = current_flee_boundary_target(context, state)
     if flee_target ~= nil then
         return flee_target
+    end
+
+    local target = current_world_target(context, state)
+    if target ~= nil then
+        return target
     end
 
     -- ROM 0x142AE places ordinary source patrol waypoints in the same
