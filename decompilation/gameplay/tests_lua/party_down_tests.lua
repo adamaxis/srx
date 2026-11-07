@@ -303,5 +303,33 @@ check(little_chiba_destination == E.PartyWipeDestination.LITTLE_CHIBA and
       little_chiba_arrival.y == 0x2300,
       "unpaid motel flag selects Little Chiba scene 2 arrival")
 
+-- ROM 0xC778..0xC79C chooses a distinct speaker profile for each wake scene.
+local saved_game = game
+local wake_pages = {}
+game = {
+    state = { motel_bill_paid = true },
+    ui = { say = function(...)
+        wake_pages[#wake_pages + 1] = { ... }
+    end },
+}
+local wake_event = P.present_wake()
+check(wake_event == "party_wipe_docwagon" and #wake_pages == 2 and
+      wake_pages[1][1] == "party_wipe_docwagon" and
+      wake_pages[1][2] == "party_wipe_docwagon_narrator" and
+      wake_pages[1][3] == "field.world_event" and
+      wake_pages[2][1] == "party_wipe_docwagon_dropoff" and
+      wake_pages[2][2] == "party_wipe_docwagon_narrator",
+      "paid wake pages carry the DocWagon portrait profile")
+
+game.state.motel_bill_paid = false
+wake_pages = {}
+wake_event = P.present_wake()
+check(wake_event == "party_wipe_little_chiba" and #wake_pages == 1 and
+      wake_pages[1][1] == "party_wipe_little_chiba" and
+      wake_pages[1][2] == "party_wipe_little_chiba_narrator" and
+      wake_pages[1][3] == "field.world_event",
+      "unpaid wake page carries the Little Chiba portrait profile")
+game = saved_game
+
 print(string.format("party_down: %d/%d", pass, total))
 os.exit(pass == total and 0 or 1)

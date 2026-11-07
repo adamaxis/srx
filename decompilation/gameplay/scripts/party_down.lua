@@ -305,11 +305,17 @@ function PartyDown.present_wake()
     local paid = StoryFacts.is_set(E.StoryFact.MOTEL_BILL_PAID)
     pending_wake_destination = PartyDown.wake_destination(paid)
     if paid then
-        game.ui.say("party_wipe_docwagon")
-        game.ui.say("party_wipe_docwagon_dropoff")
+        -- ROM 0xC778..0xC79C selects profile 0x1220B4 for DocWagon; keep its
+        -- presentation profile attached to these two source pages.
+        local speaker = "party_wipe_docwagon_narrator"
+        game.ui.say("party_wipe_docwagon", speaker, "field.world_event")
+        game.ui.say("party_wipe_docwagon_dropoff", speaker,
+                    "field.world_event")
         return "party_wipe_docwagon"
     end
-    game.ui.say("party_wipe_little_chiba")
+    -- ROM 0xC778..0xC79C selects profile 0x12200C for Little Chiba.
+    game.ui.say("party_wipe_little_chiba",
+                "party_wipe_little_chiba_narrator", "field.world_event")
     return "party_wipe_little_chiba"
 end
 

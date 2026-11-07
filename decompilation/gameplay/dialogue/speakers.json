@@ -333,6 +333,32 @@
       "portrait_alias": "none",
       "text_profile": "field.world_event"
     },
+    "party_wipe_docwagon_narrator": {
+      "events": {
+        "party_wipe_docwagon": {
+          "continuation_key": "",
+          "title_key": "party_wipe.docwagon"
+        },
+        "party_wipe_docwagon_dropoff": {
+          "continuation_key": "",
+          "title_key": "party_wipe.docwagon_dropoff"
+        }
+      },
+      "name": "Narration",
+      "portrait_alias": "field.mode.entry.docwagon.sprite",
+      "text_profile": "field.world_event"
+    },
+    "party_wipe_little_chiba_narrator": {
+      "events": {
+        "party_wipe_little_chiba": {
+          "continuation_key": "",
+          "title_key": "party_wipe.little_chiba"
+        }
+      },
+      "name": "Narration",
+      "portrait_alias": "field.mode.entry.little.chiba.sprite",
+      "text_profile": "field.world_event"
+    },
     "fuchi_offices_narrator": {
       "events": {
         "entry": {

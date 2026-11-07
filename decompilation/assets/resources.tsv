@@ -901,6 +901,7 @@ field.hud.active.frame	field/hud/active-frame.bmp	image	0	0
 field.mode.entry.ares.sprite	field/mode-entry/ares-sprite.bmp	image	0	0
 field.mode.entry.renraku.arcology.sprite	field/mode-entry/renraku-arcology-sprite.bmp	image	0	0
 field.mode.entry.little.chiba.sprite	field/mode-entry/little-chiba-sprite.bmp	image	0	0
+field.mode.entry.docwagon.sprite	field/mode-entry/docwagon-sprite.bmp	image	0	0
 field.mode.entry.renraku.strike.team.sprite	field/mode-entry/renraku-strike-team-sprite.bmp	image	0	0
 field.hud.face.0	field/hud/face-0.bmp	image	0	0
 field.hud.face.1	field/hud/face-1.bmp	image	0	0

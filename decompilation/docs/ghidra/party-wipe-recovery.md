@@ -80,6 +80,24 @@ scene loader publishes it through FFFBF8 [C]. Lua selects the named
 through its existing dialogue scene fade route. Explicit spawn data also
 forces a real scene entry when DocWagon returns to the already loaded scene.
 
+## Wake portraits
+
+The wake branch at `0xC778..0xC79C` selects both a text node and an A5 profile
+before calling the shared dialogue path at `0x1F246`; that path reaches the
+profile sprite loader at `0x1F292` [C]. With FFFC1E bit 0 set, the source uses
+DocWagon node `0xC25A0` and profile `0x1220B4`. With the bit clear, it uses
+Little Chiba node `0xC25BC` and profile `0x12200C` [C].
+
+The native recovery script now carries the corresponding named speaker profile
+on each Lua `game.ui.say` request. This keeps portrait choice in the Lua
+presentation route; the C++ field host leaves the location on its generic
+narrator context. The existing `field.mode.entry.little.chiba.sprite` asset
+matches the Little Chiba face in independent GPGX frame `21228`. The extractor
+now writes profile `0x1220B4` as the 56x72
+`field/mode-entry/docwagon-sprite.bmp` asset. The DocWagon asset is connected
+to its speaker profile and appears in the route dump, but no independent
+DocWagon screenshot was available for a visual match.
+
 The source restore path at `0x594E0` reads bytes FFF5BE through FFF805 (end
 pointer FFF806) for the saved field payload and does not restore FFE166, so the
 countdown does not survive a ROM save load [C]. Whether the save writer
@@ -110,9 +128,12 @@ FFE166 sample.
 ## Checks
 
 `party_down_tests.lua` covers types 1, 2, 4, and 5; type 5's bit-7 guard; the
-active-bit and no-run cases; run-registry reset; and both destination/arrival
-choices. `shadowrun_ghidra_conversion_qt_field_party_wipe_qa` runs the common
-recovery twice and checks DocWagon scene 0 at `(0x6200, 0x2D00)` and Little
-Chiba scene 2 at `(0x6680, 0x2300)`. It writes `docwagon.bmp` and
-`actual.bmp`. These are native regression dumps; no independent Genesis frame
-has been claimed.
+active-bit and no-run cases; run-registry reset; both destination/arrival
+choices; and the speaker profile on every wake page. The Debug and Release
+`shadowrun_gameplay_party_down_rules_qa` checks pass. The Debug and Release
+`shadowrun_ghidra_conversion_qt_field_party_wipe_qa` checks pass, including the
+DocWagon scene 0 arrival `(0x6200, 0x2D00)` and Little Chiba scene 2 arrival
+`(0x6680, 0x2300)`. Each run writes `docwagon-wake.bmp`,
+`little-chiba-wake.bmp`, `docwagon.bmp`, and `actual.bmp`. Little Chiba's wake
+dump matches the face in the independent GPGX frame; DocWagon's dump is an
+internal presentation regression only.

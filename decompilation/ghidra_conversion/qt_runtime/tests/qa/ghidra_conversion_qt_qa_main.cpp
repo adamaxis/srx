@@ -1924,7 +1924,9 @@ int run_field_party_wipe_qa(
                                    const std::uint16_t expected_scene,
                                    const std::uint16_t expected_x,
                                    const std::uint16_t expected_y,
-                                   const std::filesystem::path& image_name) {
+                                   const std::filesystem::path& image_name,
+                                   const std::filesystem::path& wake_image_name,
+                                   const std::string_view expected_portrait_alias) {
         if (!field_scene.set_story_flag_for_dump(0U, motel_bill_paid)) {
             return false;
         }
@@ -1941,8 +1943,15 @@ int run_field_party_wipe_qa(
         if (!field_scene.dialogue_open()) {
             return false;
         }
+        bool wake_page_saved = false;
         for (std::uint8_t page = 0U;
              page < 12U && field_scene.dialogue_open(); ++page) {
+            if (!wake_page_saved &&
+                field_scene.dialogue_panel().portrait_alias ==
+                    expected_portrait_alias) {
+                wake_page_saved = save_qa_image(
+                    output, wake_image_name, render_qa_field(field_scene));
+            }
             tap_qa_controller_button(field_scene, 0x40U);
         }
         for (std::uint8_t frame = 0U;
@@ -1973,11 +1982,13 @@ int run_field_party_wipe_qa(
                    FieldSceneTransitionPhase::idle &&
                field_scene.field_scene_reference_for_dump() == expected_scene &&
                arrival.x == expected_x && arrival.y == expected_y &&
-               runner_refresh_ok &&
+               runner_refresh_ok && wake_page_saved &&
                save_qa_image(output, image_name, image);
     };
 
-    if (!exercise_wipe(true, 0U, 0x6200U, 0x2D00U, "docwagon.bmp")) {
+    if (!exercise_wipe(
+            true, 0U, 0x6200U, 0x2D00U, "docwagon.bmp",
+            "docwagon-wake.bmp", "field.mode.entry.docwagon.sprite")) {
         std::cerr << "field party-wipe QA: paid-bill wipe did not arrive at "
                      "DocWagon scene 0 position 0x6200,0x2D00; scene="
                   << field_scene.field_scene_reference_for_dump()
@@ -1989,7 +2000,10 @@ int run_field_party_wipe_qa(
                   << " failure=" << field_scene.failure() << '\n';
         return 3;
     }
-    if (!exercise_wipe(false, 2U, 0x6680U, 0x2300U, "actual.bmp")) {
+    if (!exercise_wipe(
+            false, 2U, 0x6680U, 0x2300U, "actual.bmp",
+            "little-chiba-wake.bmp",
+            "field.mode.entry.little.chiba.sprite")) {
         std::cerr << "field party-wipe QA: unpaid-bill wipe did not arrive at "
                      "Little Chiba scene 2 position 0x6680,0x2300; scene="
                   << field_scene.field_scene_reference_for_dump()

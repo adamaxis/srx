@@ -8105,6 +8105,18 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                                          little_chiba_mode_sprite.height,
                                          little_chiba_mode_sprite.pixels},
           "sprite", "0x1F830/0x1F246/0x1F292/0x12200C", true);
+    // Party recovery selects profile 0x1220B4 for the DocWagon branch at
+    // 0xC778..0xC79C. The shared 0x1F246/0x1F292 path displays this sprite
+    // beside the recovery text, so keep it as an individually named asset.
+    const auto docwagon_mode_sprite =
+        shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
+            rom, 0x1220B4U);
+    write("field/mode-entry/docwagon-sprite.bmp",
+          shadowrun::native::NativeImage{docwagon_mode_sprite.width,
+                                         docwagon_mode_sprite.height,
+                                         docwagon_mode_sprite.pixels},
+          "sprite",
+          "0xC716/0xC778..0xC79C/0x1F246/0x1F292/0x1220B4", true);
     const auto renraku_mode_sprite =
         shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
             rom, 0x12206CU);
