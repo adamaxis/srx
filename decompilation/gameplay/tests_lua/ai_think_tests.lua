@@ -1621,6 +1621,14 @@ for _, route_case in ipairs(route_heading_cases) do
                         route_case[1], route_case[2]))
 end
 
+local linked_heading_context = movement_fixture(false)
+linked_heading_context.actor_id = "field_scene_20_target_linked_actor"
+linked_heading_context.actor_facts.lifecycle.ai_runner = true
+linked_heading_context.movement_actor_facts.lifecycle.ai_runner = true
+check(R.movement_direction_from_bearing_degrees(
+          linked_heading_context, 357.1875) == 7,
+      "non-patrol linked AI actor uses the B574 truncating C062 selector with THINK clear [C: 0x13D0C, 0x145A2, 0xB574, 0xB6BA]")
+
 local saved_movement_probe = game.movement.probe
 local saved_source_path_query = game.movement.source_path_is_clear
 local route_cell_query_calls = 0

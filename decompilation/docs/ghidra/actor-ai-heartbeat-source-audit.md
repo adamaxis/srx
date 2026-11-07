@@ -263,7 +263,11 @@ initialize `+0x08` to zero. The connected Lua actor heartbeat now keeps the
 21-pass target refresh separate from per-pass continuation movement, selects
 these vectors from the typed actor flags, target distance, Quickness, and the
 `FFDF84` timeout marker, and preserves that common `+0x08` value. The runner
-uses the same `0xB574` selector. `0xC002` (±40) is the kind-`0x0C` attack pose
+uses the same `0xB574` selector. The target-linked path from `0x13904` through
+`0x13D0C` and `0x145A2` also enters `0xB574`; Lua therefore selects its
+truncating movement and `0xC062` walk-pose octants from the typed
+`lifecycle.ai_runner` fact even when THINK is clear and no patrol route is
+registered. `0xC002` (±40) is the kind-`0x0C` attack pose
 at `0xBABC`, and the off-screen catch-up at `0xB678`. It is not the on-screen
 walk. B selection's `+0x11.4` latch is also kept out of the `+0x10` service
 byte, which previously corrupted the actor's active flags.

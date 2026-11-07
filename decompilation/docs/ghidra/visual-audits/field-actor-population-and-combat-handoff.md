@@ -477,6 +477,22 @@ route edges finds 19 cases where rounding changes the octant, across ten
 distinct `0x15D3C` headings. The movement-metric CTest checks all ten heading
 shapes against ROM-derived route coordinates, then recomputes every edge from
 the two extracted default-route manifests and asserts the 379/19/10 census.
+
+### Target-linked actor heading selector (2026-11-07)
+
+The linked-target path at `0x13904 -> 0x13D0C -> 0x145A2` enters the same
+`0xB574` movement continuation as a routed default actor. Its bearing and
+`0xC062` walk-pose selectors truncate the octant (`0xB5BE`, `0xB6BA..0xB6DE`)
+without consulting THINK. Lua previously selected that truncating path for
+encounters, extracted patrol routes, or THINK-enabled records, but not for a
+non-dynamic linked-target actor with no extracted patrol route. The movement
+selector now also reads the semantic `movement_actor_facts.lifecycle.ai_runner`
+fact. A regression uses heading `0xFF00` (357.1875 degrees), which truncates
+to direction 7 while nearest-octant rounding would choose direction 0.
+
+The regression checks the selector policy from typed facts; it is not an
+independent actor-route capture. Route pixels and the full target-linked actor
+matrix remain open.
 The Lua CTest asserts each truncated selector value. Both pass in Debug and
 Release when Lua is available.
 This closes the rounded-versus-truncated selector gap for extracted route

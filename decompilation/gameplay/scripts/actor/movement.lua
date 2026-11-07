@@ -472,9 +472,12 @@ local function movement_octant_selector(context)
     -- B574 continuation. Its generic B5BE movement selector and B6BA-B6DE
     -- C062 walk selector truncate for routed default actors too: 0x44BC gives
     -- them +0x10=0x05, so THINK alone cannot identify that path. Lua resolves
-    -- the actor's route from its stable ID. The player BABC path keeps its
-    -- existing flag-gated rounded selector.
+    -- the actor's route from its stable ID. Target-linked actors use the same
+    -- continuation through 0x13D0C -> 0x145A2; their typed ai_runner fact
+    -- selects truncation even when THINK is clear. The player BABC path keeps
+    -- its existing flag-gated rounded selector.
     if context.dynamic_world_encounter_actor == true or
+       actor_lifecycle(context).ai_runner == true or
        ActorPatrolRoutes.has_route(context.actor_id) or
        actor_lifecycle(context).thinking_enabled then
         return walk_direction_from_bearing_degrees
