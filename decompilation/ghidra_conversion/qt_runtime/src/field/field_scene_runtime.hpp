@@ -1789,6 +1789,10 @@ public:
     field_weapon_primary_heading_for_dump() const noexcept;
     std::optional<std::uint32_t>
     field_weapon_primary_remaining_clear_steps_for_dump() const noexcept;
+    // Signed +0x9F written by the projectile behavior service. ROM 0x55640
+    // fills this before a later hit reads it.
+    std::optional<std::int16_t>
+    field_weapon_primary_action_result_for_dump() const noexcept;
     std::optional<std::uint16_t>
     field_weapon_projectile_selector_for_dump() const noexcept;
     std::optional<bool>

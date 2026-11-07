@@ -618,6 +618,19 @@ FieldSceneRuntime::field_weapon_primary_remaining_clear_steps_for_dump() const n
 
 
 #ifdef SHADOWRUN_QT_QA_DRIVER
+std::optional<std::int16_t>
+FieldSceneRuntime::field_weapon_primary_action_result_for_dump() const noexcept {
+    for (const auto& spawn : field_weapon_projectiles_) {
+        if (spawn.primary_active) {
+            return spawn.primary_record.action_result;
+        }
+    }
+    return std::nullopt;
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
+
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 bool FieldSceneRuntime::bootstrap_for_scene_dump(
     const integration::StartupIntegrationState& startup_state,
     const std::uint16_t scene_reference) {

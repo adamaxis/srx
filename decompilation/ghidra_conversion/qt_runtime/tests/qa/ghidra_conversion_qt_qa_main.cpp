@@ -1278,6 +1278,100 @@ int run_field_command_overview_close_qa(
     return 0;
 }
 
+// New-game samurai 0x7291A, Model 101T (item 2), seed 0xDF65.
+// One advance fires and renders. The next advance is the first behavior
+// service, which must run ROM 0x55640. Parent code leaves +0x9F at 0
+// because render already marked the animation script initialized.
+int run_field_pistol_attack_seed_qa(FieldSceneRuntime& field_scene) {
+    auto& runner = field_scene.active_runner_record();
+    const bool samurai_pistol =
+        runner.equipped_item_code == 2U &&
+        runner.equipped_inventory_slot == 0 &&
+        runner.attributes[0] == 4U &&
+        runner.attributes[1] == 3U &&
+        runner.attributes[2] == 4U &&
+        runner.attributes[4] == 2U &&
+        runner.attributes[5] == 4U &&
+        runner.skills[1] == 4U &&
+        runner.skills[2] == 0U &&
+        runner.posture == 2U &&
+        runner.delay_meter == 10U &&
+        runner.behavior_meter == 10U &&
+        runner.inventory_phase_bytes[1] == 0U &&
+        (runner.cyberware_flags & 0x0012U) == 0U;
+    if (!samurai_pistol) {
+        std::cerr << "pistol attack-seed QA: runner is not the 0x7291A "
+                     "Model 101T profile"
+                  << " item=" << static_cast<unsigned>(runner.equipped_item_code)
+                  << " slot=" << static_cast<int>(runner.equipped_inventory_slot)
+                  << " body=" << static_cast<unsigned>(runner.attributes[0])
+                  << " quickness=" << static_cast<unsigned>(runner.attributes[1])
+                  << " strength=" << static_cast<unsigned>(runner.attributes[2])
+                  << " intelligence=" << static_cast<unsigned>(runner.attributes[4])
+                  << " willpower=" << static_cast<unsigned>(runner.attributes[5])
+                  << " firearms=" << static_cast<unsigned>(runner.skills[1])
+                  << " pistols=" << static_cast<unsigned>(runner.skills[2])
+                  << " posture=" << static_cast<unsigned>(runner.posture)
+                  << " physical=" << static_cast<unsigned>(runner.delay_meter)
+                  << " mental=" << static_cast<unsigned>(runner.behavior_meter)
+                  << " phase1="
+                  << static_cast<unsigned>(runner.inventory_phase_bytes[1])
+                  << " cyber=" << std::hex << runner.cyberware_flags
+                  << std::dec << '\n';
+        return 3;
+    }
+    // The template gate is 0, which blocks 0xACAE. Open it for this shot
+    // without changing the combatant the roll reads.
+    runner.animation_action_gate = -1;
+    runner.flags = static_cast<std::uint16_t>(runner.flags | 0x0300U);
+    if (runner.ammo_rounds == 0U) {
+        runner.ammo_rounds = 1U;
+    }
+    field_scene.set_controller_port_byte(0x40U);
+    field_scene.advance_frame();
+    field_scene.set_controller_port_byte(0U);
+    const auto after_render =
+        field_scene.field_weapon_primary_action_result_for_dump();
+    if (field_scene.field_weapon_primary_count_for_dump() != 1U ||
+        !after_render.has_value() || *after_render != 0) {
+        std::cerr << "pistol attack-seed QA: fire frame did not leave one "
+                     "unrolled primary"
+                  << " count="
+                  << field_scene.field_weapon_primary_count_for_dump()
+                  << " action_result=";
+        if (after_render.has_value()) {
+            std::cerr << *after_render;
+        } else {
+            std::cerr << "<none>";
+        }
+        std::cerr << " spawn="
+                  << static_cast<int>(
+                         field_scene.last_field_weapon_spawn_action_for_dump())
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+    // Pin the seed at the behavior frame. Projectile service is the first
+    // random consumer in that service, and 0xDF65 rolls 3 attack successes
+    // for this profile (#46T). A skipped roll stays 0.
+    field_scene.set_source_random_seed_for_dump(0xDF65U);
+    field_scene.advance_frame();
+    const auto after_behavior =
+        field_scene.field_weapon_primary_action_result_for_dump();
+    if (!after_behavior.has_value() || *after_behavior != 3) {
+        std::cerr << "pistol attack-seed QA: behavior pass did not publish "
+                     "0x55640 successes 3 for seed DF65, got ";
+        if (after_behavior.has_value()) {
+            std::cerr << *after_behavior;
+        } else {
+            std::cerr << "<none>";
+        }
+        std::cerr << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+    std::cout << "field_pistol_attack_seed_qa=passed action_result=3\n";
+    return 0;
+}
+
 int run_field_audio_qa(FieldSceneRuntime& field_scene) {
     const auto print = [](const auto& values) {
         std::ostringstream text;
@@ -40425,6 +40519,7 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> field_world_activity_qa_path;
         std::optional<std::filesystem::path> field_party_wipe_qa_path;
         bool field_audio_qa = false;
+        bool field_pistol_attack_seed_qa = false;
         std::optional<std::filesystem::path> field_terrain_mark_qa_path;
         std::optional<std::filesystem::path>
             field_world_effect_repaint_qa_path;
@@ -40853,6 +40948,10 @@ int main(int argc, char** argv) {
             if (std::string(argv[index]) == "--field-audio-qa") {
                 field_smoke = true;
                 field_audio_qa = true;
+            }
+            if (std::string(argv[index]) == "--field-pistol-attack-seed-qa") {
+                field_smoke = true;
+                field_pistol_attack_seed_qa = true;
             }
             if (std::string(argv[index]) == "--field-world-activity-qa" &&
                 index + 1 < argc) {
@@ -46931,6 +47030,9 @@ int main(int argc, char** argv) {
             }
             if (field_audio_qa) {
                 return run_field_audio_qa(field_scene);
+            }
+            if (field_pistol_attack_seed_qa) {
+                return run_field_pistol_attack_seed_qa(field_scene);
             }
             if (field_world_activity_qa_path.has_value()) {
                 return run_field_world_activity_qa(
