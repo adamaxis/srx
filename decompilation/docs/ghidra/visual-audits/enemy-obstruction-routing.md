@@ -66,9 +66,12 @@ capture, so the visible route is not confirmed against the ROM game.
   is `lifecycle.ai_runner`. Blocked movement reaches the shared `0x14682`
   selector, so this path does not require dynamic-encounter or patrol-list
   metadata.
-- [C] The visible flee pass also uses the shared movement target: `0x13E9E`
-  derives the field-boundary destination and stores it at `+0x96/+0x98`, then
+- [C] The flee pass uses the shared movement target: `0x13E9E` derives the
+  field-boundary destination and stores it at `+0x96/+0x98`, then
   `0x13E8C -> 0x145A2 -> 0x14BA6` reaches `0x14682` when movement is blocked.
+  Once actor `+0xB0` bit 6 is set, `0x1397A..0x13980` dispatches later passes
+  through `0x13E8C`; `0x13E9E` returns without replacing the stored target.
+  Thus a continuing flee route keeps that target when its host projection ends.
 
 ## Host implementation
 
@@ -86,15 +89,17 @@ through the last open cell and stops at the first blocked cell, matching
 heading-rotated strips from `0x14800`. Lua stores those results as ordinary
 world waypoints. It advances the waypoint index as the actor enters each
 waypoint cell and measures the live target again when the route ends.
-The visible flee branch also resolves its Lua-owned `flee_target_x/y` as a
-named `flee-boundary` target when the actor projection is active and its
-behavior facts say it is fleeing. That target comes from `0x13E9E` and joins
-the same `0x145A2 -> 0x14BA6 -> 0x14682` route; no source record offsets are
-exposed to Lua [C]. The shared host eligibility gate admits this projected
-fleeing state even when the actor is neither marked as a dynamic encounter nor
-registered with a default patrol route. The flee destination takes precedence
-over a retained combat-target link because the ROM writes the flee destination
-into the shared movement target before this caller [C].
+Lua resolves its stored `flee_target_x/y` as a named `flee-boundary` target
+whenever the actor's typed behavior state remains fleeing, even after its
+projection ends. The initial flee decision still requires the active source
+projection in `actor/think.lua`; the movement target persists across later
+offscreen service passes. That target comes from `0x13E9E` and joins the same
+`0x145A2 -> 0x14BA6 -> 0x14682` route; no source record offsets are exposed to
+Lua [C]. The shared host eligibility gate admits the fleeing state even when
+the actor is neither marked as a dynamic encounter nor registered with a
+default patrol route. The flee destination takes precedence over a retained
+combat-target link because the ROM writes the flee destination into the shared
+movement target before this caller [C].
 When a queued segment becomes blocked, ROM `0x149C0 -> 0x149CE ->
 0x14756` clears the two route flags. The next `0x14682` selection derives its
 route again from live position and target; the source does not retain a prior
@@ -263,3 +268,23 @@ cells as obstructions. The tested row-12 corridor and column-34 return leg
 have no covering collision record in the full table. Thus the collision-cell
 claims are [C]; route pixels and movement remain [H] without an independent
 Genesis route capture, so item #49 remains partial.
+
+### Offscreen flee target continuity (2026-11-07)
+
+ROM `0x1397A..0x13980` checks actor `+0xB0` bit 6 and dispatches an already
+fleeing record through `0x13E8C`. With the movement path active, `0x13E9E`
+returns when that bit was already set, preserving the boundary destination in
+`+0x96/+0x98`; blocked movement can then take `0x145A2 -> 0x14BA6 -> 0x14682`.
+The source does not discard that stored destination when the actor leaves the
+visible projection.
+
+Lua had required `source_projection_active` before treating the stored flee
+coordinates as a route target. An offscreen actor that was already fleeing
+could therefore lose obstruction-route eligibility or fall through to its
+stale combat link. The route policy now uses the stored boundary coordinates
+while the typed fleeing state remains active. A regression sets an offscreen,
+non-dynamic actor with no patrol route and a stale combat target, blocks its
+movement, and checks that the first route waypoint still follows the boundary
+target. The test failed before this fix and passes in Debug and Release under
+`shadowrun_gameplay_actor_ai_rules_qa`. This is an internal policy fixture;
+independent Genesis route pixels remain open, so #49 stays partial.

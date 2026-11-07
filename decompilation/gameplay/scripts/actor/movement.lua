@@ -891,11 +891,14 @@ local function current_world_target(context, state)
     return nil
 end
 
-local function current_flee_boundary_target(context, state)
+local function current_flee_boundary_target(state)
     local actor_facts = state.actor_facts
     local behavior = type(actor_facts) == "table" and actor_facts.behavior
-    if context.source_projection_active == true and
-       type(behavior) == "table" and behavior.fleeing == true and
+    -- ROM 0x1397A dispatches an already-fleeing actor to 0x13E8C without a
+    -- projection check. 0x13E9E leaves +0x96/+0x98 unchanged once the flee
+    -- state is set, so that stored destination remains the movement target
+    -- after the actor leaves the visible projection [C].
+    if type(behavior) == "table" and behavior.fleeing == true and
        type(state.flee_target_x) == "number" and
        type(state.flee_target_y) == "number" then
         return {
@@ -909,8 +912,9 @@ end
 
 local function current_obstruction_target(context, state)
     -- The flee branch writes its own boundary destination to +0x96/+0x98 at
-    -- 0x13E9E, replacing any earlier combat target before shared movement.
-    local flee_target = current_flee_boundary_target(context, state)
+    -- 0x13E9E, replacing any earlier combat target before shared movement;
+    -- later offscreen passes retain that same target while +0xB0 bit 6 is set.
+    local flee_target = current_flee_boundary_target(state)
     if flee_target ~= nil then
         return flee_target
     end
@@ -948,7 +952,7 @@ local function obstruction_routing_available(context, state)
         current_world_target(context, state) ~= nil
     return context.dynamic_world_encounter_actor == true or
         linked_world_target or
-        current_flee_boundary_target(context, state) ~= nil or
+        current_flee_boundary_target(state) ~= nil or
         ActorPatrolRoutes.has_route(context.actor_id)
 end
 

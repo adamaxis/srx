@@ -1881,6 +1881,37 @@ check(flee_obstruction_step ~= nil and
       flee_obstruction_state.obstruction_route.waypoints[1].x == 0x2300 and
       flee_obstruction_state.obstruction_route.waypoints[1].y == 0x2100,
       "blocked visible flee movement routes toward its boundary destination [C: 0x13E9E, 0x13E8C, 0x145A2, 0x14BA6, 0x14682]")
+
+local offscreen_flee_context = movement_fixture(false)
+offscreen_flee_context.actor_id = "field_scene_20_offscreen_flee_actor"
+offscreen_flee_context.source_projection_active = false
+offscreen_flee_context.ai_target_candidates = {
+    { id = "stale-combat-target", world_x = 0x5000, world_y = 0x2000 },
+}
+offscreen_flee_context.movement_state.position_x = 0x2000
+offscreen_flee_context.movement_state.position_y = 0x2000
+offscreen_flee_context.measure_destination = function(x, y)
+    return { bearing_degrees = x == 0x3000 and y == 0x2000 and 45 or 315,
+        distance = 0x500, step_cost = 0x300 }
+end
+local offscreen_flee_state = {
+    actor_facts = actor_facts({ behavior = { fleeing = true } }),
+    ai_target_id = "stale-combat-target",
+    flee_target_x = 0x3000,
+    flee_target_y = 0x2000,
+    movement_bearing_degrees = 45,
+    movement_current_bearing_degrees = 45,
+    movement_route_distance = 0x1000,
+}
+local offscreen_flee_step = R.advance_entity_movement(
+    offscreen_flee_context, offscreen_flee_state)
+check(offscreen_flee_step ~= nil and
+      offscreen_flee_step.outcome == "reset" and
+      offscreen_flee_state.obstruction_route ~= nil and
+      offscreen_flee_state.obstruction_route.target_id == "flee-boundary" and
+      offscreen_flee_state.obstruction_route.waypoints[1].x == 0x2300 and
+      offscreen_flee_state.obstruction_route.waypoints[1].y == 0x2100,
+      "blocked offscreen flee movement keeps its stored boundary destination instead of a stale combat link [C: 0x1397A..0x13E9E, 0x145A2, 0x14BA6, 0x14682]")
 game.movement.source_cell_is_clear = flee_previous_cell_query
 game.movement.probe = flee_previous_probe
 
