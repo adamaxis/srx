@@ -236,3 +236,22 @@ fidelity.
 - The focused field encounter CTest passes in headless Debug and Release. The
   Debug and Release `obstruction-route/actual.bmp` files have matching SHA-256
   `8261A58F77F75333BFCDB5F185FCC8118AC62860D4165ED566488AB3587E5517`.
+
+## End-to-end Scene-2 route to engagement range (2026-11-07)
+
+ROM `0x15C58` accepts an ordinary creature's linked target below distance
+`0x0200`; the distance measure at `0x15D4E` is max-axis distance plus half the
+min-axis distance. The Scene-2 integration QA now keeps the spawned Weenr
+active through the full obstruction detour and live-target reacquisition,
+rather than stopping once it has crossed the wall. It checks the row-14 wall,
+the row-12 clear detour, the live `party.runner.0` target, and every traversed
+cell before ending at the source engagement threshold.
+
+The headless Debug and Release routes both reach distance `508` at route frame
+`352`, with the Weenr at `(17695,6931)` and the runner still selected. Each
+run emits 45 route samples plus `obstruction-route/actual.bmp`; both full-screen
+images have SHA-256
+`5CDAF8061A18BB3E56E6E6445A6C782AE9B7507D2CFAA8889090091F14693B99`.
+This proves the integrated port path in this imported Scene-2 fixture. The
+collision-map layout and route pixels remain [H] without an independent
+Genesis route capture, so item #49 remains partial.

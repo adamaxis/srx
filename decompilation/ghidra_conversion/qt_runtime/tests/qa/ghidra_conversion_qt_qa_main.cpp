@@ -2578,9 +2578,15 @@ int run_field_obstruction_route_qa(
     bool saw_north_detour = false;
     bool saw_detour_corridor_row = false;
     bool advanced_beyond_start = false;
+    bool reached_target_engagement_range = false;
     bool route_cells_clear = true;
     std::uint16_t sampled_frames = 0U;
-    for (std::uint16_t frame = 1U; frame <= 240U; ++frame) {
+    std::optional<std::uint16_t> final_target_distance;
+    // ROM 0x15C58 accepts an ordinary creature's linked target below the
+    // 0x0200 distance threshold. Keep this route live until the actor reaches
+    // that threshold or the bounded route window ends; an early detour check
+    // only proved that it left the starting cell, not that pursuit resumed.
+    for (std::uint16_t frame = 1U; frame <= 480U; ++frame) {
         field_scene.set_controller_port_byte(0U);
         field_scene.advance_frame();
         const auto actors = field_scene.active_default_actor_positions_for_dump();
@@ -2605,8 +2611,10 @@ int run_field_obstruction_route_qa(
             field_scene.default_actor_ai_target_id_for_dump(0U);
         const auto target_distance =
             field_scene.default_actor_ai_target_distance_for_dump(0U);
+        final_target_distance = target_distance;
         if (frame == 1U || frame % 8U == 0U ||
-            (saw_north_detour && advanced_beyond_start)) {
+            (target_id == std::optional<std::string>{"party.runner.0"} &&
+             target_distance.has_value() && *target_distance < 0x0200U)) {
             route_trace << frame << '\t' << actor.x << '\t' << actor.y << '\t'
                         << target_id.value_or("<none>") << '\t';
             if (target_distance.has_value()) {
@@ -2617,7 +2625,10 @@ int run_field_obstruction_route_qa(
             route_trace << '\t' << actor_cell_clear << '\n';
             ++sampled_frames;
         }
-        if (saw_north_detour && advanced_beyond_start) {
+        if (target_id == std::optional<std::string>{"party.runner.0"} &&
+            target_distance.has_value() &&
+            *target_distance < 0x0200U) {
+            reached_target_engagement_range = true;
             break;
         }
     }
@@ -2637,7 +2648,9 @@ int run_field_obstruction_route_qa(
     if (!initial_saved || !actual_saved || !trace_saved ||
         sampled_frames == 0U || !route_cells_clear ||
         !saw_north_detour || !saw_detour_corridor_row ||
-        !advanced_beyond_start ||
+        !advanced_beyond_start || !reached_target_engagement_range ||
+        !final_target_distance.has_value() ||
+        *final_target_distance >= 0x0200U ||
         final_positions.size() != 2U || !final_target.has_value() ||
         !field_hud_chrome_survives(actual, asset_root)) {
         std::cerr << "field obstruction-route QA: live actor did not take the "
@@ -2645,6 +2658,8 @@ int run_field_obstruction_route_qa(
                   << " detour=" << saw_north_detour
                   << " corridor_row=" << saw_detour_corridor_row
                   << " advanced=" << advanced_beyond_start
+                  << " engagement_range="
+                  << reached_target_engagement_range
                   << " cells_clear=" << route_cells_clear
                   << " target=" << final_target.value_or("<none>")
                   << " target_pool=";
@@ -2670,6 +2685,8 @@ int run_field_obstruction_route_qa(
               << " detour=" << saw_north_detour
               << " corridor_row=" << saw_detour_corridor_row
               << " advanced=" << advanced_beyond_start
+              << " engagement_range=" << reached_target_engagement_range
+              << " target_distance=" << final_target_distance.value_or(0xFFFFU)
               << " target=" << *final_target << " trace_rows="
               << sampled_frames << " actual="
               << (output / "actual.bmp").string() << '\n';
