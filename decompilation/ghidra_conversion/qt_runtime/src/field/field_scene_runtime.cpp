@@ -294,6 +294,40 @@ void set_script_animation_facts(
     context.can_start_item_action = ordinary_pose;
 }
 
+void apply_matrix_font_name_word_flips(QImage& font) {
+    // ROM 0xC1320 names the startup/matrix glyphs. ')' is word 0x0DB3 and
+    // '>' is word 0x0DC6: the same tiles as '(' (0x05B3) and '<' (0x05C6)
+    // with the VDP horizontal-flip bit. [C] An atlas extracted before that
+    // bit was baked still stores the raw tile, so the cyberdeck detail
+    // panel draws ')' one column left of the GPGX capture. Mirror only
+    // while the cell still matches its unflipped source.
+    if (font.size() != QSize(128, 48)) {
+        return;
+    }
+    font = font.convertToFormat(QImage::Format_ARGB32);
+    const auto cell = [](const int glyph) {
+        return QRect((glyph % 16) * 8, (glyph / 16) * 8, 8, 8);
+    };
+    const auto same = [&font, &cell](const int left, const int right) {
+        return font.copy(cell(left)) == font.copy(cell(right));
+    };
+    const auto mirror = [&font, &cell](const int source, const int dest) {
+        const auto flipped = font.copy(cell(source)).mirrored(true, false);
+        QPainter painter(&font);
+        painter.drawImage(cell(dest).topLeft(), flipped);
+    };
+    constexpr int kOpenParen = 0x28 - 0x20;
+    constexpr int kCloseParen = 0x29 - 0x20;
+    constexpr int kLessThan = 0x3C - 0x20;
+    constexpr int kGreaterThan = 0x3E - 0x20;
+    if (same(kOpenParen, kCloseParen)) {
+        mirror(kOpenParen, kCloseParen);
+    }
+    if (same(kLessThan, kGreaterThan)) {
+        mirror(kLessThan, kGreaterThan);
+    }
+}
+
 void make_random_grid_black_transparent(QImage& image) {
     image = image.convertToFormat(QImage::Format_ARGB32);
     for (int y = 0; y < image.height(); ++y) {
@@ -7392,6 +7426,7 @@ bool FieldSceneRuntime::load_command_overview_assets(
         failure_ = "Matrix source artwork is unavailable";
         return false;
     }
+    apply_matrix_font_name_word_flips(matrix_map_font_);
     for (std::size_t theme = 0U;
          theme < matrix_traversal_backgrounds_.size(); ++theme) {
         const auto alias = "cyberspace.matrix.traversal.background.theme." +
