@@ -1,9 +1,10 @@
 # Enemy obstruction routing
 
 Status: **partial**. The active Lua route policy uses typed path and map-cell
-queries and is covered by headless tests. Route selection has not been
-compared with an independent GPGX movement capture, and no field-scene image
-dump defends the visible result.
+queries and is covered by headless tests. A Scene 2 integration QA now writes
+a route trace and `actual.bmp` from a live encounter actor crossing the
+imported collision map. Route selection still has no independent GPGX movement
+capture, so the visible route is not confirmed against the ROM game.
 
 ## Source behavior
 
@@ -223,5 +224,15 @@ fidelity.
 - Headless Debug and Release passed the focused Qt Lua/runtime tests (2/2 in
   each configuration) and the route-primitives/source-assets tests (2/2 in
   each configuration). These are focused checks, not full-suite results.
-- No route-specific scene `actual.bmp` was produced for this shared movement
-  mechanism, so the obstruction-routing hill remains partial.
+- `shadowrun_ghidra_conversion_qt_field_random_encounter_spawn_qa` now resets
+  Scene 2, spawns the ordered Weenr pair, and moves one live actor toward the
+  controlled runner across an imported-map wall. The fixture checks the
+  blocked row 14 corridor (cells 27..33), the clear row 12 detour, the live
+  `party.runner.0` link, clear occupied cells during movement, and lateral
+  progress past the wall. Its `obstruction-route/route.tsv` and
+  `obstruction-route/actual.bmp` are headless internal port artifacts. The
+  imported cell layout and route pixels remain [H] until checked against an
+  independent Genesis capture; #49 remains partial.
+- The focused field encounter CTest passes in headless Debug and Release. The
+  Debug and Release `obstruction-route/actual.bmp` files have matching SHA-256
+  `8261A58F77F75333BFCDB5F185FCC8118AC62860D4165ED566488AB3587E5517`.

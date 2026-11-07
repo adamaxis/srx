@@ -2442,6 +2442,240 @@ int run_field_ganger_walk_facing_qa(
     return 0;
 }
 
+int run_field_obstruction_route_qa(
+    FieldSceneRuntime& field_scene,
+    const StartupIntegrationState& startup_state,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output) {
+    std::error_code error;
+    std::filesystem::create_directories(output, error);
+    if (error) {
+        std::cerr << "field obstruction-route QA: cannot create output: "
+                  << error.message() << '\n';
+        return 3;
+    }
+    clear_qa_bitmap_artifacts(output, error);
+    if (error) {
+        std::cerr << "field obstruction-route QA: cannot clear old captures: "
+                  << error.message() << '\n';
+        return 3;
+    }
+    if (!field_scene.bootstrap_for_scene_dump(startup_state, 2U) ||
+        field_scene.field_scene_reference_for_dump() != 2U) {
+        std::cerr << "field obstruction-route QA: Scene 2 bootstrap failed: "
+                  << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    // [H: imported map data] Scene 2 has a wall row at grid row 14, columns
+    // 27..33, with a clear row 12 corridor around it. [C] ROM 0x14902 maps
+    // named world positions to 0x200-unit cells; 0x14914 checks both axis
+    // orders and reports the direct row blocked.
+    constexpr std::uint16_t kStartColumn = 26U;
+    constexpr std::uint16_t kTargetColumn = 34U;
+    constexpr std::uint16_t kWallRow = 14U;
+    constexpr std::uint16_t kDetourRow = 12U;
+    const auto world_cell_center = [](const std::uint16_t column,
+                                      const std::uint16_t row) {
+        return SceneRunnerPosition{
+            static_cast<std::uint16_t>(column * 0x0200U + 0x0100U),
+            static_cast<std::uint16_t>(row * 0x0200U + 0x0100U)};
+    };
+    const auto start = world_cell_center(kStartColumn, kWallRow);
+    const auto target = world_cell_center(kTargetColumn, kWallRow);
+    const auto cell_code = [&field_scene, &world_cell_center](
+                               const std::uint16_t column,
+                               const std::uint16_t row) {
+        const auto center = world_cell_center(column, row);
+        const auto index =
+            shadowrun::ghidra_conversion::compute_obstruction_grid_index(
+                center.x, center.y);
+        return field_scene.terrain_collision_map_byte_for_dump(index);
+    };
+    bool direct_row_blocked = true;
+    bool upper_corridor_clear = true;
+    for (std::uint16_t column = static_cast<std::uint16_t>(kStartColumn + 1U);
+         column < kTargetColumn; ++column) {
+        direct_row_blocked = direct_row_blocked &&
+            cell_code(column, kWallRow) != 0U;
+    }
+    for (std::uint16_t column = kStartColumn; column <= kTargetColumn;
+         ++column) {
+        upper_corridor_clear = upper_corridor_clear &&
+            cell_code(column, kDetourRow) == 0U;
+    }
+    for (std::uint16_t row = kDetourRow; row <= kWallRow; ++row) {
+        upper_corridor_clear = upper_corridor_clear &&
+            cell_code(kTargetColumn, row) == 0U;
+    }
+    if (!direct_row_blocked || !upper_corridor_clear ||
+        cell_code(kStartColumn, kWallRow) != 0U ||
+        cell_code(kTargetColumn, kWallRow) != 0U) {
+        std::cerr << "field obstruction-route QA: Scene 2 fixture no longer "
+                     "has a blocked direct row and clear north detour\n";
+        return 3;
+    }
+
+    // Keep the real encounter-list spawn, actor initialization, Lua heartbeat,
+    // terrain query, movement, and renderer active. Only the two endpoints
+    // are placed to expose the imported Scene 2 obstacle deterministically.
+    field_scene.set_field_world_frame_counter_for_dump(0x0100U);
+    const auto spawned =
+        field_scene.resolve_and_spawn_field_encounter_for_dump(
+            1U, 2U, 0x1234U);
+    if (spawned != 2U) {
+        std::cerr << "field obstruction-route QA: expected two Scene 2 "
+                     "encounter actors, got " << spawned << '\n';
+        return 3;
+    }
+    // Let the first source actor pass seed the three-runner identity list at
+    // the ordinary New Game position before placing the live runner target.
+    bool entry_complete = false;
+    for (std::uint16_t frame = 0U; frame < 180U; ++frame) {
+        entry_complete =
+            field_scene.default_actor_transition_complete_for_dump(0U) ==
+                std::optional<bool>{true} &&
+            field_scene.default_actor_transition_complete_for_dump(1U) ==
+                std::optional<bool>{true};
+        if (entry_complete) {
+            break;
+        }
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    }
+    if (!entry_complete ||
+        !field_scene.set_default_actor_frozen_for_dump(1U, true) ||
+        !field_scene.set_default_actor_world_position_for_dump(
+            0U, start.x, start.y)) {
+        std::cerr << "field obstruction-route QA: could not prepare the "
+                     "source encounter actor fixture\n";
+        return 3;
+    }
+    field_scene.set_field_entity_world_position_for_dump(target.x, target.y);
+    field_scene.set_field_world_frame_counter_for_dump(0x0100U);
+    const auto hold_camera = [&field_scene, start] {
+        field_scene.set_field_camera_world_position_for_dump(
+            static_cast<std::uint16_t>(start.x + 0x0780U),
+            static_cast<std::uint16_t>(start.y - 0x0880U));
+    };
+    hold_camera();
+
+    const auto save = [&output](const std::filesystem::path& name,
+                                const QImage& image) {
+        return save_qa_image(output, name, image);
+    };
+    const auto initial = render_qa_field(field_scene);
+    const bool initial_saved = save("initial.bmp", initial);
+    std::ofstream route_trace(output / "route.tsv", std::ios::trunc);
+    if (!route_trace) {
+        std::cerr << "field obstruction-route QA: could not write route trace\n";
+        return 3;
+    }
+    route_trace << "# ROM 0x14682 obstruction selection; 0x14902 map cells; "
+                   "0x149C0 queued route advance\n"
+                << "frame\tworld_x\tworld_y\ttarget_id\ttarget_distance\tcell_clear\n";
+
+    bool saw_north_detour = false;
+    bool saw_detour_corridor_row = false;
+    bool advanced_beyond_start = false;
+    bool route_cells_clear = true;
+    std::uint16_t sampled_frames = 0U;
+    for (std::uint16_t frame = 1U; frame <= 240U; ++frame) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        const auto actors = field_scene.active_default_actor_positions_for_dump();
+        if (actors.size() != 2U) {
+            route_cells_clear = false;
+            break;
+        }
+        const auto actor = actors.front();
+        const auto actor_cell =
+            shadowrun::ghidra_conversion::compute_obstruction_grid_index(
+                actor.x, actor.y);
+        const bool actor_cell_clear =
+            field_scene.terrain_collision_map_byte_for_dump(actor_cell) == 0U;
+        route_cells_clear = route_cells_clear && actor_cell_clear;
+        saw_detour_corridor_row = saw_detour_corridor_row ||
+            (actor_cell >> 6U) == kDetourRow;
+        saw_north_detour = saw_north_detour ||
+            actor.y <= static_cast<std::uint16_t>(start.y - 0x0200U);
+        advanced_beyond_start = advanced_beyond_start ||
+            actor.x >= static_cast<std::uint16_t>(start.x + 0x0800U);
+        const auto target_id =
+            field_scene.default_actor_ai_target_id_for_dump(0U);
+        const auto target_distance =
+            field_scene.default_actor_ai_target_distance_for_dump(0U);
+        if (frame == 1U || frame % 8U == 0U ||
+            (saw_north_detour && advanced_beyond_start)) {
+            route_trace << frame << '\t' << actor.x << '\t' << actor.y << '\t'
+                        << target_id.value_or("<none>") << '\t';
+            if (target_distance.has_value()) {
+                route_trace << *target_distance;
+            } else {
+                route_trace << "<none>";
+            }
+            route_trace << '\t' << actor_cell_clear << '\n';
+            ++sampled_frames;
+        }
+        if (saw_north_detour && advanced_beyond_start) {
+            break;
+        }
+    }
+    route_trace.flush();
+    const bool trace_saved = route_trace.good();
+    route_trace.close();
+
+    hold_camera();
+    const auto actual = render_qa_field(field_scene);
+    const bool actual_saved = save("actual.bmp", actual);
+    const auto final_positions =
+        field_scene.active_default_actor_positions_for_dump();
+    const auto final_target =
+        field_scene.default_actor_ai_target_id_for_dump(0U);
+    const auto final_target_pool =
+        field_scene.default_actor_has_ai_target_pool_for_dump(0U);
+    if (!initial_saved || !actual_saved || !trace_saved ||
+        sampled_frames == 0U || !route_cells_clear ||
+        !saw_north_detour || !saw_detour_corridor_row ||
+        !advanced_beyond_start ||
+        final_positions.size() != 2U || !final_target.has_value() ||
+        !field_hud_chrome_survives(actual, asset_root)) {
+        std::cerr << "field obstruction-route QA: live actor did not take the "
+                     "clear north route around the Scene 2 wall"
+                  << " detour=" << saw_north_detour
+                  << " corridor_row=" << saw_detour_corridor_row
+                  << " advanced=" << advanced_beyond_start
+                  << " cells_clear=" << route_cells_clear
+                  << " target=" << final_target.value_or("<none>")
+                  << " target_pool=";
+        if (final_target_pool.has_value()) {
+            std::cerr << *final_target_pool;
+        } else {
+            std::cerr << "<none>";
+        }
+        std::cerr << " runner_flags=0x" << std::hex
+                  << field_scene.active_runner_record().flags << std::dec
+                  << " actors=" << final_positions.size()
+                  << " trace_rows=" << sampled_frames;
+        if (!field_scene.failure().empty()) {
+            std::cerr << " failure=" << field_scene.failure();
+        }
+        std::cerr << '\n';
+        return 3;
+    }
+    std::cout << "field_obstruction_route_qa=passed source_cells="
+              << kStartColumn << ',' << kWallRow << "->"
+              << kTargetColumn << ',' << kWallRow
+              << " north_corridor_row=" << kDetourRow
+              << " detour=" << saw_north_detour
+              << " corridor_row=" << saw_detour_corridor_row
+              << " advanced=" << advanced_beyond_start
+              << " target=" << *final_target << " trace_rows="
+              << sampled_frames << " actual="
+              << (output / "actual.bmp").string() << '\n';
+    return 0;
+}
+
 int run_field_random_encounter_spawn_qa(
     FieldSceneRuntime& field_scene,
     const StartupIntegrationState& startup_state,
@@ -4280,6 +4514,14 @@ int run_field_random_encounter_spawn_qa(
         return 3;
     }
 
+    const auto summary_runner_position =
+        field_scene.field_entity_world_position();
+    if (run_field_obstruction_route_qa(
+            field_scene, hit_startup_state, asset_root,
+            output / "obstruction-route") != 0) {
+        return 3;
+    }
+
     std::cout << "field_random_encounter_spawn_qa=passed scene=2 selector=1+2 actors=2 active="
               << actors_after << " long_trace_active=" << actors_after_1200
               << " visible=" << visible_before << ','
@@ -4316,8 +4558,8 @@ int run_field_random_encounter_spawn_qa(
         }
     }
     std::cout << "} runner="
-              << field_scene.field_entity_world_position().x << ','
-              << field_scene.field_entity_world_position().y
+              << summary_runner_position.x << ','
+              << summary_runner_position.y
               << " map_edge_scroll_match=" << edge_match_percent << '%'
               << " target_selected=" << *selected_actor_after_release
               << " visible_fixture_actor_count=" << visible_fixture_count
