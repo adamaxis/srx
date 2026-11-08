@@ -26613,9 +26613,11 @@ int run_field_mitsuhama_scene34_electronics_qa(
                      "during the source input wait\n";
         return 3;
     }
-    // The ordinary walk crosses Scene 34's alarm rectangle at 0x1DB576.
-    // No-skill and partial routes retain that ambient alarm. The alert route
-    // suppresses that separate region so its zero roll can test a fresh latch.
+    // The ordinary walk crosses Scene 34's alarm rectangle at 0x1DB576. ROM
+    // 0x1DFC4 checks it only on its cadence and only after the 0x0D44 sample is
+    // below 0x8000. This route does not pin that ambient sample, so either
+    // alarm outcome is valid; verify its actor/sound effects match the result.
+    // The alert route suppresses that separate region to test a fresh latch.
     const auto world_actors_before_action =
         field_scene.world_activity_script_actor_count_for_dump();
     const auto positions_before_action =
@@ -26628,13 +26630,15 @@ int run_field_mitsuhama_scene34_electronics_qa(
     const auto alarm_boundary_count_before_action = static_cast<std::size_t>(
         std::count(source_boundaries.begin(), source_boundaries.end(),
                    std::string("field.alarm.reinforcements_published")));
-    const bool walk_in_alarm_matches = alert_path
-        ? !alarm_was_active && world_actors_before_action == 1U &&
-              alarm_sounds_before_action == 0U &&
-              alarm_boundary_count_before_action == 0U
-        : alarm_was_active && world_actors_before_action == 4U &&
+    const bool walk_alarm_effects_match = alarm_was_active
+        ? world_actors_before_action == 4U &&
               alarm_sounds_before_action == 1U &&
-              alarm_boundary_count_before_action == 1U;
+              alarm_boundary_count_before_action == 1U
+        : world_actors_before_action == 1U &&
+              alarm_sounds_before_action == 0U &&
+              alarm_boundary_count_before_action == 0U;
+    const bool walk_in_alarm_matches = walk_alarm_effects_match &&
+        (!alert_path || !alarm_was_active);
     if (!no_skill_path) {
         // ROM 0x0D44/0x0D3A/0x0DBA: one no-kit trial at seed 6 yields face 5,
         // meeting target 5. The zero-roll alert uses seed 0 / face 1.
