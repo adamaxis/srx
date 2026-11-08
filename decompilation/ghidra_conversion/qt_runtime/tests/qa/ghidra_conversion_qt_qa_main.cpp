@@ -4942,15 +4942,22 @@ int run_field_hidden_camera_qa(
             return segment.find("haggard man collapses") !=
                    std::string_view::npos;
         });
+    constexpr std::string_view kHaggardPortraitAlias =
+        "dialogue.portraits.vid.phone.gregory.wilns";
+    const bool haggard_opening_portrait =
+        haggard_opening.portrait_alias == kHaggardPortraitAlias;
+    const bool haggard_opening_saved =
+        save_qa_image(haggard_output, "opening.bmp", haggard_opening_image);
     if (haggard_spawned != 0U || !haggard_opening.open ||
         !haggard_opening.has_more || !haggard_opening_text ||
-        !save_qa_image(haggard_output, "opening.bmp",
-                       haggard_opening_image)) {
+        !haggard_opening_portrait || !haggard_opening_saved) {
         std::cerr << "field hidden-camera QA: Scene-2 selector did not open "
                      "the escaped-patient prompt; spawned="
                   << haggard_spawned << " dialogue=" << haggard_opening.open
                   << " more=" << haggard_opening.has_more
                   << " text_match=" << haggard_opening_text
+                  << " portrait=" << haggard_opening.portrait_alias
+                  << " image_saved=" << haggard_opening_saved
                   << " failure=" << field_scene.failure() << '\n';
         return 3;
     }
@@ -4958,8 +4965,14 @@ int run_field_hidden_camera_qa(
     // ROM 0x23BB4 displays Attack / Threaten / Help; choose Help (third row).
     tap_qa_controller_button(field_scene, 0x40U);
     const auto& haggard_choices = field_scene.dialogue_panel();
+    const auto haggard_choices_image = render_qa_field(field_scene);
+    const bool haggard_choices_portrait =
+        haggard_choices.portrait_alias == kHaggardPortraitAlias;
+    const bool haggard_choices_saved =
+        save_qa_image(haggard_output, "choices.bmp", haggard_choices_image);
     if (!haggard_choices.open || haggard_choices.cursor_selection ||
-        haggard_choices.option_count != 3U) {
+        haggard_choices.option_count != 3U || !haggard_choices_portrait ||
+        !haggard_choices_saved) {
         std::cerr << "field hidden-camera QA: doctor choice page did not "
                      "expose its three source A/B/C choices (open="
                   << haggard_choices.open << " cursor="
@@ -4968,6 +4981,8 @@ int run_field_hidden_camera_qa(
                   << " kind=" << static_cast<unsigned>(haggard_choices.kind)
                   << " more=" << haggard_choices.has_more
                   << " selected=" << haggard_choices.selected_option
+                  << " portrait=" << haggard_choices.portrait_alias
+                  << " image_saved=" << haggard_choices_saved
                   << " complete=" << haggard_choices.source_complete
                   << " failure=" << field_scene.failure() << ")\n";
         for (std::size_t index = 0U;
@@ -4993,15 +5008,18 @@ int run_field_hidden_camera_qa(
         [](const std::string_view segment) {
             return segment.find("straight-jacket") != std::string_view::npos;
         });
+    const bool haggard_result_portrait =
+        haggard_result.portrait_alias == kHaggardPortraitAlias;
     const bool haggard_result_saved =
         save_qa_image(haggard_output, "result.bmp", haggard_result_image);
     if (!haggard_result.open || haggard_result.has_more ||
-        !haggard_result_text ||
+        !haggard_result_text || !haggard_result_portrait ||
         !haggard_result_saved) {
         std::cerr << "field hidden-camera QA: Help did not display the "
                      "ROM straight-jacket result; dialogue="
                   << haggard_result.open << " more=" << haggard_result.has_more
                   << " text_match=" << haggard_result_text
+                  << " portrait=" << haggard_result.portrait_alias
                   << " image_saved=" << haggard_result_saved
                   << " failure=" << field_scene.failure() << '\n';
         for (std::size_t index = 0U;

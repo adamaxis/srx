@@ -319,6 +319,12 @@ ROM-derived `field/maps/mode-2.bmp`, strongly selecting scene 2 over scene 5:
 | `frame_001224.png`–`frame_001261.png` | — | Thirty-eight consecutive identical full-black frames in the 30-fps extract. |
 | `frame_001290.png` | mode 2: 0.95564 at `(1200,732)`; mode 5: 0.32948 | Field view resumes on the same mode-2 map. |
 
+The same 56x72 inset illustration is visible on the opening, choice, and
+credentials pages. It matches the existing extracted image resource
+`dialogue.portraits.vid.phone.gregory.wilns`; the event now binds that art
+through its own Lua speaker profile instead of the generic field narrator's
+`none` portrait. **[C: longplay section 11 frames 000618, 000930, and 000990]**
+
 The map match plus the opening page supports linking the clip to selector
 handler `0x20FA2` in scene 2, whose MORE path at `0x23BB4` presents the three
 choices. The credentials result text is the page at `0x121178`, reached by

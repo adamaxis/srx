@@ -6533,21 +6533,29 @@ struct GameScriptRuntime::Impl {
         }
 
         std::string menu_id;
+        std::string speaker_id = self->location_speaker_id;
+        std::string text_profile = self->location_text_profile;
         std::size_t text_length = 0U;
         const auto* text = lua_type(lua, 2) == LUA_TSTRING
                                ? lua_tolstring(lua, 2, &text_length)
                                : nullptr;
+        const bool valid_speaker = lua_gettop(lua) < 4 ||
+            (read_string(lua, 4, speaker_id) &&
+             valid_identifier(speaker_id));
+        const bool valid_profile = lua_gettop(lua) < 5 ||
+            (read_string(lua, 5, text_profile) &&
+             valid_identifier(text_profile));
         ScriptMenuDefinition menu{};
         if (!read_string(lua, 1, menu_id) ||
             !valid_identifier(menu_id) || text == nullptr ||
             text_length > kMaximumDialogueTextBytes ||
-            !valid_identifier(self->location_text_profile) ||
-            !parse_menu_choices(lua, 3, menu_id,
-                                self->location_text_profile,
-                                self->location_speaker_id, menu,
+            !valid_speaker || !valid_profile ||
+            !valid_identifier(text_profile) ||
+            !parse_menu_choices(lua, 3, menu_id, text_profile,
+                                speaker_id, menu,
                                 kMaximumMenuChoices)) {
             self->bridge_failure =
-                "game.ui.prompt_text expects a menu name, bounded prompt, and unique stable choice ids in a profiled speaker location";
+                "game.ui.prompt_text expects a menu name, bounded prompt, unique stable choice ids, and an optional profiled speaker";
             lua_pushnil(lua);
             return 1;
         }
@@ -6775,18 +6783,25 @@ struct GameScriptRuntime::Impl {
         }
 
         std::size_t text_length = 0U;
+        std::string speaker_id = self->location_speaker_id;
+        std::string text_profile = self->location_text_profile;
         const auto* text = lua_type(lua, 1) == LUA_TSTRING
                                ? lua_tolstring(lua, 1, &text_length)
                                : nullptr;
         const bool valid_continuation =
             lua_isnoneornil(lua, 2) || lua_type(lua, 2) == LUA_TBOOLEAN;
+        const bool valid_speaker = lua_gettop(lua) < 3 ||
+            (read_string(lua, 3, speaker_id) &&
+             valid_identifier(speaker_id));
+        const bool valid_profile = lua_gettop(lua) < 4 ||
+            (read_string(lua, 4, text_profile) &&
+             valid_identifier(text_profile));
         if (text == nullptr || text_length == 0U ||
             text_length > kMaximumDialogueTextBytes ||
-            !valid_continuation ||
-            !valid_identifier(self->location_text_profile) ||
-            !valid_identifier(self->location_speaker_id)) {
+            !valid_continuation || !valid_speaker || !valid_profile ||
+            !valid_identifier(text_profile)) {
             self->bridge_failure =
-                "game.ui.say_text expects bounded text and an optional continuation flag in a profiled speaker location";
+                "game.ui.say_text expects bounded text, an optional continuation flag, and an optional profiled speaker";
             lua_pushboolean(lua, 0);
             return 1;
         }
@@ -6794,8 +6809,8 @@ struct GameScriptRuntime::Impl {
         ScriptNativeOperation operation{};
         operation.type = ScriptNativeOperation::Type::ui_say;
         ScriptDialogueRequest dialogue{};
-        dialogue.speaker_id = self->location_speaker_id;
-        dialogue.text_profile = self->location_text_profile;
+        dialogue.speaker_id = std::move(speaker_id);
+        dialogue.text_profile = std::move(text_profile);
         dialogue.inline_text.assign(text, text_length);
         if (!lua_isnoneornil(lua, 2) && lua_toboolean(lua, 2) != 0) {
             dialogue.continuation_key = "shared.more";

@@ -333,6 +333,12 @@
       "portrait_alias": "none",
       "text_profile": "field.world_event"
     },
+    "haggard_man_event": {
+      "events": {},
+      "name": "Haggard-man encounter",
+      "portrait_alias": "dialogue.portraits.vid.phone.gregory.wilns",
+      "text_profile": "field.world_event"
+    },
     "party_wipe_docwagon_narrator": {
       "events": {
         "party_wipe_docwagon": {

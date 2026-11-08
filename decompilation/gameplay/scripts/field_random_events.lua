@@ -31,6 +31,11 @@ local HAGGARD_CHOICES = {
     { id = "threaten", label = "Threaten to leave the patient alone." },
     { id = "help", label = "Help them." },
 } -- Longplay section 11, frame 930; source dispatch 0x23BB4 [C].
+-- The event artwork in section 11 frames 000618/000930/000990 matches this
+-- extracted image; give this route its own binding because field_narrator has
+-- no portrait.
+local HAGGARD_SPEAKER = "haggard_man_event"
+local HAGGARD_TEXT_PROFILE = "field.world_event"
 
 local function event_opening(event_id)
     local data = game.modules.world_content_data
@@ -132,7 +137,8 @@ local function haggard_reward(amount, result_text, missing_funds_reason)
         return source_boundary(missing_funds_reason)
     end
     game.set_nuyen(funds + amount)
-    game.ui.say_text(result_text, false)
+    game.ui.say_text(result_text, false, HAGGARD_SPEAKER,
+                     HAGGARD_TEXT_PROFILE)
     return "resolved"
 end
 
@@ -193,7 +199,8 @@ function RandomEvents.present_haggard_man()
             "ROM 0x20FA2 doctor opening data is unavailable")
     end
 
-    game.ui.say_text(opening, true)
+    game.ui.say_text(opening, true, HAGGARD_SPEAKER,
+                     HAGGARD_TEXT_PROFILE)
 
     local intelligence = first_runner_attribute("intelligence")
     local modules = type(game.modules) == "table" and game.modules or nil
@@ -217,7 +224,7 @@ function RandomEvents.present_haggard_man()
     local prompt_variant = selector_roll < 50 and "alternate" or "standard"
     local choice = game.ui.prompt_text(
         "haggard_man_action", haggard_intro_text(successes, selector_roll),
-        HAGGARD_CHOICES)
+        HAGGARD_CHOICES, HAGGARD_SPEAKER, HAGGARD_TEXT_PROFILE)
 
     if prompt_variant == "standard" then
         if choice == "attack" then

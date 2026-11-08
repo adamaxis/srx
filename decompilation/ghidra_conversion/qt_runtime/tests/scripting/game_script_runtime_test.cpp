@@ -11142,6 +11142,18 @@ int main() {
         return 1;
     }
 
+    const auto haggard_speaker =
+        scripts.speaker_profile("haggard_man_event");
+    if (!expect(haggard_speaker.has_value() &&
+                    haggard_speaker->name == "Haggard-man encounter" &&
+                    haggard_speaker->text_profile == "field.world_event" &&
+                    haggard_speaker->portrait_alias ==
+                        "dialogue.portraits.vid.phone.gregory.wilns",
+                "Haggard encounter portrait binding did not load")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+
     const auto ricky_speaker = scripts.speaker_profile("ricky");
     const auto ricky_success_keys = scripts.dialogue_event_text_keys(
         "ricky", "runner.ricky", "hire.success");

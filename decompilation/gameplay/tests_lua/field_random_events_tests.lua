@@ -111,6 +111,7 @@ local function run_haggard(choice, event_id, configuration)
     local exit_calls = {}
     local random_calls = {}
     local prompt_titles = {}
+    local prompt_speakers = {}
     local random_values = configuration.random_values or {
         [6] = { 0, 0 },
         [100] = { 0 },
@@ -149,15 +150,22 @@ local function run_haggard(choice, event_id, configuration)
         nuyen = function() return funds end,
         set_nuyen = function(value) funds = value end,
         ui = {
-            say_text = function(text, continuation)
+            say_text = function(text, continuation, speaker_id, text_profile)
                 dialogue_pages[#dialogue_pages + 1] = {
                     text = text,
                     continuation = continuation,
+                    speaker_id = speaker_id,
+                    text_profile = text_profile,
                 }
             end,
-            prompt_text = function(menu_id, prompt, options)
+            prompt_text = function(menu_id, prompt, options,
+                                   speaker_id, text_profile)
                 eq(menu_id, "haggard_man_action", "doctor menu id")
                 prompt_titles[#prompt_titles + 1] = prompt
+                prompt_speakers[#prompt_speakers + 1] = {
+                    speaker_id = speaker_id,
+                    text_profile = text_profile,
+                }
                 eq(#options, 3, "doctor has the three source choices")
                 eq(options[1].id, "attack", "first source choice")
                 eq(options[2].id, "threaten", "second source choice")
@@ -192,11 +200,12 @@ local function run_haggard(choice, event_id, configuration)
         E.DialogueSource.RANDOM_ENCOUNTER,
         "field_random_events", "present_haggard_man")
     return task_result, dialogue_pages, exit_calls, funds, random_calls,
-        prompt_titles
+        prompt_titles, prompt_speakers
 end
 
 local haggard_result, haggard_pages, haggard_exit, haggard_funds,
-      haggard_random, haggard_titles = run_haggard("help", nil, {
+      haggard_random, haggard_titles, haggard_prompt_speakers =
+    run_haggard("help", nil, {
         intelligence = 0,
         random_values = { [6] = { 0 }, [100] = { 0 } },
     })
@@ -204,6 +213,10 @@ eq(haggard_result, "resolved", "doctor Help branch resolves")
 eq(haggard_pages[1].text, "doctor-opening", "doctor source opening")
 eq(haggard_pages[1].continuation, true,
    "doctor opening waits for its source continuation")
+eq(haggard_pages[1].speaker_id, "haggard_man_event",
+   "doctor opening uses its scene illustration speaker")
+eq(haggard_pages[1].text_profile, "field.world_event",
+   "doctor opening remains in the field event text profile")
 eq(haggard_pages[2].text,
    "<You grab the man and hold him while the henchmen straight-jacket " ..
    "him and drag him off.>||Here's fifty nuyen. Now get lost.",
@@ -215,6 +228,14 @@ eq(table.concat(haggard_exit, ","), "stay,fade_83,lock_60",
    "measured doctor exit requests stay, its 83-frame black interval, and lock 60")
 eq(haggard_titles[1], "<The man looks like a typical doctor to you.>",
    "ROM 0x23BB4 zero-success alternate introduction")
+eq(haggard_prompt_speakers[1].speaker_id, "haggard_man_event",
+   "doctor choices keep the scene illustration")
+eq(haggard_prompt_speakers[1].text_profile, "field.world_event",
+   "doctor choices keep the field event profile")
+eq(haggard_pages[2].speaker_id, "haggard_man_event",
+   "doctor result keeps the scene illustration")
+eq(haggard_pages[2].text_profile, "field.world_event",
+   "doctor result keeps the field event profile")
 eq(table.concat(haggard_random, ","), "bounded_6,bounded_100",
    "ROM 0x23BB4 checks first-runner Intelligence before prompt selection")
 local alternate_help_result, alternate_help_pages, _, alternate_help_funds,
