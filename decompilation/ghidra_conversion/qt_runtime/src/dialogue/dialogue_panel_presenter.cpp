@@ -367,7 +367,13 @@ void DialoguePanelPresenter::paint(QPainter& painter,
         return;
     }
 
-    const QColor dialogue_green(0, 255, 0);
+    // ROM 0x1F3FE/0x1F42A pass D2=0x2000 to 0xC168, selecting palette line 1.
+    // The independent Little Chiba wake capture (GPGX frame 21228) renders
+    // these glyphs as CRAM word 0x02C2, RGB #20CE20. The extracted font mask's
+    // full glyph coverage is 0xDB, so pre-scale the ink before drawing it.
+    constexpr int kDialogueGlyphCoverage = 0xDB;
+    const auto dialogue_green =
+        genesis_cram_tint_for_mask(0x02C2U, kDialogueGlyphCoverage);
     const auto frame_index = panel.frame_variant ==
                                      DialoguePanelFrameVariant::alternate_left_panel
                                  ? 1U

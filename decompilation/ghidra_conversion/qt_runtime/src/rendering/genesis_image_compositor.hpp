@@ -12,6 +12,11 @@ namespace shadowrun::ghidra_conversion::qt_runtime {
 // consume indexed 4bpp patterns rather than already-colored source images.
 QColor genesis_cram_word_to_color(std::uint16_t color_word);
 
+// Pre-scale a solid CRAM ink color for a grayscale glyph mask. The resulting
+// RGB is composed through mask_coverage to reproduce the selected CRAM color.
+QColor genesis_cram_tint_for_mask(std::uint16_t color_word,
+                                  int mask_coverage);
+
 // The checked-in image assets were expanded with bit replication before the
 // host adopted GPGX's RGB565 output mapping. Convert those legacy RGB pixels
 // when loading them; alpha and non-Genesis colors are preserved.

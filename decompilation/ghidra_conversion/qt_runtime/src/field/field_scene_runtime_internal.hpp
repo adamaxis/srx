@@ -228,12 +228,7 @@ FieldActionCostContext field_shop_cost_context(
 // 0xDB, so the tint is pre-scaled to land on levels (1,6,1).
 QColor cram_text_tint(const std::uint16_t cram) {
     constexpr int kGlyphCoverage = 0xDB;
-    const auto scale = [&](const int value) {
-        return std::min(255, (value * 255 + kGlyphCoverage / 2) / kGlyphCoverage);
-    };
-    const auto color = genesis_cram_word_to_color(cram);
-    return QColor(scale(color.red()), scale(color.green()),
-                  scale(color.blue()));
+    return genesis_cram_tint_for_mask(cram, kGlyphCoverage);
 }
 
 QColor command_overview_text_tint() {

@@ -1,5 +1,6 @@
 #include "dialogue_panel.hpp"
 #include "dialogue_panel_presenter.hpp"
+#include "genesis_image_compositor.hpp"
 #include "shadowrun_ghidra/core/asset_catalog_conversion.hpp"
 #include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
 
@@ -260,12 +261,12 @@ int wrapped_rows(const DialoguePanelView& panel, const int max_columns) {
     return rows;
 }
 
-std::size_t green_pixels(const QImage& image, const QRect& rect) {
+std::size_t source_ink_pixels(const QImage& image, const QRect& rect,
+                              const QColor expected_ink) {
     std::size_t count = 0U;
     for (int y = rect.y(); y < rect.y() + rect.height(); ++y) {
         for (int x = rect.x(); x < rect.x() + rect.width(); ++x) {
-            const auto color = image.pixelColor(x, y);
-            if (color.red() == 0 && color.green() != 0 && color.blue() == 0) {
+            if (image.pixelColor(x, y) == expected_ink) {
                 ++count;
             }
         }
@@ -386,6 +387,13 @@ int main(const int argc, char** argv) {
     // instruction paths are in decompilation/export/disassembly.s at 0x10984,
     // 0x1F3C4, and 0x1F5A8; 0xF4EF4 and 0x11B5A0 are dialogue data records.
     {
+        // ROM 0x1F3C4 renders the text through palette line 1. GPGX frame
+        // 21228 shows the dialogue glyphs at the expanded 0x02C2 CRAM color.
+        const auto dialogue_ink = genesis_cram_word_to_color(0x02C2U);
+        if (dialogue_ink != QColor(32, 206, 32)) {
+            std::cerr << "field dialogue CRAM ink expansion differs from GPGX\n";
+            return 29;
+        }
         const auto tinn_profile =
             scripts.speaker_profile("tarislar_city_inn_shale");
         const auto last_run_keys = tinn_profile.has_value()
@@ -420,9 +428,12 @@ int main(const int argc, char** argv) {
         longest_text_only.option_count = 0U;
         const auto longest_image =
             render_dialogue_buffer(presenter, longest_text_only);
-        if (green_pixels(longest_image, QRect(88, 16, 216, 120)) == 0U ||
-            green_pixels(longest_image, QRect(88, 120, 216, 8)) == 0U ||
-            green_pixels(longest_image, QRect(16, 152, 296, 72)) != 0U) {
+        if (source_ink_pixels(longest_image, QRect(88, 16, 216, 120),
+                              dialogue_ink) == 0U ||
+            source_ink_pixels(longest_image, QRect(88, 120, 216, 8),
+                              dialogue_ink) == 0U ||
+            source_ink_pixels(longest_image, QRect(16, 152, 296, 72),
+                              dialogue_ink) != 0U) {
             std::cerr << "longest dialogue glyphs entered the lower choice well\n";
             return 29;
         }
@@ -469,7 +480,8 @@ int main(const int argc, char** argv) {
         for (std::size_t row = 0U; row < guard_panel.option_count; ++row) {
             const auto y = 152 + static_cast<int>(row * 24U);
             if (!has_nonblack_pixels(guard_image, QRect(16, y, 16, 16)) ||
-                green_pixels(guard_image, QRect(48, y, 256, 16)) == 0U) {
+                source_ink_pixels(guard_image, QRect(48, y, 256, 16),
+                                  dialogue_ink) == 0U) {
                 std::cerr << "dialogue choice row is missing at y=" << y
                           << '\n';
                 return 33;

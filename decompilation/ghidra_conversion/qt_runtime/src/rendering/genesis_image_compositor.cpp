@@ -74,6 +74,21 @@ QColor genesis_cram_word_to_color(const std::uint16_t color_word) {
         gpgx_rgb565_component(blue, false));
 }
 
+QColor genesis_cram_tint_for_mask(const std::uint16_t color_word,
+                                 const int mask_coverage) {
+    const auto source_color = genesis_cram_word_to_color(color_word);
+    if (mask_coverage <= 0) {
+        return source_color;
+    }
+    const auto compensate = [mask_coverage](const int channel) {
+        return std::min(255, (channel * 255 + mask_coverage / 2) /
+                                 mask_coverage);
+    };
+    return QColor(compensate(source_color.red()),
+                  compensate(source_color.green()),
+                  compensate(source_color.blue()));
+}
+
 QImage convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
     const QImage& image) {
     if (image.isNull()) {

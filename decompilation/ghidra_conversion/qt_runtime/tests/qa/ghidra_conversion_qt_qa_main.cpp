@@ -17,6 +17,7 @@
 #include "shadowrun_ghidra/world/post_intro_mode_conversion.hpp"
 #include "numeric_visual_renderer.hpp"
 
+#include <QImage>
 #include <QJsonArray>
 
 #include <algorithm>
@@ -1987,6 +1988,7 @@ int run_field_world_activity_qa(
 
 int run_field_party_wipe_qa(
     FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
     const std::filesystem::path& output) {
     std::error_code error;
     std::filesystem::create_directories(output, error);
@@ -2110,9 +2112,34 @@ int run_field_party_wipe_qa(
                   << " failure=" << field_scene.failure() << '\n';
         return 3;
     }
+    // ROM 0xC778 selects Little Chiba's wake page and profile when the motel
+    // bill is unpaid. Compare the full text/portrait composition against the
+    // independent GPGX capture at frame 21228, with no color tolerance.
+    const auto wake_path = output / "little-chiba-wake.bmp";
+    const auto gpgx_wake_path = asset_root.parent_path() / "gameplay" /
+        "tests_lua" / "fixtures" / "gpgx_stoker_exit_party_down" /
+        "frame_21228.png";
+    const QImage wake_image(QString::fromStdWString(wake_path.wstring()));
+    const QImage gpgx_wake_image(
+        QString::fromStdWString(gpgx_wake_path.wstring()));
+    if (wake_image.isNull() || gpgx_wake_image.isNull()) {
+        std::cerr << "field party-wipe QA: cannot load Little Chiba/GPGX "
+                     "wake comparison images: "
+                  << wake_path << " / " << gpgx_wake_path << '\n';
+        return 3;
+    }
+    const auto wake_mismatches = emulator_reference_pixel_mismatches(
+        wake_image, gpgx_wake_image, QRect(0, 0, 320, 224), 0);
+    if (wake_mismatches != 0U) {
+        std::cerr << "field party-wipe QA: Little Chiba wake screen differs "
+                     "from GPGX frame 21228 at "
+                  << wake_mismatches << " pixels\n";
+        return 3;
+    }
     std::cout << "field_party_wipe_qa=passed "
                  "docwagon=scene0@0x6200,0x2D00 "
-                 "little_chiba=scene2@0x6680,0x2300 actual.bmp="
+                 "little_chiba=scene2@0x6680,0x2300 "
+                 "gpgx_frame_21228_pixel_mismatches=0 actual.bmp="
               << output.string() << '\n';
     return 0;
 }
@@ -47506,7 +47533,7 @@ int main(int argc, char** argv) {
             }
             if (field_party_wipe_qa_path.has_value()) {
                 return run_field_party_wipe_qa(
-                    field_scene, *field_party_wipe_qa_path);
+                    field_scene, asset_root, *field_party_wipe_qa_path);
             }
             if (field_hound_close_effect_qa_path.has_value()) {
                 return run_field_hound_close_effect_qa(
