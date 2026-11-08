@@ -716,8 +716,8 @@ end
 
 -- ROM 0x19788 advances only the first incomplete visual slot. FFF0ED is the
 -- six-step footer state; FFF0F2 supplies that slot's delay between steps, and
--- completion publishes FFF0E8 as Ready. Keep the source countdown with the
--- Lua-owned Matrix session so it continues across deck and traversal screens.
+-- completion publishes FFF0E8 as Ready. The 0x18694 return path seeds the
+-- countdown from FFF0F2, while 0x19788 decrements it before advancing status.
 function M.advance_program_loading(state, slots)
     if type(state) ~= "table" or type(slots) ~= "table" then
         return false
@@ -725,16 +725,16 @@ function M.advance_program_loading(state, slots)
 
     local loading = state.program_loading
     if type(loading) ~= "table" then
-        local pending = false
+        local first_pending
         for slot = 0, 4 do
             local visual = slots[slot]
             if type(visual) == "table" and (visual.status or 0) ~= 6 then
-                pending = true
+                first_pending = visual
                 break
             end
         end
-        if not pending then return false end
-        loading = { progress_delay = -1 }
+        if not first_pending then return false end
+        loading = { progress_delay = first_pending.timer or 0 }
         state.program_loading = loading
     end
     loading.progress_delay = (loading.progress_delay or -1) - 1

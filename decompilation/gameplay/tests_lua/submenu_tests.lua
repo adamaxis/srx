@@ -687,6 +687,30 @@ local function rec(rt, act) local R0 = { memory = 40, storage = 500, load_io = 3
     for k = 0, 4 do R0.files[k] = { id = -1, size = 0 } end; for p, v in pairs(rt) do R0.ratings[p] = v end; return R0 end
 local rp, lp, gp = deckp({ rec = rec({ [5] = 2 }) }, 1, 1)
 check(gp.rec.active[0] == 5 and gp.dslots[0].timer == 60 and gp.dslots[0].status == 0 and top(rp) == S.CYBERDECK, "load p5 r2: 16 Mp, ceil(16/3)=6 -> timer 60")
+rp:frame(P.DOWN)
+rp:frame(P.DOWN)
+rp:frame(P.LEFT)
+rp:frame(P.A)
+check(top(rp) == S.DECK_CYBERINFO,
+      "offline deck opens CyberInfo while a program remains pending")
+for _ = 1, 100 do rp:frame(0) end
+-- Direct Pocket Secretary deck entry returns from 0x1822C to the field at
+-- 0x18150; it does not run 0x1ADE6/0x1AF64, the caller of loader 0x19788.
+check(gp.rec.active[0] == 5 and gp.dslots[0].status == 0,
+      "offline Pocket Secretary leaves the program pending until the Matrix world service [C 0x18150, 0x1822C, 0x19788]")
+local load_state, load_slots = {}, deck_slots()
+load_slots[0].status, load_slots[0].timer = 0, 60
+local advance_program_loading = require("menu.matrix_session").advance_program_loading
+for _ = 1, 60 do advance_program_loading(load_state, load_slots) end
+-- ROM 0x18694 seeds FFDD48 from FFF0F2; 0x19788 decrements before
+-- incrementing FFF0ED, so a 60-frame delay advances on service 61 [C].
+check(load_slots[0].status == 0 and
+      load_state.program_loading.progress_delay == 0,
+      "Matrix program holds its first six-step phase for all 60 source frames [C 0x18694, 0x19788]")
+local first_load_phase = advance_program_loading(load_state, load_slots)
+check(first_load_phase and load_slots[0].status == 1 and
+      load_state.program_loading.progress_delay == 60,
+      "Matrix program advances on countdown underflow and reloads its ROM delay [C 0x19788]")
 rp, lp, gp = deckp({ rec = rec({ [5] = 4 }) }, 1, 1); check(st(rp).text == "No available memory!" and gp.rec.active[0] == -1, "64 Mp > 40 -> no memory")
 rp, lp, gp = deckp({ rec = rec({ [5] = 1 }, { [0] = 1, 2, 3, 4, 6 }) }, 1, 1); check(st(rp).text == "No available slots!", "no free slot")
 rp, lp, gp = deckp({ rec = rec({ [5] = 1 }, { [0] = -1, -1, 5, -1, -1 }) }, 1, 1)
