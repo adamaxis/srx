@@ -512,6 +512,10 @@ bool FieldSceneRuntime::present_field_dialogue_event() {
         // ROM 0x20FA2 opens the escaped-patient encounter; Lua owns the
         // choices and its 0x23CF2 Help result.
         task_name = "present_haggard_man";
+    } else if (event_id == "faction_disturbance") {
+        // ROM 0x20F42 opens the faction disturbance prompt. Lua handles its
+        // text-only branch and keeps the actor-list branches explicit.
+        task_name = "present_faction_disturbance";
     }
     if (task_name == nullptr) {
         failure_ = "field event has no Lua behavior: " +

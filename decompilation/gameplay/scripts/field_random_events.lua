@@ -11,6 +11,10 @@ local ALARM_RESULT =
     "of a hidden security camera.>"
 local NERVES_RESULT =
     "<Nothing happens, though. Maybe it's just your nerves.>"
+local FACTION_NEUTRAL_RESULT =
+    "<Impressive figures pass through the parting crowd.>||" ..
+    "Your first impression is that they are veteran shadowrunners.||" ..
+    "Then you see they are wearing gang colors!>"
 local HAGGARD_HELP_RESULT =
     "<You grab the man and hold him while the henchmen straight-jacket " ..
     "him and drag him off.>||Here's fifty nuyen. Now get lost."
@@ -204,6 +208,51 @@ end
 
 local function source_boundary(reason)
     return { type = "source_boundary", reason = reason }
+end
+
+function RandomEvents.present_faction_disturbance()
+    local location = game.location
+    if type(location) ~= "table" or location.type ~= "field_map" or
+       location.id ~= "random_field_event" or
+       location.event_id ~= "faction_disturbance" then
+        return nil
+    end
+
+    local opening = event_opening("faction_disturbance")
+    if opening == nil then
+        return source_boundary(
+            "ROM 0x20F42 prompt data is unavailable")
+    end
+
+    -- The source prompt at 0x120F6C contains one MORE command. Its handler
+    -- 0x23876 checks FF018F bit 1 first, then bit 2. The no-flag branch at
+    -- 0x238C2 is a text-only result and does not start combat.
+    game.ui.say_text(opening, true)
+    local mafia_route = game.services.call(
+        "story", "faction_disturbance_mafia_route_enabled")
+    if mafia_route ~= "enabled" and mafia_route ~= "disabled" then
+        return source_boundary(
+            "ROM 0x23876 faction route flags are unavailable")
+    end
+    if mafia_route == "enabled" then
+        return source_boundary(
+            "ROM 0x23876 Mafia actor sequence is not implemented")
+    end
+
+    local halloweener_route = game.services.call(
+        "story", "faction_disturbance_halloweener_route_enabled")
+    if halloweener_route ~= "enabled" and
+       halloweener_route ~= "disabled" then
+        return source_boundary(
+            "ROM 0x23876 faction route flags are unavailable")
+    end
+    if halloweener_route == "enabled" then
+        return source_boundary(
+            "ROM 0x1D7038 Halloweener actor sequence is not implemented")
+    end
+
+    game.ui.say_text(FACTION_NEUTRAL_RESULT, false)
+    return "resolved"
 end
 
 function RandomEvents.present_haggard_man()

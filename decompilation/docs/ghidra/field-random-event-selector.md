@@ -507,8 +507,27 @@ failed check using the live party's Quickness, verifies the typed alarm and
 completed return, and writes `opening.bmp` plus `actual.bmp`. Debug CTest
 passes. This validates the integrated host path; it is not an independent
 Genesis visual comparison. The selector hill remains partial because its
-other enabled dialogue handlers are not implemented and Release coverage is
-still pending.
+other enabled dialogue handlers are not implemented.
+
+### Host coverage (2026-11-08, partial)
+
+**[C]** The Scene-0 selector cell for sum 5 is enabled at `0x1D70E9`; its
+indirect pointer at `0x1D6DA2` selects the faction handler `0x20F42`. The
+handler opens prompt `0x120F6C`. Its MORE command reaches `0x23876`, which tests
+`FF018F` bit 1 before bit 2. With both clear it returns the text record at
+`0x11D128` and queues no actors. The Qt host projects the two route conditions
+as named facts to Lua; the neutral branch displays that ROM text and completes
+the event. The Mafia and Halloweener actor-list branches (`0x1D7010` and
+`0x1D7038`) remain explicit source boundaries pending actor-list extraction
+and placement coverage.
+
+`field_random_events_tests.lua` checks the neutral text, missing-state handling,
+and the bit-1-before-bit-2 order. The integrated
+`shadowrun_ghidra_conversion_qt_field_hidden_camera_qa` also drives Scene 0
+selector rolls `1+4`, resolves the neutral route, and writes
+`faction_disturbance/opening.bmp` and `faction_disturbance/actual.bmp`.
+Focused Debug and Release tests pass. The output is an internal runtime dump,
+not an independent Genesis visual comparison.
 
 **Custodian / missing-pass check (`0x2101E`, scene 20, sum 1).** The entry
 stub pairs prompt record `0x121330` with profile `0x121E5C`. That profile is a

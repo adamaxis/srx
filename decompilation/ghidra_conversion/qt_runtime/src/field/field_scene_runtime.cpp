@@ -1507,6 +1507,27 @@ FieldSceneRuntime::FieldSceneRuntime(
                           std::to_string(*field_strike_team_counter_))
                     : std::nullopt;
             }
+            // ROM 0x23876 checks FF018F bit 1 before bit 2 for the faction
+            // disturbance's two actor-list branches. Expose each route as a
+            // named fact so Lua preserves that priority without a RAM byte.
+            if (service_id ==
+                    "story.faction_disturbance_mafia_route_enabled" ||
+                service_id ==
+                    "story.faction_disturbance_halloweener_route_enabled") {
+                if (!field_runner_feature_flags_.has_value()) {
+                    return std::nullopt;
+                }
+                const auto flag = service_id ==
+                        "story.faction_disturbance_mafia_route_enabled"
+                    ? FactionDisturbanceRouteFlag::mafia_route_enabled
+                    : FactionDisturbanceRouteFlag::
+                          halloweener_route_enabled;
+                const auto mask = static_cast<std::uint8_t>(
+                    1U << static_cast<std::uint8_t>(flag));
+                return (*field_runner_feature_flags_ & mask) != 0U
+                    ? std::optional<std::string>("enabled")
+                    : std::optional<std::string>("disabled");
+            }
             if (service_id.rfind(
                     "story.set_strike_team_stage_", 0U) == 0U) {
                 const auto value_text = service_id.substr(
@@ -14519,25 +14540,31 @@ void FieldSceneRuntime::advance_frame() {
                     scripting::ScriptFieldEncounterOutcomeKind::dialogue_event &&
                 (pending_field_encounter_outcome_->event_id == "hidden_camera" ||
                  pending_field_encounter_outcome_->event_id ==
-                     "haggard_man_collapse")) {
-                const auto event_id =
-                    pending_field_encounter_outcome_->event_id;
+                     "haggard_man_collapse" ||
+                 pending_field_encounter_outcome_->event_id ==
+                     "faction_disturbance")) {
                 const auto task_result =
                     field_dialogue_.take_gameplay_task_result();
-                pending_field_encounter_outcome_.reset();
-                if (task_result != std::optional<std::string>{"resolved"}) {
-                    failure_ = "field event did not resolve: " + event_id;
-                    const auto boundary =
-                        event_id == "hidden_camera"
-                            ? "field.random_encounter.hidden_camera_result_missing"
-                            : "field.random_encounter.haggard_man_collapse.result_missing";
-                    source_boundary(boundary);
-                } else {
-                    const auto boundary =
-                        event_id == "hidden_camera"
-                            ? "field.random_encounter.hidden_camera_resolved"
-                            : "field.random_encounter.haggard_man_collapse.resolved";
-                    source_boundary(boundary);
+                if (task_result.has_value()) {
+                    const auto event_id =
+                        pending_field_encounter_outcome_->event_id;
+                    pending_field_encounter_outcome_.reset();
+                    if (task_result != std::optional<std::string>{"resolved"}) {
+                        failure_ = "field event did not resolve: " + event_id;
+                        const auto boundary = event_id == "hidden_camera"
+                            ? std::string(
+                                  "field.random_encounter.hidden_camera_result_missing")
+                            : "field.random_encounter." + event_id +
+                                  ".result_missing";
+                        source_boundary(boundary);
+                    } else {
+                        const auto boundary = event_id == "hidden_camera"
+                            ? std::string(
+                                  "field.random_encounter.hidden_camera_resolved")
+                            : "field.random_encounter." + event_id +
+                                  ".resolved";
+                        source_boundary(boundary);
+                    }
                 }
             }
             if (field_party_wipe_dialogue_stage_ !=

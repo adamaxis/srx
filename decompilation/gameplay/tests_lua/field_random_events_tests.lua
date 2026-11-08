@@ -105,6 +105,102 @@ game.location.event_id = "different_event"
 eq(RandomEvents.present_hidden_camera(), nil,
    "unrelated event cannot enter hidden-camera handler")
 
+local function run_faction_disturbance(mafia_route, halloweener_route)
+    local pages = {}
+    local service_calls = {}
+    local flags = {
+        faction_disturbance_mafia_route_enabled = mafia_route,
+        faction_disturbance_halloweener_route_enabled = halloweener_route,
+    }
+    game = {
+        location = {
+            type = "field_map",
+            id = "random_field_event",
+            event_id = "faction_disturbance",
+        },
+        modules = {
+            world_content_data = {
+                world_activity_event_content = {
+                    { event_id = "faction_disturbance",
+                      opening_text = "disturbance opening" },
+                },
+                world_activity_event_choices = {
+                    { event_id = "faction_disturbance", choice_order = 1,
+                      choice_id = "continue" },
+                },
+            },
+        },
+        ui = {
+            say_text = function(text, continuation)
+                pages[#pages + 1] = {
+                    text = text,
+                    continuation = continuation,
+                }
+            end,
+        },
+        services = {
+            call = function(domain, action)
+                eq(domain, "story", "faction route service domain")
+                service_calls[#service_calls + 1] = action
+                return flags[action]
+            end,
+        },
+    }
+    return RandomEvents.present_faction_disturbance(), pages, service_calls
+end
+
+local faction_result, faction_pages, faction_services =
+    run_faction_disturbance("disabled", "disabled")
+eq(faction_result, "resolved",
+   "ROM 0x23876 neutral faction route resolves")
+eq(#faction_pages, 2, "neutral faction route has opening and result pages")
+eq(faction_pages[1].text, "disturbance opening",
+   "neutral route uses the extracted event opening")
+eq(faction_pages[1].continuation, true,
+   "neutral route opening waits for its single MORE command")
+-- ROM 0x23876 reaches the no-flag text at 0x11D128 without spawning actors.
+eq(faction_pages[2].text,
+   "<Impressive figures pass through the parting crowd.>||" ..
+   "Your first impression is that they are veteran shadowrunners.||" ..
+   "Then you see they are wearing gang colors!>",
+   "neutral faction route uses the ROM result record")
+eq(faction_pages[2].continuation, false,
+   "neutral faction result is a terminal text page")
+eq(table.concat(faction_services, ","),
+   "faction_disturbance_mafia_route_enabled," ..
+   "faction_disturbance_halloweener_route_enabled",
+   "ROM bit-1 route check precedes the bit-2 route check")
+
+local mafia_result, mafia_pages, mafia_services =
+    run_faction_disturbance("enabled", "disabled")
+eq(type(mafia_result), "table",
+   "Mafia route remains an explicit source boundary")
+eq(mafia_result.type, "source_boundary",
+   "Mafia actor list is not reported as a completed event")
+eq(#mafia_pages, 1,
+   "Mafia route does not show the neutral no-attack result")
+eq(table.concat(mafia_services, ","),
+   "faction_disturbance_mafia_route_enabled",
+   "ROM bit-1 priority skips the bit-2 route check")
+
+local halloween_result, halloween_pages, halloween_services =
+    run_faction_disturbance("disabled", "enabled")
+eq(halloween_result.type, "source_boundary",
+   "Halloweener actor list remains an explicit source boundary")
+eq(#halloween_pages, 1,
+   "Halloweener route does not show the neutral no-attack result")
+eq(table.concat(halloween_services, ","),
+   "faction_disturbance_mafia_route_enabled," ..
+   "faction_disturbance_halloweener_route_enabled",
+   "Halloweener route follows a clear ROM bit-1 check")
+
+local unknown_faction_result, unknown_faction_pages =
+    run_faction_disturbance(nil, "disabled")
+eq(unknown_faction_result.type, "source_boundary",
+   "unknown faction flags do not assume the no-flag ROM branch")
+eq(#unknown_faction_pages, 1,
+   "unknown faction flags do not display an unverified result")
+
 local function run_haggard(choice, event_id, configuration)
     configuration = configuration or {}
     local dialogue_pages = {}

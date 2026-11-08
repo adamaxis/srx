@@ -5117,6 +5117,83 @@ int run_field_hidden_camera_qa(
         return 3;
     }
 
+    const auto faction_output = output / "faction_disturbance";
+    std::filesystem::create_directories(faction_output, error);
+    if (error || !field_scene.reenter_field_scene_for_dump(0U)) {
+        std::cerr << "field hidden-camera QA: could not prepare Scene 0 "
+                     "faction disturbance: " << error.message() << '\n';
+        return 3;
+    }
+    field_scene.seed_runner_feature_flags_for_qa(0U);
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    // ROM selector sum 5 reaches the Scene-0 faction event. The source branch
+    // checks FF018F bits 1 then 2 and, when clear, displays text 0x11D128.
+    const auto faction_spawned =
+        field_scene.resolve_and_spawn_field_encounter_for_dump(
+            1U, 4U, *failure_seed);
+    const auto& faction_opening = field_scene.dialogue_panel();
+    const auto faction_opening_image = render_qa_field(field_scene);
+    const auto faction_opening_text_contains = std::any_of(
+        faction_opening.text_segments.begin(),
+        faction_opening.text_segments.begin() +
+            static_cast<std::ptrdiff_t>(faction_opening.text_segment_count),
+        [](const std::string_view segment) {
+            return segment.find("sudden disturbance up ahead") !=
+                   std::string_view::npos;
+        });
+    const bool faction_opening_saved = save_qa_image(
+        faction_output, "opening.bmp", faction_opening_image);
+    if (faction_spawned != 0U || !faction_opening.open ||
+        !faction_opening.has_more || !faction_opening_text_contains ||
+        !faction_opening_saved) {
+        std::cerr << "field hidden-camera QA: faction prompt did not open; "
+                  << "spawned=" << faction_spawned
+                  << " dialogue=" << faction_opening.open
+                  << " more=" << faction_opening.has_more
+                  << " text_match=" << faction_opening_text_contains
+                  << " image_saved=" << faction_opening_saved
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U);
+    const auto& faction_result = field_scene.dialogue_panel();
+    const auto faction_result_image = render_qa_field(field_scene);
+    const auto faction_result_text_contains = std::any_of(
+        faction_result.text_segments.begin(),
+        faction_result.text_segments.begin() +
+            static_cast<std::ptrdiff_t>(faction_result.text_segment_count),
+        [](const std::string_view segment) {
+            return segment.find("Impressive figures pass") !=
+                   std::string_view::npos;
+        });
+    const bool faction_result_saved =
+        save_qa_image(faction_output, "actual.bmp", faction_result_image);
+    if (!faction_result.open || faction_result.has_more ||
+        !faction_result_text_contains || !faction_result_saved ||
+        faction_result_image.isNull() ||
+        faction_result_image.size() != QSize(kSceneWidth, kSceneHeight)) {
+        std::cerr << "field hidden-camera QA: faction no-flag result did not "
+                     "show the ROM text at 0x11D128; dialogue="
+                  << faction_result.open
+                  << " more=" << faction_result.has_more
+                  << " text_match=" << faction_result_text_contains
+                  << " image_saved=" << faction_result_saved
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U);
+    if (!finish_field_modal_return_transition(field_scene) ||
+        field_scene.dialogue_open() ||
+        std::find(source_boundaries.begin(), source_boundaries.end(),
+                  "field.random_encounter.faction_disturbance.resolved") ==
+            source_boundaries.end()) {
+        std::cerr << "field hidden-camera QA: faction text did not return "
+                     "to Scene 0; dialogue=" << field_scene.dialogue_open()
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+
     const auto haggard_output = output / "haggard_man_help";
     std::filesystem::create_directories(haggard_output, error);
     if (error || !field_scene.reenter_field_scene_for_dump(2U)) {
@@ -5513,7 +5590,8 @@ int run_field_hidden_camera_qa(
               << " player=" << haggard_position_after.x << ','
               << haggard_position_after.y
               << " music_delta=0 actual="
-              << (output / "actual.bmp").string() << " doctor_actual="
+              << (output / "actual.bmp").string() << " faction_actual="
+              << (faction_output / "actual.bmp").string() << " doctor_actual="
               << (haggard_output / "actual.bmp").string()
               << " doctor_attack_actors=3 fade_frames="
               << haggard_attack_fade_observed << " map_derived="

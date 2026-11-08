@@ -1480,7 +1480,8 @@ std::size_t FieldSceneRuntime::resolve_and_spawn_field_encounter_for_dump(
     if (outcome->kind ==
             scripting::ScriptFieldEncounterOutcomeKind::dialogue_event &&
         (outcome->event_id == "hidden_camera" ||
-         outcome->event_id == "haggard_man_collapse")) {
+         outcome->event_id == "haggard_man_collapse" ||
+         outcome->event_id == "faction_disturbance")) {
         pending_field_encounter_outcome_ = std::move(*outcome);
         (void)present_field_dialogue_event();
         return 0U;

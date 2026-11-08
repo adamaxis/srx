@@ -148,6 +148,11 @@ enum class GroupItemFlag : std::uint8_t {
     run_objective_active = 9, // FFFC22 bit 9, ROM 0x1EF2C/0x1F000 [C]
 };
 
+enum class FactionDisturbanceRouteFlag : std::uint8_t {
+    mafia_route_enabled = 1,
+    halloweener_route_enabled = 2,
+};
+
 struct FieldTargetMarkerDebugState {
     bool visible = false;
     bool animating = false;
