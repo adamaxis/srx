@@ -50968,6 +50968,16 @@ int main(int argc, char** argv) {
                     weapon_fire_scene
                         .set_default_actor_world_position_for_dump(
                             aim_actors_before, aim_player.x, aim_player.y);
+                const bool second_aim_actor_on_runner =
+                    weapon_fire_scene
+                        .set_default_actor_world_position_for_dump(
+                            aim_actors_before + 1U, aim_player.x,
+                            aim_player.y);
+                const bool aim_actors_frozen =
+                    weapon_fire_scene.set_default_actor_frozen_for_dump(
+                        aim_actors_before, true) &&
+                    weapon_fire_scene.set_default_actor_frozen_for_dump(
+                        aim_actors_before + 1U, true);
                 tap_qa_controller_button(weapon_fire_scene, 0x10U);
                 const auto aim_facing =
                     weapon_fire_scene.field_entity_heading_for_dump();
@@ -50990,12 +51000,19 @@ int main(int argc, char** argv) {
                 }
                 const auto aim_selected =
                     weapon_fire_scene.selected_default_actor_id_for_dump();
+                // Keep this two-shot target-switch fixture out of ROM
+                // 0xACAE's empty-magazine auto-reload branch.
+                held_fire_runner.ammo_rounds = std::max<std::uint8_t>(
+                    held_fire_runner.ammo_rounds,
+                    static_cast<std::uint8_t>(3U));
+                weapon_fire_scene.refresh_field_hud_for_dump();
                 const auto aim_rounds_before =
                     held_fire_runner.ammo_rounds;
                 if (held_fire_runner.animation_action_gate >= 0 ||
                     weapon_fire_scene.field_entity_attack_pose_for_dump() ||
                     aim_spawned != 2U || !aim_entry_complete ||
-                    !aim_actor_on_runner || !aim_selected.has_value() ||
+                    !aim_actor_on_runner || !second_aim_actor_on_runner ||
+                    !aim_actors_frozen || !aim_selected.has_value() ||
                     !weapon_fire_scene
                          .set_selected_default_actor_world_position_for_dump(
                              aim_x, aim_y)) {
@@ -51032,6 +51049,108 @@ int main(int argc, char** argv) {
                     }
                     std::cerr << std::dec << " ammo="
                               << static_cast<unsigned>(
+                                     held_fire_runner.ammo_rounds)
+                              << '\n';
+                    return 3;
+                }
+
+                // ROM 0x1DC4C accepts each B rising edge while the player's
+                // +0xDC firearm delay is counting down at 0xACAE. The next
+                // 0x151BE/0x14FF8 spawn must therefore use the newly selected
+                // record, not a target latched by the first held-A shot.
+                const auto first_aimed_actor = aim_selected;
+                const auto rounds_before_retarget_shot =
+                    held_fire_runner.ammo_rounds;
+                const auto retarget_action_gate =
+                    held_fire_runner.animation_action_gate;
+                weapon_fire_scene.set_controller_port_byte(0x50U);
+                weapon_fire_scene.advance_frame();
+                const auto second_aimed_actor =
+                    weapon_fire_scene.selected_default_actor_id_for_dump();
+                const bool second_target_positioned =
+                    weapon_fire_scene
+                        .set_selected_default_actor_world_position_for_dump(
+                            aim_player.x,
+                            static_cast<std::uint16_t>(aim_player.y + 0x0200U));
+                if (!first_aimed_actor.has_value() ||
+                    !second_aimed_actor.has_value() ||
+                    *first_aimed_actor == *second_aimed_actor ||
+                    retarget_action_gate <= 0 ||
+                    !second_target_positioned ||
+                    held_fire_runner.ammo_rounds !=
+                        rounds_before_retarget_shot) {
+                    std::cerr << "field player action dump: B did not switch the selected actor during held-fire cooldown"
+                              << " first="
+                              << first_aimed_actor.value_or("<none>")
+                              << " second="
+                              << second_aimed_actor.value_or("<none>")
+                              << " gate=" << retarget_action_gate
+                              << " ammo=" << static_cast<unsigned>(
+                                     held_fire_runner.ammo_rounds)
+                              << '\n';
+                    return 3;
+                }
+                bool retarget_repeat_fired = false;
+                for (std::int32_t elapsed = 1;
+                     elapsed <= static_cast<std::int32_t>(
+                                    retarget_action_gate) +
+                                    1;
+                     ++elapsed) {
+                    weapon_fire_scene.set_controller_port_byte(0x40U);
+                    if (elapsed > 1) {
+                        weapon_fire_scene.advance_frame();
+                    }
+                    const bool repeat_due =
+                        elapsed > retarget_action_gate;
+                    const auto expected_rounds =
+                        rounds_before_retarget_shot -
+                        (repeat_due ? 1U : 0U);
+                    const auto shot_action = weapon_fire_scene
+                        .last_field_weapon_spawn_action_for_dump();
+                    if (held_fire_runner.ammo_rounds != expected_rounds ||
+                        (repeat_due &&
+                         shot_action != EntitySpawnCycleAction::spawned)) {
+                        std::cerr << "field player action dump: held-fire retarget changed the source repeat cadence"
+                                  << " elapsed=" << elapsed
+                                  << " gate=" << retarget_action_gate
+                                  << " live_gate="
+                                  << held_fire_runner.animation_action_gate
+                                  << " spawn_action="
+                                  << static_cast<unsigned>(shot_action)
+                                  << " rounds_before="
+                                  << static_cast<unsigned>(
+                                         rounds_before_retarget_shot)
+                                  << " expected_rounds="
+                                  << expected_rounds
+                                  << " item=" << static_cast<unsigned>(
+                                         held_fire_runner.equipped_item_code)
+                                  << " agility=" << static_cast<unsigned>(
+                                         held_fire_runner.attributes[1U])
+                                  << " quickness=" << static_cast<unsigned>(
+                                         held_fire_runner.attributes[4U])
+                                  << " ammo=" << static_cast<unsigned>(
+                                         held_fire_runner.ammo_rounds)
+                                  << '\n';
+                        return 3;
+                    }
+                    retarget_repeat_fired = retarget_repeat_fired || repeat_due;
+                }
+                const auto retargeted_heading =
+                    weapon_fire_scene.field_weapon_primary_heading_for_dump();
+                if (!retarget_repeat_fired ||
+                    held_fire_runner.ammo_rounds + 1U !=
+                        rounds_before_retarget_shot ||
+                    retargeted_heading !=
+                        std::optional<std::uint16_t>{0x8000U}) {
+                    std::cerr << "field player action dump: held-fire repeat did not aim at the newly selected actor"
+                              << " heading=";
+                    if (retargeted_heading.has_value()) {
+                        std::cerr << "0x" << std::hex
+                                  << *retargeted_heading << std::dec;
+                    } else {
+                        std::cerr << "<none>";
+                    }
+                    std::cerr << " ammo=" << static_cast<unsigned>(
                                      held_fire_runner.ammo_rounds)
                               << '\n';
                     return 3;
