@@ -2900,6 +2900,7 @@ struct GameScriptRuntime::Impl {
     std::string location_text_profile;
     std::string location_speaker_id;
     std::string location_event_id;
+    std::string location_actor_instance_id;
     std::optional<std::uint8_t> location_scene_id;
     ScriptFieldModeContext field_mode_context{};
     ScriptMenuRouteBindings menu_route_bindings{};
@@ -5771,6 +5772,8 @@ struct GameScriptRuntime::Impl {
             value = self->location_speaker_id;
         } else if (field == "event_id") {
             value = self->location_event_id;
+        } else if (field == "actor_instance_id") {
+            value = self->location_actor_instance_id;
         } else {
             lua_pushnil(lua);
             return 1;
@@ -7156,6 +7159,7 @@ struct GameScriptRuntime::Impl {
         location_id.clear();
         location_text_profile.clear();
         location_speaker_id.clear();
+        location_actor_instance_id.clear();
         location_scene_id.reset();
         field_mode_context = ScriptFieldModeContext{};
         menu_route_bindings = ScriptMenuRouteBindings{};
@@ -12135,12 +12139,15 @@ void GameScriptRuntime::set_location_context(
     const std::string_view text_profile,
     const std::string_view speaker_id,
     const std::string_view event_id,
-    const std::optional<std::uint8_t> scene_id) {
+    const std::optional<std::uint8_t> scene_id,
+    const std::string_view actor_instance_id) {
     if (impl_->state == nullptr || !valid_identifier(type) ||
         !valid_identifier(id) ||
         (!text_profile.empty() && !valid_identifier(text_profile)) ||
         (!speaker_id.empty() && !valid_identifier(speaker_id)) ||
-        (!event_id.empty() && !valid_identifier(event_id))) {
+        (!event_id.empty() && !valid_identifier(event_id)) ||
+        (!actor_instance_id.empty() &&
+         !valid_identifier(actor_instance_id))) {
         impl_->failure = "invalid gameplay location context";
         return;
     }
@@ -12149,6 +12156,7 @@ void GameScriptRuntime::set_location_context(
     impl_->location_text_profile = std::string(text_profile);
     impl_->location_speaker_id = std::string(speaker_id);
     impl_->location_event_id = std::string(event_id);
+    impl_->location_actor_instance_id = std::string(actor_instance_id);
     impl_->location_scene_id = scene_id;
 }
 

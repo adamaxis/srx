@@ -109,7 +109,15 @@ void FieldSceneRuntime::initialize_field_entity_selection_state() {
         field_party_roster_.active_slot();
     field_movement_behavior_record_.behavior_flags =
         field_entity_behavior_flags_;
+    auto service_progress_counters = std::move(
+        field_runner_refresh_state_.effect_counters);
+    const auto compact_record_markers =
+        field_runner_refresh_state_.compact_record_markers;
     field_runner_refresh_state_ = FieldRunnerRefreshState{};
+    field_runner_refresh_state_.effect_counters =
+        std::move(service_progress_counters);
+    field_runner_refresh_state_.compact_record_markers =
+        compact_record_markers;
     field_mode_exit_transition_state_ = FieldModeExitTransitionState{};
     field_mode_exit_transition_state_.action_counter = field_action_counter_;
 }

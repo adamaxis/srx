@@ -54,6 +54,11 @@ public:
                                        RunnerRecordFields record,
                                        std::string name,
                                        std::uint8_t portrait_asset_family = 0U);
+    bool install_recruited_member(std::size_t slot,
+                                  RunnerRecordFields record,
+                                  std::string name,
+                                  std::uint8_t compact_marker,
+                                  std::uint8_t portrait_asset_family);
     void set_compact_markers_for_dump(std::uint8_t primary_marker,
                                       std::uint8_t secondary_marker) noexcept {
         primary_compact_marker_ = primary_marker;

@@ -10,6 +10,7 @@
 #include "shadowrun_ghidra/core/random_conversion.hpp"
 #include "shadowrun_ghidra/field/vid_phone_service_conversion.hpp"
 #include "shadowrun_ghidra/integration/recruited_runner_conversation_conversion.hpp"
+#include "shadowrun_ghidra/session/recruited_runner_service_conversion.hpp"
 #include "shadowrun_ghidra/session/runner_record_access_conversion.hpp"
 #include "shadowrun_ghidra/session/startup_record_assets_conversion.hpp"
 #include "shadowrun_ghidra/scripting/run_location_catalog.hpp"
@@ -16414,8 +16415,15 @@ int run_bulk_generic_field_contacts_qa(
             [&boundaries](const std::string_view boundary) {
                 boundaries.emplace_back(boundary);
             });
-        if (!field_scene.bootstrap_for_scene_dump(startup_state,
-                                                   test_case.scene)) {
+        auto contact_startup_state = startup_state;
+        if (test_case.scene == 19U) {
+            // Ricky's ROM progress counter is reset by the completed New
+            // Game field handoff at 0x0806; this contact case uses that live
+            // state so the dispatcher can resolve the signed counter row.
+            contact_startup_state.new_game_opening_completed = true;
+        }
+        if (!field_scene.bootstrap_for_scene_dump(
+                contact_startup_state, test_case.scene)) {
             std::cerr << "Bulk generic-contact QA: Scene "
                       << test_case.scene << " bootstrap failed: "
                       << field_scene.failure() << '\n';
@@ -16449,9 +16457,17 @@ int run_bulk_generic_field_contacts_qa(
         field_scene.set_controller_port_byte(0U);
         field_scene.advance_frame();
         if (field_scene.dialogue_open()) {
+            const auto& early_panel = field_scene.dialogue_panel();
             std::cerr << "Bulk generic-contact QA: Scene "
                       << test_case.scene
-                      << " showed text before measured frame 23\n";
+                      << " showed text before measured frame 23 (kind="
+                      << static_cast<unsigned>(early_panel.kind)
+                      << ", actor=" << early_panel.actor_name
+                      << ", first_text="
+                      << (early_panel.text_segment_count == 0U
+                              ? std::string_view{}
+                              : early_panel.text_segments[0U])
+                      << ")\n";
             return 3;
         }
         std::uint16_t dialogue_update = 1U;
@@ -16501,6 +16517,132 @@ int run_bulk_generic_field_contacts_qa(
                       << " countdown=" << resource_countdown
                       << " failure=" << field_scene.failure() << '\n';
             return 3;
+        }
+
+        if (test_case.scene == 19U) {
+            const auto opening = field_scene.dialogue_panel();
+            if (opening.actor_name != "Ricky" ||
+                opening.portrait_alias !=
+                    "field.hud.party.face.3.palette.0" ||
+                opening.option_count != 3U ||
+                opening.options[1U].source_label !=
+                    "I'm lookin' for a good 'runner.  Care to sign on?") {
+                std::cerr << "Bulk generic-contact QA: Ricky's live contact "
+                             "did not bind his three-choice portrait dialogue\n";
+                return 3;
+            }
+
+            // [C] ROM 0x21226..0x21316 derives Ricky's live offer from his
+            // progress byte and Joshua's current cost bytes.  Exercise the
+            // actual Lua prompt and payment callback against that result.
+            const auto progress = field_scene.ricky_progress_counters_for_dump();
+            const auto& joshua = field_scene.field_party_records_for_dump()[0U];
+            if (progress.size() != 10U) {
+                std::cerr << "Bulk generic-contact QA: Ricky's live progress "
+                             "counter table is unavailable\n";
+                return 3;
+            }
+            const auto expected_fees =
+                shadowrun::ghidra_conversion::calculate_recruited_runner_service_fees(
+                    0U, progress[0U],
+                    {joshua.attributes[3U], joshua.skills[10U],
+                     joshua.skills[11U]});
+            if (expected_fees.action !=
+                    shadowrun::ghidra_conversion::
+                        RecruitedRunnerServiceOfferPreparationAction::prepared) {
+                std::cerr << "Bulk generic-contact QA: ROM-derived Ricky fee "
+                             "inputs did not produce an offer\n";
+                return 3;
+            }
+
+            constexpr std::uint32_t kHireQaFunds = 1000000U;
+            field_scene.set_field_funds_for_dump(kHireQaFunds);
+            tap_qa_controller_button(field_scene, 0x10U); // [C] B selects Hire at 0x1F3C4.
+            const auto offer = field_scene.dialogue_panel();
+            const auto expected_short_fee =
+                "$" + std::to_string(expected_fees.short_term_fee);
+            bool offer_shows_rom_price = false;
+            for (std::size_t index = 0U;
+                 index < offer.text_segment_count; ++index) {
+                offer_shows_rom_price = offer_shows_rom_price ||
+                    offer.text_segments[index].find(expected_short_fee) !=
+                        std::string_view::npos;
+            }
+            const auto offer_image = render_qa_field(field_scene);
+            if (!field_scene.dialogue_open() || offer.option_count != 2U ||
+                offer.portrait_alias !=
+                    "field.hud.party.face.3.palette.0" ||
+                offer.options[0U].source_label !=
+                    "I just need someone for the short-term.  Whadda' ya say?" ||
+                !offer_shows_rom_price ||
+                !offer_image.save(QString::fromStdString(
+                    (case_output / "hire-offer.bmp").string()))) {
+                std::cerr << "Bulk generic-contact QA: Ricky's live hire "
+                             "offer did not show the ROM-derived fee/choices "
+                             "(open=" << field_scene.dialogue_open()
+                          << ", kind="
+                          << static_cast<unsigned>(offer.kind)
+                          << ", options=" << offer.option_count
+                          << ", portrait=" << offer.portrait_alias
+                          << ", expected_short_fee=" << expected_short_fee
+                          << ", price_visible=" << offer_shows_rom_price
+                          << ", first_text="
+                          << (offer.text_segment_count == 0U
+                                  ? std::string_view{}
+                                  : offer.text_segments[0U])
+                          << ", boundary=" << offer.source_boundary_reason
+                          << ", failure=" << field_scene.failure()
+                          << ")\n";
+                return 3;
+            }
+
+            const auto ricky_contact_position =
+                field_scene.world_activity_script_actor_position_for_dump(0U);
+            tap_qa_controller_button(field_scene, 0x40U); // Pay short-term.
+            const auto success = field_scene.dialogue_panel();
+            bool success_text_shown = false;
+            for (std::size_t index = 0U;
+                 index < success.text_segment_count; ++index) {
+                success_text_shown = success_text_shown ||
+                    success.text_segments[index].find(
+                        "You got me, pal.") != std::string_view::npos;
+            }
+            const auto hired_image = render_qa_field(field_scene);
+            const auto& ricky = field_scene.field_party_records_for_dump()[1U];
+            const auto ricky_party_position =
+                field_scene.field_party_initial_position_for_dump(1U);
+            const auto remaining_contact =
+                field_scene.world_activity_script_actor_projection_for_dump(0U);
+            const auto hire_completed_count = std::count(
+                boundaries.begin(), boundaries.end(),
+                std::string("field.ricky.hire.completed"));
+            const auto funds_after_hire = field_scene.field_funds_for_dump();
+            if (!field_scene.dialogue_open() || !success_text_shown ||
+                success.actor_name != "Ricky" ||
+                success.portrait_alias !=
+                    "field.hud.party.face.3.palette.0" ||
+                !field_scene.field_party_slot_active_for_dump(1U) ||
+                field_scene.field_hud_slot_state_for_dump(1U)
+                        .asset_family_index != 3U ||
+                ricky.recruitment_population != 0U ||
+                ricky.delay_meter != 10U || ricky.behavior_meter != 10U ||
+                !ricky_contact_position.has_value() ||
+                !ricky_party_position.has_value() ||
+                ricky_party_position->x != ricky_contact_position->x ||
+                ricky_party_position->y != ricky_contact_position->y ||
+                remaining_contact.has_value() ||
+                field_scene.world_activity_script_actor_count_for_dump() != 0U ||
+                !funds_after_hire.has_value() ||
+                *funds_after_hire !=
+                    kHireQaFunds - expected_fees.short_term_fee ||
+                hire_completed_count != 1 ||
+                !hired_image.save(QString::fromStdString(
+                    (case_output / "hired.bmp").string()))) {
+                std::cerr << "Bulk generic-contact QA: short-term hire did "
+                             "not install Ricky, bind his HUD family, and "
+                             "charge the ROM fee\n";
+                return 3;
+            }
         }
         std::cout << "bulk_generic_contact=passed scene="
                   << test_case.scene << " activity="
@@ -40958,6 +41100,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_hotel_profile_permutation_qa_path;
         std::optional<std::filesystem::path> field_command_dump_path;
+        std::optional<std::filesystem::path>
+            field_ricky_contact_state_qa_path;
         std::optional<std::filesystem::path> field_taxi_dump_path;
         std::optional<std::filesystem::path>
             field_vid_phone_passage_qa_path;
@@ -41105,6 +41249,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_scene10_generic_contact_input_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-ricky-contact-state-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_ricky_contact_state_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -42664,7 +42815,8 @@ int main(int argc, char** argv) {
             // directly so its automatic movement can be checked with no
             // synthetic controller press.
             smoke_state.new_game_opening_completed =
-                field_stoker_collision_to_dialogue_qa_path.has_value();
+                field_stoker_collision_to_dialogue_qa_path.has_value() ||
+                field_ricky_contact_state_qa_path.has_value();
             if (field_redmond_vigore_search_qa_path.has_value()) {
                 const auto scene2 = integration::make_field_scene_input(
                     *smoke_state.field_session_source_assets, 2U);
@@ -43440,6 +43592,84 @@ int main(int argc, char** argv) {
             if (!bootstrapped) {
                 std::cerr << "field smoke: " << field_scene.failure() << '\n';
                 return 3;
+            }
+            if (field_ricky_contact_state_qa_path.has_value()) {
+                const auto counters =
+                    field_scene.ricky_progress_counters_for_dump();
+                const auto information_flags =
+                    field_scene.ricky_information_flags_for_dump();
+                if (counters.size() != 10U ||
+                    !std::all_of(counters.begin(), counters.end(),
+                                 [](const std::uint8_t counter) {
+                                     return counter == 0U;
+                                 }) ||
+                    !information_flags.has_value() ||
+                    *information_flags != 0U) {
+                    std::cerr << "Ricky state QA: New Game counters were lost "
+                                 "during field initialization\n";
+                    return 3;
+                }
+                QString save_error;
+                auto snapshot = field_scene.capture_game_save_snapshot_for_dump(
+                    &save_error);
+                if (!snapshot.has_value()) {
+                    std::cerr << "Ricky state QA: could not capture save "
+                                 "snapshot: "
+                              << save_error.toStdString() << '\n';
+                    return 3;
+                }
+                QJsonArray saved_counters;
+                for (std::size_t index = 0U; index < 10U; ++index) {
+                    saved_counters.append(index == 0U ? 0xFF :
+                                          static_cast<int>(index));
+                }
+                auto story = snapshot->value(QStringLiteral("story"))
+                                 .toObject();
+                story.insert(
+                    QStringLiteral("runner_contact_progress_counters"),
+                    saved_counters);
+                story.insert(QStringLiteral("runner_information_flags"),
+                             0x1234);
+                snapshot->insert(QStringLiteral("story"), story);
+                if (!field_scene.restore_game_save_snapshot_for_dump(
+                        *snapshot, &save_error)) {
+                    std::cerr << "Ricky state QA: could not restore typed "
+                                 "contact state: "
+                              << save_error.toStdString() << '\n';
+                    return 3;
+                }
+                const auto restored_counters =
+                    field_scene.ricky_progress_counters_for_dump();
+                const auto restored_information_flags =
+                    field_scene.ricky_information_flags_for_dump();
+                if (restored_counters.size() != 10U ||
+                    restored_counters[0] != 0xFFU ||
+                    restored_counters[1] != 1U ||
+                    !restored_information_flags.has_value() ||
+                    *restored_information_flags != 0x1234U) {
+                    std::cerr << "Ricky state QA: signed contact counter or "
+                                 "information flags did not survive save/load\n";
+                    return 3;
+                }
+                const auto image = render_qa_field(field_scene);
+                if (image.isNull() ||
+                    !image.save(QString::fromStdWString(
+                        field_ricky_contact_state_qa_path->wstring()))) {
+                    std::cerr << "Ricky state QA: field image dump failed\n";
+                    return 3;
+                }
+                std::cout << "field_ricky_contact_state_qa=passed "
+                             "counter_count=" << restored_counters.size()
+                          << " signed_counter="
+                          << static_cast<int>(
+                                 static_cast<std::int8_t>(
+                                     restored_counters[0]))
+                          << " information_flags=0x" << std::hex
+                          << *restored_information_flags << std::dec
+                          << " dump="
+                          << field_ricky_contact_state_qa_path->string()
+                          << '\n';
+                return 0;
             }
             if (field_building_service_exit_sweep_qa) {
                 return run_field_building_service_exit_sweep_qa(

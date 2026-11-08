@@ -1412,6 +1412,57 @@
       "portrait_alias": "none",
       "text_profile": "wanderer.vigore_jarl"
     },
+    "ricky": {
+      "events": {
+        "information.opening": {
+          "continuation_key": "shared.more",
+          "title_key": "runner.ricky.information.opening"
+        },
+        "information.continuation": {
+          "continuation_key": "",
+          "title_key": "runner.ricky.information.continuation"
+        },
+        "subject.shaman_magic.page_0": {
+          "continuation_key": "shared.more",
+          "title_key": "runner.ricky.subject.shaman_magic.page_0"
+        },
+        "subject.shaman_magic.page_1": {
+          "continuation_key": "shared.more",
+          "title_key": "runner.ricky.subject.shaman_magic.page_1"
+        },
+        "subject.shaman_magic.page_2": {
+          "continuation_key": "",
+          "title_key": "runner.ricky.subject.shaman_magic.page_2"
+        },
+        "subject.local_area.page_0": {
+          "continuation_key": "shared.more",
+          "title_key": "runner.ricky.subject.local_area.page_0"
+        },
+        "subject.local_area.page_1": {
+          "continuation_key": "",
+          "title_key": "runner.ricky.subject.local_area.page_1"
+        },
+        "subject.johnson_gunderson.page_0": {
+          "continuation_key": "",
+          "title_key": "runner.ricky.subject.johnson_gunderson.page_0"
+        },
+        "hire.insufficient": {
+          "continuation_key": "",
+          "title_key": "runner.ricky.hire.insufficient_funds"
+        },
+        "hire.success": {
+          "continuation_key": "",
+          "title_key": "runner.ricky.hire.success"
+        },
+        "hire.roster_full": {
+          "continuation_key": "",
+          "title_key": "runner.ricky.hire.roster_full"
+        }
+      },
+      "name": "Ricky",
+      "portrait_alias": "field.hud.party.face.3.palette.0",
+      "text_profile": "runner.ricky"
+    },
     "taxi_cabbie": {
       "events": {
         "already_there": {

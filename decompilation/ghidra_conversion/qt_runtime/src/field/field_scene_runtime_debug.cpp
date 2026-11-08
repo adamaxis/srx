@@ -1015,6 +1015,19 @@ FieldSceneRuntime::guard_world_effect_player_spawn_for_dump() {
 
 
 #ifdef SHADOWRUN_QT_QA_DRIVER
+std::optional<SceneRunnerPosition>
+FieldSceneRuntime::field_party_initial_position_for_dump(
+    const std::size_t slot) const noexcept {
+    const auto& positions =
+        state_.field_scene_buffers.source_metadata.initial_field_records;
+    return slot < positions.size()
+        ? std::optional<SceneRunnerPosition>{positions[slot]}
+        : std::nullopt;
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
+
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::size_t FieldSceneRuntime::world_activity_script_actor_count_for_dump()
     const noexcept {
     const auto scene_reference = state_.field_scene_buffers.scene_reference;

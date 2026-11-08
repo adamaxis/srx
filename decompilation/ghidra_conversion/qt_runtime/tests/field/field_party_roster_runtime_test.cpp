@@ -106,5 +106,22 @@ int main() {
                 "unavailable roster did not remain explicit")) {
         return 3;
     }
+
+    roster.initialize(new_game);
+    RunnerRecordFields hired_ricky{};
+    hired_ricky.recruitment_population = 0xFFU;
+    hired_ricky.delay_meter = 10U;
+    hired_ricky.behavior_meter = 10U;
+    if (!expect(roster.install_recruited_member(
+                    1U, hired_ricky, "Ricky", 1U, 3U) &&
+                    roster.slot_active(1U) &&
+                    roster.primary_compact_marker() == 1U &&
+                    roster.name(1U) == "Ricky" &&
+                    roster.portrait_asset_family(1U) == 3U &&
+                    (roster.records()[1U].flags & 0x0101U) == 0x0101U &&
+                    roster.records()[1U].recruitment_population == 0xFFU,
+                "live Ricky hire did not bind the party slot and portrait")) {
+        return 5;
+    }
     return 0;
 }

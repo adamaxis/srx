@@ -120,6 +120,30 @@ void FieldPartyRosterRuntime::install_party_member_for_dump(
 }
 #endif // SHADOWRUN_QT_QA_DRIVER
 
+bool FieldPartyRosterRuntime::install_recruited_member(
+    const std::size_t slot, RunnerRecordFields record, std::string name,
+    const std::uint8_t compact_marker,
+    const std::uint8_t portrait_asset_family) {
+    if (slot == 0U || slot >= kSlotCount || compact_marker == 0xFFU ||
+        name.empty()) {
+        return false;
+    }
+    mark_slot_active(record);
+    records_[slot] = std::move(record);
+    names_[slot] = std::move(name);
+    name_pads_[slot] = 0U;
+    active_slots_[slot] = true;
+    portrait_asset_families_[slot] = portrait_asset_family;
+    if (slot == 1U) {
+        primary_compact_marker_ = compact_marker;
+    } else {
+        secondary_compact_marker_ = compact_marker;
+    }
+    if (source_ == Source::unavailable) {
+        source_ = Source::new_game_joshua;
+    }
+    return true;
+}
 
 bool FieldPartyRosterRuntime::deactivate_party_member(
     const std::size_t slot) noexcept {

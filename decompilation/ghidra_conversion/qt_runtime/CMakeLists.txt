@@ -1827,6 +1827,11 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_runner_summary_gat
                  --field-command-page 2
                  --field-archetype gator)
 
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_ricky_contact_state_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-ricky-contact-state-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-ricky-contact-state-qa.bmp")
+
 # Compare the bare-hand command status panel to an independent headless GPGX
 # capture made from the Decker ROM template at +0x56/+0x57/+0x76 = 0.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_barehand_status_qa

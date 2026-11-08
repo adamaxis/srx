@@ -41,6 +41,7 @@
 #include "shadowrun_ghidra/session/runner_switch_conversion.hpp"
 #include "shadowrun_ghidra/session/runner_record_operations_conversion.hpp"
 #include "shadowrun_ghidra/session/runner_record_access_conversion.hpp"
+#include "shadowrun_ghidra/session/recruited_runner_service_conversion.hpp"
 #include "shadowrun_ghidra/integration/startup_integration_conversion.hpp"
 #include "shadowrun_ghidra/menus/menu_transfer_batch_conversion.hpp"
 #include "shadowrun_ghidra/rendering/display_service_batch_conversion.hpp"
@@ -468,6 +469,14 @@ public:
                !menu_reveal_masks_pending_.empty() || !menu_reveal_masks_.empty();
     }
 #ifdef SHADOWRUN_QT_QA_DRIVER
+    std::vector<std::uint8_t>
+    ricky_progress_counters_for_dump() const {
+        return field_runner_refresh_state_.effect_counters;
+    }
+    std::optional<std::uint16_t>
+    ricky_information_flags_for_dump() const noexcept {
+        return field_runner_information_flags_;
+    }
     struct FieldBuildingServiceExitSweepRow {
         std::string exit_id;
         std::uint16_t scene_id = 0U;
@@ -1174,6 +1183,8 @@ public:
     field_party_records_for_dump() const noexcept {
         return field_party_roster_.records();
     }
+    std::optional<SceneRunnerPosition>
+    field_party_initial_position_for_dump(std::size_t slot) const noexcept;
     const EquipmentCombatBarResult& command_overview_combat_bars() const
         noexcept {
         return command_overview_combat_bars_;
@@ -2087,6 +2098,12 @@ private:
     void refresh_field_hud_runner_slot();
     void initialize_field_party_roster(
         const integration::StartupIntegrationState& startup_state);
+    std::optional<RecruitedRunnerServiceState>
+    make_ricky_service_state() const;
+    RecruitedRunnerServiceCostModifiers
+    ricky_service_cost_modifiers() const;
+    std::optional<std::string> recruited_runner_service_call(
+        std::string_view action);
     void advance_command_overview_inventory_action(
         std::uint16_t controller_events);
     void begin_command_overview_first_aid();
@@ -2843,6 +2860,11 @@ private:
     EntityBehaviorFrameRecord field_movement_behavior_record_{};
     RunnerSwitchState field_entity_selection_state_{};
     FieldRunnerRefreshState field_runner_refresh_state_{};
+    bool field_runner_progress_counters_available_ = false;
+    std::optional<std::uint16_t> field_runner_information_flags_;
+    std::vector<RunnerRosterTemplate> recruited_runner_templates_;
+    std::vector<CompactRunnerRecord> field_compact_runner_records_;
+    std::string field_ricky_contact_actor_id_;
     FieldModeExitTransitionState field_mode_exit_transition_state_{};
     std::array<std::uint16_t, 10> field_entity_table_occupancy_{};
     std::array<AuxiliaryWorldEntity, 10> field_entity_table_{};

@@ -591,6 +591,25 @@ function World.mark_contact_actor_for_escort_cleanup(
     return true
 end
 
+function World.deactivate_hired_contact_actor(scene_id, actor_instance_id)
+    if type(scene_id) ~= "number" or scene_id % 1 ~= 0 or
+       type(actor_instance_id) ~= "string" or actor_instance_id == "" or
+       type(game.actors) ~= "table" then
+        return false
+    end
+    local state = game.actors[actor_instance_id]
+    if type(state) ~= "table" or state.scene_id ~= scene_id or
+       type(state.actor_facts) ~= "table" or
+       type(state.actor_facts.lifecycle) ~= "table" or
+       state.actor_facts.lifecycle.active ~= true then
+        return false
+    end
+    -- The field contact's hire command clears the selected entity active bit
+    -- at ROM 0x2139A. Keep the gameplay lifecycle in Lua authoritative.
+    state.actor_facts.lifecycle.active = false
+    return true
+end
+
 function World.pending_world_activity_id_for_scene(
     scene_id, world_effect_active, pending_world_effect)
     if type(scene_id) ~= "number" or scene_id % 1 ~= 0 or

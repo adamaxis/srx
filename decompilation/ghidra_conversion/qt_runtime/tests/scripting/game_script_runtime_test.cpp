@@ -2617,6 +2617,15 @@ int main() {
     const auto generic_scene_10_response =
         scripts.generic_field_contact_dialogue(
             10U, "scene_10_default_script", 4U);
+    const auto ricky_neutral_response =
+        scripts.generic_field_contact_dialogue(
+            19U, "scene_19_script", 0U, 0);
+    const auto ricky_receptive_response =
+        scripts.generic_field_contact_dialogue(
+            19U, "scene_19_script", 0U, 4);
+    const auto ricky_hostile_response =
+        scripts.generic_field_contact_dialogue(
+            19U, "scene_19_script", 0U, -1);
     // [C] Scene-10 event 6's spawn record at 0x17018 installs template
     // 0x171A2; its +0x9E byte selects group 2 through 0x21174/0xFE640,
     // resolving row 0xFEB4C and text 0x100A0C. The generated catalog must
@@ -3060,6 +3069,12 @@ int main() {
                     ContactAction::generic_contact_dialogue &&
                 generic_scene_10_response ==
                     std::optional<std::string>{"scene_10_default_neutral"} &&
+                ricky_neutral_response == std::optional<std::string>{
+                    "scene_19_group_0_default"} &&
+                ricky_receptive_response == std::optional<std::string>{
+                    "scene_19_group_0_high"} &&
+                ricky_hostile_response == std::optional<std::string>{
+                    "scene_19_group_0_negative"} &&
                 unsupported_scene_10_response ==
                     std::optional<std::string>{"scene_10_group_2_default"} &&
                 conditional_candidate_table_valid &&
@@ -11119,6 +11134,27 @@ int main() {
                     stoker_speaker->portrait_alias ==
                         "dialogue.portraits.stoker.motel",
                 "Lua dialogue speaker properties did not load")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+
+    const auto ricky_speaker = scripts.speaker_profile("ricky");
+    const auto ricky_success_keys = scripts.dialogue_event_text_keys(
+        "ricky", "runner.ricky", "hire.success");
+    const auto* ricky_hire_label =
+        scripts.dialogue_text("runner.ricky.option.hire");
+    if (!expect(ricky_speaker.has_value() &&
+                    ricky_speaker->name == "Ricky" &&
+                    ricky_speaker->text_profile == "runner.ricky" &&
+                    ricky_speaker->portrait_alias ==
+                        "field.hud.party.face.3.palette.0" &&
+                    ricky_success_keys.has_value() &&
+                    ricky_success_keys->title_key ==
+                        "runner.ricky.hire.success" &&
+                    ricky_hire_label != nullptr &&
+                    *ricky_hire_label ==
+                        "I'm lookin' for a good 'runner.  Care to sign on?",
+                "Ricky's hire dialogue or HUD portrait binding did not load")) {
         std::cerr << scripts.failure() << '\n';
         return 1;
     }

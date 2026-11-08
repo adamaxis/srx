@@ -312,6 +312,25 @@ int main(const int argc, char** argv) {
                 "dialogue.portraits.stoker.motel")) {
         return 20;
     }
+    const auto ricky_profile = scripts.speaker_profile("ricky");
+    const auto ricky_hire_success = scripts.dialogue_event_text_keys(
+        "ricky", "runner.ricky", "hire.success");
+    const auto* ricky_hire_label =
+        scripts.dialogue_text("runner.ricky.option.hire");
+    if (!expect(ricky_profile.has_value()) ||
+        !expect(ricky_profile->name == "Ricky") ||
+        !expect(ricky_profile->text_profile == "runner.ricky") ||
+        !expect(ricky_profile->portrait_alias ==
+                "field.hud.party.face.3.palette.0") ||
+        !expect(ricky_hire_success.has_value()) ||
+        !expect(ricky_hire_success->title_key ==
+                "runner.ricky.hire.success") ||
+        !expect(ricky_hire_label != nullptr) ||
+        !expect(*ricky_hire_label ==
+                "I'm lookin' for a good 'runner.  Care to sign on?")) {
+        std::cerr << "Ricky dialogue text or portrait binding is unavailable\n";
+        return 24;
+    }
     const DialogueSpeakerPresentation stoker_speaker{
         stoker_profile->id, stoker_profile->name,
         stoker_profile->text_profile, stoker_profile->portrait_alias};

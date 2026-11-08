@@ -1997,6 +1997,29 @@
         },
         "title_key": "wanderer.vigore_jarl.opening"
       }
+    },
+    "runner.ricky": {
+      "opening": {
+        "choice_label_keys": {
+          "information": "runner.ricky.option.information",
+          "hire": "runner.ricky.option.hire",
+          "leave": "runner.ricky.option.leave"
+        }
+      },
+      "subjects": {
+        "choice_label_keys": {
+          "shaman_magic": "runner.ricky.subject.option.shaman_magic",
+          "local_area": "runner.ricky.subject.option.local_area",
+          "johnson": "runner.ricky.subject.option.johnson"
+        },
+        "title_key": "runner.ricky.subject.title"
+      },
+      "hire_offer": {
+        "choice_label_keys": {
+          "short_term": "runner.ricky.hire.option.short_term",
+          "permanent": "runner.ricky.hire.option.permanent"
+        }
+      }
     }
   },
   "schemaVersion": 1

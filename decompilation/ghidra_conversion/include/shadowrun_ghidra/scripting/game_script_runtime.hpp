@@ -2789,7 +2789,8 @@ public:
                               std::string_view speaker_id = {},
                               std::string_view event_id = {},
                               std::optional<std::uint8_t> scene_id =
-                                  std::nullopt);
+                                  std::nullopt,
+                              std::string_view actor_instance_id = {});
     void set_field_mode_context(ScriptFieldModeContext context) noexcept;
     // Lua resolves attack/reload mode from the weapon data and applies the
     // shared 0xABFC / 0xD7EA calculation to the marshalled runner facts. [C]

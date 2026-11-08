@@ -436,11 +436,18 @@ FieldDialogueRuntime::resolve_typed_outcome(
 bool FieldDialogueRuntime::present_script_operation(
     const scripting::ScriptNativeOperation& operation,
     const StokerMotelPromptId prompt, const std::size_t service_depth) {
-    // Apply the Lua route's first-text delay at the first rendered say page,
-    // even when a task makes native service calls before yielding that page.
+    // Generic contacts can present their first text as either a say page or
+    // an inline prompt with choices (Ricky). Apply the route's measured delay
+    // to both text-bearing shapes, even when a task makes native service
+    // calls first. The +23 contact timing is recorded in
+    // docs/handoffs/grok_progress_notes.md, playtest #28b-4.
+    const bool first_text_operation =
+        operation.type == scripting::ScriptNativeOperation::Type::ui_say ||
+        (operation.type == scripting::ScriptNativeOperation::Type::ui_menu &&
+         operation.menu.has_value() && operation.menu->inline_prompt);
     if (!first_text_delay_started_ && opening_descriptor_.has_value() &&
         opening_descriptor_->text_delay_frames != 0U &&
-        operation.type == scripting::ScriptNativeOperation::Type::ui_say) {
+        first_text_operation) {
         first_text_delay_started_ = true;
         delayed_script_operation_ = operation;
         delayed_prompt_ = prompt;

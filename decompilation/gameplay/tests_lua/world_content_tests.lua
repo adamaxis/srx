@@ -201,4 +201,96 @@ assert(GenericFieldContacts.present() == "presented" and
        presented_continuation == false,
        "generic contact presentation did not open the selected Lua row")
 
+local function run_ricky_flow(choices, subject, hire_result)
+    local choice_index = 0
+    local events = {}
+    local offer_text
+    local service_calls = {}
+    local actor = {
+        scene_id = 19,
+        actor_facts = { lifecycle = { active = true } },
+    }
+    game.location = {
+        type = "field_map",
+        id = E.GenericFieldContact.LOCATION_ID,
+        event_id = "scene_19_group_0_default",
+        speaker_id = "ricky",
+        scene_id = 19,
+        actor_instance_id = "ricky_contact",
+    }
+    game.actors = { ricky_contact = actor }
+    game.services = {
+        call = function(domain, action)
+            assert(domain == "recruited_runner")
+            service_calls[#service_calls + 1] = action
+            if action == "mark_ricky_information" then return "applied" end
+            if action == "prepare_ricky_offer" then
+                return hire_result == "roster_full"
+                    and "roster_full" or "fees_100_900"
+            end
+            if action == "hire_ricky_short_term" or
+               action == "hire_ricky_permanent" then
+                return hire_result
+            end
+            error("unexpected Ricky service action: " .. action)
+        end,
+    }
+    game.ui = {
+        prompt_text = function(menu_id, text, menu_choices)
+            if menu_id == "hire_offer" then
+                offer_text = text
+                assert(#menu_choices == 2 and
+                       menu_choices[1] == "short_term" and
+                       menu_choices[2] == "permanent")
+            end
+            choice_index = choice_index + 1
+            return choices[choice_index]
+        end,
+        menu = function(menu_id, menu_choices)
+            assert(menu_id == "subjects" and #menu_choices == 3)
+            return subject
+        end,
+        say = function(event_id, speaker_id, text_profile)
+            assert(speaker_id == "ricky" and
+                   text_profile == "runner.ricky")
+            events[#events + 1] = event_id
+        end,
+        say_text = function() error("Ricky bypassed his speaker profile") end,
+    }
+    local result = GenericFieldContacts.present()
+    return result, events, offer_text, service_calls, actor
+end
+
+local ricky_hired, ricky_events, ricky_offer, ricky_services, ricky_actor =
+    run_ricky_flow({ "information", "hire", "short_term" },
+                   "shaman_magic", "hired")
+assert(ricky_hired == "presented" and
+       ricky_events[1] == "information.opening" and
+       ricky_events[2] == "information.continuation" and
+       ricky_events[3] == "subject.shaman_magic.page_0" and
+       ricky_events[5] == "subject.shaman_magic.page_2" and
+       ricky_events[#ricky_events] == "hire.success" and
+       ricky_offer:find("$100", 1, true) and
+       ricky_offer:find("$900", 1, true) and
+       ricky_actor.actor_facts.lifecycle.active == false and
+       ricky_services[1] == "mark_ricky_information" and
+       ricky_services[2] == "prepare_ricky_offer" and
+       ricky_services[3] == "hire_ricky_short_term",
+       "Ricky information, live pricing, or short-term hire flow failed")
+
+local ricky_insufficient, insufficient_events, _, _, insufficient_actor =
+    run_ricky_flow({ "hire", "permanent", "leave" },
+                   "local_area", "insufficient_funds")
+assert(ricky_insufficient == "presented" and
+       insufficient_events[1] == "hire.insufficient" and
+       insufficient_actor.actor_facts.lifecycle.active == true,
+       "Ricky's unaffordable permanent offer changed party actor state")
+
+local ricky_full, full_events, _, _, full_actor =
+    run_ricky_flow({ "hire", "leave" }, "johnson", "roster_full")
+assert(ricky_full == "presented" and
+       full_events[1] == "hire.roster_full" and
+       full_actor.actor_facts.lifecycle.active == true,
+       "Ricky's full-roster response did not return to the common choices")
+
 print("world content tests passed")

@@ -1064,6 +1064,47 @@ void FieldSceneRuntime::refresh_field_hud_runner_slot() {
 void FieldSceneRuntime::initialize_field_party_roster(
     const integration::StartupIntegrationState& startup_state) {
     const auto source = field_party_roster_.initialize(startup_state);
+    recruited_runner_templates_.clear();
+    field_compact_runner_records_.clear();
+    field_runner_refresh_state_.effect_counters.clear();
+    field_runner_progress_counters_available_ = false;
+    field_runner_information_flags_.reset();
+    if (startup_state.startup_records.has_value()) {
+        const auto& save_templates =
+            startup_state.startup_records->save_roster_templates;
+        recruited_runner_templates_.reserve(10U);
+        for (std::size_t index = 1U; index <= 10U; ++index) {
+            recruited_runner_templates_.push_back(save_templates[index]);
+        }
+    }
+    if (startup_state.save_roster_buffer.has_value()) {
+        field_compact_runner_records_ =
+            startup_state.save_roster_buffer->compact_records;
+    } else if (startup_state.startup_records.has_value()) {
+        const auto save_roster_buffer = initialize_save_roster_buffer(
+            startup_state.startup_records->save_roster_header,
+            startup_state.startup_records->save_roster_templates);
+        if (save_roster_buffer.has_value()) {
+            field_compact_runner_records_ =
+                save_roster_buffer->compact_records;
+        }
+    }
+    if (startup_state.restored_field_state.has_value()) {
+        const auto& restored = *startup_state.restored_field_state;
+        field_runner_refresh_state_.effect_counters.assign(
+            restored.runner_contact_progress_counters.begin(),
+            restored.runner_contact_progress_counters.end());
+        field_runner_progress_counters_available_ = true;
+        field_runner_information_flags_ = restored.runner_information_flags;
+    } else if (startup_state.new_game_opening_completed) {
+        // ROM 0x0806 clears FFFC12..FFFC1B during the New Game field setup.
+        field_runner_refresh_state_.effect_counters.resize(10U, 0U);
+        field_runner_progress_counters_available_ = true;
+        field_runner_information_flags_ = 0U;
+    }
+    field_runner_refresh_state_.compact_record_markers = {
+        field_party_roster_.primary_compact_marker(),
+        field_party_roster_.secondary_compact_marker()};
     if (source == FieldPartyRosterRuntime::Source::unavailable) {
         source_boundary("field.bootstrap.party_records_missing");
     } else if (source == FieldPartyRosterRuntime::Source::restored_save) {
@@ -1071,6 +1112,201 @@ void FieldSceneRuntime::initialize_field_party_roster(
     } else {
         source_boundary("field.bootstrap.party_records.new_game");
     }
+}
+
+std::optional<RecruitedRunnerServiceState>
+FieldSceneRuntime::make_ricky_service_state() const {
+    if (!field_funds_.has_value() || !field_party_roster_.available() ||
+        !field_runner_progress_counters_available_ ||
+        field_runner_refresh_state_.effect_counters.size() != 10U ||
+        recruited_runner_templates_.size() != 10U ||
+        field_compact_runner_records_.size() < 11U ||
+        field_ricky_contact_actor_id_.empty()) {
+        return std::nullopt;
+    }
+    const auto actor = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [this](const auto& candidate) {
+            return candidate.active && candidate.scene_reference == 19U &&
+                   candidate.actor_instance_id ==
+                       field_ricky_contact_actor_id_;
+        });
+    if (actor == field_default_actors_.end()) {
+        return std::nullopt;
+    }
+
+    RecruitedRunnerServiceState service{};
+    service.funds = *field_funds_;
+    service.selected_runner_template_index = 0U;
+    service.service_progress_counters =
+        field_runner_refresh_state_.effect_counters;
+    service.templates = recruited_runner_templates_;
+    service.compact_records = field_compact_runner_records_;
+    service.roster.primary_marker =
+        field_party_roster_.primary_compact_marker();
+    service.roster.secondary_marker =
+        field_party_roster_.secondary_compact_marker();
+    write_runner_record_fields(field_party_roster_.records()[0],
+                               service.roster.default_record);
+    write_runner_record_fields(field_party_roster_.records()[1],
+                               service.roster.primary_record);
+    write_runner_record_fields(field_party_roster_.records()[2],
+                               service.roster.secondary_record);
+    if (field_party_roster_.slot_active(1U)) {
+        service.roster.primary_record.bytes[0x10U] |= 0x01U;
+    }
+    if (field_party_roster_.slot_active(2U)) {
+        service.roster.secondary_record.bytes[0x10U] |= 0x01U;
+    }
+    const auto serialized = serialize_runner_record_population(
+        service.roster, service.compact_records);
+    if (serialized.action != RunnerRecordSaveAction::completed) {
+        return std::nullopt;
+    }
+    service.selected_entity.present = true;
+    service.selected_entity.service_flags = actor->source_record_flags;
+    service.selected_entity.source_position_y = actor->world_position.y;
+    return service;
+}
+
+RecruitedRunnerServiceCostModifiers
+FieldSceneRuntime::ricky_service_cost_modifiers() const {
+    if (!field_party_roster_.available()) {
+        return {};
+    }
+    const auto& leader = field_party_roster_.records()[0];
+    return {leader.attributes[3U], leader.skills[10U],
+            leader.skills[11U]};
+}
+
+std::optional<std::string> FieldSceneRuntime::recruited_runner_service_call(
+    const std::string_view action) {
+    if (action == "mark_ricky_information") {
+        if (!field_runner_information_flags_.has_value()) {
+            return "unavailable";
+        }
+        RecruitedRunnerServiceState state{};
+        state.selected_runner_template_index = 0U;
+        state.runner_information_flags = *field_runner_information_flags_;
+        const auto information =
+            select_recruited_runner_information_prompt(state);
+        if (information.action !=
+            RecruitedRunnerInformationAction::selected) {
+            return "unavailable";
+        }
+        field_runner_information_flags_ = information.information_flags;
+        return "applied";
+    }
+
+    auto state = make_ricky_service_state();
+    if (!state.has_value()) {
+        return "unavailable";
+    }
+    const auto preparation = prepare_recruited_runner_service_offer(
+        *state, ricky_service_cost_modifiers());
+    if (preparation.action ==
+        RecruitedRunnerServiceOfferPreparationAction::roster_full) {
+        return "roster_full";
+    }
+    if (preparation.action !=
+        RecruitedRunnerServiceOfferPreparationAction::prepared) {
+        return "unavailable";
+    }
+    state->short_term_fee = preparation.short_term_fee;
+    state->permanent_fee = preparation.permanent_fee;
+
+    if (action == "prepare_ricky_offer") {
+        // Gameplay service results pass through the runtime's identifier
+        // validator, so keep the dynamic pair in its accepted underscore
+        // form while preserving both calculated prices.
+        return "fees_" + std::to_string(preparation.short_term_fee) + "_" +
+               std::to_string(preparation.permanent_fee);
+    }
+
+    RecruitedRunnerServiceOffer offer{};
+    if (action == "hire_ricky_short_term") {
+        offer = RecruitedRunnerServiceOffer::short_term_run;
+    } else if (action == "hire_ricky_permanent") {
+        offer = RecruitedRunnerServiceOffer::permanent_hire;
+    } else {
+        return std::nullopt;
+    }
+
+    const auto result = resolve_recruited_runner_service_payment(
+        *state, offer);
+    if (result.action == RecruitedRunnerServiceAction::insufficient_funds) {
+        return "insufficient_funds";
+    }
+    if (result.action != RecruitedRunnerServiceAction::completed) {
+        return "unavailable";
+    }
+
+    const auto contact = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [this](const auto& candidate) {
+            return candidate.active && candidate.scene_reference == 19U &&
+                   candidate.actor_instance_id ==
+                       field_ricky_contact_actor_id_;
+        });
+    if (contact == field_default_actors_.end()) {
+        return "unavailable";
+    }
+    const auto contact_position = contact->world_position;
+
+    const auto slot = result.destination ==
+                              RunnerRecordDestination::primary_record
+                          ? 1U
+                          : result.destination ==
+                                    RunnerRecordDestination::secondary_record
+                                ? 2U
+                                : FieldPartyRosterRuntime::kSlotCount;
+    if (slot >= FieldPartyRosterRuntime::kSlotCount) {
+        return "unavailable";
+    }
+    const auto marker = slot == 1U ? state->roster.primary_marker
+                                   : state->roster.secondary_marker;
+    const auto& source_record = slot == 1U ? state->roster.primary_record
+                                           : state->roster.secondary_record;
+    const auto* runner_name =
+        game_scripts_.dialogue_text("runner.ricky.name");
+    if (runner_name == nullptr || runner_name->empty() || marker == 0xFFU) {
+        return "unavailable";
+    }
+    const auto compact_save = serialize_runner_record_population(
+        state->roster, state->compact_records);
+    if (compact_save.action != RunnerRecordSaveAction::completed) {
+        return "unavailable";
+    }
+    const auto typed_record = read_runner_record_fields(source_record);
+    if (!field_party_roster_.install_recruited_member(
+            slot, typed_record, *runner_name, marker,
+            static_cast<std::uint8_t>(3U +
+                                      state->selected_runner_template_index))) {
+        return "unavailable";
+    }
+
+    // ROM 0x2139A clears the selected contact record's active bit after a
+    // successful hire. Keep the host actor projection in step with that
+    // source side effect; Lua also retires the stable actor lifecycle.
+    contact->source_record_flags = state->selected_entity.service_flags;
+    contact->combatant.source_flags = contact->source_record_flags;
+    if ((contact->source_record_flags & 0x01U) == 0U) {
+        contact->active = false;
+    }
+    state_.field_scene_buffers.source_metadata.initial_field_records[slot] =
+        contact_position;
+    field_compact_runner_records_ = std::move(state->compact_records);
+    field_funds_ = state->funds;
+    const auto refresh_index = slot - 1U;
+    field_runner_refresh_state_.compact_record_markers[refresh_index] = marker;
+    field_runner_refresh_state_.runners[refresh_index].active = true;
+    field_runner_refresh_state_.runners[refresh_index].effect_gate =
+        typed_record.delay_meter;
+    field_runner_refresh_state_.runners[refresh_index].animation_gate =
+        typed_record.behavior_meter;
+    refresh_field_hud_runner_slot();
+    source_boundary("field.ricky.hire.completed");
+    return "hired";
 }
 
 void FieldSceneRuntime::begin_command_overview_inventory_action() {

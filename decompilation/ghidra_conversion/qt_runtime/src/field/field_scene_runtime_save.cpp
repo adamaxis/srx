@@ -535,6 +535,23 @@ std::optional<QJsonObject> FieldSceneRuntime::capture_game_save_snapshot(
                  field_strike_team_counter_.has_value()
                      ? QJsonValue(*field_strike_team_counter_)
                      : QJsonValue(QJsonValue::Null));
+    if (field_runner_progress_counters_available_ &&
+        field_runner_refresh_state_.effect_counters.size() == 10U) {
+        QJsonArray runner_progress;
+        for (const auto counter :
+             field_runner_refresh_state_.effect_counters) {
+            runner_progress.append(static_cast<int>(counter));
+        }
+        story.insert(QStringLiteral("runner_contact_progress_counters"),
+                     runner_progress);
+    } else {
+        story.insert(QStringLiteral("runner_contact_progress_counters"),
+                     QJsonValue(QJsonValue::Null));
+    }
+    story.insert(QStringLiteral("runner_information_flags"),
+                 field_runner_information_flags_.has_value()
+                     ? QJsonValue(*field_runner_information_flags_)
+                     : QJsonValue(QJsonValue::Null));
     story.insert(QStringLiteral("walk_fast"), field_walk_fast_enabled_);
     story.insert(QStringLiteral("notebook_current_run_available"),
                  notebook_current_run_available_);
@@ -635,6 +652,9 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
         std::optional<std::uint16_t> shadowrunner_flags;
         std::optional<std::uint8_t> heat_level;
         std::optional<std::uint8_t> strike_team_counter;
+        std::optional<std::array<std::uint8_t, 10U>>
+            runner_contact_progress_counters;
+        std::optional<std::uint16_t> runner_information_flags;
         std::uint16_t world_frame_counter = 0U;
         std::uint32_t world_encounter_sequence = 0U;
         std::uint16_t source_random_seed = 0U;
@@ -861,8 +881,34 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
         !read_optional_unsigned("heat_level", 8,
                                 restored.heat_level) ||
         !read_optional_unsigned("strike_team_counter", 8,
-                                restored.strike_team_counter)) {
+                                restored.strike_team_counter) ||
+        !read_optional_unsigned("runner_information_flags", 0xFFFF,
+                                restored.runner_information_flags)) {
         return false;
+    }
+    const auto runner_progress_value =
+        story.value(QStringLiteral("runner_contact_progress_counters"));
+    if (!runner_progress_value.isUndefined() &&
+        !runner_progress_value.isNull()) {
+        if (!runner_progress_value.isArray() ||
+            runner_progress_value.toArray().size() != 10) {
+            return fail(QStringLiteral(
+                "Save field 'runner_contact_progress_counters' is invalid."));
+        }
+        std::array<std::uint8_t, 10U> counters{};
+        const auto values = runner_progress_value.toArray();
+        for (qsizetype index = 0; index < values.size(); ++index) {
+            const auto value = values.at(index);
+            if (!value.isDouble() || !std::isfinite(value.toDouble()) ||
+                std::trunc(value.toDouble()) != value.toDouble() ||
+                value.toDouble() < 0.0 || value.toDouble() > 255.0) {
+                return fail(QStringLiteral(
+                    "Save field 'runner_contact_progress_counters' is invalid."));
+            }
+            counters[static_cast<std::size_t>(index)] =
+                static_cast<std::uint8_t>(value.toInt());
+        }
+        restored.runner_contact_progress_counters = counters;
     }
     const auto karma_counter = story.value(QStringLiteral("karma_counter"));
     if (karma_counter.isUndefined() || karma_counter.isNull()) {
@@ -1014,6 +1060,47 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
     notebook_shadowrunner_flags_ = restored.shadowrunner_flags;
     field_heat_level_ = restored.heat_level;
     field_strike_team_counter_ = restored.strike_team_counter;
+    if (story.contains(
+            QStringLiteral("runner_contact_progress_counters"))) {
+        if (restored.runner_contact_progress_counters.has_value()) {
+            field_runner_refresh_state_.effect_counters.assign(
+                restored.runner_contact_progress_counters->begin(),
+                restored.runner_contact_progress_counters->end());
+            field_runner_progress_counters_available_ = true;
+        } else {
+            field_runner_refresh_state_.effect_counters.clear();
+            field_runner_progress_counters_available_ = false;
+        }
+    }
+    if (story.contains(QStringLiteral("runner_information_flags"))) {
+        field_runner_information_flags_ = restored.runner_information_flags;
+    }
+
+    // The host snapshot carries typed party records and markers. Re-project
+    // those records into the source-sized compact save view so a hire made
+    // before save/load remains the current compact party state.
+    if (field_compact_runner_records_.size() >= 11U) {
+        RunnerRosterState restored_roster{};
+        restored_roster.primary_marker = restored.primary_compact_marker;
+        restored_roster.secondary_marker = restored.secondary_compact_marker;
+        write_runner_record_fields(restored.records[0],
+                                   restored_roster.default_record);
+        write_runner_record_fields(restored.records[1],
+                                   restored_roster.primary_record);
+        write_runner_record_fields(restored.records[2],
+                                   restored_roster.secondary_record);
+        auto compact_records = field_compact_runner_records_;
+        const auto compact_save = serialize_runner_record_population(
+            restored_roster, compact_records);
+        if (compact_save.action != RunnerRecordSaveAction::completed) {
+            return fail(QStringLiteral(
+                "The saved party cannot be projected to compact runner records."));
+        }
+        field_compact_runner_records_ = std::move(compact_records);
+    }
+    field_runner_refresh_state_.compact_record_markers = {
+        restored.primary_compact_marker,
+        restored.secondary_compact_marker};
     field_world_frame_counter_ = restored.world_frame_counter;
     field_world_encounter_sequence_ = restored.world_encounter_sequence;
     field_random_seed_ = restored.source_random_seed;

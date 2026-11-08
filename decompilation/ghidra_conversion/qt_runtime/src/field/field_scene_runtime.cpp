@@ -1426,6 +1426,12 @@ FieldSceneRuntime::FieldSceneRuntime(
                 return "skill_" + std::to_string(
                     first_runner.skills[skill_index]);
             }
+            constexpr std::string_view kRecruitedRunnerServicePrefix =
+                "recruited_runner.";
+            if (service_id.rfind(kRecruitedRunnerServicePrefix, 0U) == 0U) {
+                return recruited_runner_service_call(
+                    service_id.substr(kRecruitedRunnerServicePrefix.size()));
+            }
             if (service_id == "field.mode_action") {
                 // ROM 0xC9EA routes Hospital Options B through the same
                 // 0x391A active-runner action used by the field controller.
@@ -6055,11 +6061,30 @@ void FieldSceneRuntime::resolve_default_actor_proximity(
                       }
                       world_frame_logic_state_.resource_countdown =
                           field_world_activity_state_.timeout;
+                      const bool ricky_contact =
+                          scene_reference == 19U &&
+                          contact_actor.world_activity_id ==
+                              "scene_19_script";
+                      if (ricky_contact &&
+                          (!field_runner_progress_counters_available_ ||
+                           field_runner_refresh_state_.effect_counters.empty())) {
+                          source_boundary(
+                              "field.world_activity.ricky_progress_unavailable");
+                          return;
+                      }
+                      field_ricky_contact_actor_id_ = ricky_contact
+                          ? contact_actor.actor_instance_id
+                          : std::string{};
+                      std::optional<std::int16_t> signed_selector;
+                      if (ricky_contact) {
+                          signed_selector = static_cast<std::int8_t>(
+                              field_runner_refresh_state_.effect_counters[0U]);
+                      }
                       const auto response_id =
                           game_scripts_.generic_field_contact_dialogue(
                               scene_reference,
                               contact_actor.world_activity_id,
-                              world.activity_variant);
+                              world.activity_variant, signed_selector);
                       if (!response_id.has_value()) {
                           if (!game_scripts_.failure().empty()) {
                               failure_ = game_scripts_.failure();
@@ -6071,9 +6096,12 @@ void FieldSceneRuntime::resolve_default_actor_proximity(
                       game_scripts_.set_location_context(
                           "field_map",
                           std::string_view("generic_field_contact"),
-                          "field.world_event", "field_narrator",
+                          ricky_contact ? "runner.ricky"
+                                        : "field.world_event",
+                          ricky_contact ? "ricky" : "field_narrator",
                           *response_id,
-                          static_cast<std::uint8_t>(scene_reference));
+                          static_cast<std::uint8_t>(scene_reference),
+                          contact_actor.actor_instance_id);
                       if (!field_dialogue_.open_gameplay_task(
                               scripting::ScriptDialogueSource::field_npc_contact,
                               "field_generic_contacts", "present")) {
