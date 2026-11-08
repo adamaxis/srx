@@ -1600,7 +1600,11 @@ FieldSceneRuntime::default_actor_animation_id_for_dump(
 #ifdef SHADOWRUN_QT_QA_DRIVER
 bool FieldSceneRuntime::set_default_actor_animation_for_dump(
     const std::uint16_t source_order, const std::string_view animation_id,
-    const std::uint8_t frame) {
+    const std::uint8_t frame,
+    const std::optional<std::uint8_t> direction) {
+    if (direction.has_value() && *direction >= 8U) {
+        return false;
+    }
     const auto scene_reference = state_.field_scene_buffers.scene_reference;
     const auto actor = std::find_if(
         field_default_actors_.begin(), field_default_actors_.end(),
@@ -1615,8 +1619,32 @@ bool FieldSceneRuntime::set_default_actor_animation_for_dump(
     }
     actor->animation_id.assign(animation_id);
     actor->animation_frame = frame;
+    if (direction.has_value()) {
+        actor->animation_direction = *direction;
+    }
     actor->animation_variant.clear();
     return true;
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
+
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
+bool FieldSceneRuntime::default_actor_sprite_available_for_dump(
+    const std::uint16_t source_order) const {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    const auto actor = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference, source_order](
+            const DefaultFieldActorPresentation& candidate) {
+            return candidate.scene_reference == scene_reference &&
+                   candidate.active &&
+                   candidate.source_order == source_order;
+        });
+    if (actor == field_default_actors_.end()) {
+        return false;
+    }
+    const auto sprite = default_actor_sprite_view(*actor);
+    return sprite.image != nullptr && !sprite.image->isNull();
 }
 #endif // SHADOWRUN_QT_QA_DRIVER
 

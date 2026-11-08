@@ -5491,6 +5491,36 @@ int run_field_default_guard_item_action_qa(
 
     // ROM 0xAFF2 can select the directional C072 hit pose for this default-list
     // kind-5 actor. Exercise its generic guard art before the action route.
+    const auto guard_initial_direction =
+        field_scene.default_actor_direction_for_dump(kGuardOrder);
+    bool guard_idle_art_covers_all_headings =
+        guard_initial_direction.has_value();
+    bool guard_down_art_covers_all_headings =
+        guard_initial_direction.has_value();
+    for (std::uint8_t direction = 0U; direction < 8U; ++direction) {
+        const bool idle_staged =
+            field_scene.set_default_actor_animation_for_dump(
+                kGuardOrder, "idle", 0U, direction);
+        guard_idle_art_covers_all_headings =
+            guard_idle_art_covers_all_headings && idle_staged &&
+            field_scene.default_actor_sprite_available_for_dump(kGuardOrder);
+        const bool down_staged =
+            field_scene.set_default_actor_animation_for_dump(
+                kGuardOrder, "down", 0U, direction);
+        guard_down_art_covers_all_headings =
+            guard_down_art_covers_all_headings && down_staged &&
+            field_scene.default_actor_sprite_available_for_dump(kGuardOrder);
+    }
+    const auto guard_down_dir7 = render_qa_field(field_scene);
+    if (!guard_idle_art_covers_all_headings ||
+        !guard_down_art_covers_all_headings || guard_down_dir7.isNull() ||
+        !save("guard-down-dir-7.bmp", guard_down_dir7) ||
+        !field_scene.set_default_actor_animation_for_dump(
+            kGuardOrder, "idle", 0U, *guard_initial_direction)) {
+        std::cerr << "Default corp-guard item-action QA: idle/C0B2 art was "
+                     "not available for all eight ROM headings\n";
+        return 3;
+    }
     const bool guard_hurt_staged =
         field_scene.set_default_actor_animation_for_dump(
             kGuardOrder, "hurt", 0U);
@@ -22607,6 +22637,43 @@ int run_field_scene2_pedestrians_qa(
                   << " staged=" << hurt_pose_staged
                   << " visible=" << hurt_visible_count
                   << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    // Routed default-list actors can retain a diagonal animation heading from
+    // ROM 0xB574/C062. Verify their idle and ordinary C0B2 down poses for all
+    // eight directions, not only the heading present at initial publication.
+    const auto pedestrian_initial_direction =
+        field_scene.default_actor_direction_for_dump(0U);
+    bool pedestrian_idle_art_covers_all_headings =
+        pedestrian_initial_direction.has_value();
+    bool pedestrian_down_art_covers_all_headings =
+        pedestrian_initial_direction.has_value();
+    for (std::uint8_t direction = 0U; direction < 8U; ++direction) {
+        const bool idle_staged =
+            field_scene.set_default_actor_animation_for_dump(
+                0U, "idle", 0U, direction);
+        pedestrian_idle_art_covers_all_headings =
+            pedestrian_idle_art_covers_all_headings && idle_staged &&
+            field_scene.default_actor_sprite_available_for_dump(0U);
+        const bool down_staged =
+            field_scene.set_default_actor_animation_for_dump(
+                0U, "down", 0U, direction);
+        pedestrian_down_art_covers_all_headings =
+            pedestrian_down_art_covers_all_headings && down_staged &&
+            field_scene.default_actor_sprite_available_for_dump(0U);
+    }
+    const auto pedestrian_down_dir7 = render_qa_field(field_scene);
+    const auto pedestrian_down_dir7_path = output / "down-dir-7.bmp";
+    if (!pedestrian_idle_art_covers_all_headings ||
+        !pedestrian_down_art_covers_all_headings ||
+        pedestrian_down_dir7.isNull() ||
+        !pedestrian_down_dir7.save(QString::fromStdWString(
+            pedestrian_down_dir7_path.wstring())) ||
+        !field_scene.set_default_actor_animation_for_dump(
+            0U, "idle", 0U, *pedestrian_initial_direction)) {
+        std::cerr << "Scene-2 flee QA: pedestrian idle/C0B2 art was not "
+                     "available for all eight ROM headings\n";
         return 3;
     }
 

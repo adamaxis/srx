@@ -433,7 +433,10 @@ public:
         std::uint16_t source_order) const;
     bool set_default_actor_animation_for_dump(
         std::uint16_t source_order, std::string_view animation_id,
-        std::uint8_t frame);
+        std::uint8_t frame,
+        std::optional<std::uint8_t> direction = std::nullopt);
+    bool default_actor_sprite_available_for_dump(
+        std::uint16_t source_order) const;
     std::optional<FieldWorldActorSlot> default_actor_record_slot_for_dump(
         std::uint16_t source_order) const noexcept;
     std::optional<std::string> default_actor_script_profile_for_dump(

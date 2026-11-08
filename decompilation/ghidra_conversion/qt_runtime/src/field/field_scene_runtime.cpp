@@ -2908,6 +2908,50 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
         }
         auto& artwork = field_default_actor_artwork_[kind_index];
         for (std::uint8_t direction = 0U; direction < 8U; ++direction) {
+            // ROM 0xB574 can select any of the eight C062 headings after an
+            // actor starts moving. Spawn headings only cover part of that
+            // range, so preload the static idle and C0B2 poses for every
+            // direction just as the walk and hurt families below are loaded.
+            if (artwork.idle_images[direction].isNull()) {
+                const auto direction_suffix = direction == 0U
+                    ? std::string{}
+                    : ".dir." + std::to_string(direction);
+                const auto alias = actor_asset_prefixes[kind_index] +
+                    ".idle" + direction_suffix;
+                if (!load_sprite_image(
+                        catalog, alias, artwork.idle_images[direction],
+                        artwork.idle_origin_x[direction],
+                        artwork.idle_origin_y[direction])) {
+                    return false;
+                }
+            }
+
+            auto& entry_frames = artwork.entry_images[direction];
+            for (std::uint8_t frame =
+                     static_cast<std::uint8_t>(entry_frames.size());
+                 frame < kActorArtFrameScanLimit; ++frame) {
+                const auto alias = actor_asset_prefixes[kind_index] +
+                    ".entry.dir." + std::to_string(direction) +
+                    ".frame." + std::to_string(frame);
+                if (catalog.find(alias) == nullptr) {
+                    break;
+                }
+                entry_frames.emplace_back();
+                artwork.entry_origin_x[direction].push_back(0);
+                artwork.entry_origin_y[direction].push_back(0);
+                const auto image_index = entry_frames.size() - 1U;
+                if (!load_sprite_image(
+                        catalog, alias, entry_frames[image_index],
+                        artwork.entry_origin_x[direction][image_index],
+                        artwork.entry_origin_y[direction][image_index])) {
+                    return false;
+                }
+            }
+            if (entry_frames.empty()) {
+                failure_ = "default actor C0B2 entry art is missing a direction";
+                return false;
+            }
+
             auto& frames = artwork.spell_images[direction];
             for (std::uint8_t frame =
                      static_cast<std::uint8_t>(frames.size());
