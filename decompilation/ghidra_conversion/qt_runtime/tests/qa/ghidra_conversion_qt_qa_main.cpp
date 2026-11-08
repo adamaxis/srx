@@ -4991,16 +4991,24 @@ int run_field_hidden_camera_qa(
         haggard_result.text_segments.begin() +
             static_cast<std::ptrdiff_t>(haggard_result.text_segment_count),
         [](const std::string_view segment) {
-            return segment.find("restrained") != std::string_view::npos;
+            return segment.find("straight-jacket") != std::string_view::npos;
         });
+    const bool haggard_result_saved =
+        save_qa_image(haggard_output, "result.bmp", haggard_result_image);
     if (!haggard_result.open || haggard_result.has_more ||
         !haggard_result_text ||
-        !save_qa_image(haggard_output, "result.bmp", haggard_result_image)) {
+        !haggard_result_saved) {
         std::cerr << "field hidden-camera QA: Help did not display the "
-                     "restrained-patient result; dialogue="
+                     "ROM straight-jacket result; dialogue="
                   << haggard_result.open << " more=" << haggard_result.has_more
                   << " text_match=" << haggard_result_text
+                  << " image_saved=" << haggard_result_saved
                   << " failure=" << field_scene.failure() << '\n';
+        for (std::size_t index = 0U;
+             index < haggard_result.text_segment_count; ++index) {
+            std::cerr << "  result[" << index << "]="
+                      << haggard_result.text_segments[index] << '\n';
+        }
         return 3;
     }
 

@@ -123,7 +123,7 @@ Scene IDs below are ROM field-scene IDs. The tables cover the field random-event
 | Alley grenade seller, handler `0x2112C` | Scenes `0`, `2`, `3`, and `5`; sums `5-7` | Attack rolls `0-59` try the one-bodyguard list at `0x1D7054`; a successful start leads to a gun battle. Rolls `60-99`, or failure to start that actor, reveal undercover Lone Star. Buying the grenades has its own 60/40 split: rolls `0-59` continue through funds/slot checks; `60-99` expose the undercover agent. |
 | Company Man confrontation, handler `0x20F5A` | Scenes `3` and `5`; sums `1` and `4` | One continuation says the man remains irate and a Lone Star patrol arrives. The response text then says the officers turn their attention to the player. |
 | Flustered-woman event, handler `0x20F8A` | Scenes `0-1`; sums `3-4` | The MORE continuation divides into suspected-harm and apparent-law-official versions. The law-official version can reveal an undercover Lone Star agent; its Attack/Comply/Run choices can end in a gun battle, questioning/release, fine, arrest/confiscation, escape, or being overtaken and shot. See the terminal branch table below. |
-| Haggard-man event, handler `0x20FA2` | Scenes `2` and `5`; sums `1-2` | The doctor offers 50 nuyen to recapture his escaped patient. Help and Threaten resolve without combat; Attack or Threaten can call a patrol, and one alternate Attack branch starts a fight with the doctor's Gator Shaman/bodyguards. See the terminal branch table below. |
+| Haggard-man event, handler `0x20FA2` | Scenes `2` and `5`; sums `1-2` | MORE rolls the first runner's Intelligence against 6 and chooses between two command rows. Help pays 50 nuyen on either row; Threaten can pay 50 or 100 nuyen or call a patrol, depending on the row and roll. Alternate Attack checks Body and can pay 100 nuyen or queue a fight against the doctor's Gator Shaman/bodyguards. See the terminal branch table below. |
 | Security-guard stop, handler `0x20FEC` | Scenes `20`, `26-34`, and `41-43`; sums `4-5` and `7` | Without the badge flag, Attack starts a corporate-guard encounter and Talk branches on `FF017A`; the talk result can trigger a dispatch check or continue to a security-mage prompt. |
 | Lone Star patrol, handler `0x2106A` | Scenes `41-43`; sum `5` | `0x24622` checks badge bit 10 and can waive the player through, verify ID, or open arrest. Attack rolls at `0x2466C`; a zero result shows the fatal-warning prompt, while nonzero passes list `0x1D6FEC` to the spawner and returns combat dialogue. Comply reaches settlement `0x235AA`. |
 | Concealed plate / laser to Lone Star | Plate handler `0x21036`: scenes `20-34`, `41-43`; sums `2`, `5-6`. Laser handler `0x21050`: scenes `35-40`; sum `8`. Direct patrol handler `0x2106A`: scenes `41-43`; sum `5`. | The plate response can continue to the laser check. Both laser outcomes contain patrol command `0xD9` -> `0x24622`, the same badge/dispatch/arrest decision used by the direct patrol event. See the source trace below. |
@@ -273,22 +273,27 @@ outrun some officers while others catch up and open fire. Those outcomes are
 selected by the source's state and random branches, not by the map selector.
 
 **Escaped patient (`0x20FA2`, scenes 2 and 5, sums 1-2).** MORE enters
-`0x23BB4`. The continuation rolls the `FF017B` dice pool against target 6,
-then a 0-99 value. The two results select one of the source text sequences
-and prompt records at `0x12111C` or `0x121138`; their command rows differ.
-The `0x121138` prompt maps Attack/Threaten/Help to commands `0xAA`, `0xAB`,
-and `0xAD`. Help restrains the patient and adds 50 nuyen (`0x23CF2`, result
-text `0x121188`). Threaten rolls 0-99 at `0x23CB4`: 0-49 adds 100 nuyen
-(`0x23CCE`, result text `0x1211A0`), while 50-99 calls a Lone Star patrol
-and opens the police-choice prompt at `0x12115C`. The `0x12111C` prompt uses
-commands `0x121180`, `0xA9`, and `0xAC`; command `0xA9` also has a 50/50
-source roll, with 0-49 reaching the credentials/payout page at `0x121178`
-and adding 50 nuyen, while 50-99 opens the same police prompt. Command
-`0xAC` directly adds 50 nuyen and reaches `0x121178`. In the alternate Attack
-command `0xAA` at `0x23C52`, source results below 1 queue a Gator Shaman and
-two bodyguards, a result of 1 queues two bodyguards, and results above 1 add
-100 nuyen and end the encounter without combat. The unconverted police and
-combat branches remain separate from these resolved outcomes.
+`0x23BB4`. The continuation rolls first-runner Intelligence (`FF017B`, record
+`FF0100 + 0x7B`) against target 6, then a separate 0-99 value. Below 50, the
+prompt record is `0x121138`: zero, one, or more than one Intelligence success
+selects the typical-doctor, unsure, or malignant introduction respectively.
+At 50-99, the prompt record is `0x12111C`: those results select malignant,
+unsure, or typical-doctor text. The `0x121138` prompt maps Attack/Threaten/Help
+to commands `0xAA`, `0xAB`, and `0xAD`. Help restrains the patient and adds 50
+nuyen (`0x23CF2`, result text `0x121188`). Threaten rolls 0-99 at `0x23CB4`:
+0-49 adds 100 nuyen (`0x23CCE`, result text `0x1211A0`), while 50-99 calls a
+Lone Star patrol and opens the police-choice prompt at `0x12115C`. The
+`0x12111C` prompt uses commands `0x121180`, `0xA9`, and `0xAC`. Its Attack
+selection returns through the data pointer at `0x121180`, which remains an
+explicit boundary. Threaten dispatches to `0x23C38`: 0-49 reaches the
+credentials/payout page at `0x121178` and adds 50 nuyen, while 50-99 opens the
+same police prompt. Help dispatches to `0x23CE0` and adds 50 nuyen at
+`0x121178`. Alternate Attack command `0xAA` at `0x23C52` uses first-runner
+Body (`FF0177`, record `FF0100 + 0x77`) against target 6. Zero successes queue
+a Gator Shaman and two bodyguards, one success queues two bodyguards, and more
+than one success adds 100 nuyen and reaches `0x1211A0`. The conversion covers
+that no-combat payout; the police and combat-list branches remain explicit
+boundaries.
 
 The doctor event's patrol prompt uses the shared Lone Star Attack/Comply/Run
 dispatchers. Attack starts the patrol fight; Comply can resolve through the
