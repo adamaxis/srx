@@ -1199,7 +1199,7 @@ void FieldSceneRuntime::place_party_at_field_door_return_point() {
     field_movement_behavior_record_.target_heading = resolved_heading;
     // The Lua runner keeps its own heading after spawn; respawn it so the
     // restored facing is the one it turns from.
-    field_player_actor_script_initialized_ = false;
+    field_player_actor_script_initialized_.fill(false);
     field_entity_.direction =
         static_cast<std::uint8_t>(((resolved_heading >> 14U) & 3U) * 2U);
     source_boundary("field.door.exit_return_applied");

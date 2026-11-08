@@ -8437,6 +8437,9 @@ int main() {
     player_movement.entity_kind = 3U;
     player_movement.instance_id = "field_player_runner";
     player_movement.initial_heading = 0U;
+    player_movement.is_controlled_party_actor = true;
+    player_movement.has_live_actor_record = true;
+    player_movement.player_action_delay_service_active = true;
     player_movement.spawn = true;
     player_movement.movement_allowed = true;
     player_movement.movement_input_direction =
@@ -8557,17 +8560,16 @@ int main() {
         scripts.actor_heartbeat(player_movement);
     player_movement.combat_action_available = true;
     player_movement.combat_confirm_held = true;
-    player_movement.combat_action_ready = true;
     player_movement.combat_input_blocked = false;
     const auto player_combat_moving =
         scripts.actor_heartbeat(player_movement);
+    player_movement.player_action_delay_reset = 2;
     player_movement.movement_allowed = false;
     player_movement.movement_input_direction.reset();
     const auto player_combat_stationary =
         scripts.actor_heartbeat(player_movement);
-    player_movement.combat_action_ready = false;
+    player_movement.player_action_delay_reset.reset();
     const auto player_combat_cooldown = scripts.actor_heartbeat(player_movement);
-    player_movement.combat_action_ready = true;
     player_movement.combat_input_blocked = true;
     const auto player_combat_modal_block =
         scripts.actor_heartbeat(player_movement);
@@ -8620,9 +8622,11 @@ int main() {
                 player_combat_moving.has_value() &&
                 player_combat_moving->combat_action_requested &&
                 player_combat_stationary.has_value() &&
-                player_combat_stationary->combat_action_requested &&
+                !player_combat_stationary->combat_action_requested &&
+                player_combat_stationary->action_delay == 1 &&
                 player_combat_cooldown.has_value() &&
                 !player_combat_cooldown->combat_action_requested &&
+                player_combat_cooldown->action_delay == 0 &&
                 player_combat_modal_block.has_value() &&
                 !player_combat_modal_block->combat_action_requested &&
                 restored_runner_clock_resets,
@@ -8631,12 +8635,103 @@ int main() {
         return 17;
     }
 
+    // ROM 0xA8EA decrements the live runner's +0xDC before 0xACAE tests
+    // held-A readiness. The player delay now lives in its Lua actor state;
+    // completed host actions seed it through a typed reset for the next pass.
+    ScriptActorBehaviorContext player_action_timing{};
+    player_action_timing.profile_id = "field_runner_k03_none00";
+    player_action_timing.entity_kind = 3U;
+    player_action_timing.instance_id = "field_player_runner_2";
+    player_action_timing.controlled_party_member_id = "party.runner.2";
+    player_action_timing.is_controlled_party_actor = true;
+    player_action_timing.has_live_actor_record = true;
+    player_action_timing.player_action_delay_service_active = true;
+    player_action_timing.combat_action_available = true;
+    player_action_timing.combat_confirm_held = true;
+    player_action_timing.player_weapon_action_will_fire = true;
+    const auto player_action_initial =
+        scripts.actor_heartbeat(player_action_timing);
+    player_action_timing.spawn = false;
+    player_action_timing.player_action_delay_reset = 3;
+    const auto player_action_reset =
+        scripts.actor_heartbeat(player_action_timing);
+    player_action_timing.player_action_delay_reset.reset();
+    const auto player_action_tick_one =
+        scripts.actor_heartbeat(player_action_timing);
+    const auto player_action_tick_two =
+        scripts.actor_heartbeat(player_action_timing);
+    const auto player_action_ready =
+        scripts.actor_heartbeat(player_action_timing);
+    player_action_timing.player_action_delay_service_active = false;
+    player_action_timing.player_action_delay_reset = 2;
+    const auto player_action_paused =
+        scripts.actor_heartbeat(player_action_timing);
+    player_action_timing.player_action_delay_reset.reset();
+    player_action_timing.player_action_delay_service_active = true;
+    const auto player_action_resumed =
+        scripts.actor_heartbeat(player_action_timing);
+
+    ScriptActorBehaviorContext suppressed_player_delay{};
+    suppressed_player_delay.profile_id = "field_runner_k03_none00";
+    suppressed_player_delay.entity_kind = 3U;
+    suppressed_player_delay.instance_id = "field_player_runner_1";
+    suppressed_player_delay.controlled_party_member_id = "party.runner.1";
+    suppressed_player_delay.is_controlled_party_actor = true;
+    suppressed_player_delay.has_live_actor_record = true;
+    suppressed_player_delay.player_action_delay_service_active = true;
+    suppressed_player_delay.player_action_delay_only = true;
+    suppressed_player_delay.initial_action_delay = 2;
+    suppressed_player_delay.combat_action_available = true;
+    suppressed_player_delay.combat_confirm_held = true;
+    const auto suppressed_player_initial =
+        scripts.actor_heartbeat(suppressed_player_delay);
+    suppressed_player_delay.spawn = false;
+    suppressed_player_delay.player_action_delay_reset = 4;
+    const auto suppressed_player_reset =
+        scripts.actor_heartbeat(suppressed_player_delay);
+    suppressed_player_delay.player_action_delay_only = false;
+    suppressed_player_delay.player_action_delay_reset.reset();
+    const auto suppressed_player_resume =
+        scripts.actor_heartbeat(suppressed_player_delay);
+    if (!expect(
+            player_action_initial.has_value() &&
+                player_action_initial->action_delay == -1 &&
+                player_action_initial->combat_action_requested &&
+                player_action_reset.has_value() &&
+                player_action_reset->action_delay == 2 &&
+                !player_action_reset->combat_action_requested &&
+                player_action_tick_one.has_value() &&
+                player_action_tick_one->action_delay == 1 &&
+                player_action_tick_two.has_value() &&
+                player_action_tick_two->action_delay == 0 &&
+                player_action_ready.has_value() &&
+                player_action_ready->action_delay == -1 &&
+                player_action_ready->combat_action_requested &&
+                player_action_paused.has_value() &&
+                player_action_paused->action_delay == 2 &&
+                !player_action_paused->combat_action_requested &&
+                player_action_resumed.has_value() &&
+                player_action_resumed->action_delay == 1 &&
+                !player_action_resumed->combat_action_requested &&
+                suppressed_player_initial.has_value() &&
+                suppressed_player_initial->action_delay == 1 &&
+                !suppressed_player_initial->combat_action_requested &&
+                suppressed_player_reset.has_value() &&
+                suppressed_player_reset->action_delay == 3 &&
+                !suppressed_player_reset->combat_action_requested &&
+                suppressed_player_resume.has_value() &&
+                suppressed_player_resume->action_delay == 2 &&
+                !suppressed_player_resume->combat_action_requested,
+            "Lua player action-delay ownership lost source pass cadence")) {
+        std::cerr << scripts.failure() << '\n';
+        return 117;
+    }
+
     // ROM 0xAD86/0xAE6E: a no-link +0xA2 still enters 0x1033E at 0xAEB4;
     // only a linked target runs the line probe. The old no-target expectation
     // was wrong because 0xAE7E branches directly to 0xAEB4 [C].
     auto player_cast = player_movement;
     player_cast.combat_input_blocked = false;
-    player_cast.combat_action_ready = true;
     player_cast.combat_confirm_held = true;
     player_cast.player_spell_available = true;
     player_cast.player_spell_code = 1U;

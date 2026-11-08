@@ -53,14 +53,9 @@ int main() {
         return 3;
     }
 
-    advance_active_entity_animation_action_gate(record);
-    if (!expect(record.animation_action_gate == -1)) {
-        return 4;
-    }
-    advance_active_entity_animation_action_gate(record);
-    if (!expect(record.animation_action_gate == -1)) {
-        return 5;
-    }
+    // ROM 0xA8EA advances +0xDC in the Lua actor heartbeat. This native
+    // dispatch consumes the resulting save mirror once it is negative.
+    record.animation_action_gate = -1;
 
     std::vector<std::uint16_t> events;
     std::vector<std::uint8_t> clips_at_audio;
@@ -101,13 +96,6 @@ int main() {
                     us_item_catalog()) == RunnerAssetOperationResult::ammo_changed &&
                 source_flag.ammo_rounds == 6U)) {
         return 8;
-    }
-
-    RunnerRecordFields non_active_timer{};
-    non_active_timer.animation_action_gate = 1;
-    advance_active_entity_animation_action_gate(non_active_timer);
-    if (!expect(non_active_timer.animation_action_gate == 1)) {
-        return 9;
     }
 
     return 0;

@@ -127,8 +127,10 @@ local function player_context(phase, spawn)
         entry_delay = 0,
         spawn = spawn,
         source_record_slot = 1,
+        has_live_actor_record = true,
         controlled_party_member_id = hurt_recipient_id,
         is_controlled_party_actor = true,
+        player_action_delay_service_active = true,
         actor_facts = {
             lifecycle = { active = true, thinking_enabled = false,
                 ai_runner = false, downed = false, group_leader = true,
@@ -149,7 +151,6 @@ local function player_context(phase, spawn)
         },
         movement_allowed = false,
         combat_action_available = true,
-        combat_action_ready = true,
         combat_confirm_held = true,
         combat_input_blocked = false,
     }

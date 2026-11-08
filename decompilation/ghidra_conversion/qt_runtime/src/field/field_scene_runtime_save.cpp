@@ -1146,6 +1146,11 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
     field_entity_walking_ = false;
     field_entity_attack_pose_active_ = false;
     field_player_animation_clock_reset_pending_ = true;
+    // The save stores the runner's delay mirror, while Lua owns its live
+    // countdown. Recreate each runner actor from that restored record and
+    // discard any action-reset event from the pre-load timeline.
+    field_player_actor_script_initialized_.fill(false);
+    field_player_action_delay_reset_pending_.fill(std::nullopt);
     field_entity_animation_id_ = "idle";
     field_entity_animation_ = FieldFramePresentationState{};
     refresh_field_hud_runner_slot();

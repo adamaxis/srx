@@ -49797,7 +49797,7 @@ int main(int argc, char** argv) {
                 runner.equipped_item_code = 1U;
                 runner.ammo_rounds = 0U;
                 runner.ammo_clips = 3U;
-                runner.animation_action_gate = 1;
+                field_scene.set_player_action_delay_for_dump(1);
                 field_scene.refresh_field_hud_for_dump();
                 field_audio_events.clear();
                 const auto weapon_audio_is_source_valid =

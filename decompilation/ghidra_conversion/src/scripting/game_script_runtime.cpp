@@ -67,6 +67,16 @@ constexpr std::uint8_t kTerrainMarkerSuppressionByte = 0xDAU;
 constexpr std::uint16_t kEvent25RewrittenCollisionCode = 0x00A8U;
 constexpr std::int8_t kEvent25DirectionProbe = -0x58;
 
+bool is_field_player_actor_id(const std::string_view actor_id) {
+    if (actor_id == "field_player_runner") {
+        return true;
+    }
+    constexpr std::string_view prefix = "field_player_runner_";
+    return actor_id.size() == prefix.size() + 1U &&
+           actor_id.substr(0U, prefix.size()) == prefix &&
+           actor_id.back() >= '0' && actor_id.back() <= '2';
+}
+
 // ROM turn units stay inside the native adapter. Lua receives a bearing in
 // degrees clockwise from north and returns that same semantic quantity.
 double bearing_degrees_from_source(const std::uint16_t heading) {
@@ -12421,8 +12431,6 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "actor_motion_suppressed");
     lua_pushboolean(state, context.combat_confirm_held);
     lua_setfield(state, -2, "combat_confirm_held");
-    lua_pushboolean(state, context.combat_action_ready);
-    lua_setfield(state, -2, "combat_action_ready");
     lua_pushboolean(state, context.combat_action_available);
     lua_setfield(state, -2, "combat_action_available");
     lua_pushboolean(state, context.player_weapon_action_will_fire);
@@ -12587,6 +12595,16 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "target_heading_audio_alternate");
     lua_pushinteger(state, context.initial_action_delay);
     lua_setfield(state, -2, "initial_action_delay");
+    if (context.player_action_delay_reset.has_value()) {
+        lua_pushinteger(state, *context.player_action_delay_reset);
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "player_action_delay_reset");
+    lua_pushboolean(state, context.player_action_delay_service_active);
+    lua_setfield(state, -2, "player_action_delay_service_active");
+    lua_pushboolean(state, context.player_action_delay_only);
+    lua_setfield(state, -2, "player_action_delay_only");
     lua_createtable(state, 0, 3);
     lua_pushinteger(state, context.action_timing.quickness);
     lua_setfield(state, -2, "quickness");
@@ -13129,7 +13147,12 @@ GameScriptRuntime::actor_heartbeat(
         returned_profile_id != context.profile_id ||
         returned_action_kind != action_kind ||
         returned_action_id != expected_action_id) {
-        return fail("actor_ai.heartbeat changed source actor identity");
+        return fail(
+            "actor_ai.heartbeat changed source actor identity: expected '" +
+            std::string(actor_id) + "/" + std::string(context.profile_id) +
+            "/" + std::string(action_kind) + "', received '" +
+            returned_actor_id + "/" + returned_profile_id + "/" +
+            returned_action_kind + "'");
     }
     if (!read_field_string(state, decision_table, "action", action) ||
         !read_field_string(state, decision_table, "animation",
@@ -13302,7 +13325,7 @@ GameScriptRuntime::actor_heartbeat(
     }
     if (field_barrier_remaining.has_value()) {
         if (context.phase != ScriptActorHeartbeatPhase::render ||
-            context.instance_id != "field_player_runner" ||
+            !is_field_player_actor_id(context.instance_id) ||
             *field_barrier_remaining == 0U) {
             return fail("actor_ai.heartbeat returned field barrier lifetime outside its render pass");
         }
@@ -14080,7 +14103,7 @@ GameScriptRuntime::actor_heartbeat(
         (context.profile_id != "field_runner_k03_none00" ||
          context.phase != ScriptActorHeartbeatPhase::behavior ||
          !context.combat_action_available ||
-         !context.combat_confirm_held || !context.combat_action_ready ||
+         !context.combat_confirm_held ||
          context.combat_input_blocked)) {
         return fail("actor_ai.heartbeat requested an unavailable player action");
     }
@@ -14986,7 +15009,7 @@ GameScriptRuntime::actor_heartbeat(
     // services. Animation can return to walk/idle before that delayed cue, so
     // identify it by its runner behavior service and source audio event.
     const bool player_hurt_audio =
-        context.instance_id == "field_player_runner" &&
+        is_field_player_actor_id(context.instance_id) &&
         context.phase == ScriptActorHeartbeatPhase::behavior &&
         decision.audio_event == std::optional<std::uint16_t>{0x0040U};
     // ROM 0xB1DC: the player strike always requests 0x4C/0x55; only an

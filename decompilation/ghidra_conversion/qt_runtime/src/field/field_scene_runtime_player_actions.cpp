@@ -724,9 +724,14 @@ void FieldSceneRuntime::advance_field_movement() {
         return;
     }
     if (!service_party_runner_zero_meter_transitions()) {
+        // ROM 0xA8EA advances +0xDC before the party's zero-meter handler.
+        service_player_action_delay_only();
         return;
     }
     if (field_party_wipe_countdown_ != 0U) {
+        // The actor's action timer still receives this source service pass;
+        // only movement/combat policy is suppressed during the wipe delay.
+        service_player_action_delay_only();
         // ROM 0xAF4 blocks the player service while FFE166 is nonzero;
         // 0x1DDC6 decrements it and enters 0xC64C at zero.
         if (--field_party_wipe_countdown_ == 0U) {
@@ -736,6 +741,9 @@ void FieldSceneRuntime::advance_field_movement() {
     }
     if ((active_runner_record().flags & kRunnerFlagsDown) != 0U) {
         // ROM 0xB330 installs 0xB38A at +0x3A: no input or movement.
+        // The active record's +0xDC pre-service remains independent of that
+        // callback, so advance only its Lua-owned action timer here.
+        service_player_action_delay_only();
         return;
     }
     if (field_terrain_probe_trace_enabled_) {
@@ -878,25 +886,34 @@ void FieldSceneRuntime::advance_field_movement() {
 }
 
 
-void FieldSceneRuntime::advance_player_weapon_action_gate() {
-    if (!ready_ || !field_entity_.active) {
-        return;
-    }
+void FieldSceneRuntime::set_player_action_delay(
+    const std::int16_t delay) {
+    active_runner_record().animation_action_gate = delay;
+    queue_player_action_delay_reset(delay);
+}
 
-    auto& runner = active_runner_record();
-    advance_active_entity_animation_action_gate(runner);
-    if (runner.animation_action_gate < 0 &&
-        field_entity_attack_pose_active_ &&
-        field_entity_attack_pose_kind_ == FieldPlayerAttackPose::strike) {
-        // Unarmed C0A2 retains its existing source action-gate lifetime; the
-        // measured #38 C042/C082 pose timers apply to firearms and casts.
-        field_entity_attack_pose_active_ = false;
-        if (!field_entity_walking_) {
-            field_entity_animation_.frame = 0U;
-            field_entity_animation_.redraw_requested = true;
-        }
-        source_boundary("field.combat.player_attack_pose_expired");
+
+void FieldSceneRuntime::queue_player_action_delay_reset(
+    const std::int16_t delay) {
+    const auto slot = field_party_roster_.active_slot();
+    if (slot < field_player_action_delay_reset_pending_.size()) {
+        field_player_action_delay_reset_pending_[slot] = delay;
     }
+}
+
+
+bool FieldSceneRuntime::service_player_action_delay_only() {
+    if (!ready_ || !field_entity_.active) {
+        return true;
+    }
+    const auto decision = heartbeat_field_player(
+        scripting::ScriptActorHeartbeatPhase::behavior, true);
+    if (!decision.has_value()) {
+        failure_ = game_scripts_.failure();
+        source_boundary("field.player.lua_action_delay_failed");
+        return false;
+    }
+    return true;
 }
 
 
@@ -1078,7 +1095,7 @@ void FieldSceneRuntime::service_player_spell_cast(
         EntityDelayAttributes{runner.attributes[1U], runner.attributes[4U],
                               runner.cyberware_flags},
         decode_entity_delay_scale(0U));
-    runner.animation_action_gate = delay.animation_delay;
+    set_player_action_delay(delay.animation_delay);
     // 0xAF7C/0xAFAE: +0x16 = C082[dir(+0x2E)], then 0xAF6C clears the clock.
     const auto cast_direction = field_movement_direction_from_heading(
         field_movement_state_.heading);
@@ -1119,7 +1136,7 @@ void FieldSceneRuntime::service_player_melee(
         EntityDelayAttributes{runner.attributes[1U], runner.attributes[4U],
                               runner.cyberware_flags},
         decode_entity_delay_scale(1U));
-    runner.animation_action_gate = delay.animation_delay;
+    set_player_action_delay(delay.animation_delay);
     // ROM 0xB212..0xB23A: a linked strike turns +0x34/+0x2E to the Lua
     // bearing; +0x16 = C0A2[dir(+0x2E)], then 0xAF6C clears the frame clock.
     if (decision.strike_heading.has_value()) {
@@ -1527,10 +1544,15 @@ void FieldSceneRuntime::advance_field_actor_animation() {
                 const auto active_party_target_id =
                     "party.runner." + std::to_string(
                         field_party_roster_.active_slot());
+                const auto active_player_actor_id =
+                    "field_player_runner_" + std::to_string(
+                        field_party_roster_.active_slot());
                 if (slot >= field_world_effect_slots_occupied_.size() ||
                     !field_world_effect_slots_occupied_[slot] ||
                     (field_spell_effect_slot_target_ids_[slot] !=
                          "field_player_runner" &&
+                     field_spell_effect_slot_target_ids_[slot] !=
+                         active_player_actor_id &&
                      field_spell_effect_slot_target_ids_[slot] !=
                          active_party_target_id &&
                      field_spell_effect_slot_target_ids_[slot] !=

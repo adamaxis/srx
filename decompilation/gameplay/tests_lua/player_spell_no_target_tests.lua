@@ -79,7 +79,6 @@ local function make_context(action_code)
         player_spell_available = true,
         player_spell_id = SpellIdByActionCode[action_code],
         combat_confirm_held = true,
-        combat_action_ready = true,
         combat_input_blocked = false,
         field_sequence_active = false,
         final_battle_active = false,

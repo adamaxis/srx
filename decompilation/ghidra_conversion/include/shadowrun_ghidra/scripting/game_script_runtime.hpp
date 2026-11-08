@@ -2363,11 +2363,9 @@ struct ScriptActorBehaviorContext {
     std::uint16_t initial_heading = 0;
     bool spawn = false;
     bool movement_allowed = false;
-    // Field-player action inputs and source-derived readiness facts. Lua
-    // decides whether this heartbeat should service the equipped action;
-    // the native host validates and performs the resulting ROM operation.
+    // Field-player held input and equipped-action availability. Lua derives
+    // readiness from its action_delay; the host validates and performs results.
     bool combat_confirm_held = false;
-    bool combat_action_ready = false;
     bool combat_action_available = false;
     // The host's loaded magazine and weapon template show whether this held
     // action will spawn a shot (empty-magazine reloads do not start a pose).
@@ -2480,6 +2478,12 @@ struct ScriptActorBehaviorContext {
     // The importer builds a semantic action-timing value from Quickness,
     // Intelligence, and the 0xD7EA capability result. [C]
     std::int16_t initial_action_delay = 0;
+    // A completed host action writes its delay back to the Lua-owned actor
+    // state on the next behavior service. The runner record remains the save
+    // mirror, while Lua advances this value once per eligible source pass.
+    std::optional<std::int16_t> player_action_delay_reset;
+    bool player_action_delay_service_active = false;
+    bool player_action_delay_only = false;
     ScriptActorActionTiming action_timing{};
     std::array<bool, 18> world_effect_slot_occupancy{};
     // ROM +0x11.4 target-selection latch, forwarded as a fact; Lua owns the

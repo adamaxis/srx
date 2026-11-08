@@ -40,11 +40,6 @@ struct PlayerActionDispatchCallbacks {
     std::function<void(std::uint16_t)> service_audio_event;
 };
 
-// ROM 0xA8EA decrements an active record's signed +0xDC animation gate once
-// per field behavior frame, stopping after it becomes negative. [C]
-void advance_active_entity_animation_action_gate(
-    RunnerRecordFields& record);
-
 // ROM 0xAAD2 gates an empty-ammo player action on +0x4E == 0, +0x4F != 0,
 // and signed +0xDC < 0. 0x14226 dispatches audio 0x4B, updates the source
 // delay, consumes one shared clip, and adds 0x26 to the equipped asset meter.

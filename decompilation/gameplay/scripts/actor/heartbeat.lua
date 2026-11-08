@@ -50,6 +50,10 @@ function ActorAI.heartbeat(context)
             return nil
         end
         states[context.actor_id] = state
+        if context.player_action_delay_only == true then
+            R.advance_source_action_delay(state, context)
+            return R.snapshot(state, "hold", nil)
+        end
         R.transfer_pending_spell_effect(state, context)
         R.advance_world_target_selection(state, context)
         R.advance_spell_effect(state, context)
@@ -59,12 +63,18 @@ function ActorAI.heartbeat(context)
         if profile.hit_spark_animation then
             return R.hit_spark_heartbeat(state, context)
         end
+        if context.is_controlled_party_actor == true then
+            -- The ROM advances the runner's +0xDC before the first 0xACAE
+            -- service too. A newly created Lua actor state must consume that
+            -- same source pass before evaluating the held action.
+            R.advance_source_action_delay(state, context)
+        end
         if profile.controls_movement and not profile.dynamic_encounter_only then
             state.combat_action_requested =
                 context.phase == "behavior" and
                 context.combat_action_available == true and
                 context.combat_confirm_held == true and
-                context.combat_action_ready == true and
+                state.action_delay < 0 and
                 context.combat_input_blocked ~= true
             if state.combat_action_requested then
                 -- Latch the successful-action start for the following render
@@ -95,6 +105,14 @@ function ActorAI.heartbeat(context)
     end
     if not R.same_actor(state, context, profile) then
         return nil
+    end
+    if context.player_action_delay_only == true then
+        state.combat_action_requested = false
+        state.source_action_dispatch = nil
+        state.strike_bearing_degrees = nil
+        state.spell_action_resolution = nil
+        R.advance_source_action_delay(state, context)
+        return R.snapshot(state, "hold", nil)
     end
     state.source_action_dispatch = nil
     state.strike_bearing_degrees = nil
@@ -268,7 +286,7 @@ function ActorAI.heartbeat(context)
                 context.phase == "behavior" and
                 context.combat_action_available == true and
                 context.combat_confirm_held == true and
-                context.combat_action_ready == true and
+                state.action_delay < 0 and
                 context.combat_input_blocked ~= true
             if state.combat_action_requested then
                 -- A held-fire repeat is a new C042 action and resets its

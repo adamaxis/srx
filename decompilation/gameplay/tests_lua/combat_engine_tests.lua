@@ -616,6 +616,7 @@ local function lockout_player_context(actor_id, phase, spawn)
         has_live_actor_record = true,
         controlled_party_member_id = "party.runner.1",
         is_controlled_party_actor = true,
+        player_action_delay_service_active = true,
         actor_facts = {
             lifecycle = { active = true, thinking_enabled = false,
                 ai_runner = false, downed = false, group_leader = true,
@@ -637,7 +638,6 @@ local function lockout_player_context(actor_id, phase, spawn)
         movement_allowed = false,
         movement_input_direction = "east",
         combat_action_available = false,
-        combat_action_ready = false,
         combat_confirm_held = false,
         combat_input_blocked = false,
     }
@@ -654,7 +654,6 @@ if type(lockout_fixture) == "table" then
         ActorAI.heartbeat(context)
         context.spawn = false
         context.movement_allowed = true
-        context.combat_action_ready = true
         context.combat_confirm_held = true
         if row.action_kind == "weapon" then
             context.combat_action_available = true
@@ -678,7 +677,6 @@ if type(lockout_fixture) == "table" then
             context.combat_action_available = false
             context.player_weapon_action_will_fire = false
             context.player_spell_available = false
-            context.combat_action_ready = false
             context.combat_confirm_held = false
             for pass_number = 1, measured_lockout do
                 local decision = ActorAI.heartbeat(context)

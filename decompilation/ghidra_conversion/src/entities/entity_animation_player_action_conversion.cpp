@@ -64,15 +64,6 @@ PlayerActionDispatchResult dispatch_player_action(
 
 } // namespace
 
-void advance_active_entity_animation_action_gate(
-    RunnerRecordFields& record) {
-    if ((record.flags & 0x0100U) == 0U ||
-        record.animation_action_gate < 0) {
-        return;
-    }
-    --record.animation_action_gate;
-}
-
 PlayerActionDispatchResult dispatch_player_action_if_ready(
     RunnerRecordFields& record, const UsItemCatalog& item_catalog,
     const PlayerActionDelayLookup& delay_lookup,

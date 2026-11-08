@@ -24,9 +24,21 @@ local Animator = R.Animator   -- from actor/animator.lua
 local source_action_delay = Delay.actor_action_delay
 
 local function advance_source_action_delay(state, context)
-    if context.phase ~= "behavior" or
-       (not context.dynamic_world_encounter_actor and
-        context.has_live_actor_record ~= true) then
+    if context.phase ~= "behavior" then
+        return
+    end
+    -- The field host reports a completed player action as a typed effect.
+    -- Keep the delay in this actor state, then advance it once per source
+    -- behavior pass just like other live actor records.
+    if context.player_action_delay_reset ~= nil then
+        state.action_delay = context.player_action_delay_reset
+    end
+    if context.is_controlled_party_actor == true and
+       context.player_action_delay_service_active ~= true then
+        return
+    end
+    if not context.dynamic_world_encounter_actor and
+       context.has_live_actor_record ~= true then
         return
     end
     -- ROM 0xA8EA decrements +0xDC for every active source record once before
@@ -551,7 +563,7 @@ function R.begin_player_spell_cast(state, context)
     if context.phase ~= "behavior" or
        context.player_spell_available ~= true or
        context.combat_confirm_held ~= true or
-       context.combat_action_ready ~= true or
+       state.action_delay >= 0 or
        context.combat_input_blocked == true then
         return nil
     end
@@ -650,7 +662,7 @@ function R.begin_player_melee(state, context)
     if context.phase ~= "behavior" or
        context.player_melee_available ~= true or
        context.combat_confirm_held ~= true or
-       context.combat_action_ready ~= true or
+       state.action_delay >= 0 or
        context.combat_input_blocked == true then
         return nil
     end

@@ -1180,6 +1180,9 @@ public:
     void refresh_field_hud_for_dump() {
         refresh_field_hud_runner_slot();
     }
+    void set_player_action_delay_for_dump(const std::int16_t delay) {
+        set_player_action_delay(delay);
+    }
     FieldHudSlotState field_hud_slot_state_for_dump(
         const std::size_t slot) const {
         return field_hud_slot_state(slot);
@@ -1854,8 +1857,11 @@ private:
     void configure_callbacks();
     void configure_runtime_coordinator_callbacks();
     std::optional<scripting::ScriptActorBehaviorDecision>
-    heartbeat_field_player(scripting::ScriptActorHeartbeatPhase phase);
-    void advance_player_weapon_action_gate();
+    heartbeat_field_player(scripting::ScriptActorHeartbeatPhase phase,
+                           bool action_delay_only = false);
+    bool service_player_action_delay_only();
+    void set_player_action_delay(std::int16_t delay);
+    void queue_player_action_delay_reset(std::int16_t delay);
     void resolve_field_party_wipe();
     void complete_field_party_wipe();
     void start_field_party_wake_transition();
@@ -3012,7 +3018,11 @@ private:
     std::uint8_t field_controller_port_byte_ = 0;
     std::uint16_t field_target_heading_ = 0;
     FieldOpeningAutoWalkState field_opening_auto_walk_{};
-    bool field_player_actor_script_initialized_ = false;
+    std::array<bool, FieldPartyRosterRuntime::kSlotCount>
+        field_player_actor_script_initialized_{};
+    std::array<std::optional<std::int16_t>,
+               FieldPartyRosterRuntime::kSlotCount>
+        field_player_action_delay_reset_pending_{};
     // Typed source field corresponding to FF014C, consumed only by the
     // 0xC7F8 scene-runtime dispatcher.
     std::uint8_t field_action_counter_ = 0;

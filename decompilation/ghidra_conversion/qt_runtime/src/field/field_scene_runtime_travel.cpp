@@ -317,7 +317,7 @@ bool FieldSceneRuntime::transition_to_field_destination(
     field_entity_attack_pose_active_ = false;
     field_entity_animation_ = FieldFramePresentationState{};
     field_entity_animation_id_ = "idle";
-    field_player_actor_script_initialized_ = false;
+    field_player_actor_script_initialized_.fill(false);
     field_player_animation_clock_reset_pending_ = false;
     field_movement_behavior_record_.current_heading = 0U;
     field_movement_behavior_record_.target_heading = 0U;

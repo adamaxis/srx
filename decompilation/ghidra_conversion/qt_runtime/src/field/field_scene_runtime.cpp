@@ -9614,7 +9614,6 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
     field_runtime_callbacks_.service_entity_behavior_frames = [this] {
         // ROM 0x29F6 clears FFE175 before 0x13874 services the actor slots [C].
         field_think_token_claimed_ = false;
-        advance_player_weapon_action_gate();
         // ROM 0x1514E creates a player's primary record and immediately calls
         // 0x14FF8/0x55640 before the ascending 0xA8EA slot scan reaches world
         // actors and the newly allocated projectile. Resolve that stored roll
@@ -10987,7 +10986,7 @@ bool FieldSceneRuntime::bootstrap(
     }
     field_controller_nibble_ = 0U;
     field_controller_port_byte_ = 0U;
-    field_player_actor_script_initialized_ = false;
+    field_player_actor_script_initialized_.fill(false);
     // docs/24 R1: no host entropy. FFF9F8 keeps its boot value (cold_boot_source_random_seed, 0xFFFF with zeroed
     // work RAM) plus every title-screen draw, exactly as the ROM; the debugger records it in the SEEDS chunk.
     field_opening_auto_walk_ = FieldOpeningAutoWalkState{};
@@ -12562,10 +12561,12 @@ bool FieldSceneRuntime::actor_source_route_clear(
 
 std::optional<scripting::ScriptActorBehaviorDecision>
 FieldSceneRuntime::heartbeat_field_player(
-    const scripting::ScriptActorHeartbeatPhase phase) {
+    const scripting::ScriptActorHeartbeatPhase phase,
+    const bool action_delay_only) {
     if (!field_entity_.active) {
         return std::nullopt;
     }
+    const auto player_slot = field_party_roster_.active_slot();
     const bool movement_transition_paused =
         field_opening_auto_walk_.active &&
         field_movement_transition_state_.interaction_transition_pending;
@@ -12573,13 +12574,16 @@ FieldSceneRuntime::heartbeat_field_player(
         phase == scripting::ScriptActorHeartbeatPhase::behavior && ready_ &&
         !movement_transition_paused &&
         (field_opening_auto_walk_.active || field_controller_nibble_ != 0U);
+    const auto player_actor_id =
+        "field_player_runner_" + std::to_string(player_slot);
+    const auto controlled_party_member_id =
+        "party.runner." + std::to_string(player_slot);
     scripting::ScriptActorBehaviorContext actor_context{};
     actor_context.profile_id = "field_runner_k03_none00";
     actor_context.entity_kind = 3U;
     actor_context.action_kind = scripting::ScriptActorActionKind::none;
-    actor_context.instance_id = "field_player_runner";
-    actor_context.controlled_party_member_id =
-        "party.runner." + std::to_string(field_party_roster_.active_slot());
+    actor_context.instance_id = player_actor_id;
+    actor_context.controlled_party_member_id = controlled_party_member_id;
     actor_context.is_controlled_party_actor = true;
     actor_context.walk_fast_enabled = field_walk_fast_enabled_;
     actor_context.source_record_slot = static_cast<std::uint8_t>(
@@ -12591,11 +12595,23 @@ FieldSceneRuntime::heartbeat_field_player(
         phase == scripting::ScriptActorHeartbeatPhase::render
             ? field_movement_state_.animation_heading
             : field_movement_state_.heading;
-    actor_context.spawn = !field_player_actor_script_initialized_;
+    actor_context.initial_action_delay =
+        active_runner_record().animation_action_gate;
+    actor_context.player_action_delay_service_active = ready_;
+    actor_context.player_action_delay_only = action_delay_only;
+    if (phase == scripting::ScriptActorHeartbeatPhase::behavior &&
+        player_slot < field_player_action_delay_reset_pending_.size()) {
+        actor_context.player_action_delay_reset =
+            field_player_action_delay_reset_pending_[player_slot];
+    }
+    actor_context.spawn = player_slot <
+            field_player_actor_script_initialized_.size()
+        ? !field_player_actor_script_initialized_[player_slot]
+        : false;
     actor_context.movement_allowed = script_movement_allowed;
     actor_context.phase = phase;
     if (phase == scripting::ScriptActorHeartbeatPhase::behavior) {
-        const bool target_selection_pressed = ready_ &&
+        const bool target_selection_pressed = !action_delay_only && ready_ &&
             (field_controller_sample_state_.events & 0x1000U) != 0U;
         if (target_selection_pressed) {
             refresh_world_entity_service_targets();
@@ -12667,8 +12683,6 @@ FieldSceneRuntime::heartbeat_field_player(
             player_weapon != nullptr;
         actor_context.combat_confirm_held =
             (field_controller_sample_state_.held & 0x0040U) != 0U;
-        actor_context.combat_action_ready =
-            runner.animation_action_gate < 0;
         actor_context.combat_action_available = weapon_action_available;
         actor_context.player_weapon_action_will_fire =
             weapon_action_available && player_weapon != nullptr &&
@@ -12933,7 +12947,29 @@ FieldSceneRuntime::heartbeat_field_player(
     };
     const auto actor_decision = game_scripts_.actor_heartbeat(actor_context);
     if (actor_decision.has_value()) {
-        field_player_actor_script_initialized_ = true;
+        if (player_slot < field_player_actor_script_initialized_.size()) {
+            field_player_actor_script_initialized_[player_slot] = true;
+        }
+        if (phase == scripting::ScriptActorHeartbeatPhase::behavior) {
+            auto& runner = active_runner_record();
+            runner.animation_action_gate = actor_decision->action_delay;
+            if (player_slot < field_player_action_delay_reset_pending_.size()) {
+                field_player_action_delay_reset_pending_[player_slot].reset();
+            }
+            if (ready_ && runner.animation_action_gate < 0 &&
+                field_entity_attack_pose_active_ &&
+                field_entity_attack_pose_kind_ ==
+                    FieldPlayerAttackPose::strike) {
+                // Unarmed C0A2 retains its source action-gate lifetime; the
+                // measured #38 C042/C082 pose timers apply to firearms/casts.
+                field_entity_attack_pose_active_ = false;
+                if (!field_entity_walking_) {
+                    field_entity_animation_.frame = 0U;
+                    field_entity_animation_.redraw_requested = true;
+                }
+                source_boundary("field.combat.player_attack_pose_expired");
+            }
+        }
         const bool timed_action_pose =
             field_entity_attack_pose_kind_ == FieldPlayerAttackPose::firearm ||
             field_entity_attack_pose_kind_ == FieldPlayerAttackPose::cast;
@@ -13032,6 +13068,7 @@ void FieldSceneRuntime::service_player_weapon_action(
             runner, weapon_capacity_lookup, reload_delay_lookup,
             reload_callbacks);
         if (reload.status == PlayerActionDispatchStatus::serviced) {
+            queue_player_action_delay_reset(runner.animation_action_gate);
             refresh_field_hud_runner_slot();
             source_boundary("field.combat.player_auto_reload");
         } else if (reload.status ==
@@ -13260,6 +13297,7 @@ void FieldSceneRuntime::service_player_weapon_action(
                 runner, weapon_capacity_lookup, reload_delay_lookup,
                 reload_callbacks);
             if (fallback.status == PlayerActionDispatchStatus::serviced) {
+                queue_player_action_delay_reset(runner.animation_action_gate);
                 refresh_field_hud_runner_slot();
             } else if (fallback.status ==
                        PlayerActionDispatchStatus::weapon_template_unresolved) {
@@ -13279,7 +13317,7 @@ void FieldSceneRuntime::service_player_weapon_action(
     if (!delay.has_value()) {
         source_boundary("field.combat.player_weapon_delay_unresolved");
     } else {
-        runner.animation_action_gate = *delay;
+        set_player_action_delay(*delay);
     }
     field_entity_animation_.frame = 0U;
     field_entity_animation_.redraw_requested = true;
