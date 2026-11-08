@@ -256,7 +256,7 @@ local function p46t_weapon_hit(attacker, target, seed)
     local random_bound, seed_after = source_rng_with_state(seed)
     local context = {
         combatant = attacker,
-        projectile_action_id = "model_101t",
+        projectile_action_id = attacker.equipped_action_id,
         ai_target_candidates = {},
         ai_random_bound = random_bound,
     }
@@ -738,7 +738,7 @@ check(E.ItemId.MODEL_101T == 0x02,
 local function p46t_jake(options)
     options = options or {}
     options.party = true
-    options.action = "model_101t"
+    options.action = options.action or "model_101t"
     return make_combatant(options)
 end
 
@@ -797,6 +797,49 @@ do
                             row.seed))
         meter = hit ~= nil and hit.physical_meter or meter
     end
+end
+
+-- The other two New Game human presets use different attributes and starter
+-- items. ROM 0x72A1A selects Decker + American L36 (item 3, row 0xD45A0);
+-- 0x72B1A selects Gator Shaman + Model 101T (item 2, row 0xD4570). For both,
+-- DF65 rolls four attack dice (3,2,5,1) for one success, then the pedestrian's
+-- three TN6 defense dice (4,4,3) score none. Each pistol's effect is 1, so the
+-- live source formula removes 2 from meter 10. Compare production Lua with
+-- the independent equations above as well as the ROM-derived fixed result.
+for _, row in ipairs({
+    { profile = "decker 0x72A1A", action = "american_l36",
+      attacker = { body = 2, quickness = 5, strength = 2, intelligence = 4,
+                   willpower = 3, firearms = 2, pistols = 0,
+                   posture_reduction_percent = 50 },
+      attack = 1, damage = 2, meter = 8, end_seed = 0x7B0C },
+    { profile = "gator shaman 0x72B1A", action = "model_101t",
+      attacker = { body = 2, quickness = 4, strength = 1, intelligence = 3,
+                   willpower = 4, firearms = 2, pistols = 0,
+                   posture_reduction_percent = 50 },
+      attack = 1, damage = 2, meter = 8, end_seed = 0x7B0C },
+}) do
+    clear_actor_states()
+    local options = row.attacker
+    options.action = row.action
+    local attacker = p46t_jake(options)
+    local target = p46t_pedestrian("p46t-" .. row.profile)
+    local reference_random, reference_seed_after =
+        source_rng_with_state(0xDF65)
+    local reference_attack = source_weapon_attack(
+        attacker, row.action, reference_random)
+    local reference_damage = source_weapon_damage(
+        target.combatant, row.action, reference_attack, reference_random)
+    local attack, hit, end_seed = p46t_weapon_hit(
+        attacker, target, 0xDF65)
+    local damage = hit ~= nil and 10 - hit.physical_meter or -1
+    check(reference_attack == row.attack and
+          reference_damage == row.damage and
+          reference_seed_after() == row.end_seed and
+          attack == row.attack and hit ~= nil and damage == row.damage and
+          hit.physical_meter == row.meter and hit.mental_meter == 10 and
+          end_seed == row.end_seed,
+          string.format("#46T %s starter weapon hit matches the ROM formula",
+                        row.profile))
 end
 
 -- Additional hand-derived cases exercise the same ROM equations with

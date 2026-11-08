@@ -1285,7 +1285,8 @@ int run_field_command_overview_close_qa(
 // ROM 0x1514E calls 0x14FF8 during spawn; 0x14FF8 resolves 0x55640 before
 // the 0xA8EA actor-slot scan proceeds from party records to world actors.
 int run_field_pistol_attack_seed_qa(FieldSceneRuntime& field_scene) {
-    auto& runner = field_scene.active_runner_record();
+    const auto selected_class =
+        field_scene.active_runner_record().archetype_index;
     struct ExpectedStarter {
         std::string_view name;
         std::uint8_t class_index;
@@ -1293,17 +1294,66 @@ int run_field_pistol_attack_seed_qa(FieldSceneRuntime& field_scene) {
         std::uint8_t firearms;
         std::uint8_t item_code;
         std::int8_t attack_successes;
+        std::uint8_t pedestrian_meter_after_hit;
     };
     // Source records are 0x100 bytes apart. These typed facts come from the
     // ROM profiles and the attack pools follow 0x55ED6/0x55F20/0x12C74/0x55640.
     static constexpr std::array<ExpectedStarter, 3U> starters{{
-        {"samurai", 2U, {4U, 3U, 4U, 1U, 2U, 4U}, 4U, 2U, 3},
-        {"decker", 3U, {2U, 5U, 2U, 2U, 4U, 3U}, 2U, 3U, 1},
-        {"gator_shaman", 1U, {2U, 4U, 1U, 2U, 3U, 4U}, 2U, 2U, 1},
+        {"samurai", 2U, {4U, 3U, 4U, 1U, 2U, 4U}, 4U, 2U, 3, 7U},
+        {"decker", 3U, {2U, 5U, 2U, 2U, 4U, 3U}, 2U, 3U, 1, 8U},
+        {"gator_shaman", 1U, {2U, 4U, 1U, 2U, 3U, 4U}, 2U, 2U, 1, 8U},
     }};
+
+    // ROM 0x1D6988's Scene-2 pedestrian list is the common live target for
+    // all three actual starter profiles. Re-enter through the ordinary
+    // scene path so the attack uses the real target record and collision.
+    if (field_scene.field_scene_reference_for_dump() != 2U ||
+        field_scene.default_actor_count_for_dump() != 0U) {
+        std::cerr << "pistol live-hit QA: New Game did not begin in the empty "
+                     "Scene-2 entry state\n";
+        return 3;
+    }
+    field_scene.set_field_entity_world_position_for_dump(0x1000U, 0x1000U);
+    if (!field_scene.reenter_field_scene_for_dump(2U)) {
+        std::cerr << "pistol live-hit QA: ordinary Scene-2 re-entry failed\n";
+        return 3;
+    }
+    field_scene.set_field_camera_world_position_for_dump(0U, 0U);
+    const auto pedestrian_profile =
+        field_scene.default_actor_script_profile_for_dump(0U);
+    const auto pedestrian_positions =
+        field_scene.active_default_actor_positions_for_dump();
+    if (pedestrian_profile !=
+            std::optional<std::string>{"pedestrian_k0b_none00"} ||
+        pedestrian_positions.size() != 3U ||
+        field_scene.default_actor_physical_meter_for_dump(0U) !=
+            std::optional<std::uint8_t>{10U} ||
+        !field_scene.set_default_actor_frozen_for_dump(0U, true) ||
+        !field_scene.set_default_actor_frozen_for_dump(1U, true) ||
+        !field_scene.set_default_actor_frozen_for_dump(2U, true)) {
+        std::cerr << "pistol live-hit QA: ROM pedestrian target setup failed "
+                  << "profile=" << pedestrian_profile.value_or("<none>")
+                  << " actors=" << pedestrian_positions.size() << '\n';
+        return 3;
+    }
+    const auto& pedestrian_start = pedestrian_positions.front();
+    if (pedestrian_start.x < 0x0040U || pedestrian_start.y < 0x0230U) {
+        std::cerr << "pistol live-hit QA: target is outside the source firing "
+                     "staging range\n";
+        return 3;
+    }
+    field_scene.set_field_entity_world_position_for_dump(
+        static_cast<std::uint16_t>(pedestrian_start.x - 0x0040U),
+        static_cast<std::uint16_t>(pedestrian_start.y - 0x0230U));
+    field_scene.set_field_entity_heading_for_dump(0x8000U);
+    field_scene.set_field_camera_world_position_for_dump(
+        static_cast<std::uint16_t>(pedestrian_start.x - 0x0800U),
+        static_cast<std::uint16_t>(pedestrian_start.y - 0x0800U));
+
+    auto& runner = field_scene.active_runner_record();
     const auto expected_profile = std::find_if(
-        starters.begin(), starters.end(), [&runner](const auto& profile) {
-            return profile.class_index == runner.archetype_index;
+        starters.begin(), starters.end(), [selected_class](const auto& profile) {
+            return profile.class_index == selected_class;
         });
     const auto* expected = expected_profile == starters.end()
         ? nullptr
@@ -1365,18 +1415,24 @@ int run_field_pistol_attack_seed_qa(FieldSceneRuntime& field_scene) {
     if (runner.ammo_rounds == 0U) {
         runner.ammo_rounds = 1U;
     }
+    const auto ammo_before_shot = runner.ammo_rounds;
     field_scene.set_source_random_seed_for_dump(0xDF65U);
     field_scene.set_controller_port_byte(0x40U);
     field_scene.advance_frame();
     field_scene.set_controller_port_byte(0U);
     const auto after_fire =
         field_scene.field_weapon_primary_action_result_for_dump();
-    if (field_scene.field_weapon_primary_count_for_dump() != 1U ||
+    if (field_scene.last_field_weapon_spawn_action_for_dump() !=
+            EntitySpawnCycleAction::spawned ||
+        runner.ammo_rounds != static_cast<std::uint8_t>(ammo_before_shot - 1U) ||
+        field_scene.field_weapon_primary_count_for_dump() != 1U ||
         !after_fire.has_value() || *after_fire != expected->attack_successes) {
-        std::cerr << "pistol attack-seed QA: fire service did not publish "
-                     "the source result for the selected starter profile "
-                     "on the spawn pass"
+        std::cerr << "pistol live-hit QA: fire service did not publish the "
+                     "source result and consume one round for the selected "
+                     "starter profile on the spawn pass"
                   << " profile=" << expected->name
+                  << " ammo=" << static_cast<unsigned>(runner.ammo_rounds)
+                  << "/" << static_cast<unsigned>(ammo_before_shot)
                   << " count="
                   << field_scene.field_weapon_primary_count_for_dump()
                   << " action_result=";
@@ -1391,11 +1447,44 @@ int run_field_pistol_attack_seed_qa(FieldSceneRuntime& field_scene) {
                   << " failure=" << field_scene.failure() << '\n';
         return 3;
     }
+
+    // ROM 0x55948..0x559F0 resolves weapon effect against target defense;
+    // 0x55A90..0x55A98 clamps physical-meter loss. The independent #46T Lua
+    // fixture checks these seeded results for each real starter profile.
+    for (std::size_t frame = 0U; frame < 24U; ++frame) {
+        field_scene.advance_frame();
+        const auto meter =
+            field_scene.default_actor_physical_meter_for_dump(0U);
+        if (meter.has_value() && *meter < 10U) {
+            break;
+        }
+    }
+    const auto pedestrian_meter =
+        field_scene.default_actor_physical_meter_for_dump(0U);
+    if (pedestrian_meter != std::optional<std::uint8_t>{
+                                expected->pedestrian_meter_after_hit}) {
+        std::cerr << "pistol live-hit QA: source starter weapon did not "
+                     "resolve against the Scene-2 pedestrian"
+                  << " profile=" << expected->name
+                  << " item=" << static_cast<unsigned>(runner.equipped_item_code)
+                  << " attack=" << static_cast<int>(*after_fire)
+                  << " meter="
+                  << (pedestrian_meter.has_value()
+                          ? std::to_string(*pedestrian_meter)
+                          : "<inactive>")
+                  << " expected=" << static_cast<unsigned>(
+                         expected->pedestrian_meter_after_hit)
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
     std::cout << "field_pistol_attack_seed_qa=passed profile="
               << expected->name << " item="
               << static_cast<unsigned>(expected->item_code)
               << " action_result=" << static_cast<int>(*after_fire)
-              << " seed=DF65 timing=spawn-service\n";
+              << " physical=10->" << static_cast<unsigned>(*pedestrian_meter)
+              << " ammo=" << static_cast<unsigned>(ammo_before_shot) << "->"
+              << static_cast<unsigned>(runner.ammo_rounds)
+              << " seed=DF65 timing=spawn-service+live-hit\n";
     return 0;
 }
 
