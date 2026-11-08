@@ -3,6 +3,8 @@
 -- rolls the party's average Quickness against a party-size target. Source
 -- addresses stay here as provenance; Lua works with named runner facts.
 local RandomEvents = {}
+local E = require("enums")
+local StoryState = require("story_state")
 
 local ALARM_RESULT =
     "<As the alarm goes off, you realize you must have just walked in front " ..
@@ -19,6 +21,12 @@ local HAGGARD_CREDENTIALS_RESULT =
 local HAGGARD_THREATEN_RESULT =
     "<The doctor turns to his two assistants.>||Let's go.||" ..
     "This one's about dry, anyway."
+local HAGGARD_ZERO_BODY_ATTACK_RESULT =
+    "Who do you think you're scaring?||Kill them all!!"
+local HAGGARD_ONE_BODY_ATTACK_RESULT =
+    "<The doctor looks about nervously, then addresses his henchmen.>||" ..
+    "You take care of the brash one as well as our friend.||" ..
+    "I have other matters to attend to."
 local HAGGARD_INTRO_TYPICAL =
     "<The man looks like a typical doctor to you.>"
 local HAGGARD_INTRO_UNSURE =
@@ -36,6 +44,19 @@ local HAGGARD_CHOICES = {
 -- no portrait.
 local HAGGARD_SPEAKER = "haggard_man_event"
 local HAGGARD_TEXT_PROFILE = "field.world_event"
+local HAGGARD_ATTACK_OUTCOMES = {
+    [0] = {
+        sequence_id =
+            E.WorldEffectSequence.HAGGARD_GATOR_SHAMAN_AND_BODYGUARDS,
+        actors = 3,
+        result_text = HAGGARD_ZERO_BODY_ATTACK_RESULT,
+    },
+    [1] = {
+        sequence_id = E.WorldEffectSequence.HAGGARD_TWO_BODYGUARDS,
+        actors = 2,
+        result_text = HAGGARD_ONE_BODY_ATTACK_RESULT,
+    },
+} -- ROM 0x23C52 selects 0x1D704C or 0x1D7050 after a target-6 Body roll [C]
 
 local function event_opening(event_id)
     local data = game.modules.world_content_data
@@ -257,8 +278,8 @@ function RandomEvents.present_haggard_man()
         end
     elseif choice == "attack" then
         -- Command 0xAA reaches 0x23C52 and checks first-runner Body at
-        -- FF0177 against target 6. Its <=1-success combat lists remain an
-        -- explicit boundary; the >1 path pays 100 and uses 0x1211A0.
+        -- FF0177 against target 6. The <=1-success branches queue their
+        -- source actor lists; the >1 path pays 100 and uses 0x1211A0.
         local body = first_runner_attribute("body")
         if body == nil then
             return source_boundary(
@@ -270,8 +291,22 @@ function RandomEvents.present_haggard_man()
             return source_boundary("ROM 0x23C52 Body roll is unavailable")
         end
         if attack_successes <= 1 then
-            return source_boundary(
-                "ROM 0x23C52 combat actor lists 0x1D704C/0x1D7050 are not implemented")
+            local outcome = HAGGARD_ATTACK_OUTCOMES[attack_successes]
+            local scene = StoryState.scene()
+            if outcome == nil or scene == nil then
+                return source_boundary(
+                    "ROM 0x23C52 combat sequence or field scene is unavailable")
+            end
+            -- ROM 0x23C52 calls 0x1E1FC with D0=1, which places the selected
+            -- Gator Shaman/bodyguard list at map-derived candidates before
+            -- returning the corresponding 0x121190 or 0x121198 page.
+            if not StoryState.queue_world_effect(scene, outcome) then
+                return source_boundary(
+                    "ROM 0x23C52 map-derived actor list could not be queued")
+            end
+            game.ui.say_text(outcome.result_text, false, HAGGARD_SPEAKER,
+                             HAGGARD_TEXT_PROFILE)
+            return "resolved"
         end
         return haggard_reward(
             100, HAGGARD_THREATEN_RESULT,

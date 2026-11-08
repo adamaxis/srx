@@ -290,10 +290,14 @@ credentials/payout page at `0x121178` and adds 50 nuyen, while 50-99 opens the
 same police prompt. Help dispatches to `0x23CE0` and adds 50 nuyen at
 `0x121178`. Alternate Attack command `0xAA` at `0x23C52` uses first-runner
 Body (`FF0177`, record `FF0100 + 0x77`) against target 6. Zero successes queue
-a Gator Shaman and two bodyguards, one success queues two bodyguards, and more
-than one success adds 100 nuyen and reaches `0x1211A0`. The conversion covers
-that no-combat payout; the police and combat-list branches remain explicit
-boundaries.
+the map-derived list at `0x1D704C` (Gator Shaman plus two bodyguards); one
+success queues the two-bodyguard list at `0x1D7050`; more than one success adds
+100 nuyen and reaches `0x1211A0`. Lua names the lists as encounter sequences,
+and the host starts the queued list after the dialogue returns. Debug and
+Release runtime QA resolves both lists in Scenes 2 and 5, while the Scene-2
+field QA checks the zero-success result page, three spawned actors, and
+`actual.bmp`. Standard Attack and the police prompt remain explicit
+boundaries; post-spawn combat and an independent Genesis capture remain open.
 
 The doctor event's patrol prompt uses the shared Lone Star Attack/Comply/Run
 dispatchers. Attack starts the patrol fight; Comply can resolve through the

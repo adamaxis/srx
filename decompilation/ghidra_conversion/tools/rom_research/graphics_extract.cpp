@@ -10449,6 +10449,130 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         throw std::runtime_error(
             "Boris strike-team actor list has no null sentinel");
     }
+    // ROM 0x23C52 passes the first runner's Body-roll result to 0x1E1FC,
+    // which starts one of two map-derived actor lists. Preserve the source
+    // list order and named semantic sequence for the encounter runtime.
+    struct HaggardAttackSequence {
+        std::uint16_t scene_id;
+        std::uint32_t list_offset;
+        std::uint16_t expected_actor_count;
+    };
+    static constexpr std::array<HaggardAttackSequence, 4>
+        kHaggardAttackSequences{{
+            {2U, 0x1D704CU, 3U},
+            {2U, 0x1D7050U, 2U},
+            {5U, 0x1D704CU, 3U},
+            {5U, 0x1D7050U, 2U},
+        }};
+    for (const auto& sequence : kHaggardAttackSequences) {
+        const auto context_group = rom[
+            kFieldContextGroupTableOffset + sequence.scene_id];
+        if (context_group >= kWorldActivityGroups) {
+            throw std::runtime_error(
+                "Haggard attack sequence scene has an invalid context group");
+        }
+        auto cursor = static_cast<std::size_t>(sequence.list_offset);
+        std::uint16_t source_order = 0U;
+        bool found_terminator = false;
+        for (; source_order < 16U; ++source_order, cursor += 4U) {
+            const auto tagged_template = read_big_endian_long(rom, cursor);
+            if (tagged_template == 0U) {
+                found_terminator = true;
+                break;
+            }
+            const auto template_offset = static_cast<std::size_t>(
+                tagged_template & 0x7FFFFFFFU);
+            if (template_offset > rom.size() ||
+                rom.size() - template_offset < 0x4AU) {
+                throw std::runtime_error(
+                    "Haggard attack actor template points outside the ROM");
+            }
+            const auto entity_kind = read_big_endian_word(rom, template_offset);
+            const auto palette_line = static_cast<std::uint8_t>(
+                (read_big_endian_word(rom, template_offset + 2U) >> 13U) &
+                0x03U);
+            const auto actor_name = read_actor_name(template_offset);
+            if (actor_name.empty()) {
+                throw std::runtime_error(
+                    "Haggard attack actor has no readable template name");
+            }
+            const auto action_selector = rom[template_offset + 8U];
+            const auto action_code = rom[template_offset + 9U];
+            const auto action_kind = action_code == 0U
+                ? std::string("none")
+                : ((action_selector & 0x80U) != 0U
+                       ? std::string("spell")
+                       : std::string("item"));
+            const auto profile_id = make_actor_profile_id(
+                rom, template_offset, entity_kind, action_kind, action_code);
+            const auto facts =
+                read_world_activity_actor_template_facts(template_offset);
+            const auto sprite_stem = entity_kind == 5U
+                ? profile_id
+                : entity_kind == 7U
+                    ? "actor-kind-7-palette-" + std::to_string(palette_line)
+                    : entity_kind == 8U
+                        ? std::string("yakuza-weenr")
+                        : make_sprite_stem(actor_name);
+
+            DynamicWorldActorRecord actor{};
+            actor.scene_id = sequence.scene_id;
+            actor.context_group = context_group;
+            actor.random_sum = static_cast<std::uint8_t>(
+                srx::v(srx::FieldEncounter::SOURCE_SEQUENCE_SENTINEL));
+            actor.source_order = source_order;
+            actor.pointer_cell_offset = 0U;
+            actor.sequence_list_offset = sequence.list_offset;
+            actor.tagged_template = tagged_template;
+            actor.template_offset = static_cast<std::uint32_t>(template_offset);
+            actor.entity_kind = entity_kind;
+            actor.palette_line = palette_line;
+            actor.actor_name = actor_name;
+            actor.profile_id = profile_id;
+            actor.action_code = action_code;
+            actor.source_action_slot = action_selector;
+            actor.source_action_ammo = rom[template_offset + 6U];
+            actor.source_action_counter = rom[template_offset + 7U];
+            actor.action_kind = action_kind;
+            // The common field actor initializer supplies state for this
+            // map-derived spawn, as it does for Boris's source sequence.
+            actor.source_spawn_state_flags = 0U;
+            actor.source_interaction_flags = facts.source_interaction_flags;
+            actor.physical_meter = facts.physical_meter;
+            actor.delay_primary_attribute = facts.delay_primary_attribute;
+            actor.delay_secondary_attribute = facts.delay_secondary_attribute;
+            actor.delay_capability_flags = facts.delay_capability_flags;
+            actor.mental_meter = facts.mental_meter;
+            actor.cyberware_flags = facts.cyberware_flags;
+            actor.posture = facts.posture;
+            actor.attribute_77 = facts.attribute_77;
+            actor.attribute_78 = facts.attribute_78;
+            actor.attribute_79 = facts.attribute_79;
+            actor.attribute_7b = facts.attribute_7b;
+            actor.attribute_7c = facts.attribute_7c;
+            actor.attribute_85 = facts.attribute_85;
+            actor.item18_base = facts.item18_base;
+            actor.armor_index = facts.armor_index;
+            actor.race_or_state = facts.race_or_state;
+            actor.class_code = facts.class_code;
+            actor.modifier_flags_df = facts.modifier_flags_df;
+            actor.profile_index_a0 = facts.profile_index_a0;
+            actor.item_codes = facts.item_codes;
+            actor.item_phases = facts.item_phases;
+            actor.action_phase_extension = facts.action_phase_extension;
+            actor.action_skills = facts.action_skills;
+            actor.auxiliary_roll_bonus = facts.auxiliary_roll_bonus;
+            actor.sprite_stem = sprite_stem;
+            actor.ordered_overrides = "-";
+            actor.map_derived_placement = true;
+            dynamic_world_actor_records.push_back(std::move(actor));
+        }
+        if (!found_terminator ||
+            source_order != sequence.expected_actor_count) {
+            throw std::runtime_error(
+                "Haggard attack sequence list shape changed");
+        }
+    }
     {
         const auto table_path =
             root / "field/entities/dynamic-world-activity-actors.tsv";

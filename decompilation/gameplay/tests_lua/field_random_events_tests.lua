@@ -112,6 +112,7 @@ local function run_haggard(choice, event_id, configuration)
     local random_calls = {}
     local prompt_titles = {}
     local prompt_speakers = {}
+    local queued_world_effects = {}
     local random_values = configuration.random_values or {
         [6] = { 0, 0 },
         [100] = { 0 },
@@ -123,6 +124,7 @@ local function run_haggard(choice, event_id, configuration)
             type = "field_map",
             id = "random_field_event",
             event_id = event_id or "haggard_man_collapse",
+            scene_id = configuration.scene_id or 2,
         },
         modules = {
             combat = Combat,
@@ -175,6 +177,14 @@ local function run_haggard(choice, event_id, configuration)
         },
         services = {
             call = function(domain, action)
+                if domain == "field" and action == "scene_reference" then
+                    return "scene_" .. tostring(game.location.scene_id)
+                end
+                if domain == "story" and
+                   action:match("^queue_world_effect_") then
+                    queued_world_effects[#queued_world_effects + 1] = action
+                    return configuration.queue_result or "queued"
+                end
                 if domain == "random" then
                     random_calls[#random_calls + 1] = action
                     local bound = type(action) == "string" and
@@ -200,7 +210,7 @@ local function run_haggard(choice, event_id, configuration)
         E.DialogueSource.RANDOM_ENCOUNTER,
         "field_random_events", "present_haggard_man")
     return task_result, dialogue_pages, exit_calls, funds, random_calls,
-        prompt_titles, prompt_speakers
+        prompt_titles, prompt_speakers, queued_world_effects
 end
 
 local haggard_result, haggard_pages, haggard_exit, haggard_funds,
@@ -370,33 +380,78 @@ eq(table.concat(attack_reward_random, ","),
 eq(table.concat(attack_reward_exit, ","), "stay,fade_83,lock_60",
    "no-combat Attack result returns through the same-map exit")
 
-local unsupported_result, _, unsupported_exit, unsupported_funds =
+local zero_success_attack, zero_success_pages, zero_success_exit,
+      zero_success_funds, _, _, _, zero_success_effects =
     run_haggard("attack", nil, {
         intelligence = 0,
         body = 1,
         random_values = { [6] = { 0, 0 }, [100] = { 0 } },
     })
-eq(type(unsupported_result), "table",
-   "unimplemented doctor combat branch stays an explicit boundary")
-eq(unsupported_result.type, "source_boundary",
-   "unimplemented doctor combat branch does not become a terminal exit")
-eq(#unsupported_exit, 0,
-   "source boundary applies no descriptor exit effects")
-eq(unsupported_funds, 125,
-   "source boundary does not award the Help reward")
+eq(zero_success_attack, "resolved",
+   "ROM 0x23C52 zero-success Attack starts the source actor sequence")
+eq(zero_success_pages[2].text,
+   "Who do you think you're scaring?||Kill them all!!",
+   "ROM 0x121190 zero-success Attack result text")
+eq(zero_success_pages[2].speaker_id, "haggard_man_event",
+   "zero-success Attack keeps the doctor illustration")
+eq(zero_success_pages[2].text_profile, "field.world_event",
+   "zero-success Attack keeps the field event text profile")
+eq(zero_success_effects[1],
+   "queue_world_effect_2_3_haggard_man_gator_shaman_and_bodyguards",
+   "ROM 0x1D704C starts the three-actor map-derived sequence in Scene 2")
+eq(#zero_success_effects, 1,
+   "zero-success Attack queues exactly one actor sequence")
+eq(zero_success_funds, 125,
+   "zero-success Attack does not award the no-combat nuyen")
+eq(table.concat(zero_success_exit, ","), "stay,fade_83,lock_60",
+   "zero-success Attack returns through the common same-map exit")
 
-local one_success_attack, _, _, one_success_funds = run_haggard(
+local one_success_attack, one_success_pages, one_success_exit,
+      one_success_funds, one_success_random, one_success_titles,
+      one_success_speakers, one_success_effects = run_haggard(
     "attack", nil, {
         intelligence = 0,
         body = 1,
+        scene_id = 5,
         random_values = { [6] = { 0, 5, 0 }, [100] = { 0 } },
     })
-eq(type(one_success_attack), "table",
-   "one-success Attack keeps its source combat list boundary")
-eq(one_success_attack.type, "source_boundary",
-   "ROM 0x23C52 one success queues its bodyguard list")
+eq(one_success_attack, "resolved",
+   "ROM 0x23C52 one-success Attack starts the source actor sequence")
 eq(one_success_funds, 125,
    "one-success Attack cannot take the no-combat payout")
+eq(table.concat(one_success_exit, ","), "stay,fade_83,lock_60",
+   "one-success Attack returns through the common same-map exit")
+eq(one_success_pages[2].text,
+   "<The doctor looks about nervously, then addresses his henchmen.>||" ..
+   "You take care of the brash one as well as our friend.||" ..
+   "I have other matters to attend to.",
+   "ROM 0x121198 one-success Attack result text")
+eq(one_success_effects[1],
+   "queue_world_effect_5_2_haggard_man_two_bodyguards",
+   "ROM 0x1D7050 starts the two-actor map-derived sequence in Scene 5")
+eq(#one_success_effects, 1,
+   "one-success Attack queues exactly one actor sequence")
+
+local failed_queue_result, failed_queue_pages, failed_queue_exit,
+      failed_queue_funds, _, _, _, failed_queue_effects = run_haggard(
+    "attack", nil, {
+        intelligence = 0,
+        body = 1,
+        random_values = { [6] = { 0, 0 }, [100] = { 0 } },
+        queue_result = "busy",
+    })
+eq(type(failed_queue_result), "table",
+   "busy world effect leaves an explicit source boundary")
+eq(failed_queue_result.type, "source_boundary",
+   "failed actor sequence is not reported as resolved")
+eq(#failed_queue_pages, 1,
+   "failed sequence queue does not show its result before actors can spawn")
+eq(#failed_queue_exit, 0,
+   "failed sequence queue does not apply the same-map exit")
+eq(failed_queue_funds, 125,
+   "failed sequence queue does not award money")
+eq(#failed_queue_effects, 1,
+   "failed sequence attempt makes one queue request")
 
 game.location.event_id = "different_event"
 eq(RandomEvents.present_haggard_man(), nil,

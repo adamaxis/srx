@@ -223,7 +223,10 @@ E.StokerMotelArrival = {
 E.WorldEffectSequence = {
     -- This weighted encounter list is also called directly by 0x249C4.
     STOKER_MOTEL_AMBUSH = "scene2.world_effect.weenr2.then.weenr1.then.weenr1",
-} -- ROM list 0x1D6E2A, weighted selector cell 0x1D71DC [C]
+    HAGGARD_GATOR_SHAMAN_AND_BODYGUARDS =
+        "haggard_man_gator_shaman_and_bodyguards",
+    HAGGARD_TWO_BODYGUARDS = "haggard_man_two_bodyguards",
+} -- ROM lists 0x1D6E2A, 0x1D704C, and 0x1D7050 [C]
 E.WorldEffectPlacementPolicy = {
     SCREEN_EDGE_CANDIDATES = "screen_edge_candidates",
     MAP_DERIVED_CANDIDATES = "map_derived_candidates",

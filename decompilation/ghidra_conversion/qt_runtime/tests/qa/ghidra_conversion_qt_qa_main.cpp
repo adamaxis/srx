@@ -5092,6 +5092,216 @@ int run_field_hidden_camera_qa(
         return 3;
     }
 
+    const auto haggard_attack_output = output / "haggard_man_attack";
+    std::filesystem::create_directories(haggard_attack_output, error);
+    if (error) {
+        std::cerr << "field hidden-camera QA: could not create the Haggard "
+                     "Attack output directory: " << error.message() << '\n';
+        return 3;
+    }
+    clear_qa_bitmap_artifacts(haggard_attack_output, error);
+    if (error || !field_scene.reenter_field_scene_for_dump(2U)) {
+        std::cerr << "field hidden-camera QA: could not prepare the Haggard "
+                     "Attack route: " << error.message() << '\n';
+        return 3;
+    }
+    const auto& attack_party = field_scene.field_party_records_for_dump();
+    if (attack_party.empty()) {
+        std::cerr << "field hidden-camera QA: Haggard Attack has no first "
+                     "runner record\n";
+        return 3;
+    }
+    const auto& first_runner = attack_party.front();
+    constexpr std::size_t kRunnerBodyAttribute = 0U;
+    constexpr std::size_t kRunnerIntelligenceAttribute = 4U;
+    std::optional<std::uint16_t> alternate_prompt_seed;
+    for (std::uint32_t candidate = 0U; candidate <= 0xFFFFU; ++candidate) {
+        auto simulated_seed = static_cast<std::uint16_t>(candidate);
+        const auto random = [&simulated_seed](const std::uint16_t bound) {
+            return shadowrun::ghidra_conversion::sample_source_random_bound(
+                simulated_seed, bound);
+        };
+        (void)shadowrun::ghidra_conversion::count_thresholded_random_rolls(
+            first_runner.attributes[kRunnerIntelligenceAttribute], 6, random);
+        const auto selector_roll =
+            shadowrun::ghidra_conversion::sample_source_random_bound(
+                simulated_seed, 100U);
+        if (selector_roll >= 0 && selector_roll < 50) {
+            alternate_prompt_seed = static_cast<std::uint16_t>(candidate);
+            break;
+        }
+    }
+    std::optional<std::uint16_t> zero_body_success_seed;
+    for (std::uint32_t candidate = 0U; candidate <= 0xFFFFU; ++candidate) {
+        auto simulated_seed = static_cast<std::uint16_t>(candidate);
+        const auto random = [&simulated_seed](const std::uint16_t bound) {
+            return shadowrun::ghidra_conversion::sample_source_random_bound(
+                simulated_seed, bound);
+        };
+        const auto successes =
+            shadowrun::ghidra_conversion::count_thresholded_random_rolls(
+                first_runner.attributes[kRunnerBodyAttribute], 6, random);
+        if (successes == 0U) {
+            zero_body_success_seed = static_cast<std::uint16_t>(candidate);
+            break;
+        }
+    }
+    if (!alternate_prompt_seed.has_value() ||
+        !zero_body_success_seed.has_value()) {
+        std::cerr << "field hidden-camera QA: could not seed the Haggard "
+                     "alternate prompt and zero-success Body branch\n";
+        return 3;
+    }
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    const auto haggard_attack_spawned =
+        field_scene.resolve_and_spawn_field_encounter_for_dump(
+            0U, 1U, *alternate_prompt_seed);
+    const auto& haggard_attack_opening = field_scene.dialogue_panel();
+    const auto haggard_attack_opening_image = render_qa_field(field_scene);
+    const bool haggard_attack_opening_saved = save_qa_image(
+        haggard_attack_output, "opening.bmp", haggard_attack_opening_image);
+    if (haggard_attack_spawned != 0U || !haggard_attack_opening.open ||
+        !haggard_attack_opening.has_more ||
+        haggard_attack_opening.portrait_alias != kHaggardPortraitAlias ||
+        !haggard_attack_opening_saved) {
+        std::cerr << "field hidden-camera QA: Haggard Attack did not open "
+                     "the Scene-2 source dialogue; spawned="
+                  << haggard_attack_spawned << " dialogue="
+                  << haggard_attack_opening.open << " more="
+                  << haggard_attack_opening.has_more << " portrait="
+                  << haggard_attack_opening.portrait_alias
+                  << " image_saved=" << haggard_attack_opening_saved
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+    // ROM 0x23BB4 opens the alternate prompt when its selector roll is below
+    // 50. Select its first command, Attack (0xAA), at 0x23C52.
+    tap_qa_controller_button(field_scene, 0x40U);
+    const auto& haggard_attack_choices = field_scene.dialogue_panel();
+    const auto haggard_attack_choices_image = render_qa_field(field_scene);
+    const bool haggard_attack_choices_saved = save_qa_image(
+        haggard_attack_output, "choices.bmp", haggard_attack_choices_image);
+    if (!haggard_attack_choices.open ||
+        haggard_attack_choices.option_count != 3U ||
+        haggard_attack_choices.cursor_selection ||
+        haggard_attack_choices.portrait_alias != kHaggardPortraitAlias ||
+        !haggard_attack_choices_saved) {
+        std::cerr << "field hidden-camera QA: alternate Haggard prompt did "
+                     "not expose its three A/B/C choices; options="
+                  << static_cast<unsigned>(
+                         haggard_attack_choices.option_count)
+                  << " portrait=" << haggard_attack_choices.portrait_alias
+                  << " image_saved=" << haggard_attack_choices_saved
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+    // Inject a deterministic source RNG state at the choice boundary so the
+    // selected Attack command exercises the exact zero-success 0x23C52 row.
+    settle_qa_dialogue_input(field_scene);
+    field_scene.set_source_random_seed_for_dump(*zero_body_success_seed);
+    field_scene.set_controller_port_byte(0x40U);
+    field_scene.advance_frame();
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    settle_qa_menu_blank(field_scene);
+    const auto& haggard_attack_result = field_scene.dialogue_panel();
+    const auto haggard_attack_result_image = render_qa_field(field_scene);
+    const bool haggard_attack_result_text = std::any_of(
+        haggard_attack_result.text_segments.begin(),
+        haggard_attack_result.text_segments.begin() +
+            static_cast<std::ptrdiff_t>(
+                haggard_attack_result.text_segment_count),
+        [](const std::string_view segment) {
+            return segment.find("Kill them all!!") !=
+                   std::string_view::npos;
+        });
+    if (!haggard_attack_result.open || haggard_attack_result.has_more ||
+        !haggard_attack_result_text ||
+        haggard_attack_result.portrait_alias != kHaggardPortraitAlias ||
+        !save_qa_image(haggard_attack_output, "result.bmp",
+                       haggard_attack_result_image)) {
+        std::cerr << "field hidden-camera QA: ROM 0x23C52 zero-success "
+                     "Attack did not show its result page; "
+                     "dialogue=" << haggard_attack_result.open
+                  << " more=" << haggard_attack_result.has_more
+                  << " result_text=" << haggard_attack_result_text
+                  << " failure=" << field_scene.failure() << '\n';
+        for (std::size_t index = 0U;
+             index < haggard_attack_result.text_segment_count; ++index) {
+            std::cerr << "  result[" << index << "]="
+                      << haggard_attack_result.text_segments[index] << '\n';
+        }
+        return 3;
+    }
+    // The queued map effect waits for the Haggard dialogue to return. The
+    // ROM's same-map result then resumes the field service and starts it.
+    settle_qa_dialogue_input(field_scene);
+    field_scene.set_controller_port_byte(0x40U);
+    field_scene.advance_frame();
+    field_scene.set_controller_port_byte(0U);
+    const auto haggard_attack_fade =
+        field_scene.field_modal_return_transition_frames_for_dump();
+    std::uint16_t haggard_attack_fade_observed = 0U;
+    auto haggard_attack_fade_remaining = haggard_attack_fade;
+    while (haggard_attack_fade_remaining != 0U &&
+           haggard_attack_fade_observed < 100U) {
+        field_scene.advance_frame();
+        ++haggard_attack_fade_observed;
+        haggard_attack_fade_remaining =
+            field_scene.field_modal_return_transition_frames_for_dump();
+    }
+    std::uint8_t haggard_attack_spawn_passes = 0U;
+    while (field_scene.dynamic_world_actor_count_for_dump() != 3U &&
+           haggard_attack_spawn_passes < 8U) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        ++haggard_attack_spawn_passes;
+    }
+    const auto haggard_attack_actors =
+        field_scene.active_default_actor_animations_for_dump();
+    const auto haggard_gator_count = std::count_if(
+        haggard_attack_actors.begin(), haggard_attack_actors.end(),
+        [](const FieldActorAnimationSnapshotForDump& actor) {
+            return actor.script_profile_id == "gator_shaman_k09_spell02";
+        });
+    const auto haggard_bodyguard_count = std::count_if(
+        haggard_attack_actors.begin(), haggard_attack_actors.end(),
+        [](const FieldActorAnimationSnapshotForDump& actor) {
+            return actor.script_profile_id == "bodyguard_k05_item07";
+        });
+    const auto haggard_attack_actual = render_qa_field(field_scene);
+    const bool haggard_attack_actual_saved = save_qa_image(
+        haggard_attack_output, "actual.bmp", haggard_attack_actual);
+    if (field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 2U ||
+        haggard_attack_fade != 83U ||
+        haggard_attack_fade_observed != 83U ||
+        haggard_attack_fade_remaining != 0U ||
+        field_scene.dynamic_world_actor_count_for_dump() != 3U ||
+        haggard_gator_count != 1 || haggard_bodyguard_count != 2 ||
+        !haggard_attack_actual_saved) {
+        std::cerr << "field hidden-camera QA: Haggard Attack did not resume "
+                     "with the ordered map-derived actor list; dialogue="
+                  << field_scene.dialogue_open()
+                  << " scene=" << field_scene.field_scene_reference_for_dump()
+                  << " fade=" << static_cast<unsigned>(haggard_attack_fade) << '/'
+                  << haggard_attack_fade_observed << '/'
+                  << static_cast<unsigned>(haggard_attack_fade_remaining)
+                  << " dynamic_actors="
+                  << field_scene.dynamic_world_actor_count_for_dump()
+                  << " gators=" << haggard_gator_count
+                  << " bodyguards=" << haggard_bodyguard_count
+                  << " image_saved=" << haggard_attack_actual_saved
+                  << " failure=" << field_scene.failure() << '\n';
+        for (const auto& actor : haggard_attack_actors) {
+            std::cerr << "  actor[" << actor.source_order << "]="
+                      << actor.script_profile_id << " sprite="
+                      << actor.sprite_stem << '\n';
+        }
+        return 3;
+    }
+
     std::cout << "field_hidden_camera_qa=passed scene=26 party="
               << active_runners << " dice=" << dice_pool
               << " target=" << target << " alarm=1"
@@ -5102,7 +5312,10 @@ int run_field_hidden_camera_qa(
               << haggard_position_after.y
               << " music_delta=0 actual="
               << (output / "actual.bmp").string() << " doctor_actual="
-              << (haggard_output / "actual.bmp").string() << '\n';
+              << (haggard_output / "actual.bmp").string()
+              << " doctor_attack_actors=3 fade_frames="
+              << haggard_attack_fade_observed << " map_derived="
+              << (haggard_attack_output / "actual.bmp").string() << '\n';
     return 0;
 }
 

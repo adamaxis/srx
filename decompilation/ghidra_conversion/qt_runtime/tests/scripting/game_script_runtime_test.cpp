@@ -3509,6 +3509,54 @@ int main() {
         return 3;
     }
 
+    const auto haggard_sequence_matches = [&scripts](
+        const std::uint16_t scene_id, const std::string_view sequence_id,
+        const std::vector<std::string_view>& expected_profiles) {
+        const auto outcome = scripts.resolve_field_actor_sequence(
+            scene_id, sequence_id);
+        if (!outcome.has_value() ||
+            outcome->kind != ScriptFieldEncounterOutcomeKind::
+                                 dynamic_world_effect_sequence ||
+            outcome->placement_policy != ScriptFieldEncounterPlacementPolicy::
+                                            map_derived_candidates ||
+            outcome->scene_id != scene_id ||
+            outcome->sequence_id != sequence_id ||
+            outcome->actors.size() != expected_profiles.size()) {
+            return false;
+        }
+        for (std::size_t index = 0U; index < expected_profiles.size(); ++index) {
+            if (outcome->actors[index].source_order !=
+                    static_cast<std::uint16_t>(index) ||
+                outcome->actors[index].sequence_id != sequence_id ||
+                outcome->actors[index].profile_id != expected_profiles[index]) {
+                return false;
+            }
+        }
+        return true;
+    };
+    const std::vector<std::string_view> haggard_zero_success_profiles{
+        "gator_shaman_k09_spell02", "bodyguard_k05_item07",
+        "bodyguard_k05_item07"};
+    const std::vector<std::string_view> haggard_one_success_profiles{
+        "bodyguard_k05_item07", "bodyguard_k05_item07"};
+    if (!expect(
+            haggard_sequence_matches(
+                2U, "haggard_man_gator_shaman_and_bodyguards",
+                haggard_zero_success_profiles) &&
+                haggard_sequence_matches(
+                    5U, "haggard_man_gator_shaman_and_bodyguards",
+                    haggard_zero_success_profiles) &&
+                haggard_sequence_matches(
+                    2U, "haggard_man_two_bodyguards",
+                    haggard_one_success_profiles) &&
+                haggard_sequence_matches(
+                    5U, "haggard_man_two_bodyguards",
+                    haggard_one_success_profiles),
+            "ROM 0x23C52 Haggard Body outcomes did not resolve ordered map-derived actor lists 0x1D704C/0x1D7050 in Scenes 2 and 5")) {
+        std::cerr << scripts.failure() << '\n';
+        return 3;
+    }
+
     const auto populated_alarm_profile = scripts.field_alarm_profile(21U);
     const auto empty_alarm_profile_39 = scripts.field_alarm_profile(39U);
     const auto empty_alarm_profile_40 = scripts.field_alarm_profile(40U);
@@ -7815,6 +7863,9 @@ int main() {
          CatalogDecision::unarmed},
         {"strike_team_k07_item06", 7U, ScriptActorActionKind::item, 6U,
          CatalogDecision::item_gated},
+        // [C] ROM lists 0x1D704C/0x1D7050 use template 0x1D6532.
+        {"bodyguard_k05_item07", 5U, ScriptActorActionKind::item, 7U,
+         CatalogDecision::item_gated},
     };
     constexpr std::size_t catalog_profile_count =
         sizeof(catalog_profiles) / sizeof(catalog_profiles[0]);
@@ -7915,7 +7966,7 @@ int main() {
     };
     bool catalog_ids_match =
         catalog_file_ok && catalog_seen.size() == catalog_profile_count &&
-        catalog_profile_count == 23U;
+        catalog_profile_count == 24U;
     if (catalog_ids_match) {
         for (const auto& seen : catalog_seen) {
             const auto* row = catalog_row_for(seen.profile_id);
@@ -7931,7 +7982,7 @@ int main() {
         }
     }
     if (!expect(catalog_ids_match,
-                "dynamic-world catalog no longer has the 22 "
+                "dynamic-world catalog no longer has the 24 "
                 "profile/action pairs")) {
         std::cerr << catalog_path.string() << " unique="
                   << catalog_seen.size() << '\n';

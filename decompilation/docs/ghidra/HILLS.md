@@ -1973,3 +1973,16 @@ the imported map. Neither is an ordinary-input route comparison. Complete
 open, so the hill stays partial. Debug and Release headless CTests pass for the
 Scene-26 runtime case and standalone terrain-map selector. See the
 [projected-terrain marker audit](visual-audits/terrain-marker-runtime-integration-2026-11-06.md).
+
+### Haggard-man alternate Attack (partial, 2026-11-08)
+
+ROM `0x23C52` checks first-runner Body against target 6. Zero successes queue
+the map-derived `0x1D704C` Gator Shaman/bodyguard list; one success queues the
+`0x1D7050` two-bodyguard list; more than one success pays 100 nuyen. Lua uses
+named sequence IDs, and the host defers the queued spawn until the field
+dialogue returns. The Scene-2 QA exercises the Attack choice, result text,
+three actor profiles, return fade, and `actual.bmp`; runtime data resolves both
+lists in Scenes 2 and 5. Standard Attack and the police prompt remain explicit
+boundaries, and full post-spawn combat coverage and an independent Genesis
+capture remain open. See the
+[field random-event selector audit](field-random-event-selector.md).

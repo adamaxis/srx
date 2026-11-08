@@ -1570,6 +1570,11 @@ FieldSceneRuntime::FieldSceneRuntime(
                                            character == '_' || character == '-' ||
                                            character == '.' || character == ':';
                                 });
+                const bool active_dialogue_event =
+                    pending_field_encounter_outcome_.has_value() &&
+                    pending_field_encounter_outcome_->kind == scripting::
+                        ScriptFieldEncounterOutcomeKind::dialogue_event &&
+                    field_dialogue_.open();
                 if (scene_text.empty() ||
                     parsed_scene.ec != std::errc{} ||
                     parsed_scene.ptr != scene_text.data() + scene_text.size() ||
@@ -1581,7 +1586,8 @@ FieldSceneRuntime::FieldSceneRuntime(
                     actor_count > 0xFFU ||
                     scene_id != state_.field_scene_buffers.scene_reference ||
                     field_pending_story_world_effect_.has_value() ||
-                    pending_field_encounter_outcome_.has_value()) {
+                    (pending_field_encounter_outcome_.has_value() &&
+                     !active_dialogue_event)) {
                     return std::nullopt;
                 }
                 field_pending_story_world_effect_ = PendingStoryWorldEffect{
@@ -7434,6 +7440,14 @@ void FieldSceneRuntime::reset_field_entity_service_records() {
 
 bool FieldSceneRuntime::process_pending_story_world_effect_sequence() {
     if (!field_pending_story_world_effect_.has_value()) {
+        return false;
+    }
+    // A dialogue event owns pending_field_encounter_outcome_ until its result
+    // page returns to the field. Keep the queued follow-up intact until that
+    // event is cleared, then resolve and spawn it on the next field service.
+    if (pending_field_encounter_outcome_.has_value() &&
+        pending_field_encounter_outcome_->kind == scripting::
+            ScriptFieldEncounterOutcomeKind::dialogue_event) {
         return false;
     }
     const auto effect = std::move(*field_pending_story_world_effect_);
