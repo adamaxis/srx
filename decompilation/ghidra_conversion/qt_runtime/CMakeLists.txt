@@ -1596,6 +1596,7 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_stoker_collision_c
 add_shadowrun_qt_qa_case(
     shadowrun_ghidra_conversion_qt_field_scene2_pedestrians_qa
     --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-archetype samurai
     --field-scene2-pedestrians-qa
     "${CMAKE_CURRENT_BINARY_DIR}/field-scene2-pedestrians-qa")
 

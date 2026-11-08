@@ -22454,6 +22454,29 @@ int run_field_scene2_pedestrians_qa(
     }
 
     auto& runner = field_scene.active_runner_record();
+    const bool source_samurai_profile =
+        runner.species_index == 0U && runner.archetype_index == 2U &&
+        runner.attributes[0] == 4U && runner.attributes[1] == 3U &&
+        runner.attributes[2] == 4U && runner.attributes[3] == 1U &&
+        runner.attributes[4] == 2U && runner.attributes[5] == 4U &&
+        runner.skills[1] == 4U && runner.skills[2] == 0U &&
+        runner.equipped_item_code == 2U &&
+        runner.equipped_inventory_slot == 0 && runner.posture == 2U &&
+        runner.delay_meter == 10U && runner.behavior_meter == 10U;
+    if (!source_samurai_profile) {
+        std::cerr << "Scene-2 flee QA: expected New Game Samurai profile "
+                     "0x7291A with its Model 101T before seeded hit"
+                  << " species="
+                  << static_cast<unsigned>(runner.species_index)
+                  << " class="
+                  << static_cast<unsigned>(runner.archetype_index)
+                  << " firearms="
+                  << static_cast<unsigned>(runner.skills[1])
+                  << " weapon="
+                  << static_cast<unsigned>(runner.equipped_item_code)
+                  << '\n';
+        return 3;
+    }
     runner.animation_action_gate = -1;
     runner.flags = static_cast<std::uint16_t>(runner.flags | 0x0300U);
     if (runner.ammo_rounds == 0U) {
@@ -22515,8 +22538,14 @@ int run_field_scene2_pedestrians_qa(
         field_scene.default_actor_physical_meter_for_dump(0U);
     const auto timeout_after_hit =
         field_scene.world_activity_timeout_for_dump();
-    if (!wounded_meter.has_value() ||
-        *wounded_meter >= *pedestrian_before_hit ||
+    // Seed 0xDF65's ROM chain for the 0x7291A Samurai and 0x1D6988
+    // pedestrian produces 3 firearm damage (0x55640, 0x55948..0x559F0,
+    // 0x55A90..0x55A98); the typed Lua resolver fixture asserts the same
+    // attack/damage/meter result at combat_engine_tests.lua #46T.
+    constexpr std::uint8_t kExpectedPedestrianMeterAfterSeededHit = 7U;
+    if (wounded_meter !=
+            std::optional<std::uint8_t>{
+                kExpectedPedestrianMeterAfterSeededHit} ||
         timeout_after_hit.timeout_marker == 0 ||
         timeout_after_hit.timeout_frames == 0U ||
         timeout_after_hit.timeout_frames > 0x78U) {
@@ -22525,6 +22554,9 @@ int run_field_scene2_pedestrians_qa(
                   << (wounded_meter.has_value()
                           ? std::to_string(*wounded_meter)
                           : "<inactive>")
+                  << " expected_meter="
+                  << static_cast<unsigned>(
+                         kExpectedPedestrianMeterAfterSeededHit)
                   << " projectile_count="
                   << field_scene.field_weapon_primary_count_for_dump()
                   << " spawn="
