@@ -12192,12 +12192,22 @@ bool FieldSceneRuntime::recover_blocked_field_movement(
             const bool event_29_contact =
                 continuation == MovementModeTransitionContinuation::
                                    event_29_world_activity;
+            const bool stale_field_exit_activity =
+                field_world_activity_state_.source_value ==
+                static_cast<std::uint16_t>(
+                    MovementModeTransitionContinuation::
+                        field_mode_exit_finalizer);
             if (event_29_contact &&
                 !field_elevator_selector_.is_open() &&
                 !dialogue_open() && !field_interaction_open() &&
                 !shop_menu_open() &&
                 !field_runtime_state_.pending_field_scene_handler &&
+                stale_field_exit_activity &&
                 field_world_activity_state_.timeout != 0U) {
+                // Keep an active elevator activity's 0x3C idle gate after
+                // closing its selector so contact with the same lift does
+                // not immediately reopen it. Only discard the unrelated
+                // 0x0C64C field-exit arm that can precede a new floor contact.
                 field_world_activity_state_.timeout = 0U;
                 world_frame_logic_state_.resource_countdown = 0U;
             }
