@@ -40,6 +40,11 @@ struct SaveFieldRestoreState {
 
     RunnerRosterState roster{};
     std::uint8_t dialogue_flags = 0; // source FFFC26
+    // Source FFFC12..FFFC1B is copied with the same saved field payload.
+    // These ten signed conversation/recruitment counters select generic NPC
+    // rows and recruited-runner service multipliers.
+    std::array<std::uint8_t, 10U> runner_contact_progress_counters{};
+    std::uint16_t runner_information_flags = 0; // source FFFC2A
     std::uint8_t field_flags = 0;
     std::array<std::uint8_t, 2> recruited_runner_effect_flags{};
     std::size_t active_runner_slot = 0;

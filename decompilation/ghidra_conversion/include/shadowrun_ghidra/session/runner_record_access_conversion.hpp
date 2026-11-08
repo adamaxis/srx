@@ -114,6 +114,9 @@ struct RunnerRecordFields {
     // The Karma screen reads live-record +0x8D, and ROM 0x59C34 awards the
     // supplied amount to that value in each of the three runner records.
     std::uint8_t karma = 0;
+    // ROM 0x2136A/0x21372 writes the service population byte at +0x8F;
+    // zero denotes a short-term run and FF a permanent recruit.
+    std::uint8_t recruitment_population = 0;
 
     // Source 0x57F80/0x57F90 and 0x5735A/0x57362 treat +0x7E and +0x8E as
     // the tens and ones digits of the live cyberware Essence value. These

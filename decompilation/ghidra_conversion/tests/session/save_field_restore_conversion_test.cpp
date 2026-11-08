@@ -26,6 +26,10 @@ int main() {
     const auto payload = kSaveFieldSourceOffset;
     source[payload + 0x212U] = 2U;
     source[payload + 0x213U] = 3U;
+    source[payload + 0x218U] = 0xFFU;
+    source[payload + 0x221U] = 0x09U;
+    source[payload + 0x230U] = 0x12U;
+    source[payload + 0x231U] = 0x34U;
     source[payload + kSaveFieldDialogueFlagsOffset] = 0x0DU;
     write_big_endian_word(source, payload + 0x248U, 0x0014U);
     write_big_endian_word(source, payload + 0x24AU, 0x1234U);
@@ -78,6 +82,9 @@ int main() {
                 state.roster.primary_marker == 2U &&
                 state.roster.secondary_marker == 3U &&
                 state.dialogue_flags == 0x0DU &&
+                state.runner_contact_progress_counters[0U] == 0xFFU &&
+                state.runner_contact_progress_counters[9U] == 0x09U &&
+                state.runner_information_flags == 0x1234U &&
                 state.recruited_runner_effect_flags[0] == 0x0DU &&
                 state.recruited_runner_effect_flags[1] == 0x0DU &&
                 state.field_profile == FieldProfileSelection::profile_0x7223a &&

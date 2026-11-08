@@ -58,6 +58,16 @@ int main() {
         return 1;
     }
 
+    const auto reset_progress_fees = calculate_recruited_runner_service_fees(
+        0U, 0xFFU, RecruitedRunnerServiceCostModifiers{});
+    if (!expect(reset_progress_fees.action ==
+                    RecruitedRunnerServiceOfferPreparationAction::prepared &&
+                reset_progress_fees.progress_multiplier == 0x1EU &&
+                reset_progress_fees.short_term_fee == 240U &&
+                reset_progress_fees.permanent_fee == 2400U)) {
+        return 35;
+    }
+
     offer_state.selected_runner_template_index = 9U;
     const auto stark_offer = prepare_recruited_runner_service_offer(
         offer_state, RecruitedRunnerServiceCostModifiers{0U, 0U, 0U});
@@ -372,6 +382,8 @@ int main() {
                 state.timers.primary_delay == 10U &&
                 state.timers.primary_behavior == 10U &&
                 state.selected_entity.service_flags == 0U &&
+                state.roster.primary_record.bytes[0x4CU] == 10U &&
+                state.roster.primary_record.bytes[0x9CU] == 10U &&
                 read_big_endian_word(state.roster.primary_record, 0x04U) ==
                     0x3456U &&
                 state.roster.primary_record.bytes[0x8FU] == 0U &&
@@ -395,7 +407,10 @@ int main() {
                 state.timers.secondary_behavior == 10U &&
                 state.roster.secondary_record.bytes[0x8FU] == 0xFFU &&
                 read_big_endian_word(state.roster.secondary_record, 0x04U) ==
-                    0x789AU && callback_order == std::vector<int>{0, 1})) {
+                    0x789AU &&
+                state.roster.secondary_record.bytes[0x4CU] == 10U &&
+                state.roster.secondary_record.bytes[0x9CU] == 10U &&
+                callback_order == std::vector<int>{0, 1})) {
         return 19;
     }
 

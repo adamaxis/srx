@@ -89,6 +89,7 @@ RunnerRecordFields read_runner_record_fields(const LiveRunnerRecord& record) {
         fields.auxiliary[index] = record.bytes[kAuxiliaryOffsets[index]];
     }
     fields.karma = record.bytes[0x8DU];
+    fields.recruitment_population = record.bytes[0x8FU];
     return fields;
 }
 
@@ -148,6 +149,7 @@ void write_runner_record_fields(const RunnerRecordFields& fields,
         destination.bytes[kAuxiliaryOffsets[index]] = fields.auxiliary[index];
     }
     destination.bytes[0x8DU] = fields.karma;
+    destination.bytes[0x8FU] = fields.recruitment_population;
 }
 
 std::optional<std::int16_t> lookup_runner_animation_delta(

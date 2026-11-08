@@ -50,6 +50,7 @@ int main() {
                 fields.skills[6] == 0x87U && fields.skills[11] == 0x8CU &&
                 fields.auxiliary[0] == 0x7FU && fields.auxiliary[1] == 0x86U &&
                 fields.karma == 0x8DU &&
+                fields.recruitment_population == 0x8FU &&
                 fields.auxiliary[2] == 0x8EU &&
                 fields.cyberware_essence_tens() == 0x7EU &&
                 fields.cyberware_essence_ones() == 0x8EU)) {
@@ -72,6 +73,7 @@ int main() {
     changed.species_index = 0x12U;
     changed.action_result = 7;
     changed.animation_action_gate = 0x1234;
+    changed.recruitment_population = 0xFFU;
 
     LiveRunnerRecord destination{};
     destination.bytes.fill(0xEEU);
@@ -93,6 +95,7 @@ int main() {
                 destination.bytes[0x90U] == 0x01U &&
                 destination.bytes[0x91U] == 0x23U &&
                 destination.bytes[0x9FU] == 7U &&
+                destination.bytes[0x8FU] == 0xFFU &&
                 destination.bytes[0xDCU] == 0x12U &&
                 destination.bytes[0xDDU] == 0x34U &&
                 destination.bytes[0x9DU] == 0x9DU &&

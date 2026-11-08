@@ -7,6 +7,8 @@ namespace {
 
 constexpr std::size_t kPrimaryMarkerOffset = 0x212U;
 constexpr std::size_t kSecondaryMarkerOffset = 0x213U;
+constexpr std::size_t kRunnerContactProgressOffset = 0x218U;
+constexpr std::size_t kRunnerInformationFlagsOffset = 0x230U;
 
 std::uint16_t read_big_endian_word(const std::vector<std::uint8_t>& bytes,
                                    const std::size_t offset) {
@@ -45,6 +47,15 @@ SaveFieldRestoreResult restore_saved_field_state(
                 state.work_payload.begin());
     state.dialogue_flags =
         state.work_payload[kSaveFieldDialogueFlagsOffset];
+    std::copy_n(state.work_payload.begin() +
+                    static_cast<std::ptrdiff_t>(kRunnerContactProgressOffset),
+                state.runner_contact_progress_counters.size(),
+                state.runner_contact_progress_counters.begin());
+    state.runner_information_flags = static_cast<std::uint16_t>(
+        (static_cast<std::uint16_t>(
+             state.work_payload[kRunnerInformationFlagsOffset])
+         << 8U) |
+        state.work_payload[kRunnerInformationFlagsOffset + 1U]);
 
     // The saved markers are inside the copied payload at the offsets that
     // became FFFC0C and FFFC0D after the source copy.

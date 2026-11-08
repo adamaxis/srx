@@ -297,32 +297,56 @@ prepare_recruited_runner_service_offer(
 
     const auto runner_index = static_cast<std::size_t>(
         state.selected_runner_template_index);
-    if (runner_index >= kRecruitedRunnerServiceFeeBases.size()) {
-        result.action = RecruitedRunnerServiceOfferPreparationAction::
-            runner_index_unavailable;
-        return result;
-    }
     if (runner_index >= state.service_progress_counters.size()) {
         result.action = RecruitedRunnerServiceOfferPreparationAction::
             progress_counter_unavailable;
         return result;
     }
 
-    const auto progress = static_cast<std::size_t>(
-        state.service_progress_counters[runner_index]);
-    const auto multiplier_index = progress + 1U;
-    if (multiplier_index >= kServiceProgressMultipliers.size()) {
+    result = calculate_recruited_runner_service_fees(
+        state.selected_runner_template_index,
+        state.service_progress_counters[runner_index], modifiers);
+    if (result.action !=
+        RecruitedRunnerServiceOfferPreparationAction::prepared) {
+        return result;
+    }
+
+    state.short_term_fee = result.short_term_fee;
+    state.permanent_fee = result.permanent_fee;
+    return result;
+}
+
+RecruitedRunnerServiceOfferPreparationResult
+calculate_recruited_runner_service_fees(
+    const std::uint8_t runner_index,
+    const std::uint8_t progress_counter,
+    const RecruitedRunnerServiceCostModifiers& modifiers) {
+    RecruitedRunnerServiceOfferPreparationResult result{};
+    const auto runner_table_index = static_cast<std::size_t>(runner_index);
+    if (runner_table_index >= kRecruitedRunnerServiceFeeBases.size()) {
+        result.action = RecruitedRunnerServiceOfferPreparationAction::
+            runner_index_unavailable;
+        return result;
+    }
+
+    // ROM 0x21286 is ADDQ.B, so the signed -1 sentinel wraps to table index
+    // zero. Preserve that byte operation before promoting to a host index.
+    const auto multiplier_index = static_cast<std::uint8_t>(
+        static_cast<unsigned>(progress_counter) + 1U);
+    if (static_cast<std::size_t>(multiplier_index) >=
+        kServiceProgressMultipliers.size()) {
         result.action = RecruitedRunnerServiceOfferPreparationAction::
             progress_counter_unavailable;
         return result;
     }
 
-    const auto multiplier = kServiceProgressMultipliers[multiplier_index];
+    const auto multiplier =
+        kServiceProgressMultipliers[multiplier_index];
     result.progress_multiplier = multiplier;
-    const auto& bases = kRecruitedRunnerServiceFeeBases[runner_index];
+    const auto& bases = kRecruitedRunnerServiceFeeBases[runner_table_index];
 
-    // 0x2128E..0x212A2: each fee base is multiplied by the progress
-    // multiplier, divided by ten, then the first result is divided by 100.
+    // 0x2128E..0x212A2: scale both fees by the indexed progress multiplier;
+    // the short-term value also supplies the integer percentage divisor.
     const auto scaled_short_term = divide_unsigned_word(
         static_cast<std::uint32_t>(bases.short_term) * multiplier, 10U);
     const auto discount_percent = divide_unsigned_word(scaled_short_term, 100U);
@@ -333,14 +357,13 @@ prepare_recruited_runner_service_offer(
     const auto modifier_sum = static_cast<std::uint8_t>(
         static_cast<std::uint16_t>(modifiers.source_byte_017A) * 2U +
         modifiers.source_byte_018B + modifiers.source_byte_018C);
-    // E448 is LSR.W #2,D0, followed by MULU.W #5,D0: floor(sum / 4) * 5.
+    // 0x212C2..0x212C8 shifts, then multiplies by five.
     const auto normalized_modifier =
         (static_cast<std::uint32_t>(modifier_sum) >> 2U) * 5U;
     const auto discount = normalized_modifier * discount_percent;
 
-    // MULU.W uses the low word of the destination operand. The valid source
-    // fee range stays below that boundary, but preserve the source operation
-    // explicitly for malformed/extracted host records too.
+    // MULU.W uses the low word of the destination operand. Preserve its
+    // result explicitly for malformed/extracted host records too.
     const auto source_word_discount =
         static_cast<std::uint32_t>(static_cast<std::uint16_t>(discount));
     result.short_term_fee = scaled_short_term - source_word_discount;
@@ -349,11 +372,7 @@ prepare_recruited_runner_service_offer(
         static_cast<std::uint32_t>(bases.permanent) * multiplier, 10U);
     result.permanent_fee =
         scaled_permanent - source_word_discount * 10U;
-
-    state.short_term_fee = result.short_term_fee;
-    state.permanent_fee = result.permanent_fee;
-    result.action =
-        RecruitedRunnerServiceOfferPreparationAction::prepared;
+    result.action = RecruitedRunnerServiceOfferPreparationAction::prepared;
     return result;
 }
 
@@ -622,6 +641,10 @@ RecruitedRunnerServiceResult resolve_recruited_runner_service_payment(
         state.timers.secondary_delay = 10U;
         state.timers.secondary_behavior = 10U;
     }
+    auto& destination = selected_destination_record(state, result.destination);
+    // ROM 0x2136A/0x21372 or 0x2137E/0x21386 seed +0x4C and +0x9C.
+    destination.bytes[0x4CU] = 10U;
+    destination.bytes[0x9CU] = 10U;
 
     // 0x2138E -> 0x38FA. The visual animation service runs before the
     // selected entity's active bit is cleared and its position is copied.
@@ -631,11 +654,7 @@ RecruitedRunnerServiceResult resolve_recruited_runner_service_payment(
 
     state.selected_entity.service_flags = static_cast<std::uint8_t>(
         state.selected_entity.service_flags & ~kServiceActiveBit);
-    auto& destination = selected_destination_record(state, result.destination);
-    // 0x213A2 copies the selected field entity's +0x04 word into the newly
-    // initialized live runner record's +0x04 word. The source uses a 68k
-    // big-endian word; the host model keeps that serialization explicit until
-    // the full live-record position schema is proven.
+    // ROM 0x213A2 copies the selected entity's +0x04 coordinate word.
     write_big_endian_word(destination, kSourcePositionYOffset,
                           state.selected_entity.source_position_y);
 

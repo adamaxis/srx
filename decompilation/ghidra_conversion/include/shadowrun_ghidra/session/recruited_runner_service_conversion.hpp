@@ -176,6 +176,8 @@ struct RickyInformationResponse {
 struct RecruitedRunnerServiceTarget {
     bool present = false;
     std::uint8_t service_flags = 0;
+    // ROM 0x213A2 copies the selected field entity's +0x04 coordinate word
+    // to the new live runner record's +0x04 coordinate word.
     std::uint16_t source_position_y = 0;
 };
 
@@ -265,6 +267,15 @@ RecruitedRunnerServiceAvailability recruited_runner_service_availability(
 RecruitedRunnerServiceOfferPreparationResult
 prepare_recruited_runner_service_offer(
     RecruitedRunnerServiceState& state,
+    const RecruitedRunnerServiceCostModifiers& modifiers);
+
+// The same 0x2128E..0x21302 fee calculation as the offer preparation above,
+// exposed for the live typed field adapter. This accepts the semantic runner
+// and progress values plus the already decoded live stat inputs; no source
+// record buffer is needed to calculate an offer.
+RecruitedRunnerServiceOfferPreparationResult
+calculate_recruited_runner_service_fees(
+    std::uint8_t runner_index, std::uint8_t progress_counter,
     const RecruitedRunnerServiceCostModifiers& modifiers);
 
 // ROM 0x211E8 (mode-command table entry 0x04). The nine indexed triples at
