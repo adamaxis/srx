@@ -1907,6 +1907,7 @@ local offscreen_flee_step = R.advance_entity_movement(
     offscreen_flee_context, offscreen_flee_state)
 check(offscreen_flee_step ~= nil and
       offscreen_flee_step.outcome == "reset" and
+      offscreen_flee_step.state.route_facts.fleeing == true and
       offscreen_flee_state.obstruction_route ~= nil and
       offscreen_flee_state.obstruction_route.target_id == "flee-boundary" and
       offscreen_flee_state.obstruction_route.waypoints[1].x == 0x2300 and

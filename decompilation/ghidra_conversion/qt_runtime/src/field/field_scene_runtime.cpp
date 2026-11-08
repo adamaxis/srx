@@ -4996,6 +4996,20 @@ void FieldSceneRuntime::advance_default_field_actors(
                     state_.field_scene_buffers.camera_x),
                 static_cast<std::uint16_t>(
                     state_.field_scene_buffers.camera_y));
+            if (source_slot >= FieldPartyRosterRuntime::kSlotCount) {
+                // FFDDC6/FFDDC8 are the live camera origin; profile words
+                // +8/+10 are FFDDCE/FFDDD0, the scene's far camera bounds [C].
+                const auto& field_profile =
+                    state_.field_scene_buffers.profile;
+                if (field_profile.size() > 5U) {
+                    context.source_camera_x = static_cast<std::uint16_t>(
+                        state_.field_scene_buffers.camera_x);
+                    context.source_camera_y = static_cast<std::uint16_t>(
+                        state_.field_scene_buffers.camera_y);
+                    context.source_camera_limit_x = field_profile[4U];
+                    context.source_camera_limit_y = field_profile[5U];
+                }
+            }
         }
         if (dynamic_actor_behavior || source_default_item_action) {
             context.dynamic_world_encounter_actor = dynamic_actor_behavior;
@@ -5015,17 +5029,6 @@ void FieldSceneRuntime::advance_default_field_actors(
             context.scene_mode =
                 scripting::script_field_scene_mode_from_source_word(
                     field_movement_transition_state_.world_mode);
-            // FFDDC6/FFDDC8 are the live camera origin; profile words +8/+10
-            // are FFDDCE/FFDDD0, the scene's far camera bounds [C].
-            const auto& field_profile = state_.field_scene_buffers.profile;
-            if (field_profile.size() > 5U) {
-                context.source_camera_x = static_cast<std::uint16_t>(
-                    state_.field_scene_buffers.camera_x);
-                context.source_camera_y = static_cast<std::uint16_t>(
-                    state_.field_scene_buffers.camera_y);
-                context.source_camera_limit_x = field_profile[4U];
-                context.source_camera_limit_y = field_profile[5U];
-            }
             context.world_activity_active =
                 world_frame_logic_state_.world_active != 0U;
             context.world_scene_state =
@@ -5587,12 +5590,14 @@ void FieldSceneRuntime::advance_default_field_actors(
                 : "field.actor.spell.action_resolved");
         }
         const auto previous_record_flags = actor.source_record_flags;
-        const bool world_combat_record =
+        const bool live_world_actor_record =
             actor.source_record_slot.has_value() &&
             static_cast<std::uint8_t>(*actor.source_record_slot) >=
                 static_cast<std::uint8_t>(FieldWorldActorSlot::slot_3) &&
             static_cast<std::uint8_t>(*actor.source_record_slot) <=
-                static_cast<std::uint8_t>(FieldWorldActorSlot::slot_9) &&
+                static_cast<std::uint8_t>(FieldWorldActorSlot::slot_9);
+        const bool world_combat_record =
+            live_world_actor_record &&
             actor.combatant.record_type == static_cast<std::uint16_t>(
                 *actor.source_record_slot);
         if (world_combat_record) {
@@ -5607,7 +5612,8 @@ void FieldSceneRuntime::advance_default_field_actors(
         actor.animation_variant = decision->animation_variant;
         actor.animation_frame = decision->animation_frame;
         actor.animation_complete = decision->animation_complete;
-        if (dynamic_actor_behavior || source_default_item_action) {
+        if (live_world_actor_record || dynamic_actor_behavior ||
+            source_default_item_action) {
             actor.source_behavior_flags = behavior_flags_from_facts(
                 decision->actor_facts.behavior);
             actor.source_spawn_state_flags = role_flags_from_facts(
@@ -13685,6 +13691,26 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
                 FieldPartyRosterRuntime::kSlotCount) {
                 context.source_actor_slot = source_slot;
                 context.live_field_actor = true;
+                context.world_activity_active =
+                    world_frame_logic_state_.world_active != 0U;
+                context.world_scene_state =
+                    world_frame_logic_state_.scene_state;
+                context.source_projection_active = caster_projection_active(
+                    actor.world_position.x, actor.world_position.y,
+                    static_cast<std::uint16_t>(
+                        state_.field_scene_buffers.camera_x),
+                    static_cast<std::uint16_t>(
+                        state_.field_scene_buffers.camera_y));
+                const auto& field_profile =
+                    state_.field_scene_buffers.profile;
+                if (field_profile.size() > 5U) {
+                    context.source_camera_x = static_cast<std::uint16_t>(
+                        state_.field_scene_buffers.camera_x);
+                    context.source_camera_y = static_cast<std::uint16_t>(
+                        state_.field_scene_buffers.camera_y);
+                    context.source_camera_limit_x = field_profile[4U];
+                    context.source_camera_limit_y = field_profile[5U];
+                }
             }
         }
         context.combatant = actor.combatant;
@@ -13851,12 +13877,14 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
         actor.animation_variant = decision->animation_variant;
         actor.animation_frame = decision->animation_frame;
         actor.animation_complete = decision->animation_complete;
-        const bool world_combat_record =
+        const bool live_world_actor_record =
             actor.source_record_slot.has_value() &&
             static_cast<std::uint8_t>(*actor.source_record_slot) >=
                 static_cast<std::uint8_t>(FieldWorldActorSlot::slot_3) &&
             static_cast<std::uint8_t>(*actor.source_record_slot) <=
-                static_cast<std::uint8_t>(FieldWorldActorSlot::slot_9) &&
+                static_cast<std::uint8_t>(FieldWorldActorSlot::slot_9);
+        const bool world_combat_record =
+            live_world_actor_record &&
             actor.combatant.record_type == static_cast<std::uint16_t>(
                 *actor.source_record_slot);
         if (world_combat_record) {
@@ -13864,7 +13892,8 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
                 decision->actor_facts.lifecycle, actor.source_record_flags);
             actor.combatant.source_flags = actor.source_record_flags;
         }
-        if (dynamic_actor_behavior) {
+        if (live_world_actor_record || dynamic_actor_behavior ||
+            actor.source_default_item_action_profile) {
             actor.source_behavior_flags = behavior_flags_from_facts(
                 decision->actor_facts.behavior);
             actor.source_item_spawn_result.reset();

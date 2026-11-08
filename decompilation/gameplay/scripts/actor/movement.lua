@@ -1121,6 +1121,18 @@ local function advance_entity_movement(context, state)
     for key, value in pairs(context.movement_state) do
         movement_state[key] = value
     end
+    -- The behavior pass may update +0xB0 facts (for example, entering the
+    -- flee branch) after the host built context.movement_state. Carry the
+    -- current Lua-owned facts into this same pass's movement result so its
+    -- typed route snapshot cannot restore the stale pre-think flags.
+    local behavior_facts = type(state.actor_facts) == "table" and
+        state.actor_facts.behavior
+    if type(behavior_facts) == "table" then
+        movement_state.route_facts = {}
+        for key, value in pairs(behavior_facts) do
+            movement_state.route_facts[key] = value
+        end
+    end
     movement_state.bearing_degrees = state.movement_current_bearing_degrees
     movement_state.animation_bearing_degrees = movement_state.bearing_degrees
     movement_state.substate_update = "unchanged"

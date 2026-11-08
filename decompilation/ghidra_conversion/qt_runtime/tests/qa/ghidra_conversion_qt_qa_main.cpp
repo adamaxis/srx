@@ -22226,9 +22226,243 @@ int run_field_scene2_pedestrians_qa(
         std::cerr << "Scene-2 pedestrians QA: could not save actual.bmp\n";
         return 3;
     }
+
+    // ROM 0x1514E schedules 0x1DBAA after allocating a player projectile. A
+    // real hit then lets the wounded default pedestrian enter 0x1394A's flee
+    // path while projected.
+    // Keep the other source records fixed so the shot and resulting Lua state
+    // are the only moving parts in this route.
+    const auto pedestrian_profile =
+        field_scene.default_actor_script_profile_for_dump(0U);
+    auto flee_positions =
+        field_scene.active_default_actor_positions_for_dump();
+    if (pedestrian_profile !=
+            std::optional<std::string>{"pedestrian_k0b_none00"} ||
+        flee_positions.size() != 3U ||
+        !field_scene.set_default_actor_frozen_for_dump(0U, true) ||
+        !field_scene.set_default_actor_frozen_for_dump(1U, true) ||
+        !field_scene.set_default_actor_frozen_for_dump(2U, true)) {
+        std::cerr << "Scene-2 flee QA: source pedestrian setup failed profile="
+                  << pedestrian_profile.value_or("<none>")
+                  << " actors=" << flee_positions.size() << '\n';
+        return 3;
+    }
+    const auto pedestrian_before_hit =
+        field_scene.default_actor_physical_meter_for_dump(0U);
+    if (pedestrian_before_hit != std::optional<std::uint8_t>{10U}) {
+        std::cerr << "Scene-2 flee QA: default pedestrian did not begin at "
+                     "source physical meter 10, got "
+                  << (pedestrian_before_hit.has_value()
+                          ? std::to_string(*pedestrian_before_hit)
+                          : "<inactive>")
+                  << '\n';
+        return 3;
+    }
+
+    auto& runner = field_scene.active_runner_record();
+    runner.animation_action_gate = -1;
+    runner.flags = static_cast<std::uint16_t>(runner.flags | 0x0300U);
+    if (runner.ammo_rounds == 0U) {
+        runner.ammo_rounds = 1U;
+    }
+    const auto& pedestrian_start = flee_positions.front();
+    if (pedestrian_start.x < 0x0040U ||
+        pedestrian_start.y < 0x0230U) {
+        std::cerr << "Scene-2 flee QA: could not stage the runner beside the "
+                     "default pedestrian\n";
+        return 3;
+    }
+    field_scene.set_field_entity_world_position_for_dump(
+        static_cast<std::uint16_t>(pedestrian_start.x - 0x0040U),
+        static_cast<std::uint16_t>(pedestrian_start.y - 0x0230U));
+    field_scene.set_field_entity_heading_for_dump(0x8000U);
+    field_scene.set_field_camera_world_position_for_dump(
+        static_cast<std::uint16_t>(pedestrian_start.x - 0x0800U),
+        static_cast<std::uint16_t>(pedestrian_start.y - 0x0800U));
+    field_scene.set_controller_port_byte(0x40U);
+    field_scene.advance_frame();
+    field_scene.set_controller_port_byte(0U);
+    const auto projectile_spawn_position =
+        field_scene.field_weapon_primary_spawn_position_for_dump();
+    const auto projectile_heading =
+        field_scene.field_weapon_primary_heading_for_dump();
+    if (field_scene.last_field_weapon_spawn_action_for_dump() !=
+            EntitySpawnCycleAction::spawned ||
+        field_scene.field_weapon_primary_count_for_dump() != 1U) {
+        std::cerr << "Scene-2 flee QA: normal field fire did not spawn one "
+                     "primary projectile action="
+                  << static_cast<int>(
+                         field_scene.last_field_weapon_spawn_action_for_dump())
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+    // Pin only the projectile's first behavior roll, matching the separate
+    // ROM-profile #46T test; this is not a frame-by-frame RNG replay.
+    field_scene.set_source_random_seed_for_dump(0xDF65U);
+    std::string projectile_trace;
+    for (std::size_t frame = 0U; frame < 24U; ++frame) {
+        field_scene.advance_frame();
+        const auto position =
+            field_scene.field_weapon_primary_position_for_dump();
+        if (position.has_value()) {
+            projectile_trace += std::to_string(frame) + ":" +
+                std::to_string(position->x) + "," +
+                std::to_string(position->y) + ";";
+        }
+        const auto meter =
+            field_scene.default_actor_physical_meter_for_dump(0U);
+        if (meter.has_value() && *meter < *pedestrian_before_hit) {
+            break;
+        }
+    }
+    const auto wounded_meter =
+        field_scene.default_actor_physical_meter_for_dump(0U);
+    const auto timeout_after_hit =
+        field_scene.world_activity_timeout_for_dump();
+    if (!wounded_meter.has_value() ||
+        *wounded_meter >= *pedestrian_before_hit ||
+        timeout_after_hit.timeout_marker == 0 ||
+        timeout_after_hit.timeout_frames == 0U ||
+        timeout_after_hit.timeout_frames > 0x78U) {
+        std::cerr << "Scene-2 flee QA: source Model 101T projectile did not "
+                     "wound pedestrian slot 3 and arm ROM activity; meter="
+                  << (wounded_meter.has_value()
+                          ? std::to_string(*wounded_meter)
+                          : "<inactive>")
+                  << " projectile_count="
+                  << field_scene.field_weapon_primary_count_for_dump()
+                  << " spawn="
+                  << (projectile_spawn_position.has_value()
+                          ? std::to_string(projectile_spawn_position->x) + "," +
+                                std::to_string(projectile_spawn_position->y)
+                          : "<none>")
+                  << " heading="
+                  << (projectile_heading.has_value()
+                          ? std::to_string(*projectile_heading)
+                          : "<none>")
+                  << " timeout=" << timeout_after_hit.timeout_marker << "/"
+                  << timeout_after_hit.timeout_frames
+                  << " trace=" << projectile_trace
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    for (std::size_t actor = 0U; actor < 3U; ++actor) {
+        if (!field_scene.set_default_actor_frozen_for_dump(actor, false)) {
+            std::cerr << "Scene-2 flee QA: could not resume source actor "
+                      << actor << '\n';
+            return 3;
+        }
+    }
+    const auto actor_flags = [&field_scene]() {
+        return field_scene.debug_inspection_fields().value(QStringLiteral(
+            "actor.field_scene_2_actor_0.activity_flags")).toInt(-1);
+    };
+    bool flee_started_on_screen = false;
+    for (std::size_t frame = 0U; frame < 48U; ++frame) {
+        field_scene.advance_frame();
+        const auto flags = actor_flags();
+        if (flags >= 0 && (flags & 0x40) != 0) {
+            flee_started_on_screen = true;
+            break;
+        }
+    }
+    flee_positions = field_scene.active_default_actor_positions_for_dump();
+    if (!flee_started_on_screen || flee_positions.size() != 3U ||
+        field_scene.default_actor_physical_meter_for_dump(0U) !=
+            wounded_meter) {
+        const auto actor_debug = field_scene.debug_inspection_fields();
+        std::cerr << "Scene-2 flee QA: wounded pedestrian did not retain its "
+                     "ROM +0xB0 flee state on-screen; flags="
+                  << actor_flags() << " special="
+                  << actor_debug.value(QStringLiteral(
+                         "actor.field_scene_2_actor_0.special_flags")).toInt(-1)
+                  << " meter="
+                  << (field_scene.default_actor_physical_meter_for_dump(0U)
+                          .has_value()
+                          ? std::to_string(*field_scene
+                                                .default_actor_physical_meter_for_dump(0U))
+                          : "<inactive>")
+                  << " timeout="
+                  << field_scene.world_activity_timeout_for_dump().timeout_marker
+                  << "/"
+                  << field_scene.world_activity_timeout_for_dump().timeout_frames
+                  << " actors=" << flee_positions.size()
+                  << " record_slot="
+                  << actor_debug.value(QStringLiteral(
+                         "actor.field_scene_2_actor_0.record_slot"))
+                         .toInt(-1)
+                  << " animation="
+                  << actor_debug.value(QStringLiteral(
+                         "actor.field_scene_2_actor_0.animation"))
+                         .toString().toStdString()
+                  << " position="
+                  << actor_debug.value(QStringLiteral(
+                         "actor.field_scene_2_actor_0.x")).toInt(-1)
+                  << ","
+                  << actor_debug.value(QStringLiteral(
+                         "actor.field_scene_2_actor_0.y")).toInt(-1)
+                  << " camera="
+                  << actor_debug.value(QStringLiteral("field.camera.x"))
+                         .toInt(-1)
+                  << ","
+                  << actor_debug.value(QStringLiteral("field.camera.y"))
+                         .toInt(-1)
+                  << " visible="
+                  << field_scene.visible_default_actor_count_for_dump()
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+    const auto fleeing_position = flee_positions.front();
+    field_scene.set_field_camera_world_position_for_dump(0U, 0U);
+    const auto offscreen_visible_before =
+        field_scene.visible_default_actor_count_for_dump();
+    bool flee_moved_offscreen = false;
+    for (std::size_t frame = 0U; frame < 36U; ++frame) {
+        field_scene.advance_frame();
+        const auto positions =
+            field_scene.active_default_actor_positions_for_dump();
+        if (positions.size() == 3U &&
+            (positions.front().x != fleeing_position.x ||
+             positions.front().y != fleeing_position.y)) {
+            flee_moved_offscreen = true;
+        }
+    }
+    flee_positions = field_scene.active_default_actor_positions_for_dump();
+    if (offscreen_visible_before != 0U || flee_positions.size() != 3U ||
+        actor_flags() < 0 || (actor_flags() & 0x40) == 0 ||
+        field_scene.default_actor_physical_meter_for_dump(0U) !=
+            wounded_meter ||
+        !flee_moved_offscreen) {
+        std::cerr << "Scene-2 flee QA: offscreen pedestrian lost its active "
+                     "flee route or stopped moving; visible_before="
+                  << offscreen_visible_before << " flags=" << actor_flags()
+                  << " actors=" << flee_positions.size()
+                  << " meter="
+                  << (field_scene.default_actor_physical_meter_for_dump(0U)
+                          .has_value()
+                          ? std::to_string(*field_scene
+                                                .default_actor_physical_meter_for_dump(0U))
+                          : "<inactive>")
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+    field_scene.set_field_camera_world_position_for_dump(
+        static_cast<std::uint16_t>(flee_positions.front().x - 0x0800U),
+        static_cast<std::uint16_t>(flee_positions.front().y - 0x0800U));
+    const auto fleeing_actual = render_qa_field(field_scene);
+    if (fleeing_actual.isNull() ||
+        !fleeing_actual.save(QString::fromStdWString(
+            (output / "flee-actual.bmp").wstring()))) {
+        std::cerr << "Scene-2 flee QA: could not save flee-actual.bmp\n";
+        return 3;
+    }
     std::cout << "field_scene2_pedestrians_qa=passed spawned=3 "
               << "moved_actor=0 frames<= " << kMaximumFieldFrames
-              << " actual=" << (output / "actual.bmp").string() << '\n';
+              << " wounded_meter=" << static_cast<unsigned>(*wounded_meter)
+              << " offscreen_flee=continued frames=36 actual="
+              << (output / "actual.bmp").string() << " flee_actual="
+              << (output / "flee-actual.bmp").string() << '\n';
     return 0;
 }
 
