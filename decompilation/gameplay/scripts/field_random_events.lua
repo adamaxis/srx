@@ -11,6 +11,9 @@ local NERVES_RESULT =
     "<Nothing happens, though. Maybe it's just your nerves.>"
 local HAGGARD_HELP_RESULT =
     "The patient is restrained and taken away. The doctor pays you 50 nuyen."
+local HAGGARD_THREATEN_RESULT =
+    "The doctor turns to his two assistants. <Let's go.> " ..
+    "This one's about dry, anyway."
 local HAGGARD_CHOICES = {
     { id = "attack", label = "Attack!" },
     { id = "threaten", label = "Threaten to leave the patient alone." },
@@ -147,9 +150,33 @@ function RandomEvents.present_haggard_man()
     game.ui.say_text(opening, true)
     local choice = game.ui.prompt_text(
         "haggard_man_action", "", HAGGARD_CHOICES)
+    if choice == "threaten" then
+        -- Command 0xAB reaches 0x23CB4. Its 0-49 result adds 0x64 to
+        -- FFFBFE and displays 0x1211A0; 50-99 enters the patrol prompt
+        -- at 0x12115C, which remains an explicit boundary.
+        local roll = random_die(100)
+        if roll == nil then
+            return source_boundary(
+                "ROM 0x23CB4 needs a valid 0-99 random result")
+        end
+        if roll >= 50 then
+            return source_boundary(
+                "ROM 0x23CB4 patrol prompt at 0x12115C is not implemented")
+        end
+
+        local funds = type(game.nuyen) == "function" and game.nuyen() or nil
+        if type(funds) ~= "number" or funds % 1 ~= 0 or funds < 0 then
+            return source_boundary(
+                "ROM 0x23CB4 reward needs the current nuyen value")
+        end
+        game.set_nuyen(funds + 100)
+        game.ui.say_text(HAGGARD_THREATEN_RESULT, false)
+        return "resolved"
+    end
+
     if choice ~= "help" then
-        -- Attack and Threaten continue through separate combat/patrol
-        -- branches at 0x23C38/0x23CB4/0x23C52, still explicit boundaries.
+        -- Attack includes the random/patrol branch at 0x23C38 and the
+        -- separate dice/spawn branch at 0x23C52, still explicit boundaries.
         return source_boundary(
             "ROM 0x23BB4 choice continuation is not implemented: " ..
             tostring(choice))

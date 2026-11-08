@@ -273,17 +273,22 @@ outrun some officers while others catch up and open fire. Those outcomes are
 selected by the source's state and random branches, not by the map selector.
 
 **Escaped patient (`0x20FA2`, scenes 2 and 5, sums 1-2).** MORE enters
-`0x23BB4`, whose state/random branches select the doctor's response and expose
-Attack, Threaten, and Help choices. Help restrains the patient and pays 50
-nuyen. Threaten can make asylum staff show credentials, take their patient,
-and pay 50 nuyen. Attack has a 50/50 source roll: one half reaches the same
-paid asylum resolution; the other half calls Lone Star and shows a patrol
-choice prompt after identifying the doctor as a ward director and the patient
-as his escapee. Threaten can also call the patrol; its other roll branch pays
-50 nuyen and sends the doctor and assistants away. In the alternate Attack
-prompt, source results below 1 queue a Gator Shaman and two bodyguards, a
-result of 1 queues two bodyguards, and results above 1 pay 100 nuyen and end
-the encounter without combat.
+`0x23BB4`. The continuation rolls the `FF017B` dice pool against target 6,
+then a 0-99 value. The two results select one of the source text sequences
+and prompt records at `0x12111C` or `0x121138`; their command rows differ.
+The `0x121138` prompt maps Attack/Threaten/Help to commands `0xAA`, `0xAB`,
+and `0xAD`. Help restrains the patient and adds 50 nuyen (`0x23CF2`, result
+text `0x121188`). Threaten rolls 0-99 at `0x23CB4`: 0-49 adds 100 nuyen
+(`0x23CCE`, result text `0x1211A0`), while 50-99 calls a Lone Star patrol
+and opens the police-choice prompt at `0x12115C`. The `0x12111C` prompt uses
+commands `0x121180`, `0xA9`, and `0xAC`; command `0xA9` also has a 50/50
+source roll, with 0-49 reaching the credentials/payout page at `0x121178`
+and adding 50 nuyen, while 50-99 opens the same police prompt. Command
+`0xAC` directly adds 50 nuyen and reaches `0x121178`. In the alternate Attack
+command `0xAA` at `0x23C52`, source results below 1 queue a Gator Shaman and
+two bodyguards, a result of 1 queues two bodyguards, and results above 1 add
+100 nuyen and end the encounter without combat. The unconverted police and
+combat branches remain separate from these resolved outcomes.
 
 The doctor event's patrol prompt uses the shared Lone Star Attack/Comply/Run
 dispatchers. Attack starts the patrol fight; Comply can resolve through the
@@ -311,12 +316,13 @@ ROM-derived `field/maps/mode-2.bmp`, strongly selecting scene 2 over scene 5:
 
 The map match plus the opening page supports linking the clip to selector
 handler `0x20FA2` in scene 2, whose MORE path at `0x23BB4` presents the three
-choices. The credentials result is consistent with the Threaten payout branch;
-the fixed 50-nuyen reward matches the displayed amount and does not use a
-runner's race, class, or Negotiation. **[H]** The recording has no controller
-or RAM log, so it does not expose the selected button, the selector sum, or
-the actual wallet delta. The other Help, Attack, patrol, and combat outcomes
-remain distinct ROM branches and are not visually covered by this sequence.
+choices. The credentials result text is the page at `0x121178`, reached by
+command `0xAC` or by the low result of command `0xA9`; the video alone does not
+identify which path was selected. **[H]** The recording has no controller or
+RAM log, so it does not expose the selected button, prompt variant, selector
+sum, or actual wallet delta. The other Help, Threaten, patrol, and combat
+outcomes remain distinct ROM branches and are not visually covered by this
+sequence.
 
 The result screen's text and portrait remain legible across the sampled hold,
 but some extracted frames have small glyph-pixel dropouts. The video supports

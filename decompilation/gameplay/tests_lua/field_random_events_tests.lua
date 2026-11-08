@@ -105,9 +105,10 @@ game.location.event_id = "different_event"
 eq(RandomEvents.present_hidden_camera(), nil,
    "unrelated event cannot enter hidden-camera handler")
 
-local function run_haggard(choice, event_id)
+local function run_haggard(choice, event_id, random_roll)
     local dialogue_pages = {}
     local exit_calls = {}
+    local random_calls = {}
     local funds = 125
     game = {
         location = {
@@ -148,6 +149,13 @@ local function run_haggard(choice, event_id)
         },
         services = {
             call = function(domain, action)
+                if domain == "random" then
+                    random_calls[#random_calls + 1] = action
+                    if action ~= "bounded_100" or random_roll == nil then
+                        return "invalid_random_result"
+                    end
+                    return "roll_" .. tostring(random_roll)
+                end
                 eq(domain, "dialogue_exit",
                    "exit effects use the common executor service")
                 exit_calls[#exit_calls + 1] = action
@@ -158,7 +166,7 @@ local function run_haggard(choice, event_id)
     local task_result = DialogueFramework.open(
         E.DialogueSource.RANDOM_ENCOUNTER,
         "field_random_events", "present_haggard_man")
-    return task_result, dialogue_pages, exit_calls, funds
+    return task_result, dialogue_pages, exit_calls, funds, random_calls
 end
 
 local haggard_result, haggard_pages, haggard_exit, haggard_funds =
@@ -174,6 +182,41 @@ eq(haggard_pages[2].continuation, false,
 eq(haggard_funds, 175, "ROM 0x23CF2 Help reward adds 50 nuyen")
 eq(table.concat(haggard_exit, ","), "stay,fade_83,lock_60",
    "measured doctor exit requests stay, its 83-frame black interval, and lock 60")
+
+for _, roll in ipairs({ 0, 49 }) do
+    local threaten_result, threaten_pages, threaten_exit, threaten_funds,
+          threaten_random = run_haggard("threaten", nil, roll)
+    eq(threaten_result, "resolved",
+       "ROM 0x23CB4 Threaten roll below 50 resolves")
+    eq(threaten_funds, 225,
+       "ROM 0x23CCE adds 100 nuyen for Threaten roll below 50")
+    eq(threaten_pages[2].text:find("about dry", 1, true) ~= nil, true,
+       "ROM 0x1211A0 Threaten success result text")
+    eq(threaten_pages[2].continuation, false,
+       "Threaten success result is terminal")
+    eq(table.concat(threaten_random, ","), "bounded_100",
+       "Threaten uses the ROM 0-99 random range")
+    eq(table.concat(threaten_exit, ","), "stay,fade_83,lock_60",
+       "Threaten success uses the source same-map exit")
+end
+
+local patrol_result, patrol_pages, patrol_exit, patrol_funds,
+      patrol_random = run_haggard("threaten", nil, 50)
+eq(patrol_result.type, "source_boundary",
+   "ROM 0x23CB4 roll 50 enters the patrol boundary")
+eq(#patrol_pages, 1,
+   "patrol boundary does not invent an unconverted police prompt")
+eq(#patrol_exit, 0, "patrol boundary does not apply the help exit")
+eq(patrol_funds, 125, "patrol branch does not award threat money")
+eq(table.concat(patrol_random, ","), "bounded_100",
+   "patrol branch consumes exactly one source roll")
+
+local invalid_roll_result, _, _, invalid_roll_funds =
+    run_haggard("threaten", nil, 100)
+eq(invalid_roll_result.type, "source_boundary",
+   "out-of-range random service value remains an explicit boundary")
+eq(invalid_roll_funds, 125,
+   "invalid random result cannot award nuyen")
 
 local unsupported_result, _, unsupported_exit, unsupported_funds =
     run_haggard("attack")
