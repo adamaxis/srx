@@ -16725,15 +16725,18 @@ int run_bulk_generic_field_contacts_qa(
         const char* activity_id;
         const char* expected_text;
         const char* row_evidence;
+        bool permanent_hire;
     };
     // ROM 0x17050 selects the Scene-11 hireling/Marrs dialogue through
     // 0x21174/0xFE640; Ricky is the 0x16FFC actor and uses the same dispatcher.
-    constexpr std::array<ContactCase, 2U> cases{{
+    constexpr std::array<ContactCase, 3U> cases{{
         {11U, "marrs-hireling", "scene_11_script",
          "An armed troll studies you with his largest pupil.",
-         "0x100353"},
-        {19U, "ricky", "scene_19_script",
-         "A rat-like dwarf is here.", "0xFFBDA"},
+         "0x100353", false},
+        {19U, "ricky-short-term", "scene_19_script",
+         "A rat-like dwarf is here.", "0xFFBDA", false},
+        {19U, "ricky-permanent", "scene_19_script",
+         "A rat-like dwarf is here.", "0xFFBDA", true},
     }};
 
     for (const auto& test_case : cases) {
@@ -16992,7 +16995,11 @@ int run_bulk_generic_field_contacts_qa(
 
             const auto ricky_contact_position =
                 field_scene.world_activity_script_actor_position_for_dump(0U);
-            tap_qa_controller_button(field_scene, 0x40U); // Pay short-term.
+            // [C] ROM 0x1F3C4 assigns A to option 0 and B to option 1.
+            // 0x21326 installs a one-run contact (population 0), while
+            // 0x21332 installs a permanent runner (population 0xFF).
+            tap_qa_controller_button(
+                field_scene, test_case.permanent_hire ? 0x10U : 0x40U);
             const auto success = field_scene.dialogue_panel();
             bool success_text_shown = false;
             for (std::size_t index = 0U;
@@ -17018,7 +17025,8 @@ int run_bulk_generic_field_contacts_qa(
                 !field_scene.field_party_slot_active_for_dump(1U) ||
                 field_scene.field_hud_slot_state_for_dump(1U)
                         .asset_family_index != 3U ||
-                ricky.recruitment_population != 0U ||
+                ricky.recruitment_population !=
+                    (test_case.permanent_hire ? 0xFFU : 0U) ||
                 ricky.delay_meter != 10U || ricky.behavior_meter != 10U ||
                 !ricky_contact_position.has_value() ||
                 !ricky_party_position.has_value() ||
@@ -17027,8 +17035,10 @@ int run_bulk_generic_field_contacts_qa(
                 remaining_contact.has_value() ||
                 field_scene.world_activity_script_actor_count_for_dump() != 0U ||
                 !funds_after_hire.has_value() ||
-                *funds_after_hire !=
-                    kHireQaFunds - expected_fees.short_term_fee ||
+                *funds_after_hire != kHireQaFunds -
+                    (test_case.permanent_hire
+                         ? expected_fees.permanent_fee
+                         : expected_fees.short_term_fee) ||
                 hire_completed_count != 1 ||
                 !shows_ricky_portrait(hired_image) ||
                 !hired_image.save(QString::fromStdString(
