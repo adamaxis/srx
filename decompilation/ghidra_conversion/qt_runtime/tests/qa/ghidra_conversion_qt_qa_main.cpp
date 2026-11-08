@@ -5489,6 +5489,21 @@ int run_field_default_guard_item_action_qa(
         return 3;
     }
 
+    // ROM 0xAFF2 can select the directional C072 hit pose for this default-list
+    // kind-5 actor. Exercise its generic guard art before the action route.
+    const bool guard_hurt_staged =
+        field_scene.set_default_actor_animation_for_dump(
+            kGuardOrder, "hurt", 0U);
+    const auto guard_hurt = render_qa_field(field_scene);
+    if (!guard_hurt_staged ||
+        field_scene.visible_default_actor_count_for_dump() == 0U ||
+        guard_hurt.isNull() || !save("guard-hurt-preview.bmp", guard_hurt) ||
+        !field_scene.set_default_actor_animation_for_dump(
+            kGuardOrder, "idle", 0U)) {
+        std::cerr << "Default corp-guard item-action QA: default-list C072 hurt art was not drawable\n";
+        return 3;
+    }
+
     // This QA seeds the source FFDF84/FFDF86 world-activity timeout to enter
     // the existing combat action window. Guard hostility acquisition remains
     // a separate behavior path and is not implied by this action-chain check.
@@ -22571,6 +22586,26 @@ int run_field_scene2_pedestrians_qa(
                   << " timeout=" << timeout_after_hit.timeout_marker << "/"
                   << timeout_after_hit.timeout_frames
                   << " trace=" << projectile_trace
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    // The source C072 response can be replaced by C062 on the same service
+    // when a routed actor moves. Keep the real hit/meter path above, then stage
+    // the semantic hurt pose for this renderer-only check of the default-list
+    // C072 art selected by ROM 0xAFF2.
+    const bool hurt_pose_staged =
+        field_scene.set_default_actor_animation_for_dump(0U, "hurt", 0U);
+    const auto hurt_visible_count =
+        field_scene.visible_default_actor_count_for_dump();
+    const auto hurt_actual = render_qa_field(field_scene);
+    const auto hurt_actual_path = output / "hurt-after-seeded-hit.bmp";
+    if (!hurt_pose_staged || hurt_visible_count == 0U || hurt_actual.isNull() ||
+        !hurt_actual.save(QString::fromStdWString(
+            hurt_actual_path.wstring()))) {
+        std::cerr << "Scene-2 flee QA: default-list C072 art did not produce a visible sprite"
+                  << " staged=" << hurt_pose_staged
+                  << " visible=" << hurt_visible_count
                   << " failure=" << field_scene.failure() << '\n';
         return 3;
     }

@@ -2958,6 +2958,35 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
                 failure_ = "default actor C062 walk art is missing a direction";
                 return false;
             }
+
+            // ROM 0xAFF2 selects the directional C072 response for a live hit.
+            // Default-list pedestrians and guards use these same extracted
+            // frames as dynamic encounter actors, so keep them available to
+            // the renderer on the ordinary field-record path too.
+            auto& hurt_frames = artwork.hurt_images[direction];
+            for (std::uint8_t frame = 0U;
+                 frame < kActorArtFrameScanLimit; ++frame) {
+                const auto alias = actor_asset_prefixes[kind_index] +
+                    ".hurt.dir." + std::to_string(direction) +
+                    ".frame." + std::to_string(frame);
+                if (catalog.find(alias) == nullptr) {
+                    break;
+                }
+                hurt_frames.emplace_back();
+                artwork.hurt_origin_x[direction].push_back(0);
+                artwork.hurt_origin_y[direction].push_back(0);
+                const auto image_index = hurt_frames.size() - 1U;
+                if (!load_sprite_image(
+                        catalog, alias, hurt_frames[image_index],
+                        artwork.hurt_origin_x[direction][image_index],
+                        artwork.hurt_origin_y[direction][image_index])) {
+                    return false;
+                }
+            }
+            if (hurt_frames.empty()) {
+                failure_ = "default actor C072 hurt art is missing a direction";
+                return false;
+            }
         }
         const auto load_spell_death_frames =
             [this, &catalog, &actor_asset_prefixes, kind_index](

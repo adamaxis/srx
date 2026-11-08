@@ -1598,6 +1598,30 @@ FieldSceneRuntime::default_actor_animation_id_for_dump(
 
 
 #ifdef SHADOWRUN_QT_QA_DRIVER
+bool FieldSceneRuntime::set_default_actor_animation_for_dump(
+    const std::uint16_t source_order, const std::string_view animation_id,
+    const std::uint8_t frame) {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    const auto actor = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference, source_order](
+            const DefaultFieldActorPresentation& candidate) {
+            return candidate.scene_reference == scene_reference &&
+                   candidate.active &&
+                   candidate.source_order == source_order;
+        });
+    if (actor == field_default_actors_.end()) {
+        return false;
+    }
+    actor->animation_id.assign(animation_id);
+    actor->animation_frame = frame;
+    actor->animation_variant.clear();
+    return true;
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
+
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<FieldWorldActorSlot>
 FieldSceneRuntime::default_actor_record_slot_for_dump(
     const std::uint16_t source_order) const noexcept {
