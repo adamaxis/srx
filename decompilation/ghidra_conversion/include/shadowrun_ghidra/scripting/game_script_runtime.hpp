@@ -2391,9 +2391,13 @@ struct ScriptActorBehaviorContext {
     bool animation_clock_reset_requested = false;
     std::optional<ScriptActorProjectileAnimation> projectile_animation;
     std::optional<ScriptActorProjectileMovement> projectile_movement;
-    // The first primary-record behavior pass resolves ROM 0x55640 once;
-    // subsequent movement and the cloned secondary record retain its result.
+    // A typed spawn-service heartbeat can resolve ROM 0x55640 before the
+    // projectile record's later movement heartbeat.
     bool projectile_attack_seed_pending = false;
+    // The source creates the primary record inside 0x1514E and resolves its
+    // attack before the later projectile-slot movement service. This pass
+    // computes only that stored result and leaves movement for its slot.
+    bool projectile_attack_seed_only = false;
     std::vector<ScriptProjectileCombatTarget> projectile_combat_targets;
     ScriptProjectileTerrainProbe projectile_terrain_probe;
     ScriptProjectileCollisionSearch projectile_collision_search;
@@ -2615,6 +2619,7 @@ struct ScriptActorBehaviorDecision {
     std::optional<ScriptActorMovementStep> movement_step;
     std::optional<ScriptActorProjectileMovementDecision>
         projectile_movement;
+    std::optional<std::uint16_t> projectile_attack_successes;
     std::optional<ScriptActorHitSparkSpawnRequest>
         hit_spark_spawn_request;
     bool hit_spark_retired = false;

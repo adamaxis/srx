@@ -6561,6 +6561,10 @@ void FieldSceneRuntime::service_source_actor_weapon_action(
             }
         }
         field_weapon_projectiles_.push_back(std::move(spawn));
+        // ROM 0x1413C enters 0x1514E from the current actor's service slot;
+        // its primary roll must consume the shared seed before 0xA8EA moves
+        // on to the next actor record.
+        advance_field_weapon_projectiles(true);
     }
 
     const bool projectile_created = spawn_cycle.primary.has_value() &&
@@ -9502,9 +9506,15 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         // ROM 0x29F6 clears FFE175 before 0x13874 services the actor slots [C].
         field_think_token_claimed_ = false;
         advance_player_weapon_action_gate();
-        advance_field_weapon_projectiles();
+        // ROM 0x1514E creates a player's primary record and immediately calls
+        // 0x14FF8/0x55640 before the ascending 0xA8EA slot scan reaches world
+        // actors and the newly allocated projectile. Resolve that stored roll
+        // after the player action, then service actor slots before projectile
+        // movement, matching slots 3..8 followed by 9..14.
         advance_field_movement();
+        advance_field_weapon_projectiles(true);
         advance_default_field_actors(true);
+        advance_field_weapon_projectiles();
         advance_field_hit_spark_behaviors();
     };
     field_runtime_callbacks_.update_field_camera = [this] {
@@ -12996,9 +13006,8 @@ void FieldSceneRuntime::service_player_weapon_action(
             return std::nullopt;
         },
         [this] {
-            // Lua computes the source 0x55640 attack seed on the primary
-            // projectile's first actor heartbeat, after this spawn cycle has
-            // published its typed child record.
+            // Queue the typed resolver; the seed-only Lua heartbeat runs
+            // immediately after the spawn cycle publishes its child record.
             source_boundary("field.combat.weapon_attack_seed_scheduled");
         },
         [this] {
@@ -13163,7 +13172,8 @@ void FieldSceneRuntime::service_player_weapon_action(
     source_boundary("field.combat.player_weapon_spawned");
 }
 
-void FieldSceneRuntime::advance_field_weapon_projectiles() {
+void FieldSceneRuntime::advance_field_weapon_projectiles(
+    const bool attack_seed_only) {
     const auto release_slot = [this](
                                    std::optional<std::uint16_t>& slot) {
         if (slot.has_value() && *slot >= 9U && *slot <= 14U) {
@@ -13308,7 +13318,8 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
                                  &source_clear_steps_from_map_distance,
                                  &bearing_degrees_from_record,
                                  &record_heading_from_bearing,
-                                 &source_step_from_map_velocity](
+                                 &source_step_from_map_velocity,
+                                 attack_seed_only](
                                     FieldWeaponProjectilePresentation& spawn,
                                     const bool primary_record) {
         auto& record = primary_record ? spawn.primary_record
@@ -13370,6 +13381,7 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
         context.initial_heading = record.heading;
         context.spawn = !script_initialized;
         context.phase = scripting::ScriptActorHeartbeatPhase::behavior;
+        context.projectile_attack_seed_only = attack_seed_only;
         context.projectile_animation =
             scripting::ScriptActorProjectileAnimation{
                 frame_count};
@@ -13412,10 +13424,6 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
         // converts here instead of leaking byte semantics into Lua.
         projectile_movement.attack_successes = static_cast<std::uint16_t>(
             std::max<int>(record.action_result, 0));
-        // The fire frame queues the projectile after this service, then the
-        // render pass (field coordinator: behavior, then render) marks the
-        // animation script initialized. Gating 0x55640 on that flag skipped
-        // the roll and left +0x9F at 0 for every later hit. [C]
         context.projectile_attack_seed_pending =
             primary_record && !spawn.primary_attack_seed_resolved;
         if (primary_record) {
@@ -13512,7 +13520,9 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
 
         const auto decision = game_scripts_.actor_heartbeat(context);
         if (!decision.has_value() ||
-            !decision->projectile_movement.has_value()) {
+            (attack_seed_only
+                 ? !decision->projectile_attack_successes.has_value()
+                 : !decision->projectile_movement.has_value())) {
             failure_ = game_scripts_.failure();
             source_boundary(
                 "field.combat.weapon_projectile_lua_behavior_failed");
@@ -13522,6 +13532,36 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
         script_initialized = true;
         if (context.projectile_attack_seed_pending) {
             spawn.primary_attack_seed_resolved = true;
+        }
+        if (attack_seed_only) {
+            const auto successes = *decision->projectile_attack_successes;
+            // ROM 0x14FF8 publishes +0x9F to the primary record and its
+            // copied visual record, and 0x55640 mirrors it to the shooter.
+            record.action_result = static_cast<std::int8_t>(successes);
+            spawn.source_record.action_result =
+                static_cast<std::int8_t>(successes);
+            spawn.shooter_facts.last_action_successes = successes;
+            if (spawn.shooter_party_slot.has_value() &&
+                *spawn.shooter_party_slot <
+                    FieldPartyRosterRuntime::kSlotCount &&
+                field_party_roster_.slot_active(
+                    *spawn.shooter_party_slot)) {
+                field_party_roster_.records()[*spawn.shooter_party_slot]
+                    .action_result = static_cast<std::uint8_t>(successes);
+            } else if (!spawn.shooter_actor_id.empty()) {
+                const auto shooter = std::find_if(
+                    field_default_actors_.begin(),
+                    field_default_actors_.end(),
+                    [&spawn](const auto& candidate) {
+                        return candidate.active &&
+                               candidate.actor_instance_id ==
+                                   spawn.shooter_actor_id;
+                    });
+                if (shooter != field_default_actors_.end()) {
+                    shooter->combatant.last_action_successes = successes;
+                }
+            }
+            return;
         }
         const auto& movement = decision->projectile_movement->state;
         const auto projectile_outcome =
@@ -13675,6 +13715,14 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
 
     auto spawn = field_weapon_projectiles_.begin();
     while (spawn != field_weapon_projectiles_.end()) {
+        if (attack_seed_only) {
+            if (spawn->primary_active &&
+                !spawn->primary_attack_seed_resolved) {
+                advance_record(*spawn, true);
+            }
+            ++spawn;
+            continue;
+        }
         advance_record(*spawn, true);
         advance_record(*spawn, false);
         if (!spawn->primary_active && !spawn->secondary_active) {

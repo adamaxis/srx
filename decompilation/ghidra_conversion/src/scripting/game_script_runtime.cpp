@@ -12261,6 +12261,18 @@ GameScriptRuntime::actor_heartbeat(
             "gameplay Lua projectile behavior services are unavailable";
         return std::nullopt;
     }
+    if (context.projectile_attack_seed_only &&
+        (context.profile_id != "weapon_projectile" ||
+         context.phase != ScriptActorHeartbeatPhase::behavior ||
+         !context.projectile_attack_seed_pending ||
+         !context.projectile_movement.has_value() ||
+         !context.combatant.has_value() ||
+         !context.projectile_action.has_value() ||
+         !context.ai_random_bound)) {
+        impl_->failure =
+            "gameplay Lua projectile attack-roll facts are unavailable";
+        return std::nullopt;
+    }
     const auto stack_base = lua_gettop(state);
     const auto fail = [this, state, stack_base](const std::string_view reason)
         -> std::optional<ScriptActorBehaviorDecision> {
@@ -12973,6 +12985,8 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "projectile_movement");
     lua_pushboolean(state, context.projectile_attack_seed_pending);
     lua_setfield(state, -2, "projectile_attack_seed_pending");
+    lua_pushboolean(state, context.projectile_attack_seed_only);
+    lua_setfield(state, -2, "projectile_attack_seed_only");
     lua_pushboolean(
         state,
         context.movement_services_available &&
@@ -14490,8 +14504,30 @@ GameScriptRuntime::actor_heartbeat(
         !decision.ai_target_engaged) {
         return fail("actor_ai.heartbeat omitted the Lua movement step");
     }
+    lua_getfield(state, decision_table, "projectile_attack_successes");
+    if (lua_isinteger(state, -1)) {
+        const auto successes = lua_tointeger(state, -1);
+        if (successes < 0 ||
+            successes > std::numeric_limits<std::uint16_t>::max()) {
+            return fail(
+                "actor_ai.heartbeat returned an invalid projectile attack roll");
+        }
+        decision.projectile_attack_successes =
+            static_cast<std::uint16_t>(successes);
+    } else if (lua_type(state, -1) != LUA_TNIL) {
+        return fail(
+            "actor_ai.heartbeat returned an invalid projectile attack roll");
+    }
+    lua_pop(state, 1);
+    if (context.projectile_attack_seed_only !=
+        decision.projectile_attack_successes.has_value()) {
+        return fail(
+            "actor_ai.heartbeat omitted or unexpectedly returned the projectile attack roll");
+    }
+
     lua_getfield(state, decision_table, "projectile_movement");
-    if (context.projectile_movement.has_value()) {
+    if (context.projectile_movement.has_value() &&
+        !context.projectile_attack_seed_only) {
         if (!lua_istable(state, -1) ||
             context.profile_id != "weapon_projectile" ||
             context.phase != ScriptActorHeartbeatPhase::behavior) {

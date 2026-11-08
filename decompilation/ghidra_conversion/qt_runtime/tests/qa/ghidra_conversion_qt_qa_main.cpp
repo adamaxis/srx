@@ -1281,9 +1281,8 @@ int run_field_command_overview_close_qa(
 }
 
 // New-game samurai 0x7291A, Model 101T (item 2), seed 0xDF65.
-// One advance fires and renders. The next advance is the first behavior
-// service, which must run ROM 0x55640. Parent code leaves +0x9F at 0
-// because render already marked the animation script initialized.
+// ROM 0x1514E calls 0x14FF8 during spawn; 0x14FF8 resolves 0x55640 before
+// the 0xA8EA actor-slot scan proceeds from party records to world actors.
 int run_field_pistol_attack_seed_qa(FieldSceneRuntime& field_scene) {
     auto& runner = field_scene.active_runner_record();
     const bool samurai_pistol =
@@ -1329,20 +1328,21 @@ int run_field_pistol_attack_seed_qa(FieldSceneRuntime& field_scene) {
     if (runner.ammo_rounds == 0U) {
         runner.ammo_rounds = 1U;
     }
+    field_scene.set_source_random_seed_for_dump(0xDF65U);
     field_scene.set_controller_port_byte(0x40U);
     field_scene.advance_frame();
     field_scene.set_controller_port_byte(0U);
-    const auto after_render =
+    const auto after_fire =
         field_scene.field_weapon_primary_action_result_for_dump();
     if (field_scene.field_weapon_primary_count_for_dump() != 1U ||
-        !after_render.has_value() || *after_render != 0) {
-        std::cerr << "pistol attack-seed QA: fire frame did not leave one "
-                     "unrolled primary"
+        !after_fire.has_value() || *after_fire != 3) {
+        std::cerr << "pistol attack-seed QA: fire service did not publish "
+                     "the ROM 0x55640 result on the spawn pass"
                   << " count="
                   << field_scene.field_weapon_primary_count_for_dump()
                   << " action_result=";
-        if (after_render.has_value()) {
-            std::cerr << *after_render;
+        if (after_fire.has_value()) {
+            std::cerr << *after_fire;
         } else {
             std::cerr << "<none>";
         }
@@ -1352,25 +1352,8 @@ int run_field_pistol_attack_seed_qa(FieldSceneRuntime& field_scene) {
                   << " failure=" << field_scene.failure() << '\n';
         return 3;
     }
-    // Pin the seed at the behavior frame. Projectile service is the first
-    // random consumer in that service, and 0xDF65 rolls 3 attack successes
-    // for this profile (#46T). A skipped roll stays 0.
-    field_scene.set_source_random_seed_for_dump(0xDF65U);
-    field_scene.advance_frame();
-    const auto after_behavior =
-        field_scene.field_weapon_primary_action_result_for_dump();
-    if (!after_behavior.has_value() || *after_behavior != 3) {
-        std::cerr << "pistol attack-seed QA: behavior pass did not publish "
-                     "0x55640 successes 3 for seed DF65, got ";
-        if (after_behavior.has_value()) {
-            std::cerr << *after_behavior;
-        } else {
-            std::cerr << "<none>";
-        }
-        std::cerr << " failure=" << field_scene.failure() << '\n';
-        return 3;
-    }
-    std::cout << "field_pistol_attack_seed_qa=passed action_result=3\n";
+    std::cout << "field_pistol_attack_seed_qa=passed action_result=3 "
+                 "timing=spawn-service\n";
     return 0;
 }
 
@@ -22448,6 +22431,9 @@ int run_field_scene2_pedestrians_qa(
     field_scene.set_field_camera_world_position_for_dump(
         static_cast<std::uint16_t>(pedestrian_start.x - 0x0800U),
         static_cast<std::uint16_t>(pedestrian_start.y - 0x0800U));
+    // Pin before the fire service: ROM 0x1514E resolves 0x55640 during
+    // projectile creation, before the later projectile movement heartbeat.
+    field_scene.set_source_random_seed_for_dump(0xDF65U);
     field_scene.set_controller_port_byte(0x40U);
     field_scene.advance_frame();
     field_scene.set_controller_port_byte(0U);
@@ -22465,9 +22451,8 @@ int run_field_scene2_pedestrians_qa(
                   << " failure=" << field_scene.failure() << '\n';
         return 3;
     }
-    // Pin only the projectile's first behavior roll, matching the separate
-    // ROM-profile #46T test; this is not a frame-by-frame RNG replay.
-    field_scene.set_source_random_seed_for_dump(0xDF65U);
+    // This continues the ordinary runtime stream after the spawn-time attack
+    // roll; it is not a frame-by-frame RNG replay.
     std::string projectile_trace;
     for (std::size_t frame = 0U; frame < 24U; ++frame) {
         field_scene.advance_frame();

@@ -1861,7 +1861,7 @@ private:
     void advance_field_hit_spark_behaviors();
     void advance_field_hit_spark_animations();
     void advance_field_weapon_projectile_animations();
-    void advance_field_weapon_projectiles();
+    void advance_field_weapon_projectiles(bool attack_seed_only = false);
     bool apply_script_combat_meter_update(
         const scripting::ScriptCombatMeterUpdate& update,
         std::string_view boundary_prefix = "field.combat.weapon_hit");
@@ -2185,10 +2185,8 @@ private:
         FieldFramePresentationState primary_animation{};
         bool primary_animation_complete = false;
         bool primary_animation_script_initialized = false;
-        // ROM 0x15012 / 0x55640 writes +0x9F when the primary record is
-        // created. The render pass may initialize the animation script on
-        // the fire frame, before this roll's behavior service. That animation
-        // flag must not consume the roll. [C]
+        // ROM 0x1514E -> 0x14FF8 resolves 0x55640 while creating the primary
+        // record; this tracks whether that stored roll has been published. [C]
         bool primary_attack_seed_resolved = false;
         bool primary_active = false;
         std::optional<std::uint16_t> primary_slot;

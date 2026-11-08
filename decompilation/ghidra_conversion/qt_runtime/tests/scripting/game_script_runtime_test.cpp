@@ -9170,6 +9170,33 @@ int main() {
     shooter_facts.skills.smgs = 10U;
     shooter_facts.skills.shotguns = 10U;
     source_weapon_hit_context.combatant = shooter_facts;
+    auto spawn_roll_context = source_weapon_hit_context;
+    spawn_roll_context.instance_id = "field_weapon_slot_spawn_roll";
+    spawn_roll_context.spawn = true;
+    spawn_roll_context.projectile_attack_seed_only = true;
+    spawn_roll_context.ai_random_bound =
+        [](const std::uint16_t bound)
+            -> std::optional<std::uint16_t> {
+        return bound == 0U ? std::nullopt
+                           : std::optional<std::uint16_t>{0U};
+    };
+    spawn_roll_context.projectile_terrain_probe =
+        [](const std::uint16_t, const std::uint16_t) {
+            return ScriptProjectileTerrainSample{false, true, false};
+        };
+    spawn_roll_context.projectile_collision_search =
+        [](const std::uint16_t, const std::uint16_t) {
+            return ScriptProjectileCollisionSearchResult{};
+        };
+    const auto spawn_roll = scripts.actor_heartbeat(spawn_roll_context);
+    if (!expect(
+            spawn_roll.has_value() &&
+                spawn_roll->projectile_attack_successes.has_value() &&
+                !spawn_roll->projectile_movement.has_value(),
+            "Lua spawn-time attack roll did not return a stored result without advancing the projectile")) {
+        std::cerr << scripts.failure() << '\n';
+        return 61;
+    }
     ScriptCombatantFacts victim_facts{};
     victim_facts.record_type = 3U;
     victim_facts.physical_meter = 8U;

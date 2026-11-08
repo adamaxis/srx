@@ -260,6 +260,7 @@ local function projectile_heartbeat(state, context)
     if context.phase ~= "behavior" then
         return nil
     end
+    local attack_seed_successes
     if context.projectile_attack_seed_pending then
         if type(context.projectile_movement) ~= "table" or
            context.projectile_movement.role ~= projectile.role.primary then
@@ -269,7 +270,16 @@ local function projectile_heartbeat(state, context)
         state.attack_seed_resolved = type(result) == "number"
         if state.attack_seed_resolved then
             state.last_action_successes = result
+            attack_seed_successes = result
         end
+    end
+    if context.projectile_attack_seed_only then
+        if attack_seed_successes == nil then
+            return nil
+        end
+        local decision = R.snapshot(state, "hold", nil)
+        decision.projectile_attack_successes = attack_seed_successes
+        return decision
     end
     local movement, audio_event = projectile_movement_snapshot(context, state)
     if movement == nil then
