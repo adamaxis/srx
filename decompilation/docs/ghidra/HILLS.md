@@ -89,9 +89,11 @@ Deck Stats still have no matching independent Genesis frame.
 The Storage screen at ROM `0x18D1A` keeps that parent row, program grid, and
 footer while drawing the source panel and live capacity. View at `0x18F5E`
 walks occupied records from slot 4 down to 0, drawing each ROM filename,
-separator, and size; Start returns to Storage. Erase begins with the highest
-occupied slot, defaults to Yes, cycles through occupied slots on No, deletes
-the chosen record on Yes, and shows the remaining list. Empty storage writes
+separator, and size. It returns to the controller at `0x18326`, where the
+next edge moves or dispatches the parent Cyberdeck grid; Start leaves the
+deck. Erase begins with the highest occupied slot, defaults to Yes, cycles
+through occupied slots on No, deletes the chosen record on Yes, and shows the
+remaining list. Empty storage writes
 the ROM's two-line message and returns to the deck. The Debug/Release QA writes
 full 320x224 `actual.bmp` captures for the root, empty view, file list, erase
 prompt, post-erase list, and empty-after-erase state. All six Debug/Release
@@ -842,7 +844,7 @@ See the [City Inn route audit](visual-audits/tarislar-city-inn-scene1-event1.md)
 
 | Cluster | Hill | ROM | Status | Defending test | Dump |
 |---|---|---|---|---|---|
-| later | Matrix Storage screen | `0x18D1A` / `0x18F5E` / `0x18DE0` / `0x18F2A` | defended | `shadowrun_ghidra_gameplay_script_menu_route`; `shadowrun_ghidra_conversion_qt_field_matrix_cyber_info_qa` | Debug/Release route and Lua tests cover root, reverse file list, Start return, erase prompt/default, No cycling, Yes deletion, remaining files, and empty message; six full 320x224 captures per build match by SHA-256. This defends the traced Storage behavior and layout; no independent Genesis Storage frame was identified. See [Matrix Storage audit](visual-audits/matrix-storage-screen.md) |
+| later | Matrix Storage screen | `0x18D1A` / `0x18F5E` / `0x18DE0` / `0x18F2A` | defended | `shadowrun_ghidra_gameplay_script_menu_route`; `shadowrun_ghidra_conversion_qt_field_matrix_cyber_info_qa` | Debug/Release route tests cover root, View, and Yes/No erase masks (256/512/512), all 32 file-slot occupancy patterns, deletion, remaining files, and empty message; six full 320x224 captures per build match by SHA-256. The View renderer returns input to the parent Cyberdeck loop; no independent Genesis Storage frame was identified. See [Matrix Storage audit](visual-audits/matrix-storage-screen.md) |
 | 0 Process | Visual dump CLI | — | partial | Archived legacy-native CLI; no active Ghidra CTest for this general capability | No root-project-wide dump is retained; the Release Qt executable dumps only supported scenes |
 | 0 Process | Leftover-clear (startup + field menu) | `0x59092` / `0x59172` / `0x10F50` | defended | `shadowrun_leftover_clear` | leftover-clear/*.bmp |
 | 1 Boot | Pre-title logos | `0x5D746` after reset `0x0236` | partial | `shadowrun_boot_sequence`; `shadowrun_ghidra_conversion_qt_boot_fasa_qa` | `decompilation/ghidra_conversion/build/conversion/qt/debug/qt_runtime/boot-fasa-qa/actual.bmp` plus shock/strobe checkpoints (source-batch lightning lifetime, ROM-cadenced seven-step figure fade, FASA 34-VBlank fades and 121-VBlank hold, palette-line-2 logo, clean title handoff); whole pre-title hill remains partial |

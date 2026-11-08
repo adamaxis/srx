@@ -27,11 +27,15 @@ The cursor base is `$C532`, `(200,80)`, with the default at View. `$C244` and
 active deck contains 1000 total and 973 available storage units.
 
 View at `0x18F5E` resets the occupied-file counter, then visits records 4, 3,
-2, 1, and 0. Occupied records use the fixed 0x14-byte ROM filename at
+2, 1, and 0. It is a renderer: after writing the list it returns through the
+`0x18610` table call to the controller loop at `0x18326`. The next edge is
+handled by the Cyberdeck grid (direction moves the grid, A/B/C dispatches its
+selected cell, and Start leaves the deck). Occupied records use the fixed
+0x14-byte ROM filename at
 `0xE3A85 + id*0x14`, the separator stream at `0xE3FFD`, and the size written by
 `0x1954A`. The list starts at `$C4A6` (name row `(152,72)`, separator/size row
-`(152,80)`) and advances `$100` per occupied record; Start returns to Storage.
-With no occupied files, the `0xE3A6C` message is written at `$C52C`, producing
+`(152,80)`) and advances `$100` per occupied record. With no occupied files,
+the `0xE3A6C` message is written at `$C52C`, producing
 `No datafiles` at `(176,80)` and ` in storage` at `(176,88)`, then returns to
 the deck.
 
@@ -40,15 +44,18 @@ Erase starts at the highest occupied slot. The prompt writes its filename at
 default-Yes cursor at `$C6B2`. No scans downward from the current record and
 wraps through the five slots. Yes clears the selected record's type, size, and
 value at `0x18F2A`, recalculates capacity, and returns through View; Start
-skips the prompt to the file list.
+skips the prompt to the file list. After the list renderer returns, the next
+edge is consumed by the parent Cyberdeck controller.
 
 ## Native implementation and evidence
 
 Lua owns the option strings, source-positioned panel lines, capacity, file
 ordering, prompt selection, and deletion state. C++ publishes typed fields to
 the Qt presenter, which retains the parent deck row, grid, and footer. The
-`shadowrun_ghidra_gameplay_script_menu_route` suite checks view ordering,
-Start/B behavior, erase cycling, deletion, and the empty return. The
+`shadowrun_ghidra_gameplay_script_menu_route` suite checks view ordering, all
+256 next-edge masks after View, 512 masks for the two root rows, 512 masks for
+the Yes/No erase states, and every one of the 32 five-slot occupancy patterns.
+The
 `shadowrun_ghidra_conversion_qt_field_matrix_cyber_info_qa` test checks the
 source-positioned text rows and exercises all routes, then writes six complete
 frames under `qt_runtime/field-matrix-cyber-info-qa/deck-storage*/actual.bmp`.

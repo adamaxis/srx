@@ -257,6 +257,13 @@ function Storage.enter(st, ctx)
     ctx.redraw(R.SUBMENU)
 end
 function Storage.input(st, events, ctx)
+    -- ROM 0x18F5E only draws the file list, then returns to its caller. The
+    -- caller at 0x18610 resumes the Cyberdeck controller at 0x18326, so the
+    -- next newly pressed key belongs to the parent grid, not this list.
+    if st.phase == "view" and events & P.EDGES ~= 0 then
+        return { transition = T.POP,
+                 result = { storage_view_deck_events = events } }
+    end
     tick_palette(st, ctx)
     service_program_loading(st, ctx)
     update_storage_panel(st, ctx)

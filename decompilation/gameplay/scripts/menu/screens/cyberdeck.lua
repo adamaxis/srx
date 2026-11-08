@@ -300,6 +300,17 @@ function M.child_returned(st, child, res, ctx)
         return leave(st, ctx, st.return_to_node_action and {} or
             (st.matrix_session and { exit_secretary = true } or {}))                    -- 0x549C0 resumes 0x54662
     end
+    if res.storage_view_deck_events ~= nil then
+        -- ROM 0x18F5E paints the Storage file list and RTS; 0x18610 then
+        -- resumes this grid's controller loop at 0x18326. Forward that next
+        -- edge through the parent state so direction/A/B/C/Start keep their
+        -- normal grid priority and consequences while the list is displayed.
+        st.storage_empty_message_lines = nil
+        st.text = nil
+        st.matrix_run_info = nil
+        st.matrix_deck_stats = nil
+        return M.input(st, res.storage_view_deck_events, ctx)
+    end
     st.storage_empty_message_lines = res.storage_empty == true and
         D.STORAGE_EMPTY_MESSAGE_LINES or nil
     st.text = type(res.text) == "string" and res.text or nil                           -- plain-rts text remains until redraw

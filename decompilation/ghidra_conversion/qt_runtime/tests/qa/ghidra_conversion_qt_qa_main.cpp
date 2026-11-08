@@ -46648,14 +46648,17 @@ int main(int argc, char** argv) {
                                  "footer\n";
                     return 3;
                 }
-                tap_qa_controller_button(field_scene, 0x20U); // B is ignored.
+                // ROM 0x18F5E returns to the caller at 0x18610, which resumes
+                // the Cyberdeck controller at 0x18326. B reopens the selected
+                // Storage handler instead of being consumed by the file list.
+                tap_qa_controller_button(field_scene, 0x20U); // B.
                 if (field_scene.field_menu_route_screen_for_dump() !=
                         static_cast<std::uint16_t>(
                             srx::MenuScreen::DECK_STORAGE) ||
                     field_scene.field_menu_route_snapshot_for_dump()
-                            .top_matrix_storage_phase != "view") {
-                    std::cerr << "Matrix Storage QA: View accepted B instead "
-                                 "of waiting for Start\n";
+                            .top_matrix_storage_phase != "menu") {
+                    std::cerr << "Matrix Storage QA: View did not return B "
+                                 "to the Cyberdeck controller\n";
                     return 3;
                 }
                 tap_qa_controller_button(field_scene, 0x80U); // Start.
@@ -46741,7 +46744,14 @@ int main(int argc, char** argv) {
                                  "open the file list\n";
                     return 3;
                 }
-                tap_qa_controller_button(field_scene, 0x80U); // Leave View.
+                tap_qa_controller_button(field_scene, 0x40U); // Reopen Storage.
+                if (field_scene.field_menu_route_snapshot_for_dump()
+                        .top_matrix_storage_phase != "menu") {
+                    std::cerr << "Matrix Storage QA: View did not forward A "
+                                 "to the Cyberdeck controller\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x80U); // Leave Storage.
 
                 tap_qa_controller_button(field_scene, 0x40U); // Storage.
                 tap_qa_controller_button(field_scene, 0x02U); // Erase.
@@ -46782,6 +46792,7 @@ int main(int argc, char** argv) {
                                  "does not render its remaining first row\n";
                     return 3;
                 }
+                tap_qa_controller_button(field_scene, 0x40U); // Reopen Storage.
                 tap_qa_controller_button(field_scene, 0x80U); // Return to deck.
 
                 const std::array<std::string, 5> kStorageNamesByDeleteOrder{{
@@ -46841,6 +46852,7 @@ int main(int argc, char** argv) {
                                          "advance to the remaining file list\n";
                             return 3;
                         }
+                        tap_qa_controller_button(field_scene, 0x40U);
                         tap_qa_controller_button(field_scene, 0x80U);
                     }
                 }

@@ -734,10 +734,11 @@ check(top(rs) == S.DECK_STORAGE and st(rs).phase == "view" and
       st(rs).storage_file_sizes[2] == 9,
       "View renders reverse file records with sizes")
 rs:frame(P.B)
-check(top(rs) == S.DECK_STORAGE and st(rs).phase == "view",
-      "View waits for Start")
+check(top(rs) == S.DECK_STORAGE and st(rs).phase == "menu" and
+      gs.mode == E.MatrixDeckMode.BALANCED,
+      "View returns its next B edge to the Cyberdeck grid, which reopens Storage [C 0x18F5E, 0x18610, 0x18326]")
 rs:frame(P.START)
-check(top(rs) == S.CYBERDECK, "View Start returns to deck")
+check(top(rs) == S.CYBERDECK, "Storage root Start returns to deck")
 rs:frame(P.A); rs:frame(P.DOWN); rs:frame(P.A)
 check(top(rs) == S.DECK_STORAGE and st(rs).phase == "erase" and
       st(rs).file == 3 and st(rs).choice == 0 and
@@ -753,7 +754,7 @@ rs:frame(P.START)
 check(top(rs) == S.DECK_STORAGE and st(rs).phase == "view" and
       #st(rs).storage_file_names == 2,
       "Erase Start opens the file list")
-rs:frame(P.START); rs:frame(P.A); rs:frame(P.DOWN); rs:frame(P.A); rs:frame(P.A)
+rs:frame(P.A); rs:frame(P.DOWN); rs:frame(P.A); rs:frame(P.A)
 check(fr.files[3].id == -1 and fr.files[3].size == 0 and
       top(rs) == S.DECK_STORAGE and st(rs).phase == "view" and
       #st(rs).storage_file_names == 1 and
@@ -761,6 +762,212 @@ check(fr.files[3].id == -1 and fr.files[3].size == 0 and
       st(rs).storage_file_sizes[1] == 9,
       "Yes erases the selected record and shows remaining files")
 rs:frame(P.START)
+-- 0x18F5E is a renderer that RTS to the 0x18610 caller; its next controller
+-- edge is consumed by the grid loop at 0x18326. Exercise every combination
+-- of the eight source edge bits from the retained list presentation.
+local storage_view_actions = {
+    P.UP, P.DOWN, P.LEFT, P.RIGHT, P.B, P.C, P.A, P.START,
+}
+local function storage_view_events(mask)
+    local events = 0
+    for bit = 0, 7 do
+        if mask & (1 << bit) ~= 0 then
+            events = events | storage_view_actions[bit + 1]
+        end
+    end
+    return events
+end
+local storage_view_masks_ok = true
+local storage_view_mask_count = 0
+for mask = 0, 255 do
+    local events = storage_view_events(mask)
+    local rr, _, gg = deckp({ rec = fr }, 1, 3)
+    rr:frame(P.A) -- View draws the occupied-file list and returns to the caller.
+    rr:frame(events)
+    storage_view_mask_count = storage_view_mask_count + 1
+
+    local has_direction = events & (P.UP | P.DOWN | P.LEFT | P.RIGHT) ~= 0
+    local has_action = events & (P.A | P.B | P.C) ~= 0
+    if events == 0 then
+        storage_view_masks_ok = storage_view_masks_ok and
+            top(rr) == S.DECK_STORAGE and st(rr).phase == "view"
+    elseif has_direction then
+        local expected_col, expected_row, _ = require("menu.rules.matrix").step_deck_cursor(
+            1, 3, events & P.UP ~= 0, events & P.DOWN ~= 0,
+            events & P.LEFT ~= 0, events & P.RIGHT ~= 0)
+        storage_view_masks_ok = storage_view_masks_ok and
+            top(rr) == S.CYBERDECK and st(rr).col == expected_col and
+            st(rr).row == expected_row
+    elseif has_action then
+        local expected_mode = events & P.A ~= 0 and E.MatrixDeckMode.ATTACK or
+            events & P.B ~= 0 and E.MatrixDeckMode.BALANCED or
+            E.MatrixDeckMode.DEFENSE
+        storage_view_masks_ok = storage_view_masks_ok and
+            top(rr) == S.DECK_STORAGE and st(rr).phase == "menu" and
+            gg.mode == expected_mode
+    else
+        storage_view_masks_ok = storage_view_masks_ok and
+            top(rr) == S.POCKET_SECRETARY
+    end
+end
+check(storage_view_masks_ok and storage_view_mask_count == 256,
+      "Storage View forwards all 256 edge masks to the ROM-priority Cyberdeck loop [C 0x18610-0x18618, 0x18326-0x1841A, 0x18630-0x18660]")
+local function storage_record()
+    local record = rec({})
+    record.files[1] = { id = 2, size = 9 }
+    record.files[3] = { id = 0, size = 4 }
+    return record
+end
+local storage_menu_masks_ok = true
+local storage_menu_mask_count = 0
+for selected_row = 0, 1 do
+    for mask = 0, 255 do
+        local events = storage_view_events(mask)
+        local rr = deckp({ rec = storage_record() }, 1, 3)
+        if selected_row == 1 then rr:frame(P.DOWN) end
+        rr:frame(events)
+        storage_menu_mask_count = storage_menu_mask_count + 1
+        local has_direction = events & (P.UP | P.DOWN) ~= 0
+        if has_direction then
+            storage_menu_masks_ok = storage_menu_masks_ok and
+                top(rr) == S.DECK_STORAGE and st(rr).phase == "menu" and
+                st(rr).row == 1 - selected_row
+        elseif events & P.A ~= 0 then
+            local expected_phase = selected_row == 0 and "view" or "erase"
+            storage_menu_masks_ok = storage_menu_masks_ok and
+                top(rr) == S.DECK_STORAGE and
+                st(rr).phase == expected_phase and
+                (selected_row == 0 or
+                 (st(rr).file == 3 and st(rr).choice == 0))
+        elseif events & P.START ~= 0 then
+            storage_menu_masks_ok = storage_menu_masks_ok and
+                top(rr) == S.CYBERDECK
+        else
+            storage_menu_masks_ok = storage_menu_masks_ok and
+                top(rr) == S.DECK_STORAGE and st(rr).phase == "menu" and
+                st(rr).row == selected_row
+        end
+    end
+end
+check(storage_menu_masks_ok and storage_menu_mask_count == 512,
+      "Storage root rows honor direction/A/Start priority across 512 edge masks [C 0x18D82-0x19016]")
+local storage_erase_masks_ok = true
+local storage_erase_mask_count = 0
+for selected_choice = 0, 1 do
+    for mask = 0, 255 do
+        local events = storage_view_events(mask)
+        local record = storage_record()
+        local rr = deckp({ rec = record }, 1, 3)
+        rr:frame(P.DOWN)
+        rr:frame(P.A) -- Enter Erase; ROM 0x18E98 defaults the cursor to Yes.
+        if selected_choice == 1 then rr:frame(P.DOWN) end
+        rr:frame(events)
+        storage_erase_mask_count = storage_erase_mask_count + 1
+        local has_direction = events & (P.UP | P.DOWN) ~= 0
+        if has_direction then
+            storage_erase_masks_ok = storage_erase_masks_ok and
+                top(rr) == S.DECK_STORAGE and st(rr).phase == "erase" and
+                st(rr).file == 3 and st(rr).choice == 1 - selected_choice and
+                record.files[3].id == 0
+        elseif events & P.A ~= 0 and selected_choice == 0 then
+            storage_erase_masks_ok = storage_erase_masks_ok and
+                top(rr) == S.DECK_STORAGE and st(rr).phase == "view" and
+                record.files[3].id == -1 and record.files[1].id == 2 and
+                #st(rr).storage_file_names == 1 and
+                st(rr).storage_file_names[1] == DR.FILE_NAMES[2]
+        elseif events & P.A ~= 0 then
+            storage_erase_masks_ok = storage_erase_masks_ok and
+                top(rr) == S.DECK_STORAGE and st(rr).phase == "erase" and
+                st(rr).file == 1 and st(rr).choice == 0 and
+                record.files[3].id == 0
+        elseif events & P.START ~= 0 then
+            storage_erase_masks_ok = storage_erase_masks_ok and
+                top(rr) == S.DECK_STORAGE and st(rr).phase == "view" and
+                #st(rr).storage_file_names == 2
+        else
+            storage_erase_masks_ok = storage_erase_masks_ok and
+                top(rr) == S.DECK_STORAGE and st(rr).phase == "erase" and
+                st(rr).file == 3 and
+                st(rr).choice == selected_choice and record.files[3].id == 0
+        end
+    end
+end
+check(storage_erase_masks_ok and storage_erase_mask_count == 512,
+      "Storage erase Yes/No states honor direction/A/Start priority across 512 edge masks [C 0x18EBA-0x18F5E]")
+local storage_slot_patterns_ok = true
+for occupied_mask = 0, 31 do
+    local expected_slots = {}
+    for slot = 0, 4 do
+        if occupied_mask & (1 << slot) ~= 0 then
+            expected_slots[#expected_slots + 1] = slot
+        end
+    end
+    table.sort(expected_slots, function(a, b) return a > b end)
+    local function patterned_record()
+        local record = rec({})
+        for slot = 0, 4 do
+            if occupied_mask & (1 << slot) ~= 0 then
+                record.files[slot] = { id = slot, size = slot + 5 }
+            end
+        end
+        return record
+    end
+
+    local view_route = deckp({ rec = patterned_record() }, 1, 3)
+    view_route:frame(P.A)
+    if #expected_slots == 0 then
+        storage_slot_patterns_ok = storage_slot_patterns_ok and
+            top(view_route) == S.CYBERDECK and
+            st(view_route).storage_empty_message_lines[1] == "No datafiles" and
+            st(view_route).storage_empty_message_lines[2] == " in storage"
+    else
+        local expected_names, expected_sizes = {}, {}
+        for _, slot in ipairs(expected_slots) do
+            expected_names[#expected_names + 1] = DR.FILE_NAMES[slot]
+            expected_sizes[#expected_sizes + 1] = slot + 5
+        end
+        storage_slot_patterns_ok = storage_slot_patterns_ok and
+            top(view_route) == S.DECK_STORAGE and st(view_route).phase == "view" and
+            #st(view_route).storage_file_names == #expected_slots
+        for index = 1, #expected_slots do
+            storage_slot_patterns_ok = storage_slot_patterns_ok and
+                st(view_route).storage_file_names[index] == expected_names[index] and
+                st(view_route).storage_file_sizes[index] == expected_sizes[index]
+        end
+    end
+
+    local erase_record = patterned_record()
+    local erase_route = deckp({ rec = erase_record }, 1, 3)
+    erase_route:frame(P.DOWN)
+    erase_route:frame(P.A)
+    if #expected_slots == 0 then
+        storage_slot_patterns_ok = storage_slot_patterns_ok and
+            top(erase_route) == S.CYBERDECK and
+            st(erase_route).storage_empty_message_lines[1] == "No datafiles"
+    else
+        local current_index = 1
+        storage_slot_patterns_ok = storage_slot_patterns_ok and
+            top(erase_route) == S.DECK_STORAGE and
+            st(erase_route).phase == "erase" and
+            st(erase_route).file == expected_slots[current_index]
+        for _ = 1, #expected_slots do
+            erase_route:frame(P.DOWN) -- No.
+            erase_route:frame(P.A)
+            current_index = (current_index % #expected_slots) + 1
+            storage_slot_patterns_ok = storage_slot_patterns_ok and
+                top(erase_route) == S.DECK_STORAGE and
+                st(erase_route).phase == "erase" and
+                st(erase_route).file == expected_slots[current_index] and
+                st(erase_route).choice == 0
+        end
+        for _, slot in ipairs(expected_slots) do
+            storage_slot_patterns_ok = storage_slot_patterns_ok and
+                erase_record.files[slot].id == slot
+        end
+    end
+end
+check(storage_slot_patterns_ok,
+      "Storage View and No-cycle cover every five-slot occupancy pattern [C 0x18F5E, 0x18DE0-0x18E4E]")
 local empty_record = rec({})
 local re = deck({ rec = empty_record })
 re:frame(P.UP); re:frame(P.RIGHT); re:frame(P.A); re:frame(P.A)
