@@ -3325,12 +3325,20 @@ int main() {
               runtime.failure().empty(),
           "program entry commits typed slot state and returns to Cyberdeck",
           failures);
-    for (int frame = 0; frame < 320; ++frame) {
+    // ROM 0x18694 seeds the first 60-VBlank delay; 0x19788 decrements before
+    // advancing one footer stage, then reloads that delay. Six stages first
+    // reach Ready on service call 366.
+    for (int frame = 0; frame < 365; ++frame) {
         runtime.advance_menu_route(0U);
     }
     route = runtime.menu_route_snapshot();
     check(route.top_screen == kCyberdeck,
           "ROM-timed Lua loader keeps the deck route active", failures);
+    check(matrix_deck_slots[0].status == 5U,
+          "ROM-timed Lua loader holds the final stage until service call 366",
+          failures);
+    runtime.advance_menu_route(0U);
+    route = runtime.menu_route_snapshot();
     check(matrix_deck_slots[0].status == 6U,
           "ROM-timed Lua loader completes the first footer slot", failures);
     check(matrix_deck_slots[0].phase == 1U,
