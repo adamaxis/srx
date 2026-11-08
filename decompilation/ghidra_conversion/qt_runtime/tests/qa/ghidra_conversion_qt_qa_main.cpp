@@ -1477,6 +1477,44 @@ int run_field_pistol_attack_seed_qa(FieldSceneRuntime& field_scene) {
                   << " failure=" << field_scene.failure() << '\n';
         return 3;
     }
+
+    // Frozen QA actors intentionally skip the 0xA8EA service. Unfreeze only
+    // after the projectile lands so the real default-actor heartbeat can
+    // consume the pending 0xAFF2 hit and select its nonlethal C072 response.
+    if (!field_scene.set_default_actor_frozen_for_dump(0U, false)) {
+        std::cerr << "pistol live-hit QA: could not resume pedestrian service "
+                     "after the seeded hit\n";
+        return 3;
+    }
+    bool pedestrian_hurt_pose_seen = false;
+    bool pedestrian_hurt_sprite_available = false;
+    for (std::size_t frame = 0U; frame < 24U; ++frame) {
+        field_scene.advance_frame();
+        if (field_scene.default_actor_animation_id_for_dump(0U) ==
+            std::optional<std::string>{"hurt"}) {
+            // ROM 0x55C76 -> 0xAFF2 selects C072 when the changed physical
+            // meter remains nonzero. Check the ordinary default-list actor
+            // path all the way through its named directional sprite lookup.
+            pedestrian_hurt_pose_seen = true;
+            pedestrian_hurt_sprite_available =
+                field_scene.default_actor_sprite_available_for_dump(0U);
+            break;
+        }
+    }
+    if (!pedestrian_hurt_pose_seen || !pedestrian_hurt_sprite_available) {
+        std::cerr << "pistol live-hit QA: the Scene-2 pedestrian did not "
+                     "present its nonlethal C072 reaction"
+                  << " profile=" << expected->name
+                  << " meter=" << static_cast<unsigned>(
+                         pedestrian_meter.value_or(0U))
+                  << " animation="
+                  << field_scene.default_actor_animation_id_for_dump(0U)
+                         .value_or("<none>")
+                  << " hurt_pose=" << pedestrian_hurt_pose_seen
+                  << " hurt_sprite=" << pedestrian_hurt_sprite_available
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
     std::cout << "field_pistol_attack_seed_qa=passed profile="
               << expected->name << " item="
               << static_cast<unsigned>(expected->item_code)
