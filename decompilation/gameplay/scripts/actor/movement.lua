@@ -1131,17 +1131,26 @@ local function advance_entity_movement(context, state)
     for key, value in pairs(context.movement_state) do
         movement_state[key] = value
     end
-    -- The behavior pass may update +0xB0 facts (for example, entering the
-    -- flee branch) after the host built context.movement_state. Carry the
-    -- current Lua-owned facts into this same pass's movement result so its
-    -- typed route snapshot cannot restore the stale pre-think flags.
+    -- The behavior pass may update named route facts (for example, entering
+    -- the flee branch) after the host built context.movement_state. Merge
+    -- those Lua-owned facts into the typed movement facts without discarding
+    -- route state that is supplied only by the movement service.
     local behavior_facts = type(state.actor_facts) == "table" and
         state.actor_facts.behavior
     if type(behavior_facts) == "table" then
-        movement_state.route_facts = {}
-        for key, value in pairs(behavior_facts) do
-            movement_state.route_facts[key] = value
+        local route_facts = {}
+        for key, value in pairs(movement_state.route_facts or {}) do
+            route_facts[key] = value
         end
+        -- Behavior facts can change during the AI pass, including the flee
+        -- flag set by ROM routine 0x13E9E. Preserve the path, route, and
+        -- transition facts supplied by the movement service.
+        for _, name in ipairs({ "fleeing", "escort" }) do
+            if type(behavior_facts[name]) == "boolean" then
+                route_facts[name] = behavior_facts[name]
+            end
+        end
+        movement_state.route_facts = route_facts
     end
     movement_state.bearing_degrees = state.movement_current_bearing_degrees
     movement_state.animation_bearing_degrees = movement_state.bearing_degrees

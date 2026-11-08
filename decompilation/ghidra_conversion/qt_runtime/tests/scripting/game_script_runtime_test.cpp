@@ -11028,37 +11028,14 @@ int main() {
                 reset_collision_queries == 4U,
             "Lua movement policy did not preserve event retry state or resolve clear, route, slide, and reset cases")) {
         std::cerr << scripts.failure() << '\n';
-        const auto state_of = [](const auto& decision)
-            -> const ScriptMovementStepState* {
+        const auto route_flags = [](const auto& decision) {
             return decision.has_value() && decision->movement_step.has_value()
-                ? &decision->movement_step->state
-                : nullptr;
+                ? static_cast<unsigned>(decision->movement_step->state.route_flags)
+                : 0U;
         };
-        const auto* clear_state = state_of(clear_step);
-        const auto* route_state = state_of(route_step);
-        const auto* slide_state = state_of(slide_step);
-        const auto* pending_state = state_of(pending_event_step);
-        const auto* reset_state = state_of(reset_step);
-        std::cerr << "movement cases: clear=" << (clear_state != nullptr)
-                  << ",clear_event=" << (clear_state && clear_state->clear_pending_event)
-                  << ",clear_mode=" << (clear_state ? static_cast<unsigned>(clear_state->substate_update) : 99U)
-                  << ",route=" << (route_state != nullptr)
-                  << ",clear_collision=" << (route_state && route_state->clear_collision_recovery)
-                  << ",route_queries=" << route_collision_queries
-                  << ",slide=" << (slide_state != nullptr)
-                  << ",slide_mode=" << (slide_state ? static_cast<unsigned>(slide_state->substate_update) : 99U)
-                  << ",slide_route_update=" << (slide_state ? static_cast<unsigned>(slide_state->route_update.kind) : 99U)
-                  << ",slide_mark=" << (slide_state && slide_state->mark_directional_fallback)
-                  << ",pending=" << (pending_state != nullptr)
-                  << ",pending_x=" << (pending_state ? pending_state->position_x : 0U)
-                  << ",negative_recoveries=" << ordinary_negative_recoveries
-                  << '/' << scene_negative_recoveries
-                  << '/' << mode_negative_recoveries
-                  << '/' << transition_negative_recoveries
-                  << ",reset=" << (reset_state != nullptr)
-                  << ",reset_mark=" << (reset_state && reset_state->mark_reset_after_block)
-                  << ",reset_route_update=" << (reset_state ? static_cast<unsigned>(reset_state->route_update.kind) : 99U)
-                  << '\n';
+        std::cerr << "movement route flags: clear=0x" << std::hex
+                  << route_flags(clear_step) << ",reset=0x"
+                  << route_flags(reset_step) << std::dec << '\n';
         return 18;
     }
 
