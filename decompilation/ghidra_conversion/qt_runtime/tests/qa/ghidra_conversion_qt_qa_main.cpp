@@ -22977,6 +22977,54 @@ int run_field_scene55_thon_actor_qa(
         return 3;
     }
 
+    // ROM 0xAFF2 selects Thon's kind-15 C072 hurt list. The C072 direction
+    // selectors resolve to the same one-frame list at 0x7874, while C0B2
+    // resolves to the same 0x7884 idle list selected by C052. [C]
+    const auto thon_initial_direction =
+        field_scene.default_actor_direction_for_dump(0U);
+    bool thon_hurt_available_all_directions =
+        thon_initial_direction.has_value() &&
+        *thon_initial_direction < 8U;
+    bool thon_down_available_all_directions =
+        thon_initial_direction.has_value() &&
+        *thon_initial_direction < 8U;
+    for (std::uint8_t direction = 0U; direction < 8U; ++direction) {
+        const bool hurt_staged =
+            field_scene.set_default_actor_animation_for_dump(
+                0U, "hurt", 0U, direction);
+        thon_hurt_available_all_directions =
+            thon_hurt_available_all_directions && hurt_staged &&
+            field_scene.default_actor_sprite_available_for_dump(0U);
+        const bool down_staged =
+            field_scene.set_default_actor_animation_for_dump(
+                0U, "down", 0U, direction);
+        thon_down_available_all_directions =
+            thon_down_available_all_directions && down_staged &&
+            field_scene.default_actor_sprite_available_for_dump(0U);
+    }
+    const bool thon_down_capture_saved = render_qa_field(field_scene).save(
+        QString::fromStdWString(
+            (output / "thon-down-dir-7.bmp").wstring()));
+    const bool thon_hurt_restaged =
+        field_scene.set_default_actor_animation_for_dump(0U, "hurt", 0U, 7U);
+    const auto thon_hurt_preview = render_qa_field(field_scene);
+    const bool thon_hurt_capture_saved =
+        !thon_hurt_preview.isNull() &&
+        thon_hurt_preview.save(QString::fromStdWString(
+            (output / "thon-hurt-dir-7.bmp").wstring()));
+    if (!thon_hurt_available_all_directions ||
+        !thon_down_available_all_directions || !thon_down_capture_saved ||
+        !thon_hurt_restaged || !thon_hurt_capture_saved ||
+        !field_scene.set_default_actor_animation_for_dump(
+            0U, "idle", 0U, *thon_initial_direction)) {
+        std::cerr << "Scene-55 Thon QA: C072 hurt or C0B2 down art was not "
+                     "available for every heading"
+                  << " hurt=" << thon_hurt_available_all_directions
+                  << " down=" << thon_down_available_all_directions
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+
     // FFE188 starts cleared at scene load; 0x13A66 reloads Thon's shared
     // eight-tick period. 0x13A4C aims via 0xAE6E and installs C082 through
     // 0xAF7C/0xAFAE, which reload +0xDC via 0xABFC; 0xA8EA consumes the delay

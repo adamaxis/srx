@@ -4920,6 +4920,7 @@ field.entities.actors.actor.kind.14.palette.1.walk.dir.7.frame.2	field/entities/
 field.entities.actors.actor.kind.14.palette.1.walk.dir.7.frame.3	field/entities/actors/actor-kind-14-palette-1-walk-dir-7-frame-3.bmp	image	-20	-23
 field.entities.actors.actor.kind.14.palette.1.action.dir.7.frame.0	field/entities/actors/actor-kind-14-palette-1-action-dir-7-frame-0.bmp	image	0	-32
 field.entities.actors.actor.kind.14.palette.1.action.dir.7.frame.1	field/entities/actors/actor-kind-14-palette-1-action-dir-7-frame-1.bmp	image	-21	-25
+field.entities.actors.thon_k0f_spell01.hurt.frame.0	field/entities/actors/thon_k0f_spell01-hurt-frame-0.bmp	image	-24	-63
 field.entities.actors.thon_k0f_spell01.idle	field/entities/actors/thon_k0f_spell01-idle.bmp	image	-24	-55
 field.entities.actors.thon_k0f_spell01.spell.dir.0.frame.0	field/entities/actors/thon_k0f_spell01-spell-dir-0-frame-0.bmp	image	-52	-58
 field.entities.actors.thon_k0f_spell01.spell.dir.1.frame.0	field/entities/actors/thon_k0f_spell01-spell-dir-1-frame-0.bmp	image	-52	-58

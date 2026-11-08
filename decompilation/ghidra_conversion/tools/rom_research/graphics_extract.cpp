@@ -10637,6 +10637,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 read_big_endian_long(
                     rom, kActorStatePointerTableOffset +
                         static_cast<std::size_t>(kind_source.entity_kind) * 4U));
+            std::size_t thon_idle_state_list = 0U;
             std::size_t thon_sprite_list = 0U;
             for (std::size_t direction = 0; direction < 8U; ++direction) {
                 const auto selector = read_big_endian_word(
@@ -10651,8 +10652,10 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 const auto sprite_list = static_cast<std::size_t>(
                     read_big_endian_long(rom, state_list + 4U));
                 if (direction == 0U) {
+                    thon_idle_state_list = state_list;
                     thon_sprite_list = sprite_list;
-                } else if (sprite_list != thon_sprite_list) {
+                } else if (state_list != thon_idle_state_list ||
+                           sprite_list != thon_sprite_list) {
                     throw std::runtime_error(
                         "Thon directional selectors no longer share one source sprite list");
                 }
@@ -10687,6 +10690,61 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 "0x1EBDEE at VRAM 0x5920; template palette line 1 [C]",
                 true, manifest, written, missing, blank,
                 thon_frame.origin_x, thon_frame.origin_y);
+
+            // ROM 0xAFF2 selects Thon's one-frame C072 hit state (state list
+            // 0x7874, sprite list 0xA6FE). All eight C072 selectors resolve to
+            // that same source list, so publish one named host pose.
+            std::size_t thon_hurt_state_list = 0U;
+            for (std::size_t direction = 0U; direction < 8U; ++direction) {
+                const auto selector = read_big_endian_word(
+                    rom, kHurtSelectorTableOffset + direction * 2U);
+                const auto state_list = static_cast<std::size_t>(
+                    read_big_endian_long(rom, state_table + selector));
+                if (direction == 0U) {
+                    thon_hurt_state_list = state_list;
+                } else if (state_list != thon_hurt_state_list) {
+                    throw std::runtime_error(
+                        "Thon C072 directions no longer share one hurt list");
+                }
+            }
+            const auto thon_hurt_marker =
+                read_big_endian_word(rom, thon_hurt_state_list);
+            const auto thon_hurt_frame_count = static_cast<std::uint16_t>(
+                thon_hurt_marker & 0x7FFFU);
+            if ((thon_hurt_marker & 0x8000U) == 0U ||
+                thon_hurt_frame_count != 1U) {
+                throw std::runtime_error(
+                    "Thon C072 hurt list is not a single source frame");
+            }
+            const auto thon_hurt_sprite_list = static_cast<std::size_t>(
+                read_big_endian_long(rom, thon_hurt_state_list + 4U));
+            const auto thon_hurt_frame = decode_field_entity_sprite_list(
+                rom, thon_vram, thon_hurt_sprite_list, palette,
+                template_palette_attributes);
+            write_catalog_asset(
+                root, asset_stem + "-hurt-frame-0.bmp",
+                thon_hurt_frame.image, "sprite",
+                "ROM 0xAFF2/0xC072/0x600E/0x622C kind=15 Thon "
+                "one-frame hurt sprite list=" +
+                    format_offset(static_cast<std::uint32_t>(
+                        thon_hurt_sprite_list)) +
+                    " template palette line 1 [C]",
+                true, manifest, written, missing, blank,
+                thon_hurt_frame.origin_x, thon_hurt_frame.origin_y);
+
+            // C0B2's eight behavior-transition selectors all resolve to
+            // Thon's C052 idle list. Assert that shared source relationship;
+            // the runtime can reuse the already extracted idle bitmap.
+            for (std::size_t direction = 0U; direction < 8U; ++direction) {
+                const auto selector = read_big_endian_word(
+                    rom, kEntrySelectorTableOffset + direction * 2U);
+                const auto state_list = static_cast<std::size_t>(
+                    read_big_endian_long(rom, state_table + selector));
+                if (state_list != thon_idle_state_list) {
+                    throw std::runtime_error(
+                        "Thon C0B2 no longer selects the C052 idle list");
+                }
+            }
             for (std::size_t direction = 0U; direction < 8U; ++direction) {
                 const auto selector = read_big_endian_word(
                     rom, kSpellSelectorTableOffset + direction * 2U);

@@ -3768,9 +3768,11 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
     if (thon_default != field_default_actors_.end()) {
         // Scene 55's default list points to Thon at 0x1EDA88/0x1EDB00 [C].
         // ROM 0xA77A's seven-piece C052 idle state is reached by all eight
-        // direction selectors; C082 uses the eight direction records. Keep
-        // those source-authored poses as named host assets rather than
-        // routing this kind-15 record through the ordinary bitmap decoder.
+        // direction selectors; C0B2 resolves to that same state list, while
+        // C072 resolves to the one-frame Thon hit list at 0xA6FE. C082 uses
+        // the eight direction records. Keep those source-authored poses as
+        // named host assets rather than routing this kind-15 record through
+        // the ordinary bitmap decoder.
         std::string alias_prefix = "field.entities.actors.";
         alias_prefix += thon_default->sprite_stem;
         DefaultActorArtwork artwork{};
@@ -3781,10 +3783,26 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
                                idle_origin_x, idle_origin_y)) {
             return false;
         }
+        QImage hurt_image;
+        int hurt_origin_x = 0;
+        int hurt_origin_y = 0;
+        if (!load_sprite_image(
+                catalog, alias_prefix + ".hurt.frame.0", hurt_image,
+                hurt_origin_x, hurt_origin_y)) {
+            return false;
+        }
         for (std::size_t direction = 0U; direction < 8U; ++direction) {
             artwork.idle_images[direction] = idle_image;
             artwork.idle_origin_x[direction] = idle_origin_x;
             artwork.idle_origin_y[direction] = idle_origin_y;
+            // The eight C072 selectors share Thon's single 0x7874 hurt list.
+            artwork.hurt_images[direction].push_back(hurt_image);
+            artwork.hurt_origin_x[direction].push_back(hurt_origin_x);
+            artwork.hurt_origin_y[direction].push_back(hurt_origin_y);
+            // C0B2 and C052 resolve to the same 0x7884 state list for Thon.
+            artwork.entry_images[direction].push_back(idle_image);
+            artwork.entry_origin_x[direction].push_back(idle_origin_x);
+            artwork.entry_origin_y[direction].push_back(idle_origin_y);
             const auto spell_alias = alias_prefix + ".spell.dir." +
                 std::to_string(direction) + ".frame.0";
             artwork.spell_images[direction].emplace_back();
