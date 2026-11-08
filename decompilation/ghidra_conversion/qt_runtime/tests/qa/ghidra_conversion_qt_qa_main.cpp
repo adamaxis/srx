@@ -64862,6 +64862,17 @@ int main(int argc, char** argv) {
                 const QColor kSelectedText(32, 206, 32);
                 const QColor kBaseGridTint(0, 118, 0);
                 std::size_t profile_frames = 0U;
+                const auto& runner_switch_source =
+                    smoke_state.startup_records->save_roster_templates[2U]
+                        .record;
+                const auto runner_switch_profile = read_runner_record_fields(
+                    LiveRunnerRecord{runner_switch_source});
+                if (runner_switch_profile.species_index != 4U ||
+                    runner_switch_profile.archetype_index != 2U) {
+                    return profile_failure(
+                        "the second C-switch profile was not the source "
+                        "Troll Samurai preset");
+                }
 
                 for (std::size_t profile_index = 0U;
                      profile_index < profile_slugs.size(); ++profile_index) {
@@ -64885,12 +64896,29 @@ int main(int argc, char** argv) {
                             "changed");
                     }
                     field_scene.active_runner_record() = profile;
+                    if (profile_index == 0U) {
+                        // Add the second source runner before the opening
+                        // capture so both return baselines include the QA
+                        // roster change.
+                        field_scene.install_party_member_for_dump(
+                            1U, runner_switch_profile, "Troll Runner", 2U);
+                        field_scene.set_active_party_slot_for_dump(0U);
+                    }
                     const auto field_before = capture();
                     if (!field_scene.open_command_overview_for_dump()) {
                         return profile_failure(
                             "Start did not open the command overview");
                     }
                     const auto command_page_six = capture();
+                    if (profile_index == 0U &&
+                        !command_page_six.save(QString::fromStdWString(
+                            (output_directory /
+                             "command-page-six-c-switch-baseline.bmp")
+                                .wstring()))) {
+                        return profile_failure(
+                            "could not save the command-page C-switch "
+                            "baseline");
+                    }
                     if (!field_scene.seek_command_overview_page(3U)) {
                         return profile_failure(
                             "Left did not reach the Attributes/Skills command "
@@ -65103,9 +65131,144 @@ int main(int argc, char** argv) {
                             "the final selected value did not redraw exactly "
                             "when deselected");
                     }
+                    if (profile_index == 0U) {
+                        // ROM 0xD31E..0xD33A gives A/B priority over the
+                        // separate C path. ROM 0xD478..0xD490 handles C
+                        // before the Start check at 0xD494, and D4C8
+                        // advances the active runner. Exercise those source
+                        // priorities through the live Lua route with a
+                        // second source profile installed in the QA roster.
+                        std::optional<std::uint8_t> changed_column_zero_row;
+                        for (std::uint8_t row = 0U; row < 10U; ++row) {
+                            const auto offset = row < 4U
+                                ? static_cast<std::size_t>(0x77U + row)
+                                : static_cast<std::size_t>(0x80U + row - 4U);
+                            if (runner_switch_source[offset] !=
+                                source_record.bytes[offset]) {
+                                changed_column_zero_row = row;
+                                break;
+                            }
+                        }
+                        if (!changed_column_zero_row.has_value()) {
+                            return profile_failure(
+                                "the source comparison profiles had no visibly "
+                                "different column-zero values");
+                        }
+                        const auto target_row = *changed_column_zero_row;
+                        auto current_row = std::uint8_t{8U};
+                        while (current_row > target_row) {
+                            press(0x01U); // Up to a source-different stat.
+                            --current_row;
+                        }
+                        while (current_row < target_row) {
+                            press(0x02U); // Down to a source-different stat.
+                            ++current_row;
+                        }
+                        field_audio_events.clear();
+                        press(0x20U); // C switches runners and resets column.
+                        const auto& switched_menu =
+                            field_scene.attributes_skills_menu();
+                        const auto switched_scene = capture();
+                        const auto value_offset = target_row < 4U
+                            ? static_cast<std::size_t>(0x77U + target_row)
+                            : static_cast<std::size_t>(0x80U + target_row - 4U);
+                        const auto value_y = target_row < 4U
+                            ? 56 + static_cast<int>(target_row) * 8
+                            : 104 + static_cast<int>(target_row - 4U) * 8;
+                        const auto switched_value_matches =
+                            source_menu_caption_matches(
+                                switched_scene, font, 136, value_y,
+                                std::to_string(
+                                    runner_switch_source[value_offset]));
+                        const auto switched_preset_matches =
+                            source_menu_caption_matches(
+                                switched_scene, font, 80, 32, "Troll") &&
+                            source_menu_caption_matches(
+                                switched_scene, font, 128, 32, "Samurai");
+                        const auto switch_image_path = output_directory /
+                            "active-runner-c-switch-actual.bmp";
+                        if (!switched_scene.save(QString::fromStdWString(
+                                switch_image_path.wstring()))) {
+                            return profile_failure(
+                                "could not save the active-runner C-switch "
+                                "image: " + switch_image_path.string());
+                        }
+                        if (!switched_menu.is_open() ||
+                            switched_menu.allows_karma_upgrades() ||
+                            switched_menu.state().cursor.column != 0U ||
+                            switched_menu.state().cursor.row != target_row ||
+                            field_scene.field_active_party_slot_for_dump() !=
+                                1U ||
+                            field_scene.active_runner_record().attributes !=
+                                runner_switch_profile.attributes ||
+                            field_scene.active_runner_record().skills !=
+                                runner_switch_profile.skills ||
+                            !switched_value_matches ||
+                            !switched_preset_matches ||
+                            !field_audio_events.empty()) {
+                            std::cerr
+                                << "C-switch detail: open="
+                                << switched_menu.is_open()
+                                << " hotel="
+                                << switched_menu.allows_karma_upgrades()
+                                << " cursor="
+                                << static_cast<unsigned>(
+                                       switched_menu.state().cursor.column)
+                                << ','
+                                << static_cast<unsigned>(
+                                       switched_menu.state().cursor.row)
+                                << " active_slot="
+                                << field_scene.field_active_party_slot_for_dump()
+                                << " attrs="
+                                << (field_scene.active_runner_record().attributes ==
+                                    runner_switch_profile.attributes)
+                                << " skills="
+                                << (field_scene.active_runner_record().skills ==
+                                    runner_switch_profile.skills)
+                                << " value_pixels=" << switched_value_matches
+                                << " preset_pixels=" << switched_preset_matches
+                                << " audio=" << field_audio_events.size();
+                            for (const auto event : field_audio_events) {
+                                std::cerr << ':' << event;
+                            }
+                            std::cerr << '\n';
+                            return profile_failure(
+                                "C did not switch to the second source runner, "
+                                "reset the column, redraw its live value, and "
+                                "remain silent on the view-only page");
+                        }
+                        field_audio_events.clear();
+                        press(0xA0U); // C+Start: C wins and wraps to slot 0.
+                        if (!field_scene.attributes_skills_menu_open() ||
+                            field_scene.field_active_party_slot_for_dump() !=
+                                0U ||
+                            field_scene.active_runner_record().attributes !=
+                                base_record.attributes ||
+                            field_scene.active_runner_record().skills !=
+                                base_record.skills ||
+                            field_scene.attributes_skills_menu()
+                                    .state().cursor.column != 0U ||
+                            field_scene.attributes_skills_menu()
+                                    .state().cursor.row != target_row ||
+                            !field_audio_events.empty()) {
+                            return profile_failure(
+                                "C did not take priority over Start while "
+                                "switching back to the first runner");
+                        }
+                    }
                     field_audio_events.clear();
-                    press(0x40U); // A returns to the command page in view-only mode.
+                    // Combined A+C also verifies that the earlier A/B path
+                    // takes priority over C before its view-only exit.
+                    press(profile_index == 0U ? 0x60U : 0x40U);
                     const auto command_return = capture();
+                    if (profile_index == 0U &&
+                        !command_return.save(QString::fromStdWString(
+                            (output_directory /
+                             "command-page-six-c-switch-return.bmp")
+                                .wstring()))) {
+                        return profile_failure(
+                            "could not save the command-page C-switch return");
+                    }
                     if (field_scene.attributes_skills_menu_open() ||
                         !field_scene.command_overview_open() ||
                         field_scene.command_overview_primary_page() != 6U ||
@@ -65165,6 +65328,9 @@ int main(int argc, char** argv) {
                           << " grid_cells_checked=" << profile_frames * 20U
                           << " controller_cursor_states="
                           << profile_frames * 20U
+                          << " active_runner_c_switches=2"
+                          << " c_before_start=1 a_before_c=1"
+                          << " switched_preset=human_samurai->troll_samurai"
                           << " read_only=1 clean_returns=" << profile_frames
                           << '\n';
                 return 0;
