@@ -784,10 +784,20 @@ set_tests_properties(shadowrun_ghidra_conversion_qt_field_vdp_compose_qa
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_audio_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-audio-qa)
-# New-game samurai Model 101T: fire frame renders with +0x9F still 0, and
-# the next behavior frame must publish the 0x55640 count for seed 0xDF65.
+# New-game starter handgun profiles exercise 0x55640 during spawn service.
+# Seed 0xDF65 yields distinct source counts for the Samurai, Decker, and
+# Gator Shaman presets after their different Firearms and command pools.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_pistol_attack_seed_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-archetype samurai
+                 --field-pistol-attack-seed-qa)
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_pistol_attack_seed_decker_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-archetype decker
+                 --field-pistol-attack-seed-qa)
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_pistol_attack_seed_gator_shaman_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-archetype gator_shaman
                  --field-pistol-attack-seed-qa)
 
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_world_activity_qa

@@ -13,6 +13,7 @@
 #include "shadowrun_ghidra/session/recruited_runner_service_conversion.hpp"
 #include "shadowrun_ghidra/session/runner_record_access_conversion.hpp"
 #include "shadowrun_ghidra/session/startup_record_assets_conversion.hpp"
+#include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
 #include "shadowrun_ghidra/scripting/run_location_catalog.hpp"
 #include "shadowrun_ghidra/world/post_intro_mode_conversion.hpp"
 #include "numeric_visual_renderer.hpp"
@@ -1280,29 +1281,65 @@ int run_field_command_overview_close_qa(
     return 0;
 }
 
-// New-game samurai 0x7291A, Model 101T (item 2), seed 0xDF65.
+// New-game starter handguns from 0x7291A/0x72A1A/0x72B1A use seed 0xDF65.
 // ROM 0x1514E calls 0x14FF8 during spawn; 0x14FF8 resolves 0x55640 before
 // the 0xA8EA actor-slot scan proceeds from party records to world actors.
 int run_field_pistol_attack_seed_qa(FieldSceneRuntime& field_scene) {
     auto& runner = field_scene.active_runner_record();
-    const bool samurai_pistol =
-        runner.equipped_item_code == 2U &&
-        runner.equipped_inventory_slot == 0 &&
-        runner.attributes[0] == 4U &&
-        runner.attributes[1] == 3U &&
-        runner.attributes[2] == 4U &&
-        runner.attributes[4] == 2U &&
-        runner.attributes[5] == 4U &&
-        runner.skills[1] == 4U &&
+    struct ExpectedStarter {
+        std::string_view name;
+        std::uint8_t class_index;
+        std::array<std::uint8_t, 6U> attributes;
+        std::uint8_t firearms;
+        std::uint8_t item_code;
+        std::int8_t attack_successes;
+    };
+    // Source records are 0x100 bytes apart. These typed facts come from the
+    // ROM profiles and the attack pools follow 0x55ED6/0x55F20/0x12C74/0x55640.
+    static constexpr std::array<ExpectedStarter, 3U> starters{{
+        {"samurai", 2U, {4U, 3U, 4U, 1U, 2U, 4U}, 4U, 2U, 3},
+        {"decker", 3U, {2U, 5U, 2U, 2U, 4U, 3U}, 2U, 3U, 1},
+        {"gator_shaman", 1U, {2U, 4U, 1U, 2U, 3U, 4U}, 2U, 2U, 1},
+    }};
+    const auto expected_profile = std::find_if(
+        starters.begin(), starters.end(), [&runner](const auto& profile) {
+            return profile.class_index == runner.archetype_index;
+        });
+    const auto* expected = expected_profile == starters.end()
+        ? nullptr
+        : &*expected_profile;
+    const auto cyberware =
+        shadowrun::ghidra_conversion::scripting::
+            script_combat_cyberware_from_source_flags(runner.cyberware_flags);
+    const auto has_inventory_item = [&runner](
+        const shadowrun::ghidra_conversion::UsItemCode item) {
+        const auto code = static_cast<std::uint8_t>(item);
+        return std::find(runner.inventory_item_codes.begin(),
+                         runner.inventory_item_codes.end(), code) !=
+               runner.inventory_item_codes.end();
+    };
+    const bool starter_profile = expected != nullptr &&
+        runner.species_index == 0U &&
+        runner.archetype_index == expected->class_index &&
+        std::equal(expected->attributes.begin(),
+                   expected->attributes.end(), runner.attributes.begin()) &&
+        runner.skills[1] == expected->firearms &&
         runner.skills[2] == 0U &&
+        runner.equipped_item_code == expected->item_code &&
+        runner.equipped_inventory_slot == 0 &&
         runner.posture == 2U &&
         runner.delay_meter == 10U &&
         runner.behavior_meter == 10U &&
-        runner.inventory_phase_bytes[1] == 0U &&
-        (runner.cyberware_flags & 0x0012U) == 0U;
-    if (!samurai_pistol) {
-        std::cerr << "pistol attack-seed QA: runner is not the 0x7291A "
-                     "Model 101T profile"
+        !has_inventory_item(
+            shadowrun::ghidra_conversion::UsItemCode::smart_goggles) &&
+        !has_inventory_item(shadowrun::ghidra_conversion::UsItemCode::
+                                combat_sense_spell_lock) &&
+        !cyberware.cybereyes && !cyberware.smartlink;
+    if (!starter_profile) {
+        std::cerr << "pistol attack-seed QA: runner does not match its "
+                     "ROM-selected starter handgun profile"
+                  << " archetype="
+                  << static_cast<unsigned>(runner.archetype_index)
                   << " item=" << static_cast<unsigned>(runner.equipped_item_code)
                   << " slot=" << static_cast<int>(runner.equipped_inventory_slot)
                   << " body=" << static_cast<unsigned>(runner.attributes[0])
@@ -1335,9 +1372,11 @@ int run_field_pistol_attack_seed_qa(FieldSceneRuntime& field_scene) {
     const auto after_fire =
         field_scene.field_weapon_primary_action_result_for_dump();
     if (field_scene.field_weapon_primary_count_for_dump() != 1U ||
-        !after_fire.has_value() || *after_fire != 3) {
+        !after_fire.has_value() || *after_fire != expected->attack_successes) {
         std::cerr << "pistol attack-seed QA: fire service did not publish "
-                     "the ROM 0x55640 result on the spawn pass"
+                     "the source result for the selected starter profile "
+                     "on the spawn pass"
+                  << " profile=" << expected->name
                   << " count="
                   << field_scene.field_weapon_primary_count_for_dump()
                   << " action_result=";
@@ -1352,8 +1391,11 @@ int run_field_pistol_attack_seed_qa(FieldSceneRuntime& field_scene) {
                   << " failure=" << field_scene.failure() << '\n';
         return 3;
     }
-    std::cout << "field_pistol_attack_seed_qa=passed action_result=3 "
-                 "timing=spawn-service\n";
+    std::cout << "field_pistol_attack_seed_qa=passed profile="
+              << expected->name << " item="
+              << static_cast<unsigned>(expected->item_code)
+              << " action_result=" << static_cast<int>(*after_fire)
+              << " seed=DF65 timing=spawn-service\n";
     return 0;
 }
 
