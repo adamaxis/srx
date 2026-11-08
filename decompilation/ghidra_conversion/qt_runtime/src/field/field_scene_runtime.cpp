@@ -1,5 +1,6 @@
 #include "field_scene_runtime.hpp"
 #include "field_scene_runtime_internal.hpp"
+#include "field_combat_meter_target.hpp"
 
 #include "enums.hpp"
 #include "shadowrun_ghidra/field/scene_profile_conversion.hpp"
@@ -5896,12 +5897,15 @@ void FieldSceneRuntime::advance_default_field_actors(
                     field_default_actors_.begin(),
                     field_default_actors_.end(),
                     [&update](const auto& value) {
-                        return value.active &&
-                               value.actor_instance_id == update.target_id &&
-                               value.source_record_slot.has_value() &&
-                               static_cast<std::uint16_t>(
-                                   *value.source_record_slot) ==
-                                   update.record_type;
+                        const auto record_slot =
+                            value.source_record_slot.has_value()
+                                ? std::optional<std::uint8_t>{
+                                      static_cast<std::uint8_t>(
+                                          *value.source_record_slot)}
+                                : std::nullopt;
+                        return field_combat_meter_update_matches_world_actor(
+                            update, value.actor_instance_id, value.active,
+                            record_slot, value.combatant.record_type);
                     });
                 if (target_actor == field_default_actors_.end()) {
                     source_boundary("field.actor.combat.world_target_invalid");

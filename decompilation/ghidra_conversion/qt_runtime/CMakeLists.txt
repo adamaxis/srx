@@ -239,6 +239,23 @@ target_compile_definitions(shadowrun_gameplay_script_runtime_test PRIVATE
 add_test(NAME shadowrun_gameplay_script_runtime_qa
          COMMAND shadowrun_gameplay_script_runtime_test)
 
+add_executable(shadowrun_field_combat_meter_target_test
+    tests/field/field_combat_meter_target_test.cpp)
+target_include_directories(shadowrun_field_combat_meter_target_test
+    PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/field"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../include")
+set_target_properties(shadowrun_field_combat_meter_target_test PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}")
+add_test(NAME shadowrun_ghidra_conversion_qt_field_combat_meter_target_qa
+         COMMAND shadowrun_field_combat_meter_target_test)
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_combat_meter_target_qa
+    PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy")
+
 find_program(SHADOWRUN_LUA_EXECUTABLE NAMES lua5.4 lua54 lua)
 if(SHADOWRUN_LUA_EXECUTABLE)
     add_test(NAME shadowrun_gameplay_building_return_policy_qa
