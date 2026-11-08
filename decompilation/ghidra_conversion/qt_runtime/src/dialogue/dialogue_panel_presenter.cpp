@@ -29,6 +29,8 @@ bool DialoguePanelPresenter::load_assets(
     constexpr std::string_view kPortraitPrefix = "dialogue.portraits.";
     constexpr std::string_view kFieldModePortraitPrefix =
         "field.mode.entry.";
+    constexpr std::string_view kFieldPartyPortraitPrefix =
+        "field.hud.party.face.";
     constexpr std::array<std::string_view, 2> kFrameAliases{{
         "dialogue.panel.frame",
         "dialogue.panel.frame.alternate.left.panel",
@@ -115,8 +117,13 @@ bool DialoguePanelPresenter::load_assets(
             alias.size() >= kFieldModePortraitPrefix.size() &&
             alias.substr(0U, kFieldModePortraitPrefix.size()) ==
                 kFieldModePortraitPrefix;
+        const bool is_field_party_portrait =
+            alias.size() >= kFieldPartyPortraitPrefix.size() &&
+            alias.substr(0U, kFieldPartyPortraitPrefix.size()) ==
+                kFieldPartyPortraitPrefix;
         if (record.kind != "image" ||
-            (!is_dialogue_portrait && !is_mode_profile)) {
+            (!is_dialogue_portrait && !is_mode_profile &&
+             !is_field_party_portrait)) {
             continue;
         }
         QImage portrait(QString::fromStdWString(

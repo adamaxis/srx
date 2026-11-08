@@ -16857,14 +16857,45 @@ int run_bulk_generic_field_contacts_qa(
 
         if (test_case.scene == 19U) {
             const auto opening = field_scene.dialogue_panel();
+            const auto* ricky_portrait_record =
+                startup_state.asset_catalog.catalog.find(
+                    "field.hud.party.face.3.palette.0");
+            QImage ricky_portrait;
+            if (ricky_portrait_record != nullptr &&
+                ricky_portrait_record->kind == "image") {
+                ricky_portrait = QImage(QString::fromStdWString(
+                    ricky_portrait_record->absolute_path.wstring()));
+                if (!ricky_portrait.isNull()) {
+                    ricky_portrait =
+                        convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                            ricky_portrait.convertToFormat(
+                                QImage::Format_ARGB32_Premultiplied));
+                }
+            }
+            const auto shows_ricky_portrait = [&ricky_portrait](
+                                                  const QImage& image) {
+                if (ricky_portrait.isNull() ||
+                    image.width() < 16 + ricky_portrait.width() ||
+                    image.height() < 32 + ricky_portrait.height()) {
+                    return false;
+                }
+                const auto rendered = image.copy(
+                    16, 32, ricky_portrait.width(), ricky_portrait.height())
+                    .convertToFormat(QImage::Format_ARGB32_Premultiplied);
+                const auto expected = ricky_portrait.convertToFormat(
+                    QImage::Format_ARGB32_Premultiplied);
+                return rendered == expected;
+            };
             if (opening.actor_name != "Ricky" ||
                 opening.portrait_alias !=
                     "field.hud.party.face.3.palette.0" ||
                 opening.option_count != 3U ||
                 opening.options[1U].source_label !=
-                    "I'm lookin' for a good 'runner.  Care to sign on?") {
+                    "I'm lookin' for a good 'runner.  Care to sign on?" ||
+                !shows_ricky_portrait(actual)) {
                 std::cerr << "Bulk generic-contact QA: Ricky's live contact "
-                             "did not bind his three-choice portrait dialogue\n";
+                             "did not draw his bound portrait in the source "
+                             "dialogue window\n";
                 return 3;
             }
 
@@ -16897,12 +16928,33 @@ int run_bulk_generic_field_contacts_qa(
             const auto offer = field_scene.dialogue_panel();
             const auto expected_short_fee =
                 "$" + std::to_string(expected_fees.short_term_fee);
+            const auto expected_permanent_fee =
+                "$" + std::to_string(expected_fees.permanent_fee);
+            const auto contains_fee = [](
+                                          const std::string_view text,
+                                          const std::string& fee) {
+                auto position = text.find(fee);
+                while (position != std::string_view::npos) {
+                    const auto after_fee = position + fee.size();
+                    if (after_fee == text.size() ||
+                        text[after_fee] < '0' || text[after_fee] > '9') {
+                        return true;
+                    }
+                    position = text.find(fee, position + 1U);
+                }
+                return false;
+            };
             bool offer_shows_rom_price = false;
+            bool offer_shows_rom_permanent_price = false;
             for (std::size_t index = 0U;
                  index < offer.text_segment_count; ++index) {
                 offer_shows_rom_price = offer_shows_rom_price ||
-                    offer.text_segments[index].find(expected_short_fee) !=
-                        std::string_view::npos;
+                    contains_fee(offer.text_segments[index],
+                                expected_short_fee);
+                offer_shows_rom_permanent_price =
+                    offer_shows_rom_permanent_price ||
+                    contains_fee(offer.text_segments[index],
+                                expected_permanent_fee);
             }
             const auto offer_image = render_qa_field(field_scene);
             if (!field_scene.dialogue_open() || offer.option_count != 2U ||
@@ -16911,6 +16963,8 @@ int run_bulk_generic_field_contacts_qa(
                 offer.options[0U].source_label !=
                     "I just need someone for the short-term.  Whadda' ya say?" ||
                 !offer_shows_rom_price ||
+                !offer_shows_rom_permanent_price ||
+                !shows_ricky_portrait(offer_image) ||
                 !offer_image.save(QString::fromStdString(
                     (case_output / "hire-offer.bmp").string()))) {
                 std::cerr << "Bulk generic-contact QA: Ricky's live hire "
@@ -16921,7 +16975,11 @@ int run_bulk_generic_field_contacts_qa(
                           << ", options=" << offer.option_count
                           << ", portrait=" << offer.portrait_alias
                           << ", expected_short_fee=" << expected_short_fee
+                          << ", expected_permanent_fee="
+                          << expected_permanent_fee
                           << ", price_visible=" << offer_shows_rom_price
+                          << ", permanent_price_visible="
+                          << offer_shows_rom_permanent_price
                           << ", first_text="
                           << (offer.text_segment_count == 0U
                                   ? std::string_view{}
@@ -16972,6 +17030,7 @@ int run_bulk_generic_field_contacts_qa(
                 *funds_after_hire !=
                     kHireQaFunds - expected_fees.short_term_fee ||
                 hire_completed_count != 1 ||
+                !shows_ricky_portrait(hired_image) ||
                 !hired_image.save(QString::fromStdString(
                     (case_output / "hired.bmp").string()))) {
                 std::cerr << "Bulk generic-contact QA: short-term hire did "

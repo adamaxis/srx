@@ -1986,3 +1986,18 @@ lists in Scenes 2 and 5. Standard Attack and the police prompt remain explicit
 boundaries, and full post-spawn combat coverage and an independent Genesis
 capture remain open. See the
 [field random-event selector audit](field-random-event-selector.md).
+
+### Ricky contact and hire portrait display (partial, 2026-11-08)
+
+The Scene-19 Ricky route already derives its short-term and permanent fees
+from the source progress/cost fields at ROM `0x21226..0x21316`; successful
+payment installs Ricky in the party and clears the contact's active bit at
+`0x2139A`. A rendered-route audit found that the configured
+`field.hud.party.face.3.palette.0` alias was skipped by the dialogue asset
+loader, leaving the portrait window black. The presenter now loads this
+ROM-extracted party-face family. Debug/Release bulk-contact QA checks the
+bound face pixels on Ricky's contact, hire-offer, and success screens, as well
+as the displayed source price, payment, party record, and contact removal.
+These internal asset checks verify presentation wiring, not an independent
+Genesis portrait comparison; the permanent-hire physical branch also remains
+open. See `field-bulk-generic-contacts-qa/ricky/{actual,hire-offer,hired}.bmp`.
