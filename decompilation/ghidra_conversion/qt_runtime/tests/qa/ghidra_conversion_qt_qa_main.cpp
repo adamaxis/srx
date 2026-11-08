@@ -1515,6 +1515,78 @@ int run_field_pistol_attack_seed_qa(FieldSceneRuntime& field_scene) {
                   << " failure=" << field_scene.failure() << '\n';
         return 3;
     }
+
+    // ROM 0xACAE services a held A input after the +0xDC action delay
+    // expires; 0x1514E creates another primary record on that pass. Keep the
+    // ordinary target record stationary only for deterministic collision
+    // placement, while its physical meter and the real player action timer
+    // continue through the live field route.
+    if (!field_scene.set_default_actor_frozen_for_dump(0U, true) ||
+        runner.ammo_rounds == 0U) {
+        std::cerr << "pistol repeat-fire QA: target could not be held in place "
+                     "or the starter clip is empty\n";
+        return 3;
+    }
+    const auto ammo_before_repeat = runner.ammo_rounds;
+    field_scene.set_controller_port_byte(0x40U);
+    bool pedestrian_down = false;
+    std::optional<std::uint8_t> meter_after_repeat;
+    // All three starter handguns use the source half-delay mode. ROM
+    // 0xABFC/0xD7EA yields 47, 49, and 51 updates for the Decker, Gator
+    // Shaman, and Samurai presets respectively; allow one signed-gate pass
+    // per available round, with the Samurai's 51-update value as the bound.
+    const auto maximum_held_fire_frames =
+        static_cast<std::size_t>(ammo_before_repeat) * 52U;
+    for (std::size_t frame = 0U; frame < maximum_held_fire_frames; ++frame) {
+        field_scene.advance_frame();
+        meter_after_repeat =
+            field_scene.default_actor_physical_meter_for_dump(0U);
+        if (meter_after_repeat == std::optional<std::uint8_t>{0U}) {
+            pedestrian_down = true;
+            break;
+        }
+    }
+    field_scene.set_controller_port_byte(0U);
+    const auto repeat_rounds_used = ammo_before_repeat >= runner.ammo_rounds
+        ? static_cast<std::uint8_t>(ammo_before_repeat - runner.ammo_rounds)
+        : std::uint8_t{0U};
+    if (!pedestrian_down || repeat_rounds_used == 0U ||
+        !field_scene.set_default_actor_frozen_for_dump(0U, false)) {
+        std::cerr << "pistol repeat-fire QA: held input did not finish the "
+                     "Scene-2 pedestrian through live repeat shots"
+                  << " profile=" << expected->name
+                  << " rounds=" << static_cast<unsigned>(repeat_rounds_used)
+                  << " physical="
+                  << (meter_after_repeat.has_value()
+                          ? std::to_string(*meter_after_repeat)
+                          : "<inactive>")
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+    bool down_pose_seen = false;
+    bool down_sprite_available = false;
+    for (std::size_t frame = 0U; frame < 24U; ++frame) {
+        field_scene.advance_frame();
+        if (field_scene.default_actor_animation_id_for_dump(0U) ==
+            std::optional<std::string>{"down"}) {
+            down_pose_seen = true;
+            down_sprite_available =
+                field_scene.default_actor_sprite_available_for_dump(0U);
+            break;
+        }
+    }
+    if (!down_pose_seen || !down_sprite_available) {
+        std::cerr << "pistol repeat-fire QA: zero physical meter did not "
+                     "present a drawable C0B2 down pose"
+                  << " profile=" << expected->name
+                  << " rounds=" << static_cast<unsigned>(repeat_rounds_used)
+                  << " animation="
+                  << field_scene.default_actor_animation_id_for_dump(0U)
+                         .value_or("<none>")
+                  << " down_sprite=" << down_sprite_available
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
     std::cout << "field_pistol_attack_seed_qa=passed profile="
               << expected->name << " item="
               << static_cast<unsigned>(expected->item_code)
@@ -1522,7 +1594,10 @@ int run_field_pistol_attack_seed_qa(FieldSceneRuntime& field_scene) {
               << " physical=10->" << static_cast<unsigned>(*pedestrian_meter)
               << " ammo=" << static_cast<unsigned>(ammo_before_shot) << "->"
               << static_cast<unsigned>(runner.ammo_rounds)
-              << " seed=DF65 timing=spawn-service+live-hit\n";
+              << " seed=DF65 timing=spawn-service+live-hit"
+              << " held_fire_rounds="
+              << static_cast<unsigned>(repeat_rounds_used)
+              << " final_physical=0 pose=down\n";
     return 0;
 }
 
