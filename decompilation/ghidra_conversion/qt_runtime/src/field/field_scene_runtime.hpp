@@ -1071,6 +1071,7 @@ public:
     bool begin_field_mode_service_event_for_dump(
         std::uint8_t scene_id, std::uint8_t field_mode,
         std::uint8_t event_code, std::int8_t alternate_result);
+    bool seed_microtronics_deck_upgrade_for_dump(std::uint32_t funds);
     bool shop_menu_open() const noexcept { return field_shop_menu_.is_open(); }
     bool field_shop_notice_open_for_dump() const noexcept {
         return field_shop_notice_active_;
@@ -1092,6 +1093,11 @@ public:
     }
     bool shop_menu_offers_active() const noexcept {
         return field_shop_menu_.offers_panel_active();
+    }
+    std::size_t shop_menu_cyberdeck_model_offer_count_for_dump() const
+        noexcept {
+        return field_shop_menu_.cyberdeck_model_offer_count(
+            field_shop_menu_.selected_group());
     }
     std::optional<std::uint8_t>
     shop_selected_weapon_capacity_for_dump() const {
@@ -1126,6 +1132,10 @@ public:
     }
     void set_field_funds_for_dump(const std::uint32_t funds) noexcept {
         field_funds_ = funds;
+    }
+    const std::optional<CyberdeckRecord>&
+    field_matrix_deck_record_for_dump() const noexcept {
+        return field_matrix_deck_record_;
     }
     // The Boris event-6 QA starts at the information-already-paid branch;
     // New Game clears FFFC26, so seed that known byte without replaying the

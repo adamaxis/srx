@@ -409,6 +409,130 @@ int main() {
         return 54;
     }
 
+    scripting::ScriptShopDefinition microtronics_definition{};
+    microtronics_definition.id = "microtronics";
+    microtronics_definition.menu_mode = 6U;
+    microtronics_definition.menu_result = 2;
+    microtronics_definition.groups = {
+        {"combat_utilities"}, {"defense_utilities"},
+        {"mask_sense_utilities"}, {"cyberdecks"},
+        {"cyberdeck_upgrades"}, {"cyberdeck_upgrades_second"}};
+    microtronics_definition.groups[3U].cyberdeck_model_offers = {
+        {0U, 5000U, 4U, 1U, 50U, 100U, 20U, 0U},
+        {1U, 25000U, 6U, 2U, 100U, 500U, 20U, 1U},
+        {2U, 60000U, 8U, 3U, 200U, 500U, 50U, 1U}};
+    ShopMenuController microtronics_menu;
+    if (!expect(microtronics_menu.open(
+                    ShopId::microtronics, microtronics_definition,
+                    confirmation_choice_ids)) ||
+        !expect(microtronics_menu.cyberdeck_model_offer_count(
+                    ShopActionGroup::cyberdecks) == 3U) ||
+        !expect(microtronics_menu.apply_script_snapshot(snapshot(
+                    "microtronics", 6U, 2, 0U, 1U, 3U,
+                    "panel_changed")) == ShopMenuEvent::panel_changed) ||
+        !expect(microtronics_menu.selected_group() ==
+                    ShopActionGroup::cyberdecks) ||
+        !expect(microtronics_menu.apply_script_snapshot(snapshot(
+                    "microtronics", 6U, 2, 2U, 1U, 3U,
+                    "cyberdeck_model_selected")) ==
+                ShopMenuEvent::cyberdeck_model_selected) ||
+        !expect(microtronics_menu.pending_action().has_value() &&
+                microtronics_menu.pending_action()->cyberdeck_model_offer
+                    ->model_index == 2U)) {
+        return 55;
+    }
+    if (!expect(microtronics_menu.begin_cyberdeck_model_upgrade_confirmation(
+                    60000U) == ShopTransactionEvent::confirmation_opened) ||
+        !expect(microtronics_menu.transaction_amount() == 60000U) ||
+        !expect(microtronics_menu.advance_transaction(
+                    0x0100U, wire_cost_context, ignored_purchase,
+                    ignored_sale) == ShopTransactionEvent::confirmation_moved) ||
+        !expect(microtronics_menu.advance_transaction(
+                    0x4000U, wire_cost_context, ignored_purchase,
+                    ignored_sale) ==
+                ShopTransactionEvent::cyberdeck_model_upgrade_confirmed)) {
+        return 56;
+    }
+
+    const auto cyberdeck_offer = [](const std::uint8_t model_index) {
+        constexpr std::array<scripting::ScriptShopCyberdeckModelOffer, 3>
+            offers{{
+                {0U, 5000U, 4U, 1U, 50U, 100U, 20U, 0U},
+                {1U, 25000U, 6U, 2U, 100U, 500U, 20U, 1U},
+                {2U, 60000U, 8U, 3U, 200U, 500U, 50U, 1U}}};
+        return offers[model_index];
+    };
+    FieldCyberdeckModelUpgradeState deck_state{};
+    deck_state.deck.model_index = static_cast<std::int8_t>(-1);
+    deck_state.deck.mpcp = 6U;
+    deck_state.deck.hardening = 1U;
+    deck_state.deck.memory_megapulses = 200U;
+    deck_state.deck.storage_megapulses = 1000U;
+    deck_state.deck.load_io_speed = 50U;
+    deck_state.deck.response = 1U;
+    deck_state.funds = 100000U;
+    if (!expect(apply_field_cyberdeck_model_upgrade(
+                    cyberdeck_offer(0U), deck_state, false) ==
+                FieldCyberdeckModelUpgradeResult::confirmation_required) ||
+        !expect(deck_state.funds == 100000U &&
+                *deck_state.deck.model_index == -1) ||
+        !expect(apply_field_cyberdeck_model_upgrade(
+                    cyberdeck_offer(0U), deck_state, true) ==
+                FieldCyberdeckModelUpgradeResult::applied) ||
+        !expect(deck_state.funds == 95000U &&
+                *deck_state.deck.model_index == 0 &&
+                *deck_state.deck.mpcp == 4U &&
+                *deck_state.deck.hardening == 1U &&
+                *deck_state.deck.load_io_speed == 20U &&
+                *deck_state.deck.response == 0U &&
+                *deck_state.deck.memory_megapulses == 200U &&
+                *deck_state.deck.storage_megapulses == 1000U) ||
+        !expect(apply_field_cyberdeck_model_upgrade(
+                    cyberdeck_offer(1U), deck_state, true) ==
+                FieldCyberdeckModelUpgradeResult::applied) ||
+        !expect(deck_state.funds == 70000U &&
+                *deck_state.deck.model_index == 1 &&
+                *deck_state.deck.mpcp == 6U &&
+                *deck_state.deck.hardening == 2U &&
+                *deck_state.deck.response == 1U &&
+                *deck_state.deck.memory_megapulses == 200U &&
+                *deck_state.deck.storage_megapulses == 1000U) ||
+        !expect(apply_field_cyberdeck_model_upgrade(
+                    cyberdeck_offer(2U), deck_state, true) ==
+                FieldCyberdeckModelUpgradeResult::applied) ||
+        !expect(deck_state.funds == 10000U &&
+                *deck_state.deck.model_index == 2 &&
+                *deck_state.deck.mpcp == 8U &&
+                *deck_state.deck.hardening == 3U &&
+                *deck_state.deck.load_io_speed == 50U &&
+                *deck_state.deck.response == 1U &&
+                *deck_state.deck.memory_megapulses == 200U &&
+                *deck_state.deck.storage_megapulses == 1000U)) {
+        return 57;
+    }
+    if (!expect(apply_field_cyberdeck_model_upgrade(
+                    cyberdeck_offer(2U), deck_state, true) ==
+                FieldCyberdeckModelUpgradeResult::model_unavailable)) {
+        return 58;
+    }
+    FieldCyberdeckModelUpgradeState poor_deck{};
+    poor_deck.deck = deck_state.deck;
+    poor_deck.deck.model_index = static_cast<std::int8_t>(-1);
+    poor_deck.funds = 4999U;
+    if (!expect(apply_field_cyberdeck_model_upgrade(
+                    cyberdeck_offer(0U), poor_deck, true) ==
+                FieldCyberdeckModelUpgradeResult::insufficient_funds) ||
+        !expect(*poor_deck.deck.model_index == -1 &&
+                poor_deck.funds == 4999U)) {
+        return 59;
+    }
+    FieldCyberdeckModelUpgradeState incomplete_deck{};
+    if (!expect(apply_field_cyberdeck_model_upgrade(
+                    cyberdeck_offer(0U), incomplete_deck, true) ==
+                FieldCyberdeckModelUpgradeResult::state_unavailable)) {
+        return 60;
+    }
+
     ShopTransactionService transactions;
     const FieldActionCostContext cost_context{1U, 0U, 3U, 2U};
     FieldActionPurchaseState purchase{};

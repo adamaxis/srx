@@ -1028,12 +1028,27 @@ struct ScriptShopEquipmentUpgradeOffer {
     std::string description_key;
 };
 
+// ROM 0x1AB196 deck-model records. The selected model index is both the
+// upgrade threshold (current model must be lower) and the model written after
+// purchase. Memory/storage are target capacities; the ROM only raises them.
+struct ScriptShopCyberdeckModelOffer {
+    std::uint8_t model_index = 0;
+    std::uint32_t cost = 0;
+    std::uint8_t mpcp = 0;
+    std::uint8_t hardening = 0;
+    std::uint16_t memory_megapulses = 0;
+    std::uint16_t storage_megapulses = 0;
+    std::uint8_t load_io_speed = 0;
+    std::uint8_t response = 0;
+};
+
 struct ScriptShopOfferGroup {
     std::string id;
     std::array<std::string, 2> title_keys{};
     std::vector<ScriptShopOffer> offers;
     std::vector<ScriptShopProgressionOffer> progression_offers;
     std::vector<ScriptShopEquipmentUpgradeOffer> equipment_upgrade_offers;
+    std::vector<ScriptShopCyberdeckModelOffer> cyberdeck_model_offers;
 };
 
 struct ScriptShopTextKeys {
@@ -1056,6 +1071,7 @@ struct ScriptShopTextKeys {
     std::string cyberware_purchase_heading;
     std::string cyberware_essence_heading;
     std::string cyberware_essence_cost_heading;
+    std::string cyberdeck_model_unavailable;
 };
 
 struct ScriptShopDefinition {

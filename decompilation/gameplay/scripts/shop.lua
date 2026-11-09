@@ -89,7 +89,10 @@ local host_open_profiles = {
     ares_weapon_emporium = { boundary_tag = "ares" },
     medicine_lodge = { menu_kind = "medicine_lodge" },
     wire_masters = { menu_kind = "wire_masters" },
-    microtronics = { gate = "runner_deck_fact" },
+    microtronics = {
+        gate = "runner_deck_fact",
+        menu_kind = "microtronics",
+    },
 }
 
 function Shop.host_open_profile(service_id)

@@ -156,6 +156,8 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
         !group_definition.progression_offers.empty();
     const bool wire_upgrade_group =
         !group_definition.equipment_upgrade_offers.empty();
+    const bool cyberdeck_model_group =
+        !group_definition.cyberdeck_model_offers.empty();
     if (!wire_upgrade_group &&
         group_index < field_service_tab_images_.size()) {
         painter.drawImage(64, 128, field_service_tab_images_[group_index]);
@@ -170,6 +172,9 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
             const auto selected_upgrade_offer = wire_upgrade_group
                 ? field_shop_menu_.equipment_upgrade_offer(group, cursor)
                 : std::optional<scripting::ScriptShopEquipmentUpgradeOffer>{};
+            const auto selected_cyberdeck_offer = cyberdeck_model_group
+                ? field_shop_menu_.cyberdeck_model_offer(group, cursor)
+                : std::optional<scripting::ScriptShopCyberdeckModelOffer>{};
             const auto selected_offer = sell_group || progression_group
                 ? std::optional<FieldActionCostRecord>{}
                 : field_shop_menu_.offer(group, cursor);
@@ -367,6 +372,41 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
                 }
             }
 
+            if (!transaction_replaces_detail && cyberdeck_model_group &&
+                selected_cyberdeck_offer.has_value()) {
+                const auto& deck = *selected_cyberdeck_offer;
+                const auto draw_value = [this, &painter](
+                    const std::string_view label, const int y,
+                    const std::uint32_t value) {
+                    draw_command_overview_text(painter, 64, y, label);
+                    draw_command_overview_number(
+                        painter, command_overview_font_, 184, y, value,
+                        NumericVisualAlignment::right, true);
+                };
+                draw_value("Model", 32,
+                           static_cast<std::uint32_t>(deck.model_index) + 1U);
+                draw_value("MPCP", 48, deck.mpcp);
+                draw_value("Hardening", 56, deck.hardening);
+                draw_value("Memory", 64, deck.memory_megapulses);
+                draw_value("Storage", 72, deck.storage_megapulses);
+                draw_value("Load I/O", 80, deck.load_io_speed);
+                draw_value("Response", 88, deck.response);
+                if (!field_shop_menu_.transaction_confirmation_open() &&
+                    field_shop_menu_.transaction_message() ==
+                        ShopTransactionMessage::none) {
+                    const auto* price_heading = game_scripts_.dialogue_text(
+                        field_shop_active_definition_->text_keys
+                            .purchase_price_heading);
+                    if (price_heading != nullptr) {
+                        draw_command_overview_text(painter, 80, 112,
+                                                   *price_heading);
+                    }
+                    draw_command_overview_number(
+                        painter, command_overview_font_, 184, 112, deck.cost,
+                        NumericVisualAlignment::right, true);
+                }
+            }
+
             if (!wire_upgrade_group && selected_offer.has_value() &&
                 selected_offer->type == static_cast<std::uint8_t>('E')) {
                 // ROM 0x586F6 uses the dedicated CE28E grid, 1AACE2
@@ -533,9 +573,15 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
         stock_group_index < field_shop_active_definition_->groups.size() &&
         !field_shop_active_definition_->groups[stock_group_index]
              .equipment_upgrade_offers.empty();
+    const bool stock_is_cyberdeck_model =
+        stock_group_index < field_shop_active_definition_->groups.size() &&
+        !field_shop_active_definition_->groups[stock_group_index]
+             .cyberdeck_model_offers.empty();
     const auto count = stock_is_wire_upgrade
         ? field_shop_menu_.equipment_upgrade_offer_count(stock_group)
-        : stock_is_sell
+        : stock_is_cyberdeck_model
+              ? field_shop_menu_.cyberdeck_model_offer_count(stock_group)
+              : stock_is_sell
               ? active_runner_record().inventory_item_codes.size()
               : stock_is_progression
                     ? field_shop_menu_.progression_offer_count(stock_group)
@@ -546,6 +592,17 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
                 painter.drawImage(
                     16 + static_cast<int>(index) * 32, 168,
                     field_service_cyberware_icons_[index]);
+            }
+            continue;
+        }
+        if (stock_is_cyberdeck_model) {
+            const auto offer =
+                field_shop_menu_.cyberdeck_model_offer(stock_group, index);
+            if (offer.has_value()) {
+                draw_command_overview_number(
+                    painter, command_overview_font_,
+                    24 + static_cast<int>(index) * 32, 172,
+                    static_cast<std::uint32_t>(offer->model_index) + 1U);
             }
             continue;
         }
@@ -599,7 +656,8 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
         // warm-yellow pixel around that footprint; the surrounding 32x24
         // cell and neighboring controls remain clear.
         const auto cursor = field_shop_menu_.selected_cursor();
-        const auto selectable = stock_is_wire_upgrade || !sell_group ||
+        const auto selectable = stock_is_wire_upgrade ||
+            stock_is_cyberdeck_model || !sell_group ||
             (cursor < active_runner_record().inventory_item_codes.size() &&
              active_runner_record().inventory_item_codes[cursor] != 0U);
         if (selectable && cursor < count && cursor < 8U) {
@@ -640,6 +698,18 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
         } else {
             draw_command_overview_text(
                 painter, 24, 80, field_menu_text_.shop_transaction_prompt);
+        }
+        if (cyberdeck_model_group) {
+            const auto* price_heading = game_scripts_.dialogue_text(
+                field_shop_active_definition_->text_keys
+                    .purchase_price_heading);
+            if (price_heading != nullptr) {
+                draw_command_overview_text(painter, 56, 88, *price_heading);
+            }
+            draw_command_overview_number(
+                painter, command_overview_font_, 216, 88,
+                field_shop_menu_.transaction_amount(),
+                NumericVisualAlignment::right, true);
         }
         if (sell_group && !wire_upgrade_group) {
             draw_command_overview_text(
@@ -709,6 +779,15 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
             const auto* message = game_scripts_.dialogue_text(
                 field_shop_active_definition_->text_keys
                     .cyberware_insufficient_essence);
+            if (message != nullptr) {
+                draw_command_overview_text(painter, 64, 88, *message);
+            }
+            break;
+        }
+        case ShopTransactionMessage::cyberdeck_model_unavailable: {
+            const auto* message = game_scripts_.dialogue_text(
+                field_shop_active_definition_->text_keys
+                    .cyberdeck_model_unavailable);
             if (message != nullptr) {
                 draw_command_overview_text(painter, 64, 88, *message);
             }

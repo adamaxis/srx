@@ -798,6 +798,7 @@
     "shop.cyberware.purchase_heading": "Cyberware costs       $",
     "shop.cyberware.essence_heading": "     Essence:  .",
     "shop.cyberware.essence_cost_heading": "Essence cost:  .",
+    "shop.cyberdeck.model_unavailable": "Unable to trade \"up\" to this cyberdeck.",
     "shop.cyberware.selection_name.datajack": "           \n Datajack  ",
     "shop.cyberware.selection_name.cyber_eyes": "           \n CyberEyes ",
     "shop.cyberware.selection_name.hand_razors": "   Hand    \n  Razors   ",

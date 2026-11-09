@@ -11430,7 +11430,9 @@ std::optional<ScriptShopDefinition> GameScriptRuntime::shop_definition(
         read_text_key("cyberware_essence_heading",
                       definition.text_keys.cyberware_essence_heading) &&
         read_text_key("cyberware_essence_cost_heading",
-                      definition.text_keys.cyberware_essence_cost_heading);
+                      definition.text_keys.cyberware_essence_cost_heading) &&
+        read_text_key("cyberdeck_model_unavailable",
+                      definition.text_keys.cyberdeck_model_unavailable);
     lua_pop(state, 1);
     if (!text_keys_valid) {
         return fail("shop catalog transaction text keys are incomplete");
@@ -11644,6 +11646,67 @@ std::optional<ScriptShopDefinition> GameScriptRuntime::shop_definition(
                     std::move(description_key)});
         }
         lua_pop(state, 1);
+
+        lua_getfield(state, group_table, "cyberdeck_model_offers");
+        if (!lua_istable(state, -1)) {
+            return fail(
+                "shop offer group must contain a cyberdeck_model_offers array");
+        }
+        const auto cyberdeck_offers_index = lua_absindex(state, -1);
+        const auto cyberdeck_offer_count =
+            lua_rawlen(state, cyberdeck_offers_index);
+        if (cyberdeck_offer_count > kMaximumShopOffers) {
+            return fail(
+                "shop offer group exceeds the eight-slot cyberdeck panel");
+        }
+        group.cyberdeck_model_offers.reserve(cyberdeck_offer_count);
+        for (std::size_t offer_index = 1U;
+             offer_index <= cyberdeck_offer_count; ++offer_index) {
+            lua_rawgeti(state, cyberdeck_offers_index,
+                        static_cast<lua_Integer>(offer_index));
+            if (!lua_istable(state, -1)) {
+                return fail("cyberdeck model offer is not a record table");
+            }
+            const auto offer_table = lua_absindex(state, -1);
+            std::uint32_t model_index = 0U;
+            std::uint32_t cost = 0U;
+            std::uint32_t mpcp = 0U;
+            std::uint32_t hardening = 0U;
+            std::uint32_t memory_megapulses = 0U;
+            std::uint32_t storage_megapulses = 0U;
+            std::uint32_t load_io_speed = 0U;
+            std::uint32_t response = 0U;
+            const bool valid =
+                read_field_integer(state, offer_table, "model_index", 2U,
+                                   model_index) &&
+                read_field_integer(state, offer_table, "cost", 0xFFFFFFFFU,
+                                   cost) &&
+                read_field_integer(state, offer_table, "mpcp", 0xFFU, mpcp) &&
+                read_field_integer(state, offer_table, "hardening", 0xFFU,
+                                   hardening) &&
+                read_field_integer(state, offer_table, "memory_megapulses",
+                                   0xFFFFU, memory_megapulses) &&
+                read_field_integer(state, offer_table, "storage_megapulses",
+                                   0xFFFFU, storage_megapulses) &&
+                read_field_integer(state, offer_table, "load_io_speed", 0xFFU,
+                                   load_io_speed) &&
+                read_field_integer(state, offer_table, "response", 0xFFU,
+                                   response);
+            lua_pop(state, 1);
+            if (!valid) {
+                return fail("cyberdeck model offer has invalid typed fields");
+            }
+            group.cyberdeck_model_offers.push_back(
+                ScriptShopCyberdeckModelOffer{
+                    static_cast<std::uint8_t>(model_index), cost,
+                    static_cast<std::uint8_t>(mpcp),
+                    static_cast<std::uint8_t>(hardening),
+                    static_cast<std::uint16_t>(memory_megapulses),
+                    static_cast<std::uint16_t>(storage_megapulses),
+                    static_cast<std::uint8_t>(load_io_speed),
+                    static_cast<std::uint8_t>(response)});
+        }
+        lua_pop(state, 1);
         lua_pop(state, 1);
         definition.groups.push_back(std::move(group));
     }
@@ -11654,6 +11717,13 @@ std::optional<ScriptShopDefinition> GameScriptRuntime::shop_definition(
          definition.groups.size() != 1U ||
          definition.groups.front().equipment_upgrade_offers.size() != 8U)) {
         return fail("Wire-Masters has an invalid source upgrade shape");
+    }
+    if (definition.id == "microtronics" &&
+        (definition.menu_mode != 6U || definition.menu_result != 2 ||
+         definition.groups.size() != 6U ||
+         definition.groups[3U].id != "cyberdecks" ||
+         definition.groups[3U].cyberdeck_model_offers.size() != 3U)) {
+        return fail("MicroTronics has an invalid source deck model shape");
     }
     if (!definition.equipment_upgrade_meter_thresholds.empty() &&
         (definition.menu_result != 1 ||

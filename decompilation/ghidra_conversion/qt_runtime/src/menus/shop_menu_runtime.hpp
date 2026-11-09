@@ -4,6 +4,7 @@
 #include "shadowrun_ghidra/field/field_action_removal_conversion.hpp"
 #include "shadowrun_ghidra/field/field_mode_service_loop_conversion.hpp"
 #include "shadowrun_ghidra/menus/menu_confirmation_conversion.hpp"
+#include "shadowrun_ghidra/cyberspace/cyberdeck_record.hpp"
 #include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
 
 #include <array>
@@ -20,6 +21,7 @@ enum class ShopId : std::uint8_t {
     field_store,
     medicine_lodge,
     wire_masters,
+    microtronics,
 };
 
 enum class ShopActionGroup : std::int8_t {
@@ -35,6 +37,7 @@ enum class ShopActionGroup : std::int8_t {
     magic_items = 7,
     magic_foci = 8,
     cyberware = 9,
+    cyberdecks = 10,
 };
 
 struct ShopActionRequest {
@@ -44,6 +47,8 @@ struct ShopActionRequest {
     std::optional<scripting::ScriptShopProgressionOffer> progression_offer;
     std::optional<scripting::ScriptShopEquipmentUpgradeOffer>
         equipment_upgrade_offer;
+    std::optional<scripting::ScriptShopCyberdeckModelOffer>
+        cyberdeck_model_offer;
 };
 
 struct ShopSaleOutcome {
@@ -67,6 +72,7 @@ enum class ShopTransactionMessage : std::uint8_t {
     cyberware_already_owned,
     cyberware_spurs_conflict,
     cyberware_insufficient_essence,
+    cyberdeck_model_unavailable,
 };
 
 enum class ShopTransactionEvent : std::uint8_t {
@@ -76,6 +82,7 @@ enum class ShopTransactionEvent : std::uint8_t {
     purchase_applied,
     sale_applied,
     equipment_upgrade_confirmed,
+    cyberdeck_model_upgrade_confirmed,
     cancelled,
     message_shown,
     message_dismissed,
@@ -92,6 +99,7 @@ enum class ShopMenuEvent : std::uint8_t {
     offer_unavailable,
     progression_selected,
     equipment_upgrade_selected,
+    cyberdeck_model_selected,
     source_action_boundary,
     active_runner_change_requested,
     returned_to_field,
@@ -171,6 +179,11 @@ public:
     std::optional<scripting::ScriptShopEquipmentUpgradeOffer>
     equipment_upgrade_offer(ShopActionGroup group,
                             std::size_t index) const noexcept;
+    std::size_t cyberdeck_model_offer_count(
+        ShopActionGroup group) const noexcept;
+    std::optional<scripting::ScriptShopCyberdeckModelOffer>
+    cyberdeck_model_offer(ShopActionGroup group,
+                          std::size_t index) const noexcept;
 
     ShopTransactionEvent begin_purchase(
         const FieldActionCostRecord& selected_offer,
@@ -182,6 +195,8 @@ public:
         RunnerActionRemovalState& state,
         const FieldActionBaseCostLookup& resale_base_lookup = {});
     ShopTransactionEvent begin_equipment_upgrade_confirmation(
+        std::uint32_t cost);
+    ShopTransactionEvent begin_cyberdeck_model_upgrade_confirmation(
         std::uint32_t cost);
     ShopTransactionEvent advance_transaction(
         std::uint16_t controller_events,
@@ -199,6 +214,7 @@ private:
         purchase,
         sale,
         equipment_upgrade,
+        cyberdeck_model_upgrade,
     };
     void reset_transaction() noexcept;
 
@@ -217,6 +233,8 @@ private:
         progression_offer_groups_{};
     std::array<std::vector<scripting::ScriptShopEquipmentUpgradeOffer>, 6>
         equipment_upgrade_offer_groups_{};
+    std::array<std::vector<scripting::ScriptShopCyberdeckModelOffer>, 6>
+        cyberdeck_model_offer_groups_{};
     MenuConfirmationState transaction_confirmation_{};
     TransactionKind transaction_kind_ = TransactionKind::none;
     ShopTransactionMessage transaction_message_ = ShopTransactionMessage::none;
@@ -228,6 +246,25 @@ private:
     bool transaction_waiting_for_event_ = false;
     bool open_ = false;
 };
+
+struct FieldCyberdeckModelUpgradeState {
+    CyberdeckRecord deck;
+    std::uint32_t funds = 0U;
+};
+
+enum class FieldCyberdeckModelUpgradeResult : std::uint8_t {
+    confirmation_required,
+    applied,
+    model_unavailable,
+    insufficient_funds,
+    state_unavailable,
+};
+
+// ROM 0x5742E..0x57518: require a lower model index, debit the table price,
+// replace the model fields, and preserve larger existing memory/storage.
+FieldCyberdeckModelUpgradeResult apply_field_cyberdeck_model_upgrade(
+    const scripting::ScriptShopCyberdeckModelOffer& offer,
+    FieldCyberdeckModelUpgradeState& state, bool confirmed);
 
 // Transactions reuse the same typed source conversions as the field action
 // menu. The caller supplies the owning session state and controls when a

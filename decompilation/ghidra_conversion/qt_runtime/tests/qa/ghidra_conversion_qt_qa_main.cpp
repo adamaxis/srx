@@ -10954,7 +10954,8 @@ int run_field_scene5_store_service_entry_qa(
     const std::filesystem::path& asset_root,
     const std::filesystem::path& output,
     const std::vector<std::string>& source_boundaries,
-    const bool wire_only = false) {
+    const bool wire_only = false,
+    const bool microtronics_deck_only = false) {
     struct StoreCase {
         std::uint8_t event_code;
         std::string_view service_id;
@@ -10979,9 +10980,18 @@ int run_field_scene5_store_service_entry_qa(
         return 3;
     }
     routes << "event\tservice_id\tportrait_alias\tmenu_outcome\n";
+    if (microtronics_deck_only &&
+        !field_scene.seed_microtronics_deck_upgrade_for_dump(100000U)) {
+        std::cerr << "Scene-5 store service QA: could not seed the Test Deck "
+                     "for MicroTronics upgrade path\n";
+        return 3;
+    }
     for (const auto& store : kStores) {
         const auto service = std::string(store.service_id);
         if (wire_only && service != "wire_masters") {
+            continue;
+        }
+        if (microtronics_deck_only && service != "microtronics") {
             continue;
         }
         if (service == "wire_masters") {
@@ -11369,6 +11379,184 @@ int run_field_scene5_store_service_entry_qa(
             }
             menu_outcome = "field.shop.merlins_lore.opened";
         } else if (service == "microtronics") {
+            if (microtronics_deck_only) {
+                const auto category_frame = render_qa_field(field_scene);
+                const auto category_saved =
+                    save_actual("menu-category", category_frame);
+                if (!field_scene.shop_menu_open() ||
+                    field_scene.shop_menu_mode() != 6U ||
+                    field_scene.shop_menu_result() != 2 ||
+                    !category_saved ||
+                    !boundary_seen_since_prompt(
+                        "field.shop.microtronics.opened")) {
+                    std::cerr << "Scene-5 store service QA: MicroTronics "
+                                 "did not open the deck-present mode-6 menu\n";
+                    return 3;
+                }
+
+                for (int index = 0; index < 3; ++index) {
+                    tap_qa_controller_button(field_scene, 0x08U);
+                }
+                tap_qa_controller_button(field_scene, 0x02U);
+                const auto deck_offer_frame = render_qa_field(field_scene);
+                const QImage service_background(QString::fromStdWString(
+                    (asset_root / "menu" / "field" /
+                     "service-background.bmp").wstring()));
+                bool all_offer_rows_drawn =
+                    !service_background.isNull();
+                for (int index = 0; index < 3; ++index) {
+                    all_offer_rows_drawn = all_offer_rows_drawn &&
+                        image_region_differs(deck_offer_frame,
+                            service_background,
+                            16 + index * 32, 168, 24, 16);
+                }
+                const auto deck_offer_saved =
+                    save_actual("deck-models", deck_offer_frame);
+                if (!field_scene.shop_menu_offers_active() ||
+                    field_scene.shop_menu_group() !=
+                        ShopActionGroup::cyberdecks ||
+                    field_scene.shop_menu_cursor() != 0U ||
+                    field_scene.shop_menu_cyberdeck_model_offer_count_for_dump()
+                        != 3U ||
+                    !deck_offer_saved || !all_offer_rows_drawn ||
+                    !boundary_seen_since_prompt(
+                        "field.shop.microtronics.panel_changed")) {
+                    std::cerr << "Scene-5 store service QA: MicroTronics "
+                                 "did not display all three typed deck models\n";
+                    return 3;
+                }
+
+                constexpr std::array<std::uint32_t, 3> kExpectedFunds{{
+                    95000U, 70000U, 10000U}};
+                constexpr std::array<std::int8_t, 3> kExpectedModels{{
+                    0, 1, 2}};
+                constexpr std::array<std::uint8_t, 3> kExpectedMpcp{{
+                    4U, 6U, 8U}};
+                constexpr std::array<std::uint8_t, 3> kExpectedHardening{{
+                    1U, 2U, 3U}};
+                constexpr std::array<std::uint8_t, 3> kExpectedLoadIo{{
+                    20U, 20U, 50U}};
+                constexpr std::array<std::uint8_t, 3> kExpectedResponse{{
+                    0U, 1U, 1U}};
+                constexpr std::array<std::uint32_t, 3> kModelPrices{{
+                    5000U, 25000U, 60000U}};
+                tap_qa_controller_button(field_scene, 0x40U);
+                const auto declined_confirmation =
+                    render_qa_field(field_scene);
+                const auto decline_prompt_saved = save_actual(
+                    "model-1-confirmation-decline",
+                    declined_confirmation);
+                if (!field_scene.shop_transaction_confirmation_open() ||
+                    field_scene.shop_transaction_amount() != 5000U ||
+                    !decline_prompt_saved) {
+                    std::cerr << "Scene-5 store service QA: MicroTronics "
+                                 "did not open the first model confirmation\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                const auto declined_deck =
+                    field_scene.field_matrix_deck_record_for_dump();
+                if (field_scene.shop_transaction_confirmation_open() ||
+                    field_scene.field_funds_for_dump().value_or(0U) !=
+                        100000U ||
+                    !declined_deck.has_value() ||
+                    !declined_deck->model_index.has_value() ||
+                    *declined_deck->model_index != -1) {
+                    std::cerr << "Scene-5 store service QA: declining the "
+                                 "first deck model changed state\n";
+                    return 3;
+                }
+                for (std::size_t index = 0U; index < 3U; ++index) {
+                    if (index != 0U) {
+                        tap_qa_controller_button(field_scene, 0x08U);
+                    }
+                    // ROM 0x56CF4 shares the selected-action path for A and B.
+                    tap_qa_controller_button(
+                        field_scene, index == 1U ? 0x10U : 0x40U);
+                    const auto confirm_no = render_qa_field(field_scene);
+                    const auto confirm_no_saved = save_actual(
+                        "model-" + std::to_string(index + 1U) +
+                            "-confirmation-no",
+                        confirm_no);
+                    if (!field_scene.shop_transaction_confirmation_open() ||
+                        field_scene.shop_transaction_amount() !=
+                            kModelPrices[index] ||
+                        field_scene.shop_transaction_confirmation()
+                                .selected_option != 1U ||
+                        !confirm_no_saved ||
+                        !boundary_seen_since_prompt(
+                            "field.shop.microtronics."
+                            "cyberdeck_upgrade_confirmation")) {
+                        std::cerr << "Scene-5 store service QA: model "
+                                  << (index + 1U)
+                                  << " did not show its ROM price confirmation\n";
+                        return 3;
+                    }
+                    tap_qa_controller_button(field_scene, 0x01U);
+                    tap_qa_controller_button(field_scene, 0x40U);
+                    const auto applied = render_qa_field(field_scene);
+                    const auto applied_saved = save_actual(
+                        "model-" + std::to_string(index + 1U) + "-applied",
+                        applied);
+                    const auto& deck =
+                        field_scene.field_matrix_deck_record_for_dump();
+                    if (!deck.has_value() ||
+                        !deck->model_index.has_value() ||
+                        *deck->model_index != kExpectedModels[index] ||
+                        !deck->mpcp.has_value() ||
+                        *deck->mpcp != kExpectedMpcp[index] ||
+                        !deck->hardening.has_value() ||
+                        *deck->hardening != kExpectedHardening[index] ||
+                        !deck->memory_megapulses.has_value() ||
+                        *deck->memory_megapulses != 200U ||
+                        !deck->storage_megapulses.has_value() ||
+                        *deck->storage_megapulses != 1000U ||
+                        !deck->load_io_speed.has_value() ||
+                        *deck->load_io_speed != kExpectedLoadIo[index] ||
+                        !deck->response.has_value() ||
+                        *deck->response != kExpectedResponse[index] ||
+                        field_scene.field_funds_for_dump().value_or(0U) !=
+                            kExpectedFunds[index] ||
+                        !applied_saved ||
+                        !boundary_seen_since_prompt(
+                            "field.shop.microtronics."
+                            "cyberdeck_upgrade_applied")) {
+                        std::cerr << "Scene-5 store service QA: model "
+                                  << (index + 1U)
+                                  << " did not update the typed deck and wallet\n";
+                        return 3;
+                    }
+                }
+
+                tap_qa_controller_button(field_scene, 0x04U);
+                tap_qa_controller_button(field_scene, 0x04U);
+                tap_qa_controller_button(field_scene, 0x40U);
+                const auto unavailable = render_qa_field(field_scene);
+                const auto unavailable_saved =
+                    save_actual("model-unavailable", unavailable);
+                if (field_scene.shop_transaction_message() !=
+                        ShopTransactionMessage::cyberdeck_model_unavailable ||
+                    !unavailable_saved ||
+                    !image_has_green_ink(unavailable, 64, 88, 224, 32)) {
+                    std::cerr << "Scene-5 store service QA: fully owned "
+                                 "cyberdeck model was not rejected\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                tap_qa_controller_button(field_scene, 0x80U);
+                const auto returned = render_qa_field(field_scene);
+                const auto returned_saved = save_actual("field-return",
+                                                        returned);
+                if (field_scene.shop_menu_open() || !returned_saved ||
+                    !boundary_seen_since_prompt(
+                        "field.shop.microtronics.returned_to_field")) {
+                    std::cerr << "Scene-5 store service QA: MicroTronics "
+                                 "did not return to the field cleanly\n";
+                    return 3;
+                }
+                menu_outcome =
+                    "field.shop.microtronics.cyberdeck_upgrades_applied";
+            } else {
             const auto closed_frame = render_qa_field(field_scene);
             const auto closed_saved = save_actual("store-closed", closed_frame);
             if (field_scene.shop_menu_open() ||
@@ -11396,6 +11584,7 @@ int run_field_scene5_store_service_entry_qa(
                 return 3;
             }
             menu_outcome = "field.shop.microtronics.store_closed";
+            }
         } else {
             const auto expected_boundary = "field.shop." + service +
                                            ".menu_unimplemented";
@@ -11416,6 +11605,8 @@ int run_field_scene5_store_service_entry_qa(
 
     std::cout << (wire_only
                       ? "field_wire_masters_upgrade_qa=passed events=2 "
+                      : microtronics_deck_only
+                          ? "field_microtronics_deck_upgrade_qa=passed events=4 "
                       : "field_scene5_store_service_entry_qa=passed events=2,3,4,5 ")
               << "default_result=0 scene_transition=none artifacts="
               << output.string() << '\n';
@@ -42459,6 +42650,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_wire_masters_upgrade_qa_path;
         std::optional<std::filesystem::path>
+            field_microtronics_deck_upgrade_qa_path;
+        std::optional<std::filesystem::path>
             field_scene20_physical_entry_qa_path;
         std::optional<std::filesystem::path>
             field_scene20_entry_gate_qa_path;
@@ -43186,6 +43379,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_wire_masters_upgrade_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-microtronics-deck-upgrade-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_microtronics_deck_upgrade_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -49412,6 +49612,12 @@ int main(int argc, char** argv) {
                     field_scene, asset_root,
                     *field_wire_masters_upgrade_qa_path,
                     field_source_boundaries, true);
+            }
+            if (field_microtronics_deck_upgrade_qa_path.has_value()) {
+                return run_field_scene5_store_service_entry_qa(
+                    field_scene, asset_root,
+                    *field_microtronics_deck_upgrade_qa_path,
+                    field_source_boundaries, false, true);
             }
             if (field_scene20_physical_entry_qa_path.has_value()) {
                 return run_field_scene20_physical_entry_qa(

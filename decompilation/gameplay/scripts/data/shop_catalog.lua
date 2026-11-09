@@ -41,13 +41,15 @@ local function equipment_upgrade_offer(category, label_id, selection_id,
 end
 
 local function group(id, first_title_key, second_title_key, offers,
-                     progression_offers, equipment_upgrade_offers)
+                     progression_offers, equipment_upgrade_offers,
+                     cyberdeck_model_offers)
     return {
         id = id,
         title_keys = { first_title_key, second_title_key },
         offers = offers or {},
         progression_offers = progression_offers or {},
         equipment_upgrade_offers = equipment_upgrade_offers or {},
+        cyberdeck_model_offers = cyberdeck_model_offers or {},
     }
 end
 
@@ -74,6 +76,8 @@ local function field_shop_text_keys()
         cyberware_essence_heading = "shop.cyberware.essence_heading",
         cyberware_essence_cost_heading =
             "shop.cyberware.essence_cost_heading",
+        cyberdeck_model_unavailable =
+            "shop.cyberdeck.model_unavailable",
     }
 end
 
@@ -251,6 +255,42 @@ M.catalog = {
                                         "wired_reflexes", "wired_reflexes",
                                         20000),
             }),
+        },
+    },
+    microtronics = {
+        menu_mode = 6,
+        menu_result = 2,
+        title_key = service_title("microtronics"),
+        text_keys = field_shop_text_keys(),
+        -- ROM 0x57412..0x57518 checks and applies the three 14-byte
+        -- cyberdeck model records at 0x1AB196. The typed fields below retain
+        -- each model's price and target properties without exposing ROM rows.
+        groups = {
+            group("combat_utilities", action_heading("combat_utilities_display"),
+                  action_heading("combat_utilities")),
+            group("defense_utilities", action_heading("defense_utilities_display"),
+                  action_heading("defense_utilities")),
+            group("mask_sense_utilities",
+                  action_heading("mask_sense_utilities_display"),
+                  action_heading("mask_sense_utilities")),
+            group("cyberdecks", action_heading("cyberdecks_display"),
+                  action_heading("cyberdecks"), {}, {}, {}, {
+                {model_index = 0, cost = 5000, mpcp = 4, hardening = 1,
+                 memory_megapulses = 50, storage_megapulses = 100,
+                 load_io_speed = 20, response = 0},
+                {model_index = 1, cost = 25000, mpcp = 6, hardening = 2,
+                 memory_megapulses = 100, storage_megapulses = 500,
+                 load_io_speed = 20, response = 1},
+                {model_index = 2, cost = 60000, mpcp = 8, hardening = 3,
+                 memory_megapulses = 200, storage_megapulses = 500,
+                 load_io_speed = 50, response = 1},
+            }),
+            group("cyberdeck_upgrades",
+                  action_heading("cyberdeck_upgrades_display"),
+                  action_heading("cyberdeck_upgrades")),
+            group("cyberdeck_upgrades_second",
+                  action_heading("cyberdeck_upgrades_second_display"),
+                  action_heading("cyberdeck_upgrades_second")),
         },
     },
 }

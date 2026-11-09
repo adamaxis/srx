@@ -509,6 +509,18 @@ bool FieldSceneRuntime::seed_cyberspace_access_for_dump() {
     return true;
 }
 
+bool FieldSceneRuntime::seed_microtronics_deck_upgrade_for_dump(
+    const std::uint32_t funds) {
+    if (!ready_) {
+        return false;
+    }
+    install_test_deck();
+    field_funds_ = funds;
+    return field_matrix_deck_record_.has_value() &&
+           field_runner_feature_flags_.has_value() &&
+           ((*field_runner_feature_flags_ & 0x01U) != 0U);
+}
+
 bool FieldSceneRuntime::seed_gpgx_test_deck_state_for_dump() {
     if (!ready_ || !cyberdeck_available_) {
         return false;

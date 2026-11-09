@@ -1348,6 +1348,13 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_wire_masters_upgra
                  --field-wire-masters-upgrade-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-wire-masters-upgrade-qa")
 
+# MicroTronics' deck-present mode-6 result-2 path buys the three ROM model
+# rows at 0x1AB196, applying their typed hardware fields and wallet costs.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_microtronics_deck_upgrade_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-microtronics-deck-upgrade-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-microtronics-deck-upgrade-qa")
+
 # Ordinary D-pad input contacts the paired scene-2 C0 doorway records,
 # enters scene 0x14, walks to the scene-20 maglock, and opens its source-backed
 # choice panel. C/Walk Away returns to a clean field-only redraw. The QA writes
