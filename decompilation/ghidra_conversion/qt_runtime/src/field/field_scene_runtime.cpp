@@ -20813,8 +20813,7 @@ bool FieldSceneRuntime::set_default_actor_physical_meter_for_dump(
             DefaultFieldActorPresentation& candidate) {
             return candidate.scene_reference == scene_reference &&
                    candidate.active &&
-                   candidate.source_order == source_order &&
-                   candidate.temporary_world_encounter;
+                   candidate.source_order == source_order;
         });
     if (actor == field_default_actors_.end()) {
         return false;

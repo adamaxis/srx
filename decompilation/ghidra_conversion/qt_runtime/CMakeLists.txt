@@ -665,11 +665,9 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_action_qa
                  --field-action-dump
                  "${CMAKE_CURRENT_BINARY_DIR}/field-action-qa")
 
-# Empty magazines reload and code-zero unarmed strikes run through the live
-# FieldSceneRuntime A-button path. The current weapon supplies its own
-# capacity while the runner-wide clip reserve decreases; the strike route
-# checks its C0A2 pose and mode-1 return. These dumps are internal route
-# evidence, not an independent Genesis visual reference.
+# Empty magazines reload, code-zero unarmed strikes, and class-specific
+# throwable inputs run through live FieldSceneRuntime inputs. These dumps are
+# internal route evidence, not an independent Genesis visual reference.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_player_action_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-player-action-dump
@@ -925,6 +923,14 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_spell_effect_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-spell-effect-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-spell-effect-qa")
+
+# Follow the live Gator Shaman Mana Zap input through B target selection,
+# delayed impact, E0 spell death, and retirement of Scene 20's static slot-5 guard.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_player_spell_static_guard_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-player-spell-static-guard-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-player-spell-static-guard-qa"
+                 --field-archetype gator)
 
 # Cast both source Barrier action codes with the normal Lua player-action path,
 # then verify the five-cell collision overlay, recast, expiry, and scene reset.

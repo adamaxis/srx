@@ -415,6 +415,9 @@ public:
     active_default_actor_positions_for_dump() const;
     bool set_default_actor_frozen_for_dump(
         std::size_t active_actor_index, bool frozen) noexcept;
+    // Read-only mirror of the player action's 0x14D8E line gate.
+    bool player_action_line_clear_to_default_actor_for_dump(
+        std::uint16_t source_order);
     std::optional<std::string>
     selected_default_actor_id_for_dump() const;
     std::optional<FieldTargetMarkerDebugState>
@@ -469,7 +472,7 @@ public:
     std::optional<scripting::ScriptActorLifecycleFacts>
     default_actor_lifecycle_for_dump(
         std::uint16_t source_order) const noexcept;
-    // Seeds a live encounter actor for deterministic field QA only.
+    // Seeds a live field actor for deterministic combat QA only.
     bool set_default_actor_physical_meter_for_dump(
         std::uint16_t source_order, std::uint8_t physical_meter) noexcept;
 #ifdef SHADOWRUN_QT_QA_DRIVER

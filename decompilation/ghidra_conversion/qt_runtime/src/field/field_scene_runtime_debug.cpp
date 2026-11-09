@@ -1248,6 +1248,38 @@ bool FieldSceneRuntime::set_default_actor_frozen_for_dump(
 
 
 #ifdef SHADOWRUN_QT_QA_DRIVER
+bool FieldSceneRuntime::player_action_line_clear_to_default_actor_for_dump(
+    const std::uint16_t source_order) {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    const auto actor = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference, source_order](
+            const DefaultFieldActorPresentation& candidate) {
+            return candidate.active &&
+                   candidate.scene_reference == scene_reference &&
+                   candidate.source_order == source_order;
+        });
+    if (actor == field_default_actors_.end()) {
+        return false;
+    }
+
+    const auto& runner = active_runner_record();
+    const SpawnEntityParentState parent{
+        field_entity_.world_position.x,
+        field_entity_.world_position.y,
+        field_movement_state_.heading,
+        static_cast<std::uint8_t>(runner.flags >> 8U),
+        static_cast<std::uint8_t>(runner.flags & 0x00FFU),
+        0U,
+        0U};
+    return probe_action_line_clear(
+        parent, field_party_roster_.active_slot(), actor->world_position.x,
+        actor->world_position.y);
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
+
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::vector<FieldActorAnimationSnapshotForDump>
 FieldSceneRuntime::active_default_actor_animations_for_dump() const {
     const auto scene_reference = state_.field_scene_buffers.scene_reference;

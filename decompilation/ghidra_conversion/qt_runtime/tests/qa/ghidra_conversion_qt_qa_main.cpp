@@ -6577,6 +6577,335 @@ int run_field_default_guard_item_action_qa(
     return 0;
 }
 
+int run_field_player_spell_static_guard_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries) {
+    constexpr std::uint16_t kScene = 20U;
+    constexpr std::uint16_t kGuardOrder = 2U;
+    constexpr std::string_view kGuardId = "field_scene_20_actor_2";
+    constexpr std::uint8_t kManaZapSpellCode = 7U;
+    constexpr std::uint8_t kManaZapActionCode = kManaZapSpellCode + 1U;
+    constexpr std::uint8_t kMinimumSpellForce = 1U;
+    constexpr SceneRunnerPosition kGuardPosition{0x0800U, 0x3500U};
+    constexpr SceneRunnerPosition kRunnerPosition{0x0880U, 0x3500U};
+    std::error_code error;
+    std::filesystem::create_directories(output, error);
+    if (error) {
+        std::cerr << "Player spell QA: cannot create output: "
+                  << error.message() << '\n';
+        return 3;
+    }
+    clear_qa_bitmap_artifacts(output, error);
+    if (error || !field_scene.seed_current_run_for_dump("ghoul_bounty")) {
+        std::cerr << "Player spell QA: could not prepare the selected Gator Shaman run\n";
+        return 3;
+    }
+    field_scene.seed_conditional_actor_effect_facts_for_dump(
+        false, false, 0U, 0U);
+    field_scene.set_world_effect_player_spawn_pending_for_dump(false);
+    field_scene.set_field_entity_world_position_for_dump(0x5000U, 0x7000U);
+    field_scene.set_source_random_seed_for_dump(0U);
+    if (!field_scene.reenter_field_scene_for_dump(kScene)) {
+        std::cerr << "Player spell QA: Scene 20 re-entry failed: "
+                  << field_scene.failure() << '\n';
+        return 3;
+    }
+    field_scene.set_field_world_frame_counter_for_dump(400U);
+    field_scene.set_source_random_seed_for_dump(0xFFFFU);
+    field_scene.set_field_entity_world_position_for_dump(
+        kRunnerPosition.x, kRunnerPosition.y);
+    field_scene.set_field_camera_world_position_for_dump(0U, 0x2D00U);
+    field_scene.set_field_entity_heading_for_dump(0xC000U);
+
+    const auto profile = field_scene.default_actor_script_profile_for_dump(
+        kGuardOrder);
+    const auto slot = field_scene.default_actor_record_slot_for_dump(
+        kGuardOrder);
+    if (field_scene.field_scene_reference_for_dump() != kScene ||
+        field_scene.default_actor_count_for_dump() != 7U ||
+        profile != std::optional<std::string>{"corp_guard_k05_item06"} ||
+        slot != std::optional<FieldWorldActorSlot>{
+                    FieldWorldActorSlot::slot_5}) {
+        std::cerr << "Player spell QA: Scene 20 did not load the expected static Corp Guard"
+                  << " scene=" << field_scene.field_scene_reference_for_dump()
+                  << " actors=" << field_scene.default_actor_count_for_dump()
+                  << " profile=" << profile.value_or("<missing>")
+                  << " slot="
+                  << (slot.has_value()
+                          ? std::to_string(static_cast<unsigned>(*slot))
+                          : std::string{"<missing>"})
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    auto& caster = field_scene.active_runner_record();
+    const auto* const caster_spell_table =
+        find_us_magic_spell_table(caster.magic_table_index);
+    std::optional<MagicSpellTableEntry> mana_zap_entry;
+    if (caster_spell_table != nullptr &&
+        caster_spell_table->entry_count <= caster_spell_table->entries.size()) {
+        const auto found = std::find_if(
+            caster_spell_table->entries.begin(),
+            caster_spell_table->entries.begin() +
+                caster_spell_table->entry_count,
+            [](const MagicSpellTableEntry& entry) {
+                return entry.spell_code == kManaZapSpellCode;
+            });
+        if (found != caster_spell_table->entries.begin() +
+                         caster_spell_table->entry_count) {
+            mana_zap_entry = *found;
+        }
+    }
+    if (caster.archetype_index != 1U || caster.species_index != 0U ||
+        mana_zap_entry == std::nullopt ||
+        mana_zap_entry->force_limit < kMinimumSpellForce) {
+        std::cerr << "Player spell QA: source Gator Shaman table does not "
+                     "permit Mana Zap at minimum force"
+                  << " race=" << static_cast<unsigned>(caster.species_index)
+                  << " class=" << static_cast<unsigned>(caster.archetype_index)
+                  << " table=" << caster.magic_table_index
+                  << " mana_zap_max_force="
+                  << (mana_zap_entry.has_value()
+                          ? std::to_string(mana_zap_entry->force_limit)
+                          : std::string{"<unavailable>"})
+                  << '\n';
+        return 3;
+    }
+    caster.flags = static_cast<std::uint16_t>(caster.flags | 0x0300U);
+    caster.equipped_inventory_slot = -1;
+    // [C] Gator Shaman table 4 lists Mana Zap at force 1..3 (ROM 0x166B60).
+    // [C] ROM 0x111E8 maps D4EA0 spell row 7 to equipped action code 8.
+    caster.equipped_item_code = kManaZapActionCode;
+    // [C] ROM 0x100A8 permits force 1 through this selected row's maximum.
+    // Use that source-derived maximum so the deterministic target roll can
+    // overcome the guard's Willpower resistance.
+    caster.magic_force = mana_zap_entry->force_limit;
+    caster.animation_action_gate = -1;
+    field_scene.set_player_action_delay_for_dump(-1);
+    if (!field_scene.set_default_actor_world_position_for_dump(
+            kGuardOrder, kGuardPosition.x, kGuardPosition.y) ||
+        !field_scene.set_default_actor_physical_meter_for_dump(
+            kGuardOrder, 1U)) {
+        std::cerr << "Player spell QA: could not place and seed the slot-5 guard\n";
+        return 3;
+    }
+
+    std::optional<SceneRunnerPosition> clear_line_runner_position;
+    std::uint16_t clear_line_heading = 0x4000U;
+    for (std::uint16_t distance = 0x0100U;
+         distance <= 0x2000U && !clear_line_runner_position.has_value();
+         distance = static_cast<std::uint16_t>(distance + 0x0100U)) {
+        const std::array<SceneRunnerPosition, 4U> candidates{{
+            SceneRunnerPosition{
+                static_cast<std::uint16_t>(kGuardPosition.x + distance),
+                kGuardPosition.y},
+            SceneRunnerPosition{
+                static_cast<std::uint16_t>(kGuardPosition.x - distance),
+                kGuardPosition.y},
+            SceneRunnerPosition{
+                kGuardPosition.x,
+                static_cast<std::uint16_t>(kGuardPosition.y + distance)},
+            SceneRunnerPosition{
+                kGuardPosition.x,
+                static_cast<std::uint16_t>(kGuardPosition.y - distance)},
+        }};
+        for (std::size_t index = 0U; index < candidates.size(); ++index) {
+            const auto candidate = candidates[index];
+            if ((index == 1U && candidate.x > kGuardPosition.x) ||
+                (index == 3U && candidate.y > kGuardPosition.y)) {
+                continue;
+            }
+            field_scene.set_field_entity_world_position_for_dump(
+                candidate.x, candidate.y);
+            clear_line_heading = index == 0U ? 0xC000U
+                : index == 1U ? 0x4000U
+                : index == 2U ? 0x0000U : 0x8000U;
+            field_scene.set_field_entity_heading_for_dump(clear_line_heading);
+            if (field_scene
+                    .player_action_line_clear_to_default_actor_for_dump(
+                        kGuardOrder)) {
+                clear_line_runner_position = candidate;
+                break;
+            }
+        }
+    }
+    if (!clear_line_runner_position.has_value()) {
+        std::cerr << "Player spell QA: Scene 20 has no clear 0x14D8E route from the bounded adjacent candidate set\n";
+        return 3;
+    }
+    field_scene.set_field_entity_world_position_for_dump(
+        clear_line_runner_position->x, clear_line_runner_position->y);
+    field_scene.set_field_entity_heading_for_dump(clear_line_heading);
+    field_scene.set_field_camera_world_position_for_dump(
+        std::min(clear_line_runner_position->x, kGuardPosition.x), 0x2D00U);
+
+    const auto save = [&output](const std::string& name,
+                                const QImage& image) {
+        return image.save(QString::fromStdWString(
+            (output / std::filesystem::path(name)).wstring()));
+    };
+    const auto before = render_qa_field(field_scene);
+    if (before.isNull() || !save("before.bmp", before) ||
+        !field_hud_chrome_survives(before, asset_root)) {
+        std::cerr << "Player spell QA: the Gator Shaman field baseline was not drawable\n";
+        return 3;
+    }
+
+    bool selected_guard = false;
+    for (std::size_t press = 0U; press < 16U; ++press) {
+        if (field_scene.selected_default_actor_id_for_dump() ==
+            std::optional<std::string>{std::string{kGuardId}}) {
+            selected_guard = true;
+            break;
+        }
+        tap_qa_controller_button(field_scene, 0x10U); // Ordinary B edge.
+    }
+    const auto marker = field_scene.selected_default_actor_target_marker_for_dump();
+    const auto target = field_scene.selected_default_actor_id_for_dump();
+    const auto selected = render_qa_field(field_scene);
+    if (!selected_guard ||
+        target != std::optional<std::string>{std::string{kGuardId}} ||
+        !marker.has_value() || !marker->visible ||
+        !save("target-selected.bmp", selected) ||
+        !field_hud_chrome_survives(selected, asset_root)) {
+        std::cerr << "Player spell QA: ordinary B input did not select the static guard"
+                  << " selected=" << target.value_or("<none>")
+                  << " marker=" << (marker.has_value() && marker->visible)
+                  << '\n';
+        return 3;
+    }
+
+    const auto boundary_start = source_boundaries.size();
+    field_audio_events.clear();
+    tap_qa_controller_button(field_scene, 0x40U); // Ordinary A cast.
+    const auto cast = render_qa_field(field_scene);
+    const auto has_boundary = [&source_boundaries, boundary_start](
+                                  const std::string_view expected) {
+        return std::find(
+                   source_boundaries.begin() +
+                       static_cast<std::ptrdiff_t>(boundary_start),
+                   source_boundaries.end(), expected) !=
+               source_boundaries.end();
+    };
+    if (!has_boundary("field.combat.player_spell.effect_requested") ||
+        !has_boundary("field.combat.player_spell.effect_slot_reserved") ||
+        !save("cast-start.bmp", cast) ||
+        !field_hud_chrome_survives(cast, asset_root)) {
+        std::cerr << "Player spell QA: focused A did not request a linked Mana Zap"
+                  << " target="
+                  << field_scene.selected_default_actor_id_for_dump()
+                         .value_or("<none>")
+                  << " force=" << static_cast<unsigned>(caster.magic_force)
+                  << " mental="
+                  << static_cast<unsigned>(caster.behavior_meter)
+                  << " failure=" << field_scene.failure() << '\n';
+        for (std::size_t index = boundary_start;
+             index < source_boundaries.size(); ++index) {
+            std::cerr << "  " << source_boundaries[index] << '\n';
+        }
+        return 3;
+    }
+
+    const auto actors_before = field_scene.default_actor_count_for_dump();
+    bool effect_resolved = false;
+    bool death_pose_seen = false;
+    bool death_pose_saved = false;
+    bool actor_retired = false;
+    std::optional<std::uint8_t> meter_at_impact;
+    std::optional<scripting::ScriptActorLifecycleFacts> lifecycle_at_death;
+    std::uint16_t impact_frame = 0U;
+    std::uint16_t death_frame = 0U;
+    constexpr std::uint16_t kLifecycleFrameLimit = 512U;
+    for (std::uint16_t frame = 1U; frame <= kLifecycleFrameLimit; ++frame) {
+        field_scene.advance_frame();
+        if (!effect_resolved &&
+            has_boundary("field.actor.spell.effect_resolved")) {
+            effect_resolved = true;
+            impact_frame = frame;
+            meter_at_impact =
+                field_scene.default_actor_physical_meter_for_dump(
+                    kGuardOrder);
+            if (!save("impact.bmp", render_qa_field(field_scene))) {
+                std::cerr << "Player spell QA: could not save the delayed impact\n";
+                return 3;
+            }
+        }
+        if (!death_pose_seen &&
+            field_scene.default_actor_animation_id_for_dump(kGuardOrder) ==
+                std::optional<std::string>{"down"}) {
+            death_pose_seen = true;
+            death_frame = frame;
+            lifecycle_at_death =
+                field_scene.default_actor_lifecycle_for_dump(kGuardOrder);
+            death_pose_saved = save(
+                "spell-death-e0.bmp", render_qa_field(field_scene));
+        }
+        if (field_scene.default_actor_count_for_dump() < actors_before) {
+            actor_retired =
+                field_scene.default_actor_count_for_dump() + 1U ==
+                actors_before;
+            break;
+        }
+    }
+    const auto actual = render_qa_field(field_scene);
+    if (!effect_resolved || impact_frame == 0U ||
+        !has_boundary("field.actor.spell.effect_slot_released") ||
+        meter_at_impact != std::optional<std::uint8_t>{0U} ||
+        !death_pose_seen || !death_pose_saved || !lifecycle_at_death.has_value() ||
+        !lifecycle_at_death->active || lifecycle_at_death->downed ||
+        !actor_retired || !save("actual.bmp", actual) ||
+        !field_hud_chrome_survives(actual, asset_root) ||
+        field_audio_events != std::vector<std::uint16_t>{0x0033U}) {
+        std::cerr << "Player spell QA: delayed impact, E0 pose, or static actor retirement failed"
+                  << " impact=" << effect_resolved
+                  << " frame=" << impact_frame
+                  << " meter=" << (meter_at_impact.has_value()
+                                          ? std::to_string(*meter_at_impact)
+                                          : std::string{"<missing>"})
+                  << " death=" << death_pose_seen
+                  << " death_frame=" << death_frame
+                  << " lifecycle="
+                  << (lifecycle_at_death.has_value()
+                          ? std::to_string(
+                                lifecycle_at_death->active ? 1 : 0) + "/" +
+                                std::to_string(
+                                    lifecycle_at_death->downed ? 1 : 0) + "/" +
+                                std::to_string(
+                                    lifecycle_at_death->dead ? 1 : 0)
+                          : std::string{"<missing>"})
+                  << " retired=" << actor_retired
+                  << " audio=";
+        for (const auto event : field_audio_events) {
+            std::cerr << event << ',';
+        }
+        std::cerr << " failure=" << field_scene.failure() << '\n';
+        const auto first_reported_boundary =
+            std::max(boundary_start,
+                     source_boundaries.size() > 32U
+                         ? source_boundaries.size() - 32U
+                         : 0U);
+        for (std::size_t index = first_reported_boundary;
+             index < source_boundaries.size(); ++index) {
+            std::cerr << "  " << source_boundaries[index] << '\n';
+        }
+        return 3;
+    }
+
+    std::cout << "field_player_spell_static_guard_qa=passed scene=" << kScene
+              << " archetype=" << static_cast<unsigned>(caster.archetype_index)
+              << " species=" << static_cast<unsigned>(caster.species_index)
+              << " force=" << static_cast<unsigned>(caster.magic_force)
+              << " spell=mana_zap target_slot=5 target_selected_by=B"
+              << " effect_resolved_frame=" << impact_frame
+              << " death_frame=" << death_frame
+              << " source_retirement=yes actual="
+              << (output / "actual.bmp").string() << '\n';
+    return 0;
+}
+
 int run_field_hound_close_effect_qa(
     FieldSceneRuntime& field_scene,
     const StartupIntegrationState& startup_state,
@@ -43205,6 +43534,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_spell_effect_qa_path;
         std::optional<std::filesystem::path>
+            field_player_spell_static_guard_qa_path;
+        std::optional<std::filesystem::path>
             field_redmond_vigore_search_qa_path;
         std::optional<std::filesystem::path>
             field_jump_house_entry_qa_path;
@@ -43693,6 +44024,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_spell_effect_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-player-spell-static-guard-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_player_spell_static_guard_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-barrier-sprite-qa" &&
@@ -49844,6 +50182,12 @@ int main(int argc, char** argv) {
                     field_scene, smoke_state, asset_root,
                     *field_spell_effect_qa_path);
             }
+            if (field_player_spell_static_guard_qa_path.has_value()) {
+                return run_field_player_spell_static_guard_qa(
+                    field_scene, asset_root,
+                    *field_player_spell_static_guard_qa_path,
+                    field_audio_events, field_source_boundaries);
+            }
             if (field_barrier_sprite_qa_path.has_value()) {
                 return run_field_barrier_sprite_qa(
                     field_scene, smoke_state, *field_barrier_sprite_qa_path);
@@ -53962,6 +54306,7 @@ int main(int argc, char** argv) {
                         }
                     }
                 }
+
                 std::cout << "field_player_action_dump=written path="
                           << output.string()
                           << " weapon1_rounds=6 weapon2_rounds=12"
