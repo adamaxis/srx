@@ -516,18 +516,35 @@ indirect pointer at `0x1D6DA2` selects the faction handler `0x20F42`. The
 handler opens prompt `0x120F6C`. Its MORE command reaches `0x23876`, which tests
 `FF018F` bit 1 before bit 2. With both clear it returns the text record at
 `0x11D128` and queues no actors. The Qt host projects the two route conditions
-as named facts to Lua; the neutral branch displays that ROM text and completes
-the event. The Mafia and Halloweener actor-list branches (`0x1D7010` and
-`0x1D7038`) remain explicit source boundaries pending actor-list extraction
-and placement coverage.
+as named facts to Lua. The semantic membership table
+`gameplay/world/field_actor_sequence_members.tsv` maps scenes 0, 1, and 3 to
+the four ordered profile entries selected by the ROM lists: `0x1D7010` contains
+four pointers to Eye-Fiver template `0x1D6610`, and `0x1D7038` contains four
+pointers to Weenr2 template `0x1D66A4`; both lists terminate with a null pointer
+in the US ROM [C]. Lua queues the matching map-derived sequence and presents
+the result record at `0x11D098` or `0x11D019`. Bit 1 still takes priority when
+both flags are set.
 
-`field_random_events_tests.lua` checks the neutral text, missing-state handling,
-and the bit-1-before-bit-2 order. The integrated
-`shadowrun_ghidra_conversion_qt_field_hidden_camera_qa` also drives Scene 0
-selector rolls `1+4`, resolves the neutral route, and writes
-`faction_disturbance/opening.bmp` and `faction_disturbance/actual.bmp`.
-Focused Debug and Release tests pass. The output is an internal runtime dump,
-not an independent Genesis visual comparison.
+`field_random_events_tests.lua` checks the neutral text, exact two gang result
+records, queue acceptance, unknown state, and bit-1-before-bit-2 behavior when
+both bits are enabled. `field_encounters_tests.lua`, the runtime resolver test,
+and the world-content loader test check the four entries' source order, profile
+identity, map-derived policy, and scene scope. The headless
+`shadowrun_ghidra_conversion_qt_field_hidden_camera_qa` still drives the Scene
+0 neutral branch. Separate fresh-runtime CTests,
+`shadowrun_ghidra_conversion_qt_field_faction_mafia_qa` and
+`shadowrun_ghidra_conversion_qt_field_faction_halloweeners_qa`, exercise each
+result page, return transition, and all four active actor records, and write
+`opening.bmp`, `result.bmp`, and `actual.bmp`. These are internal runtime dumps,
+not independent Genesis visual comparisons. All seven focused Debug and
+Release CTests pass.
+
+The sequence path remains partial: ROM failure falls back to the randomized
+holocam/photo event at `0x11CF74`, while the current host leaves unavailable
+sequence data or a rejected queue as an explicit source boundary. Spawn is
+deferred until the result dialogue returns, so the no-open-map-candidate and
+partial actor-slot cases still need the source fallback handoff. The `FF018F`
+bit writers and combat exit also remain untraced.
 
 **Custodian / missing-pass check (`0x2101E`, scene 20, sum 1).** The entry
 stub pairs prompt record `0x121330` with profile `0x121E5C`. That profile is a

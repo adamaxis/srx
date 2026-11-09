@@ -1116,6 +1116,80 @@ bool load_source_sequence_ids(
     return true;
 }
 
+bool push_source_actor_sequence_members(
+    lua_State* state, const std::filesystem::path& world_directory,
+    const int root_table, std::string& failure) {
+    const auto path = world_directory / "field_actor_sequence_members.tsv";
+    TsvDocument document;
+    if (!read_tsv(path, true, document, failure)) {
+        return false;
+    }
+    std::map<std::pair<lua_Integer, std::string>, std::set<lua_Integer>>
+        orders_by_id;
+    for (std::size_t index = 0U; index < document.rows.size(); ++index) {
+        const auto& row = document.rows[index];
+        lua_Integer scene_id = 0;
+        if (!row_integer(document, row, "scene_id", scene_id, path,
+                         index + 2U, failure) ||
+            scene_id < 0 || scene_id > srx::v(srx::Scene::LAST_ID)) {
+            if (failure.empty()) {
+                failure = path.string() + ": row " +
+                    std::to_string(index + 2U) +
+                    " has a scene outside the ROM scene range";
+            }
+            return false;
+        }
+        const auto sequence_id = row_string(document, row, "sequence_id");
+        const auto profile_id = row_string(document, row, "profile_id");
+        const auto placement_policy =
+            row_string(document, row, "placement_policy");
+        const auto valid_id = [](const std::string& value) {
+            return !value.empty() &&
+                std::all_of(value.begin(), value.end(),
+                            [](const char character) {
+                                return (character >= 'a' && character <= 'z') ||
+                                       (character >= 'A' && character <= 'Z') ||
+                                       (character >= '0' && character <= '9') ||
+                                       character == '_' || character == '-' ||
+                                       character == '.' || character == ':';
+                            });
+        };
+        lua_Integer sequence_order = 0;
+        if (!valid_id(sequence_id) || !valid_id(profile_id) ||
+            placement_policy != "map_derived_candidates" ||
+            !row_integer(document, row, "sequence_order", sequence_order,
+                         path, index + 2U, failure) ||
+            sequence_order < 0 || sequence_order >= 16 ||
+            !orders_by_id[std::make_pair(scene_id, sequence_id)]
+                 .insert(sequence_order).second) {
+            if (failure.empty()) {
+                failure = path.string() + ": row " +
+                    std::to_string(index + 2U) +
+                    " has invalid or duplicate semantic sequence membership";
+            }
+            return false;
+        }
+    }
+    for (const auto& [scene_sequence, orders] : orders_by_id) {
+        lua_Integer expected_order = 0;
+        for (const auto order : orders) {
+            if (order != expected_order++) {
+                failure = path.string() + ": sequence " +
+                    scene_sequence.second + " in scene " +
+                    std::to_string(scene_sequence.first) +
+                    " has a non-contiguous actor order";
+                return false;
+            }
+        }
+    }
+    if (!push_rows(state, document, {"scene_id", "sequence_order"}, path,
+                   failure)) {
+        return false;
+    }
+    lua_setfield(state, root_table, "field_actor_sequence_members");
+    return true;
+}
+
 bool load_source_activity_group_ids(
     const std::filesystem::path& world_directory,
     SourceActivityGroupIds& activity_ids, std::string& failure) {
@@ -2440,6 +2514,8 @@ void push_empty_data(lua_State* state, const int modules_reference) {
     lua_createtable(state, 0, 0);
     lua_setfield(state, root_table, "world_activity_actors");
     lua_createtable(state, 0, 0);
+    lua_setfield(state, root_table, "field_actor_sequence_members");
+    lua_createtable(state, 0, 0);
     lua_setfield(state, root_table, "conditional_actor_candidates");
     lua_createtable(state, 0, 0);
     lua_setfield(state, root_table, "field_alarm_profiles");
@@ -2506,6 +2582,11 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
     }
     lua_setfield(state, root_table, "entities");
     if (!push_world_areas(state, world_directory, root_table, failure)) {
+        lua_settop(state, stack_base);
+        return false;
+    }
+    if (!push_source_actor_sequence_members(
+            state, world_directory, root_table, failure)) {
         lua_settop(state, stack_base);
         return false;
     }

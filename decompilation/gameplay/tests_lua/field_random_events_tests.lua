@@ -3,6 +3,7 @@ package.path = "decompilation/gameplay/scripts/?.lua;" .. package.path
 local Combat = require("combat")
 local DialogueFramework = require("dialogue_framework")
 local E = require("enums")
+local Encounters = require("field_encounters")
 local RandomEvents = require("field_random_events")
 
 local checks = 0
@@ -105,13 +106,83 @@ game.location.event_id = "different_event"
 eq(RandomEvents.present_hidden_camera(), nil,
    "unrelated event cannot enter hidden-camera handler")
 
-local function run_faction_disturbance(mafia_route, halloweener_route)
+local function run_faction_disturbance(
+    mafia_route, halloweener_route, queue_result)
     local pages = {}
-    local service_calls = {}
+    local route_calls = {}
+    local sequence_calls = {}
+    local queue_calls = {}
     local flags = {
         faction_disturbance_mafia_route_enabled = mafia_route,
         faction_disturbance_halloweener_route_enabled = halloweener_route,
     }
+    local sequence_members = {}
+    for _, route in ipairs({
+        { id = E.WorldEffectSequence.FACTION_MAFIA_EYE_FIVERS,
+          profile = "mafia_eye5r_k07_item0c" },
+        { id = E.WorldEffectSequence.FACTION_HALLOWEENERS,
+          profile = "weenr2_k08_item01" },
+    }) do
+        for order = 0, 3 do
+            sequence_members[#sequence_members + 1] = {
+                scene_id = 0,
+                sequence_id = route.id,
+                sequence_order = order,
+                profile_id = route.profile,
+                placement_policy =
+                    E.WorldEffectPlacementPolicy.MAP_DERIVED_CANDIDATES,
+            }
+        end
+    end
+    local dynamic_actor_profiles = {
+        {
+            profile_id = "mafia_eye5r_k07_item0c",
+            actor_name = "mafia eye5r",
+            visual_profile_id = E.ActorVisualProfile.GHOUL_EYE_FIVER,
+            sprite_stem = "actor-kind-7-palette-2",
+            combat_body = 5,
+        },
+        {
+            profile_id = "weenr2_k08_item01",
+            actor_name = "weenr2",
+            visual_profile_id = E.ActorVisualProfile.YAKUZA_WEENR,
+            sprite_stem = "yakuza_weenr_k08_item0a",
+            combat_body = 4,
+        },
+    }
+    for _, profile in ipairs(dynamic_actor_profiles) do
+        profile.scene_id = 0
+        profile.sequence_order = 0
+        profile.sequence_id = "profile_catalog"
+        profile.selection_kind = "weighted_encounter"
+        profile.action_kind = "item"
+        profile.action_id = "streetline_special"
+        profile.actor_facts = { interaction = {} }
+        profile.combat_cyberware = {}
+        profile.combat_traits = {}
+        profile.inventory = {}
+        profile.weapon_action_policies = {}
+        profile.physical_meter = 10
+        profile.combat_mental_meter = 10
+        profile.posture_reduction_percent = 0
+        profile.combat_quickness = 4
+        profile.combat_strength = 4
+        profile.combat_intelligence = 4
+        profile.combat_willpower = 4
+        profile.combat_melee_combat = 1
+        profile.combat_sorcery = 0
+        profile.combat_firearms = 1
+        profile.combat_pistols = 1
+        profile.combat_smgs = 1
+        profile.combat_shotguns = 1
+        profile.equipped_armor_id = "none"
+        profile.activity_probe_enabled = false
+        profile.action_delay_modifier = 0
+        profile.primary_action_profile_enabled = false
+        profile.secondary_action_profile_enabled = false
+        profile.force = 0
+        profile.spell_trial_cap = 0
+    end
     game = {
         location = {
             type = "field_map",
@@ -128,6 +199,8 @@ local function run_faction_disturbance(mafia_route, halloweener_route)
                     { event_id = "faction_disturbance", choice_order = 1,
                       choice_id = "continue" },
                 },
+                dynamic_world_activity_actors = dynamic_actor_profiles,
+                field_actor_sequence_members = sequence_members,
             },
         },
         ui = {
@@ -140,13 +213,34 @@ local function run_faction_disturbance(mafia_route, halloweener_route)
         },
         services = {
             call = function(domain, action)
-                eq(domain, "story", "faction route service domain")
-                service_calls[#service_calls + 1] = action
-                return flags[action]
+                if domain == "story" and flags[action] ~= nil then
+                    route_calls[#route_calls + 1] = action
+                    return flags[action]
+                end
+                if domain == "field" and action == "scene_reference" then
+                    return "scene_0"
+                end
+                if domain == "story" and
+                   action:match("^queue_world_effect_") then
+                    queue_calls[#queue_calls + 1] = action
+                    return queue_result or "queued"
+                end
+                return nil
             end,
         },
     }
-    return RandomEvents.present_faction_disturbance(), pages, service_calls
+    local resolve_sequence = Encounters.resolve_sequence
+    Encounters.resolve_sequence = function(scene_id, sequence_id)
+        sequence_calls[#sequence_calls + 1] = {
+            scene_id = scene_id,
+            sequence_id = sequence_id,
+        }
+        return resolve_sequence(scene_id, sequence_id)
+    end
+    local result = RandomEvents.present_faction_disturbance()
+    Encounters.resolve_sequence = resolve_sequence
+    return result, pages, route_calls,
+           sequence_calls, queue_calls
 end
 
 local faction_result, faction_pages, faction_services =
@@ -171,28 +265,71 @@ eq(table.concat(faction_services, ","),
    "faction_disturbance_halloweener_route_enabled",
    "ROM bit-1 route check precedes the bit-2 route check")
 
-local mafia_result, mafia_pages, mafia_services =
+local mafia_result, mafia_pages, mafia_services,
+      mafia_sequence_calls, mafia_queue_calls =
     run_faction_disturbance("enabled", "disabled")
-eq(type(mafia_result), "table",
-   "Mafia route remains an explicit source boundary")
-eq(mafia_result.type, "source_boundary",
-   "Mafia actor list is not reported as a completed event")
-eq(#mafia_pages, 1,
-   "Mafia route does not show the neutral no-attack result")
+eq(mafia_result, "resolved", "ROM 0x23876 Mafia route resolves")
+eq(#mafia_pages, 2, "Mafia route shows its attack result")
+eq(mafia_pages[2].text,
+   "<A gang of Eye-Fivers jump out of the crowd.>||" ..
+   "So, you chose to serve the Yakuza?||" ..
+   "Then you deserve to die like the other enemies of the Mafia!",
+   "Mafia route uses the result record at ROM 0x11D098")
+eq(mafia_pages[2].continuation, false,
+   "Mafia result is a terminal page before the queued map sequence")
 eq(table.concat(mafia_services, ","),
    "faction_disturbance_mafia_route_enabled",
    "ROM bit-1 priority skips the bit-2 route check")
+eq(#mafia_sequence_calls, 1,
+   "Mafia route resolves its source actor list once")
+eq(mafia_sequence_calls[1].sequence_id,
+   "faction_mafia_eye_fivers",
+   "Mafia route uses a semantic actor-sequence ID")
+eq(table.concat(mafia_queue_calls, ","),
+   "queue_world_effect_0_4_faction_mafia_eye_fivers",
+   "Mafia route queues four map-derived actors")
 
-local halloween_result, halloween_pages, halloween_services =
+local halloween_result, halloween_pages, halloween_services,
+      halloween_sequence_calls, halloween_queue_calls =
     run_faction_disturbance("disabled", "enabled")
-eq(halloween_result.type, "source_boundary",
-   "Halloweener actor list remains an explicit source boundary")
-eq(#halloween_pages, 1,
-   "Halloweener route does not show the neutral no-attack result")
+eq(halloween_result, "resolved", "ROM 0x23876 Halloweener route resolves")
+eq(#halloween_pages, 2, "Halloweener route shows its attack result")
+eq(halloween_pages[2].text,
+   "<Some Halloweeners appear out of the crowd.>||" ..
+   "Hey, Mafia boy!  You chose the wrong side to ally with!||" ..
+   "Yakuza rules this town!",
+   "Halloweener route uses the result record at ROM 0x11D019")
 eq(table.concat(halloween_services, ","),
    "faction_disturbance_mafia_route_enabled," ..
    "faction_disturbance_halloweener_route_enabled",
    "Halloweener route follows a clear ROM bit-1 check")
+eq(halloween_sequence_calls[1].sequence_id,
+   "faction_halloweeners",
+   "Halloweener route resolves its semantic actor list")
+eq(table.concat(halloween_queue_calls, ","),
+   "queue_world_effect_0_4_faction_halloweeners",
+   "Halloweener route queues four map-derived actors")
+
+local both_routes_result, both_routes_pages, both_routes_services,
+      both_routes_sequences =
+    run_faction_disturbance("enabled", "enabled")
+eq(both_routes_result, "resolved",
+   "simultaneous faction bits follow the ROM priority branch")
+eq(both_routes_pages[2].text, mafia_pages[2].text,
+   "bit 1 selects the Mafia outcome when both bits are set")
+eq(table.concat(both_routes_services, ","),
+   "faction_disturbance_mafia_route_enabled",
+   "both set bits skip the ROM bit-2 query")
+eq(both_routes_sequences[1].sequence_id,
+   "faction_mafia_eye_fivers",
+   "both set bits queue only the Mafia actor sequence")
+
+local busy_faction_result, busy_faction_pages =
+    run_faction_disturbance("enabled", "disabled", "busy")
+eq(busy_faction_result.type, "source_boundary",
+   "a rejected actor-list queue remains an explicit boundary")
+eq(#busy_faction_pages, 1,
+   "a rejected actor-list queue does not claim the fight started")
 
 local unknown_faction_result, unknown_faction_pages =
     run_faction_disturbance(nil, "disabled")

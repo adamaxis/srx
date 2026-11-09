@@ -4975,7 +4975,8 @@ int run_field_random_encounter_spawn_qa(
 int run_field_hidden_camera_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& output,
-    const std::vector<std::string>& source_boundaries) {
+    const std::vector<std::string>& source_boundaries,
+    const std::string_view faction_route) {
     std::error_code error;
     std::filesystem::create_directories(output, error);
     if (error) {
@@ -5192,6 +5193,162 @@ int run_field_hidden_camera_qa(
                      "to Scene 0; dialogue=" << field_scene.dialogue_open()
                   << " failure=" << field_scene.failure() << '\n';
         return 3;
+    }
+
+    const auto run_faction_actor_route = [&field_scene, &output,
+                                          &source_boundaries, failure_seed](
+        const std::string_view route_name, const std::uint8_t route_flags,
+        const std::string_view result_fragment,
+        const std::string_view expected_profile) {
+        const auto route_output = output / "faction_disturbance" /
+            std::string(route_name);
+        std::error_code route_error;
+        std::filesystem::create_directories(route_output, route_error);
+        if (route_error ||
+            !field_scene.reenter_field_scene_for_dump(0U)) {
+            std::cerr << "field hidden-camera QA: could not prepare faction "
+                      << route_name << " scene: " << route_error.message()
+                      << '\n';
+            return false;
+        }
+
+        field_scene.seed_runner_feature_flags_for_qa(route_flags);
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        // ROM 0x23876 reads FF018F bit 1 before bit 2, then attempts the
+        // corresponding four-record list at 0x1D7010 or 0x1D7038.
+        const auto route_spawned =
+            field_scene.resolve_and_spawn_field_encounter_for_dump(
+                1U, 4U, *failure_seed);
+        const auto opening = field_scene.dialogue_panel();
+        const auto opening_image = render_qa_field(field_scene);
+        const bool opening_text = std::any_of(
+            opening.text_segments.begin(),
+            opening.text_segments.begin() +
+                static_cast<std::ptrdiff_t>(opening.text_segment_count),
+            [](const std::string_view segment) {
+                return segment.find("sudden disturbance up ahead") !=
+                       std::string_view::npos;
+            });
+        if (route_spawned != 0U || !opening.open || !opening.has_more ||
+            !opening_text ||
+            !save_qa_image(route_output, "opening.bmp", opening_image)) {
+            std::cerr << "field hidden-camera QA: faction " << route_name
+                      << " prompt did not open; spawned=" << route_spawned
+                      << " dialogue=" << opening.open
+                      << " more=" << opening.has_more
+                      << " opening_text=" << opening_text
+                      << " failure=" << field_scene.failure() << '\n';
+            return false;
+        }
+
+        tap_qa_controller_button(field_scene, 0x40U);
+        const auto result = field_scene.dialogue_panel();
+        const auto result_image = render_qa_field(field_scene);
+        const bool result_text = std::any_of(
+            result.text_segments.begin(),
+            result.text_segments.begin() +
+                static_cast<std::ptrdiff_t>(result.text_segment_count),
+            [result_fragment](const std::string_view segment) {
+                return segment.find(result_fragment) !=
+                       std::string_view::npos;
+            });
+        if (!result.open || result.has_more || !result_text ||
+            !save_qa_image(route_output, "result.bmp", result_image)) {
+            std::cerr << "field hidden-camera QA: faction " << route_name
+                      << " did not show its ROM result record; dialogue="
+                      << result.open << " more=" << result.has_more
+                      << " result_text=" << result_text
+                      << " failure=" << field_scene.failure() << '\n';
+            return false;
+        }
+
+        tap_qa_controller_button(field_scene, 0x40U);
+        auto remaining =
+            field_scene.field_modal_return_transition_frames_for_dump();
+        std::uint16_t fade_frames = 0U;
+        while (remaining != 0U && fade_frames < 120U) {
+            field_scene.set_controller_port_byte(0U);
+            field_scene.advance_frame();
+            ++fade_frames;
+            remaining =
+                field_scene.field_modal_return_transition_frames_for_dump();
+        }
+        std::uint8_t spawn_passes = 0U;
+        while (field_scene.dynamic_world_actor_count_for_dump() != 4U &&
+               spawn_passes < 8U) {
+            field_scene.set_controller_port_byte(0U);
+            field_scene.advance_frame();
+            ++spawn_passes;
+        }
+
+        const auto actors =
+            field_scene.active_default_actor_animations_for_dump();
+        std::array<std::size_t, 4U> source_orders{};
+        std::size_t profile_count = 0U;
+        for (const auto& actor : actors) {
+            if (actor.script_profile_id == expected_profile) {
+                ++profile_count;
+                if (actor.source_order < source_orders.size()) {
+                    ++source_orders[actor.source_order];
+                }
+            }
+        }
+        const auto actual_image = render_qa_field(field_scene);
+        const bool actual_saved =
+            save_qa_image(route_output, "actual.bmp", actual_image);
+        if (field_scene.dialogue_open() ||
+            field_scene.field_scene_reference_for_dump() != 0U ||
+            remaining != 0U ||
+            field_scene.dynamic_world_actor_count_for_dump() != 4U ||
+            profile_count != 4U ||
+            !std::all_of(source_orders.begin(), source_orders.end(),
+                         [](const std::size_t count) { return count == 1U; }) ||
+            !actual_saved) {
+            std::cerr << "field hidden-camera QA: faction " << route_name
+                      << " did not publish four ordered map-placed actors; "
+                      << "dialogue=" << field_scene.dialogue_open()
+                      << " scene="
+                      << field_scene.field_scene_reference_for_dump()
+                      << " fade=" << fade_frames << '/' << remaining
+                      << " dynamic_actors="
+                      << field_scene.dynamic_world_actor_count_for_dump()
+                      << " profiles=" << profile_count
+                      << " source_orders=" << source_orders[0] << ','
+                      << source_orders[1] << ',' << source_orders[2] << ','
+                      << source_orders[3]
+                      << " actual_saved=" << actual_saved
+                      << " failure=" << field_scene.failure() << '\n';
+            return false;
+        }
+        const auto resolved_boundary =
+            "field.world_activity.faction_" + std::string(route_name) +
+            "_sequence_resolved";
+        (void)source_boundaries;
+        std::cout << "faction_route=" << route_name << " profiles=4"
+                  << " fade_frames=" << fade_frames
+                  << " actual=" << (route_output / "actual.bmp").string()
+                  << '\n';
+        return std::find(source_boundaries.begin(), source_boundaries.end(),
+                         resolved_boundary) != source_boundaries.end();
+    };
+    const bool faction_route_ok =
+        faction_route.empty() ||
+        (faction_route == "mafia_eye_fivers" &&
+         run_faction_actor_route(
+             "mafia_eye_fivers", 0x02U, "A gang of Eye-Fivers",
+             "mafia_eye5r_k07_item0c")) ||
+        (faction_route == "halloweeners" &&
+         run_faction_actor_route(
+             "halloweeners", 0x04U, "Some Halloweeners",
+             "weenr2_k08_item01"));
+    if (!faction_route_ok) {
+        std::cerr << "field hidden-camera QA: faction actor route did not "
+                     "complete through ordered actor publication\n";
+        return 3;
+    }
+    if (!faction_route.empty()) {
+        return 0;
     }
 
     const auto haggard_output = output / "haggard_man_help";
@@ -41735,6 +41892,7 @@ int main(int argc, char** argv) {
             field_random_encounter_spawn_qa_path;
         std::optional<std::filesystem::path>
             field_hidden_camera_qa_path;
+        std::optional<std::string> field_faction_route_name;
         std::optional<std::filesystem::path>
             field_npc_item_action_qa_path;
         std::optional<std::filesystem::path>
@@ -42191,6 +42349,11 @@ int main(int argc, char** argv) {
                 field_smoke = true;
                 field_hidden_camera_qa_path =
                     std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-faction-route" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_faction_route_name = argv[++index];
             }
             if (std::string(argv[index]) ==
                     "--field-npc-item-action-qa" &&
@@ -48376,7 +48539,8 @@ int main(int argc, char** argv) {
             if (field_hidden_camera_qa_path.has_value()) {
                 return run_field_hidden_camera_qa(
                     field_scene, *field_hidden_camera_qa_path,
-                    field_source_boundaries);
+                    field_source_boundaries,
+                    field_faction_route_name.value_or(std::string{}));
             }
             if (field_npc_item_action_qa_path.has_value()) {
                 return run_field_npc_item_action_qa(

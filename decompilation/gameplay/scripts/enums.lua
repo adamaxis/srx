@@ -226,7 +226,9 @@ E.WorldEffectSequence = {
     HAGGARD_GATOR_SHAMAN_AND_BODYGUARDS =
         "haggard_man_gator_shaman_and_bodyguards",
     HAGGARD_TWO_BODYGUARDS = "haggard_man_two_bodyguards",
-} -- ROM lists 0x1D6E2A, 0x1D704C, and 0x1D7050 [C]
+    FACTION_MAFIA_EYE_FIVERS = "faction_mafia_eye_fivers",
+    FACTION_HALLOWEENERS = "faction_halloweeners",
+} -- ROM lists 0x1D6E2A, 0x1D7010, 0x1D7038, 0x1D704C, and 0x1D7050 [C]
 E.WorldEffectPlacementPolicy = {
     SCREEN_EDGE_CANDIDATES = "screen_edge_candidates",
     MAP_DERIVED_CANDIDATES = "map_derived_candidates",

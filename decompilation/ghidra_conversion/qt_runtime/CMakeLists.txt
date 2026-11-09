@@ -852,6 +852,19 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_hidden_camera_qa
                  --field-hidden-camera-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-hidden-camera-qa")
 
+# Run each mutually exclusive faction list in a fresh runtime so the first
+# encounter's active actors do not consume slots in the second source branch.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_faction_mafia_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-hidden-camera-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-faction-mafia-qa"
+                 --field-faction-route mafia_eye_fivers)
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_faction_halloweeners_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-hidden-camera-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-faction-halloweeners-qa"
+                 --field-faction-route halloweeners)
+
 # Resolve Scene 2's source sum-8 Weenr row, allow its Lua AI to approach the
 # runner, and observe the connected 0x1514E spawn, ammo, sound, and 0xB39A/C042
 # presentation in full-screen captures.

@@ -113,6 +113,54 @@ local function ordered_actor_rows(data, predicate)
     return actors
 end
 
+local function actor_rows_from_sequence_members(
+    data, scene_id, sequence_id)
+    local members = {}
+    for _, row in ipairs(data.field_actor_sequence_members or {}) do
+        if row.scene_id == scene_id and row.sequence_id == sequence_id then
+            members[#members + 1] = row
+        end
+    end
+    table.sort(members, function(left, right)
+        return left.sequence_order < right.sequence_order
+    end)
+    if #members == 0 then return nil, nil end
+
+    local profiles = {}
+    for _, row in ipairs(data.dynamic_world_activity_actors or {}) do
+        if type(row.profile_id) == "string" and
+           profiles[row.profile_id] == nil then
+            profiles[row.profile_id] = row
+        end
+    end
+
+    local actors = {}
+    local placement_policy = members[1].placement_policy
+    if placement_policy ~= E.WorldEffectPlacementPolicy.MAP_DERIVED_CANDIDATES then
+        return nil, nil
+    end
+    for index, member in ipairs(members) do
+        if not integer(member.sequence_order, 0, 15) or
+           member.sequence_order ~= index - 1 or
+           member.placement_policy ~= placement_policy or
+           not semantic_id(member.profile_id) then
+            return nil, nil
+        end
+        local profile = profiles[member.profile_id]
+        if profile == nil then return nil, nil end
+        local actor = actor_from_row(profile)
+        actor.sequence_order = member.sequence_order
+        actor.sequence_id = sequence_id
+        -- The list's map-derived policy is carried by the sequence result;
+        -- do not inherit the profile row's unrelated weighted placement.
+        actor.placement_rule = nil
+        actor.spawn_x = nil
+        actor.spawn_y = nil
+        actors[#actors + 1] = actor
+    end
+    return actors, placement_policy
+end
+
 local function placement_policy_for_rule(placement_rule)
     if placement_rule == "explicit_actor_positions" then
         return "explicit_actor_positions"
@@ -316,7 +364,17 @@ function Encounters.resolve_sequence(scene_id, sequence_id)
                  row.selection_kind == "weighted_encounter"))
     end)
     if #actors == 0 then
-        return nil
+        local member_actors, placement_policy =
+            actor_rows_from_sequence_members(data, scene_id, sequence_id)
+        if member_actors == nil then return nil end
+        return {
+            kind = "dynamic_world_effect_sequence",
+            placement_policy = placement_policy,
+            scene_id = scene_id,
+            outcome_id = sequence_id,
+            sequence_id = sequence_id,
+            actors = member_actors,
+        }
     end
     local placement_rule = actors[1].placement_rule
     for _, actor in ipairs(actors) do

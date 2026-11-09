@@ -30,14 +30,14 @@ local function context(overrides)
 end
 
 local function actor_row(sequence_order, sequence_id, placement_rule,
-                         scene_id, selection_kind)
+                         scene_id, selection_kind, profile_id)
     return {
         scene_id = scene_id or 2,
         sequence_order = sequence_order,
         selection_kind = selection_kind or "named_sequence",
         sequence_id = sequence_id or "field_alarm_reinforcements",
         actor_name = "corp guard",
-        profile_id = "corp_guard_k05_item06",
+        profile_id = profile_id or "corp_guard_k05_item06",
         action_kind = "item",
         action_id = "max_power",
         actor_facts = {
@@ -194,9 +194,67 @@ game = {
                     "open screen-edge candidates based on the current viewport and terrain",
                     0, "weighted_encounter"),
             },
+            field_actor_sequence_members = {
+                { scene_id = 0,
+                  sequence_id = E.WorldEffectSequence.FACTION_MAFIA_EYE_FIVERS,
+                  sequence_order = 0, profile_id = "mafia_eye5r_k07_item0c",
+                  placement_policy = E.WorldEffectPlacementPolicy.MAP_DERIVED_CANDIDATES },
+                { scene_id = 0,
+                  sequence_id = E.WorldEffectSequence.FACTION_MAFIA_EYE_FIVERS,
+                  sequence_order = 1, profile_id = "mafia_eye5r_k07_item0c",
+                  placement_policy = E.WorldEffectPlacementPolicy.MAP_DERIVED_CANDIDATES },
+                { scene_id = 0,
+                  sequence_id = E.WorldEffectSequence.FACTION_MAFIA_EYE_FIVERS,
+                  sequence_order = 2, profile_id = "mafia_eye5r_k07_item0c",
+                  placement_policy = E.WorldEffectPlacementPolicy.MAP_DERIVED_CANDIDATES },
+                { scene_id = 0,
+                  sequence_id = E.WorldEffectSequence.FACTION_MAFIA_EYE_FIVERS,
+                  sequence_order = 3, profile_id = "mafia_eye5r_k07_item0c",
+                  placement_policy = E.WorldEffectPlacementPolicy.MAP_DERIVED_CANDIDATES },
+                { scene_id = 0,
+                  sequence_id = E.WorldEffectSequence.FACTION_HALLOWEENERS,
+                  sequence_order = 0, profile_id = "weenr2_k08_item01",
+                  placement_policy = E.WorldEffectPlacementPolicy.MAP_DERIVED_CANDIDATES },
+                { scene_id = 0,
+                  sequence_id = E.WorldEffectSequence.FACTION_HALLOWEENERS,
+                  sequence_order = 1, profile_id = "weenr2_k08_item01",
+                  placement_policy = E.WorldEffectPlacementPolicy.MAP_DERIVED_CANDIDATES },
+                { scene_id = 0,
+                  sequence_id = E.WorldEffectSequence.FACTION_HALLOWEENERS,
+                  sequence_order = 2, profile_id = "weenr2_k08_item01",
+                  placement_policy = E.WorldEffectPlacementPolicy.MAP_DERIVED_CANDIDATES },
+                { scene_id = 0,
+                  sequence_id = E.WorldEffectSequence.FACTION_HALLOWEENERS,
+                  sequence_order = 3, profile_id = "weenr2_k08_item01",
+                  placement_policy = E.WorldEffectPlacementPolicy.MAP_DERIVED_CANDIDATES },
+            },
         },
     },
 }
+
+local mafia_actor = actor_row(
+    0, nil,
+    "open screen-edge candidates based on the current viewport and terrain",
+    0, "weighted_encounter", "mafia_eye5r_k07_item0c")
+mafia_actor.actor_name = "mafia eye5r"
+mafia_actor.sprite_stem = "actor-kind-7-palette-2"
+mafia_actor.visual_profile_id = E.ActorVisualProfile.GHOUL_EYE_FIVER
+mafia_actor.combat_body = 5
+game.modules.world_content_data.dynamic_world_activity_actors[#
+    game.modules.world_content_data.dynamic_world_activity_actors + 1] =
+    mafia_actor
+
+local halloween_actor = actor_row(
+    0, nil,
+    "open screen-edge candidates based on the current viewport and terrain",
+    0, "weighted_encounter", "weenr2_k08_item01")
+halloween_actor.actor_name = "weenr2"
+halloween_actor.sprite_stem = "yakuza_weenr_k08_item0a"
+halloween_actor.visual_profile_id = E.ActorVisualProfile.YAKUZA_WEENR
+halloween_actor.combat_body = 4
+game.modules.world_content_data.dynamic_world_activity_actors[#
+    game.modules.world_content_data.dynamic_world_activity_actors + 1] =
+    halloween_actor
 
 for order, profile_id in ipairs(E.StokerMotelArrival.AMBUSH_PROFILE_IDS) do
     local actor = actor_row(
@@ -338,6 +396,39 @@ eq(map_sequence.sequence_id, "boris_strike_team",
    "Boris sequence resolves by semantic identity")
 eq(#map_sequence.actors, 2,
    "named map-derived source list retains both actor rows")
+
+for _, expected in ipairs({
+    { id = E.WorldEffectSequence.FACTION_MAFIA_EYE_FIVERS,
+      profile = "mafia_eye5r_k07_item0c", body = 5 },
+    { id = E.WorldEffectSequence.FACTION_HALLOWEENERS,
+      profile = "weenr2_k08_item01", body = 4 },
+}) do
+    local sequence = Encounters.resolve_sequence(0, expected.id)
+    eq(sequence.kind, "dynamic_world_effect_sequence",
+       "faction source list resolves as an actor sequence " .. expected.id)
+    eq(sequence.placement_policy,
+       E.WorldEffectPlacementPolicy.MAP_DERIVED_CANDIDATES,
+       "faction sequence uses map-derived placement " .. expected.id)
+    eq(#sequence.actors, 4,
+       "faction source list preserves four actors " .. expected.id)
+    for index, actor in ipairs(sequence.actors) do
+        eq(actor.sequence_order, index - 1,
+           "faction actor preserves source order " .. expected.id .. "/" .. index)
+        eq(actor.sequence_id, expected.id,
+           "faction actor retains semantic sequence id " .. expected.id)
+        eq(actor.profile_id, expected.profile,
+           "faction actor resolves from its extracted profile " .. expected.id)
+        eq(actor.combatant.attributes.body, expected.body,
+           "faction actor retains the profile's combat facts " .. expected.id)
+        eq(actor.spawn_x, nil,
+           "map-derived faction actor has no copied fixed X position")
+        eq(actor.spawn_y, nil,
+           "map-derived faction actor has no copied fixed Y position")
+    end
+end
+eq(Encounters.resolve_sequence(
+       2, E.WorldEffectSequence.FACTION_MAFIA_EYE_FIVERS), nil,
+   "faction sequence content is limited to selector scenes 0, 1, and 3")
 
 local stoker_ambush = Encounters.resolve_sequence(
     E.Scene.STOKER_MOTEL, E.WorldEffectSequence.STOKER_MOTEL_AMBUSH)

@@ -5,6 +5,7 @@
 local RandomEvents = {}
 local E = require("enums")
 local StoryState = require("story_state")
+local Encounters = require("field_encounters")
 
 local ALARM_RESULT =
     "<As the alarm goes off, you realize you must have just walked in front " ..
@@ -15,6 +16,14 @@ local FACTION_NEUTRAL_RESULT =
     "<Impressive figures pass through the parting crowd.>||" ..
     "Your first impression is that they are veteran shadowrunners.||" ..
     "Then you see they are wearing gang colors!>"
+local FACTION_MAFIA_RESULT =
+    "<A gang of Eye-Fivers jump out of the crowd.>||" ..
+    "So, you chose to serve the Yakuza?||" ..
+    "Then you deserve to die like the other enemies of the Mafia!"
+local FACTION_HALLOWEENER_RESULT =
+    "<Some Halloweeners appear out of the crowd.>||" ..
+    "Hey, Mafia boy!  You chose the wrong side to ally with!||" ..
+    "Yakuza rules this town!"
 local HAGGARD_HELP_RESULT =
     "<You grab the man and hold him while the henchmen straight-jacket " ..
     "him and drag him off.>||Here's fifty nuyen. Now get lost."
@@ -235,8 +244,25 @@ function RandomEvents.present_faction_disturbance()
             "ROM 0x23876 faction route flags are unavailable")
     end
     if mafia_route == "enabled" then
-        return source_boundary(
-            "ROM 0x23876 Mafia actor sequence is not implemented")
+        local scene = StoryState.scene()
+        local sequence_id = E.WorldEffectSequence.FACTION_MAFIA_EYE_FIVERS
+        local outcome = scene ~= nil and
+            Encounters.resolve_sequence(scene, sequence_id) or nil
+        if outcome == nil or #outcome.actors ~= 4 then
+            return source_boundary(
+                "ROM 0x23876 four-actor Mafia sequence is unavailable")
+        end
+        if not StoryState.queue_world_effect(scene, {
+               sequence_id = outcome.sequence_id,
+               actors = #outcome.actors,
+           }) then
+            return source_boundary(
+                "ROM 0x23876 Mafia actor sequence could not be queued")
+        end
+        -- 0x23876 chooses the Eye-Fiver record only after attempting the
+        -- ordered four-actor map placement through 0x1E1FC.
+        game.ui.say_text(FACTION_MAFIA_RESULT, false)
+        return "resolved"
     end
 
     local halloweener_route = game.services.call(
@@ -247,8 +273,25 @@ function RandomEvents.present_faction_disturbance()
             "ROM 0x23876 faction route flags are unavailable")
     end
     if halloweener_route == "enabled" then
-        return source_boundary(
-            "ROM 0x1D7038 Halloweener actor sequence is not implemented")
+        local scene = StoryState.scene()
+        local sequence_id = E.WorldEffectSequence.FACTION_HALLOWEENERS
+        local outcome = scene ~= nil and
+            Encounters.resolve_sequence(scene, sequence_id) or nil
+        if outcome == nil or #outcome.actors ~= 4 then
+            return source_boundary(
+                "ROM 0x23876 four-actor Halloweener sequence is unavailable")
+        end
+        if not StoryState.queue_world_effect(scene, {
+               sequence_id = outcome.sequence_id,
+               actors = #outcome.actors,
+           }) then
+            return source_boundary(
+                "ROM 0x23876 Halloweener actor sequence could not be queued")
+        end
+        -- Bit 2 is reached only when bit 1 is clear. The matching four-entry
+        -- actor list and result record are selected at 0x1D7038/0x11D019.
+        game.ui.say_text(FACTION_HALLOWEENER_RESULT, false)
+        return "resolved"
     end
 
     game.ui.say_text(FACTION_NEUTRAL_RESULT, false)

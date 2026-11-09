@@ -1987,6 +1987,25 @@ boundaries, and full post-spawn combat coverage and an independent Genesis
 capture remain open. See the
 [field random-event selector audit](field-random-event-selector.md).
 
+### Faction disturbance encounter lists (partial, 2026-11-08)
+
+ROM `0x23876` tests `FF018F` bit 1 before bit 2. The US ROM lists at
+`0x1D7010` and `0x1D7038` each contain four ordered pointers to the Mafia
+Eye-Fiver and Weenr2 templates, respectively; bit 1 wins if both flags are
+set [C]. Lua now resolves semantic four-actor lists for Scenes 0, 1, and 3,
+queues map-derived placement, and presents the ROM result text records
+`0x11D098` and `0x11D019`. The no-flag `0x11D128` result remains text-only.
+Debug and Release CTests cover the neutral branch and each gang route in a
+fresh runtime, including ordered actor publication and `actual.bmp` dumps. The
+shared actor profiles come from the extracted catalog; list membership is kept
+as semantic content in `gameplay/world/field_actor_sequence_members.tsv`.
+
+This hill remains partial because failed map placement must return to the ROM's
+randomized holocam/photo fallback at `0x11CF74`; the current host exposes that
+failure as a source boundary after queueing. The flag writers, combat exit, and
+an independent Genesis comparison also remain open. See the
+[field random-event selector audit](field-random-event-selector.md).
+
 ### Ricky contact and hire portrait display (partial, 2026-11-08)
 
 The Scene-19 Ricky route already derives its short-term and permanent fees

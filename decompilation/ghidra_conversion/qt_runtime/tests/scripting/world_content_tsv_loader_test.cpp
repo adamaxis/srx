@@ -671,6 +671,52 @@ int main() {
                    "to resolve named sequences") && valid;
     lua_pop(state, 1);
 
+    lua_getfield(state, data_table, "field_actor_sequence_members");
+    const auto faction_sequence_members = lua_absindex(state, -1);
+    bool faction_sequence_members_are_semantic =
+        lua_istable(state, faction_sequence_members) != 0 &&
+        lua_rawlen(state, faction_sequence_members) == 24U;
+    bool found_mafia_member = false;
+    bool found_halloweener_member = false;
+    for (std::size_t index = 1U;
+         index <= lua_rawlen(state, faction_sequence_members); ++index) {
+        lua_rawgeti(state, faction_sequence_members,
+                    static_cast<lua_Integer>(index));
+        const auto row = lua_absindex(state, -1);
+        const auto mafia_member =
+            field_integer_is(state, row, "scene_id", 0) &&
+            field_string_is(state, row, "sequence_id",
+                            "faction_mafia_eye_fivers") &&
+            field_integer_is(state, row, "sequence_order", 0) &&
+            field_string_is(state, row, "profile_id",
+                            "mafia_eye5r_k07_item0c") &&
+            field_string_is(state, row, "placement_policy",
+                            "map_derived_candidates");
+        const auto halloweener_member =
+            field_integer_is(state, row, "scene_id", 0) &&
+            field_string_is(state, row, "sequence_id",
+                            "faction_halloweeners") &&
+            field_integer_is(state, row, "sequence_order", 0) &&
+            field_string_is(state, row, "profile_id", "weenr2_k08_item01") &&
+            field_string_is(state, row, "placement_policy",
+                            "map_derived_candidates");
+        found_mafia_member = found_mafia_member || mafia_member;
+        found_halloweener_member =
+            found_halloweener_member || halloweener_member;
+        for (const auto* field : {"source_list_offset", "template_offset",
+                                  "tagged_template"}) {
+            faction_sequence_members_are_semantic =
+                faction_sequence_members_are_semantic &&
+                field_is_nil(state, row, field);
+        }
+        lua_pop(state, 1);
+    }
+    valid = expect(faction_sequence_members_are_semantic &&
+                       found_mafia_member && found_halloweener_member,
+                   "faction actor membership did not load as ordered semantic profiles") &&
+            valid;
+    lua_pop(state, 1);
+
     lua_getfield(state, data_table, "world_activity_actors");
     bool activity_actor_actions_are_semantic = true;
     for (std::size_t index = 1U;

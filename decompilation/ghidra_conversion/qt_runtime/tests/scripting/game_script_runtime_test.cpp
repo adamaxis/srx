@@ -3509,7 +3509,7 @@ int main() {
         return 3;
     }
 
-    const auto haggard_sequence_matches = [&scripts](
+    const auto map_sequence_matches = [&scripts](
         const std::uint16_t scene_id, const std::string_view sequence_id,
         const std::vector<std::string_view>& expected_profiles) {
         const auto outcome = scripts.resolve_field_actor_sequence(
@@ -3540,19 +3540,48 @@ int main() {
     const std::vector<std::string_view> haggard_one_success_profiles{
         "bodyguard_k05_item07", "bodyguard_k05_item07"};
     if (!expect(
-            haggard_sequence_matches(
+            map_sequence_matches(
                 2U, "haggard_man_gator_shaman_and_bodyguards",
                 haggard_zero_success_profiles) &&
-                haggard_sequence_matches(
+                map_sequence_matches(
                     5U, "haggard_man_gator_shaman_and_bodyguards",
                     haggard_zero_success_profiles) &&
-                haggard_sequence_matches(
+                map_sequence_matches(
                     2U, "haggard_man_two_bodyguards",
                     haggard_one_success_profiles) &&
-                haggard_sequence_matches(
+                map_sequence_matches(
                     5U, "haggard_man_two_bodyguards",
                     haggard_one_success_profiles),
             "ROM 0x23C52 Haggard Body outcomes did not resolve ordered map-derived actor lists 0x1D704C/0x1D7050 in Scenes 2 and 5")) {
+        std::cerr << scripts.failure() << '\n';
+        return 3;
+    }
+
+    const std::vector<std::string_view> mafia_sequence_profiles{
+        "mafia_eye5r_k07_item0c", "mafia_eye5r_k07_item0c",
+        "mafia_eye5r_k07_item0c", "mafia_eye5r_k07_item0c"};
+    const std::vector<std::string_view> halloweener_sequence_profiles{
+        "weenr2_k08_item01", "weenr2_k08_item01",
+        "weenr2_k08_item01", "weenr2_k08_item01"};
+    if (!expect(
+            map_sequence_matches(
+                0U, "faction_mafia_eye_fivers", mafia_sequence_profiles) &&
+                map_sequence_matches(
+                    1U, "faction_mafia_eye_fivers", mafia_sequence_profiles) &&
+                map_sequence_matches(
+                    3U, "faction_mafia_eye_fivers", mafia_sequence_profiles) &&
+                map_sequence_matches(
+                    0U, "faction_halloweeners",
+                    halloweener_sequence_profiles) &&
+                map_sequence_matches(
+                    1U, "faction_halloweeners",
+                    halloweener_sequence_profiles) &&
+                map_sequence_matches(
+                    3U, "faction_halloweeners",
+                    halloweener_sequence_profiles) &&
+                !scripts.resolve_field_actor_sequence(
+                    2U, "faction_mafia_eye_fivers").has_value(),
+            "ROM 0x23876 faction branches did not resolve their ordered four-actor lists from semantic profiles")) {
         std::cerr << scripts.failure() << '\n';
         return 3;
     }
