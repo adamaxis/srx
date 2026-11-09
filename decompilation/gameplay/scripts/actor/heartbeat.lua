@@ -80,7 +80,7 @@ function ActorAI.heartbeat(context)
                 -- Latch the successful-action start for the following render
                 -- heartbeat; the finite C042 pose has its own lifetime.
                 state.player_weapon_animation_start_pending = true
-                if context.player_weapon_action_will_fire == true then
+                if context.player_combat_action_will_execute == true then
                     R.begin_action_movement_lockout(
                         state, ActionMovementLockoutKind.WEAPON)
                 end
@@ -292,7 +292,7 @@ function ActorAI.heartbeat(context)
                 -- A held-fire repeat is a new C042 action and resets its
                 -- animation in the next render pass, after the host action.
                 state.player_weapon_animation_start_pending = true
-                if context.player_weapon_action_will_fire == true then
+                if context.player_combat_action_will_execute == true then
                     R.begin_action_movement_lockout(
                         state, ActionMovementLockoutKind.WEAPON)
                 end

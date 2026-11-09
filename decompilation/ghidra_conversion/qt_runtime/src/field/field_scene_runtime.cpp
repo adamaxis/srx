@@ -12693,21 +12693,27 @@ FieldSceneRuntime::heartbeat_field_player(
             runner.equipped_inventory_slot >= 0 &&
             static_cast<std::size_t>(runner.equipped_inventory_slot) <
                 runner.inventory_phase_bytes.size();
+        const auto combat_action_kind = classify_field_combat_action(
+            runner.equipped_inventory_slot, runner.equipped_item_code);
         const auto* player_weapon =
             weapon_template_for_item_code(runner.equipped_item_code);
         const bool weapon_action_available =
             (runner.flags & 0x0300U) == 0x0300U && valid_weapon_slot &&
-            classify_field_combat_action(
-                runner.equipped_inventory_slot,
-                runner.equipped_item_code) ==
-                FieldCombatActionKind::weapon_ammo &&
+            combat_action_kind == FieldCombatActionKind::weapon_ammo &&
             player_weapon != nullptr;
+        const bool throwable_action_available =
+            (runner.flags & 0x0300U) == 0x0300U && valid_weapon_slot &&
+            combat_action_kind == FieldCombatActionKind::throwable &&
+            runner.inventory_phase_bytes[static_cast<std::size_t>(
+                runner.equipped_inventory_slot)] != 0U;
         actor_context.combat_confirm_held =
             (field_controller_sample_state_.held & 0x0040U) != 0U;
-        actor_context.combat_action_available = weapon_action_available;
-        actor_context.player_weapon_action_will_fire =
-            weapon_action_available && player_weapon != nullptr &&
-            runner.ammo_rounds >= player_weapon->rounds_per_action;
+        actor_context.combat_action_available =
+            weapon_action_available || throwable_action_available;
+        actor_context.player_combat_action_will_execute =
+            (weapon_action_available && player_weapon != nullptr &&
+             runner.ammo_rounds >= player_weapon->rounds_per_action) ||
+            throwable_action_available;
         actor_context.combat_input_blocked =
             field_combat_input_suppressed_until_release_;
         // ROM 0xAD86: negative +0x56 selects the 0xAE6E spell branch. The
@@ -13025,6 +13031,139 @@ FieldSceneRuntime::heartbeat_field_player(
     return actor_decision;
 }
 
+void FieldSceneRuntime::service_player_throwable_action(
+    RunnerRecordFields& runner) {
+    if ((runner.flags & 0x0100U) == 0U ||
+        runner.equipped_inventory_slot < 0 ||
+        static_cast<std::size_t>(runner.equipped_inventory_slot) >=
+            runner.inventory_phase_bytes.size() ||
+        runner.inventory_phase_bytes[static_cast<std::size_t>(
+            runner.equipped_inventory_slot)] == 0U) {
+        return;
+    }
+
+    const auto item_code = runner.equipped_item_code;
+    const auto inventory_slot = runner.equipped_inventory_slot;
+    const auto item_id = scripting::script_item_id_from_source_code(item_code);
+    if (!item_id.has_value() || item_code < 13U || item_code > 15U) {
+        source_boundary("field.combat.throwable_item_unresolved");
+        return;
+    }
+    // ROM 0x15354 selects sprite animation 12 for item actions 13/15 and 16
+    // for item E (action 14). The extracted clips are host assets; gameplay
+    // does not decode the original sprite table at runtime.
+    const auto selector = static_cast<std::uint16_t>(
+        item_code == 14U ? 16U : 12U);
+    const auto animation_index = static_cast<std::size_t>(selector / 4U);
+    if (animation_index >= field_weapon_projectile_images_.size() ||
+        field_weapon_projectile_images_[animation_index].empty()) {
+        source_boundary("field.combat.throwable_projectile_asset_missing");
+        return;
+    }
+
+    // 0x15646 consumes one item before trying to allocate its child/effect
+    // records. Capture identity first because the final item clears the live
+    // equipped code as part of the same typed inventory operation.
+    const auto inventory_result = advance_entity_asset_meter(
+        runner, -1, us_item_catalog());
+    if (inventory_result != RunnerAssetOperationResult::inventory_phase_changed &&
+        inventory_result != RunnerAssetOperationResult::equipment_cleared) {
+        source_boundary("field.combat.throwable_inventory_consume_failed");
+        return;
+    }
+    refresh_field_hud_runner_slot();
+
+    const auto delay = game_scripts_.player_weapon_action_delay(
+        runner.attributes[1U], runner.attributes[4U],
+        runner.cyberware_flags, item_code,
+        scripting::ScriptPlayerDelayPurpose::shared_action);
+    if (!delay.has_value()) {
+        source_boundary("field.combat.throwable_delay_unresolved");
+    } else {
+        set_player_action_delay(*delay);
+    }
+    field_entity_animation_.frame = 0U;
+    field_entity_animation_.redraw_requested = true;
+    field_entity_attack_direction_ = field_movement_direction_from_heading(
+        field_movement_state_.heading);
+    field_entity_.direction = field_entity_attack_direction_;
+    field_entity_walking_ = false;
+    field_entity_attack_pose_active_ = true;
+    field_entity_attack_pose_kind_ = FieldPlayerAttackPose::firearm;
+
+    std::optional<std::uint16_t> child_slot;
+    for (std::size_t index = 0U;
+         index < field_weapon_slots_occupied_.size(); ++index) {
+        if (!field_weapon_slots_occupied_[index]) {
+            field_weapon_slots_occupied_[index] = true;
+            child_slot = static_cast<std::uint16_t>(9U + index);
+            break;
+        }
+    }
+    if (!child_slot.has_value()) {
+        source_boundary("field.combat.throwable_child_slot_unavailable");
+        return;
+    }
+    (void)schedule_world_activity_timeout(
+        field_world_activity_timeout_state_);
+
+    std::optional<std::uint8_t> effect_slot;
+    for (std::size_t index = 0U;
+         index < field_world_effect_slots_occupied_.size(); ++index) {
+        if (!field_world_effect_slots_occupied_[index]) {
+            field_world_effect_slots_occupied_[index] = true;
+            effect_slot = static_cast<std::uint8_t>(index);
+            break;
+        }
+    }
+    if (!effect_slot.has_value()) {
+        field_weapon_slots_occupied_[static_cast<std::size_t>(
+            *child_slot - 9U)] = false;
+        source_boundary("field.combat.throwable_effect_slot_unavailable");
+        return;
+    }
+
+    FieldWeaponProjectilePresentation spawn{};
+    spawn.shooter_facts = script_combatant_facts(runner);
+    spawn.shooter_party_slot = field_party_roster_.active_slot();
+    spawn.throwable_action = scripting::ScriptThrowableActionFacts{
+        std::string(*item_id),
+        static_cast<std::uint16_t>(
+            runner.skills[static_cast<std::size_t>(RunnerSkillIndex::throwing)] /
+            2U)};
+    spawn.throwable_effect_slot = effect_slot;
+    spawn.primary_record.position_x = field_entity_.world_position.x;
+    spawn.primary_record.position_y = field_entity_.world_position.y;
+    spawn.primary_record.heading = field_movement_state_.heading;
+    spawn.primary_record.flags = static_cast<std::uint8_t>(
+        (runner.flags >> 8U) | 0x01U);
+    spawn.primary_record.field_0x56 = static_cast<std::uint8_t>(
+        inventory_slot >= 0
+            ? inventory_slot
+            : 0x7FU);
+    spawn.primary_record.field_0x57 = item_code;
+    spawn.primary_record.slot_identifier = *child_slot;
+    spawn.primary_record.source_identifier = item_code;
+    spawn.primary_record.animation_resource = selector;
+    spawn.primary_record.action_result = static_cast<std::int8_t>(
+        spawn.throwable_action->throwing_modifier);
+    spawn.primary_spawn_position = SceneRunnerPosition{
+        spawn.primary_record.position_x, spawn.primary_record.position_y};
+    spawn.primary_fixed_position = EntityFixedPointPosition{
+        static_cast<std::int32_t>(static_cast<std::int16_t>(
+            spawn.primary_record.position_x)) * 0x10000,
+        static_cast<std::int32_t>(static_cast<std::int16_t>(
+            spawn.primary_record.position_y)) * 0x10000,
+        0,
+        0};
+    spawn.primary_active = true;
+    spawn.primary_attack_seed_resolved = true;
+    spawn.primary_slot = child_slot;
+    field_weapon_projectiles_.push_back(std::move(spawn));
+    source_boundary("field.combat.player_throwable_spawned:" +
+                    std::string(*item_id));
+}
+
 void FieldSceneRuntime::service_player_weapon_action(
     const bool requested_by_lua) {
     if (!ready_ || !field_entity_.active) {
@@ -13049,6 +13188,10 @@ void FieldSceneRuntime::service_player_weapon_action(
     const auto action_kind = classify_field_combat_action(
         runner.equipped_inventory_slot, runner.equipped_item_code);
     if (action_kind == FieldCombatActionKind::magic_spell) {
+        return;
+    }
+    if (action_kind == FieldCombatActionKind::throwable) {
+        service_player_throwable_action(runner);
         return;
     }
     if (action_kind != FieldCombatActionKind::weapon_ammo ||
@@ -13408,6 +13551,13 @@ void FieldSceneRuntime::advance_field_weapon_projectiles(
         live_projectile_combat_targets;
     std::vector<scripting::ScriptActorTargetCandidate>
         live_party_combat_candidates;
+    const auto area_action_target_eligible = [this](const std::size_t slot) {
+        if (slot >= field_entity_target_records_.size()) {
+            return false;
+        }
+        const auto& target = field_entity_target_records_[slot];
+        return target.active && !target.effect_locked && target.has_action;
+    };
     for (std::size_t slot = 0U;
          slot < FieldPartyRosterRuntime::kSlotCount; ++slot) {
         if (!field_party_roster_.slot_active(slot)) {
@@ -13418,7 +13568,12 @@ void FieldSceneRuntime::advance_field_weapon_projectiles(
             field_party_roster_.records()[slot]);
         live_projectile_combat_targets.push_back(
             scripting::ScriptProjectileCombatTarget{
-                id, static_cast<std::uint8_t>(slot), facts});
+                id,
+                static_cast<std::uint8_t>(slot),
+                facts,
+                live_collision_targets[slot].world_x,
+                live_collision_targets[slot].world_y,
+                area_action_target_eligible(slot)});
         scripting::ScriptActorTargetCandidate party_candidate{};
         party_candidate.id = id;
         party_candidate.source_record_slot =
@@ -13440,7 +13595,11 @@ void FieldSceneRuntime::advance_field_weapon_projectiles(
         live_projectile_combat_targets.push_back(
             scripting::ScriptProjectileCombatTarget{
                 actor.actor_instance_id,
-                static_cast<std::uint8_t>(slot), actor.combatant});
+                static_cast<std::uint8_t>(slot),
+                actor.combatant,
+                live_collision_targets[slot].world_x,
+                live_collision_targets[slot].world_y,
+                area_action_target_eligible(slot)});
     }
     const auto word_from_fixed = [](const std::int32_t value) {
         return static_cast<std::uint16_t>(
@@ -13522,6 +13681,13 @@ void FieldSceneRuntime::advance_field_weapon_projectiles(
                 record.flags & static_cast<std::uint8_t>(~0x01U));
             active = false;
             release_slot(slot);
+            if (primary_record && spawn.throwable_effect_slot.has_value()) {
+                const auto effect_slot = *spawn.throwable_effect_slot;
+                if (effect_slot < field_world_effect_slots_occupied_.size()) {
+                    field_world_effect_slots_occupied_[effect_slot] = false;
+                }
+                spawn.throwable_effect_slot.reset();
+            }
         };
         if (!slot.has_value()) {
             source_boundary("field.combat.weapon_projectile_slot_missing");
@@ -13555,6 +13721,9 @@ void FieldSceneRuntime::advance_field_weapon_projectiles(
         context.projectile_action =
             scripting::script_weapon_action_from_source_code(
                 record.field_0x57);
+        context.throwable_action = primary_record
+            ? spawn.throwable_action
+            : std::nullopt;
         context.instance_id = instance_id;
         context.initial_heading = record.heading;
         context.spawn = !script_initialized;
@@ -13775,7 +13944,9 @@ void FieldSceneRuntime::advance_field_weapon_projectiles(
             record.animation_resource = 0U;
         } else if (movement.animation_action ==
                    scripting::ScriptActorProjectileAnimationAction::restart) {
-            record.animation_resource = 0x0014U; // ROM 0x14F86 [C]
+            if (!spawn.throwable_action.has_value()) {
+                record.animation_resource = 0x0014U; // ROM 0x14F86 [C]
+            }
         }
         animation.redraw_requested =
             animation.redraw_requested ||
@@ -13862,6 +14033,13 @@ void FieldSceneRuntime::advance_field_weapon_projectiles(
                                 target_id);
             }
         }
+        for (const auto& update : decision->combat_meter_updates) {
+            if (apply_script_combat_meter_update(
+                    update, "field.combat.throwable_hit")) {
+                source_boundary("field.combat.throwable_hit_resolved:" +
+                                update.target_id);
+            }
+        }
         if (projectile_outcome ==
             scripting::ScriptActorProjectileOutcome::linked_followup_pending) {
             source_boundary(
@@ -13888,6 +14066,13 @@ void FieldSceneRuntime::advance_field_weapon_projectiles(
         active = movement_active;
         if (!active) {
             release_slot(slot);
+            if (primary_record && spawn.throwable_effect_slot.has_value()) {
+                const auto effect_slot = *spawn.throwable_effect_slot;
+                if (effect_slot < field_world_effect_slots_occupied_.size()) {
+                    field_world_effect_slots_occupied_[effect_slot] = false;
+                }
+                spawn.throwable_effect_slot.reset();
+            }
         }
     };
 

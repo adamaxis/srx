@@ -12415,6 +12415,18 @@ GameScriptRuntime::actor_heartbeat(
         lua_pushnil(state);
     }
     lua_setfield(state, -2, "projectile_action_id");
+    if (context.throwable_action.has_value()) {
+        lua_createtable(state, 0, 2);
+        lua_pushlstring(state, context.throwable_action->item_id.data(),
+                        context.throwable_action->item_id.size());
+        lua_setfield(state, -2, "item_id");
+        lua_pushinteger(
+            state, context.throwable_action->throwing_modifier);
+        lua_setfield(state, -2, "throwing_modifier");
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "throwable_action");
     lua_pushinteger(state, context.entry_delay);
     lua_setfield(state, -2, "entry_delay");
     lua_pushboolean(state, context.entry_started);
@@ -12433,8 +12445,8 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "combat_confirm_held");
     lua_pushboolean(state, context.combat_action_available);
     lua_setfield(state, -2, "combat_action_available");
-    lua_pushboolean(state, context.player_weapon_action_will_fire);
-    lua_setfield(state, -2, "player_weapon_action_will_fire");
+    lua_pushboolean(state, context.player_combat_action_will_execute);
+    lua_setfield(state, -2, "player_combat_action_will_execute");
     if (context.controlled_party_member_id.empty()) {
         lua_pushnil(state);
     } else {
@@ -12891,9 +12903,17 @@ GameScriptRuntime::actor_heartbeat(
     for (std::size_t index = 0U;
          index < context.projectile_combat_targets.size(); ++index) {
         const auto& target = context.projectile_combat_targets[index];
-        lua_createtable(state, 0, 3);
+        lua_createtable(state, 0, 6);
         lua_pushlstring(state, target.id.data(), target.id.size());
         lua_setfield(state, -2, "id");
+        lua_pushinteger(state, target.world_x);
+        lua_setfield(state, -2, "world_x");
+        lua_pushinteger(state, target.world_y);
+        lua_setfield(state, -2, "world_y");
+        lua_pushboolean(state, target.eligible_for_area_effect);
+        lua_setfield(state, -2, "eligible_for_area_effect");
+        lua_pushinteger(state, target.source_record_slot);
+        lua_setfield(state, -2, "source_record_slot");
         push_combatant(target.combatant);
         lua_setfield(state, -2, "combatant");
         lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
@@ -13502,74 +13522,101 @@ GameScriptRuntime::actor_heartbeat(
             *target->source_record_slot, &*target->combatant,
             target->world_activity_actor};
     };
+    const auto parse_combat_meter_update =
+        [state, &context, &resolve_combat_target](
+            const int update_table, ScriptCombatMeterUpdate& update) {
+            std::uint32_t combat_value = 0U;
+            if (!read_field_string(state, update_table, "target_id",
+                                   update.target_id) ||
+                !read_field_integer(state, update_table, "physical_meter",
+                                    0xFFU, combat_value)) {
+                return false;
+            }
+            update.physical_meter = static_cast<std::uint8_t>(combat_value);
+            if (!read_field_integer(state, update_table, "mental_meter",
+                                    0xFFU, combat_value) ||
+                !read_field_boolean(state, update_table, "physical",
+                                    update.physical) ||
+                !read_field_boolean(state, update_table, "changed",
+                                    update.changed)) {
+                return false;
+            }
+            update.mental_meter = static_cast<std::uint8_t>(combat_value);
+            const auto target = resolve_combat_target(update.target_id, true);
+            if (!target.has_value() || target->combatant == nullptr) {
+                return false;
+            }
+            update.record_type = target->combatant->record_type;
+            update.source_record_slot = target->record_slot;
+            const auto* target_combatant = target->combatant;
+            const bool target_is_party_member =
+                target_combatant->record_type < 3U;
+            bool target_linked = false;
+            if (context.projectile_movement.has_value()) {
+                target_linked = target_is_party_member
+                    ? update.source_record_slot < 3U
+                    : update.source_record_slot >= 3U;
+                if (context.profile_id != "weapon_projectile" ||
+                    context.phase != ScriptActorHeartbeatPhase::behavior ||
+                    !target_linked) {
+                    return false;
+                }
+            } else {
+                target_linked =
+                    (context.dynamic_world_encounter_actor ||
+                     context.player_melee_available) &&
+                    context.phase == ScriptActorHeartbeatPhase::behavior &&
+                    target_is_party_member != target->world_activity_actor &&
+                    ((target_is_party_member &&
+                      update.source_record_slot < 3U) ||
+                     (!target_is_party_member &&
+                      update.source_record_slot >= 3U));
+                if (!target_linked) {
+                    return false;
+                }
+            }
+            const bool meters_changed =
+                update.physical_meter != target_combatant->physical_meter ||
+                update.mental_meter != target_combatant->mental_meter;
+            return meters_changed == update.changed;
+        };
+
     lua_getfield(state, decision_table, "combat_meter_update");
     if (lua_type(state, -1) != LUA_TNIL) {
         if (!lua_istable(state, -1)) {
             return fail("actor_ai.heartbeat returned an invalid combat meter update");
         }
-        const auto update_table = lua_absindex(state, -1);
         ScriptCombatMeterUpdate update{};
-        std::uint32_t combat_value = 0U;
-        if (!read_field_string(state, update_table, "target_id",
-                               update.target_id)) {
-            return fail("actor_ai.heartbeat returned incomplete combat target facts");
-        }
-        if (!read_field_integer(state, update_table, "physical_meter",
-                                0xFFU, combat_value)) {
-            return fail("actor_ai.heartbeat returned an invalid physical meter");
-        }
-        update.physical_meter = static_cast<std::uint8_t>(combat_value);
-        if (!read_field_integer(state, update_table, "mental_meter",
-                                0xFFU, combat_value)) {
-            return fail("actor_ai.heartbeat returned an invalid mental meter");
-        }
-        update.mental_meter = static_cast<std::uint8_t>(combat_value);
-        if (!read_field_boolean(state, update_table, "physical",
-                                update.physical) ||
-            !read_field_boolean(state, update_table, "changed",
-                                update.changed)) {
-            return fail("actor_ai.heartbeat returned invalid combat meter flags");
-        }
-        const auto target = resolve_combat_target(update.target_id, true);
-        if (!target.has_value() || target->combatant == nullptr) {
-            return fail("actor_ai.heartbeat returned an unlinked combat target");
-        }
-        update.record_type = target->combatant->record_type;
-        update.source_record_slot = target->record_slot;
-        const auto* target_combatant = target->combatant;
-        const bool target_is_party_member =
-            target_combatant->record_type < 3U;
-        bool target_linked = false;
-        if (context.projectile_movement.has_value()) {
-            target_linked = target_is_party_member
-                ? update.source_record_slot < 3U
-                : update.source_record_slot >= 3U;
-            if (context.profile_id != "weapon_projectile" ||
-                context.phase != ScriptActorHeartbeatPhase::behavior ||
-                target_combatant == nullptr || !target_linked) {
-                return fail("weapon projectile returned an unlinked combat target");
-            }
-        } else {
-            target_linked =
-                (context.dynamic_world_encounter_actor ||
-                 context.player_melee_available) &&
-                context.phase == ScriptActorHeartbeatPhase::behavior &&
-                target_is_party_member != target->world_activity_actor &&
-                ((target_is_party_member &&
-                  update.source_record_slot < 3U) ||
-                 (!target_is_party_member &&
-                  update.source_record_slot >= 3U));
-            if (!target_linked) {
-                return fail("actor_ai.heartbeat returned an unlinked combat target");
-            }
-        }
-        const bool meters_changed =
-            update.physical_meter != target_combatant->physical_meter ||
-            update.mental_meter != target_combatant->mental_meter;
-        if (meters_changed != update.changed) {
-            return fail("actor_ai.heartbeat returned an inconsistent combat meter update");
+        if (!parse_combat_meter_update(lua_absindex(state, -1), update)) {
+            return fail("actor_ai.heartbeat returned an invalid or unlinked combat meter update");
         }
         decision.combat_meter_update = std::move(update);
+    }
+    lua_pop(state, 1);
+
+    lua_getfield(state, decision_table, "combat_meter_updates");
+    if (lua_type(state, -1) != LUA_TNIL) {
+        if (!lua_istable(state, -1) ||
+            lua_rawlen(state, -1) > context.projectile_combat_targets.size()) {
+            return fail("actor_ai.heartbeat returned an invalid combat meter update list");
+        }
+        const auto updates_table = lua_absindex(state, -1);
+        const auto update_count = lua_rawlen(state, updates_table);
+        for (std::size_t index = 1U; index <= update_count; ++index) {
+            lua_rawgeti(state, updates_table,
+                        static_cast<lua_Integer>(index));
+            if (!lua_istable(state, -1)) {
+                return fail("actor_ai.heartbeat returned an incomplete combat meter update list");
+            }
+            ScriptCombatMeterUpdate update{};
+            const auto valid = parse_combat_meter_update(
+                lua_absindex(state, -1), update);
+            lua_pop(state, 1);
+            if (!valid) {
+                return fail("actor_ai.heartbeat returned an invalid or unlinked area combat result");
+            }
+            decision.combat_meter_updates.push_back(std::move(update));
+        }
     }
     lua_pop(state, 1);
     lua_getfield(state, decision_table, "spell_action_resolution");
@@ -15096,7 +15143,8 @@ GameScriptRuntime::actor_heartbeat(
          decision.audio_event.has_value() &&
          !begins_dynamic_target_action) ||
         (projectile_behavior && decision.audio_event.has_value() &&
-         *decision.audio_event != 0x003CU) ||
+         *decision.audio_event !=
+             (context.throwable_action.has_value() ? 0x002CU : 0x003CU)) ||
         (decision.projectile_movement.has_value() &&
          decision.projectile_movement->state.role ==
              ScriptActorProjectileRole::secondary &&

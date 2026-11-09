@@ -53,8 +53,8 @@ int main() {
     }
 
     // ROM 0x14D6A selects spell codes 1..14 for a negative equipped slot;
-    // nonnegative item action codes 1..12 use weapons, while 13..15 take the
-    // separate 0x15646 effect-record path.
+    // nonnegative item action codes 1..12 use weapons; codes 13..15 dispatch
+    // through the throwable path at 0x15646.
     for (std::uint8_t action_code = 1U; action_code <= 12U; ++action_code) {
         if (!expect(classify_field_combat_action(0, action_code) ==
                     FieldCombatActionKind::weapon_ammo)) {
@@ -69,7 +69,7 @@ int main() {
     }
     for (std::uint8_t item_code = 13U; item_code <= 15U; ++item_code) {
         if (!expect(classify_field_combat_action(0, item_code) ==
-                    FieldCombatActionKind::effect_record)) {
+                    FieldCombatActionKind::throwable)) {
             return 11;
         }
     }
@@ -93,9 +93,9 @@ int main() {
                 classify_field_combat_action(-1, 14U) ==
                     FieldCombatActionKind::magic_spell &&
                 classify_field_combat_action(0, 13U) ==
-                    FieldCombatActionKind::effect_record &&
+                    FieldCombatActionKind::throwable &&
                 classify_field_combat_action(0, 15U) ==
-                    FieldCombatActionKind::effect_record &&
+                    FieldCombatActionKind::throwable &&
                 classify_field_combat_action(0, 16U) ==
                     FieldCombatActionKind::unsupported)) {
         return 1;

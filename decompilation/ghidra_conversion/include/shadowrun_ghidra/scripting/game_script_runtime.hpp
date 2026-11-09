@@ -1792,6 +1792,16 @@ struct ScriptProjectileCombatTarget {
     // Native record link used to apply Lua's ID-keyed combat result.
     std::uint8_t source_record_slot = 0;
     ScriptCombatantFacts combatant;
+    std::uint16_t world_x = 0;
+    std::uint16_t world_y = 0;
+    bool eligible_for_area_effect = false;
+};
+
+// Item identity and the actor's typed Throwing skill modifier for one active
+// field grenade. Lua resolves the item's semantic flight/damage profile.
+struct ScriptThrowableActionFacts {
+    std::string item_id;
+    std::uint16_t throwing_modifier = 0;
 };
 
 struct ScriptFieldEncounterActor {
@@ -2367,9 +2377,9 @@ struct ScriptActorBehaviorContext {
     // readiness from its action_delay; the host validates and performs results.
     bool combat_confirm_held = false;
     bool combat_action_available = false;
-    // The host's loaded magazine and weapon template show whether this held
-    // action will spawn a shot (empty-magazine reloads do not start a pose).
-    bool player_weapon_action_will_fire = false;
+    // True when a held combat action has its required ammunition or
+    // throwable inventory quantity and may begin the movement lockout.
+    bool player_combat_action_will_execute = false;
     bool combat_input_blocked = false;
     // ROM 0xAD86: a negative +0x56 sends the field player's held-A action
     // to 0xAE6E/0x1033E. The host offers the equipped D4EA0 row code
@@ -2389,6 +2399,7 @@ struct ScriptActorBehaviorContext {
     bool animation_clock_reset_requested = false;
     std::optional<ScriptActorProjectileAnimation> projectile_animation;
     std::optional<ScriptActorProjectileMovement> projectile_movement;
+    std::optional<ScriptThrowableActionFacts> throwable_action;
     // A typed spawn-service heartbeat can resolve ROM 0x55640 before the
     // projectile record's later movement heartbeat.
     bool projectile_attack_seed_pending = false;
@@ -2628,6 +2639,7 @@ struct ScriptActorBehaviorDecision {
         hit_spark_spawn_request;
     bool hit_spark_retired = false;
     std::optional<ScriptCombatMeterUpdate> combat_meter_update;
+    std::vector<ScriptCombatMeterUpdate> combat_meter_updates;
     std::optional<ScriptActorSpellActionResolution>
         spell_action_resolution;
     std::optional<ScriptActorSpellEffectResolution>

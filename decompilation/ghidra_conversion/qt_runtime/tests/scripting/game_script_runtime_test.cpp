@@ -8677,7 +8677,7 @@ int main() {
     player_action_timing.player_action_delay_service_active = true;
     player_action_timing.combat_action_available = true;
     player_action_timing.combat_confirm_held = true;
-    player_action_timing.player_weapon_action_will_fire = true;
+    player_action_timing.player_combat_action_will_execute = true;
     const auto player_action_initial =
         scripts.actor_heartbeat(player_action_timing);
     player_action_timing.spawn = false;
@@ -9168,6 +9168,112 @@ int main() {
         context.projectile_movement = movement;
         return context;
     };
+
+    // ROM 0x15646 spawns the grenade and 0x15390 advances it independently
+    // of firearm attack rolls. Exercise the typed Lua lifetime through the
+    // fuse, travel, finite blast animation, and area damage result bridge.
+    ScriptActorProjectileMovement throwable_movement{};
+    throwable_movement.role = ScriptActorProjectileRole::primary;
+    throwable_movement.phase = ScriptActorProjectilePhase::flying;
+    throwable_movement.position = {5000.0, 5000.0};
+    throwable_movement.bearing_degrees = 90.0;
+    throwable_movement.remaining_flight_range = 21.0 * 96.0;
+    throwable_movement.burst_origin = {5000.0, 5000.0};
+    throwable_movement.attack_successes = 2U;
+    auto throwable_context = projectile_behavior_context(
+        "field_weapon_slot_throwable_test", throwable_movement);
+    throwable_context.spawn = true;
+    throwable_context.throwable_action =
+        ScriptThrowableActionFacts{"frag", 2U};
+    throwable_context.ai_random_bound =
+        [](const std::uint16_t bound)
+            -> std::optional<std::uint16_t> {
+        return bound == 0U ? std::nullopt
+                           : std::optional<std::uint16_t>{0U};
+    };
+    throwable_context.projectile_terrain_probe =
+        [](const std::uint16_t, const std::uint16_t) {
+            return ScriptProjectileTerrainSample{false, true, false};
+        };
+    throwable_context.projectile_collision_search =
+        [](const std::uint16_t, const std::uint16_t) {
+            return ScriptProjectileCollisionSearchResult{};
+        };
+    ScriptCombatantFacts throwable_victim{};
+    throwable_victim.record_type = 0U;
+    throwable_victim.source_flags = 0x01U;
+    throwable_victim.physical_meter = 10U;
+    throwable_victim.mental_meter = 10U;
+    throwable_victim.attributes.body = 2U;
+    throwable_victim.attributes.quickness = 2U;
+    throwable_victim.attributes.intelligence = 2U;
+    throwable_victim.attributes.willpower = 2U;
+    throwable_context.projectile_combat_targets.push_back(
+        ScriptProjectileCombatTarget{
+            "party.runner.0", 0U, throwable_victim, 5000U, 5000U, true});
+    auto throwable_step = scripts.actor_heartbeat(throwable_context);
+    if (!throwable_step.has_value() ||
+        !throwable_step->projectile_movement.has_value() ||
+        throwable_step->projectile_movement->state.phase !=
+            ScriptActorProjectilePhase::flying) {
+        std::cerr << scripts.failure() << '\n';
+        return 116;
+    }
+    throwable_context.spawn = false;
+    for (std::size_t pass = 1U; pass < 200U; ++pass) {
+        throwable_context.projectile_movement =
+            throwable_step->projectile_movement->state;
+        throwable_step = scripts.actor_heartbeat(throwable_context);
+        if (!throwable_step.has_value() ||
+            !throwable_step->projectile_movement.has_value()) {
+            std::cerr << scripts.failure() << '\n';
+            return 116;
+        }
+    }
+    const bool throwable_started_blast =
+        throwable_step->projectile_movement->state.phase ==
+            ScriptActorProjectilePhase::awaiting_animation &&
+        throwable_step->projectile_movement->state.animation_action ==
+            ScriptActorProjectileAnimationAction::restart &&
+        throwable_step->audio_event == 0x002CU;
+    throwable_context.phase = ScriptActorHeartbeatPhase::render;
+    throwable_context.projectile_movement.reset();
+    auto throwable_animation = scripts.actor_heartbeat(throwable_context);
+    for (std::size_t frame = 0U; frame < 2U; ++frame) {
+        throwable_animation = scripts.actor_heartbeat(throwable_context);
+    }
+    throwable_animation = scripts.actor_heartbeat(throwable_context);
+    throwable_context.phase = ScriptActorHeartbeatPhase::behavior;
+    throwable_context.projectile_movement =
+        throwable_step->projectile_movement->state;
+    throwable_context.projectile_combat_targets.front().world_x =
+        static_cast<std::uint16_t>(
+            throwable_context.projectile_movement->position.x);
+    throwable_context.projectile_combat_targets.front().world_y =
+        static_cast<std::uint16_t>(
+            throwable_context.projectile_movement->position.y);
+    throwable_context.projectile_movement->animation_finished =
+        throwable_animation.has_value() &&
+        throwable_animation->animation_complete;
+    throwable_step = scripts.actor_heartbeat(throwable_context);
+    if (!expect(
+            throwable_started_blast && throwable_animation.has_value() &&
+                throwable_animation->animation_complete &&
+                throwable_step.has_value() &&
+                throwable_step->projectile_movement.has_value() &&
+                throwable_step->projectile_movement->state.phase ==
+                    ScriptActorProjectilePhase::inactive &&
+                throwable_step->combat_meter_updates.size() == 1U &&
+                throwable_step->combat_meter_updates.front().target_id ==
+                    "party.runner.0" &&
+                throwable_step->combat_meter_updates.front().physical_meter ==
+                    2U &&
+                throwable_step->combat_meter_updates.front().mental_meter ==
+                    10U,
+            "Lua throwable heartbeat did not finish its blast and return the source-linked area damage update")) {
+        std::cerr << scripts.failure() << '\n';
+        return 116;
+    }
 
     ScriptActorProjectileMovement moving_projectile{};
     moving_projectile.role = ScriptActorProjectileRole::primary;

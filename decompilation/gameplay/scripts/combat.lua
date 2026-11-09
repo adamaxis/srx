@@ -1343,4 +1343,153 @@ function Combat.resolve_weapon_hit(context, projectile, target)
     }
 end
 
+-- ROM 0x15554 applies one equipment-action result to each eligible record in
+-- the blast window. The thrower contributes half of the Throwing skill from
+-- +0x87 through the effect record; the defender rolls the usual command/body
+-- pool, then the item profile supplies force, difficulty, damage track, and
+-- armor channel (0x55900..0x55A98). All inputs here are named game facts.
+function Combat.resolve_throwable_hit(context, projectile, target)
+    if type(context) ~= "table" or type(projectile) ~= "table" or
+       type(projectile.throwing_modifier) ~= "number" or
+       projectile.throwing_modifier < 0 or
+       projectile.throwing_modifier ~= math.floor(projectile.throwing_modifier) or
+       type(projectile.item_id) ~= "string" or
+       type(target) ~= "table" or type(target.combatant) ~= "table" or
+       type(context.ai_random_bound) ~= "function" or
+       type(target.id) ~= "string" or target.id == "" then
+        return nil
+    end
+
+    local item = game.modules.items.by_id[projectile.item_id]
+    local effect = type(item) == "table" and item.throwable_action or nil
+    if type(effect) ~= "table" or
+       type(effect.base_effect) ~= "number" or
+       type(effect.difficulty) ~= "number" or
+       effect.damage_track ~= "physical" and
+           effect.damage_track ~= "mental" or
+       effect.armor_channel ~= "secondary" then
+        return nil
+    end
+
+    local defender = copy_combatant(target.combatant)
+    local average = command_average(defender)
+    local reduction = posture_reduction(
+        average, defender.posture_reduction_percent)
+    local trial_count = average - reduction + defender.attributes.body
+    trial_count = trial_count +
+        (combat_cyberware(defender).melee_defense_bonus or 0)
+    local difficulty = dynamic_status_modifier(
+        effect.difficulty, defender, nil, context)
+    if difficulty == nil then
+        return nil
+    end
+    local successes = thresholded_rolls(
+        trial_count, math.max(difficulty, 2), context.ai_random_bound)
+    if successes == nil then
+        return nil
+    end
+
+    local difference = projectile.throwing_modifier - successes
+    local damage = effect.base_effect + difference
+    if difference < 0 then
+        if damage <= 0 then
+            return {
+                target_id = target.id,
+                physical_meter = defender.physical_meter,
+                mental_meter = defender.mental_meter,
+                physical = effect.damage_track == "physical",
+                changed = false,
+            }
+        end
+    elseif damage >= 0x0B then
+        damage = 0x0A
+    end
+    damage = damage - secondary_armor_modifier(defender)
+    if damage > 0 then
+        -- ROM 0x55E62 reads +0x11 and the protection-talisman slots from the
+        -- acting effect record, which 0x15118 initialized before this action.
+        -- The projectile carries no equipment, matching the firearm path's
+        -- empty action record.
+        local empty_effect_record = {
+            actor_facts = { interaction = {
+                no_coverage_difficulty_bonus = false,
+                defense_difficulty_reduction = false,
+            }},
+            inventory = {},
+        }
+        damage = defense_modifier(damage, empty_effect_record)
+    end
+    damage = math.max(damage, 0)
+
+    local physical = effect.damage_track == "physical"
+    local physical_meter = defender.physical_meter
+    local mental_meter = defender.mental_meter
+    if damage > 0 then
+        physical_meter, mental_meter = adjusted_meters(
+            defender, physical, damage, context)
+    end
+    local changed = commit_combatant_meters(
+        target, defender, physical_meter, mental_meter)
+    return {
+        target_id = target.id,
+        physical_meter = physical_meter,
+        mental_meter = mental_meter,
+        physical = physical,
+        changed = changed,
+    }
+end
+
+-- ROM 0x15554 scans all ten actor records against a half-open square. Its
+-- item-E window is half the extent of the other throwable items. The host
+-- derives the source eligibility predicate and supplies positions plus named
+-- combat facts; Lua applies source ordering and all damage rolls.
+function Combat.resolve_throwable_blast(context, projectile, center, targets)
+    if type(context) ~= "table" or type(projectile) ~= "table" or
+       type(projectile.item_id) ~= "string" or
+       type(projectile.throwing_modifier) ~= "number" or
+       projectile.throwing_modifier < 0 or
+       projectile.throwing_modifier ~= math.floor(projectile.throwing_modifier) or
+       type(center) ~= "table" or type(center.x) ~= "number" or
+       type(center.y) ~= "number" or type(targets) ~= "table" then
+        return nil
+    end
+    local item = game.modules.items.by_id[projectile.item_id]
+    local effect = type(item) == "table" and item.throwable_action or nil
+    if type(effect) ~= "table" or type(effect.blast_extent) ~= "number" or
+       effect.blast_extent <= 0 or
+       type(context.ai_random_bound) ~= "function" then
+        return nil
+    end
+
+    local extent = effect.blast_extent
+    local lower_x = math.max(0, center.x - extent)
+    local lower_y = math.max(0, center.y - extent)
+    local upper_x = (lower_x + extent * 2) % 65536
+    local upper_y = (lower_y + extent * 2) % 65536
+    local ordered = {}
+    for _, target in ipairs(targets) do
+        ordered[#ordered + 1] = target
+    end
+    table.sort(ordered, function(left, right)
+        return left.source_record_slot < right.source_record_slot
+    end)
+
+    local updates = {}
+    for _, target in ipairs(ordered) do
+        if target.eligible_for_area_effect == true and
+           type(target.world_x) == "number" and
+           type(target.world_y) == "number" and
+           lower_x <= target.world_x and target.world_x < upper_x and
+           lower_y <= target.world_y and target.world_y < upper_y then
+            local update = Combat.resolve_throwable_hit(
+                context, projectile, target)
+            if update == nil then
+                return nil
+            end
+            updates[#updates + 1] = update
+        end
+    end
+    return updates
+end
+
 return Combat

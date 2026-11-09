@@ -250,6 +250,142 @@ local function projectile_movement_snapshot(context, state)
     return result, audio_event
 end
 
+local function throwable_movement_snapshot(context, state)
+    local source = context.projectile_movement
+    local action_facts = context.throwable_action
+    if type(source) ~= "table" or type(action_facts) ~= "table" or
+       type(action_facts.item_id) ~= "string" or
+       type(action_facts.throwing_modifier) ~= "number" or
+       action_facts.throwing_modifier < 0 or
+       action_facts.throwing_modifier ~= math.floor(
+           action_facts.throwing_modifier) or
+       type(source.position) ~= "table" or
+       type(source.position.x) ~= "number" or
+       type(source.position.y) ~= "number" or
+       type(source.bearing_degrees) ~= "number" or
+       type(source.animation_finished) ~= "boolean" then
+        return nil
+    end
+    local item = game.modules.items.by_id[action_facts.item_id]
+    local profile = type(item) == "table" and item.throwable_action or nil
+    if type(profile) ~= "table" or
+       type(profile.launch_distance) ~= "number" or
+       type(profile.flight_speed) ~= "number" or
+       type(profile.arming_delay_updates) ~= "number" or
+       type(profile.flight_duration_updates) ~= "number" then
+        return nil
+    end
+
+    local movement = {
+        role = projectile.role.primary,
+        phase = source.phase,
+        impact_occurred = source.impact_occurred,
+        animation_finished = source.animation_finished,
+        position = { x = source.position.x, y = source.position.y },
+        velocity = { x = 0, y = 0 },
+        remaining_flight_range = source.remaining_flight_range,
+        shots_remaining = 0,
+        bearing_degrees = source.bearing_degrees,
+        burst_origin = { x = source.burst_origin.x,
+                         y = source.burst_origin.y },
+        attack_successes = action_facts.throwing_modifier,
+        animation_action = "unchanged",
+        outcome = projectile.outcome.none,
+    }
+    local audio_event
+
+    if context.spawn then
+        local octant = math.floor(
+            (Bearing.normalize(movement.bearing_degrees) + 22.5) / 45) % 8
+        local launch_bearing = octant * 45
+        local offset = Bearing.vector(launch_bearing)
+        movement.position.x = wrap_map_coordinate(
+            movement.position.x + math.floor(offset.x * profile.launch_distance))
+        movement.position.y = wrap_map_coordinate(
+            movement.position.y + math.floor(offset.y * profile.launch_distance))
+        movement.bearing_degrees = launch_bearing
+        movement.burst_origin = {
+            x = source.position.x,
+            y = source.position.y,
+        }
+        state.throwable_item_id = action_facts.item_id
+        state.throwable_arming_updates = profile.arming_delay_updates
+        state.throwable_flight_updates = 0
+        state.throwable_speed = profile.flight_speed
+    elseif state.throwable_item_id ~= action_facts.item_id or
+           type(state.throwable_arming_updates) ~= "number" or
+           type(state.throwable_flight_updates) ~= "number" or
+           type(state.throwable_speed) ~= "number" then
+        return nil
+    end
+
+    if movement.phase == "inactive" then
+        return movement, nil, nil
+    end
+    if movement.phase == "awaiting_animation" then
+        if movement.animation_finished then
+            local updates = game.modules.combat.resolve_throwable_blast(
+                context,
+                { item_id = action_facts.item_id,
+                  throwing_modifier = action_facts.throwing_modifier },
+                movement.position,
+                context.projectile_combat_targets or {})
+            if type(updates) ~= "table" then
+                return nil
+            end
+            movement.phase = "inactive"
+            movement.outcome = projectile.outcome.retired
+            return movement, nil, updates
+        end
+        return movement, nil, nil
+    end
+
+    if state.throwable_arming_updates > 0 then
+        state.throwable_arming_updates = state.throwable_arming_updates - 1
+        return movement, nil, nil
+    end
+    if state.throwable_flight_updates >= profile.flight_duration_updates then
+        movement.phase = "awaiting_animation"
+        movement.impact_occurred = true
+        movement.animation_finished = false
+        movement.animation_action = "restart"
+        state.animation_frame = 0
+        state.animation_elapsed_updates = 0
+        state.animation_complete = false
+        state.projectile_animation_started = true
+        return movement, SoundId.DAC_SAMPLE_2C, nil
+    end
+
+    local direction = EntityMotion.projectile_step(
+        movement.bearing_degrees)
+    if type(direction) ~= "table" then
+        return nil
+    end
+    local scale = state.throwable_speed / 96
+    local next_x = wrap_map_coordinate(
+        movement.position.x + direction.x * scale)
+    local next_y = wrap_map_coordinate(
+        movement.position.y + direction.y * scale)
+    local terrain = game.movement.projectile_terrain(
+        math.floor(next_x), math.floor(next_y))
+    if type(terrain) ~= "table" or
+       type(terrain.blocked) ~= "boolean" or
+       type(terrain.boundary_active) ~= "boolean" or
+       type(terrain.outside_map) ~= "boolean" then
+        return nil
+    end
+    if terrain.blocked and not terrain.boundary_active then
+        movement.bearing_degrees = Bearing.normalize(
+            movement.bearing_degrees + 180)
+        state.throwable_speed = math.max(state.throwable_speed / 2, 8)
+    else
+        movement.position.x = next_x
+        movement.position.y = next_y
+    end
+    state.throwable_flight_updates = state.throwable_flight_updates + 1
+    return movement, nil, nil
+end
+
 local function projectile_heartbeat(state, context)
     if context.phase == "render" then
         if not R.advance_projectile_animation(state, context) then
@@ -259,6 +395,21 @@ local function projectile_heartbeat(state, context)
     end
     if context.phase ~= "behavior" then
         return nil
+    end
+    if context.throwable_action ~= nil then
+        local movement, audio_event, combat_meter_updates =
+            throwable_movement_snapshot(context, state)
+        if movement == nil then
+            return nil
+        end
+        state.combat_meter_updates = combat_meter_updates
+        if movement.animation_action == "restart" then
+            state.animation_frame = 0
+            state.animation_elapsed_updates = 0
+            state.animation_complete = false
+            state.projectile_animation_started = true
+        end
+        return R.snapshot(state, "hold", audio_event, movement)
     end
     local attack_seed_successes
     if context.projectile_attack_seed_pending then

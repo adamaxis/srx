@@ -112,6 +112,27 @@ def item_rows(data: bytes, kinds: dict[int, str]) -> str:
                 f'primary_modifier = {data[base + 0x25]}, '
                 f'secondary_modifier = {data[base + 0x26]} }}'
             )
+        if kind == "grenade":
+            # ROM 0x55900 supplies each grenade's base effect while the
+            # D4540 +0x26 field supplies its action difficulty. The shared
+            # blast caller at 0x15554 uses a narrower rectangular window for
+            # item 0x0E; 0x5590A marks item 0x0F as mental damage. Publish
+            # those as ordinary gameplay properties, not source record bytes.
+            # The shared launch/flight timing comes from 0x15A4C, 0x156B8,
+            # 0x15E56/0x1575A, and the 0x15390/0x15402 behavior path.
+            base_effect = 6 if code == 0x0D else 3
+            blast_extent = 320 if code == 0x0E else 640
+            damage_track = "mental" if code == 0x0F else "physical"
+            semantic_fields.append(
+                'throwable_action = { '
+                f'base_effect = {base_effect}, '
+                f'difficulty = {data[base + 0x26]}, '
+                f'blast_extent = {blast_extent}, '
+                'launch_distance = 176, flight_speed = 32, '
+                'arming_delay_updates = 19, flight_duration_updates = 180, '
+                f'damage_track = "{damage_track}", '
+                'accuracy_skill = "throwing", armor_channel = "secondary" }'
+            )
         semantic_fields.append(
             f'target_motion_range = {{ minimum_distance = {minimum_distance}, '
             f'maximum_distance = {maximum_distance} }}'

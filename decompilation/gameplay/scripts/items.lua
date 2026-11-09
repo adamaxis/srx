@@ -66,6 +66,11 @@ local function define_item(id, asset_index)
     if definition.totem_spell_modifiers ~= nil then
         item.spell_action_modifiers = definition.totem_spell_modifiers
     end
+    if definition.throwable_action ~= nil then
+        assert(kind == "grenade",
+               "only grenade items may define a throwable action")
+        item.throwable_action = definition.throwable_action
+    end
     if kind == "firearm" then
         item.weapon = {}
     end

@@ -13,6 +13,7 @@ local ItemKind = require("enums").ItemKind
 ---@field has_detail_art boolean whether a named detail image exists
 ---@field armor table? combat armor modifiers
 ---@field totem_spell_modifiers table? per-spell totem bonuses
+---@field throwable_action table? source-derived throw action and flight properties
 local Item = {}
 Item.__index = Item
 setmetatable(Item, { __call = function(_, definition)
@@ -32,9 +33,9 @@ local M = { Item = Item, by_id = {
     ["mach_22"] = Item{ id = "mach_22", name = "Mach 22 SMG", kind = ItemKind.FIREARM, purchase_base = 800, target_motion_range = { minimum_distance = 1280, maximum_distance = 1600 }, has_detail_art = true },
     ["allegiance"] = Item{ id = "allegiance", name = "Allegiance Shotgun", kind = ItemKind.FIREARM, purchase_base = 1400, target_motion_range = { minimum_distance = 1280, maximum_distance = 1600 }, has_detail_art = true },
     ["roomsweeper"] = Item{ id = "roomsweeper", name = "Roomsweeper Shotgun", kind = ItemKind.FIREARM, purchase_base = 1000, target_motion_range = { minimum_distance = 1280, maximum_distance = 1600 }, has_detail_art = true },
-    ["frag"] = Item{ id = "frag", name = "Frag Grenade", kind = ItemKind.GRENADE, purchase_base = 300, target_motion_range = { minimum_distance = 1280, maximum_distance = 1600 }, has_detail_art = true },
-    ["scatter"] = Item{ id = "scatter", name = "Scatter Grenade", kind = ItemKind.GRENADE, purchase_base = 180, target_motion_range = { minimum_distance = 1280, maximum_distance = 1600 }, has_detail_art = true },
-    ["concussion"] = Item{ id = "concussion", name = "Concussion Grenade", kind = ItemKind.GRENADE, purchase_base = 180, target_motion_range = { minimum_distance = 1280, maximum_distance = 1600 }, has_detail_art = true },
+    ["frag"] = Item{ id = "frag", name = "Frag Grenade", kind = ItemKind.GRENADE, purchase_base = 300, throwable_action = { base_effect = 6, difficulty = 8, blast_extent = 640, launch_distance = 176, flight_speed = 32, arming_delay_updates = 19, flight_duration_updates = 180, damage_track = "physical", accuracy_skill = "throwing", armor_channel = "secondary" }, target_motion_range = { minimum_distance = 1280, maximum_distance = 1600 }, has_detail_art = true },
+    ["scatter"] = Item{ id = "scatter", name = "Scatter Grenade", kind = ItemKind.GRENADE, purchase_base = 180, throwable_action = { base_effect = 3, difficulty = 6, blast_extent = 320, launch_distance = 176, flight_speed = 32, arming_delay_updates = 19, flight_duration_updates = 180, damage_track = "physical", accuracy_skill = "throwing", armor_channel = "secondary" }, target_motion_range = { minimum_distance = 1280, maximum_distance = 1600 }, has_detail_art = true },
+    ["concussion"] = Item{ id = "concussion", name = "Concussion Grenade", kind = ItemKind.GRENADE, purchase_base = 180, throwable_action = { base_effect = 3, difficulty = 10, blast_extent = 640, launch_distance = 176, flight_speed = 32, arming_delay_updates = 19, flight_duration_updates = 180, damage_track = "mental", accuracy_skill = "throwing", armor_channel = "secondary" }, target_motion_range = { minimum_distance = 1280, maximum_distance = 1600 }, has_detail_art = true },
     ["medkit"] = Item{ id = "medkit", name = "Medkit", kind = ItemKind.MEDICAL_KIT, purchase_base = 200, target_motion_range = { minimum_distance = 1280, maximum_distance = 1600 }, has_detail_art = true },
     ["stim_patch"] = Item{ id = "stim_patch", name = "Stim Patch", kind = ItemKind.STIM_PATCH, purchase_base = 300, target_motion_range = { minimum_distance = 1280, maximum_distance = 1600 }, has_detail_art = true },
     ["trauma_patch"] = Item{ id = "trauma_patch", name = "Trauma Patch", kind = ItemKind.TRAUMA_PATCH, purchase_base = 300, target_motion_range = { minimum_distance = 1280, maximum_distance = 1600 }, has_detail_art = true },

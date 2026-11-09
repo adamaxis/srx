@@ -10,8 +10,8 @@ FieldCombatActionKind classify_field_combat_action(
     // Spell action 14 is Barrier; ROM 0x15830 dispatches both action 7 and 14
     // to the field-barrier branch before the ordinary target effect path [C].
     constexpr std::uint8_t kLastSpellActionCode = 14U;
-    constexpr std::uint8_t kFirstEffectRecordCode = 13U;
-    constexpr std::uint8_t kLastEffectRecordCode = 15U;
+    constexpr std::uint8_t kFirstThrowableCode = 13U;
+    constexpr std::uint8_t kLastThrowableCode = 15U;
 
     if (equipped_inventory_slot < 0) {
         return action_code >= kFirstActionCode &&
@@ -23,9 +23,9 @@ FieldCombatActionKind classify_field_combat_action(
         action_code <= kLastWeaponActionCode) {
         return FieldCombatActionKind::weapon_ammo;
     }
-    if (action_code >= kFirstEffectRecordCode &&
-        action_code <= kLastEffectRecordCode) {
-        return FieldCombatActionKind::effect_record;
+    if (action_code >= kFirstThrowableCode &&
+        action_code <= kLastThrowableCode) {
+        return FieldCombatActionKind::throwable;
     }
     return FieldCombatActionKind::unsupported;
 }

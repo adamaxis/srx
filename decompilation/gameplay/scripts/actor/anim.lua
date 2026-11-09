@@ -60,6 +60,8 @@ local function snapshot(state, action, audio_event, projectile_movement,
     end
     local combat_meter_update = state.combat_meter_update
     state.combat_meter_update = nil
+    local combat_meter_updates = state.combat_meter_updates or {}
+    state.combat_meter_updates = nil
     local strike_bearing_degrees = state.strike_bearing_degrees
     state.strike_bearing_degrees = nil
     local hit_spark_spawn_request = state.hit_spark_spawn_request
@@ -140,6 +142,7 @@ local function snapshot(state, action, audio_event, projectile_movement,
         selected_world_actor_id = state.target_selection_processed
             and state.selected_world_actor_id or nil,
         combat_meter_update = combat_meter_update,
+        combat_meter_updates = combat_meter_updates,
         spell_action_resolution = state.spell_action_resolution,
         spell_effect_resolution = state.spell_effect_resolution,
         source_action_dispatch = state.source_action_dispatch,

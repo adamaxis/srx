@@ -22,12 +22,13 @@ enum class FieldCombatActionKind {
     unsupported,
     weapon_ammo,
     magic_spell,
-    effect_record,
+    throwable,
 };
 
 // ROM 0x14D6A selects the D4EA0 spell table when the equipped-slot field is
 // negative, even though its one-based spell code overlaps ordinary item
-// action codes. Nonnegative slots use the D4540 item/effect action families.
+// action codes. Nonnegative slots use the D4540 item/action families; codes
+// 13..15 dispatch through the throwable effect path at 0x15646.
 FieldCombatActionKind classify_field_combat_action(
     std::int16_t equipped_inventory_slot,
     std::uint8_t action_code);

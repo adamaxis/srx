@@ -657,7 +657,7 @@ if type(lockout_fixture) == "table" then
         context.combat_confirm_held = true
         if row.action_kind == "weapon" then
             context.combat_action_available = true
-            context.player_weapon_action_will_fire = true
+            context.player_combat_action_will_execute = true
         else
             context.player_spell_available = true
             context.player_spell_id = "mana_zap"
@@ -675,7 +675,7 @@ if type(lockout_fixture) == "table" then
             check(action_decision.movement_bearing_degrees == nil,
                   row.case .. " action pass suppresses held east movement")
             context.combat_action_available = false
-            context.player_weapon_action_will_fire = false
+            context.player_combat_action_will_execute = false
             context.player_spell_available = false
             context.combat_confirm_held = false
             for pass_number = 1, measured_lockout do
@@ -751,6 +751,114 @@ local function p46t_pedestrian(id)
             physical_meter = 10, mental_meter = 10,
         }),
     }
+end
+
+-- ROM 0x55900..0x55A98 supplies the force, target difficulty, damage track,
+-- defender pool and secondary armor path for item actions 13..15. Expected
+-- damage is calculated independently from the production throwable resolver.
+local ROM_THROWABLES = {
+    frag = { effect = 6, difficulty = 8, extent = 0x280,
+             track = "physical" },
+    scatter = { effect = 3, difficulty = 6, extent = 0x140,
+                track = "physical" },
+    concussion = { effect = 3, difficulty = 10, extent = 0x280,
+                   track = "mental" },
+}
+for item_id, source in pairs(ROM_THROWABLES) do
+    local item = Items.by_id[item_id]
+    local profile = item and item.throwable_action
+    check(profile ~= nil and profile.base_effect == source.effect and
+          profile.difficulty == source.difficulty and
+          profile.blast_extent == source.extent and
+          profile.damage_track == source.track and
+          profile.armor_channel == "secondary" and
+          profile.accuracy_skill == "throwing",
+          item_id .. " profile differs from ROM 0x55900/0x15554")
+
+    clear_actor_states()
+    local target = p46t_pedestrian("throwable-" .. item_id)
+    target.combatant = make_combatant({
+        body = 3, quickness = 2, intelligence = 3, willpower = 2,
+        posture_reduction_percent = 50, melee_defense_bonus = 1,
+        armor = "armor_vest",
+    })
+    local throwing_modifier = 4 -- source +0x87, halved by the throw setup
+    local reference_random, reference_seed_after =
+        source_rng_with_state(0x35A1)
+    local port_random, port_seed_after =
+        source_rng_with_state(0x35A1)
+    local trials = command_average(target.combatant) -
+        posture_share(target.combatant) + target.combatant.attributes.body +
+        target.combatant.cyberware.melee_defense_bonus
+    local defense_successes = source_rolls(
+        trials, source.difficulty, reference_random)
+    local difference = throwing_modifier - defense_successes
+    local expected_damage = source.effect + difference
+    if difference < 0 then
+        expected_damage = math.max(expected_damage, 0)
+    elseif expected_damage >= 11 then
+        expected_damage = 10 -- ROM 0x559D0..0x559F0
+    end
+    expected_damage = math.max(
+        expected_damage - Items.by_id.armor_vest.armor.secondary_modifier, 0)
+    local expected_physical = source.track == "physical"
+        and 10 - expected_damage or 10
+    local expected_mental = source.track == "mental"
+        and 10 - expected_damage or 10
+    local update = Combat.resolve_throwable_hit({
+        ai_random_bound = port_random,
+        combat_meter_service_blocked = false,
+    }, {
+        item_id = item_id,
+        throwing_modifier = throwing_modifier,
+    }, target)
+    check(update ~= nil and update.physical_meter == expected_physical and
+          update.mental_meter == expected_mental and
+          update.physical == (source.track == "physical") and
+          update.changed == (expected_damage > 0) and
+          reference_seed_after() == port_seed_after(),
+          item_id .. " throwable damage/armor/track differs from ROM rules")
+end
+
+-- ROM 0x15554 uses a lower-inclusive, upper-exclusive square, scans all ten
+-- records in slot order, and does not exclude party members from friendly fire.
+for item_id, source in pairs(ROM_THROWABLES) do
+    local center = { x = 5000, y = 5000 }
+    local lower = center.x - source.extent
+    local upper = lower + source.extent * 2
+    local function area_target(id, slot, x, y, eligible, party)
+        local target = p46t_pedestrian(id)
+        target.combatant.is_party_member = party == true
+        return {
+            id = id,
+            source_record_slot = slot,
+            world_x = x,
+            world_y = y,
+            eligible_for_area_effect = eligible,
+            combatant = target.combatant,
+        }
+    end
+    local targets = {
+        area_target("upper-x", 1, upper, center.y, true, false),
+        area_target("inside", 4, center.x, center.y, true, false),
+        area_target("lower-x-friendly", 0, lower, center.y, true, true),
+        area_target("upper-y", 2, center.x, center.y + source.extent,
+                    true, false),
+        area_target("source-ineligible", 3, center.x, center.y, false, false),
+        area_target("below-lower", 5, lower - 1, center.y, true, false),
+    }
+    local updates = Combat.resolve_throwable_blast({
+        ai_random_bound = function(bound)
+            return bound > 0 and 0 or nil
+        end,
+        combat_meter_service_blocked = false,
+    }, { item_id = item_id, throwing_modifier = 0 }, center, targets)
+    check(updates ~= nil and #updates == 2 and
+          updates[1].target_id == "lower-x-friendly" and
+          updates[2].target_id == "inside" and
+          updates[1].physical == (source.track == "physical") and
+          updates[2].physical == (source.track == "physical"),
+          item_id .. " blast window/order/friendly-fire differs from ROM 0x15554")
 end
 
 -- Measured GPGX logic-only seed chain, re-run against production Lua before

@@ -1885,6 +1885,7 @@ private:
     bool apply_script_combat_meter_update(
         const scripting::ScriptCombatMeterUpdate& update,
         std::string_view boundary_prefix = "field.combat.weapon_hit");
+    void service_player_throwable_action(RunnerRecordFields& runner);
     void service_player_weapon_action(bool requested_by_lua);
     void initialize_field_entity_selection_state();
     void refresh_field_runner_state_and_assets();
@@ -2198,6 +2199,9 @@ private:
         scripting::ScriptCombatantFacts shooter_facts{};
         std::optional<std::size_t> shooter_party_slot;
         std::string shooter_actor_id;
+        std::optional<scripting::ScriptThrowableActionFacts>
+            throwable_action;
+        std::optional<std::uint8_t> throwable_effect_slot;
         SpawnEntityRecordState primary_record{};
         EntityCollisionRecord primary_collision_record{};
         EntityFixedPointPosition primary_fixed_position{};
