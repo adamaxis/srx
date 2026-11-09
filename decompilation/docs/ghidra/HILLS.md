@@ -2019,9 +2019,14 @@ loader, leaving the portrait window black. The presenter now loads this
 ROM-extracted party-face family. Debug/Release bulk-contact QA checks the
 bound face pixels on Ricky's contact, hire-offer, and success screens, as well
 as the displayed source price, payment, party record, and contact removal.
-These internal asset checks verify presentation wiring, not an independent
-Genesis portrait comparison; the permanent-hire physical branch also remains
-open. See `field-bulk-generic-contacts-qa/ricky/{actual,hire-offer,hired}.bmp`.
+The QA now also uses ordinary D-pad input from its Scene-19 bootstrap position
+to reach Ricky through the ROM collision grid, enter the bit-4 contact window
+at `0xEC1C..0xEC46`, and complete the permanent-hire option through the live
+dialogue dispatcher. It checks the source-derived fee, party installation,
+and contact removal. This is an internal native route, not an independent
+Genesis comparison or a continuous route from another scene. See
+`field-bulk-generic-contacts-qa/ricky-natural-contact/{actual,hire-offer,hired}.bmp`
+and `field-bulk-generic-contacts-qa/ricky/{actual,hire-offer,hired}.bmp`.
 
 ### Scene-2 pedestrian live-combat death tail (partial, 2026-11-08)
 

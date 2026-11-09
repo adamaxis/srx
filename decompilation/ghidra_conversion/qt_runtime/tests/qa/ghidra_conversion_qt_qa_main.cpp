@@ -17336,6 +17336,313 @@ int run_bulk_generic_field_contacts_qa(
          "A rat-like dwarf is here.", "0xFFBDA", true},
     }};
 
+    // ROM 0x16FFC installs Ricky at his authored Scene-19 coordinate, then
+    // 0xEB92..0xECCC opens the bit-4 contact on physical overlap. Exercise
+    // that path from the Scene-19 bootstrap position using ordinary D-pad input; the
+    // offer cases below retain their exact-overlap setup for fee permutations.
+    {
+        const auto natural_output = output / "ricky-natural-contact";
+        std::filesystem::create_directories(natural_output, output_error);
+        if (output_error) {
+            std::cerr << "Ricky natural-contact QA: could not create output: "
+                      << output_error.message() << '\n';
+            return 3;
+        }
+        std::vector<std::string> natural_boundaries;
+        qt_runtime::FieldSceneRuntime field_scene(
+            [&natural_boundaries](const std::string_view boundary) {
+                natural_boundaries.emplace_back(boundary);
+            });
+        auto natural_startup_state = startup_state;
+        natural_startup_state.new_game_opening_completed = true;
+        if (!field_scene.bootstrap_for_scene_dump(natural_startup_state, 19U)) {
+            std::cerr << "Ricky natural-contact QA: Scene-19 bootstrap failed: "
+                      << field_scene.failure() << '\n';
+            return 3;
+        }
+        field_scene.set_compact_runner_markers_for_dump(0xFFU, 0xFFU);
+        if (!field_scene.reenter_field_scene_for_dump(19U)) {
+            std::cerr << "Ricky natural-contact QA: actor-list entry failed: "
+                      << field_scene.failure() << '\n';
+            return 3;
+        }
+        const auto actor =
+            field_scene.world_activity_script_actor_projection_for_dump(0U);
+        const auto runner_start = field_scene.field_entity_world_position();
+        if (!actor.has_value() || actor->activity_id != "scene_19_script" ||
+            (actor->spawn_state_flags & 0x10U) == 0U ||
+            (field_scene.field_entity_behavior_flags_for_dump() & 0x02U) == 0U) {
+            std::cerr << "Ricky natural-contact QA: ROM bit-4 actor or eligible "
+                         "runner was not published\n";
+            return 3;
+        }
+
+        constexpr std::uint16_t kGridStep = 0x0040U;
+        constexpr std::size_t kGridWidth = 512U;
+        constexpr std::size_t kGridCellCount = kGridWidth * kGridWidth;
+        const auto grid_index = [](const SceneRunnerPosition position) {
+            return static_cast<std::size_t>(position.y / kGridStep) *
+                       kGridWidth +
+                   static_cast<std::size_t>(position.x / kGridStep);
+        };
+        std::vector<std::int16_t> collision_cache(
+            kGridCellCount, std::numeric_limits<std::int16_t>::max());
+        const auto collision_at = [&field_scene, &collision_cache](
+                                      const std::size_t index) {
+            auto& cached = collision_cache[index];
+            if (cached == std::numeric_limits<std::int16_t>::max()) {
+                const auto column = index % kGridWidth;
+                const auto row = index / kGridWidth;
+                cached = field_scene.probe_field_collision_for_dump(
+                    static_cast<std::uint16_t>(column * kGridStep),
+                    static_cast<std::uint16_t>(row * kGridStep));
+            }
+            return cached;
+        };
+        const auto passable = [](const std::int16_t code) {
+            return code == 0 || code == static_cast<std::int8_t>(0xA1U) ||
+                   code == static_cast<std::int8_t>(0x81U);
+        };
+        const auto start_index = grid_index(runner_start);
+        const auto actor_cell = SceneRunnerPosition{
+            static_cast<std::uint16_t>(actor->world_position.x /
+                                       kGridStep * kGridStep),
+            static_cast<std::uint16_t>(actor->world_position.y /
+                                       kGridStep * kGridStep)};
+        std::vector<bool> contact_goals(kGridCellCount, false);
+        for (const auto offset_x : {-1, 0, 1}) {
+            for (const auto offset_y : {-1, 0, 1}) {
+                const auto column = static_cast<std::int32_t>(
+                    actor_cell.x / kGridStep) + offset_x;
+                const auto row = static_cast<std::int32_t>(
+                    actor_cell.y / kGridStep) + offset_y;
+                if (column >= 0 && row >= 0 &&
+                    column < static_cast<std::int32_t>(kGridWidth) &&
+                    row < static_cast<std::int32_t>(kGridWidth) &&
+                    (offset_x != 0 || offset_y != 0)) {
+                    contact_goals[static_cast<std::size_t>(row) * kGridWidth +
+                                  static_cast<std::size_t>(column)] = true;
+                }
+            }
+        }
+        std::vector<std::int32_t> previous(kGridCellCount, -2);
+        std::vector<std::size_t> frontier{start_index};
+        previous[start_index] = -1;
+        std::size_t reached_goal = kGridCellCount;
+        constexpr std::array<std::int32_t, 4U> kDeltaX{{-1, 0, 1, 0}};
+        constexpr std::array<std::int32_t, 4U> kDeltaY{{0, -1, 0, 1}};
+        for (std::size_t cursor = 0U;
+             cursor < frontier.size() && reached_goal == kGridCellCount;
+             ++cursor) {
+            const auto current = frontier[cursor];
+            if (contact_goals[current]) {
+                reached_goal = current;
+                break;
+            }
+            const auto column = static_cast<std::int32_t>(current % kGridWidth);
+            const auto row = static_cast<std::int32_t>(current / kGridWidth);
+            for (std::size_t direction = 0U; direction < kDeltaX.size();
+                 ++direction) {
+                const auto next_column = column + kDeltaX[direction];
+                const auto next_row = row + kDeltaY[direction];
+                if (next_column < 0 || next_row < 0 ||
+                    next_column >= static_cast<std::int32_t>(kGridWidth) ||
+                    next_row >= static_cast<std::int32_t>(kGridWidth)) {
+                    continue;
+                }
+                const auto next = static_cast<std::size_t>(next_row) *
+                                      kGridWidth +
+                                  static_cast<std::size_t>(next_column);
+                if (previous[next] == -2 && passable(collision_at(next))) {
+                    previous[next] = static_cast<std::int32_t>(current);
+                    frontier.push_back(next);
+                }
+            }
+        }
+        if (reached_goal == kGridCellCount) {
+            std::cerr << "Ricky natural-contact QA: no ROM-grid route from "
+                      << runner_start.x << ',' << runner_start.y << " to "
+                      << actor_cell.x << ',' << actor_cell.y
+                      << " reachable_cells=" << frontier.size() << '\n';
+            return 3;
+        }
+        std::vector<std::size_t> route;
+        for (auto node = reached_goal;;) {
+            route.push_back(node);
+            if (node == start_index) {
+                break;
+            }
+            const auto parent = previous[node];
+            if (parent < 0) {
+                std::cerr << "Ricky natural-contact QA: invalid route parent\n";
+                return 3;
+            }
+            node = static_cast<std::size_t>(parent);
+        }
+        std::reverse(route.begin(), route.end());
+        const auto position_for_index = [](const std::size_t index) {
+            return SceneRunnerPosition{
+                static_cast<std::uint16_t>(index % kGridWidth * kGridStep),
+                static_cast<std::uint16_t>(index / kGridWidth * kGridStep)};
+        };
+        std::size_t movement_frames = 0U;
+        for (std::size_t index = 1U;
+             index < route.size() && !field_scene.dialogue_open(); ++index) {
+            const auto previous_position = position_for_index(route[index - 1U]);
+            const auto destination = position_for_index(route[index]);
+            const auto input = destination.x < previous_position.x ? 0x04U
+                : destination.x > previous_position.x ? 0x08U
+                : destination.y < previous_position.y ? 0x01U : 0x02U;
+            for (std::size_t step = 0U; step < 24U &&
+                 !field_scene.dialogue_open(); ++step) {
+                const auto current = field_scene.field_entity_world_position();
+                const bool reached = input == 0x04U ? current.x <= destination.x
+                    : input == 0x08U ? current.x >= destination.x
+                    : input == 0x01U ? current.y <= destination.y
+                                     : current.y >= destination.y;
+                if (reached) {
+                    break;
+                }
+                field_scene.set_controller_port_byte(
+                    static_cast<std::uint8_t>(input));
+                field_scene.advance_frame();
+                ++movement_frames;
+            }
+        }
+        field_scene.set_controller_port_byte(0U);
+        // ROM 0xEC1C..0xEC46 uses the half-open [-0x40,+0x40) window for
+        // unlinked pairs. The coarse collision-grid route can end on its edge,
+        // so finish with ordinary one-axis input and check the actual window.
+        const auto inside_rom_contact_window = [actor](
+                                                   const SceneRunnerPosition position) {
+            return position.x >= static_cast<std::uint16_t>(
+                                     actor->world_position.x - 0x0040U) &&
+                   position.x < static_cast<std::uint16_t>(
+                                    actor->world_position.x + 0x0040U) &&
+                   position.y >= static_cast<std::uint16_t>(
+                                     actor->world_position.y - 0x0040U) &&
+                   position.y < static_cast<std::uint16_t>(
+                                    actor->world_position.y + 0x0040U);
+        };
+        for (std::size_t step = 0U; step < 24U &&
+             !field_scene.dialogue_open(); ++step) {
+            const auto current = field_scene.field_entity_world_position();
+            if (inside_rom_contact_window(current)) {
+                break;
+            }
+            const auto input =
+                current.x < actor->world_position.x - 0x0040U ? 0x08U
+                : current.x >= actor->world_position.x + 0x0040U ? 0x04U
+                : current.y < actor->world_position.y - 0x0040U ? 0x02U
+                : current.y >= actor->world_position.y + 0x0040U ? 0x01U
+                                                                    : 0U;
+            if (input == 0U) {
+                break;
+            }
+            field_scene.set_controller_port_byte(
+                static_cast<std::uint8_t>(input));
+            field_scene.advance_frame();
+            ++movement_frames;
+        }
+        field_scene.set_controller_port_byte(0U);
+        for (std::size_t wait = 0U; wait < 30U &&
+             !field_scene.dialogue_open(); ++wait) {
+            field_scene.advance_frame();
+        }
+        const auto& dialogue = field_scene.dialogue_panel();
+        const auto image = render_qa_field(field_scene);
+        if (!field_scene.dialogue_open() || dialogue.actor_name != "Ricky" ||
+            dialogue.option_count != 3U ||
+            !image.save(QString::fromStdWString(
+                (natural_output / "actual.bmp").wstring()))) {
+            const auto final_position = field_scene.field_entity_world_position();
+            std::cerr << "Ricky natural-contact QA: ordinary movement did not "
+                         "open Ricky's contact dialogue start="
+                      << runner_start.x << ',' << runner_start.y << " end="
+                      << final_position.x << ',' << final_position.y
+                      << " actor=" << actor->world_position.x << ','
+                      << actor->world_position.y << " movement_frames="
+                      << movement_frames << " open="
+                      << field_scene.dialogue_open() << " speaker="
+                      << dialogue.actor_name << " failure="
+                      << field_scene.failure() << '\n';
+            return 3;
+        }
+        const auto progress = field_scene.ricky_progress_counters_for_dump();
+        const auto& joshua = field_scene.field_party_records_for_dump()[0U];
+        const auto fees =
+            shadowrun::ghidra_conversion::calculate_recruited_runner_service_fees(
+                0U, progress.empty() ? 0U : progress[0U],
+                {joshua.attributes[3U], joshua.skills[10U],
+                 joshua.skills[11U]});
+        constexpr std::uint32_t kNaturalHireFunds = 1000000U;
+        const auto contact_position =
+            field_scene.world_activity_script_actor_position_for_dump(0U);
+        if (progress.size() != 10U ||
+            fees.action != shadowrun::ghidra_conversion::
+                               RecruitedRunnerServiceOfferPreparationAction::
+                                   prepared ||
+            !contact_position.has_value()) {
+            std::cerr << "Ricky natural-contact QA: source offer or contact "
+                         "facts were unavailable\n";
+            return 3;
+        }
+        field_scene.set_field_funds_for_dump(kNaturalHireFunds);
+        tap_qa_controller_button(field_scene, 0x10U); // ROM 0x1F3C4: B selects Hire.
+        const auto offer = field_scene.dialogue_panel();
+        const auto offer_image = render_qa_field(field_scene);
+        if (!field_scene.dialogue_open() || offer.option_count != 2U ||
+            offer.portrait_alias != "field.hud.party.face.3.palette.0" ||
+            !offer_image.save(QString::fromStdWString(
+                (natural_output / "hire-offer.bmp").wstring()))) {
+            std::cerr << "Ricky natural-contact QA: ordinary B input did not "
+                         "open the ROM hire offer\n";
+            return 3;
+        }
+        tap_qa_controller_button(field_scene, 0x10U); // ROM 0x1F3C4: B selects permanent hire.
+        const auto success = field_scene.dialogue_panel();
+        bool success_text_shown = false;
+        for (std::size_t index = 0U;
+             index < success.text_segment_count; ++index) {
+            success_text_shown = success_text_shown ||
+                success.text_segments[index].find("You got me, pal.") !=
+                    std::string_view::npos;
+        }
+        const auto& ricky = field_scene.field_party_records_for_dump()[1U];
+        const auto ricky_position =
+            field_scene.field_party_initial_position_for_dump(1U);
+        const auto remaining_contact =
+            field_scene.world_activity_script_actor_projection_for_dump(0U);
+        const auto funds_after_hire = field_scene.field_funds_for_dump();
+        const auto hired_image = render_qa_field(field_scene);
+        if (!field_scene.dialogue_open() || !success_text_shown ||
+            success.actor_name != "Ricky" ||
+            success.portrait_alias != "field.hud.party.face.3.palette.0" ||
+            !field_scene.field_party_slot_active_for_dump(1U) ||
+            ricky.recruitment_population != 0xFFU ||
+            !ricky_position.has_value() ||
+            ricky_position->x != contact_position->x ||
+            ricky_position->y != contact_position->y ||
+            remaining_contact.has_value() || !funds_after_hire.has_value() ||
+            *funds_after_hire != kNaturalHireFunds - fees.permanent_fee ||
+            !hired_image.save(QString::fromStdWString(
+                (natural_output / "hired.bmp").wstring()))) {
+            std::cerr << "Ricky natural-contact QA: ordinary-input permanent "
+                         "hire did not charge the source fee, install Ricky, "
+                         "and retire the contact\n";
+            return 3;
+        }
+        std::cout << "ricky_natural_contact=passed start=" << runner_start.x
+                  << ',' << runner_start.y << " actor="
+                  << actor->world_position.x << ',' << actor->world_position.y
+                  << " movement_frames=" << movement_frames
+                  << " dialogue=" << dialogue.actor_name
+                  << " permanent_fee=" << fees.permanent_fee
+                  << " permanent_hire=installed"
+                  << " actual="
+                  << (natural_output / "actual.bmp").string() << '\n';
+    }
+
     for (const auto& test_case : cases) {
         const auto case_output = output / test_case.directory;
         std::filesystem::create_directories(case_output, output_error);
