@@ -2039,3 +2039,7 @@ per-preset QA directories. These are internal Qt runtime captures; no matching
 independent Genesis pedestrian-death sequence has been identified. Other
 actor kinds, alternate death continuations, and the broader actor hill remain
 open.
+
+The live Scene-2 encounter QA now carries a kind-8 Weenr through the same
+completion boundary. Its ROM C0B2 list at `0x8FC4` is two frames at rate
+`0x0200`; after a live lethal pistol hit, Debug and Release require Lua's+typed lifecycle facts to report active, downed, and dead, retain its position,+and preserve the final pose in `zero-meter-down/down-complete.bmp` (`0xA93E`,+`0xAB02`, ordinary-corpse path `0xA91C`). The existing GPGX held-fire sample+records target flags `0x35` at frame 10263 and `0x75` at 10280, consistent with+the ROM death completion. This ordinary Weenr route does not reproduce the+reported disappearance; other enemy kinds, offscreen reinforcement retirement,+and the user's missing repro remain open.

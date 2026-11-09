@@ -1916,6 +1916,37 @@ FieldSceneRuntime::default_actor_physical_meter_for_dump(
 
 
 #ifdef SHADOWRUN_QT_QA_DRIVER
+std::optional<scripting::ScriptActorLifecycleFacts>
+FieldSceneRuntime::default_actor_lifecycle_for_dump(
+    const std::uint16_t source_order) const noexcept {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    const auto actor = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference, source_order](
+            const DefaultFieldActorPresentation& candidate) {
+            return candidate.scene_reference == scene_reference &&
+                   candidate.active &&
+                   candidate.source_order == source_order;
+        });
+    if (actor == field_default_actors_.end()) {
+        return std::nullopt;
+    }
+
+    // Expose named actor facts to QA; keep the live record byte at this host
+    // boundary. ROM 0xA93E sets DEAD after the C0B2 list completes.
+    const auto flags = actor->source_record_flags;
+    return scripting::ScriptActorLifecycleFacts{
+        (flags & 0x01U) != 0U,
+        (flags & 0x02U) != 0U,
+        (flags & 0x08U) != 0U,
+        (flags & 0x10U) != 0U,
+        (flags & 0x20U) != 0U,
+        (flags & 0x40U) != 0U};
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
+
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::size_t FieldSceneRuntime::visible_default_actor_count_for_dump() const {
     const auto scene_reference = state_.field_scene_buffers.scene_reference;
     const auto camera_x = static_cast<std::uint16_t>(
@@ -1924,7 +1955,7 @@ std::size_t FieldSceneRuntime::visible_default_actor_count_for_dump() const {
         state_.field_scene_buffers.camera_y);
     std::size_t visible = 0U;
     for (const auto& actor : field_default_actors_) {
-        if (actor.scene_reference != scene_reference) {
+        if (!actor.active || actor.scene_reference != scene_reference) {
             continue;
         }
         const auto sprite = default_actor_sprite_view(actor);

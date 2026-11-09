@@ -4540,8 +4540,20 @@ int run_field_random_encounter_spawn_qa(
         field_scene.default_actor_count_for_dump();
     const auto down_final_meter =
         field_scene.default_actor_physical_meter_for_dump(0U);
+    // Kind-8 Weenr C0B2 uses the two-frame list at 0x8FC4 (rate 0x0200).
+    // On completion 0xA93E sets DEAD through 0xAB02, while the ordinary corpse
+    // remains active and drawable on its final pose (0xA91C).
+    const auto down_final_lifecycle =
+        field_scene.default_actor_lifecycle_for_dump(0U);
     const auto down_final_animation =
         field_scene.default_actor_animation_id_for_dump(0U);
+    const auto down_complete_frame = render();
+    const bool down_complete_frame_saved =
+        save_down_frame("down-complete.bmp", down_complete_frame);
+    const auto down_positions_after_completion =
+        field_scene.active_default_actor_positions_for_dump();
+    const auto visible_actors_after_completion =
+        field_scene.visible_default_actor_count_for_dump();
     const auto down_audio_final_count = static_cast<std::size_t>(std::count(
         field_audio_events.begin() + static_cast<std::ptrdiff_t>(
             down_audio_start),
@@ -4561,13 +4573,24 @@ int run_field_random_encounter_spawn_qa(
         !down_positions_stable ||
         down_final_actor_count != down_actor_spawned ||
         down_final_meter != std::optional<std::uint8_t>{0U} ||
+        !down_final_lifecycle.has_value() ||
+        !down_final_lifecycle->active || !down_final_lifecycle->downed ||
+        !down_final_lifecycle->dead ||
+        down_positions_after_completion.size() != down_actor_spawned ||
+        down_positions_after_completion.empty() ||
+        down_positions_after_completion.front().x !=
+            down_positions_after_hit.front().x ||
+        down_positions_after_completion.front().y !=
+            down_positions_after_hit.front().y ||
+        visible_actors_after_completion == 0U ||
         down_final_animation != std::optional<std::string>{"down"} ||
         down_audio_final_count != 1U || !down_frame_one_saved ||
+        !down_complete_frame_saved ||
         !down_frame_held_saved ||
         !field_hud_chrome_survives(down_frame_one, asset_root) ||
         !field_hud_chrome_survives(down_frame_held, asset_root) ||
         !down_actor_skipped_by_target_scan) {
-        std::cerr << "field random-encounter QA: C0B2 did not advance at the ROM cadence, hold while stationary, remain active at zero meter, or stay out of B target selection"
+        std::cerr << "field random-encounter QA: C0B2 did not advance at the ROM cadence, set the completed-death fact while keeping its corpse active/drawable at zero meter, or stay out of B target selection"
                   << " hit_actor=" << down_hit_actor_id
                   << " selected="
                   << selected_after_down_hit.value_or("<none>")
