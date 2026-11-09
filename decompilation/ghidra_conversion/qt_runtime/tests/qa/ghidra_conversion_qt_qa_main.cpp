@@ -53189,6 +53189,37 @@ int main(int argc, char** argv) {
                 }
                 const auto aim_selected =
                     weapon_fire_scene.selected_default_actor_id_for_dump();
+                const auto first_aim_profile =
+                    weapon_fire_scene.default_actor_script_profile_for_dump(
+                        0U);
+                const auto second_aim_profile =
+                    weapon_fire_scene.default_actor_script_profile_for_dump(
+                        1U);
+                const auto first_aim_slot =
+                    weapon_fire_scene.default_actor_record_slot_for_dump(0U);
+                const auto second_aim_slot =
+                    weapon_fire_scene.default_actor_record_slot_for_dump(1U);
+                const auto first_aim_lifecycle =
+                    weapon_fire_scene.default_actor_lifecycle_for_dump(0U);
+                const auto second_aim_lifecycle =
+                    weapon_fire_scene.default_actor_lifecycle_for_dump(1U);
+                const bool two_live_source_weenrs =
+                    aim_actors_before == 0U && aim_spawned == 2U &&
+                    first_aim_profile == std::optional<std::string>{
+                        "weenr1_k08_none00"} &&
+                    second_aim_profile == std::optional<std::string>{
+                        "weenr1_k08_none00"} &&
+                    first_aim_slot.has_value() &&
+                    second_aim_slot.has_value() &&
+                    *first_aim_slot != *second_aim_slot &&
+                    first_aim_lifecycle.has_value() &&
+                    second_aim_lifecycle.has_value() &&
+                    first_aim_lifecycle->active &&
+                    second_aim_lifecycle->active &&
+                    !first_aim_lifecycle->downed &&
+                    !second_aim_lifecycle->downed &&
+                    !first_aim_lifecycle->dead &&
+                    !second_aim_lifecycle->dead;
                 // Keep this two-shot target-switch fixture out of ROM
                 // 0xACAE's empty-magazine auto-reload branch.
                 held_fire_runner.ammo_rounds = std::max<std::uint8_t>(
@@ -53201,7 +53232,8 @@ int main(int argc, char** argv) {
                     weapon_fire_scene.field_entity_attack_pose_for_dump() ||
                     aim_spawned != 2U || !aim_entry_complete ||
                     !aim_actor_on_runner || !second_aim_actor_on_runner ||
-                    !aim_actors_frozen || !aim_selected.has_value() ||
+                    !aim_actors_frozen || !two_live_source_weenrs ||
+                    !aim_selected.has_value() ||
                     !weapon_fire_scene
                          .set_selected_default_actor_world_position_for_dump(
                              aim_x, aim_y)) {
@@ -53210,11 +53242,99 @@ int main(int argc, char** argv) {
                               << " entry=" << aim_entry_complete
                               << " placed=" << aim_actor_on_runner
                               << " actors_before=" << aim_actors_before
+                              << " profile0="
+                              << first_aim_profile.value_or("<none>")
+                              << " profile1="
+                              << second_aim_profile.value_or("<none>")
                               << " selected="
                               << aim_selected.value_or("<none>")
                               << " gate="
                               << held_fire_runner.animation_action_gate
                               << '\n';
+                    return 3;
+                }
+                const auto retarget_output =
+                    weapon_fire_dump_path / "held-fire-retarget";
+                std::filesystem::create_directories(retarget_output);
+                std::ofstream retarget_trace(
+                    retarget_output / "held-fire-retarget.tsv",
+                    std::ios::trunc);
+                if (!retarget_trace) {
+                    std::cerr << "field player action dump: could not open held-fire-retarget.tsv\n";
+                    return 3;
+                }
+                retarget_trace
+                    << "phase\tinput\tselected_actor\tactor_0_profile\t"
+                       "actor_0_slot\tactor_0_active\tactor_0_meter\t"
+                       "actor_1_profile\tactor_1_slot\tactor_1_active\t"
+                       "actor_1_meter\tammo_rounds\t"
+                       "action_gate\tprojectile_heading\tmarker_visible\t"
+                       "marker_animating\tmarker_style\tmarker_radius\t"
+                       "marker_x\tmarker_y\n";
+                const auto capture_retarget_phase =
+                    [&](const std::string_view phase,
+                        const std::uint8_t input,
+                        const std::optional<std::uint16_t> heading) {
+                        const auto selected_id =
+                            weapon_fire_scene
+                                .selected_default_actor_id_for_dump();
+                        const auto marker = weapon_fire_scene
+                            .selected_default_actor_target_marker_for_dump();
+                        const auto actor_0_meter = weapon_fire_scene
+                            .default_actor_physical_meter_for_dump(0U);
+                        const auto actor_1_meter = weapon_fire_scene
+                            .default_actor_physical_meter_for_dump(1U);
+                        const auto image = render_weapon_fire_scene();
+                        const auto image_path = retarget_output /
+                            (std::string(phase) + ".bmp");
+                        const bool image_saved = image.save(
+                            QString::fromStdWString(image_path.wstring()));
+                        retarget_trace
+                            << phase << '\t'
+                            << static_cast<unsigned>(input) << '\t'
+                            << selected_id.value_or("none") << '\t'
+                            << first_aim_profile.value_or("none") << '\t'
+                            << static_cast<unsigned>(*first_aim_slot) << '\t'
+                            << (first_aim_lifecycle->active ? 1 : 0) << '\t'
+                            << static_cast<unsigned>(
+                                   actor_0_meter.value_or(0xFFU))
+                            << '\t'
+                            << second_aim_profile.value_or("none") << '\t'
+                            << static_cast<unsigned>(*second_aim_slot) << '\t'
+                            << (second_aim_lifecycle->active ? 1 : 0) << '\t'
+                            << static_cast<unsigned>(
+                                   actor_1_meter.value_or(0xFFU))
+                            << '\t'
+                            << static_cast<unsigned>(
+                                   held_fire_runner.ammo_rounds)
+                            << '\t'
+                            << held_fire_runner.animation_action_gate << '\t';
+                        if (heading.has_value()) {
+                            retarget_trace << *heading;
+                        } else {
+                            retarget_trace << "none";
+                        }
+                        retarget_trace << '\t';
+                        if (marker.has_value()) {
+                            retarget_trace
+                                << (marker->visible ? 1 : 0) << '\t'
+                                << (marker->animating ? 1 : 0) << '\t'
+                                << static_cast<unsigned>(marker->style) << '\t'
+                                << static_cast<unsigned>(marker->radius) << '\t'
+                                << marker->projected_x << '\t'
+                                << marker->projected_y;
+                        } else {
+                            retarget_trace << "none\tnone\tnone\tnone\tnone\tnone";
+                        }
+                        retarget_trace << '\n';
+                        return image_saved && marker.has_value() &&
+                               marker->visible &&
+                               marker->entity_kind == 8U &&
+                               static_cast<bool>(retarget_trace);
+                    };
+                if (!capture_retarget_phase("first-target-selected",
+                                            0x10U, std::nullopt)) {
+                    std::cerr << "field player action dump: could not save the first live target capture or trace\n";
                     return 3;
                 }
                 weapon_fire_scene.set_controller_port_byte(0x40U);
@@ -53242,6 +53362,31 @@ int main(int argc, char** argv) {
                               << '\n';
                     return 3;
                 }
+                if (!capture_retarget_phase("first-target-shot", 0x40U,
+                                            aimed_heading)) {
+                    std::cerr << "field player action dump: could not save the first held-fire target capture or trace\n";
+                    return 3;
+                }
+                const auto first_target_actor_0_meter =
+                    weapon_fire_scene.default_actor_physical_meter_for_dump(
+                        0U);
+                const auto first_target_actor_1_meter =
+                    weapon_fire_scene.default_actor_physical_meter_for_dump(
+                        1U);
+                if (!first_target_actor_0_meter.has_value() ||
+                    *first_target_actor_0_meter >= 10U ||
+                    first_target_actor_1_meter !=
+                        std::optional<std::uint8_t>{10U}) {
+                    std::cerr << "field player action dump: first selected target did not take the first live shot"
+                              << " actor0="
+                              << static_cast<unsigned>(
+                                     first_target_actor_0_meter.value_or(0xFFU))
+                              << " actor1="
+                              << static_cast<unsigned>(
+                                     first_target_actor_1_meter.value_or(0xFFU))
+                              << '\n';
+                    return 3;
+                }
 
                 // ROM 0x1DC4C accepts each B rising edge while the player's
                 // +0xDC firearm delay is counting down at 0xACAE. The next
@@ -53256,16 +53401,39 @@ int main(int argc, char** argv) {
                 weapon_fire_scene.advance_frame();
                 const auto second_aimed_actor =
                     weapon_fire_scene.selected_default_actor_id_for_dump();
+                auto second_aim_x = aim_player.x;
+                auto second_aim_y = aim_player.y;
+                std::uint16_t expected_retarget_heading = 0U;
+                if (expected_aim_heading == 0x8000U ||
+                    expected_aim_heading == 0x0000U) {
+                    if (aim_player.x <= 0xF000U) {
+                        second_aim_x = static_cast<std::uint16_t>(
+                            aim_player.x + 0x0200U);
+                        expected_retarget_heading = 0x4000U;
+                    } else if (aim_player.x >= 0x0200U) {
+                        second_aim_x = static_cast<std::uint16_t>(
+                            aim_player.x - 0x0200U);
+                        expected_retarget_heading = 0xC000U;
+                    }
+                } else if (aim_player.y <= 0xF000U) {
+                    second_aim_y = static_cast<std::uint16_t>(
+                        aim_player.y + 0x0200U);
+                    expected_retarget_heading = 0x8000U;
+                } else if (aim_player.y >= 0x0200U) {
+                    second_aim_y = static_cast<std::uint16_t>(
+                        aim_player.y - 0x0200U);
+                    expected_retarget_heading = 0x0000U;
+                }
                 const bool second_target_positioned =
                     weapon_fire_scene
                         .set_selected_default_actor_world_position_for_dump(
-                            aim_player.x,
-                            static_cast<std::uint16_t>(aim_player.y + 0x0200U));
+                            second_aim_x, second_aim_y);
                 if (!first_aimed_actor.has_value() ||
                     !second_aimed_actor.has_value() ||
                     *first_aimed_actor == *second_aimed_actor ||
                     retarget_action_gate <= 0 ||
                     !second_target_positioned ||
+                    expected_retarget_heading == expected_aim_heading ||
                     held_fire_runner.ammo_rounds !=
                         rounds_before_retarget_shot) {
                     std::cerr << "field player action dump: B did not switch the selected actor during held-fire cooldown"
@@ -53274,11 +53442,26 @@ int main(int argc, char** argv) {
                               << " second="
                               << second_aimed_actor.value_or("<none>")
                               << " gate=" << retarget_action_gate
+                              << " first_heading=0x" << std::hex
+                              << expected_aim_heading
+                              << " second_heading=0x"
+                              << expected_retarget_heading << std::dec
                               << " ammo=" << static_cast<unsigned>(
                                      held_fire_runner.ammo_rounds)
                               << '\n';
                     return 3;
                 }
+                if (!capture_retarget_phase("second-target-selected",
+                                            0x50U, std::nullopt)) {
+                    std::cerr << "field player action dump: could not save the second live target capture or trace\n";
+                    return 3;
+                }
+                const auto second_target_actor_0_meter =
+                    weapon_fire_scene.default_actor_physical_meter_for_dump(
+                        0U);
+                const auto second_target_actor_1_meter =
+                    weapon_fire_scene.default_actor_physical_meter_for_dump(
+                        1U);
                 bool retarget_repeat_fired = false;
                 for (std::int32_t elapsed = 1;
                      elapsed <= static_cast<std::int32_t>(
@@ -53326,11 +53509,27 @@ int main(int argc, char** argv) {
                 }
                 const auto retargeted_heading =
                     weapon_fire_scene.field_weapon_primary_heading_for_dump();
+                const auto retarget_actor_0_meter =
+                    weapon_fire_scene.default_actor_physical_meter_for_dump(
+                        0U);
+                const auto retarget_actor_1_meter =
+                    weapon_fire_scene.default_actor_physical_meter_for_dump(
+                        1U);
                 if (!retarget_repeat_fired ||
                     held_fire_runner.ammo_rounds + 1U !=
                         rounds_before_retarget_shot ||
                     retargeted_heading !=
-                        std::optional<std::uint16_t>{0x8000U}) {
+                        std::optional<std::uint16_t>{
+                            expected_retarget_heading} ||
+                    second_target_actor_0_meter !=
+                        first_target_actor_0_meter ||
+                    second_target_actor_1_meter !=
+                        std::optional<std::uint8_t>{10U} ||
+                    !retarget_actor_0_meter.has_value() ||
+                    !retarget_actor_1_meter.has_value() ||
+                    retarget_actor_0_meter !=
+                        second_target_actor_0_meter ||
+                    *retarget_actor_1_meter >= *second_target_actor_1_meter) {
                     std::cerr << "field player action dump: held-fire repeat did not aim at the newly selected actor"
                               << " heading=";
                     if (retargeted_heading.has_value()) {
@@ -53341,7 +53540,62 @@ int main(int argc, char** argv) {
                     }
                     std::cerr << " ammo=" << static_cast<unsigned>(
                                      held_fire_runner.ammo_rounds)
+                              << " actor0="
+                              << static_cast<unsigned>(
+                                     retarget_actor_0_meter.value_or(0xFFU))
+                              << " actor1="
+                              << static_cast<unsigned>(
+                                     retarget_actor_1_meter.value_or(0xFFU))
                               << '\n';
+                    return 3;
+                }
+                if (!capture_retarget_phase("second-target-repeat-shot",
+                                            0x40U, retargeted_heading)) {
+                    std::cerr << "field player action dump: could not save the second-hostile held-fire capture or trace\n";
+                    return 3;
+                }
+
+                // ROM 0x1DC4C responds to a B rising edge. With the two
+                // source Weenrs still live, a fresh edge cycles back once;
+                // holding B and releasing it do not select another actor.
+                const auto rounds_after_second_shot =
+                    held_fire_runner.ammo_rounds;
+                weapon_fire_scene.set_controller_port_byte(0x50U);
+                weapon_fire_scene.advance_frame();
+                const auto cycled_back_actor =
+                    weapon_fire_scene.selected_default_actor_id_for_dump();
+                if (!first_aimed_actor.has_value() ||
+                    !second_aimed_actor.has_value() ||
+                    !cycled_back_actor.has_value() ||
+                    *cycled_back_actor != *first_aimed_actor ||
+                    held_fire_runner.ammo_rounds != rounds_after_second_shot ||
+                    !capture_retarget_phase("b-cycle-back", 0x50U,
+                                            std::nullopt)) {
+                    std::cerr << "field player action dump: a fresh B edge did not cycle from the second live Weenr back to the first\n";
+                    return 3;
+                }
+                weapon_fire_scene.set_controller_port_byte(0x50U);
+                weapon_fire_scene.advance_frame();
+                const auto while_b_held_actor =
+                    weapon_fire_scene.selected_default_actor_id_for_dump();
+                if (!while_b_held_actor.has_value() ||
+                    *while_b_held_actor != *first_aimed_actor ||
+                    held_fire_runner.ammo_rounds != rounds_after_second_shot ||
+                    !capture_retarget_phase("b-held-no-repeat", 0x50U,
+                                            std::nullopt)) {
+                    std::cerr << "field player action dump: holding B cycled without another press edge\n";
+                    return 3;
+                }
+                weapon_fire_scene.set_controller_port_byte(0x40U);
+                weapon_fire_scene.advance_frame();
+                const auto after_b_release_actor =
+                    weapon_fire_scene.selected_default_actor_id_for_dump();
+                if (!after_b_release_actor.has_value() ||
+                    *after_b_release_actor != *first_aimed_actor ||
+                    held_fire_runner.ammo_rounds != rounds_after_second_shot ||
+                    !capture_retarget_phase("b-released", 0x40U,
+                                            std::nullopt)) {
+                    std::cerr << "field player action dump: releasing B changed the selected live target or consumed a round\n";
                     return 3;
                 }
 

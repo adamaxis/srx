@@ -40,9 +40,10 @@ the chance roll, two selector rolls, and two initial behavior-delay draws.
 Each `0x2E` B05E entry cue occurs later, after that actor's Lua-owned entry
 delay, and is checked exactly once: the sampled delays are 13 and 2, so the
 entry transitions and cues start on actor-service passes 14 and 3. The
-script-runtime CTest checks the four action-code
-marker groups, the 64-to-0 shrink sequence, the persistent marker, and latch
-clearing.
+script-runtime CTest checks ROM `0x5C7E`'s four target-meter tiers
+(`<3`, `3-5`, `6-8`, `>=9`) and its leader-selected physical/stun meter path;
+the test action codes deliberately disagree with those meter tiers. It also
+checks the 64-to-0 shrink sequence, persistent marker, and latch clearing.
 It now also checks the Lua-owned B scan's normal cursor advance, reserved-record
 skip, normal restart at slot 3, and special-mode active-only scan and wrap.
 The field QA matches all 14 opaque source pixels in each of the four 8x8
@@ -473,3 +474,42 @@ verify every palette variant or the Hound close-effect sequence.
 8. **Are new graphics drawn over stale graphics?** No new actor is visible in
    this viewport, and no old graphics are obscured or replaced. The source
    actors remain real active records and are not scenery stand-ins.
+
+## Two-live-hostile held-fire retarget route
+
+ROM `0x1DC4C` scans the source actor records on a B press edge and changes the
+selected-record latch. `0x151BE/0x14FF8` reads that current selection for the
+next firearm spawn. A focused Scene-2 QA route now exercises both live sides of
+that transition: injected selector rolls `1+2` create the ordered Weenr pair
+in record slots 3 and 4; typed profile and lifecycle assertions require both
+actors to remain active, not downed, and not dead. The fixture repositions and
+freezes the actors to isolate targeting, sets three pistol rounds, then applies
+B, A, B+A, and held-A through the field controller path. The first shot uses
+heading `0x8000` and reduces slot 3's physical meter from 10 to 9 while slot 4
+remains at 10. The second actor is selected during the `0xACAE` fire delay and
+is placed on a separate eastbound firing line, so the held-A repeat uses
+heading `0x4000`; slot 4 falls from 10 to 8 while slot 3 remains at 9. The
+HUD counter advances 03 -> 02 -> 01. A further B press cycles back to actor 0,
+while held B and B release preserve that selection. The marker centers change
+from raw projection `(228,272)` to `(260,240)` for the second target. The route
+writes the selected actor ID, actor profiles/slots, live meters, marker
+visibility/style/radius, projected center, ammo, and shot heading beside seven
+320x224 screenshots under
+`qt_runtime/field-player-action-qa/weapon-fire/held-fire-retarget/`.
+
+The marker tier remains data-driven: ROM `0x5C7E` reads target `+0x4C`, or
+`+0x9C` for the specific leader action conditions at `0x5C82..0x5CBA`, then
+selects four meter bands. The player uses a pistol here, so the physical-meter
+branch applies. The trace's source projection center `(228,272)` is drawn at
+`(100,144)` after the painter removes the Genesis `0x80` origin; kind-8 marker
+corners anchor 12 pixels above that point. This makes the selected actor and
+shrinking brackets visible in the captured field frame.
+
+Debug and Release `shadowrun_ghidra_conversion_qt_field_player_action_qa` each
+pass 1/1, and the seven frames plus TSV have matching SHA-256 hashes. The
+screens retain the complete map and right HUD; they show the intentional
+fixture placement and the ammo changes. This confirms the native route is
+connected from B/A input through the second live record to the next shot. It
+does not establish an independent Genesis visual match. The available GPGX
+held-fire sample has no second live hostile (slots 4/5 are not eligible), so a
+matched external retarget case remains [H].
