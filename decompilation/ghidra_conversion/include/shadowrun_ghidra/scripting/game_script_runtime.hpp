@@ -1056,6 +1056,83 @@ struct ScriptShopCyberdeckStatUpgradeOffer {
     std::string label_key;
 };
 
+enum class ScriptCyberdeckProgramId : std::uint8_t {
+    attack,
+    slow,
+    degrade,
+    rebound,
+    medic,
+    shield,
+    smoke,
+    mirrors,
+    sleaze,
+    deception,
+    relocate,
+    analyze,
+};
+
+inline constexpr std::array<ScriptCyberdeckProgramId, 12>
+    kScriptCyberdeckProgramsByRatingSlot{{
+        ScriptCyberdeckProgramId::attack,
+        ScriptCyberdeckProgramId::slow,
+        ScriptCyberdeckProgramId::degrade,
+        ScriptCyberdeckProgramId::rebound,
+        ScriptCyberdeckProgramId::medic,
+        ScriptCyberdeckProgramId::shield,
+        ScriptCyberdeckProgramId::smoke,
+        ScriptCyberdeckProgramId::mirrors,
+        ScriptCyberdeckProgramId::sleaze,
+        ScriptCyberdeckProgramId::deception,
+        ScriptCyberdeckProgramId::relocate,
+        ScriptCyberdeckProgramId::analyze,
+    }};
+inline constexpr std::array<std::string_view, 12>
+    kScriptCyberdeckProgramKeysByRatingSlot{{
+        "attack", "slow", "degrade", "rebound", "medic", "shield",
+        "smoke", "mirrors", "sleaze", "deception", "relocate", "analyze",
+    }};
+
+inline std::string_view script_cyberdeck_program_key(
+    const ScriptCyberdeckProgramId program) noexcept {
+    for (std::size_t slot = 0U;
+         slot < kScriptCyberdeckProgramsByRatingSlot.size(); ++slot) {
+        if (kScriptCyberdeckProgramsByRatingSlot[slot] == program) {
+            return kScriptCyberdeckProgramKeysByRatingSlot[slot];
+        }
+    }
+    return {};
+}
+
+inline std::optional<ScriptCyberdeckProgramId>
+script_cyberdeck_program_from_key(const std::string_view key) noexcept {
+    for (std::size_t slot = 0U;
+         slot < kScriptCyberdeckProgramKeysByRatingSlot.size(); ++slot) {
+        if (kScriptCyberdeckProgramKeysByRatingSlot[slot] == key) {
+            return kScriptCyberdeckProgramsByRatingSlot[slot];
+        }
+    }
+    return std::nullopt;
+}
+
+inline std::optional<ScriptCyberdeckProgramId>
+script_cyberdeck_program_from_rating_slot(const std::size_t slot) noexcept {
+    return slot < kScriptCyberdeckProgramsByRatingSlot.size()
+        ? std::optional<ScriptCyberdeckProgramId>{
+              kScriptCyberdeckProgramsByRatingSlot[slot]}
+        : std::nullopt;
+}
+
+inline std::size_t script_cyberdeck_program_rating_slot(
+    const ScriptCyberdeckProgramId program) noexcept {
+    for (std::size_t slot = 0U;
+         slot < kScriptCyberdeckProgramsByRatingSlot.size(); ++slot) {
+        if (kScriptCyberdeckProgramsByRatingSlot[slot] == program) {
+            return slot;
+        }
+    }
+    return kScriptCyberdeckProgramsByRatingSlot.size();
+}
+
 enum class ScriptShopCyberdeckRatingUpgradeStat : std::uint8_t {
     mpcp_repair,
     body,
@@ -1070,7 +1147,7 @@ struct ScriptShopCyberdeckRatingUpgradeOffer {
         ScriptShopCyberdeckRatingUpgradeStat::mpcp_repair;
     std::string label_key;
     std::string description_key;
-    std::int8_t program_index = -1;
+    ScriptCyberdeckProgramId program_id = ScriptCyberdeckProgramId::attack;
     std::string display_name;
 };
 
@@ -1091,7 +1168,7 @@ struct ScriptShopCyberdeckRatingUpgradeQuote {
     std::uint8_t current_rating = 0U;
     std::uint8_t next_rating = 0U;
     std::uint32_t cost = 0U;
-    std::int8_t program_index = -1;
+    ScriptCyberdeckProgramId program_id = ScriptCyberdeckProgramId::attack;
 };
 
 struct ScriptShopOfferGroup {
@@ -2978,7 +3055,7 @@ public:
         const std::array<std::uint8_t, 4>& persona) const;
     std::optional<ScriptShopCyberdeckRatingUpgradeQuote>
     shop_cyberdeck_program_upgrade_quote(
-        std::uint8_t program_index, std::uint16_t storage,
+        ScriptCyberdeckProgramId program_id, std::uint16_t storage,
         const std::array<std::uint8_t, 12>& program_ratings,
         const std::array<std::uint16_t, 5>& data_file_sizes,
         std::uint8_t charisma) const;

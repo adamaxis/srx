@@ -11799,11 +11799,12 @@ std::optional<ScriptShopDefinition> GameScriptRuntime::shop_definition(
             std::string stat_name;
             std::string label_key;
             std::string description_key;
+            std::string program_key;
             std::string display_name;
-            std::uint32_t program_index = 0U;
             bool fields_valid =
                 read_field_string(state, offer_table, "stat", stat_name);
             std::optional<ScriptShopCyberdeckRatingUpgradeStat> stat;
+            std::optional<ScriptCyberdeckProgramId> program_id;
             if (stat_name == "mpcp_repair") {
                 stat = ScriptShopCyberdeckRatingUpgradeStat::mpcp_repair;
             } else if (stat_name == "body") {
@@ -11817,11 +11818,16 @@ std::optional<ScriptShopDefinition> GameScriptRuntime::shop_definition(
             } else if (stat_name == "program") {
                 stat = ScriptShopCyberdeckRatingUpgradeStat::program;
                 fields_valid = fields_valid &&
-                    read_field_integer(state, offer_table, "program_index",
-                                       11U, program_index) &&
+                    read_field_string(state, offer_table, "program_id",
+                                      program_key) &&
                     read_field_string(state, offer_table, "display_name",
                                       display_name) &&
                     !display_name.empty() && display_name.size() <= 32U;
+                if (fields_valid) {
+                    program_id =
+                        script_cyberdeck_program_from_key(program_key);
+                    fields_valid = program_id.has_value();
+                }
             }
             if (stat.has_value() &&
                 *stat != ScriptShopCyberdeckRatingUpgradeStat::program) {
@@ -11841,8 +11847,9 @@ std::optional<ScriptShopDefinition> GameScriptRuntime::shop_definition(
                     *stat, std::move(label_key),
                     std::move(description_key),
                     *stat == ScriptShopCyberdeckRatingUpgradeStat::program
-                        ? static_cast<std::int8_t>(program_index)
-                        : static_cast<std::int8_t>(-1),
+                        ? program_id.value_or(
+                              ScriptCyberdeckProgramId::attack)
+                        : ScriptCyberdeckProgramId::attack,
                     std::move(display_name)});
         }
         lua_pop(state, 1);
@@ -12101,12 +12108,17 @@ GameScriptRuntime::shop_cyberdeck_rating_upgrade_quote(
 
 std::optional<ScriptShopCyberdeckRatingUpgradeQuote>
 GameScriptRuntime::shop_cyberdeck_program_upgrade_quote(
-    const std::uint8_t program_index, const std::uint16_t storage,
+    const ScriptCyberdeckProgramId program_id,
+    const std::uint16_t storage,
     const std::array<std::uint8_t, 12>& program_ratings,
     const std::array<std::uint16_t, 5>& data_file_sizes,
     const std::uint8_t charisma) const {
     auto* state = impl_->state;
-    if (state == nullptr || program_index >= program_ratings.size()) {
+    const auto selected_slot =
+        script_cyberdeck_program_rating_slot(program_id);
+    const auto program_key = script_cyberdeck_program_key(program_id);
+    if (state == nullptr || selected_slot >= program_ratings.size() ||
+        program_key.empty()) {
         impl_->failure = "Lua runtime or selected program is unavailable for cyberdeck program quotes";
         return std::nullopt;
     }
@@ -12125,14 +12137,22 @@ GameScriptRuntime::shop_cyberdeck_program_upgrade_quote(
         return fail("shop.lua cyberdeck program quote is missing");
     }
     lua_remove(state, -2);
-    lua_pushinteger(state, program_index);
+    lua_pushlstring(state, program_key.data(), program_key.size());
     lua_pushinteger(state, storage);
-    lua_createtable(state, static_cast<int>(program_ratings.size()), 0);
+    lua_createtable(state, 0, static_cast<int>(program_ratings.size()));
     const auto ratings_index = lua_absindex(state, -1);
     for (std::size_t index = 0U; index < program_ratings.size(); ++index) {
+        const auto rating_program =
+            script_cyberdeck_program_from_rating_slot(index);
+        if (!rating_program.has_value()) {
+            return fail("native cyberdeck rating slot has no named program");
+        }
+        const auto rating_program_key =
+            script_cyberdeck_program_key(*rating_program);
+        lua_pushlstring(state, rating_program_key.data(),
+                        rating_program_key.size());
         lua_pushinteger(state, program_ratings[index]);
-        lua_rawseti(state, ratings_index,
-                    static_cast<lua_Integer>(index + 1U));
+        lua_settable(state, ratings_index);
     }
     lua_createtable(state, static_cast<int>(data_file_sizes.size()), 0);
     const auto files_index = lua_absindex(state, -1);
@@ -12153,10 +12173,14 @@ GameScriptRuntime::shop_cyberdeck_program_upgrade_quote(
     }
     const auto quote_index = lua_absindex(state, -1);
     std::string status_name;
+    std::string quoted_program_key;
     std::uint32_t current_rating = 0U;
     std::uint32_t next_rating = 0U;
     std::uint32_t cost = 0U;
     if (!read_field_string(state, quote_index, "status", status_name) ||
+        !read_field_string(state, quote_index, "program_id",
+                           quoted_program_key) ||
+        quoted_program_key != program_key ||
         !read_field_integer(state, quote_index, "current_rating", 0xFFU,
                             current_rating) ||
         !read_field_integer(state, quote_index, "next_rating", 0xFFU,
@@ -12181,8 +12205,7 @@ GameScriptRuntime::shop_cyberdeck_program_upgrade_quote(
     return ScriptShopCyberdeckRatingUpgradeQuote{
         ScriptShopCyberdeckRatingUpgradeStat::program, quote_status,
         static_cast<std::uint8_t>(current_rating),
-        static_cast<std::uint8_t>(next_rating), cost,
-        static_cast<std::int8_t>(program_index)};
+        static_cast<std::uint8_t>(next_rating), cost, program_id};
 }
 
 bool GameScriptRuntime::close_shop_menu() {

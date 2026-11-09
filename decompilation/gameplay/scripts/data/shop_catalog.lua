@@ -2,13 +2,28 @@
 -- inline (0x56DC4 / 0x5794E item rows, 0x1AAF40 progression, 0x1AB060
 -- Wire Masters). shop.lua owns the menu logic.
 local M = {}
-local Deck = require("menu.rules.deck")
 
 -- ROM 0x1AB190 stores the supported MPCP capacities by model: 3, 4, 6, 8,
 -- 10, and 12. Keep this as named game data, not a runtime ROM lookup.
 local mpcp_capacity_by_model = {3, 4, 6, 8, 10, 12}
--- ROM 0xE2DF2: storage used by one rating of each utility program.
-local program_storage_by_index = {2, 4, 4, 3, 4, 4, 2, 3, 3, 2, 2, 3}
+-- Named utility IDs keep shop rules independent of the Matrix record's
+-- numeric slot order. The native adapter translates its typed rating record
+-- to these IDs at the boundary. Values are source-derived from ROM 0xE2DF2.
+local program_order = {
+    "attack", "slow", "degrade", "rebound", "medic", "shield",
+    "smoke", "mirrors", "sleaze", "deception", "relocate", "analyze",
+}
+local program_storage_by_id = {
+    attack = 2, slow = 4, degrade = 4, rebound = 3,
+    medic = 4, shield = 4, smoke = 2, mirrors = 3,
+    sleaze = 3, deception = 2, relocate = 2, analyze = 3,
+}
+local program_display_name_by_id = {
+    attack = "Attack", slow = "Slow", degrade = "Degrade",
+    rebound = "Rebound", medic = "Medic", shield = "Shield",
+    smoke = "Smoke", mirrors = "Mirrors", sleaze = "Sleaze",
+    deception = "Deception", relocate = "Relocate", analyze = "Analyze",
+}
 
 local function signed_byte(value)
     value = value & 0xFF
@@ -72,49 +87,49 @@ end
 -- ROM 0x5805C selects current+1, 0x19538 prices the target storage,
 -- 0x19558 checks free storage, and 0x57A6E/0x57B04 apply the mode-6
 -- Charisma adjustment. Host inputs are typed live deck and runner facts.
-function M.cyberdeck_program_upgrade_quote(program_index, storage,
+function M.cyberdeck_program_upgrade_quote(program_id, storage,
                                            ratings, data_files, charisma)
-    local program_size = program_storage_by_index[program_index + 1]
+    local program_size = program_storage_by_id[program_id]
     if program_size == nil or type(ratings) ~= "table" or
-       #ratings ~= #program_storage_by_index or type(data_files) ~= "table" or
+       type(data_files) ~= "table" or
        #data_files ~= 5 or type(storage) ~= "number" or
        type(charisma) ~= "number" then
         return {status = "source_boundary", current_rating = 0,
-                next_rating = 0, cost = 0, program_index = program_index}
+                next_rating = 0, cost = 0, program_id = program_id}
     end
 
-    local current_rating = ratings[program_index + 1]
+    local current_rating = ratings[program_id]
     if type(current_rating) ~= "number" or current_rating < 0 or
        current_rating > 0xFF then
         return {status = "source_boundary", current_rating = 0,
-                next_rating = 0, cost = 0, program_index = program_index}
+                next_rating = 0, cost = 0, program_id = program_id}
     end
     local next_rating = current_rating + 1
     if next_rating >= 9 then
         return {status = "program_at_maximum", current_rating = current_rating,
-                next_rating = 0, cost = 0, program_index = program_index}
+                next_rating = 0, cost = 0, program_id = program_id}
     end
 
     local used_storage = 0
-    for index, multiplier in ipairs(program_storage_by_index) do
-        local rating = ratings[index]
+    for _, id in ipairs(program_order) do
+        local rating = ratings[id]
         if type(rating) ~= "number" or rating < 0 or rating > 0xFF then
             return {status = "source_boundary", current_rating = current_rating,
-                    next_rating = 0, cost = 0, program_index = program_index}
+                    next_rating = 0, cost = 0, program_id = program_id}
         end
-        used_storage = used_storage + rating * multiplier
+        used_storage = used_storage + rating * program_storage_by_id[id]
     end
     for _, file in ipairs(data_files) do
         if type(file) ~= "table" or type(file.size) ~= "number" or
            file.size < 0 or file.size > 0xFFFF then
             return {status = "source_boundary", current_rating = current_rating,
-                    next_rating = 0, cost = 0, program_index = program_index}
+                    next_rating = 0, cost = 0, program_id = program_id}
         end
         used_storage = used_storage + file.size
     end
     if storage - used_storage < program_size then
         return {status = "insufficient_storage", current_rating = current_rating,
-                next_rating = 0, cost = 0, program_index = program_index}
+                next_rating = 0, cost = 0, program_id = program_id}
     end
 
     local base_cost = program_size * next_rating * next_rating * 30
@@ -123,7 +138,7 @@ function M.cyberdeck_program_upgrade_quote(program_index, storage,
     local cost = base_cost - (base_cost // 32) * charisma_discount_steps
     return {status = "available", current_rating = current_rating,
             next_rating = next_rating, cost = cost,
-            program_index = program_index}
+            program_id = program_id}
 end
 
 function M.service_title(id)
@@ -182,11 +197,11 @@ local function group(id, first_title_key, second_title_key, offers,
     }
 end
 
-local function program_rating_offer(index)
+local function program_rating_offer(id)
     return {
         stat = "program",
-        program_index = index,
-        display_name = Deck.PROGRAM_NAMES[index],
+        program_id = id,
+        display_name = program_display_name_by_id[id],
     }
 end
 
@@ -421,17 +436,20 @@ M.catalog = {
             -- two-byte stride: Attack/Slow; Medic/Shield/Mirrors; Sleaze/Analyze.
             group("combat_utilities", action_heading("combat_utilities_display"),
                   action_heading("combat_utilities"), {}, {}, {}, {}, {}, {
-                program_rating_offer(0), program_rating_offer(1),
+                program_rating_offer("attack"),
+                program_rating_offer("slow"),
             }),
             group("defense_utilities", action_heading("defense_utilities_display"),
                   action_heading("defense_utilities"), {}, {}, {}, {}, {}, {
-                program_rating_offer(4), program_rating_offer(5),
-                program_rating_offer(7),
+                program_rating_offer("medic"),
+                program_rating_offer("shield"),
+                program_rating_offer("mirrors"),
             }),
             group("mask_sense_utilities",
                   action_heading("mask_sense_utilities_display"),
                   action_heading("mask_sense_utilities"), {}, {}, {}, {}, {}, {
-                program_rating_offer(8), program_rating_offer(11),
+                program_rating_offer("sleaze"),
+                program_rating_offer("analyze"),
             }),
             group("cyberdecks", action_heading("cyberdecks_display"),
                   action_heading("cyberdecks"), {}, {}, {}, {

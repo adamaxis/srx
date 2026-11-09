@@ -15246,10 +15246,17 @@ void FieldSceneRuntime::advance_frame() {
                 std::optional<
                     scripting::ScriptShopCyberdeckRatingUpgradeQuote> quote;
                 if (program_offer) {
-                    if (offer.program_index < 0 ||
-                        !deck.storage_megapulses.has_value() ||
+                    if (!deck.storage_megapulses.has_value() ||
                         !deck.program_ratings.has_value() ||
                         !deck.data_files.has_value()) {
+                        shop_boundary("cyberdeck_program_record_unavailable");
+                        field_shop_menu_.finish_action();
+                        return;
+                    }
+                    const auto program_slot =
+                        scripting::script_cyberdeck_program_rating_slot(
+                            offer.program_id);
+                    if (program_slot >= deck.program_ratings->size()) {
                         shop_boundary("cyberdeck_program_record_unavailable");
                         field_shop_menu_.finish_action();
                         return;
@@ -15259,7 +15266,7 @@ void FieldSceneRuntime::advance_frame() {
                         file_sizes[index] = (*deck.data_files)[index].size;
                     }
                     quote = game_scripts_.shop_cyberdeck_program_upgrade_quote(
-                        static_cast<std::uint8_t>(offer.program_index),
+                        offer.program_id,
                         *deck.storage_megapulses, *deck.program_ratings,
                         file_sizes, active_runner_record().attributes[3U]);
                 } else {

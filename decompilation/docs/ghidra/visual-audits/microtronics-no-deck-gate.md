@@ -108,7 +108,9 @@ under `qt_runtime/field-microtronics-deck-upgrade-qa/microtronics/`.
 
 The same route now exposes ROM `0x1AB276` utility groups with program IDs
 Attack/Slow `{0,1}`, Medic/Shield/Mirrors `{4,5,7}`, and Sleaze/Analyze
-`{8,11}`. Lua computes the next-rating price from the storage multipliers at
+`{8,11}`. Lua uses stable program names and named storage multipliers; the
+native adapter maps these IDs to typed deck-rating slots only at the record
+boundary. Lua computes the next-rating price from the multipliers at
 `0xE2DF2`, checks live program plus data-file storage via `0x19538/0x19558`,
 and applies the mode-6 Charisma adjustment at `0x57A6E/0x57B04`. Debug/Release
 QA checks all three icon lists, maximum rating, insufficient storage, accepted

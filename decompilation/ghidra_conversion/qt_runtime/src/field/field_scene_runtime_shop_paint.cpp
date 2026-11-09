@@ -512,11 +512,14 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
                     scripting::ScriptShopCyberdeckRatingUpgradeQuote> quote;
                 if (field_matrix_deck_record_.has_value()) {
                     const auto& deck = *field_matrix_deck_record_;
+                    const auto program_slot =
+                        scripting::script_cyberdeck_program_rating_slot(
+                            upgrade.program_id);
                     if (upgrade.stat == scripting::
                             ScriptShopCyberdeckRatingUpgradeStat::program &&
-                        upgrade.program_index >= 0 &&
-                        deck.storage_megapulses.has_value() &&
                         deck.program_ratings.has_value() &&
+                        program_slot < deck.program_ratings->size() &&
+                        deck.storage_megapulses.has_value() &&
                         deck.data_files.has_value()) {
                         std::array<std::uint16_t, 5> file_sizes{};
                         for (std::size_t index = 0U;
@@ -526,8 +529,7 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
                         }
                         quote = game_scripts_.
                             shop_cyberdeck_program_upgrade_quote(
-                                static_cast<std::uint8_t>(
-                                    upgrade.program_index),
+                                upgrade.program_id,
                                 *deck.storage_megapulses,
                                 *deck.program_ratings, file_sizes,
                                 active_runner_record().attributes[3U]);
@@ -856,11 +858,12 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
                     // icons from IDs in 0x1AB276. The 24x16 extracted icons
                     // fit each source 32-pixel offer cell; the full name is
                     // shown in the selected detail panel above.
-                    if (offer->program_index >= 0 &&
-                        static_cast<std::size_t>(offer->program_index) <
-                            matrix_cyberdeck_program_icons_.size()) {
+                    const auto program_slot =
+                        scripting::script_cyberdeck_program_rating_slot(
+                            offer->program_id);
+                    if (program_slot < matrix_cyberdeck_program_icons_.size()) {
                         const auto& icon = matrix_cyberdeck_program_icons_[
-                            static_cast<std::size_t>(offer->program_index)];
+                            program_slot];
                         if (icon.size() == QSize(24, 16)) {
                             painter.drawImage(
                                 16 + static_cast<int>(index) * 32, 168,

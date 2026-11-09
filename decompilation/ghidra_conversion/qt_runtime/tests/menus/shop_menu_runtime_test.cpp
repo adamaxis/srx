@@ -423,21 +423,21 @@ int main() {
         {2U, 60000U, 8U, 3U, 200U, 500U, 50U, 1U}};
     microtronics_definition.groups[0U].cyberdeck_rating_upgrade_offers = {
         {scripting::ScriptShopCyberdeckRatingUpgradeStat::program,
-         "", "", 0, "Attack"},
+         "", "", scripting::ScriptCyberdeckProgramId::attack, "Attack"},
         {scripting::ScriptShopCyberdeckRatingUpgradeStat::program,
-         "", "", 1, "Slow"}};
+         "", "", scripting::ScriptCyberdeckProgramId::slow, "Slow"}};
     microtronics_definition.groups[1U].cyberdeck_rating_upgrade_offers = {
         {scripting::ScriptShopCyberdeckRatingUpgradeStat::program,
-         "", "", 4, "Medic"},
+         "", "", scripting::ScriptCyberdeckProgramId::medic, "Medic"},
         {scripting::ScriptShopCyberdeckRatingUpgradeStat::program,
-         "", "", 5, "Shield"},
+         "", "", scripting::ScriptCyberdeckProgramId::shield, "Shield"},
         {scripting::ScriptShopCyberdeckRatingUpgradeStat::program,
-         "", "", 7, "Mirrors"}};
+         "", "", scripting::ScriptCyberdeckProgramId::mirrors, "Mirrors"}};
     microtronics_definition.groups[2U].cyberdeck_rating_upgrade_offers = {
         {scripting::ScriptShopCyberdeckRatingUpgradeStat::program,
-         "", "", 8, "Sleaze"},
+         "", "", scripting::ScriptCyberdeckProgramId::sleaze, "Sleaze"},
         {scripting::ScriptShopCyberdeckRatingUpgradeStat::program,
-         "", "", 11, "Analyze"}};
+         "", "", scripting::ScriptCyberdeckProgramId::analyze, "Analyze"}};
     microtronics_definition.groups[4U].cyberdeck_stat_upgrade_offers = {
         {scripting::ScriptShopCyberdeckUpgradeStat::memory_megapulses,
          500U, "memory"},
@@ -497,13 +497,17 @@ int main() {
                 ShopMenuEvent::cyberdeck_rating_upgrade_selected) ||
         !expect(microtronics_program_menu.pending_action().has_value() &&
                 microtronics_program_menu.pending_action()
-                    ->cyberdeck_rating_upgrade_offer->program_index == 1)) {
+                    ->cyberdeck_rating_upgrade_offer->program_id ==
+                        scripting::ScriptCyberdeckProgramId::slow)) {
         return 170;
     }
     constexpr std::array<ShopActionGroup, 2U> utility_groups{{
         ShopActionGroup::microtronics_defense_utilities,
         ShopActionGroup::microtronics_mask_sense_utilities}};
-    constexpr std::array<std::int8_t, 2U> utility_program_ids{{4, 8}};
+    constexpr std::array<scripting::ScriptCyberdeckProgramId, 2U>
+        utility_program_ids{{
+            scripting::ScriptCyberdeckProgramId::medic,
+            scripting::ScriptCyberdeckProgramId::sleaze}};
     for (std::size_t index = 0U; index < utility_groups.size(); ++index) {
         ShopMenuController utility_menu;
         const auto selected_action = static_cast<std::uint8_t>(index + 1U);
@@ -520,7 +524,7 @@ int main() {
                     ShopMenuEvent::cyberdeck_rating_upgrade_selected) ||
             !expect(utility_menu.pending_action().has_value() &&
                     utility_menu.pending_action()
-                        ->cyberdeck_rating_upgrade_offer->program_index ==
+                        ->cyberdeck_rating_upgrade_offer->program_id ==
                             utility_program_ids[index])) {
             return 171;
         }

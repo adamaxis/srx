@@ -1081,7 +1081,7 @@ FieldCyberdeckRatingUpgradeResult apply_field_cyberdeck_rating_upgrade(
     auto& deck = state.deck;
     std::uint8_t current_rating = 0U;
     std::size_t persona_index = 0U;
-    std::size_t program_index = 0U;
+    std::size_t program_slot = 0U;
     const bool mpcp_upgrade =
         quote.stat ==
             scripting::ScriptShopCyberdeckRatingUpgradeStat::mpcp_repair;
@@ -1107,13 +1107,13 @@ FieldCyberdeckRatingUpgradeResult apply_field_cyberdeck_rating_upgrade(
         break;
     }
     case scripting::ScriptShopCyberdeckRatingUpgradeStat::program:
-        if (!deck.program_ratings.has_value() || quote.program_index < 0 ||
-            static_cast<std::size_t>(quote.program_index) >=
-                deck.program_ratings->size()) {
+        program_slot = scripting::script_cyberdeck_program_rating_slot(
+            quote.program_id);
+        if (!deck.program_ratings.has_value() ||
+            program_slot >= deck.program_ratings->size()) {
             return FieldCyberdeckRatingUpgradeResult::state_unavailable;
         }
-        program_index = static_cast<std::size_t>(quote.program_index);
-        current_rating = (*deck.program_ratings)[program_index];
+        current_rating = (*deck.program_ratings)[program_slot];
         break;
     }
     if (current_rating != quote.current_rating) {
@@ -1129,7 +1129,7 @@ FieldCyberdeckRatingUpgradeResult apply_field_cyberdeck_rating_upgrade(
         *deck.mpcp = quote.next_rating;
     } else if (quote.stat ==
                scripting::ScriptShopCyberdeckRatingUpgradeStat::program) {
-        (*deck.program_ratings)[program_index] = quote.next_rating;
+        (*deck.program_ratings)[program_slot] = quote.next_rating;
     } else {
         (*deck.persona)[persona_index] = quote.next_rating;
     }

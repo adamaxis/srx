@@ -12807,12 +12807,14 @@ int main() {
                     microtronics->groups[0U]
                             .cyberdeck_rating_upgrade_offers.size() == 2U &&
                     microtronics->groups[0U]
-                            .cyberdeck_rating_upgrade_offers[0U].program_index == 0 &&
+                            .cyberdeck_rating_upgrade_offers[0U].program_id ==
+                        scripting::ScriptCyberdeckProgramId::attack &&
                     microtronics->groups[0U]
                             .cyberdeck_rating_upgrade_offers[0U].display_name ==
                         "Attack" &&
                     microtronics->groups[0U]
-                            .cyberdeck_rating_upgrade_offers[1U].program_index == 1 &&
+                            .cyberdeck_rating_upgrade_offers[1U].program_id ==
+                        scripting::ScriptCyberdeckProgramId::slow &&
                     microtronics->groups[0U]
                             .cyberdeck_rating_upgrade_offers[1U].display_name ==
                         "Slow" &&
@@ -12820,17 +12822,20 @@ int main() {
                     microtronics->groups[1U]
                             .cyberdeck_rating_upgrade_offers.size() == 3U &&
                     microtronics->groups[1U]
-                            .cyberdeck_rating_upgrade_offers[0U].program_index == 4 &&
+                            .cyberdeck_rating_upgrade_offers[0U].program_id ==
+                        scripting::ScriptCyberdeckProgramId::medic &&
                     microtronics->groups[1U]
                             .cyberdeck_rating_upgrade_offers[0U].display_name ==
                         "Medic" &&
                     microtronics->groups[1U]
-                            .cyberdeck_rating_upgrade_offers[1U].program_index == 5 &&
+                            .cyberdeck_rating_upgrade_offers[1U].program_id ==
+                        scripting::ScriptCyberdeckProgramId::shield &&
                     microtronics->groups[1U]
                             .cyberdeck_rating_upgrade_offers[1U].display_name ==
                         "Shield" &&
                     microtronics->groups[1U]
-                            .cyberdeck_rating_upgrade_offers[2U].program_index == 7 &&
+                            .cyberdeck_rating_upgrade_offers[2U].program_id ==
+                        scripting::ScriptCyberdeckProgramId::mirrors &&
                     microtronics->groups[1U]
                             .cyberdeck_rating_upgrade_offers[2U].display_name ==
                         "Mirrors" &&
@@ -12838,12 +12843,14 @@ int main() {
                     microtronics->groups[2U]
                             .cyberdeck_rating_upgrade_offers.size() == 2U &&
                     microtronics->groups[2U]
-                            .cyberdeck_rating_upgrade_offers[0U].program_index == 8 &&
+                            .cyberdeck_rating_upgrade_offers[0U].program_id ==
+                        scripting::ScriptCyberdeckProgramId::sleaze &&
                     microtronics->groups[2U]
                             .cyberdeck_rating_upgrade_offers[0U].display_name ==
                         "Sleaze" &&
                     microtronics->groups[2U]
-                            .cyberdeck_rating_upgrade_offers[1U].program_index == 11 &&
+                            .cyberdeck_rating_upgrade_offers[1U].program_id ==
+                        scripting::ScriptCyberdeckProgramId::analyze &&
                     microtronics->groups[5U].id ==
                         "cyberdeck_upgrades_second" &&
                     microtronics->groups[5U]
@@ -12864,25 +12871,33 @@ int main() {
     program_ratings.fill(4U);
     const std::array<std::uint16_t, 5U> empty_data_files{};
     const auto attack_upgrade = scripts.shop_cyberdeck_program_upgrade_quote(
-        0U, 1000U, program_ratings, empty_data_files, 2U);
+        scripting::ScriptCyberdeckProgramId::attack, 1000U,
+        program_ratings, empty_data_files, 2U);
     const auto charisma_discount = scripts.shop_cyberdeck_program_upgrade_quote(
-        0U, 1000U, program_ratings, empty_data_files, 4U);
+        scripting::ScriptCyberdeckProgramId::attack, 1000U,
+        program_ratings, empty_data_files, 4U);
     const auto capped_charisma_discount =
         scripts.shop_cyberdeck_program_upgrade_quote(
-            0U, 1000U, program_ratings, empty_data_files, 15U);
+            scripting::ScriptCyberdeckProgramId::attack, 1000U,
+            program_ratings, empty_data_files, 15U);
     const auto no_storage = scripts.shop_cyberdeck_program_upgrade_quote(
-        0U, 145U, program_ratings, empty_data_files, 2U);
+        scripting::ScriptCyberdeckProgramId::attack, 145U,
+        program_ratings, empty_data_files, 2U);
     const std::array<std::uint16_t, 5U> one_megapulse_file{{1U, 0U, 0U, 0U, 0U}};
     const auto file_uses_storage = scripts.shop_cyberdeck_program_upgrade_quote(
-        0U, 146U, program_ratings, one_megapulse_file, 2U);
+        scripting::ScriptCyberdeckProgramId::attack, 146U,
+        program_ratings, one_megapulse_file, 2U);
     auto maximum_program_ratings = program_ratings;
-    maximum_program_ratings[0U] = 8U;
+    maximum_program_ratings[scripting::script_cyberdeck_program_rating_slot(
+        scripting::ScriptCyberdeckProgramId::attack)] = 8U;
     const auto maximum_program = scripts.shop_cyberdeck_program_upgrade_quote(
-        0U, 1000U, maximum_program_ratings, empty_data_files, 2U);
+        scripting::ScriptCyberdeckProgramId::attack, 1000U,
+        maximum_program_ratings, empty_data_files, 2U);
     if (!expect(attack_upgrade.has_value() &&
                     attack_upgrade->status ==
                         scripting::ScriptShopCyberdeckRatingUpgradeStatus::available &&
-                    attack_upgrade->program_index == 0 &&
+                    attack_upgrade->program_id ==
+                        scripting::ScriptCyberdeckProgramId::attack &&
                     attack_upgrade->current_rating == 4U &&
                     attack_upgrade->next_rating == 5U &&
                     attack_upgrade->cost == 1500U &&
@@ -12900,6 +12915,63 @@ int main() {
                     maximum_program->status ==
                         scripting::ScriptShopCyberdeckRatingUpgradeStatus::program_at_maximum,
                 "Lua program-upgrade quote differs from ROM storage or charisma rules")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+    constexpr std::array<scripting::ScriptCyberdeckProgramId, 12U>
+        programs_by_slot{{
+            scripting::ScriptCyberdeckProgramId::attack,
+            scripting::ScriptCyberdeckProgramId::slow,
+            scripting::ScriptCyberdeckProgramId::degrade,
+            scripting::ScriptCyberdeckProgramId::rebound,
+            scripting::ScriptCyberdeckProgramId::medic,
+            scripting::ScriptCyberdeckProgramId::shield,
+            scripting::ScriptCyberdeckProgramId::smoke,
+            scripting::ScriptCyberdeckProgramId::mirrors,
+            scripting::ScriptCyberdeckProgramId::sleaze,
+            scripting::ScriptCyberdeckProgramId::deception,
+            scripting::ScriptCyberdeckProgramId::relocate,
+            scripting::ScriptCyberdeckProgramId::analyze,
+        }};
+    bool named_program_boundary_matches = true;
+    for (std::size_t slot = 0U; slot < programs_by_slot.size(); ++slot) {
+        const auto program_id = scripting::script_cyberdeck_program_from_key(
+            scripting::script_cyberdeck_program_key(programs_by_slot[slot]));
+        const auto program_at_slot =
+            scripting::script_cyberdeck_program_from_rating_slot(slot);
+        named_program_boundary_matches = named_program_boundary_matches &&
+            program_id == programs_by_slot[slot] &&
+            program_at_slot == programs_by_slot[slot] &&
+            scripting::script_cyberdeck_program_rating_slot(
+                programs_by_slot[slot]) == slot;
+    }
+    struct ProgramQuoteCase {
+        scripting::ScriptCyberdeckProgramId program;
+        std::uint32_t expected_cost;
+    };
+    constexpr std::array<ProgramQuoteCase, 7U> utility_quote_cases{{
+        {scripting::ScriptCyberdeckProgramId::attack, 1500U},
+        {scripting::ScriptCyberdeckProgramId::slow, 3000U},
+        {scripting::ScriptCyberdeckProgramId::medic, 3000U},
+        {scripting::ScriptCyberdeckProgramId::shield, 3000U},
+        {scripting::ScriptCyberdeckProgramId::mirrors, 2250U},
+        {scripting::ScriptCyberdeckProgramId::sleaze, 2250U},
+        {scripting::ScriptCyberdeckProgramId::analyze, 2250U},
+    }};
+    bool every_named_utility_quote_matches = true;
+    for (const auto& quote_case : utility_quote_cases) {
+        const auto quote = scripts.shop_cyberdeck_program_upgrade_quote(
+            quote_case.program, 1000U, program_ratings, empty_data_files, 2U);
+        every_named_utility_quote_matches =
+            every_named_utility_quote_matches && quote.has_value() &&
+            quote->program_id == quote_case.program &&
+            quote->status ==
+                scripting::ScriptShopCyberdeckRatingUpgradeStatus::available &&
+            quote->cost == quote_case.expected_cost;
+    }
+    if (!expect(named_program_boundary_matches &&
+                    every_named_utility_quote_matches,
+                "Named cyberdeck program IDs lost their rating slots or ROM prices")) {
         std::cerr << scripts.failure() << '\n';
         return 1;
     }
