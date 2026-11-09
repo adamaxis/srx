@@ -4976,7 +4976,8 @@ int run_field_hidden_camera_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& output,
     const std::vector<std::string>& source_boundaries,
-    const std::string_view faction_route) {
+    const std::string_view faction_route,
+    const std::string_view faction_scene) {
     std::error_code error;
     std::filesystem::create_directories(output, error);
     if (error) {
@@ -5199,15 +5200,18 @@ int run_field_hidden_camera_qa(
                                           &source_boundaries, failure_seed](
         const std::string_view route_name, const std::uint8_t route_flags,
         const std::string_view result_fragment,
-        const std::string_view expected_profile) {
+        const std::string_view expected_profile,
+        const std::uint16_t scene_id, const std::uint8_t selector_first,
+        const std::uint8_t selector_second) {
         const auto route_output = output / "faction_disturbance" /
             std::string(route_name);
         std::error_code route_error;
         std::filesystem::create_directories(route_output, route_error);
         if (route_error ||
-            !field_scene.reenter_field_scene_for_dump(0U)) {
+            !field_scene.reenter_field_scene_for_dump(scene_id)) {
             std::cerr << "field hidden-camera QA: could not prepare faction "
-                      << route_name << " scene: " << route_error.message()
+                      << route_name << " scene " << scene_id << ": "
+                      << route_error.message()
                       << '\n';
             return false;
         }
@@ -5219,7 +5223,7 @@ int run_field_hidden_camera_qa(
         // corresponding four-record list at 0x1D7010 or 0x1D7038.
         const auto route_spawned =
             field_scene.resolve_and_spawn_field_encounter_for_dump(
-                1U, 4U, *failure_seed);
+                selector_first, selector_second, *failure_seed);
         const auto opening = field_scene.dialogue_panel();
         const auto opening_image = render_qa_field(field_scene);
         const bool opening_text = std::any_of(
@@ -5298,7 +5302,7 @@ int run_field_hidden_camera_qa(
         const bool actual_saved =
             save_qa_image(route_output, "actual.bmp", actual_image);
         if (field_scene.dialogue_open() ||
-            field_scene.field_scene_reference_for_dump() != 0U ||
+            field_scene.field_scene_reference_for_dump() != scene_id ||
             remaining != 0U ||
             field_scene.dynamic_world_actor_count_for_dump() != 4U ||
             profile_count != 4U ||
@@ -5306,6 +5310,7 @@ int run_field_hidden_camera_qa(
                          [](const std::size_t count) { return count == 1U; }) ||
             !actual_saved) {
             std::cerr << "field hidden-camera QA: faction " << route_name
+                      << " in scene " << scene_id
                       << " did not publish four ordered map-placed actors; "
                       << "dialogue=" << field_scene.dialogue_open()
                       << " scene="
@@ -5325,23 +5330,42 @@ int run_field_hidden_camera_qa(
             "field.world_activity.faction_" + std::string(route_name) +
             "_sequence_resolved";
         (void)source_boundaries;
-        std::cout << "faction_route=" << route_name << " profiles=4"
+        std::cout << "faction_route=" << route_name << " scene=" << scene_id
+                  << " profiles=4"
                   << " fade_frames=" << fade_frames
                   << " actual=" << (route_output / "actual.bmp").string()
                   << '\n';
         return std::find(source_boundaries.begin(), source_boundaries.end(),
                          resolved_boundary) != source_boundaries.end();
     };
+    std::uint16_t faction_scene_id = 0U;
+    std::uint8_t faction_selector_first = 1U;
+    std::uint8_t faction_selector_second = 4U;
+    if (faction_scene == "1") {
+        faction_scene_id = 1U;
+        faction_selector_first = 0U;
+        faction_selector_second = 0U;
+    } else if (faction_scene == "3") {
+        faction_scene_id = 3U;
+        faction_selector_first = 0U;
+        faction_selector_second = 3U;
+    } else if (faction_scene != "0") {
+        std::cerr << "field hidden-camera QA: unsupported faction scene '"
+                  << faction_scene << "'\n";
+        return 3;
+    }
     const bool faction_route_ok =
         faction_route.empty() ||
         (faction_route == "mafia_eye_fivers" &&
          run_faction_actor_route(
              "mafia_eye_fivers", 0x02U, "A gang of Eye-Fivers",
-             "mafia_eye5r_k07_item0c")) ||
+             "mafia_eye5r_k07_item0c", faction_scene_id,
+             faction_selector_first, faction_selector_second)) ||
         (faction_route == "halloweeners" &&
          run_faction_actor_route(
              "halloweeners", 0x04U, "Some Halloweeners",
-             "weenr2_k08_item01"));
+             "weenr2_k08_item01", faction_scene_id,
+             faction_selector_first, faction_selector_second));
     if (!faction_route_ok) {
         std::cerr << "field hidden-camera QA: faction actor route did not "
                      "complete through ordered actor publication\n";
@@ -41893,6 +41917,7 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_hidden_camera_qa_path;
         std::optional<std::string> field_faction_route_name;
+        std::optional<std::string> field_faction_scene_name;
         std::optional<std::filesystem::path>
             field_npc_item_action_qa_path;
         std::optional<std::filesystem::path>
@@ -42354,6 +42379,11 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_faction_route_name = argv[++index];
+            }
+            if (std::string(argv[index]) == "--field-faction-scene" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_faction_scene_name = argv[++index];
             }
             if (std::string(argv[index]) ==
                     "--field-npc-item-action-qa" &&
@@ -48540,7 +48570,8 @@ int main(int argc, char** argv) {
                 return run_field_hidden_camera_qa(
                     field_scene, *field_hidden_camera_qa_path,
                     field_source_boundaries,
-                    field_faction_route_name.value_or(std::string{}));
+                    field_faction_route_name.value_or(std::string{}),
+                    field_faction_scene_name.value_or(std::string("0")));
             }
             if (field_npc_item_action_qa_path.has_value()) {
                 return run_field_npc_item_action_qa(

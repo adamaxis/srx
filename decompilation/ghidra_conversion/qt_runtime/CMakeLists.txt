@@ -865,6 +865,34 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_faction_halloweene
                  "${CMAKE_CURRENT_BINARY_DIR}/field-faction-halloweeners-qa"
                  --field-faction-route halloweeners)
 
+# The ROM enables this handler in Scenes 1 and 3 as well as Scene 0. These
+# cases use each scene's weighted-selector ticket and retain separate
+# runtimes for the mutually exclusive faction lists.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_faction_scene1_mafia_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-hidden-camera-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-faction-scene1-mafia-qa"
+                 --field-faction-route mafia_eye_fivers
+                 --field-faction-scene 1)
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_faction_scene1_halloweeners_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-hidden-camera-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-faction-scene1-halloweeners-qa"
+                 --field-faction-route halloweeners
+                 --field-faction-scene 1)
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_faction_scene3_mafia_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-hidden-camera-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-faction-scene3-mafia-qa"
+                 --field-faction-route mafia_eye_fivers
+                 --field-faction-scene 3)
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_faction_scene3_halloweeners_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-hidden-camera-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-faction-scene3-halloweeners-qa"
+                 --field-faction-route halloweeners
+                 --field-faction-scene 3)
+
 # Resolve Scene 2's source sum-8 Weenr row, allow its Lua AI to approach the
 # runner, and observe the connected 0x1514E spawn, ammo, sound, and 0xB39A/C042
 # presentation in full-screen captures.

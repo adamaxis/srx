@@ -1995,10 +1995,12 @@ Eye-Fiver and Weenr2 templates, respectively; bit 1 wins if both flags are
 set [C]. Lua now resolves semantic four-actor lists for Scenes 0, 1, and 3,
 queues map-derived placement, and presents the ROM result text records
 `0x11D098` and `0x11D019`. The no-flag `0x11D128` result remains text-only.
-Debug and Release CTests cover the neutral branch and each gang route in a
-fresh runtime, including ordered actor publication and `actual.bmp` dumps. The
-shared actor profiles come from the extracted catalog; list membership is kept
-as semantic content in `gameplay/world/field_actor_sequence_members.tsv`.
+Debug and Release CTests cover the neutral branch and both gang routes through
+the field return in each enabled scene (0, 1, and 3), using each scene's
+weighted selector ticket in a fresh runtime. They verify ordered actor
+publication and write `actual.bmp` dumps. The shared actor profiles come from
+the extracted catalog; list membership is kept as semantic content in
+`gameplay/world/field_actor_sequence_members.tsv`.
 
 This hill remains partial because failed map placement must return to the ROM's
 randomized holocam/photo fallback at `0x11CF74`; the current host exposes that

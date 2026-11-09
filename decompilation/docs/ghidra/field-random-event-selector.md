@@ -700,6 +700,14 @@ not a Lone Star encounter. The source test uses the player-record byte at
 `FF018F`; the meaning and writers for bits 1-2 are still untraced. The combat
 exit remains partial.
 
+Debug and Release live-route CTests now exercise both flag-selected lists in
+Scenes 0, 1, and 3. The harness injects selector pairs `(1,4)`, `(0,0)`, and
+`(0,3)`, which map to weighted tickets 15, 0, and 6 under the two bound-5
+draws at `0x59986`; each case continues through the result page, modal return,
+and four ordered actors. These captures are internal runtime regressions, not
+independent Genesis visual comparisons, and the injected tickets do not test
+the random trigger cadence or chance gate.
+
 **Wilderness disturbance (`0x2115C`, scenes 6-9 and 44-50).** MORE command
 `0x94` reaches `0x233A6`. With `FFFBFB` at 2-8 and bit 8 of `FFFC22` clear, it
 uses the same 2/4/5 Strike Team escalation as `0x20EFA`; a failed start
