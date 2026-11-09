@@ -547,6 +547,19 @@ std::size_t FieldSceneRuntime::field_weapon_primary_count_for_dump() const
 
 
 #ifdef SHADOWRUN_QT_QA_DRIVER
+std::optional<std::uint16_t>
+FieldSceneRuntime::field_weapon_primary_selector_for_dump() const noexcept {
+    for (const auto& spawn : field_weapon_projectiles_) {
+        if (spawn.primary_active) {
+            return spawn.primary_record.animation_resource;
+        }
+    }
+    return std::nullopt;
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
+
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<SceneRunnerPosition>
 FieldSceneRuntime::field_weapon_primary_position_for_dump() const noexcept {
     for (const auto& spawn : field_weapon_projectiles_) {

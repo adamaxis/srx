@@ -52248,6 +52248,311 @@ int main(int argc, char** argv) {
                     return 3;
                 }
 
+                // ROM 0xADBE dispatches item actions 13..15 only from the
+                // equipped inventory slot. ROM 0x15646 consumes one item,
+                // installs the matching throwable animation (12 or 16), and
+                // seeds the hit modifier from the live +0x87 Throwing skill.
+                // Exercise every New Game class against every grenade type
+                // through the ordinary focused-window A-input path.
+                constexpr std::array<std::uint8_t, 3U> kThrowerSelections{
+                    0U, 1U, 2U};
+                constexpr std::array<std::string_view, 3U> kThrowerClassNames{
+                    "samurai", "decker", "gator"};
+                // Joshua menu choice order maps to the selected ROM runner
+                // class records in a different order.
+                constexpr std::array<std::uint8_t, 3U>
+                    kExpectedThrowerClassIds{2U, 3U, 1U};
+                constexpr std::array<std::uint8_t, 3U> kThrowableCodes{
+                    13U, 14U, 15U};
+                constexpr std::array<std::string_view, 3U> kThrowableNames{
+                    "frag", "scatter", "concussion"};
+                constexpr std::size_t kThrowableInventorySlot = 3U;
+                constexpr std::size_t kThrowingSkillIndex = 6U;
+                const auto throwable_output =
+                    *field_player_action_dump_path / "throwables";
+                std::filesystem::create_directories(throwable_output);
+                std::size_t throwable_profiles_checked = 0U;
+                std::size_t repeated_throw_sequences_checked = 0U;
+                for (std::size_t class_index = 0U;
+                     class_index < kThrowerSelections.size(); ++class_index) {
+                    StartupIntegrationState thrower_state;
+                    std::string thrower_state_error;
+                    if (!build_smoke_state(kThrowerSelections[class_index],
+                                           thrower_state,
+                                           thrower_state_error)) {
+                        std::cerr << thrower_state_error << '\n';
+                        return 3;
+                    }
+                    for (std::size_t throwable_index = 0U;
+                         throwable_index < kThrowableCodes.size();
+                         ++throwable_index) {
+                        std::vector<std::string> throwable_boundaries;
+                        std::vector<std::uint16_t> throwable_audio;
+                        qt_runtime::FieldSceneRuntime throwable_scene(
+                            [&throwable_boundaries](
+                                const std::string_view boundary) {
+                                throwable_boundaries.emplace_back(boundary);
+                            },
+                            [&throwable_audio](
+                                const std::uint16_t event) {
+                                throwable_audio.push_back(event);
+                            });
+                        if (!throwable_scene.bootstrap(thrower_state)) {
+                            std::cerr << "field player action dump: "
+                                         "throwable bootstrap failed: "
+                                      << throwable_scene.failure() << '\n';
+                            return 3;
+                        }
+                        // Bootstrap can emit unrelated startup cues; isolate
+                        // audio caused by the live player action below.
+                        throwable_audio.clear();
+                        throwable_scene.set_source_random_seed_for_dump(0U);
+                        throwable_scene.set_field_world_frame_counter_for_dump(
+                            0x0200U);
+                        auto& thrower =
+                            throwable_scene.active_runner_record();
+                        const auto item_code =
+                            kThrowableCodes[throwable_index];
+                        const auto skill_before =
+                            thrower.skills[kThrowingSkillIndex];
+                        const auto rounds_before = thrower.ammo_rounds;
+                        const auto clips_before = thrower.ammo_clips;
+                        thrower.flags = static_cast<std::uint16_t>(
+                            thrower.flags | 0x0300U);
+                        thrower.inventory_item_codes[
+                            kThrowableInventorySlot] = item_code;
+                        thrower.inventory_phase_bytes[
+                            kThrowableInventorySlot] = 2U;
+                        thrower.equipped_inventory_slot =
+                            static_cast<std::int8_t>(
+                                kThrowableInventorySlot);
+                        thrower.equipped_item_code = item_code;
+                        throwable_scene.set_player_action_delay_for_dump(-1);
+                        throwable_scene.refresh_field_hud_for_dump();
+                        const auto case_output = throwable_output /
+                            (std::string(kThrowerClassNames[class_index]) +
+                             "-" + std::string(
+                                 kThrowableNames[throwable_index]));
+                        std::filesystem::create_directories(case_output);
+                        const auto before = render_qa_field(throwable_scene);
+                        if (!before.save(QString::fromStdWString(
+                                (case_output / "before.bmp").wstring()))) {
+                            std::cerr << "field player action dump: could not "
+                                         "save throwable pre-action image\n";
+                            return 3;
+                        }
+                        throwable_scene.set_controller_port_byte(0x40U);
+                        throwable_scene.advance_frame();
+                        throwable_scene.set_controller_port_byte(0U);
+                        const auto actual = render_qa_field(throwable_scene);
+                        const auto expected_selector =
+                            item_code == 14U ? 16U : 12U;
+                        const auto expected_throwing_modifier =
+                            static_cast<std::int16_t>(skill_before / 2U);
+                        auto delay_modifier = 0;
+                        if ((thrower.cyberware_flags & 0x1000U) != 0U) {
+                            delay_modifier = 4;
+                        } else if ((thrower.cyberware_flags & 0x2000U) != 0U) {
+                            delay_modifier = 8;
+                        } else if ((thrower.cyberware_flags & 0x4000U) != 0U) {
+                            delay_modifier = 12;
+                        }
+                        const auto delay_factor = std::max(
+                            static_cast<int>(
+                                (thrower.attributes[1U] +
+                                 thrower.attributes[4U]) / 2U) +
+                                delay_modifier - 1,
+                            0);
+                        const auto expected_action_delay = std::max(
+                            0x0F, 0x6A - delay_factor * 4);
+                        const auto throw_boundary =
+                            "field.combat.player_throwable_spawned:" +
+                            std::string(kThrowableNames[throwable_index]);
+                        const auto initial_throw_count = static_cast<std::size_t>(
+                            std::count(throwable_boundaries.begin(),
+                                       throwable_boundaries.end(),
+                                       throw_boundary));
+                        const auto actual_selector = throwable_scene
+                            .field_weapon_primary_selector_for_dump();
+                        const auto action_result = throwable_scene
+                            .field_weapon_primary_action_result_for_dump();
+                        const auto actual_path =
+                            case_output / "actual.bmp";
+                        const auto actual_saved = actual.save(
+                            QString::fromStdWString(actual_path.wstring()));
+                        if (thrower.archetype_index !=
+                                kExpectedThrowerClassIds[class_index] ||
+                            thrower.species_index != 0U ||
+                            thrower.inventory_item_codes[
+                                kThrowableInventorySlot] != item_code ||
+                            thrower.inventory_phase_bytes[
+                                kThrowableInventorySlot] != 1U ||
+                            thrower.equipped_inventory_slot !=
+                                static_cast<std::int8_t>(
+                                    kThrowableInventorySlot) ||
+                            thrower.equipped_item_code != item_code ||
+                            thrower.ammo_rounds != rounds_before ||
+                            thrower.ammo_clips != clips_before ||
+                            throwable_scene.field_weapon_primary_count_for_dump() ==
+                                0U ||
+                            actual_selector != expected_selector ||
+                            action_result != expected_throwing_modifier ||
+                            thrower.animation_action_gate !=
+                                expected_action_delay ||
+                            !throwable_scene.field_entity_attack_pose_for_dump() ||
+                            initial_throw_count != 1U ||
+                            !throwable_audio.empty() ||
+                            actual == before ||
+                            !actual_saved) {
+                            std::cerr << "field player action dump: "
+                                         "live A input failed throwable profile "
+                                      << kThrowerClassNames[class_index] << "/"
+                                      << kThrowableNames[throwable_index]
+                                      << " archetype="
+                                      << static_cast<unsigned>(
+                                             thrower.archetype_index)
+                                      << " species="
+                                      << static_cast<unsigned>(
+                                             thrower.species_index)
+                                      << " skill="
+                                      << static_cast<unsigned>(skill_before)
+                                      << " delay="
+                                      << thrower.animation_action_gate
+                                      << " expected-delay="
+                                      << expected_action_delay
+                                      << " item-count="
+                                      << static_cast<unsigned>(
+                                             thrower.inventory_phase_bytes[
+                                                 kThrowableInventorySlot])
+                                      << " selector="
+                                      << (actual_selector.has_value()
+                                              ? std::to_string(
+                                                    *actual_selector)
+                                              : std::string("<none>"))
+                                      << " throwing-modifier="
+                                      << (action_result.has_value()
+                                              ? std::to_string(*action_result)
+                                              : std::string("<none>"))
+                                      << " primary-count="
+                                      << throwable_scene
+                                             .field_weapon_primary_count_for_dump()
+                                      << " attack-pose="
+                                      << throwable_scene
+                                             .field_entity_attack_pose_for_dump()
+                                      << " spawn-boundaries="
+                                      << initial_throw_count
+                                      << " audio-events="
+                                      << throwable_audio.size()
+                                      << " pixels-changed="
+                                      << (actual != before)
+                                      << " actual-saved=" << actual_saved
+                                      << '\n';
+                            return 3;
+                        }
+                        ++throwable_profiles_checked;
+
+                        // Held A repeats at the source shared-action delay.
+                        // Exhausting the final item clears equipment; an
+                        // otherwise-ready A press then has no action branch.
+                        if (class_index == 0U && item_code == 13U) {
+                            const auto first_delay =
+                                thrower.animation_action_gate;
+                            for (std::int32_t elapsed = 1;
+                                 elapsed <= first_delay + 1;
+                                 ++elapsed) {
+                                throwable_scene.set_controller_port_byte(
+                                    0x40U);
+                                throwable_scene.advance_frame();
+                                const auto expected_count =
+                                    elapsed > first_delay ? 2U : 1U;
+                                const auto elapsed_throw_count =
+                                    static_cast<std::size_t>(std::count(
+                                        throwable_boundaries.begin(),
+                                        throwable_boundaries.end(),
+                                        throw_boundary));
+                                if (elapsed_throw_count != expected_count) {
+                                    std::cerr << "field player action dump: "
+                                                 "held A throwable cadence "
+                                                 "changed at elapsed update "
+                                              << elapsed << " gate-start="
+                                              << first_delay << " throws="
+                                              << elapsed_throw_count << '\n';
+                                    return 3;
+                                }
+                            }
+                            const auto repeated_count = static_cast<std::size_t>(
+                                std::count(throwable_boundaries.begin(),
+                                           throwable_boundaries.end(),
+                                           throw_boundary));
+                            const auto second_image =
+                                render_qa_field(throwable_scene);
+                            if (repeated_count != 2U ||
+                                thrower.inventory_item_codes[
+                                    kThrowableInventorySlot] != 0U ||
+                                thrower.inventory_phase_bytes[
+                                    kThrowableInventorySlot] != 0U ||
+                                thrower.equipped_inventory_slot !=
+                                    static_cast<std::int8_t>(0x7FU) ||
+                                thrower.equipped_item_code != 0U ||
+                                !second_image.save(QString::fromStdWString(
+                                    (case_output / "repeat-actual.bmp")
+                                        .wstring()))) {
+                                std::cerr << "field player action dump: held "
+                                             "A did not repeat a Frag Grenade "
+                                             "at the shared action delay and "
+                                             "clear the empty equipped stack "
+                                          << " throws=" << repeated_count
+                                          << " gate-start=" << first_delay
+                                          << " gate-now="
+                                          << thrower.animation_action_gate
+                                          << " item-code="
+                                          << static_cast<unsigned>(
+                                                 thrower.inventory_item_codes[
+                                                     kThrowableInventorySlot])
+                                          << " item-count="
+                                          << static_cast<unsigned>(
+                                                 thrower.inventory_phase_bytes[
+                                                     kThrowableInventorySlot])
+                                          << " equipped-slot="
+                                          << static_cast<int>(
+                                                 thrower.equipped_inventory_slot)
+                                          << " equipped-code="
+                                          << static_cast<unsigned>(
+                                                 thrower.equipped_item_code)
+                                          << " actual-saved="
+                                          << second_image.save(
+                                                 QString::fromStdWString(
+                                                     (case_output /
+                                                      "repeat-actual.bmp")
+                                                         .wstring()))
+                                          << '\n';
+                                return 3;
+                            }
+                            throwable_scene.set_player_action_delay_for_dump(-1);
+                            throwable_scene.set_controller_port_byte(0U);
+                            throwable_scene.advance_frame();
+                            throwable_scene.set_controller_port_byte(0x40U);
+                            throwable_scene.advance_frame();
+                            throwable_scene.set_controller_port_byte(0U);
+                            const auto empty_stack_throw_count =
+                                static_cast<std::size_t>(std::count(
+                                    throwable_boundaries.begin(),
+                                    throwable_boundaries.end(),
+                                    throw_boundary));
+                            if (empty_stack_throw_count != 2U ||
+                                !render_qa_field(throwable_scene).save(
+                                    QString::fromStdWString(
+                                        (case_output / "empty-stack.bmp")
+                                            .wstring()))) {
+                                std::cerr << "field player action dump: A "
+                                             "input spawned a throwable from "
+                                             "an empty inventory stack\n";
+                                return 3;
+                            }
+                            ++repeated_throw_sequences_checked;
+                        }
+                    }
+                }
                 std::cout << "field_player_action_dump=written path="
                           << output.string()
                           << " weapon1_rounds=6 weapon2_rounds=12"
@@ -52264,7 +52569,11 @@ int main(int argc, char** argv) {
                           << weapon_switch_frame
                           << " active_runner_route_frames=5"
                           << " return_hold_frames=30"
-                          << " natural_weapon_switch=1\n";
+                          << " natural_weapon_switch=1"
+                          << " throwable_profiles="
+                          << throwable_profiles_checked
+                          << " held_throw_sequences="
+                          << repeated_throw_sequences_checked << '\n';
                 return 0;
             }
             if (field_smoke_move_right) {

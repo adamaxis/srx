@@ -1807,6 +1807,8 @@ public:
         return count;
     }
     std::size_t field_weapon_primary_count_for_dump() const noexcept;
+    std::optional<std::uint16_t>
+    field_weapon_primary_selector_for_dump() const noexcept;
     std::optional<SceneRunnerPosition>
     field_weapon_primary_position_for_dump() const noexcept;
     std::optional<SceneRunnerPosition>
