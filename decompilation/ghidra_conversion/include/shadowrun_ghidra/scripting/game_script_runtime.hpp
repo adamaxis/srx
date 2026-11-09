@@ -1056,6 +1056,38 @@ struct ScriptShopCyberdeckStatUpgradeOffer {
     std::string label_key;
 };
 
+enum class ScriptShopCyberdeckRatingUpgradeStat : std::uint8_t {
+    mpcp_repair,
+    body,
+    evasion,
+    masking,
+    sensors,
+};
+
+struct ScriptShopCyberdeckRatingUpgradeOffer {
+    ScriptShopCyberdeckRatingUpgradeStat stat =
+        ScriptShopCyberdeckRatingUpgradeStat::mpcp_repair;
+    std::string label_key;
+    std::string description_key;
+};
+
+enum class ScriptShopCyberdeckRatingUpgradeStatus : std::uint8_t {
+    available,
+    mpcp_at_capacity,
+    persona_at_mpcp,
+    source_boundary,
+};
+
+struct ScriptShopCyberdeckRatingUpgradeQuote {
+    ScriptShopCyberdeckRatingUpgradeStat stat =
+        ScriptShopCyberdeckRatingUpgradeStat::mpcp_repair;
+    ScriptShopCyberdeckRatingUpgradeStatus status =
+        ScriptShopCyberdeckRatingUpgradeStatus::source_boundary;
+    std::uint8_t current_rating = 0U;
+    std::uint8_t next_rating = 0U;
+    std::uint32_t cost = 0U;
+};
+
 struct ScriptShopOfferGroup {
     std::string id;
     std::array<std::string, 2> title_keys{};
@@ -1065,6 +1097,8 @@ struct ScriptShopOfferGroup {
     std::vector<ScriptShopCyberdeckModelOffer> cyberdeck_model_offers;
     std::vector<ScriptShopCyberdeckStatUpgradeOffer>
         cyberdeck_stat_upgrade_offers;
+    std::vector<ScriptShopCyberdeckRatingUpgradeOffer>
+        cyberdeck_rating_upgrade_offers;
 };
 
 struct ScriptShopTextKeys {
@@ -1090,6 +1124,9 @@ struct ScriptShopTextKeys {
     std::string cyberdeck_model_unavailable;
     std::string cyberdeck_upgrade_mpcp_maximum;
     std::string cyberdeck_response_maximum;
+    std::string cyberdeck_persona_mpcp_maximum;
+    std::string cyberdeck_persona_attribute_maximum;
+    std::string cyberdeck_rating_cost_heading;
 };
 
 struct ScriptShopDefinition {
@@ -2926,6 +2963,11 @@ public:
         std::uint16_t controller_events,
         bool transaction_active = false);
     std::optional<ScriptShopMenuSnapshot> reset_shop_menu();
+    std::optional<ScriptShopCyberdeckRatingUpgradeQuote>
+    shop_cyberdeck_rating_upgrade_quote(
+        ScriptShopCyberdeckRatingUpgradeStat stat, std::int8_t model,
+        std::uint8_t mpcp,
+        const std::array<std::uint8_t, 4>& persona) const;
     bool close_shop_menu();
     std::optional<ScriptItemCatalog> item_catalog();
     ScriptTaskStep start_task(

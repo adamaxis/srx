@@ -430,6 +430,17 @@ int main() {
          650U, "load_io"},
         {scripting::ScriptShopCyberdeckUpgradeStat::response,
          5000U, "response"}};
+    microtronics_definition.groups[5U].cyberdeck_rating_upgrade_offers = {
+        {scripting::ScriptShopCyberdeckRatingUpgradeStat::mpcp_repair,
+         "mpcp-repair", "mpcp-description"},
+        {scripting::ScriptShopCyberdeckRatingUpgradeStat::body,
+         "body", "body-description"},
+        {scripting::ScriptShopCyberdeckRatingUpgradeStat::evasion,
+         "evasion", "evasion-description"},
+        {scripting::ScriptShopCyberdeckRatingUpgradeStat::masking,
+         "masking", "masking-description"},
+        {scripting::ScriptShopCyberdeckRatingUpgradeStat::sensors,
+         "sensors", "sensors-description"}};
     ShopMenuController microtronics_menu;
     if (!expect(microtronics_menu.open(
                     ShopId::microtronics, microtronics_definition,
@@ -438,6 +449,8 @@ int main() {
                     ShopActionGroup::cyberdecks) == 3U) ||
         !expect(microtronics_menu.cyberdeck_stat_upgrade_offer_count(
                     ShopActionGroup::cyberdeck_upgrades) == 4U) ||
+        !expect(microtronics_menu.cyberdeck_rating_upgrade_offer_count(
+                    ShopActionGroup::cyberdeck_upgrades_second) == 5U) ||
         !expect(microtronics_menu.apply_script_snapshot(snapshot(
                     "microtronics", 6U, 2, 0U, 1U, 3U,
                     "panel_changed")) == ShopMenuEvent::panel_changed) ||
@@ -591,6 +604,40 @@ int main() {
         return 168;
     }
 
+    if (!expect(microtronics_menu.apply_script_snapshot(snapshot(
+                    "microtronics", 6U, 2, 0U, 0U, 0U,
+                    "panel_changed")) == ShopMenuEvent::panel_changed) ||
+        !expect(microtronics_menu.apply_script_snapshot(snapshot(
+                    "microtronics", 6U, 2, 5U, 0U, 5U,
+                    "selection_moved")) == ShopMenuEvent::selection_moved) ||
+        !expect(microtronics_menu.apply_script_snapshot(snapshot(
+                    "microtronics", 6U, 2, 0U, 1U, 5U,
+                    "panel_changed")) == ShopMenuEvent::panel_changed) ||
+        !expect(microtronics_menu.selected_group() ==
+                    ShopActionGroup::cyberdeck_upgrades_second) ||
+        !expect(microtronics_menu.apply_script_snapshot(snapshot(
+                    "microtronics", 6U, 2, 0U, 1U, 5U,
+                    "cyberdeck_rating_upgrade_selected")) ==
+                ShopMenuEvent::cyberdeck_rating_upgrade_selected) ||
+        !expect(microtronics_menu.pending_action().has_value() &&
+                microtronics_menu.pending_action()
+                        ->cyberdeck_rating_upgrade_offer->stat ==
+                    scripting::ScriptShopCyberdeckRatingUpgradeStat::
+                        mpcp_repair) ||
+        !expect(microtronics_menu.begin_cyberdeck_rating_upgrade_confirmation(
+                    12800U) == ShopTransactionEvent::confirmation_opened) ||
+        !expect(microtronics_menu.transaction_amount() == 12800U) ||
+        !expect(microtronics_menu.advance_transaction(
+                    0x0100U, wire_cost_context, ignored_purchase,
+                    ignored_sale) ==
+                ShopTransactionEvent::confirmation_moved) ||
+        !expect(microtronics_menu.advance_transaction(
+                    0x4000U, wire_cost_context, ignored_purchase,
+                    ignored_sale) ==
+                ShopTransactionEvent::cyberdeck_rating_upgrade_confirmed)) {
+        return 169;
+    }
+
     const auto stat_upgrade_offer = [](const std::size_t index) {
         const std::array<scripting::ScriptShopCyberdeckStatUpgradeOffer, 4>
             offers{{
@@ -703,6 +750,58 @@ int main() {
         !expect(*poor_stat_deck.deck.memory_megapulses == 50U &&
                 poor_stat_deck.funds == 499U)) {
         return 67;
+    }
+
+    FieldCyberdeckUpgradeState persona_deck{};
+    persona_deck.deck.model_index = 2;
+    persona_deck.deck.mpcp = 6U;
+    persona_deck.deck.persona = std::array<std::uint8_t, 4U>{{2U, 4U, 5U, 1U}};
+    persona_deck.funds = 30000U;
+    const scripting::ScriptShopCyberdeckRatingUpgradeQuote mpcp_quote{
+        scripting::ScriptShopCyberdeckRatingUpgradeStat::mpcp_repair,
+        scripting::ScriptShopCyberdeckRatingUpgradeStatus::available,
+        6U, 8U, 12800U};
+    const scripting::ScriptShopCyberdeckRatingUpgradeQuote body_quote{
+        scripting::ScriptShopCyberdeckRatingUpgradeStat::body,
+        scripting::ScriptShopCyberdeckRatingUpgradeStatus::available,
+        2U, 3U, 2700U};
+    const scripting::ScriptShopCyberdeckRatingUpgradeQuote sensor_quote{
+        scripting::ScriptShopCyberdeckRatingUpgradeStat::sensors,
+        scripting::ScriptShopCyberdeckRatingUpgradeStatus::available,
+        1U, 2U, 800U};
+    if (!expect(apply_field_cyberdeck_rating_upgrade(
+                    mpcp_quote, persona_deck, false) ==
+                FieldCyberdeckRatingUpgradeResult::confirmation_required) ||
+        !expect(*persona_deck.deck.mpcp == 6U &&
+                persona_deck.funds == 30000U) ||
+        !expect(apply_field_cyberdeck_rating_upgrade(
+                    mpcp_quote, persona_deck, true) ==
+                FieldCyberdeckRatingUpgradeResult::applied) ||
+        !expect(*persona_deck.deck.mpcp == 8U &&
+                persona_deck.funds == 17200U) ||
+        !expect(apply_field_cyberdeck_rating_upgrade(
+                    body_quote, persona_deck, true) ==
+                FieldCyberdeckRatingUpgradeResult::applied) ||
+        !expect((*persona_deck.deck.persona)[0] == 3U &&
+                persona_deck.funds == 14500U) ||
+        !expect(apply_field_cyberdeck_rating_upgrade(
+                    sensor_quote, persona_deck, true) ==
+                FieldCyberdeckRatingUpgradeResult::applied) ||
+        !expect((*persona_deck.deck.persona)[3] == 2U &&
+                persona_deck.funds == 13700U)) {
+        return 68;
+    }
+    FieldCyberdeckUpgradeState poor_persona_deck{};
+    poor_persona_deck.deck.mpcp = 6U;
+    poor_persona_deck.deck.persona =
+        std::array<std::uint8_t, 4U>{{2U, 4U, 5U, 1U}};
+    poor_persona_deck.funds = 2699U;
+    if (!expect(apply_field_cyberdeck_rating_upgrade(
+                    body_quote, poor_persona_deck, true) ==
+                FieldCyberdeckRatingUpgradeResult::insufficient_funds) ||
+        !expect((*poor_persona_deck.deck.persona)[0] == 2U &&
+                poor_persona_deck.funds == 2699U)) {
+        return 69;
     }
 
     ShopTransactionService transactions;

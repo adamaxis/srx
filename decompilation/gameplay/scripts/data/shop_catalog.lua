@@ -3,6 +3,69 @@
 -- Wire Masters). shop.lua owns the menu logic.
 local M = {}
 
+-- ROM 0x1AB190 stores the supported MPCP capacities by model: 3, 4, 6, 8,
+-- 10, and 12. Keep this as named game data, not a runtime ROM lookup.
+local mpcp_capacity_by_model = {3, 4, 6, 8, 10, 12}
+
+local function signed_byte(value)
+    value = value & 0xFF
+    return value >= 0x80 and value - 0x100 or value
+end
+
+-- ROM 0x58394 chooses the next rating and 0x5787C calculates the price.
+-- The host passes the typed deck record fields needed by this rule.
+function M.cyberdeck_rating_upgrade_quote(stat, model, mpcp, persona)
+    mpcp = mpcp & 0xFF
+    if stat == "mpcp_repair" then
+        local table_index = model + 1
+        if table_index < 0 or table_index >= #mpcp_capacity_by_model then
+            return {status = "source_boundary", current_rating = mpcp,
+                    next_rating = 0, cost = 0}
+        end
+        local next_rating = mpcp_capacity_by_model[table_index + 1]
+        if next_rating == mpcp then
+            return {status = "mpcp_at_capacity", current_rating = mpcp,
+                    next_rating = 0, cost = 0}
+        end
+        return {
+            status = "available",
+            current_rating = mpcp,
+            next_rating = next_rating,
+            cost = next_rating * next_rating * next_rating * 25,
+        }
+    end
+
+    local persona_index
+    local category_rate
+    if stat == "body" then
+        persona_index, category_rate = 1, 300
+    elseif stat == "evasion" then
+        persona_index, category_rate = 2, 300
+    elseif stat == "masking" then
+        persona_index, category_rate = 3, 200
+    elseif stat == "sensors" then
+        persona_index, category_rate = 4, 200
+    else
+        return {status = "source_boundary", current_rating = 0,
+                next_rating = 0, cost = 0}
+    end
+
+    local current = persona[persona_index] & 0xFF
+    -- CMP.B / BGT at 0x583CA..0x583D0 uses the signed-byte condition codes.
+    if signed_byte(mpcp) <= signed_byte(current) then
+        return {status = "persona_at_mpcp", current_rating = current,
+                next_rating = 0, cost = 0}
+    end
+
+    local next_rating = (current + 1) & 0xFF
+    return {
+        status = "available",
+        current_rating = current,
+        next_rating = next_rating,
+        cost = next_rating * next_rating * category_rate,
+    }
+end
+
 function M.service_title(id)
     return "shop.service.option." .. id
 end
@@ -43,7 +106,8 @@ end
 local function group(id, first_title_key, second_title_key, offers,
                      progression_offers, equipment_upgrade_offers,
                      cyberdeck_model_offers,
-                     cyberdeck_stat_upgrade_offers)
+                     cyberdeck_stat_upgrade_offers,
+                     cyberdeck_rating_upgrade_offers)
     return {
         id = id,
         title_keys = { first_title_key, second_title_key },
@@ -53,6 +117,8 @@ local function group(id, first_title_key, second_title_key, offers,
         cyberdeck_model_offers = cyberdeck_model_offers or {},
         cyberdeck_stat_upgrade_offers =
             cyberdeck_stat_upgrade_offers or {},
+        cyberdeck_rating_upgrade_offers =
+            cyberdeck_rating_upgrade_offers or {},
     }
 end
 
@@ -85,6 +151,12 @@ local function field_shop_text_keys()
             "shop.cyberdeck.upgrade.maximum_mpcp",
         cyberdeck_response_maximum =
             "shop.cyberdeck.upgrade.maximum_response",
+        cyberdeck_persona_mpcp_maximum =
+            "shop.cyberdeck.persona.maximum_mpcp",
+        cyberdeck_persona_attribute_maximum =
+            "shop.cyberdeck.persona.maximum_attribute",
+        cyberdeck_rating_cost_heading =
+            "shop.cyberdeck.persona.rating_cost_heading",
     }
 end
 
@@ -306,7 +378,20 @@ M.catalog = {
             }),
             group("cyberdeck_upgrades_second",
                   action_heading("cyberdeck_upgrades_second_display"),
-                  action_heading("cyberdeck_upgrades_second")),
+                  action_heading("cyberdeck_upgrades_second"),
+                  {}, {}, {}, {}, {}, {
+                {stat = "mpcp_repair",
+                 label_key = "shop.cyberdeck.persona.mpcp_repair",
+                 description_key = "shop.cyberdeck.persona.mpcp_repair_description"},
+                {stat = "body", label_key = "shop.cyberdeck.persona.body",
+                 description_key = "shop.cyberdeck.persona.body_description"},
+                {stat = "evasion", label_key = "shop.cyberdeck.persona.evasion",
+                 description_key = "shop.cyberdeck.persona.evasion_description"},
+                {stat = "masking", label_key = "shop.cyberdeck.persona.masking",
+                 description_key = "shop.cyberdeck.persona.masking_description"},
+                {stat = "sensors", label_key = "shop.cyberdeck.persona.sensors",
+                 description_key = "shop.cyberdeck.persona.sensors_description"},
+            }),
         },
     },
 }

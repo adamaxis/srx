@@ -58,7 +58,9 @@ bool ShopMenuController::open(
          definition.groups[3U].id == "cyberdecks" &&
          definition.groups[3U].cyberdeck_model_offers.size() == 3U &&
          definition.groups[4U].id == "cyberdeck_upgrades" &&
-         definition.groups[4U].cyberdeck_stat_upgrade_offers.size() == 4U);
+         definition.groups[4U].cyberdeck_stat_upgrade_offers.size() == 4U &&
+         definition.groups[5U].id == "cyberdeck_upgrades_second" &&
+         definition.groups[5U].cyberdeck_rating_upgrade_offers.size() == 5U);
     if (!shop_id_matches_definition || definition.groups.empty() ||
         definition.groups.size() > group_ids_.size() ||
         confirmation_choice_ids[0] != "yes" ||
@@ -76,6 +78,8 @@ bool ShopMenuController::open(
         cyberdeck_model_offer_groups{};
     std::array<std::vector<scripting::ScriptShopCyberdeckStatUpgradeOffer>, 6>
         cyberdeck_stat_upgrade_offer_groups{};
+    std::array<std::vector<scripting::ScriptShopCyberdeckRatingUpgradeOffer>, 6>
+        cyberdeck_rating_upgrade_offer_groups{};
     for (std::size_t index = 0; index < definition.groups.size(); ++index) {
         const auto& scripted_group = definition.groups[index];
         const auto previous = std::find(
@@ -88,6 +92,7 @@ bool ShopMenuController::open(
             scripted_group.equipment_upgrade_offers.size() > 8U ||
             scripted_group.cyberdeck_model_offers.size() > 8U ||
             scripted_group.cyberdeck_stat_upgrade_offers.size() > 8U ||
+            scripted_group.cyberdeck_rating_upgrade_offers.size() > 8U ||
             static_cast<unsigned>(!scripted_group.offers.empty()) +
                     static_cast<unsigned>(
                         !scripted_group.progression_offers.empty()) +
@@ -96,7 +101,9 @@ bool ShopMenuController::open(
                     static_cast<unsigned>(
                         !scripted_group.cyberdeck_model_offers.empty()) +
                     static_cast<unsigned>(
-                        !scripted_group.cyberdeck_stat_upgrade_offers.empty()) >
+                        !scripted_group.cyberdeck_stat_upgrade_offers.empty()) +
+                    static_cast<unsigned>(
+                        !scripted_group.cyberdeck_rating_upgrade_offers.empty()) >
                 1U) {
             return false;
         }
@@ -114,6 +121,8 @@ bool ShopMenuController::open(
             scripted_group.cyberdeck_model_offers;
         cyberdeck_stat_upgrade_offer_groups[index] =
             scripted_group.cyberdeck_stat_upgrade_offers;
+        cyberdeck_rating_upgrade_offer_groups[index] =
+            scripted_group.cyberdeck_rating_upgrade_offers;
     }
     shop_ = shop;
     definition_id_ = definition.id;
@@ -131,6 +140,8 @@ bool ShopMenuController::open(
         std::move(cyberdeck_model_offer_groups);
     cyberdeck_stat_upgrade_offer_groups_ =
         std::move(cyberdeck_stat_upgrade_offer_groups);
+    cyberdeck_rating_upgrade_offer_groups_ =
+        std::move(cyberdeck_rating_upgrade_offer_groups);
     menu_mode_ = definition.menu_mode;
     source_state_ = FieldModeServiceState{};
     source_state_.action_selection.menu_result = definition.menu_result;
@@ -162,6 +173,7 @@ void ShopMenuController::close() noexcept {
     equipment_upgrade_offer_groups_ = {};
     cyberdeck_model_offer_groups_ = {};
     cyberdeck_stat_upgrade_offer_groups_ = {};
+    cyberdeck_rating_upgrade_offer_groups_ = {};
     menu_mode_ = 0U;
 }
 
@@ -215,6 +227,21 @@ ShopMenuController::begin_cyberdeck_stat_upgrade_confirmation(
     }
     reset_transaction();
     transaction_kind_ = TransactionKind::cyberdeck_stat_upgrade;
+    transaction_amount_ = cost;
+    transaction_confirmation_ = MenuConfirmationState{};
+    transaction_confirmation_open_ = true;
+    return ShopTransactionEvent::confirmation_opened;
+}
+
+ShopTransactionEvent
+ShopMenuController::begin_cyberdeck_rating_upgrade_confirmation(
+    const std::uint32_t cost) {
+    if (!open_ || shop_ != ShopId::microtronics || !pending_action_ ||
+        !pending_action_->cyberdeck_rating_upgrade_offer.has_value()) {
+        return ShopTransactionEvent::unresolved;
+    }
+    reset_transaction();
+    transaction_kind_ = TransactionKind::cyberdeck_rating_upgrade;
     transaction_amount_ = cost;
     transaction_confirmation_ = MenuConfirmationState{};
     transaction_confirmation_open_ = true;
@@ -419,6 +446,12 @@ ShopTransactionEvent ShopMenuController::advance_transaction(
         pending_action_->cyberdeck_stat_upgrade_offer.has_value()) {
         reset_transaction();
         return ShopTransactionEvent::cyberdeck_stat_upgrade_confirmed;
+    }
+    if (transaction_kind_ == TransactionKind::cyberdeck_rating_upgrade &&
+        pending_action_ &&
+        pending_action_->cyberdeck_rating_upgrade_offer.has_value()) {
+        reset_transaction();
+        return ShopTransactionEvent::cyberdeck_rating_upgrade_confirmed;
     }
     clear_pending_action();
     reset_transaction();
@@ -673,6 +706,45 @@ ShopMenuController::cyberdeck_stat_upgrade_offer(
     return cyberdeck_stat_upgrade_offer_groups_[group_slot][index];
 }
 
+std::size_t ShopMenuController::cyberdeck_rating_upgrade_offer_count(
+    const ShopActionGroup group) const noexcept {
+    if (!open_) {
+        return 0U;
+    }
+    const auto id = group_id(group);
+    const auto found = std::find(
+        group_ids_.begin(), group_ids_.begin() +
+                                static_cast<std::ptrdiff_t>(group_count_),
+        id);
+    if (found == group_ids_.begin() +
+                     static_cast<std::ptrdiff_t>(group_count_)) {
+        return 0U;
+    }
+    const auto group_slot = static_cast<std::size_t>(
+        std::distance(group_ids_.begin(), found));
+    return cyberdeck_rating_upgrade_offer_groups_[group_slot].size();
+}
+
+std::optional<scripting::ScriptShopCyberdeckRatingUpgradeOffer>
+ShopMenuController::cyberdeck_rating_upgrade_offer(
+    const ShopActionGroup group, const std::size_t index) const noexcept {
+    if (index >= cyberdeck_rating_upgrade_offer_count(group)) {
+        return std::nullopt;
+    }
+    const auto id = group_id(group);
+    const auto found = std::find(
+        group_ids_.begin(), group_ids_.begin() +
+                                static_cast<std::ptrdiff_t>(group_count_),
+        id);
+    if (found == group_ids_.begin() +
+                     static_cast<std::ptrdiff_t>(group_count_)) {
+        return std::nullopt;
+    }
+    const auto group_slot = static_cast<std::size_t>(
+        std::distance(group_ids_.begin(), found));
+    return cyberdeck_rating_upgrade_offer_groups_[group_slot][index];
+}
+
 std::optional<ShopMenuEvent> ShopMenuController::apply_script_snapshot(
     const scripting::ScriptShopMenuSnapshot& snapshot) {
     const bool equipment_selector = snapshot.menu_result == 1;
@@ -708,6 +780,8 @@ std::optional<ShopMenuEvent> ShopMenuController::apply_script_snapshot(
         event = ShopMenuEvent::cyberdeck_model_selected;
     } else if (snapshot.event == "cyberdeck_stat_upgrade_selected") {
         event = ShopMenuEvent::cyberdeck_stat_upgrade_selected;
+    } else if (snapshot.event == "cyberdeck_rating_upgrade_selected") {
+        event = ShopMenuEvent::cyberdeck_rating_upgrade_selected;
     } else if (snapshot.event == "source_action_boundary") {
         event = ShopMenuEvent::source_action_boundary;
     } else if (snapshot.event == "active_runner_change_requested") {
@@ -738,6 +812,7 @@ std::optional<ShopMenuEvent> ShopMenuController::apply_script_snapshot(
         event == ShopMenuEvent::equipment_upgrade_selected ||
         event == ShopMenuEvent::cyberdeck_model_selected ||
         event == ShopMenuEvent::cyberdeck_stat_upgrade_selected ||
+        event == ShopMenuEvent::cyberdeck_rating_upgrade_selected ||
         event == ShopMenuEvent::source_action_boundary) {
         ShopActionRequest request{};
         request.group = selected_group();
@@ -779,6 +854,18 @@ std::optional<ShopMenuEvent> ShopMenuController::apply_script_snapshot(
                 snapshot.action_cursor >= 4U ||
                 request.group != ShopActionGroup::cyberdeck_upgrades ||
                 !request.cyberdeck_stat_upgrade_offer.has_value()) {
+                return std::nullopt;
+            }
+        } else if (event ==
+                   ShopMenuEvent::cyberdeck_rating_upgrade_selected) {
+            request.cyberdeck_rating_upgrade_offer =
+                cyberdeck_rating_upgrade_offer(request.group, request.cursor);
+            if (shop_ != ShopId::microtronics ||
+                snapshot.menu_result != 2 || snapshot.action_panel != 1U ||
+                snapshot.selected_action != 5U ||
+                snapshot.action_cursor >= 5U ||
+                request.group != ShopActionGroup::cyberdeck_upgrades_second ||
+                !request.cyberdeck_rating_upgrade_offer.has_value()) {
                 return std::nullopt;
             }
         }
@@ -942,6 +1029,60 @@ FieldCyberdeckStatUpgradeResult apply_field_cyberdeck_stat_upgrade(
     }
     state.funds -= offer.cost;
     return FieldCyberdeckStatUpgradeResult::applied;
+}
+
+FieldCyberdeckRatingUpgradeResult apply_field_cyberdeck_rating_upgrade(
+    const scripting::ScriptShopCyberdeckRatingUpgradeQuote& quote,
+    FieldCyberdeckUpgradeState& state, const bool confirmed) {
+    if (quote.status !=
+        scripting::ScriptShopCyberdeckRatingUpgradeStatus::available) {
+        return FieldCyberdeckRatingUpgradeResult::state_unavailable;
+    }
+
+    auto& deck = state.deck;
+    std::uint8_t current_rating = 0U;
+    std::size_t persona_index = 0U;
+    const bool mpcp_upgrade =
+        quote.stat ==
+            scripting::ScriptShopCyberdeckRatingUpgradeStat::mpcp_repair;
+    switch (quote.stat) {
+    case scripting::ScriptShopCyberdeckRatingUpgradeStat::mpcp_repair:
+        if (!deck.mpcp.has_value()) {
+            return FieldCyberdeckRatingUpgradeResult::state_unavailable;
+        }
+        current_rating = *deck.mpcp;
+        break;
+    case scripting::ScriptShopCyberdeckRatingUpgradeStat::body:
+    case scripting::ScriptShopCyberdeckRatingUpgradeStat::evasion:
+    case scripting::ScriptShopCyberdeckRatingUpgradeStat::masking:
+    case scripting::ScriptShopCyberdeckRatingUpgradeStat::sensors: {
+        if (!deck.persona.has_value()) {
+            return FieldCyberdeckRatingUpgradeResult::state_unavailable;
+        }
+        persona_index =
+            static_cast<std::size_t>(quote.stat) -
+            static_cast<std::size_t>(
+                scripting::ScriptShopCyberdeckRatingUpgradeStat::body);
+        current_rating = (*deck.persona)[persona_index];
+        break;
+    }
+    }
+    if (current_rating != quote.current_rating) {
+        return FieldCyberdeckRatingUpgradeResult::state_unavailable;
+    }
+    if (state.funds < quote.cost) {
+        return FieldCyberdeckRatingUpgradeResult::insufficient_funds;
+    }
+    if (!confirmed) {
+        return FieldCyberdeckRatingUpgradeResult::confirmation_required;
+    }
+    if (mpcp_upgrade) {
+        *deck.mpcp = quote.next_rating;
+    } else {
+        (*deck.persona)[persona_index] = quote.next_rating;
+    }
+    state.funds -= quote.cost;
+    return FieldCyberdeckRatingUpgradeResult::applied;
 }
 
 FieldActionApplicationResult ShopTransactionService::purchase(

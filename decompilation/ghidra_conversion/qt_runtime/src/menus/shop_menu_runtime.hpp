@@ -53,6 +53,8 @@ struct ShopActionRequest {
         cyberdeck_model_offer;
     std::optional<scripting::ScriptShopCyberdeckStatUpgradeOffer>
         cyberdeck_stat_upgrade_offer;
+    std::optional<scripting::ScriptShopCyberdeckRatingUpgradeOffer>
+        cyberdeck_rating_upgrade_offer;
 };
 
 struct ShopSaleOutcome {
@@ -79,6 +81,8 @@ enum class ShopTransactionMessage : std::uint8_t {
     cyberdeck_model_unavailable,
     cyberdeck_upgrade_mpcp_maximum,
     cyberdeck_response_maximum,
+    cyberdeck_persona_mpcp_maximum,
+    cyberdeck_persona_attribute_maximum,
 };
 
 enum class ShopTransactionEvent : std::uint8_t {
@@ -90,6 +94,7 @@ enum class ShopTransactionEvent : std::uint8_t {
     equipment_upgrade_confirmed,
     cyberdeck_model_upgrade_confirmed,
     cyberdeck_stat_upgrade_confirmed,
+    cyberdeck_rating_upgrade_confirmed,
     cancelled,
     message_shown,
     message_dismissed,
@@ -108,6 +113,7 @@ enum class ShopMenuEvent : std::uint8_t {
     equipment_upgrade_selected,
     cyberdeck_model_selected,
     cyberdeck_stat_upgrade_selected,
+    cyberdeck_rating_upgrade_selected,
     source_action_boundary,
     active_runner_change_requested,
     returned_to_field,
@@ -197,6 +203,11 @@ public:
     std::optional<scripting::ScriptShopCyberdeckStatUpgradeOffer>
     cyberdeck_stat_upgrade_offer(ShopActionGroup group,
                                  std::size_t index) const noexcept;
+    std::size_t cyberdeck_rating_upgrade_offer_count(
+        ShopActionGroup group) const noexcept;
+    std::optional<scripting::ScriptShopCyberdeckRatingUpgradeOffer>
+    cyberdeck_rating_upgrade_offer(ShopActionGroup group,
+                                   std::size_t index) const noexcept;
 
     ShopTransactionEvent begin_purchase(
         const FieldActionCostRecord& selected_offer,
@@ -212,6 +223,8 @@ public:
     ShopTransactionEvent begin_cyberdeck_model_upgrade_confirmation(
         std::uint32_t cost);
     ShopTransactionEvent begin_cyberdeck_stat_upgrade_confirmation(
+        std::uint32_t cost);
+    ShopTransactionEvent begin_cyberdeck_rating_upgrade_confirmation(
         std::uint32_t cost);
     ShopTransactionEvent advance_transaction(
         std::uint16_t controller_events,
@@ -231,6 +244,7 @@ private:
         equipment_upgrade,
         cyberdeck_model_upgrade,
         cyberdeck_stat_upgrade,
+        cyberdeck_rating_upgrade,
     };
     void reset_transaction() noexcept;
 
@@ -253,6 +267,8 @@ private:
         cyberdeck_model_offer_groups_{};
     std::array<std::vector<scripting::ScriptShopCyberdeckStatUpgradeOffer>, 6>
         cyberdeck_stat_upgrade_offer_groups_{};
+    std::array<std::vector<scripting::ScriptShopCyberdeckRatingUpgradeOffer>, 6>
+        cyberdeck_rating_upgrade_offer_groups_{};
     MenuConfirmationState transaction_confirmation_{};
     TransactionKind transaction_kind_ = TransactionKind::none;
     ShopTransactionMessage transaction_message_ = ShopTransactionMessage::none;
@@ -302,6 +318,19 @@ std::uint8_t field_cyberdeck_stat_upgrade_increment(
 // statistic; accepted purchases apply the four source increments.
 FieldCyberdeckStatUpgradeResult apply_field_cyberdeck_stat_upgrade(
     const scripting::ScriptShopCyberdeckStatUpgradeOffer& offer,
+    FieldCyberdeckUpgradeState& state, bool confirmed);
+
+enum class FieldCyberdeckRatingUpgradeResult : std::uint8_t {
+    confirmation_required,
+    applied,
+    insufficient_funds,
+    state_unavailable,
+};
+
+// Lua calculates the source-derived target and cost; the host commits that
+// typed quote to the active deck and wallet after confirmation.
+FieldCyberdeckRatingUpgradeResult apply_field_cyberdeck_rating_upgrade(
+    const scripting::ScriptShopCyberdeckRatingUpgradeQuote& quote,
     FieldCyberdeckUpgradeState& state, bool confirmed);
 
 // Transactions reuse the same typed source conversions as the field action

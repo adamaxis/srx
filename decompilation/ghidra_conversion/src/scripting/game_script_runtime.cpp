@@ -11436,7 +11436,13 @@ std::optional<ScriptShopDefinition> GameScriptRuntime::shop_definition(
         read_text_key("cyberdeck_upgrade_mpcp_maximum",
                       definition.text_keys.cyberdeck_upgrade_mpcp_maximum) &&
         read_text_key("cyberdeck_response_maximum",
-                      definition.text_keys.cyberdeck_response_maximum);
+                      definition.text_keys.cyberdeck_response_maximum) &&
+        read_text_key("cyberdeck_persona_mpcp_maximum",
+                      definition.text_keys.cyberdeck_persona_mpcp_maximum) &&
+        read_text_key("cyberdeck_persona_attribute_maximum",
+                      definition.text_keys.cyberdeck_persona_attribute_maximum) &&
+        read_text_key("cyberdeck_rating_cost_heading",
+                      definition.text_keys.cyberdeck_rating_cost_heading);
     lua_pop(state, 1);
     if (!text_keys_valid) {
         return fail("shop catalog transaction text keys are incomplete");
@@ -11764,6 +11770,60 @@ std::optional<ScriptShopDefinition> GameScriptRuntime::shop_definition(
                     *stat, cost, std::move(label_key)});
         }
         lua_pop(state, 1);
+
+        lua_getfield(state, group_table,
+                     "cyberdeck_rating_upgrade_offers");
+        if (!lua_istable(state, -1)) {
+            return fail("shop offer group must contain a cyberdeck_rating_upgrade_offers array");
+        }
+        const auto cyberdeck_rating_offers_index = lua_absindex(state, -1);
+        const auto cyberdeck_rating_offer_count =
+            lua_rawlen(state, cyberdeck_rating_offers_index);
+        if (cyberdeck_rating_offer_count > kMaximumShopOffers) {
+            return fail("shop offer group exceeds the eight-slot cyberdeck rating panel");
+        }
+        group.cyberdeck_rating_upgrade_offers.reserve(
+            cyberdeck_rating_offer_count);
+        for (std::size_t offer_index = 1U;
+             offer_index <= cyberdeck_rating_offer_count; ++offer_index) {
+            lua_rawgeti(state, cyberdeck_rating_offers_index,
+                        static_cast<lua_Integer>(offer_index));
+            if (!lua_istable(state, -1)) {
+                return fail("cyberdeck rating upgrade offer is not a record table");
+            }
+            const auto offer_table = lua_absindex(state, -1);
+            std::string stat_name;
+            std::string label_key;
+            std::string description_key;
+            const bool fields_valid =
+                read_field_string(state, offer_table, "stat", stat_name) &&
+                read_field_string(state, offer_table, "label_key", label_key) &&
+                valid_identifier(label_key) &&
+                read_field_string(state, offer_table, "description_key",
+                                  description_key) &&
+                valid_identifier(description_key);
+            std::optional<ScriptShopCyberdeckRatingUpgradeStat> stat;
+            if (stat_name == "mpcp_repair") {
+                stat = ScriptShopCyberdeckRatingUpgradeStat::mpcp_repair;
+            } else if (stat_name == "body") {
+                stat = ScriptShopCyberdeckRatingUpgradeStat::body;
+            } else if (stat_name == "evasion") {
+                stat = ScriptShopCyberdeckRatingUpgradeStat::evasion;
+            } else if (stat_name == "masking") {
+                stat = ScriptShopCyberdeckRatingUpgradeStat::masking;
+            } else if (stat_name == "sensors") {
+                stat = ScriptShopCyberdeckRatingUpgradeStat::sensors;
+            }
+            lua_pop(state, 1);
+            if (!fields_valid || !stat.has_value()) {
+                return fail("cyberdeck rating upgrade offer has invalid typed fields");
+            }
+            group.cyberdeck_rating_upgrade_offers.push_back(
+                ScriptShopCyberdeckRatingUpgradeOffer{
+                    *stat, std::move(label_key),
+                    std::move(description_key)});
+        }
+        lua_pop(state, 1);
         lua_pop(state, 1);
         definition.groups.push_back(std::move(group));
     }
@@ -11781,7 +11841,9 @@ std::optional<ScriptShopDefinition> GameScriptRuntime::shop_definition(
          definition.groups[3U].id != "cyberdecks" ||
          definition.groups[3U].cyberdeck_model_offers.size() != 3U ||
          definition.groups[4U].id != "cyberdeck_upgrades" ||
-         definition.groups[4U].cyberdeck_stat_upgrade_offers.size() != 4U)) {
+         definition.groups[4U].cyberdeck_stat_upgrade_offers.size() != 4U ||
+         definition.groups[5U].id != "cyberdeck_upgrades_second" ||
+         definition.groups[5U].cyberdeck_rating_upgrade_offers.size() != 5U)) {
         return fail("MicroTronics has an invalid source deck upgrade shape");
     }
     if (!definition.equipment_upgrade_meter_thresholds.empty() &&
@@ -11909,6 +11971,101 @@ std::optional<ScriptShopMenuSnapshot> GameScriptRuntime::reset_shop_menu() {
     lua_settop(state, stack_base);
     impl_->failure.clear();
     return snapshot;
+}
+
+std::optional<ScriptShopCyberdeckRatingUpgradeQuote>
+GameScriptRuntime::shop_cyberdeck_rating_upgrade_quote(
+    const ScriptShopCyberdeckRatingUpgradeStat stat, const std::int8_t model,
+    const std::uint8_t mpcp,
+    const std::array<std::uint8_t, 4>& persona) const {
+    auto* state = impl_->state;
+    if (state == nullptr) {
+        impl_->failure = "Lua runtime is unavailable for cyberdeck rating quotes";
+        return std::nullopt;
+    }
+    std::string_view stat_name;
+    switch (stat) {
+    case ScriptShopCyberdeckRatingUpgradeStat::mpcp_repair:
+        stat_name = "mpcp_repair";
+        break;
+    case ScriptShopCyberdeckRatingUpgradeStat::body:
+        stat_name = "body";
+        break;
+    case ScriptShopCyberdeckRatingUpgradeStat::evasion:
+        stat_name = "evasion";
+        break;
+    case ScriptShopCyberdeckRatingUpgradeStat::masking:
+        stat_name = "masking";
+        break;
+    case ScriptShopCyberdeckRatingUpgradeStat::sensors:
+        stat_name = "sensors";
+        break;
+    }
+
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason)
+        -> std::optional<ScriptShopCyberdeckRatingUpgradeQuote> {
+        lua_settop(state, stack_base);
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (!impl_->push_module("shop")) {
+        return fail("shop.lua module is unavailable for cyberdeck rating quotes");
+    }
+    lua_getfield(state, -1, "cyberdeck_rating_upgrade_quote");
+    if (!lua_isfunction(state, -1)) {
+        return fail("shop.lua cyberdeck rating quote is missing");
+    }
+    lua_remove(state, -2);
+    lua_pushlstring(state, stat_name.data(), stat_name.size());
+    lua_pushinteger(state, model);
+    lua_pushinteger(state, mpcp);
+    lua_createtable(state, static_cast<int>(persona.size()), 0);
+    const auto persona_index = lua_absindex(state, -1);
+    for (std::size_t index = 0; index < persona.size(); ++index) {
+        lua_pushinteger(state, persona[index]);
+        lua_rawseti(state, persona_index,
+                    static_cast<lua_Integer>(index + 1U));
+    }
+    if (lua_pcall(state, 4, 1, 0) != LUA_OK) {
+        return fail("shop.lua cyberdeck rating quote failed: " +
+                    stack_error(state));
+    }
+    if (!lua_istable(state, -1)) {
+        return fail("shop.lua cyberdeck rating quote returned invalid state");
+    }
+    const auto quote_index = lua_absindex(state, -1);
+    std::string status_name;
+    std::uint32_t current_rating = 0U;
+    std::uint32_t next_rating = 0U;
+    std::uint32_t cost = 0U;
+    if (!read_field_string(state, quote_index, "status", status_name) ||
+        !read_field_integer(state, quote_index, "current_rating", 0xFFU,
+                            current_rating) ||
+        !read_field_integer(state, quote_index, "next_rating", 0xFFU,
+                            next_rating) ||
+        !read_field_integer(state, quote_index, "cost", 0xFFFFFFFFU,
+                            cost)) {
+        return fail("shop.lua cyberdeck rating quote fields are invalid");
+    }
+    ScriptShopCyberdeckRatingUpgradeStatus quote_status;
+    if (status_name == "available") {
+        quote_status = ScriptShopCyberdeckRatingUpgradeStatus::available;
+    } else if (status_name == "mpcp_at_capacity") {
+        quote_status =
+            ScriptShopCyberdeckRatingUpgradeStatus::mpcp_at_capacity;
+    } else if (status_name == "persona_at_mpcp") {
+        quote_status = ScriptShopCyberdeckRatingUpgradeStatus::persona_at_mpcp;
+    } else if (status_name == "source_boundary") {
+        quote_status = ScriptShopCyberdeckRatingUpgradeStatus::source_boundary;
+    } else {
+        return fail("shop.lua cyberdeck rating quote has an unknown status");
+    }
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return ScriptShopCyberdeckRatingUpgradeQuote{
+        stat, quote_status, static_cast<std::uint8_t>(current_rating),
+        static_cast<std::uint8_t>(next_rating), cost};
 }
 
 bool GameScriptRuntime::close_shop_menu() {

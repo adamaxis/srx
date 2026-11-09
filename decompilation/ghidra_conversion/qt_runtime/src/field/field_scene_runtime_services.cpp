@@ -521,6 +521,22 @@ bool FieldSceneRuntime::seed_microtronics_deck_upgrade_for_dump(
            ((*field_runner_feature_flags_ & 0x01U) != 0U);
 }
 
+bool FieldSceneRuntime::seed_microtronics_rating_upgrade_state_for_dump() {
+    if (!ready_ || !field_matrix_deck_record_.has_value() ||
+        !field_matrix_deck_record_->model_index.has_value() ||
+        *field_matrix_deck_record_->model_index != 2) {
+        return false;
+    }
+    // The preceding route buys model 2 (MPCP capacity 8). This fixture then
+    // supplies a damaged MPCP value and distinct persona ratings so the
+    // repair and attribute branches use live record data in QA.
+    auto deck = *field_matrix_deck_record_;
+    deck.mpcp = 6U;
+    deck.persona = std::array<std::uint8_t, 4U>{6U, 4U, 5U, 1U};
+    field_matrix_deck_record_ = std::move(deck);
+    return true;
+}
+
 bool FieldSceneRuntime::seed_gpgx_test_deck_state_for_dump() {
     if (!ready_ || !cyberdeck_available_) {
         return false;

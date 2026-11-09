@@ -15216,6 +15216,102 @@ void FieldSceneRuntime::advance_frame() {
                     return;
                 }
             };
+        const auto service_cyberdeck_rating_upgrade =
+            [this, &shop_boundary](const bool confirmed) {
+                if (!field_shop_menu_.pending_action().has_value() ||
+                    !field_shop_menu_.pending_action()
+                         ->cyberdeck_rating_upgrade_offer.has_value() ||
+                    !field_matrix_deck_record_.has_value() ||
+                    !field_funds_.has_value()) {
+                    shop_boundary("cyberdeck_rating_state_unavailable");
+                    field_shop_menu_.finish_action();
+                    return;
+                }
+                const auto& offer = *field_shop_menu_.pending_action()
+                                         ->cyberdeck_rating_upgrade_offer;
+                const auto& deck = *field_matrix_deck_record_;
+                if (!deck.mpcp.has_value() ||
+                    (offer.stat == scripting::
+                         ScriptShopCyberdeckRatingUpgradeStat::mpcp_repair &&
+                     !deck.model_index.has_value()) ||
+                    (offer.stat != scripting::
+                         ScriptShopCyberdeckRatingUpgradeStat::mpcp_repair &&
+                     !deck.persona.has_value())) {
+                    shop_boundary("cyberdeck_rating_record_unavailable");
+                    field_shop_menu_.finish_action();
+                    return;
+                }
+                const auto quote =
+                    game_scripts_.shop_cyberdeck_rating_upgrade_quote(
+                        offer.stat, deck.model_index.value_or(-1),
+                        *deck.mpcp,
+                        deck.persona.value_or(
+                            std::array<std::uint8_t, 4>{}));
+                if (!quote.has_value()) {
+                    shop_boundary("cyberdeck_rating_quote_unavailable");
+                    field_shop_menu_.finish_action();
+                    return;
+                }
+                switch (quote->status) {
+                case scripting::ScriptShopCyberdeckRatingUpgradeStatus::
+                    mpcp_at_capacity:
+                    field_shop_menu_.show_transaction_message(
+                        ShopTransactionMessage::
+                            cyberdeck_persona_mpcp_maximum);
+                    shop_boundary("cyberdeck_rating_mpcp_at_capacity");
+                    return;
+                case scripting::ScriptShopCyberdeckRatingUpgradeStatus::
+                    persona_at_mpcp:
+                    field_shop_menu_.show_transaction_message(
+                        ShopTransactionMessage::
+                            cyberdeck_persona_attribute_maximum);
+                    shop_boundary("cyberdeck_rating_persona_at_mpcp");
+                    return;
+                case scripting::ScriptShopCyberdeckRatingUpgradeStatus::
+                    source_boundary:
+                    shop_boundary("cyberdeck_rating_source_boundary");
+                    field_shop_menu_.finish_action();
+                    return;
+                case scripting::ScriptShopCyberdeckRatingUpgradeStatus::
+                    available:
+                    break;
+                }
+
+                FieldCyberdeckUpgradeState state{
+                    *field_matrix_deck_record_, *field_funds_};
+                const auto result = apply_field_cyberdeck_rating_upgrade(
+                    *quote, state, confirmed);
+                switch (result) {
+                case FieldCyberdeckRatingUpgradeResult::confirmation_required:
+                    if (field_shop_menu_
+                            .begin_cyberdeck_rating_upgrade_confirmation(
+                                quote->cost) ==
+                        ShopTransactionEvent::confirmation_opened) {
+                        shop_boundary("cyberdeck_rating_confirmation");
+                    } else {
+                        shop_boundary(
+                            "cyberdeck_rating_confirmation_unavailable");
+                        field_shop_menu_.finish_action();
+                    }
+                    return;
+                case FieldCyberdeckRatingUpgradeResult::insufficient_funds:
+                    field_shop_menu_.show_transaction_message(
+                        ShopTransactionMessage::insufficient_funds);
+                    shop_boundary("cyberdeck_rating_insufficient_funds");
+                    return;
+                case FieldCyberdeckRatingUpgradeResult::state_unavailable:
+                    shop_boundary("cyberdeck_rating_deck_state_unavailable");
+                    field_shop_menu_.finish_action();
+                    return;
+                case FieldCyberdeckRatingUpgradeResult::applied:
+                    field_matrix_deck_record_ = std::move(state.deck);
+                    field_funds_ = state.funds;
+                    refresh_field_hud_runner_slot();
+                    field_shop_menu_.finish_action();
+                    shop_boundary("cyberdeck_rating_upgrade_applied");
+                    return;
+                }
+            };
         // ROM 0x56AC0 services audio and new high-byte input inside its menu
         // loop. Keep that interaction modal so field movement cannot write
         // stale map pixels underneath the full-screen service presentation.
@@ -15303,6 +15399,10 @@ void FieldSceneRuntime::advance_frame() {
                        ShopTransactionEvent::
                            cyberdeck_stat_upgrade_confirmed) {
                 service_cyberdeck_stat_upgrade(true);
+            } else if (transaction_event ==
+                       ShopTransactionEvent::
+                           cyberdeck_rating_upgrade_confirmed) {
+                service_cyberdeck_rating_upgrade(true);
             } else if (transaction_event ==
                        ShopTransactionEvent::message_shown) {
                 shop_boundary("transaction_message");
@@ -15500,6 +15600,12 @@ void FieldSceneRuntime::advance_frame() {
                 source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
             }
             service_cyberdeck_stat_upgrade(false);
+            break;
+        case ShopMenuEvent::cyberdeck_rating_upgrade_selected:
+            if (source_audio_event_callback_) {
+                source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
+            }
+            service_cyberdeck_rating_upgrade(false);
             break;
         case ShopMenuEvent::offer_unavailable:
             shop_boundary("offer_unavailable");

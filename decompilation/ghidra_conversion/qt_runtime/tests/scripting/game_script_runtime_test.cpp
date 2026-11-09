@@ -12800,6 +12800,93 @@ int main() {
         std::cerr << scripts.failure() << '\n';
         return 1;
     }
+    const auto microtronics = scripts.shop_definition("microtronics");
+    if (!expect(microtronics.has_value() &&
+                    microtronics->groups.size() == 6U &&
+                    microtronics->groups[5U].id ==
+                        "cyberdeck_upgrades_second" &&
+                    microtronics->groups[5U]
+                            .cyberdeck_rating_upgrade_offers.size() == 5U &&
+                    microtronics->text_keys
+                            .cyberdeck_persona_mpcp_maximum ==
+                        "shop.cyberdeck.persona.maximum_mpcp" &&
+                    microtronics->text_keys
+                            .cyberdeck_persona_attribute_maximum ==
+                        "shop.cyberdeck.persona.maximum_attribute",
+                "MicroTronics rating-upgrade catalog lost its five typed rows")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+    const std::array<std::uint8_t, 4U> rating_persona{{2U, 4U, 5U, 1U}};
+    const auto quote_mpcp = scripts.shop_cyberdeck_rating_upgrade_quote(
+        scripting::ScriptShopCyberdeckRatingUpgradeStat::mpcp_repair, 2, 6U,
+        rating_persona);
+    const auto quote_body = scripts.shop_cyberdeck_rating_upgrade_quote(
+        scripting::ScriptShopCyberdeckRatingUpgradeStat::body, 2, 6U,
+        rating_persona);
+    const auto quote_evasion = scripts.shop_cyberdeck_rating_upgrade_quote(
+        scripting::ScriptShopCyberdeckRatingUpgradeStat::evasion, 2, 6U,
+        rating_persona);
+    const auto quote_masking = scripts.shop_cyberdeck_rating_upgrade_quote(
+        scripting::ScriptShopCyberdeckRatingUpgradeStat::masking, 2, 6U,
+        rating_persona);
+    const auto quote_sensors = scripts.shop_cyberdeck_rating_upgrade_quote(
+        scripting::ScriptShopCyberdeckRatingUpgradeStat::sensors, 2, 6U,
+        rating_persona);
+    if (!expect(quote_mpcp.has_value() &&
+                    quote_mpcp->status ==
+                        scripting::ScriptShopCyberdeckRatingUpgradeStatus::
+                            available &&
+                    quote_mpcp->next_rating == 8U &&
+                    quote_mpcp->cost == 12800U &&
+                    quote_body.has_value() && quote_body->next_rating == 3U &&
+                    quote_body->cost == 2700U && quote_evasion.has_value() &&
+                    quote_evasion->next_rating == 5U &&
+                    quote_evasion->cost == 7500U &&
+                    quote_masking.has_value() &&
+                    quote_masking->next_rating == 6U &&
+                    quote_masking->cost == 7200U &&
+                    quote_sensors.has_value() &&
+                    quote_sensors->next_rating == 2U &&
+                    quote_sensors->cost == 800U,
+                "Lua quote rules differ from ROM 0x58394 and 0x5787C")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+    const auto mpcp_at_capacity = scripts.shop_cyberdeck_rating_upgrade_quote(
+        scripting::ScriptShopCyberdeckRatingUpgradeStat::mpcp_repair, 4, 12U,
+        rating_persona);
+    const auto persona_at_mpcp = scripts.shop_cyberdeck_rating_upgrade_quote(
+        scripting::ScriptShopCyberdeckRatingUpgradeStat::body, 2, 6U,
+        std::array<std::uint8_t, 4U>{{6U, 4U, 5U, 1U}});
+    const auto signed_persona = scripts.shop_cyberdeck_rating_upgrade_quote(
+        scripting::ScriptShopCyberdeckRatingUpgradeStat::body, 2, 5U,
+        std::array<std::uint8_t, 4U>{{0xFFU, 4U, 5U, 1U}});
+    const auto unknown_model = scripts.shop_cyberdeck_rating_upgrade_quote(
+        scripting::ScriptShopCyberdeckRatingUpgradeStat::mpcp_repair, 5, 12U,
+        rating_persona);
+    if (!expect(mpcp_at_capacity.has_value() &&
+                    mpcp_at_capacity->status ==
+                        scripting::ScriptShopCyberdeckRatingUpgradeStatus::
+                            mpcp_at_capacity &&
+                    persona_at_mpcp.has_value() &&
+                    persona_at_mpcp->status ==
+                        scripting::ScriptShopCyberdeckRatingUpgradeStatus::
+                            persona_at_mpcp &&
+                    signed_persona.has_value() &&
+                    signed_persona->status ==
+                        scripting::ScriptShopCyberdeckRatingUpgradeStatus::
+                            available &&
+                    signed_persona->next_rating == 0U &&
+                    signed_persona->cost == 0U &&
+                    unknown_model.has_value() &&
+                    unknown_model->status ==
+                        scripting::ScriptShopCyberdeckRatingUpgradeStatus::
+                            source_boundary,
+                "Lua rating quote lost source cap, signed-byte, or boundary cases")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
     const auto merlins_lore = scripts.shop_definition("merlins_lore");
     if (!expect(merlins_lore.has_value() &&
                     merlins_lore->menu_mode == 5U &&

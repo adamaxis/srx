@@ -1072,6 +1072,7 @@ public:
         std::uint8_t scene_id, std::uint8_t field_mode,
         std::uint8_t event_code, std::int8_t alternate_result);
     bool seed_microtronics_deck_upgrade_for_dump(std::uint32_t funds);
+    bool seed_microtronics_rating_upgrade_state_for_dump();
     bool shop_menu_open() const noexcept { return field_shop_menu_.is_open(); }
     bool field_shop_notice_open_for_dump() const noexcept {
         return field_shop_notice_active_;
@@ -1102,6 +1103,11 @@ public:
     std::size_t shop_menu_cyberdeck_stat_upgrade_offer_count_for_dump() const
         noexcept {
         return field_shop_menu_.cyberdeck_stat_upgrade_offer_count(
+            field_shop_menu_.selected_group());
+    }
+    std::size_t shop_menu_cyberdeck_rating_upgrade_offer_count_for_dump() const
+        noexcept {
+        return field_shop_menu_.cyberdeck_rating_upgrade_offer_count(
             field_shop_menu_.selected_group());
     }
     std::optional<std::uint8_t>

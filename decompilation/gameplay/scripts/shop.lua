@@ -162,4 +162,8 @@ end
 
 Shop.catalog = Catalog.catalog
 
+function Shop.cyberdeck_rating_upgrade_quote(stat, model, mpcp, persona)
+    return Catalog.cyberdeck_rating_upgrade_quote(stat, model, mpcp, persona)
+end
+
 return Shop

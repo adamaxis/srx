@@ -11732,6 +11732,202 @@ int run_field_scene5_store_service_entry_qa(
                 }
                 tap_qa_controller_button(field_scene, 0x40U);
 
+                if (!field_scene.seed_microtronics_rating_upgrade_state_for_dump()) {
+                    std::cerr << "Scene-5 store service QA: could not seed the "
+                                 "model-2 MPCP repair and persona fixture\n";
+                    return 3;
+                }
+                field_scene.set_field_funds_for_dump(200000U);
+                tap_qa_controller_button(field_scene, 0x01U);
+                for (int index = 0; index < 5; ++index) {
+                    tap_qa_controller_button(field_scene, 0x08U);
+                }
+                tap_qa_controller_button(field_scene, 0x02U);
+                const auto rating_offer_frame = render_qa_field(field_scene);
+                bool all_rating_rows_drawn = !service_background.isNull();
+                for (int index = 0; index < 5; ++index) {
+                    all_rating_rows_drawn = all_rating_rows_drawn &&
+                        image_region_differs(rating_offer_frame,
+                            service_background,
+                            16 + index * 32, 168, 24, 16);
+                }
+                const auto rating_offer_saved =
+                    save_actual("persona-rating-upgrades", rating_offer_frame);
+                if (!field_scene.shop_menu_open() ||
+                    field_scene.shop_menu_group() !=
+                        ShopActionGroup::cyberdeck_upgrades_second ||
+                    field_scene.shop_menu_cursor() != 0U ||
+                    field_scene.shop_menu_cyberdeck_rating_upgrade_offer_count_for_dump()
+                        != 5U ||
+                    !rating_offer_saved || !all_rating_rows_drawn ||
+                    !boundary_seen_since_prompt(
+                        "field.shop.microtronics.panel_changed")) {
+                    std::cerr << "Scene-5 store service QA: MicroTronics did "
+                                 "not display all five MPCP/persona offers\n";
+                    return 3;
+                }
+
+                auto rating_deck =
+                    field_scene.field_matrix_deck_record_for_dump();
+                tap_qa_controller_button(field_scene, 0x40U);
+                const auto repair_decline_prompt = render_qa_field(field_scene);
+                const auto repair_decline_saved = save_actual(
+                    "persona-mpcp-repair-confirmation-no",
+                    repair_decline_prompt);
+                if (!field_scene.shop_transaction_confirmation_open() ||
+                    field_scene.shop_transaction_amount() != 12800U ||
+                    field_scene.shop_transaction_confirmation()
+                            .selected_option != 1U ||
+                    !repair_decline_saved) {
+                    std::cerr << "Scene-5 store service QA: MPCP repair did "
+                                 "not show its default-No $12,800 prompt\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                rating_deck = field_scene.field_matrix_deck_record_for_dump();
+                if (!rating_deck.has_value() || rating_deck->mpcp != 6U ||
+                    !rating_deck->persona.has_value() ||
+                    (*rating_deck->persona)[0] != 6U ||
+                    field_scene.field_funds_for_dump().value_or(0U) !=
+                        200000U) {
+                    std::cerr << "Scene-5 store service QA: declining MPCP "
+                                 "repair changed the deck or wallet\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                tap_qa_controller_button(field_scene, 0x01U);
+                tap_qa_controller_button(field_scene, 0x40U);
+                const auto repair_applied = render_qa_field(field_scene);
+                const auto repair_applied_saved =
+                    save_actual("persona-mpcp-repaired", repair_applied);
+                rating_deck = field_scene.field_matrix_deck_record_for_dump();
+                if (!rating_deck.has_value() || rating_deck->mpcp != 8U ||
+                    field_scene.field_funds_for_dump().value_or(0U) !=
+                        187200U || !repair_applied_saved ||
+                    !boundary_seen_since_prompt(
+                        "field.shop.microtronics.cyberdeck_rating_upgrade_applied")) {
+                    std::cerr << "Scene-5 store service QA: MPCP repair did "
+                                 "not restore model-2 capacity 8 for $12,800\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                const auto mpcp_checked = render_qa_field(field_scene);
+                const auto mpcp_checked_saved = save_actual(
+                    "persona-mpcp-already-at-capacity", mpcp_checked);
+                if (field_scene.shop_transaction_message() !=
+                        ShopTransactionMessage::
+                            cyberdeck_persona_mpcp_maximum ||
+                    field_scene.field_funds_for_dump().value_or(0U) !=
+                        187200U || !mpcp_checked_saved ||
+                    !image_has_green_ink(mpcp_checked, 56, 88, 224, 40)) {
+                    std::cerr << "Scene-5 store service QA: full MPCP capacity "
+                                 "was not reported without a debit\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+
+                tap_qa_controller_button(field_scene, 0x08U);
+                for (const auto expected_rating_and_cost :
+                     std::array<std::array<std::uint32_t, 2U>, 2U>{{
+                         {{7U, 14700U}}, {{8U, 19200U}}}}) {
+                    tap_qa_controller_button(field_scene, 0x40U);
+                    if (!field_scene.shop_transaction_confirmation_open() ||
+                        field_scene.shop_transaction_amount() !=
+                            expected_rating_and_cost[1]) {
+                        std::cerr << "Scene-5 store service QA: Body upgrade "
+                                     "quoted the wrong next rating cost\n";
+                        return 3;
+                    }
+                    tap_qa_controller_button(field_scene, 0x01U);
+                    tap_qa_controller_button(field_scene, 0x40U);
+                    rating_deck =
+                        field_scene.field_matrix_deck_record_for_dump();
+                    const auto expected_funds = expected_rating_and_cost[0] == 7U
+                        ? 172500U : 153300U;
+                    if (!rating_deck.has_value() ||
+                        !rating_deck->persona.has_value() ||
+                        (*rating_deck->persona)[0] !=
+                            expected_rating_and_cost[0] ||
+                        field_scene.field_funds_for_dump().value_or(0U) !=
+                            expected_funds) {
+                        std::cerr << "Scene-5 store service QA: Body rating "
+                                     "did not apply its quote and wallet debit\n";
+                        return 3;
+                    }
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                const auto body_maximum = render_qa_field(field_scene);
+                const auto body_maximum_saved = save_actual(
+                    "persona-body-at-mpcp", body_maximum);
+                rating_deck = field_scene.field_matrix_deck_record_for_dump();
+                if (!rating_deck.has_value() ||
+                    !rating_deck->persona.has_value() ||
+                    (*rating_deck->persona)[0] != 8U ||
+                    field_scene.shop_transaction_message() !=
+                        ShopTransactionMessage::
+                            cyberdeck_persona_attribute_maximum ||
+                    field_scene.field_funds_for_dump().value_or(0U) !=
+                        153300U || !body_maximum_saved ||
+                    !image_has_green_ink(body_maximum, 56, 88, 224, 40)) {
+                    std::cerr << "Scene-5 store service QA: Body at MPCP "
+                                 "capacity was not rejected without a debit\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+
+                constexpr std::array<std::array<std::uint32_t, 3U>, 3U>
+                    kPersonaUpgrades{{{{1U, 5U, 7500U}},
+                                      {{2U, 6U, 7200U}},
+                                      {{3U, 2U, 800U}}}};
+                for (const auto& target : kPersonaUpgrades) {
+                    tap_qa_controller_button(field_scene, 0x08U);
+                    const auto funds_before =
+                        field_scene.field_funds_for_dump().value_or(0U);
+                    tap_qa_controller_button(field_scene, 0x40U);
+                    if (!field_scene.shop_transaction_confirmation_open() ||
+                        field_scene.shop_transaction_amount() != target[2]) {
+                        std::cerr << "Scene-5 store service QA: persona "
+                                     "attribute used the wrong rating cost\n";
+                        return 3;
+                    }
+                    tap_qa_controller_button(field_scene, 0x01U);
+                    tap_qa_controller_button(field_scene, 0x40U);
+                    rating_deck =
+                        field_scene.field_matrix_deck_record_for_dump();
+                    if (!rating_deck.has_value() ||
+                        !rating_deck->persona.has_value() ||
+                        (*rating_deck->persona)[target[0]] != target[1] ||
+                        field_scene.field_funds_for_dump().value_or(0U) !=
+                            funds_before - target[2]) {
+                        std::cerr << "Scene-5 store service QA: persona "
+                                     "attribute did not apply its target value\n";
+                        return 3;
+                    }
+                }
+                const auto persona_applied = render_qa_field(field_scene);
+                const auto persona_applied_saved = save_actual(
+                    "persona-attributes-applied", persona_applied);
+                field_scene.set_field_funds_for_dump(0U);
+                tap_qa_controller_button(field_scene, 0x40U);
+                const auto rating_insufficient = render_qa_field(field_scene);
+                const auto rating_insufficient_saved = save_actual(
+                    "persona-upgrade-insufficient-funds", rating_insufficient);
+                rating_deck = field_scene.field_matrix_deck_record_for_dump();
+                if (!rating_deck.has_value() ||
+                    !rating_deck->persona.has_value() ||
+                    (*rating_deck->persona)[3] != 2U ||
+                    field_scene.field_funds_for_dump().value_or(1U) != 0U ||
+                    field_scene.shop_transaction_message() !=
+                        ShopTransactionMessage::insufficient_funds ||
+                    !persona_applied_saved || !rating_insufficient_saved ||
+                    !image_has_green_ink(rating_insufficient, 56, 88,
+                                         224, 32)) {
+                    std::cerr << "Scene-5 store service QA: rating purchase "
+                                 "ignored insufficient-funds feedback\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+
                 tap_qa_controller_button(field_scene, 0x80U);
                 const auto returned = render_qa_field(field_scene);
                 const auto returned_saved = save_actual("field-return",
