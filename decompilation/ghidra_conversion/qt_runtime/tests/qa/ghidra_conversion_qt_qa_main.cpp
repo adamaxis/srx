@@ -25474,28 +25474,41 @@ int run_field_region_map_pedestrians_qa(
     struct RegionCase {
         std::uint16_t scene;
         std::string_view name;
+        std::uint32_t source_list_offset;
         std::array<SceneRunnerPosition, 3> spawn_positions;
+        std::array<SceneRunnerPosition, 3> first_waypoints;
     };
+    // These are the initial and next coordinate pairs from the US-ROM
+    // position lists. 0x44BC seeds the actor and its target from the first
+    // pair; 0x142AE advances to the next pair, and 0x1460E treats a route
+    // point as reached when 0x15CA4's diagonal cost is below 0x01E0.
     constexpr std::array<RegionCase, 6> kRegions{{
-        {0U, "downtown", {{{2048U, 1536U}, {6656U, 13312U},
-                            {15360U, 13824U}}}},
-        {1U, "puyallup", {{{12032U, 6400U}, {8064U, 18176U},
-                            {2816U, 3584U}}}},
-        {2U, "barrens", {{{13440U, 8704U}, {21248U, 14080U},
-                           {25216U, 6400U}}}},
-        {3U, "penumbra", {{{31232U, 3584U}, {22528U, 12544U},
-                            {5248U, 3584U}}}},
-        {4U, "council-island", {{{384U, 13056U}, {14592U, 8448U},
-                                 {15360U, 14592U}}}},
-        {5U, "renraku", {{{1536U, 4096U}, {19328U, 8704U},
-                          {6656U, 8704U}}}},
+        {0U, "downtown", 0x00D5538U,
+         {{{2048U, 1536U}, {6656U, 13312U}, {15360U, 13824U}}},
+         {{{4992U, 1536U}, {6656U, 14592U}, {15488U, 14592U}}}},
+        {1U, "puyallup", 0x017D660U,
+         {{{12032U, 6400U}, {8064U, 18176U}, {2816U, 3584U}}},
+         {{{12032U, 8832U}, {12032U, 20608U}, {21888U, 3584U}}}},
+        {2U, "barrens", 0x0172D1CU,
+         {{{13440U, 8704U}, {21248U, 14080U}, {25216U, 6400U}}},
+         {{{10240U, 8704U}, {21248U, 9472U}, {25216U, 2944U}}}},
+        {3U, "penumbra", 0x018A73AU,
+         {{{31232U, 3584U}, {22528U, 12544U}, {5248U, 3584U}}},
+         {{{31232U, 6144U}, {3584U, 12544U}, {19456U, 3584U}}}},
+        {4U, "council-island", 0x015B998U,
+         {{{384U, 13056U}, {14592U, 8448U}, {15360U, 14592U}}},
+         {{{384U, 9216U}, {15360U, 9984U}, {15360U, 9984U}}}},
+        {5U, "renraku", 0x00679F0U,
+         {{{1536U, 4096U}, {19328U, 8704U}, {6656U, 8704U}}},
+         {{{15616U, 4096U}, {19328U, 14720U}, {9984U, 8704U}}}},
     }};
     constexpr std::array<FieldWorldActorSlot, 3> kSlots{{
         FieldWorldActorSlot::slot_3,
         FieldWorldActorSlot::slot_4,
         FieldWorldActorSlot::slot_5,
     }};
-    constexpr std::size_t kMaximumFieldFrames = 1200U;
+    constexpr std::size_t kMaximumFieldFrames = 2600U;
+    constexpr std::uint16_t kWaypointArrivalCost = 0x01E0U;
 
     std::error_code directory_error;
     const auto region_output = output / "region-map-pedestrians";
@@ -25518,7 +25531,8 @@ int run_field_region_map_pedestrians_qa(
         return 3;
     }
     trace << "scene\tregion\tsource_order\tprofile\tactor_slot"
-             "\tspawn_x\tspawn_y\tfinal_x\tfinal_y\tever_moved\n";
+             "\tsource_list\tspawn_x\tspawn_y\twaypoint_x\twaypoint_y"
+             "\tfinal_x\tfinal_y\tframes_to_waypoint\tcells_clear\n";
 
     for (const auto& region : kRegions) {
         field_scene.set_field_entity_world_position_for_dump(0x1000U,
@@ -25573,11 +25587,13 @@ int run_field_region_map_pedestrians_qa(
             }
         }
 
-        std::array<bool, 3> ever_moved{};
+        std::array<bool, 3> waypoint_reached{};
+        std::array<bool, 3> route_cells_clear{{true, true, true}};
+        std::array<std::size_t, 3> frames_to_waypoint{};
         std::size_t frames = 0U;
         for (; frames < kMaximumFieldFrames &&
-               !std::all_of(ever_moved.begin(), ever_moved.end(),
-                            [](const bool moved) { return moved; });
+               !std::all_of(waypoint_reached.begin(), waypoint_reached.end(),
+                            [](const bool reached) { return reached; });
              ++frames) {
             field_scene.advance_frame();
             const auto positions =
@@ -25590,20 +25606,38 @@ int run_field_region_map_pedestrians_qa(
             }
             for (std::size_t actor_index = 0U;
                  actor_index < positions.size(); ++actor_index) {
-                ever_moved[actor_index] = ever_moved[actor_index] ||
-                    positions[actor_index].x !=
-                        region.spawn_positions[actor_index].x ||
-                    positions[actor_index].y !=
-                        region.spawn_positions[actor_index].y;
+                const auto cell =
+                    shadowrun::ghidra_conversion::compute_obstruction_grid_index(
+                        positions[actor_index].x, positions[actor_index].y);
+                route_cells_clear[actor_index] = route_cells_clear[actor_index] &&
+                    field_scene.terrain_collision_map_byte_for_dump(cell) == 0U;
+                const auto route_cost =
+                    shadowrun::ghidra_conversion::compute_diagonal_step_cost(
+                        static_cast<std::int16_t>(
+                            positions[actor_index].x -
+                            region.first_waypoints[actor_index].x),
+                        static_cast<std::int16_t>(
+                            positions[actor_index].y -
+                            region.first_waypoints[actor_index].y));
+                if (route_cost < kWaypointArrivalCost &&
+                    !waypoint_reached[actor_index]) {
+                    waypoint_reached[actor_index] = true;
+                    frames_to_waypoint[actor_index] = frames + 1U;
+                }
             }
         }
-        if (!std::all_of(ever_moved.begin(), ever_moved.end(),
-                         [](const bool moved) { return moved; })) {
+        if (!std::all_of(waypoint_reached.begin(), waypoint_reached.end(),
+                         [](const bool reached) { return reached; }) ||
+            !std::all_of(route_cells_clear.begin(), route_cells_clear.end(),
+                         [](const bool clear) { return clear; })) {
             std::cerr << "Region-map pedestrians QA: scene " << region.scene
-                      << " did not advance all three ROM patrols within "
-                      << kMaximumFieldFrames << " frames (moved="
-                      << ever_moved[0] << ',' << ever_moved[1] << ','
-                      << ever_moved[2] << ")\n";
+                      << " did not reach all three first ROM waypoints through "
+                         "clear collision cells within "
+                      << kMaximumFieldFrames << " frames (reached="
+                      << waypoint_reached[0] << ',' << waypoint_reached[1]
+                      << ',' << waypoint_reached[2] << " clear="
+                      << route_cells_clear[0] << ',' << route_cells_clear[1]
+                      << ',' << route_cells_clear[2] << ")\n";
             return 3;
         }
 
@@ -25614,10 +25648,15 @@ int run_field_region_map_pedestrians_qa(
             trace << region.scene << '\t' << region.name << '\t'
                   << actor_index << "\tpedestrian_k0b_none00\t"
                   << static_cast<unsigned>(kSlots[actor_index]) << '\t'
+                  << "0x" << std::hex << region.source_list_offset << std::dec
+                  << '\t'
                   << region.spawn_positions[actor_index].x << '\t'
                   << region.spawn_positions[actor_index].y << '\t'
+                  << region.first_waypoints[actor_index].x << '\t'
+                  << region.first_waypoints[actor_index].y << '\t'
                   << final_positions[actor_index].x << '\t'
-                  << final_positions[actor_index].y << "\tyes\n";
+                  << final_positions[actor_index].y << '\t'
+                  << frames_to_waypoint[actor_index] << "\tyes\n";
         }
         if (!trace) {
             std::cerr << "Region-map pedestrians QA: failed writing "
@@ -25648,7 +25687,9 @@ int run_field_region_map_pedestrians_qa(
             return 3;
         }
         std::cout << "region_map_pedestrians scene=" << region.scene
-                  << " region=" << region.name << " spawned=3 moved=3 frames="
+                  << " region=" << region.name
+                  << " source_list=0x" << std::hex << region.source_list_offset
+                  << std::dec << " spawned=3 first_waypoints=3 frames="
                   << frames << " actual=" << bitmap.string() << '\n';
     }
 
