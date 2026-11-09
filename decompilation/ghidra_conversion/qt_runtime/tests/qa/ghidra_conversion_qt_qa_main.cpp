@@ -7120,7 +7120,10 @@ int run_field_barrier_collision_qa(
     auto& runner = field_scene.active_runner_record();
     runner.equipped_item_code = static_cast<std::uint8_t>(
         srx::v(srx::SpellActionCode::BARRIER));
-    runner.animation_action_gate = -1;
+    // Player action delay is Lua-owned. Keep the fixture's available-action
+    // setup synchronized with that state instead of changing only the native
+    // record mirror [C: ROM 0xABFC; Lua actor/actions.lua].
+    field_scene.set_player_action_delay_for_dump(-1);
     const auto east_caster = BarrierCenter{
         east_center->cell_index,
         static_cast<std::uint16_t>(east_center->world_x - 0x0480U),
