@@ -472,6 +472,13 @@ public:
     // Seeds a live encounter actor for deterministic field QA only.
     bool set_default_actor_physical_meter_for_dump(
         std::uint16_t source_order, std::uint8_t physical_meter) noexcept;
+#ifdef SHADOWRUN_QT_QA_DRIVER
+    // Feed a Lua lifecycle result through the same live-record cleanup used
+    // by actor heartbeats. This is used to isolate the renderer/record bridge.
+    bool apply_default_actor_source_lifecycle_for_dump(
+        std::uint16_t source_order,
+        const scripting::ScriptActorLifecycleFacts& lifecycle);
+#endif // SHADOWRUN_QT_QA_DRIVER
     // QA stand-in for the fight: zero the +0x4C meter of every Club
     // Penumbra Mako list member so 0xB330/0xAB02 run as in combat.
     std::size_t defeat_mako_activity_for_qa() noexcept;
@@ -1997,6 +2004,11 @@ private:
         const ConversionAssetCatalog& catalog);
     void initialize_default_field_actors(std::uint16_t scene_reference);
     void advance_default_field_actors(bool source_target_list_service);
+    bool retire_default_actor_presentation_if_inactive(
+        DefaultFieldActorPresentation& actor,
+        std::uint8_t previous_record_flags,
+        bool world_combat_record,
+        bool dynamic_actor_behavior);
     bool current_world_activity_has_active_escort() const;
     void provide_source_profile_patrol_movement_services(
         scripting::ScriptActorBehaviorContext& context,

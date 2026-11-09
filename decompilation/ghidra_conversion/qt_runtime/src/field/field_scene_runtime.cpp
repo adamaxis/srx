@@ -4894,6 +4894,84 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
     }
 }
 
+bool FieldSceneRuntime::retire_default_actor_presentation_if_inactive(
+    DefaultFieldActorPresentation& actor,
+    const std::uint8_t previous_record_flags,
+    const bool world_combat_record,
+    const bool dynamic_actor_behavior) {
+    const bool active_to_inactive =
+        actor_flag_is_set(previous_record_flags, ActorServiceFlag::active) &&
+        !actor_flag_is_set(actor.source_record_flags, ActorServiceFlag::active);
+    if ((!world_combat_record && !dynamic_actor_behavior) ||
+        !active_to_inactive) {
+        return false;
+    }
+
+    // ROM 0x1E514 clears +0x10 bit 0 for every actor kind. The script-side
+    // profile category does not determine whether its live record is retired.
+    if (actor.target_motion_effect_slot.has_value() &&
+        *actor.target_motion_effect_slot <
+            field_world_effect_slots_occupied_.size()) {
+        field_world_effect_slots_occupied_[
+            *actor.target_motion_effect_slot] = false;
+        actor.target_motion_effect_slot.reset();
+    }
+    actor.active = false;
+    if (!actor_flag_is_set(
+            actor.source_record_flags,
+            ActorServiceFlag::targets_world_actor_group)) {
+        actor.source_record_slot.reset();
+    }
+    actor.target_selected = false;
+    source_boundary("field.actor.record_deactivated");
+    return true;
+}
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
+bool FieldSceneRuntime::apply_default_actor_source_lifecycle_for_dump(
+    const std::uint16_t source_order,
+    const scripting::ScriptActorLifecycleFacts& lifecycle) {
+    const auto current_scene = state_.field_scene_buffers.scene_reference;
+    const auto actor = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [current_scene, source_order](
+            const DefaultFieldActorPresentation& candidate) {
+            return candidate.active &&
+                   candidate.scene_reference == current_scene &&
+                   candidate.source_order == source_order;
+        });
+    if (actor == field_default_actors_.end() ||
+        !actor->source_record_slot.has_value()) {
+        return false;
+    }
+
+    const auto source_slot = static_cast<std::uint8_t>(
+        *actor->source_record_slot);
+    const bool live_world_actor_record =
+        source_slot >= static_cast<std::uint8_t>(FieldWorldActorSlot::slot_3) &&
+        source_slot <= static_cast<std::uint8_t>(FieldWorldActorSlot::slot_9);
+    const bool world_combat_record =
+        live_world_actor_record &&
+        actor->combatant.record_type ==
+            static_cast<std::uint16_t>(*actor->source_record_slot);
+    if (!world_combat_record) {
+        return false;
+    }
+
+    const auto previous_record_flags = actor->source_record_flags;
+    actor->source_record_flags = lifecycle_flags_from_facts(
+        lifecycle, actor->source_record_flags);
+    actor->combatant.source_flags = actor->source_record_flags;
+    const bool dynamic_actor_behavior =
+        actor->temporary_world_encounter ||
+        actor->world_activity_script_actor ||
+        actor->source_default_dynamic_profile;
+    return retire_default_actor_presentation_if_inactive(
+        *actor, previous_record_flags, world_combat_record,
+        dynamic_actor_behavior);
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
+
 void FieldSceneRuntime::advance_default_field_actors(
     const bool source_target_list_service) {
     const auto current_scene = state_.field_scene_buffers.scene_reference;
@@ -5862,29 +5940,9 @@ void FieldSceneRuntime::advance_default_field_actors(
                 }
             }
         }
-        if (dynamic_actor_behavior &&
-            actor_flag_is_set(previous_record_flags,
-                              ActorServiceFlag::active) &&
-            !actor_flag_is_set(actor.source_record_flags,
-                               ActorServiceFlag::active)) {
-            // ROM 0x1E514 (Lua deactivate_record): bclr #0,+0x10 removes the
-            // record from 0x4618 drawing and 0xA8EA service; 0x1A304 frees
-            // the record slot unless +0x10 b3 is set.
-            if (actor.target_motion_effect_slot.has_value() &&
-                *actor.target_motion_effect_slot <
-                    field_world_effect_slots_occupied_.size()) {
-                field_world_effect_slots_occupied_[
-                    *actor.target_motion_effect_slot] = false;
-                actor.target_motion_effect_slot.reset();
-            }
-            actor.active = false;
-            if (!actor_flag_is_set(
-                    actor.source_record_flags,
-                    ActorServiceFlag::targets_world_actor_group)) {
-                actor.source_record_slot.reset();
-            }
-            actor.target_selected = false;
-            source_boundary("field.actor.record_deactivated");
+        if (retire_default_actor_presentation_if_inactive(
+                actor, previous_record_flags, world_combat_record,
+                dynamic_actor_behavior)) {
             continue;
         }
         if (decision->combat_meter_update.has_value() &&

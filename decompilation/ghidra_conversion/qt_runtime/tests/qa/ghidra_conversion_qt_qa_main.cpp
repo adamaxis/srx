@@ -6506,6 +6506,63 @@ int run_field_default_guard_item_action_qa(
         return 3;
     }
 
+    // Scene 20's default-list Corp Guard has a live world-combat record but
+    // uses the static item-action profile. ROM 0xA9A6 finishes either spell
+    // death list, then 0x1E514 clears ACTIVE. Exercise that returned lifecycle
+    // fact through the same host retirement helper used after Lua heartbeats.
+    const auto active_count_before_retirement =
+        field_scene.default_actor_count_for_dump();
+    const auto visible_count_before_retirement =
+        field_scene.visible_default_actor_count_for_dump();
+    const auto guard_direction =
+        field_scene.default_actor_direction_for_dump(kGuardOrder);
+    const bool guard_staged =
+        field_scene.set_default_actor_world_position_for_dump(
+            kGuardOrder, kGuardPosition.x, kGuardPosition.y) &&
+        guard_direction.has_value() &&
+        field_scene.set_default_actor_animation_for_dump(
+            kGuardOrder, "down", 0U, *guard_direction);
+    const auto guard_before_retirement = render_qa_field(field_scene);
+    const bool before_retirement_saved =
+        guard_staged && save("guard-before-source-deactivation.bmp",
+                             guard_before_retirement);
+    scripting::ScriptActorLifecycleFacts spell_death_completed{};
+    spell_death_completed.active = false;
+    spell_death_completed.downed = false;
+    spell_death_completed.dead = true;
+    const bool guard_retired =
+        field_scene.apply_default_actor_source_lifecycle_for_dump(
+            kGuardOrder, spell_death_completed);
+    const auto guard_after_retirement = render_qa_field(field_scene);
+    const auto active_count_after_retirement =
+        field_scene.default_actor_count_for_dump();
+    const auto visible_count_after_retirement =
+        field_scene.visible_default_actor_count_for_dump();
+    const bool after_retirement_saved =
+        !guard_after_retirement.isNull() &&
+        save("guard-source-deactivated.bmp", guard_after_retirement) &&
+        save("actual.bmp", guard_after_retirement);
+    if (!guard_staged || !before_retirement_saved || !guard_retired ||
+        active_count_after_retirement + 1U !=
+            active_count_before_retirement ||
+        visible_count_before_retirement == 0U ||
+        visible_count_after_retirement + 1U !=
+            visible_count_before_retirement ||
+        field_scene.default_actor_lifecycle_for_dump(kGuardOrder).has_value() ||
+        guard_before_retirement == guard_after_retirement ||
+        !after_retirement_saved ||
+        !field_hud_chrome_survives(guard_after_retirement, asset_root)) {
+        std::cerr << "Default corp-guard item-action QA: inactive Lua lifecycle "
+                     "did not retire the static default actor from field draw"
+                  << " applied=" << guard_retired
+                  << " active=" << active_count_before_retirement << "->"
+                  << active_count_after_retirement
+                  << " visible=" << visible_count_before_retirement << "->"
+                  << visible_count_after_retirement
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+
     std::cout << "field_default_guard_item_action_qa=passed scene=20 "
               << "source_order=" << kGuardOrder << " slot=5 item=6 "
               << "action_slot=0 counter=0 ammo=18->"
@@ -6514,7 +6571,8 @@ int run_field_default_guard_item_action_qa(
               << " weapon_pose_frame=" << weapon_pose_frame
               << " direction=" << static_cast<unsigned>(*direction)
               << " event_0x51_count=" << action_audio_count
-              << " world_activity=QA-seeded actual="
+              << " spell_death_source_deactivation=retired "
+                 "world_activity=QA-seeded actual="
               << (output / "actual.bmp").string() << '\n';
     return 0;
 }
