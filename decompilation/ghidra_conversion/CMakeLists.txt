@@ -96,8 +96,27 @@ add_library(shadowrun_ghidra_conversion_workbench ALIAS
 # Keep the authoritative Lua gameplay and combat suites in CTest alongside
 # the native conversion checks. The shell runner supplies Lua paths and the
 # required headless/null-audio environment.
+if (WIN32)
+    # Prefer an installed POSIX environment over Windows' bash app alias. The
+    # latter resolves to the WSL launcher on some hosts and exits with
+    # "The process has no package identity" when CTest starts it.
+    find_program(SRX_LUA_SUITES_BASH_EXECUTABLE
+        NAMES bash.exe
+        HINTS
+            "$ENV{ProgramFiles}/Git/bin"
+            "$ENV{ProgramFiles}/Git/usr/bin"
+            "C:/Program Files (x86)/Git/bin"
+            "C:/msys64/usr/bin"
+        NO_DEFAULT_PATH)
+endif()
+if (NOT SRX_LUA_SUITES_BASH_EXECUTABLE)
+    find_program(SRX_LUA_SUITES_BASH_EXECUTABLE NAMES bash bash.exe)
+endif()
+if (NOT SRX_LUA_SUITES_BASH_EXECUTABLE)
+    message(FATAL_ERROR "A Bash executable is required for the Lua gameplay CTest")
+endif()
 add_test(NAME shadowrun_gameplay_lua_suites
-         COMMAND bash
+         COMMAND "${SRX_LUA_SUITES_BASH_EXECUTABLE}"
                  "${CMAKE_CURRENT_SOURCE_DIR}/../gameplay/tests_lua/run_lua_suites.sh")
 set_tests_properties(shadowrun_gameplay_lua_suites PROPERTIES
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../.."
