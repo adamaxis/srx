@@ -10981,7 +10981,7 @@ int run_field_scene5_store_service_entry_qa(
     }
     routes << "event\tservice_id\tportrait_alias\tmenu_outcome\n";
     if (microtronics_deck_only &&
-        !field_scene.seed_microtronics_deck_upgrade_for_dump(100000U)) {
+        !field_scene.seed_microtronics_deck_upgrade_for_dump(110000U)) {
         std::cerr << "Scene-5 store service QA: could not seed the Test Deck "
                      "for MicroTronics upgrade path\n";
         return 3;
@@ -11427,7 +11427,7 @@ int run_field_scene5_store_service_entry_qa(
                 }
 
                 constexpr std::array<std::uint32_t, 3> kExpectedFunds{{
-                    95000U, 70000U, 10000U}};
+                    105000U, 80000U, 20000U}};
                 constexpr std::array<std::int8_t, 3> kExpectedModels{{
                     0, 1, 2}};
                 constexpr std::array<std::uint8_t, 3> kExpectedMpcp{{
@@ -11458,7 +11458,7 @@ int run_field_scene5_store_service_entry_qa(
                     field_scene.field_matrix_deck_record_for_dump();
                 if (field_scene.shop_transaction_confirmation_open() ||
                     field_scene.field_funds_for_dump().value_or(0U) !=
-                        100000U ||
+                        110000U ||
                     !declined_deck.has_value() ||
                     !declined_deck->model_index.has_value() ||
                     *declined_deck->model_index != -1) {
@@ -11543,6 +11543,195 @@ int run_field_scene5_store_service_entry_qa(
                     return 3;
                 }
                 tap_qa_controller_button(field_scene, 0x40U);
+
+                // ROM 0x5766A exposes memory, storage, load-I/O, and response
+                // as separate stat transactions in the fourth category.
+                tap_qa_controller_button(field_scene, 0x01U);
+                for (int index = 0; index < 4; ++index) {
+                    tap_qa_controller_button(field_scene, 0x08U);
+                }
+                tap_qa_controller_button(field_scene, 0x02U);
+                const auto stat_offer_frame = render_qa_field(field_scene);
+                bool all_stat_rows_drawn = !service_background.isNull();
+                for (int index = 0; index < 4; ++index) {
+                    all_stat_rows_drawn = all_stat_rows_drawn &&
+                        image_region_differs(stat_offer_frame,
+                            service_background,
+                            16 + index * 32, 168, 24, 16);
+                }
+                const auto stat_offer_saved =
+                    save_actual("deck-stat-upgrades", stat_offer_frame);
+                if (!field_scene.shop_menu_open() ||
+                    field_scene.shop_menu_group() !=
+                        ShopActionGroup::cyberdeck_upgrades ||
+                    field_scene.shop_menu_cursor() != 0U ||
+                    field_scene.shop_menu_cyberdeck_stat_upgrade_offer_count_for_dump()
+                        != 4U ||
+                    !stat_offer_saved || !all_stat_rows_drawn ||
+                    !boundary_seen_since_prompt(
+                        "field.shop.microtronics.panel_changed")) {
+                    std::cerr << "Scene-5 store service QA: MicroTronics did "
+                                 "not display all four typed deck stat upgrades\n";
+                    return 3;
+                }
+
+                tap_qa_controller_button(field_scene, 0x40U);
+                const auto stat_decline_frame = render_qa_field(field_scene);
+                const auto stat_decline_saved = save_actual(
+                    "stat-memory-confirmation-no", stat_decline_frame);
+                if (!field_scene.shop_transaction_confirmation_open() ||
+                    field_scene.shop_transaction_amount() != 500U ||
+                    field_scene.shop_transaction_confirmation()
+                            .selected_option != 1U ||
+                    !stat_decline_saved) {
+                    std::cerr << "Scene-5 store service QA: memory upgrade did "
+                                 "not show its default-No $500 prompt\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                auto stat_deck =
+                    field_scene.field_matrix_deck_record_for_dump();
+                if (field_scene.shop_transaction_confirmation_open() ||
+                    field_scene.field_funds_for_dump().value_or(0U) != 20000U ||
+                    !stat_deck.has_value() ||
+                    stat_deck->memory_megapulses != 200U) {
+                    std::cerr << "Scene-5 store service QA: declining a deck "
+                                 "stat upgrade changed state\n";
+                    return 3;
+                }
+
+                tap_qa_controller_button(field_scene, 0x40U);
+                tap_qa_controller_button(field_scene, 0x01U);
+                tap_qa_controller_button(field_scene, 0x40U);
+                const auto memory_applied = render_qa_field(field_scene);
+                const auto memory_applied_saved =
+                    save_actual("stat-memory-applied", memory_applied);
+                stat_deck = field_scene.field_matrix_deck_record_for_dump();
+                if (!stat_deck.has_value() ||
+                    stat_deck->memory_megapulses != 210U ||
+                    field_scene.field_funds_for_dump().value_or(0U) !=
+                        19500U ||
+                    !memory_applied_saved ||
+                    !boundary_seen_since_prompt(
+                        "field.shop.microtronics.cyberdeck_stat_upgrade_applied")) {
+                    std::cerr << "Scene-5 store service QA: memory upgrade did "
+                                 "not add 10 and debit $500\n";
+                    return 3;
+                }
+
+                tap_qa_controller_button(field_scene, 0x08U);
+                tap_qa_controller_button(field_scene, 0x40U);
+                const auto storage_maximum = render_qa_field(field_scene);
+                const auto storage_maximum_saved = save_actual(
+                    "stat-storage-mpcp-maximum", storage_maximum);
+                stat_deck = field_scene.field_matrix_deck_record_for_dump();
+                if (field_scene.shop_transaction_message() !=
+                        ShopTransactionMessage::cyberdeck_upgrade_mpcp_maximum ||
+                    !stat_deck.has_value() ||
+                    stat_deck->storage_megapulses != 1000U ||
+                    field_scene.field_funds_for_dump().value_or(0U) !=
+                        19500U ||
+                    !storage_maximum_saved ||
+                    !image_has_green_ink(storage_maximum, 56, 88, 224, 40)) {
+                    std::cerr << "Scene-5 store service QA: storage cap did not "
+                                 "reject without changing state\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+
+                tap_qa_controller_button(field_scene, 0x08U);
+                tap_qa_controller_button(field_scene, 0x40U);
+                if (!field_scene.shop_transaction_confirmation_open() ||
+                    field_scene.shop_transaction_amount() != 650U) {
+                    std::cerr << "Scene-5 store service QA: load-I/O upgrade "
+                                 "did not show its $650 confirmation\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x01U);
+                tap_qa_controller_button(field_scene, 0x40U);
+                const auto io_applied = render_qa_field(field_scene);
+                const auto io_applied_saved =
+                    save_actual("stat-load-io-applied", io_applied);
+                stat_deck = field_scene.field_matrix_deck_record_for_dump();
+                if (!stat_deck.has_value() ||
+                    stat_deck->load_io_speed != 55U ||
+                    field_scene.field_funds_for_dump().value_or(0U) !=
+                        18850U ||
+                    !io_applied_saved) {
+                    std::cerr << "Scene-5 store service QA: load-I/O upgrade "
+                                 "did not add 5 and debit $650\n";
+                    return 3;
+                }
+
+                tap_qa_controller_button(field_scene, 0x08U);
+                constexpr std::array<std::uint8_t, 2> kResponses{{2U, 3U}};
+                for (const auto expected_response : kResponses) {
+                    tap_qa_controller_button(field_scene, 0x40U);
+                    if (!field_scene.shop_transaction_confirmation_open() ||
+                        field_scene.shop_transaction_amount() != 5000U) {
+                        std::cerr << "Scene-5 store service QA: response "
+                                     "upgrade did not show its $5,000 prompt\n";
+                        return 3;
+                    }
+                    tap_qa_controller_button(field_scene, 0x01U);
+                    tap_qa_controller_button(field_scene, 0x40U);
+                    stat_deck =
+                        field_scene.field_matrix_deck_record_for_dump();
+                    const auto expected_funds = expected_response == 2U
+                        ? 13850U : 8850U;
+                    if (!stat_deck.has_value() ||
+                        stat_deck->response != expected_response ||
+                        field_scene.field_funds_for_dump().value_or(0U) !=
+                            expected_funds) {
+                        std::cerr << "Scene-5 store service QA: response did "
+                                     "not apply its typed value and price\n";
+                        return 3;
+                    }
+                }
+                const auto response_applied = render_qa_field(field_scene);
+                const auto response_applied_saved =
+                    save_actual("stat-response-applied", response_applied);
+                tap_qa_controller_button(field_scene, 0x40U);
+                const auto response_maximum = render_qa_field(field_scene);
+                const auto response_maximum_saved =
+                    save_actual("stat-response-maximum", response_maximum);
+                stat_deck = field_scene.field_matrix_deck_record_for_dump();
+                if (!stat_deck.has_value() || stat_deck->response != 3U ||
+                    field_scene.shop_transaction_message() !=
+                        ShopTransactionMessage::cyberdeck_response_maximum ||
+                    field_scene.field_funds_for_dump().value_or(0U) != 8850U ||
+                    !response_applied_saved || !response_maximum_saved ||
+                    !image_has_green_ink(response_maximum, 56, 88, 224, 40)) {
+                    std::cerr << "Scene-5 store service QA: response level 3 "
+                                 "was not rejected without a debit\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+
+                field_scene.set_field_funds_for_dump(0U);
+                for (int index = 0; index < 3; ++index) {
+                    tap_qa_controller_button(field_scene, 0x04U);
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                const auto stat_insufficient_funds =
+                    render_qa_field(field_scene);
+                const auto stat_insufficient_saved = save_actual(
+                    "stat-insufficient-funds", stat_insufficient_funds);
+                stat_deck = field_scene.field_matrix_deck_record_for_dump();
+                if (!stat_deck.has_value() ||
+                    stat_deck->memory_megapulses != 210U ||
+                    field_scene.field_funds_for_dump().value_or(1U) != 0U ||
+                    field_scene.shop_transaction_message() !=
+                        ShopTransactionMessage::insufficient_funds ||
+                    !stat_insufficient_saved ||
+                    !image_has_green_ink(stat_insufficient_funds, 56, 88,
+                                         224, 32)) {
+                    std::cerr << "Scene-5 store service QA: insufficient "
+                                 "funds changed deck state or showed no message\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+
                 tap_qa_controller_button(field_scene, 0x80U);
                 const auto returned = render_qa_field(field_scene);
                 const auto returned_saved = save_actual("field-return",

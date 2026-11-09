@@ -11432,7 +11432,11 @@ std::optional<ScriptShopDefinition> GameScriptRuntime::shop_definition(
         read_text_key("cyberware_essence_cost_heading",
                       definition.text_keys.cyberware_essence_cost_heading) &&
         read_text_key("cyberdeck_model_unavailable",
-                      definition.text_keys.cyberdeck_model_unavailable);
+                      definition.text_keys.cyberdeck_model_unavailable) &&
+        read_text_key("cyberdeck_upgrade_mpcp_maximum",
+                      definition.text_keys.cyberdeck_upgrade_mpcp_maximum) &&
+        read_text_key("cyberdeck_response_maximum",
+                      definition.text_keys.cyberdeck_response_maximum);
     lua_pop(state, 1);
     if (!text_keys_valid) {
         return fail("shop catalog transaction text keys are incomplete");
@@ -11707,6 +11711,59 @@ std::optional<ScriptShopDefinition> GameScriptRuntime::shop_definition(
                     static_cast<std::uint8_t>(response)});
         }
         lua_pop(state, 1);
+
+        lua_getfield(state, group_table, "cyberdeck_stat_upgrade_offers");
+        if (!lua_istable(state, -1)) {
+            return fail(
+                "shop offer group must contain a cyberdeck_stat_upgrade_offers array");
+        }
+        const auto cyberdeck_stat_offers_index = lua_absindex(state, -1);
+        const auto cyberdeck_stat_offer_count =
+            lua_rawlen(state, cyberdeck_stat_offers_index);
+        if (cyberdeck_stat_offer_count > kMaximumShopOffers) {
+            return fail(
+                "shop offer group exceeds the eight-slot cyberdeck upgrade panel");
+        }
+        group.cyberdeck_stat_upgrade_offers.reserve(
+            cyberdeck_stat_offer_count);
+        for (std::size_t offer_index = 1U;
+             offer_index <= cyberdeck_stat_offer_count; ++offer_index) {
+            lua_rawgeti(state, cyberdeck_stat_offers_index,
+                        static_cast<lua_Integer>(offer_index));
+            if (!lua_istable(state, -1)) {
+                return fail(
+                    "cyberdeck stat upgrade offer is not a record table");
+            }
+            const auto offer_table = lua_absindex(state, -1);
+            std::string stat_name;
+            std::string label_key;
+            std::uint32_t cost = 0U;
+            const bool fields_valid =
+                read_field_string(state, offer_table, "stat", stat_name) &&
+                read_field_integer(state, offer_table, "cost", 0xFFFFFFFFU,
+                                   cost) &&
+                read_field_string(state, offer_table, "label_key", label_key) &&
+                valid_identifier(label_key);
+            std::optional<ScriptShopCyberdeckUpgradeStat> stat;
+            if (stat_name == "memory_megapulses") {
+                stat = ScriptShopCyberdeckUpgradeStat::memory_megapulses;
+            } else if (stat_name == "storage_megapulses") {
+                stat = ScriptShopCyberdeckUpgradeStat::storage_megapulses;
+            } else if (stat_name == "load_io_speed") {
+                stat = ScriptShopCyberdeckUpgradeStat::load_io_speed;
+            } else if (stat_name == "response") {
+                stat = ScriptShopCyberdeckUpgradeStat::response;
+            }
+            lua_pop(state, 1);
+            if (!fields_valid || !stat.has_value()) {
+                return fail(
+                    "cyberdeck stat upgrade offer has invalid typed fields");
+            }
+            group.cyberdeck_stat_upgrade_offers.push_back(
+                ScriptShopCyberdeckStatUpgradeOffer{
+                    *stat, cost, std::move(label_key)});
+        }
+        lua_pop(state, 1);
         lua_pop(state, 1);
         definition.groups.push_back(std::move(group));
     }
@@ -11722,8 +11779,10 @@ std::optional<ScriptShopDefinition> GameScriptRuntime::shop_definition(
         (definition.menu_mode != 6U || definition.menu_result != 2 ||
          definition.groups.size() != 6U ||
          definition.groups[3U].id != "cyberdecks" ||
-         definition.groups[3U].cyberdeck_model_offers.size() != 3U)) {
-        return fail("MicroTronics has an invalid source deck model shape");
+         definition.groups[3U].cyberdeck_model_offers.size() != 3U ||
+         definition.groups[4U].id != "cyberdeck_upgrades" ||
+         definition.groups[4U].cyberdeck_stat_upgrade_offers.size() != 4U)) {
+        return fail("MicroTronics has an invalid source deck upgrade shape");
     }
     if (!definition.equipment_upgrade_meter_thresholds.empty() &&
         (definition.menu_result != 1 ||

@@ -71,6 +71,10 @@ function Shop.input(menu, controller_events)
         elseif #group.cyberdeck_model_offers > 0 then
             return event(group.cyberdeck_model_offers[menu.action_cursor + 1]
                 and "cyberdeck_model_selected" or "offer_unavailable")
+        elseif #group.cyberdeck_stat_upgrade_offers > 0 then
+            return event(group.cyberdeck_stat_upgrade_offers[
+                menu.action_cursor + 1]
+                and "cyberdeck_stat_upgrade_selected" or "offer_unavailable")
         elseif group.id == "sell" then
             return event("sale_selected")
         elseif #group.progression_offers > 0 then

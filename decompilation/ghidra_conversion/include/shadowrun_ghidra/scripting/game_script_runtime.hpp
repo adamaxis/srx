@@ -1042,6 +1042,20 @@ struct ScriptShopCyberdeckModelOffer {
     std::uint8_t response = 0;
 };
 
+enum class ScriptShopCyberdeckUpgradeStat : std::uint8_t {
+    memory_megapulses,
+    storage_megapulses,
+    load_io_speed,
+    response,
+};
+
+struct ScriptShopCyberdeckStatUpgradeOffer {
+    ScriptShopCyberdeckUpgradeStat stat =
+        ScriptShopCyberdeckUpgradeStat::memory_megapulses;
+    std::uint32_t cost = 0;
+    std::string label_key;
+};
+
 struct ScriptShopOfferGroup {
     std::string id;
     std::array<std::string, 2> title_keys{};
@@ -1049,6 +1063,8 @@ struct ScriptShopOfferGroup {
     std::vector<ScriptShopProgressionOffer> progression_offers;
     std::vector<ScriptShopEquipmentUpgradeOffer> equipment_upgrade_offers;
     std::vector<ScriptShopCyberdeckModelOffer> cyberdeck_model_offers;
+    std::vector<ScriptShopCyberdeckStatUpgradeOffer>
+        cyberdeck_stat_upgrade_offers;
 };
 
 struct ScriptShopTextKeys {
@@ -1072,6 +1088,8 @@ struct ScriptShopTextKeys {
     std::string cyberware_essence_heading;
     std::string cyberware_essence_cost_heading;
     std::string cyberdeck_model_unavailable;
+    std::string cyberdeck_upgrade_mpcp_maximum;
+    std::string cyberdeck_response_maximum;
 };
 
 struct ScriptShopDefinition {

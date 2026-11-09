@@ -1099,6 +1099,11 @@ public:
         return field_shop_menu_.cyberdeck_model_offer_count(
             field_shop_menu_.selected_group());
     }
+    std::size_t shop_menu_cyberdeck_stat_upgrade_offer_count_for_dump() const
+        noexcept {
+        return field_shop_menu_.cyberdeck_stat_upgrade_offer_count(
+            field_shop_menu_.selected_group());
+    }
     std::optional<std::uint8_t>
     shop_selected_weapon_capacity_for_dump() const {
         return selected_shop_weapon_capacity();

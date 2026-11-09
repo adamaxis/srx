@@ -42,7 +42,8 @@ end
 
 local function group(id, first_title_key, second_title_key, offers,
                      progression_offers, equipment_upgrade_offers,
-                     cyberdeck_model_offers)
+                     cyberdeck_model_offers,
+                     cyberdeck_stat_upgrade_offers)
     return {
         id = id,
         title_keys = { first_title_key, second_title_key },
@@ -50,6 +51,8 @@ local function group(id, first_title_key, second_title_key, offers,
         progression_offers = progression_offers or {},
         equipment_upgrade_offers = equipment_upgrade_offers or {},
         cyberdeck_model_offers = cyberdeck_model_offers or {},
+        cyberdeck_stat_upgrade_offers =
+            cyberdeck_stat_upgrade_offers or {},
     }
 end
 
@@ -78,6 +81,10 @@ local function field_shop_text_keys()
             "shop.cyberware.essence_cost_heading",
         cyberdeck_model_unavailable =
             "shop.cyberdeck.model_unavailable",
+        cyberdeck_upgrade_mpcp_maximum =
+            "shop.cyberdeck.upgrade.maximum_mpcp",
+        cyberdeck_response_maximum =
+            "shop.cyberdeck.upgrade.maximum_response",
     }
 end
 
@@ -287,7 +294,16 @@ M.catalog = {
             }),
             group("cyberdeck_upgrades",
                   action_heading("cyberdeck_upgrades_display"),
-                  action_heading("cyberdeck_upgrades")),
+                  action_heading("cyberdeck_upgrades"), {}, {}, {}, {}, {
+                {stat = "memory_megapulses", cost = 500,
+                 label_key = "shop.cyberdeck.upgrade.memory"},
+                {stat = "storage_megapulses", cost = 100,
+                 label_key = "shop.cyberdeck.upgrade.storage"},
+                {stat = "load_io_speed", cost = 650,
+                 label_key = "shop.cyberdeck.upgrade.load_io"},
+                {stat = "response", cost = 5000,
+                 label_key = "shop.cyberdeck.upgrade.response"},
+            }),
             group("cyberdeck_upgrades_second",
                   action_heading("cyberdeck_upgrades_second_display"),
                   action_heading("cyberdeck_upgrades_second")),

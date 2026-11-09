@@ -421,12 +421,23 @@ int main() {
         {0U, 5000U, 4U, 1U, 50U, 100U, 20U, 0U},
         {1U, 25000U, 6U, 2U, 100U, 500U, 20U, 1U},
         {2U, 60000U, 8U, 3U, 200U, 500U, 50U, 1U}};
+    microtronics_definition.groups[4U].cyberdeck_stat_upgrade_offers = {
+        {scripting::ScriptShopCyberdeckUpgradeStat::memory_megapulses,
+         500U, "memory"},
+        {scripting::ScriptShopCyberdeckUpgradeStat::storage_megapulses,
+         100U, "storage"},
+        {scripting::ScriptShopCyberdeckUpgradeStat::load_io_speed,
+         650U, "load_io"},
+        {scripting::ScriptShopCyberdeckUpgradeStat::response,
+         5000U, "response"}};
     ShopMenuController microtronics_menu;
     if (!expect(microtronics_menu.open(
                     ShopId::microtronics, microtronics_definition,
                     confirmation_choice_ids)) ||
         !expect(microtronics_menu.cyberdeck_model_offer_count(
                     ShopActionGroup::cyberdecks) == 3U) ||
+        !expect(microtronics_menu.cyberdeck_stat_upgrade_offer_count(
+                    ShopActionGroup::cyberdeck_upgrades) == 4U) ||
         !expect(microtronics_menu.apply_script_snapshot(snapshot(
                     "microtronics", 6U, 2, 0U, 1U, 3U,
                     "panel_changed")) == ShopMenuEvent::panel_changed) ||
@@ -531,6 +542,167 @@ int main() {
                     cyberdeck_offer(0U), incomplete_deck, true) ==
                 FieldCyberdeckModelUpgradeResult::state_unavailable)) {
         return 60;
+    }
+
+    if (!expect(microtronics_menu.apply_script_snapshot(snapshot(
+                    "microtronics", 6U, 2, 0U, 0U, 0U,
+                    "panel_changed")) == ShopMenuEvent::panel_changed)) {
+        return 161;
+    }
+    if (!expect(microtronics_menu.apply_script_snapshot(snapshot(
+                    "microtronics", 6U, 2, 4U, 0U, 4U,
+                    "selection_moved")) == ShopMenuEvent::selection_moved)) {
+        return 162;
+    }
+    if (!expect(microtronics_menu.apply_script_snapshot(snapshot(
+                    "microtronics", 6U, 2, 0U, 1U, 4U,
+                    "panel_changed")) == ShopMenuEvent::panel_changed)) {
+        return 163;
+    }
+    if (!expect(microtronics_menu.selected_group() ==
+                ShopActionGroup::cyberdeck_upgrades)) {
+        return 164;
+    }
+    if (!expect(microtronics_menu.apply_script_snapshot(snapshot(
+                    "microtronics", 6U, 2, 0U, 1U, 4U,
+                    "cyberdeck_stat_upgrade_selected")) ==
+                ShopMenuEvent::cyberdeck_stat_upgrade_selected)) {
+        return 165;
+    }
+    if (!expect(microtronics_menu.pending_action().has_value() &&
+                microtronics_menu.pending_action()
+                        ->cyberdeck_stat_upgrade_offer->stat ==
+                    scripting::ScriptShopCyberdeckUpgradeStat::
+                        memory_megapulses)) {
+        return 166;
+    }
+    if (!expect(microtronics_menu.begin_cyberdeck_stat_upgrade_confirmation(
+                    500U) == ShopTransactionEvent::confirmation_opened)) {
+        return 167;
+    }
+    if (!expect(microtronics_menu.advance_transaction(
+                    0x0100U, wire_cost_context, ignored_purchase,
+                    ignored_sale) ==
+                ShopTransactionEvent::confirmation_moved) ||
+        !expect(microtronics_menu.advance_transaction(
+                    0x4000U, wire_cost_context, ignored_purchase,
+                    ignored_sale) ==
+                ShopTransactionEvent::cyberdeck_stat_upgrade_confirmed)) {
+        return 168;
+    }
+
+    const auto stat_upgrade_offer = [](const std::size_t index) {
+        const std::array<scripting::ScriptShopCyberdeckStatUpgradeOffer, 4>
+            offers{{
+                {scripting::ScriptShopCyberdeckUpgradeStat::memory_megapulses,
+                 500U, "memory"},
+                {scripting::ScriptShopCyberdeckUpgradeStat::storage_megapulses,
+                 100U, "storage"},
+                {scripting::ScriptShopCyberdeckUpgradeStat::load_io_speed,
+                 650U, "load_io"},
+                {scripting::ScriptShopCyberdeckUpgradeStat::response,
+                 5000U, "response"}}};
+        return offers[index];
+    };
+    FieldCyberdeckUpgradeState stat_deck{};
+    stat_deck.deck.mpcp = 8U;
+    stat_deck.deck.memory_megapulses = 200U;
+    stat_deck.deck.storage_megapulses = 1000U;
+    stat_deck.deck.load_io_speed = 50U;
+    stat_deck.deck.response = 1U;
+    stat_deck.funds = 20000U;
+    if (!expect(apply_field_cyberdeck_stat_upgrade(
+                    stat_upgrade_offer(0U), stat_deck, false) ==
+                FieldCyberdeckStatUpgradeResult::confirmation_required) ||
+        !expect(*stat_deck.deck.memory_megapulses == 200U &&
+                stat_deck.funds == 20000U) ||
+        !expect(apply_field_cyberdeck_stat_upgrade(
+                    stat_upgrade_offer(0U), stat_deck, true) ==
+                FieldCyberdeckStatUpgradeResult::applied) ||
+        !expect(*stat_deck.deck.memory_megapulses == 210U &&
+                stat_deck.funds == 19500U) ||
+        !expect(apply_field_cyberdeck_stat_upgrade(
+                    stat_upgrade_offer(1U), stat_deck, true) ==
+                FieldCyberdeckStatUpgradeResult::mpcp_maximum) ||
+        !expect(*stat_deck.deck.storage_megapulses == 1000U &&
+                stat_deck.funds == 19500U) ||
+        !expect(apply_field_cyberdeck_stat_upgrade(
+                    stat_upgrade_offer(2U), stat_deck, true) ==
+                FieldCyberdeckStatUpgradeResult::applied) ||
+        !expect(*stat_deck.deck.load_io_speed == 55U &&
+                stat_deck.funds == 18850U) ||
+        !expect(apply_field_cyberdeck_stat_upgrade(
+                    stat_upgrade_offer(3U), stat_deck, true) ==
+                FieldCyberdeckStatUpgradeResult::applied) ||
+        !expect(*stat_deck.deck.response == 2U &&
+                stat_deck.funds == 13850U) ||
+        !expect(apply_field_cyberdeck_stat_upgrade(
+                    stat_upgrade_offer(3U), stat_deck, true) ==
+                FieldCyberdeckStatUpgradeResult::applied) ||
+        !expect(*stat_deck.deck.response == 3U &&
+                stat_deck.funds == 8850U) ||
+        !expect(apply_field_cyberdeck_stat_upgrade(
+                    stat_upgrade_offer(3U), stat_deck, true) ==
+                FieldCyberdeckStatUpgradeResult::response_maximum)) {
+        return 62;
+    }
+    FieldCyberdeckUpgradeState overshoot_deck{};
+    overshoot_deck.deck.mpcp = 4U;
+    overshoot_deck.deck.storage_megapulses = 300U;
+    overshoot_deck.funds = 1000U;
+    if (!expect(apply_field_cyberdeck_stat_upgrade(
+                    stat_upgrade_offer(1U), overshoot_deck, true) ==
+                FieldCyberdeckStatUpgradeResult::applied) ||
+        !expect(*overshoot_deck.deck.storage_megapulses == 325U) ||
+        !expect(apply_field_cyberdeck_stat_upgrade(
+                    stat_upgrade_offer(1U), overshoot_deck, true) ==
+                FieldCyberdeckStatUpgradeResult::mpcp_maximum) ||
+        !expect(overshoot_deck.funds == 900U)) {
+        return 63;
+    }
+    FieldCyberdeckUpgradeState signed_word_deck{};
+    signed_word_deck.deck.mpcp = 8U;
+    signed_word_deck.deck.memory_megapulses = 0x8000U;
+    signed_word_deck.funds = 500U;
+    if (!expect(apply_field_cyberdeck_stat_upgrade(
+                    stat_upgrade_offer(0U), signed_word_deck, true) ==
+                FieldCyberdeckStatUpgradeResult::applied) ||
+        !expect(*signed_word_deck.deck.memory_megapulses == 0x800AU) ||
+        !expect(signed_word_deck.funds == 0U)) {
+        return 64;
+    }
+    FieldCyberdeckUpgradeState signed_byte_deck{};
+    signed_byte_deck.deck.mpcp = 8U;
+    signed_byte_deck.deck.load_io_speed = 0x80U;
+    signed_byte_deck.funds = 650U;
+    if (!expect(apply_field_cyberdeck_stat_upgrade(
+                    stat_upgrade_offer(2U), signed_byte_deck, true) ==
+                FieldCyberdeckStatUpgradeResult::applied) ||
+        !expect(*signed_byte_deck.deck.load_io_speed == 0x85U) ||
+        !expect(signed_byte_deck.funds == 0U)) {
+        return 65;
+    }
+    FieldCyberdeckUpgradeState response_n_flag_deck{};
+    response_n_flag_deck.deck.mpcp = 8U;
+    response_n_flag_deck.deck.response = 0x83U;
+    response_n_flag_deck.funds = 5000U;
+    if (!expect(apply_field_cyberdeck_stat_upgrade(
+                    stat_upgrade_offer(3U), response_n_flag_deck, true) ==
+                FieldCyberdeckStatUpgradeResult::applied) ||
+        !expect(*response_n_flag_deck.deck.response == 0x84U) ||
+        !expect(response_n_flag_deck.funds == 0U)) {
+        return 66;
+    }
+    FieldCyberdeckUpgradeState poor_stat_deck{};
+    poor_stat_deck.deck.mpcp = 4U;
+    poor_stat_deck.deck.memory_megapulses = 50U;
+    poor_stat_deck.funds = 499U;
+    if (!expect(apply_field_cyberdeck_stat_upgrade(
+                    stat_upgrade_offer(0U), poor_stat_deck, true) ==
+                FieldCyberdeckStatUpgradeResult::insufficient_funds) ||
+        !expect(*poor_stat_deck.deck.memory_megapulses == 50U &&
+                poor_stat_deck.funds == 499U)) {
+        return 67;
     }
 
     ShopTransactionService transactions;
