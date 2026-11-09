@@ -60,6 +60,9 @@ local function action_panel_event(shop_id)
     if #group.equipment_upgrade_offers > 0 then
         return "equipment_upgrade_selected"
     end
+    if #group.cyberdeck_rating_upgrade_offers > 0 then
+        return "cyberdeck_rating_upgrade_selected"
+    end
     return "source_action_boundary"
 end
 

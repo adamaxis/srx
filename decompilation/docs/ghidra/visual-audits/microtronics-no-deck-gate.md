@@ -1,11 +1,11 @@
 # MicroTronics service gate and cyberdeck-model audit
 
 **Status:** Partial. Scene-5 event 4 covers the no-deck gate, deck purchases,
-four cyberdeck-stat upgrades, and the MPCP/persona-rating category. These typed
-transactions include confirmation, wallet debit, deck-field updates, limit
-rejection, and return behavior. Combat, defense, and mask/sense remain explicit
-boundaries. The host BMPs are regression artifacts; an independent Genesis
-shop capture has not been identified.
+four cyberdeck-stat upgrades, MPCP/persona upgrades, and all seven listed
+utility-program upgrades. These typed transactions include confirmation,
+wallet debit, deck-field updates, limit rejection, and return behavior. The
+host BMPs are regression artifacts; an independent Genesis shop capture has
+not been identified.
 
 ## ROM trace
 
@@ -106,6 +106,16 @@ these host behaviors. QA writes `actual.bmp` frames for the category, model and
 stat offers, confirmations, results, limit/funds messages, and field return
 under `qt_runtime/field-microtronics-deck-upgrade-qa/microtronics/`.
 
+The same route now exposes ROM `0x1AB276` utility groups with program IDs
+Attack/Slow `{0,1}`, Medic/Shield/Mirrors `{4,5,7}`, and Sleaze/Analyze
+`{8,11}`. Lua computes the next-rating price from the storage multipliers at
+`0xE2DF2`, checks live program plus data-file storage via `0x19538/0x19558`,
+and applies the mode-6 Charisma adjustment at `0x57A6E/0x57B04`. Debug/Release
+QA checks all three icon lists, maximum rating, insufficient storage, accepted
+Attack, declined Slow, and insufficient funds. It writes full-screen captures
+for each category, both refusal messages, confirmation, accepted purchase,
+decline, and insufficient funds.
+
 The same route seeds a model-2 deck with MPCP 6 and persona ratings `{6,4,5,1}`
 as a QA fixture. It declines and accepts the $12,800 MPCP repair to model
 capacity 8, confirms the full-capacity response, raises Body from 6 to 8 and
@@ -125,5 +135,5 @@ Release images:
 - `decompilation/ghidra_conversion/build/conversion/qt/release/qt_runtime/field-scene5-store-service-entry-qa/microtronics/field-return/actual.bmp`
 
 These captures confirm the typed host behavior and regression frames only.
-They do not establish Genesis screen fidelity. MicroTronics combat, defense,
-and mask/sense categories remain unimplemented.
+They do not establish Genesis screen fidelity. Independent visual comparison
+for these shop screens remains open.

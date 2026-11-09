@@ -29,6 +29,12 @@ std::string_view group_id(const ShopActionGroup group) {
     case ShopActionGroup::cyberdeck_upgrades: return "cyberdeck_upgrades";
     case ShopActionGroup::cyberdeck_upgrades_second:
         return "cyberdeck_upgrades_second";
+    case ShopActionGroup::microtronics_combat_utilities:
+        return "combat_utilities";
+    case ShopActionGroup::microtronics_defense_utilities:
+        return "defense_utilities";
+    case ShopActionGroup::microtronics_mask_sense_utilities:
+        return "mask_sense_utilities";
     }
     return {};
 }
@@ -60,7 +66,13 @@ bool ShopMenuController::open(
          definition.groups[4U].id == "cyberdeck_upgrades" &&
          definition.groups[4U].cyberdeck_stat_upgrade_offers.size() == 4U &&
          definition.groups[5U].id == "cyberdeck_upgrades_second" &&
-         definition.groups[5U].cyberdeck_rating_upgrade_offers.size() == 5U);
+         definition.groups[5U].cyberdeck_rating_upgrade_offers.size() == 5U &&
+         definition.groups[0U].id == "combat_utilities" &&
+         definition.groups[0U].cyberdeck_rating_upgrade_offers.size() == 2U &&
+         definition.groups[1U].id == "defense_utilities" &&
+         definition.groups[1U].cyberdeck_rating_upgrade_offers.size() == 3U &&
+         definition.groups[2U].id == "mask_sense_utilities" &&
+         definition.groups[2U].cyberdeck_rating_upgrade_offers.size() == 2U);
     if (!shop_id_matches_definition || definition.groups.empty() ||
         definition.groups.size() > group_ids_.size() ||
         confirmation_choice_ids[0] != "yes" ||
@@ -481,6 +493,15 @@ ShopActionGroup ShopMenuController::selected_group() const noexcept {
     if (id == "cyberdeck_upgrades_second") {
         return ShopActionGroup::cyberdeck_upgrades_second;
     }
+    if (id == "combat_utilities") {
+        return ShopActionGroup::microtronics_combat_utilities;
+    }
+    if (id == "defense_utilities") {
+        return ShopActionGroup::microtronics_defense_utilities;
+    }
+    if (id == "mask_sense_utilities") {
+        return ShopActionGroup::microtronics_mask_sense_utilities;
+    }
     return static_cast<ShopActionGroup>(index);
 }
 
@@ -860,11 +881,29 @@ std::optional<ShopMenuEvent> ShopMenuController::apply_script_snapshot(
                    ShopMenuEvent::cyberdeck_rating_upgrade_selected) {
             request.cyberdeck_rating_upgrade_offer =
                 cyberdeck_rating_upgrade_offer(request.group, request.cursor);
+            const bool utility_program_group =
+                snapshot.selected_action < 3U &&
+                request.cyberdeck_rating_upgrade_offer.has_value() &&
+                request.cyberdeck_rating_upgrade_offer->stat ==
+                    scripting::ScriptShopCyberdeckRatingUpgradeStat::program;
+            const bool persona_group = snapshot.selected_action == 5U &&
+                request.cyberdeck_rating_upgrade_offer.has_value() &&
+                request.cyberdeck_rating_upgrade_offer->stat !=
+                    scripting::ScriptShopCyberdeckRatingUpgradeStat::program;
+            const auto expected_program_group =
+                snapshot.selected_action == 0U
+                    ? ShopActionGroup::microtronics_combat_utilities
+                    : snapshot.selected_action == 1U
+                          ? ShopActionGroup::microtronics_defense_utilities
+                          : ShopActionGroup::microtronics_mask_sense_utilities;
             if (shop_ != ShopId::microtronics ||
                 snapshot.menu_result != 2 || snapshot.action_panel != 1U ||
-                snapshot.selected_action != 5U ||
-                snapshot.action_cursor >= 5U ||
-                request.group != ShopActionGroup::cyberdeck_upgrades_second ||
+                (!utility_program_group && !persona_group) ||
+                request.cursor >= (utility_program_group ? 3U : 5U) ||
+                (utility_program_group &&
+                 request.group != expected_program_group) ||
+                (persona_group && request.group !=
+                    ShopActionGroup::cyberdeck_upgrades_second) ||
                 !request.cyberdeck_rating_upgrade_offer.has_value()) {
                 return std::nullopt;
             }
@@ -1042,6 +1081,7 @@ FieldCyberdeckRatingUpgradeResult apply_field_cyberdeck_rating_upgrade(
     auto& deck = state.deck;
     std::uint8_t current_rating = 0U;
     std::size_t persona_index = 0U;
+    std::size_t program_index = 0U;
     const bool mpcp_upgrade =
         quote.stat ==
             scripting::ScriptShopCyberdeckRatingUpgradeStat::mpcp_repair;
@@ -1066,6 +1106,15 @@ FieldCyberdeckRatingUpgradeResult apply_field_cyberdeck_rating_upgrade(
         current_rating = (*deck.persona)[persona_index];
         break;
     }
+    case scripting::ScriptShopCyberdeckRatingUpgradeStat::program:
+        if (!deck.program_ratings.has_value() || quote.program_index < 0 ||
+            static_cast<std::size_t>(quote.program_index) >=
+                deck.program_ratings->size()) {
+            return FieldCyberdeckRatingUpgradeResult::state_unavailable;
+        }
+        program_index = static_cast<std::size_t>(quote.program_index);
+        current_rating = (*deck.program_ratings)[program_index];
+        break;
     }
     if (current_rating != quote.current_rating) {
         return FieldCyberdeckRatingUpgradeResult::state_unavailable;
@@ -1078,6 +1127,9 @@ FieldCyberdeckRatingUpgradeResult apply_field_cyberdeck_rating_upgrade(
     }
     if (mpcp_upgrade) {
         *deck.mpcp = quote.next_rating;
+    } else if (quote.stat ==
+               scripting::ScriptShopCyberdeckRatingUpgradeStat::program) {
+        (*deck.program_ratings)[program_index] = quote.next_rating;
     } else {
         (*deck.persona)[persona_index] = quote.next_rating;
     }

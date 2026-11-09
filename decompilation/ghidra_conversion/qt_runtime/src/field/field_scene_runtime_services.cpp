@@ -515,10 +515,38 @@ bool FieldSceneRuntime::seed_microtronics_deck_upgrade_for_dump(
         return false;
     }
     install_test_deck();
+    // The QA starts from the new-game Test Deck, whose unused data-file
+    // records are empty. Keep this explicit so a missing restored-save field
+    // never gets mistaken for zero usage by a purchase quote.
+    if (field_matrix_deck_record_.has_value() &&
+        !field_matrix_deck_record_->data_files.has_value()) {
+        auto deck = *field_matrix_deck_record_;
+        deck.data_files = std::array<CyberdeckDataFile, 5U>{};
+        field_matrix_deck_record_ = std::move(deck);
+    }
+    // ROM 0x57B04 applies its mode-6 discount from the live runner's +0x7A
+    // Charisma byte; use 4 for the deterministic shop transaction fixture.
+    active_runner_record().attributes[3U] = 4U;
     field_funds_ = funds;
     return field_matrix_deck_record_.has_value() &&
            field_runner_feature_flags_.has_value() &&
            ((*field_runner_feature_flags_ & 0x01U) != 0U);
+}
+
+bool FieldSceneRuntime::set_microtronics_program_upgrade_inputs_for_dump(
+    const std::uint16_t storage_megapulses,
+    const std::uint8_t attack_rating) {
+    if (!ready_ || !field_matrix_deck_record_.has_value()) {
+        return false;
+    }
+    auto deck = *field_matrix_deck_record_;
+    if (!deck.program_ratings.has_value() || !deck.data_files.has_value()) {
+        return false;
+    }
+    deck.storage_megapulses = storage_megapulses;
+    (*deck.program_ratings)[0U] = attack_rating;
+    field_matrix_deck_record_ = std::move(deck);
+    return true;
 }
 
 bool FieldSceneRuntime::seed_microtronics_rating_upgrade_state_for_dump() {

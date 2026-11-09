@@ -11394,14 +11394,213 @@ int run_field_scene5_store_service_entry_qa(
                     return 3;
                 }
 
+                const QImage service_background(QString::fromStdWString(
+                    (asset_root / "menu" / "field" /
+                     "service-background.bmp").wstring()));
+
+                // [C] ROM 0x1AB276 lists Attack/Slow, Medic/Shield/Mirrors,
+                // and Sleaze/Analyze. Their rating purchase path is
+                // 0x5805C -> 0x19538/0x19558 -> 0x57A6E/0x57B04.
+                tap_qa_controller_button(field_scene, 0x02U);
+                const auto combat_programs = render_qa_field(field_scene);
+                bool combat_rows_drawn = !service_background.isNull();
+                for (int index = 0; index < 2; ++index) {
+                    combat_rows_drawn = combat_rows_drawn &&
+                        image_region_differs(combat_programs,
+                            service_background, 16 + index * 32,
+                            168, 24, 16);
+                }
+                const auto combat_programs_saved = save_actual(
+                    "combat-utilities", combat_programs);
+                if (field_scene.shop_menu_group() !=
+                        ShopActionGroup::microtronics_combat_utilities ||
+                    field_scene.shop_menu_cyberdeck_rating_upgrade_offer_count_for_dump()
+                        != 2U || !combat_rows_drawn ||
+                    !combat_programs_saved) {
+                    std::cerr << "Scene-5 store service QA: Combat Utilities "
+                                 "did not expose Attack and Slow\n";
+                    return 3;
+                }
+                // Exercise the source refusal branches before a purchase:
+                // 0x580FE reports 0x1AB4E7 at rating 8, while 0x575F8 sends
+                // the insufficient-storage text from 0x1AA3F5.
+                if (!field_scene.set_microtronics_program_upgrade_inputs_for_dump(
+                        1000U, 8U)) {
+                    std::cerr << "Scene-5 store service QA: could not seed "
+                                 "the maximum Attack rating\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                const auto attack_maximum = render_qa_field(field_scene);
+                const auto attack_maximum_saved = save_actual(
+                    "program-attack-maximum", attack_maximum);
+                if (field_scene.shop_transaction_confirmation_open() ||
+                    field_scene.shop_transaction_message() !=
+                        ShopTransactionMessage::cyberdeck_program_maximum ||
+                    field_scene.field_funds_for_dump().value_or(0U) !=
+                        110000U || !attack_maximum_saved ||
+                    !image_has_green_ink(attack_maximum, 56, 88, 224, 40)) {
+                    std::cerr << "Scene-5 store service QA: maximum Attack "
+                                 "rating was not rejected without a debit\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                if (!field_scene.set_microtronics_program_upgrade_inputs_for_dump(
+                        145U, 4U)) {
+                    std::cerr << "Scene-5 store service QA: could not seed "
+                                 "the low-storage Attack rating\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                const auto attack_storage = render_qa_field(field_scene);
+                const auto attack_storage_saved = save_actual(
+                    "program-attack-insufficient-storage", attack_storage);
+                if (field_scene.shop_transaction_confirmation_open() ||
+                    field_scene.shop_transaction_message() !=
+                        ShopTransactionMessage::
+                            cyberdeck_program_insufficient_storage ||
+                    field_scene.field_funds_for_dump().value_or(0U) !=
+                        110000U || !attack_storage_saved ||
+                    !image_has_green_ink(attack_storage, 56, 88, 224, 40)) {
+                    std::cerr << "Scene-5 store service QA: occupied storage "
+                                 "did not block an Attack upgrade\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                if (!field_scene.set_microtronics_program_upgrade_inputs_for_dump(
+                        1000U, 4U)) {
+                    std::cerr << "Scene-5 store service QA: could not restore "
+                                 "the Attack upgrade inputs\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                const auto attack_confirmation = render_qa_field(field_scene);
+                const auto attack_confirmation_saved = save_actual(
+                    "program-attack-confirmation", attack_confirmation);
+                if (!field_scene.shop_transaction_confirmation_open() ||
+                    field_scene.shop_transaction_amount() != 1408U ||
+                    !attack_confirmation_saved) {
+                    std::cerr << "Scene-5 store service QA: Attack rating did "
+                                 "not quote the ROM charisma-adjusted price\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x01U);
+                tap_qa_controller_button(field_scene, 0x40U);
+                const auto attack_applied = render_qa_field(field_scene);
+                const auto attack_applied_saved = save_actual(
+                    "program-attack-applied", attack_applied);
+                auto program_deck =
+                    field_scene.field_matrix_deck_record_for_dump();
+                if (!program_deck.has_value() ||
+                    !program_deck->program_ratings.has_value() ||
+                    (*program_deck->program_ratings)[0U] != 5U ||
+                    field_scene.field_funds_for_dump().value_or(0U) !=
+                        108592U || !attack_applied_saved) {
+                    std::cerr << "Scene-5 store service QA: Attack purchase "
+                                 "did not update rating and funds\n";
+                    return 3;
+                }
+
+                tap_qa_controller_button(field_scene, 0x08U);
+                tap_qa_controller_button(field_scene, 0x40U);
+                const auto slow_decline = render_qa_field(field_scene);
+                const auto slow_decline_saved = save_actual(
+                    "program-slow-confirmation-no", slow_decline);
+                if (!field_scene.shop_transaction_confirmation_open() ||
+                    field_scene.shop_transaction_amount() != 2814U ||
+                    !slow_decline_saved) {
+                    std::cerr << "Scene-5 store service QA: Slow did not show "
+                                 "its charisma-adjusted default-No prompt\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                program_deck = field_scene.field_matrix_deck_record_for_dump();
+                if (field_scene.shop_transaction_confirmation_open() ||
+                    !program_deck.has_value() ||
+                    !program_deck->program_ratings.has_value() ||
+                    (*program_deck->program_ratings)[1U] != 4U ||
+                    field_scene.field_funds_for_dump().value_or(0U) !=
+                        108592U) {
+                    std::cerr << "Scene-5 store service QA: declining Slow "
+                                 "changed the deck or wallet\n";
+                    return 3;
+                }
+                field_scene.set_field_funds_for_dump(0U);
+                tap_qa_controller_button(field_scene, 0x40U);
+                const auto slow_insufficient_funds =
+                    render_qa_field(field_scene);
+                const auto slow_insufficient_funds_saved = save_actual(
+                    "program-slow-insufficient-funds",
+                    slow_insufficient_funds);
+                program_deck = field_scene.field_matrix_deck_record_for_dump();
+                if (field_scene.shop_transaction_message() !=
+                        ShopTransactionMessage::insufficient_funds ||
+                    !program_deck.has_value() ||
+                    !program_deck->program_ratings.has_value() ||
+                    (*program_deck->program_ratings)[1U] != 4U ||
+                    field_scene.field_funds_for_dump().value_or(1U) != 0U ||
+                    !slow_insufficient_funds_saved ||
+                    !image_has_green_ink(slow_insufficient_funds, 56, 88,
+                                         224, 40)) {
+                    std::cerr << "Scene-5 store service QA: unfunded Slow "
+                                 "upgrade lacked its message or changed state\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                field_scene.set_field_funds_for_dump(108592U);
+
+                tap_qa_controller_button(field_scene, 0x01U);
+                tap_qa_controller_button(field_scene, 0x08U);
+                tap_qa_controller_button(field_scene, 0x02U);
+                const auto defense_programs = render_qa_field(field_scene);
+                bool defense_rows_drawn = !service_background.isNull();
+                for (int index = 0; index < 3; ++index) {
+                    defense_rows_drawn = defense_rows_drawn &&
+                        image_region_differs(defense_programs,
+                            service_background, 16 + index * 32,
+                            168, 24, 16);
+                }
+                const auto defense_programs_saved = save_actual(
+                    "defense-utilities", defense_programs);
+                if (field_scene.shop_menu_group() !=
+                        ShopActionGroup::microtronics_defense_utilities ||
+                    field_scene.shop_menu_cyberdeck_rating_upgrade_offer_count_for_dump()
+                        != 3U || !defense_rows_drawn ||
+                    !defense_programs_saved) {
+                    std::cerr << "Scene-5 store service QA: Defense Utilities "
+                                 "did not expose Medic, Shield, and Mirrors\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x01U);
+                tap_qa_controller_button(field_scene, 0x08U);
+                tap_qa_controller_button(field_scene, 0x08U);
+                tap_qa_controller_button(field_scene, 0x02U);
+                const auto mask_sense_programs = render_qa_field(field_scene);
+                bool mask_sense_rows_drawn = !service_background.isNull();
+                for (int index = 0; index < 2; ++index) {
+                    mask_sense_rows_drawn = mask_sense_rows_drawn &&
+                        image_region_differs(mask_sense_programs,
+                            service_background, 16 + index * 32,
+                            168, 24, 16);
+                }
+                const auto mask_sense_programs_saved = save_actual(
+                    "mask-sense-utilities", mask_sense_programs);
+                if (field_scene.shop_menu_group() !=
+                        ShopActionGroup::microtronics_mask_sense_utilities ||
+                    field_scene.shop_menu_cyberdeck_rating_upgrade_offer_count_for_dump()
+                        != 2U || !mask_sense_rows_drawn ||
+                    !mask_sense_programs_saved) {
+                    std::cerr << "Scene-5 store service QA: Mask/Sense Utilities "
+                                 "did not expose Sleaze and Analyze\n";
+                    return 3;
+                }
+
+                tap_qa_controller_button(field_scene, 0x01U);
                 for (int index = 0; index < 3; ++index) {
                     tap_qa_controller_button(field_scene, 0x08U);
                 }
                 tap_qa_controller_button(field_scene, 0x02U);
                 const auto deck_offer_frame = render_qa_field(field_scene);
-                const QImage service_background(QString::fromStdWString(
-                    (asset_root / "menu" / "field" /
-                     "service-background.bmp").wstring()));
                 bool all_offer_rows_drawn =
                     !service_background.isNull();
                 for (int index = 0; index < 3; ++index) {
@@ -11427,7 +11626,7 @@ int run_field_scene5_store_service_entry_qa(
                 }
 
                 constexpr std::array<std::uint32_t, 3> kExpectedFunds{{
-                    105000U, 80000U, 20000U}};
+                    103592U, 78592U, 18592U}};
                 constexpr std::array<std::int8_t, 3> kExpectedModels{{
                     0, 1, 2}};
                 constexpr std::array<std::uint8_t, 3> kExpectedMpcp{{
@@ -11458,7 +11657,7 @@ int run_field_scene5_store_service_entry_qa(
                     field_scene.field_matrix_deck_record_for_dump();
                 if (field_scene.shop_transaction_confirmation_open() ||
                     field_scene.field_funds_for_dump().value_or(0U) !=
-                        110000U ||
+                        108592U ||
                     !declined_deck.has_value() ||
                     !declined_deck->model_index.has_value() ||
                     *declined_deck->model_index != -1) {
@@ -11592,7 +11791,7 @@ int run_field_scene5_store_service_entry_qa(
                 auto stat_deck =
                     field_scene.field_matrix_deck_record_for_dump();
                 if (field_scene.shop_transaction_confirmation_open() ||
-                    field_scene.field_funds_for_dump().value_or(0U) != 20000U ||
+                    field_scene.field_funds_for_dump().value_or(0U) != 18592U ||
                     !stat_deck.has_value() ||
                     stat_deck->memory_megapulses != 200U) {
                     std::cerr << "Scene-5 store service QA: declining a deck "
@@ -11610,7 +11809,7 @@ int run_field_scene5_store_service_entry_qa(
                 if (!stat_deck.has_value() ||
                     stat_deck->memory_megapulses != 210U ||
                     field_scene.field_funds_for_dump().value_or(0U) !=
-                        19500U ||
+                        18092U ||
                     !memory_applied_saved ||
                     !boundary_seen_since_prompt(
                         "field.shop.microtronics.cyberdeck_stat_upgrade_applied")) {
@@ -11630,7 +11829,7 @@ int run_field_scene5_store_service_entry_qa(
                     !stat_deck.has_value() ||
                     stat_deck->storage_megapulses != 1000U ||
                     field_scene.field_funds_for_dump().value_or(0U) !=
-                        19500U ||
+                        18092U ||
                     !storage_maximum_saved ||
                     !image_has_green_ink(storage_maximum, 56, 88, 224, 40)) {
                     std::cerr << "Scene-5 store service QA: storage cap did not "
@@ -11656,7 +11855,7 @@ int run_field_scene5_store_service_entry_qa(
                 if (!stat_deck.has_value() ||
                     stat_deck->load_io_speed != 55U ||
                     field_scene.field_funds_for_dump().value_or(0U) !=
-                        18850U ||
+                        17442U ||
                     !io_applied_saved) {
                     std::cerr << "Scene-5 store service QA: load-I/O upgrade "
                                  "did not add 5 and debit $650\n";
@@ -11678,7 +11877,7 @@ int run_field_scene5_store_service_entry_qa(
                     stat_deck =
                         field_scene.field_matrix_deck_record_for_dump();
                     const auto expected_funds = expected_response == 2U
-                        ? 13850U : 8850U;
+                        ? 12442U : 7442U;
                     if (!stat_deck.has_value() ||
                         stat_deck->response != expected_response ||
                         field_scene.field_funds_for_dump().value_or(0U) !=
@@ -11699,7 +11898,7 @@ int run_field_scene5_store_service_entry_qa(
                 if (!stat_deck.has_value() || stat_deck->response != 3U ||
                     field_scene.shop_transaction_message() !=
                         ShopTransactionMessage::cyberdeck_response_maximum ||
-                    field_scene.field_funds_for_dump().value_or(0U) != 8850U ||
+                    field_scene.field_funds_for_dump().value_or(0U) != 7442U ||
                     !response_applied_saved || !response_maximum_saved ||
                     !image_has_green_ink(response_maximum, 56, 88, 224, 40)) {
                     std::cerr << "Scene-5 store service QA: response level 3 "

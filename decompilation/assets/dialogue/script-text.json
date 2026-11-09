@@ -818,6 +818,8 @@
     "shop.cyberdeck.persona.maximum_mpcp": "...MPCP checks OK",
     "shop.cyberdeck.persona.maximum_attribute": "Maximum attribute rating\n   equals MPCP value.",
     "shop.cyberdeck.persona.rating_cost_heading": "This rating    upgrade\n    costs        $",
+    "shop.cyberdeck.program.maximum": "  You have the highest\nversion of this program.",
+    "shop.cyberdeck.program.insufficient_storage": "Your deck does not have the\n storage for this program!",
     "shop.cyberware.selection_name.datajack": "           \n Datajack  ",
     "shop.cyberware.selection_name.cyber_eyes": "           \n CyberEyes ",
     "shop.cyberware.selection_name.hand_razors": "   Hand    \n  Razors   ",

@@ -421,6 +421,23 @@ int main() {
         {0U, 5000U, 4U, 1U, 50U, 100U, 20U, 0U},
         {1U, 25000U, 6U, 2U, 100U, 500U, 20U, 1U},
         {2U, 60000U, 8U, 3U, 200U, 500U, 50U, 1U}};
+    microtronics_definition.groups[0U].cyberdeck_rating_upgrade_offers = {
+        {scripting::ScriptShopCyberdeckRatingUpgradeStat::program,
+         "", "", 0, "Attack"},
+        {scripting::ScriptShopCyberdeckRatingUpgradeStat::program,
+         "", "", 1, "Slow"}};
+    microtronics_definition.groups[1U].cyberdeck_rating_upgrade_offers = {
+        {scripting::ScriptShopCyberdeckRatingUpgradeStat::program,
+         "", "", 4, "Medic"},
+        {scripting::ScriptShopCyberdeckRatingUpgradeStat::program,
+         "", "", 5, "Shield"},
+        {scripting::ScriptShopCyberdeckRatingUpgradeStat::program,
+         "", "", 7, "Mirrors"}};
+    microtronics_definition.groups[2U].cyberdeck_rating_upgrade_offers = {
+        {scripting::ScriptShopCyberdeckRatingUpgradeStat::program,
+         "", "", 8, "Sleaze"},
+        {scripting::ScriptShopCyberdeckRatingUpgradeStat::program,
+         "", "", 11, "Analyze"}};
     microtronics_definition.groups[4U].cyberdeck_stat_upgrade_offers = {
         {scripting::ScriptShopCyberdeckUpgradeStat::memory_megapulses,
          500U, "memory"},
@@ -464,6 +481,49 @@ int main() {
                 microtronics_menu.pending_action()->cyberdeck_model_offer
                     ->model_index == 2U)) {
         return 55;
+    }
+    ShopMenuController microtronics_program_menu;
+    if (!expect(microtronics_program_menu.open(
+                    ShopId::microtronics, microtronics_definition,
+                    confirmation_choice_ids)) ||
+        !expect(microtronics_program_menu.apply_script_snapshot(snapshot(
+                    "microtronics", 6U, 2, 0U, 1U, 0U,
+                    "panel_changed")) == ShopMenuEvent::panel_changed) ||
+        !expect(microtronics_program_menu.selected_group() ==
+                    ShopActionGroup::microtronics_combat_utilities) ||
+        !expect(microtronics_program_menu.apply_script_snapshot(snapshot(
+                    "microtronics", 6U, 2, 1U, 1U, 0U,
+                    "cyberdeck_rating_upgrade_selected")) ==
+                ShopMenuEvent::cyberdeck_rating_upgrade_selected) ||
+        !expect(microtronics_program_menu.pending_action().has_value() &&
+                microtronics_program_menu.pending_action()
+                    ->cyberdeck_rating_upgrade_offer->program_index == 1)) {
+        return 170;
+    }
+    constexpr std::array<ShopActionGroup, 2U> utility_groups{{
+        ShopActionGroup::microtronics_defense_utilities,
+        ShopActionGroup::microtronics_mask_sense_utilities}};
+    constexpr std::array<std::int8_t, 2U> utility_program_ids{{4, 8}};
+    for (std::size_t index = 0U; index < utility_groups.size(); ++index) {
+        ShopMenuController utility_menu;
+        const auto selected_action = static_cast<std::uint8_t>(index + 1U);
+        if (!expect(utility_menu.open(
+                        ShopId::microtronics, microtronics_definition,
+                        confirmation_choice_ids)) ||
+            !expect(utility_menu.apply_script_snapshot(snapshot(
+                        "microtronics", 6U, 2, 0U, 1U, selected_action,
+                        "panel_changed")) == ShopMenuEvent::panel_changed) ||
+            !expect(utility_menu.selected_group() == utility_groups[index]) ||
+            !expect(utility_menu.apply_script_snapshot(snapshot(
+                        "microtronics", 6U, 2, 0U, 1U, selected_action,
+                        "cyberdeck_rating_upgrade_selected")) ==
+                    ShopMenuEvent::cyberdeck_rating_upgrade_selected) ||
+            !expect(utility_menu.pending_action().has_value() &&
+                    utility_menu.pending_action()
+                        ->cyberdeck_rating_upgrade_offer->program_index ==
+                            utility_program_ids[index])) {
+            return 171;
+        }
     }
     if (!expect(microtronics_menu.begin_cyberdeck_model_upgrade_confirmation(
                     60000U) == ShopTransactionEvent::confirmation_opened) ||

@@ -1062,6 +1062,7 @@ enum class ScriptShopCyberdeckRatingUpgradeStat : std::uint8_t {
     evasion,
     masking,
     sensors,
+    program,
 };
 
 struct ScriptShopCyberdeckRatingUpgradeOffer {
@@ -1069,6 +1070,8 @@ struct ScriptShopCyberdeckRatingUpgradeOffer {
         ScriptShopCyberdeckRatingUpgradeStat::mpcp_repair;
     std::string label_key;
     std::string description_key;
+    std::int8_t program_index = -1;
+    std::string display_name;
 };
 
 enum class ScriptShopCyberdeckRatingUpgradeStatus : std::uint8_t {
@@ -1076,6 +1079,8 @@ enum class ScriptShopCyberdeckRatingUpgradeStatus : std::uint8_t {
     mpcp_at_capacity,
     persona_at_mpcp,
     source_boundary,
+    program_at_maximum,
+    insufficient_storage,
 };
 
 struct ScriptShopCyberdeckRatingUpgradeQuote {
@@ -1086,6 +1091,7 @@ struct ScriptShopCyberdeckRatingUpgradeQuote {
     std::uint8_t current_rating = 0U;
     std::uint8_t next_rating = 0U;
     std::uint32_t cost = 0U;
+    std::int8_t program_index = -1;
 };
 
 struct ScriptShopOfferGroup {
@@ -1127,6 +1133,8 @@ struct ScriptShopTextKeys {
     std::string cyberdeck_persona_mpcp_maximum;
     std::string cyberdeck_persona_attribute_maximum;
     std::string cyberdeck_rating_cost_heading;
+    std::string cyberdeck_program_maximum;
+    std::string cyberdeck_program_insufficient_storage;
 };
 
 struct ScriptShopDefinition {
@@ -2968,6 +2976,12 @@ public:
         ScriptShopCyberdeckRatingUpgradeStat stat, std::int8_t model,
         std::uint8_t mpcp,
         const std::array<std::uint8_t, 4>& persona) const;
+    std::optional<ScriptShopCyberdeckRatingUpgradeQuote>
+    shop_cyberdeck_program_upgrade_quote(
+        std::uint8_t program_index, std::uint16_t storage,
+        const std::array<std::uint8_t, 12>& program_ratings,
+        const std::array<std::uint16_t, 5>& data_file_sizes,
+        std::uint8_t charisma) const;
     bool close_shop_menu();
     std::optional<ScriptItemCatalog> item_catalog();
     ScriptTaskStep start_task(

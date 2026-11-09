@@ -15230,23 +15230,46 @@ void FieldSceneRuntime::advance_frame() {
                 const auto& offer = *field_shop_menu_.pending_action()
                                          ->cyberdeck_rating_upgrade_offer;
                 const auto& deck = *field_matrix_deck_record_;
-                if (!deck.mpcp.has_value() ||
+                const bool program_offer = offer.stat == scripting::
+                    ScriptShopCyberdeckRatingUpgradeStat::program;
+                if ((!program_offer && !deck.mpcp.has_value()) ||
                     (offer.stat == scripting::
                          ScriptShopCyberdeckRatingUpgradeStat::mpcp_repair &&
                      !deck.model_index.has_value()) ||
-                    (offer.stat != scripting::
+                    (!program_offer && offer.stat != scripting::
                          ScriptShopCyberdeckRatingUpgradeStat::mpcp_repair &&
                      !deck.persona.has_value())) {
                     shop_boundary("cyberdeck_rating_record_unavailable");
                     field_shop_menu_.finish_action();
                     return;
                 }
-                const auto quote =
-                    game_scripts_.shop_cyberdeck_rating_upgrade_quote(
-                        offer.stat, deck.model_index.value_or(-1),
-                        *deck.mpcp,
-                        deck.persona.value_or(
-                            std::array<std::uint8_t, 4>{}));
+                std::optional<
+                    scripting::ScriptShopCyberdeckRatingUpgradeQuote> quote;
+                if (program_offer) {
+                    if (offer.program_index < 0 ||
+                        !deck.storage_megapulses.has_value() ||
+                        !deck.program_ratings.has_value() ||
+                        !deck.data_files.has_value()) {
+                        shop_boundary("cyberdeck_program_record_unavailable");
+                        field_shop_menu_.finish_action();
+                        return;
+                    }
+                    std::array<std::uint16_t, 5> file_sizes{};
+                    for (std::size_t index = 0U; index < file_sizes.size(); ++index) {
+                        file_sizes[index] = (*deck.data_files)[index].size;
+                    }
+                    quote = game_scripts_.shop_cyberdeck_program_upgrade_quote(
+                        static_cast<std::uint8_t>(offer.program_index),
+                        *deck.storage_megapulses, *deck.program_ratings,
+                        file_sizes, active_runner_record().attributes[3U]);
+                } else {
+                    quote =
+                        game_scripts_.shop_cyberdeck_rating_upgrade_quote(
+                            offer.stat, deck.model_index.value_or(-1),
+                            *deck.mpcp,
+                            deck.persona.value_or(
+                                std::array<std::uint8_t, 4>{}));
+                }
                 if (!quote.has_value()) {
                     shop_boundary("cyberdeck_rating_quote_unavailable");
                     field_shop_menu_.finish_action();
@@ -15271,6 +15294,19 @@ void FieldSceneRuntime::advance_frame() {
                     source_boundary:
                     shop_boundary("cyberdeck_rating_source_boundary");
                     field_shop_menu_.finish_action();
+                    return;
+                case scripting::ScriptShopCyberdeckRatingUpgradeStatus::
+                    program_at_maximum:
+                    field_shop_menu_.show_transaction_message(
+                        ShopTransactionMessage::cyberdeck_program_maximum);
+                    shop_boundary("cyberdeck_program_at_maximum");
+                    return;
+                case scripting::ScriptShopCyberdeckRatingUpgradeStatus::
+                    insufficient_storage:
+                    field_shop_menu_.show_transaction_message(
+                        ShopTransactionMessage::
+                            cyberdeck_program_insufficient_storage);
+                    shop_boundary("cyberdeck_program_insufficient_storage");
                     return;
                 case scripting::ScriptShopCyberdeckRatingUpgradeStatus::
                     available:

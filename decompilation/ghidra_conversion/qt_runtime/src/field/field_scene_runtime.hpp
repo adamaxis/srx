@@ -1072,6 +1072,8 @@ public:
         std::uint8_t scene_id, std::uint8_t field_mode,
         std::uint8_t event_code, std::int8_t alternate_result);
     bool seed_microtronics_deck_upgrade_for_dump(std::uint32_t funds);
+    bool set_microtronics_program_upgrade_inputs_for_dump(
+        std::uint16_t storage_megapulses, std::uint8_t attack_rating);
     bool seed_microtronics_rating_upgrade_state_for_dump();
     bool shop_menu_open() const noexcept { return field_shop_menu_.is_open(); }
     bool field_shop_notice_open_for_dump() const noexcept {

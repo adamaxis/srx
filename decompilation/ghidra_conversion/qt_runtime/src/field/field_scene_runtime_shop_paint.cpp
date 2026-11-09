@@ -491,26 +491,53 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
                 cyberdeck_rating_upgrade_group &&
                 selected_cyberdeck_rating_upgrade.has_value()) {
                 const auto& upgrade = *selected_cyberdeck_rating_upgrade;
-                if (const auto* label = game_scripts_.dialogue_text(
-                        upgrade.label_key)) {
+                if (upgrade.stat == scripting::
+                        ScriptShopCyberdeckRatingUpgradeStat::program) {
+                    draw_command_overview_text(painter, 64, 32,
+                                               upgrade.display_name);
+                } else if (const auto* label = game_scripts_.dialogue_text(
+                               upgrade.label_key)) {
                     draw_command_overview_text(painter, 64, 32, *label);
                 }
-                if (const auto* description = game_scripts_.dialogue_text(
-                        upgrade.description_key)) {
-                    draw_command_overview_text(painter, 24, 56,
-                                               *description);
+                if (!upgrade.description_key.empty()) {
+                    const auto* description = game_scripts_.dialogue_text(
+                        upgrade.description_key);
+                    if (description != nullptr) {
+                        draw_command_overview_text(painter, 24, 56,
+                                                   *description);
+                    }
                 }
 
                 std::optional<
                     scripting::ScriptShopCyberdeckRatingUpgradeQuote> quote;
                 if (field_matrix_deck_record_.has_value()) {
                     const auto& deck = *field_matrix_deck_record_;
-                    const bool has_source_inputs = deck.mpcp.has_value() &&
+                    if (upgrade.stat == scripting::
+                            ScriptShopCyberdeckRatingUpgradeStat::program &&
+                        upgrade.program_index >= 0 &&
+                        deck.storage_megapulses.has_value() &&
+                        deck.program_ratings.has_value() &&
+                        deck.data_files.has_value()) {
+                        std::array<std::uint16_t, 5> file_sizes{};
+                        for (std::size_t index = 0U;
+                             index < file_sizes.size(); ++index) {
+                            file_sizes[index] =
+                                (*deck.data_files)[index].size;
+                        }
+                        quote = game_scripts_.
+                            shop_cyberdeck_program_upgrade_quote(
+                                static_cast<std::uint8_t>(
+                                    upgrade.program_index),
+                                *deck.storage_megapulses,
+                                *deck.program_ratings, file_sizes,
+                                active_runner_record().attributes[3U]);
+                    } else if (deck.mpcp.has_value() &&
                         (upgrade.stat == scripting::
                              ScriptShopCyberdeckRatingUpgradeStat::mpcp_repair
                              ? deck.model_index.has_value()
-                             : deck.persona.has_value());
-                    if (has_source_inputs) {
+                             : (upgrade.stat != scripting::
+                                    ScriptShopCyberdeckRatingUpgradeStat::program &&
+                                deck.persona.has_value()))) {
                         quote =
                             game_scripts_.shop_cyberdeck_rating_upgrade_quote(
                                 upgrade.stat,
@@ -536,6 +563,26 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
                     if (const auto* message = game_scripts_.dialogue_text(
                             field_shop_active_definition_->text_keys
                                 .cyberdeck_persona_attribute_maximum)) {
+                        draw_command_overview_text(painter, 56, 104,
+                                                   *message);
+                    }
+                } else if (quote.has_value() &&
+                           quote->status == scripting::
+                               ScriptShopCyberdeckRatingUpgradeStatus::
+                                   program_at_maximum) {
+                    if (const auto* message = game_scripts_.dialogue_text(
+                            field_shop_active_definition_->text_keys
+                                .cyberdeck_program_maximum)) {
+                        draw_command_overview_text(painter, 56, 104,
+                                                   *message);
+                    }
+                } else if (quote.has_value() &&
+                           quote->status == scripting::
+                               ScriptShopCyberdeckRatingUpgradeStatus::
+                                   insufficient_storage) {
+                    if (const auto* message = game_scripts_.dialogue_text(
+                            field_shop_active_definition_->text_keys
+                                .cyberdeck_program_insufficient_storage)) {
                         draw_command_overview_text(painter, 56, 104,
                                                    *message);
                     }
@@ -803,8 +850,25 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
                 field_shop_menu_.cyberdeck_rating_upgrade_offer(
                     stock_group, index);
             if (offer.has_value()) {
-                if (const auto* label = game_scripts_.dialogue_text(
-                        offer->label_key)) {
+                if (offer->stat == scripting::
+                        ScriptShopCyberdeckRatingUpgradeStat::program) {
+                    // ROM 0x589E8 draws the selected category's program
+                    // icons from IDs in 0x1AB276. The 24x16 extracted icons
+                    // fit each source 32-pixel offer cell; the full name is
+                    // shown in the selected detail panel above.
+                    if (offer->program_index >= 0 &&
+                        static_cast<std::size_t>(offer->program_index) <
+                            matrix_cyberdeck_program_icons_.size()) {
+                        const auto& icon = matrix_cyberdeck_program_icons_[
+                            static_cast<std::size_t>(offer->program_index)];
+                        if (icon.size() == QSize(24, 16)) {
+                            painter.drawImage(
+                                16 + static_cast<int>(index) * 32, 168,
+                                icon);
+                        }
+                    }
+                } else if (const auto* label = game_scripts_.dialogue_text(
+                               offer->label_key)) {
                     draw_command_overview_text(
                         painter, 16 + static_cast<int>(index) * 32, 172,
                         *label);
@@ -1056,6 +1120,24 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
             const auto* message = game_scripts_.dialogue_text(
                 field_shop_active_definition_->text_keys
                     .cyberdeck_persona_attribute_maximum);
+            if (message != nullptr) {
+                draw_command_overview_text(painter, 56, 88, *message);
+            }
+            break;
+        }
+        case ShopTransactionMessage::cyberdeck_program_maximum: {
+            const auto* message = game_scripts_.dialogue_text(
+                field_shop_active_definition_->text_keys
+                    .cyberdeck_program_maximum);
+            if (message != nullptr) {
+                draw_command_overview_text(painter, 56, 88, *message);
+            }
+            break;
+        }
+        case ShopTransactionMessage::cyberdeck_program_insufficient_storage: {
+            const auto* message = game_scripts_.dialogue_text(
+                field_shop_active_definition_->text_keys
+                    .cyberdeck_program_insufficient_storage);
             if (message != nullptr) {
                 draw_command_overview_text(painter, 56, 88, *message);
             }

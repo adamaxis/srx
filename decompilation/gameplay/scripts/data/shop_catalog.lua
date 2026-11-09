@@ -2,10 +2,13 @@
 -- inline (0x56DC4 / 0x5794E item rows, 0x1AAF40 progression, 0x1AB060
 -- Wire Masters). shop.lua owns the menu logic.
 local M = {}
+local Deck = require("menu.rules.deck")
 
 -- ROM 0x1AB190 stores the supported MPCP capacities by model: 3, 4, 6, 8,
 -- 10, and 12. Keep this as named game data, not a runtime ROM lookup.
 local mpcp_capacity_by_model = {3, 4, 6, 8, 10, 12}
+-- ROM 0xE2DF2: storage used by one rating of each utility program.
+local program_storage_by_index = {2, 4, 4, 3, 4, 4, 2, 3, 3, 2, 2, 3}
 
 local function signed_byte(value)
     value = value & 0xFF
@@ -66,6 +69,63 @@ function M.cyberdeck_rating_upgrade_quote(stat, model, mpcp, persona)
     }
 end
 
+-- ROM 0x5805C selects current+1, 0x19538 prices the target storage,
+-- 0x19558 checks free storage, and 0x57A6E/0x57B04 apply the mode-6
+-- Charisma adjustment. Host inputs are typed live deck and runner facts.
+function M.cyberdeck_program_upgrade_quote(program_index, storage,
+                                           ratings, data_files, charisma)
+    local program_size = program_storage_by_index[program_index + 1]
+    if program_size == nil or type(ratings) ~= "table" or
+       #ratings ~= #program_storage_by_index or type(data_files) ~= "table" or
+       #data_files ~= 5 or type(storage) ~= "number" or
+       type(charisma) ~= "number" then
+        return {status = "source_boundary", current_rating = 0,
+                next_rating = 0, cost = 0, program_index = program_index}
+    end
+
+    local current_rating = ratings[program_index + 1]
+    if type(current_rating) ~= "number" or current_rating < 0 or
+       current_rating > 0xFF then
+        return {status = "source_boundary", current_rating = 0,
+                next_rating = 0, cost = 0, program_index = program_index}
+    end
+    local next_rating = current_rating + 1
+    if next_rating >= 9 then
+        return {status = "program_at_maximum", current_rating = current_rating,
+                next_rating = 0, cost = 0, program_index = program_index}
+    end
+
+    local used_storage = 0
+    for index, multiplier in ipairs(program_storage_by_index) do
+        local rating = ratings[index]
+        if type(rating) ~= "number" or rating < 0 or rating > 0xFF then
+            return {status = "source_boundary", current_rating = current_rating,
+                    next_rating = 0, cost = 0, program_index = program_index}
+        end
+        used_storage = used_storage + rating * multiplier
+    end
+    for _, file in ipairs(data_files) do
+        if type(file) ~= "table" or type(file.size) ~= "number" or
+           file.size < 0 or file.size > 0xFFFF then
+            return {status = "source_boundary", current_rating = current_rating,
+                    next_rating = 0, cost = 0, program_index = program_index}
+        end
+        used_storage = used_storage + file.size
+    end
+    if storage - used_storage < program_size then
+        return {status = "insufficient_storage", current_rating = current_rating,
+                next_rating = 0, cost = 0, program_index = program_index}
+    end
+
+    local base_cost = program_size * next_rating * next_rating * 30
+    local charisma_discount_steps = math.max(charisma - 2, 0)
+    charisma_discount_steps = math.min(charisma_discount_steps, 10)
+    local cost = base_cost - (base_cost // 32) * charisma_discount_steps
+    return {status = "available", current_rating = current_rating,
+            next_rating = next_rating, cost = cost,
+            program_index = program_index}
+end
+
 function M.service_title(id)
     return "shop.service.option." .. id
 end
@@ -122,6 +182,14 @@ local function group(id, first_title_key, second_title_key, offers,
     }
 end
 
+local function program_rating_offer(index)
+    return {
+        stat = "program",
+        program_index = index,
+        display_name = Deck.PROGRAM_NAMES[index],
+    }
+end
+
 local function field_shop_text_keys()
     return {
         universal_clips_title = "shop.universal_clips.title",
@@ -157,6 +225,10 @@ local function field_shop_text_keys()
             "shop.cyberdeck.persona.maximum_attribute",
         cyberdeck_rating_cost_heading =
             "shop.cyberdeck.persona.rating_cost_heading",
+        cyberdeck_program_maximum =
+            "shop.cyberdeck.program.maximum",
+        cyberdeck_program_insufficient_storage =
+            "shop.cyberdeck.program.insufficient_storage",
     }
 end
 
@@ -345,13 +417,22 @@ M.catalog = {
         -- cyberdeck model records at 0x1AB196. The typed fields below retain
         -- each model's price and target properties without exposing ROM rows.
         groups = {
+            -- ROM 0x1AB276 groups 0..2 list first-byte program IDs at a
+            -- two-byte stride: Attack/Slow; Medic/Shield/Mirrors; Sleaze/Analyze.
             group("combat_utilities", action_heading("combat_utilities_display"),
-                  action_heading("combat_utilities")),
+                  action_heading("combat_utilities"), {}, {}, {}, {}, {}, {
+                program_rating_offer(0), program_rating_offer(1),
+            }),
             group("defense_utilities", action_heading("defense_utilities_display"),
-                  action_heading("defense_utilities")),
+                  action_heading("defense_utilities"), {}, {}, {}, {}, {}, {
+                program_rating_offer(4), program_rating_offer(5),
+                program_rating_offer(7),
+            }),
             group("mask_sense_utilities",
                   action_heading("mask_sense_utilities_display"),
-                  action_heading("mask_sense_utilities")),
+                  action_heading("mask_sense_utilities"), {}, {}, {}, {}, {}, {
+                program_rating_offer(8), program_rating_offer(11),
+            }),
             group("cyberdecks", action_heading("cyberdecks_display"),
                   action_heading("cyberdecks"), {}, {}, {}, {
                 {model_index = 0, cost = 5000, mpcp = 4, hardening = 1,

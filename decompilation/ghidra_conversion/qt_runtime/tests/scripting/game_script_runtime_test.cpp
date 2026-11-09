@@ -12803,6 +12803,47 @@ int main() {
     const auto microtronics = scripts.shop_definition("microtronics");
     if (!expect(microtronics.has_value() &&
                     microtronics->groups.size() == 6U &&
+                    microtronics->groups[0U].id == "combat_utilities" &&
+                    microtronics->groups[0U]
+                            .cyberdeck_rating_upgrade_offers.size() == 2U &&
+                    microtronics->groups[0U]
+                            .cyberdeck_rating_upgrade_offers[0U].program_index == 0 &&
+                    microtronics->groups[0U]
+                            .cyberdeck_rating_upgrade_offers[0U].display_name ==
+                        "Attack" &&
+                    microtronics->groups[0U]
+                            .cyberdeck_rating_upgrade_offers[1U].program_index == 1 &&
+                    microtronics->groups[0U]
+                            .cyberdeck_rating_upgrade_offers[1U].display_name ==
+                        "Slow" &&
+                    microtronics->groups[1U].id == "defense_utilities" &&
+                    microtronics->groups[1U]
+                            .cyberdeck_rating_upgrade_offers.size() == 3U &&
+                    microtronics->groups[1U]
+                            .cyberdeck_rating_upgrade_offers[0U].program_index == 4 &&
+                    microtronics->groups[1U]
+                            .cyberdeck_rating_upgrade_offers[0U].display_name ==
+                        "Medic" &&
+                    microtronics->groups[1U]
+                            .cyberdeck_rating_upgrade_offers[1U].program_index == 5 &&
+                    microtronics->groups[1U]
+                            .cyberdeck_rating_upgrade_offers[1U].display_name ==
+                        "Shield" &&
+                    microtronics->groups[1U]
+                            .cyberdeck_rating_upgrade_offers[2U].program_index == 7 &&
+                    microtronics->groups[1U]
+                            .cyberdeck_rating_upgrade_offers[2U].display_name ==
+                        "Mirrors" &&
+                    microtronics->groups[2U].id == "mask_sense_utilities" &&
+                    microtronics->groups[2U]
+                            .cyberdeck_rating_upgrade_offers.size() == 2U &&
+                    microtronics->groups[2U]
+                            .cyberdeck_rating_upgrade_offers[0U].program_index == 8 &&
+                    microtronics->groups[2U]
+                            .cyberdeck_rating_upgrade_offers[0U].display_name ==
+                        "Sleaze" &&
+                    microtronics->groups[2U]
+                            .cyberdeck_rating_upgrade_offers[1U].program_index == 11 &&
                     microtronics->groups[5U].id ==
                         "cyberdeck_upgrades_second" &&
                     microtronics->groups[5U]
@@ -12814,6 +12855,51 @@ int main() {
                             .cyberdeck_persona_attribute_maximum ==
                         "shop.cyberdeck.persona.maximum_attribute",
                 "MicroTronics rating-upgrade catalog lost its five typed rows")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+    // ROM 0xE2DF2, 0x5805C, 0x19538, 0x19558, and
+    // 0x57A6E/0x57B04 define storage, rating, and mode-6 price behavior.
+    std::array<std::uint8_t, 12U> program_ratings{};
+    program_ratings.fill(4U);
+    const std::array<std::uint16_t, 5U> empty_data_files{};
+    const auto attack_upgrade = scripts.shop_cyberdeck_program_upgrade_quote(
+        0U, 1000U, program_ratings, empty_data_files, 2U);
+    const auto charisma_discount = scripts.shop_cyberdeck_program_upgrade_quote(
+        0U, 1000U, program_ratings, empty_data_files, 4U);
+    const auto capped_charisma_discount =
+        scripts.shop_cyberdeck_program_upgrade_quote(
+            0U, 1000U, program_ratings, empty_data_files, 15U);
+    const auto no_storage = scripts.shop_cyberdeck_program_upgrade_quote(
+        0U, 145U, program_ratings, empty_data_files, 2U);
+    const std::array<std::uint16_t, 5U> one_megapulse_file{{1U, 0U, 0U, 0U, 0U}};
+    const auto file_uses_storage = scripts.shop_cyberdeck_program_upgrade_quote(
+        0U, 146U, program_ratings, one_megapulse_file, 2U);
+    auto maximum_program_ratings = program_ratings;
+    maximum_program_ratings[0U] = 8U;
+    const auto maximum_program = scripts.shop_cyberdeck_program_upgrade_quote(
+        0U, 1000U, maximum_program_ratings, empty_data_files, 2U);
+    if (!expect(attack_upgrade.has_value() &&
+                    attack_upgrade->status ==
+                        scripting::ScriptShopCyberdeckRatingUpgradeStatus::available &&
+                    attack_upgrade->program_index == 0 &&
+                    attack_upgrade->current_rating == 4U &&
+                    attack_upgrade->next_rating == 5U &&
+                    attack_upgrade->cost == 1500U &&
+                    charisma_discount.has_value() &&
+                    charisma_discount->cost == 1408U &&
+                    capped_charisma_discount.has_value() &&
+                    capped_charisma_discount->cost == 1040U &&
+                    no_storage.has_value() &&
+                    no_storage->status ==
+                        scripting::ScriptShopCyberdeckRatingUpgradeStatus::insufficient_storage &&
+                    file_uses_storage.has_value() &&
+                    file_uses_storage->status ==
+                        scripting::ScriptShopCyberdeckRatingUpgradeStatus::insufficient_storage &&
+                    maximum_program.has_value() &&
+                    maximum_program->status ==
+                        scripting::ScriptShopCyberdeckRatingUpgradeStatus::program_at_maximum,
+                "Lua program-upgrade quote differs from ROM storage or charisma rules")) {
         std::cerr << scripts.failure() << '\n';
         return 1;
     }

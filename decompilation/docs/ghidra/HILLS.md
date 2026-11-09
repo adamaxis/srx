@@ -1413,13 +1413,20 @@ entry/package prompts. Debug/Release QA covers all four prompts. Weapon's
 World now opens its Lua mode-0 catalog after the prompt, shows the first offer,
 and returns to the field; the catalog rows come from the mode-0 tables selected
 at 0x56DC4. Merlin's Lore opens its mode-5 catalog, but its purchase actions
-remain partial. Wire-Masters and the deck-present MicroTronics menu still stop
-at explicit boundaries pending their mode-specific action traces. MicroTronics
-has a separately verified no-deck path: result 2 tests `FF018F` bit 0 and, when it
-is clear, displays `STORE CLOSED!` from ROM `0x1AA3B4`, waits for input, then
-restores field presentation. Debug/Release QA covers this gate and return; a
-deck-present MicroTronics menu remains unresolved. The captures are host
-regression artifacts, not Genesis visual proof. The site manifest records the
+remain partial. Wire-Masters still stops at explicit boundaries pending more
+mode-specific action traces. MicroTronics now completes typed deck model, stat,
+persona, and utility-program rating purchases for result 2. Its utility groups
+come from ROM `0x1AB276`; Lua quotes each next rating against live program and
+data-file storage (`0x19538`, `0x19558`), applies the target-rating price and
+mode-6 Charisma adjustment (`0x5805C`, `0x57A6E`, `0x57B04`), and the host
+updates the deck and wallet only after confirmation. Debug/Release QA covers
+the seven ROM-listed Attack, Slow, Medic, Shield, Mirrors, Sleaze, and Analyze
+offers, max rating, storage rejection, cancellation, purchase, and insufficient
+funds. The separate no-deck path tests `FF018F` bit 0 and, when clear, displays
+`STORE CLOSED!` from ROM `0x1AA3B4`, waits for input, then restores field
+presentation. Other mode-6 actions and independent Genesis visual proof remain
+open. These captures are host regression artifacts, not Genesis visual proof.
+The site manifest records the
 verified event-table pointer and row bytes. See the
 [MicroTronics no-deck gate audit](visual-audits/microtronics-no-deck-gate.md),
 [field-map route audit](visual-audits/field-map-script-routing.md), and

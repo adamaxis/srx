@@ -166,4 +166,10 @@ function Shop.cyberdeck_rating_upgrade_quote(stat, model, mpcp, persona)
     return Catalog.cyberdeck_rating_upgrade_quote(stat, model, mpcp, persona)
 end
 
+function Shop.cyberdeck_program_upgrade_quote(program_index, storage,
+                                              ratings, data_files, charisma)
+    return Catalog.cyberdeck_program_upgrade_quote(
+        program_index, storage, ratings, data_files, charisma)
+end
+
 return Shop

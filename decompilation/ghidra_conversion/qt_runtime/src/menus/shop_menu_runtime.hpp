@@ -40,6 +40,9 @@ enum class ShopActionGroup : std::int8_t {
     cyberdecks = 10,
     cyberdeck_upgrades = 11,
     cyberdeck_upgrades_second = 12,
+    microtronics_combat_utilities = 13,
+    microtronics_defense_utilities = 14,
+    microtronics_mask_sense_utilities = 15,
 };
 
 struct ShopActionRequest {
@@ -83,6 +86,8 @@ enum class ShopTransactionMessage : std::uint8_t {
     cyberdeck_response_maximum,
     cyberdeck_persona_mpcp_maximum,
     cyberdeck_persona_attribute_maximum,
+    cyberdeck_program_maximum,
+    cyberdeck_program_insufficient_storage,
 };
 
 enum class ShopTransactionEvent : std::uint8_t {
