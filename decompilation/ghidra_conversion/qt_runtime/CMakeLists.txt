@@ -807,15 +807,18 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_audio_qa
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_pistol_attack_seed_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-archetype samurai
-                 --field-pistol-attack-seed-qa)
+                 --field-pistol-attack-seed-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-pistol-attack-seed-qa")
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_pistol_attack_seed_decker_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-archetype decker
-                 --field-pistol-attack-seed-qa)
+                 --field-pistol-attack-seed-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-pistol-attack-seed-decker-qa")
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_pistol_attack_seed_gator_shaman_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-archetype gator_shaman
-                 --field-pistol-attack-seed-qa)
+                 --field-pistol-attack-seed-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-pistol-attack-seed-gator-shaman-qa")
 
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_world_activity_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"

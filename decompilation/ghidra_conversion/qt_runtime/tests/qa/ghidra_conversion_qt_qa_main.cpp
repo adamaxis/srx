@@ -1284,7 +1284,23 @@ int run_field_command_overview_close_qa(
 // New-game starter handguns from 0x7291A/0x72A1A/0x72B1A use seed 0xDF65.
 // ROM 0x1514E calls 0x14FF8 during spawn; 0x14FF8 resolves 0x55640 before
 // the 0xA8EA actor-slot scan proceeds from party records to world actors.
-int run_field_pistol_attack_seed_qa(FieldSceneRuntime& field_scene) {
+int run_field_pistol_attack_seed_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output) {
+    std::error_code directory_error;
+    std::filesystem::remove_all(output, directory_error);
+    if (directory_error) {
+        std::cerr << "pistol live-hit QA: could not clear output: "
+                  << directory_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, directory_error);
+    if (directory_error) {
+        std::cerr << "pistol live-hit QA: could not create output: "
+                  << directory_error.message() << '\n';
+        return 3;
+    }
+
     const auto selected_class =
         field_scene.active_runner_record().archetype_index;
     struct ExpectedStarter {
@@ -1587,6 +1603,94 @@ int run_field_pistol_attack_seed_qa(FieldSceneRuntime& field_scene) {
                   << " failure=" << field_scene.failure() << '\n';
         return 3;
     }
+    const auto down_start_frame =
+        field_scene.default_actor_animation_frame_for_dump(0U);
+    if (down_start_frame != std::optional<std::uint8_t>{0U}) {
+        std::cerr << "pistol repeat-fire QA: C0B2 did not start at frame 0 "
+                     "profile=" << expected->name << " frame="
+                  << (down_start_frame.has_value()
+                          ? std::to_string(*down_start_frame)
+                          : "<missing>")
+                  << '\n';
+        return 3;
+    }
+
+    // Kind 11's C0B2 list at ROM 0x8D34 contains two finite frames at rate
+    // 0x0200, so the death animation takes eight render updates per frame.
+    // 0xA93E marks the completed ordinary corpse dead; unlike Wendigo and
+    // spell-death continuations, it remains active and holds its last frame.
+    const auto save_pose = [&output](const std::string& name,
+                                     const QImage& image) {
+        return !image.isNull() && image.save(QString::fromStdWString(
+            (output / name).wstring()));
+    };
+    const auto down_start = render_qa_field(field_scene);
+    if (!save_pose("down-start.bmp", down_start)) {
+        std::cerr << "pistol repeat-fire QA: could not save initial down pose\n";
+        return 3;
+    }
+    const auto dead_source_flag = [&field_scene]() {
+        return field_scene.debug_inspection_fields().value(QStringLiteral(
+            "actor.field_scene_2_actor_0.entity_flags")).toInt(-1);
+    };
+    constexpr std::size_t kPedestrianDeathUpdates = 2U * 8U;
+    constexpr std::size_t kDeathCompletionPasses =
+        kPedestrianDeathUpdates;
+    std::size_t death_completion_pass = 0U;
+    while (death_completion_pass < kDeathCompletionPasses &&
+           (dead_source_flag() & 0x40) == 0) {
+        field_scene.advance_frame();
+        ++death_completion_pass;
+    }
+    const auto final_death_frame =
+        field_scene.default_actor_animation_frame_for_dump(0U);
+    const auto final_death_positions =
+        field_scene.active_default_actor_positions_for_dump();
+    const auto final_death_image = render_qa_field(field_scene);
+    if (death_completion_pass != kDeathCompletionPasses ||
+        (dead_source_flag() & 0x40) == 0 ||
+        field_scene.default_actor_animation_id_for_dump(0U) !=
+            std::optional<std::string>{"down"} ||
+        final_death_frame != std::optional<std::uint8_t>{1U} ||
+        !field_scene.default_actor_sprite_available_for_dump(0U) ||
+        final_death_positions.size() != 3U ||
+        !save_pose("down-final.bmp", final_death_image)) {
+        std::cerr << "pistol repeat-fire QA: C0B2 did not settle on a drawable "
+                     "ordinary corpse after its source list; profile="
+                  << expected->name << " dead_flags=" << dead_source_flag()
+                  << " frame="
+                  << (final_death_frame.has_value()
+                          ? std::to_string(*final_death_frame)
+                          : "<missing>")
+                  << " actors=" << final_death_positions.size()
+                  << " completion_pass=" << death_completion_pass
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+    const auto corpse_position = final_death_positions[0];
+    for (std::size_t pass = 0U; pass < 8U; ++pass) {
+        field_scene.advance_frame();
+    }
+    const auto held_corpse_positions =
+        field_scene.active_default_actor_positions_for_dump();
+    const auto held_corpse = render_qa_field(field_scene);
+    if ((dead_source_flag() & 0x40) == 0 ||
+        field_scene.default_actor_animation_id_for_dump(0U) !=
+            std::optional<std::string>{"down"} ||
+        field_scene.default_actor_animation_frame_for_dump(0U) !=
+            std::optional<std::uint8_t>{1U} ||
+        !field_scene.default_actor_sprite_available_for_dump(0U) ||
+        held_corpse_positions.size() != 3U ||
+        held_corpse_positions[0].x != corpse_position.x ||
+        held_corpse_positions[0].y != corpse_position.y ||
+        !save_pose("actual.bmp", held_corpse)) {
+        std::cerr << "pistol repeat-fire QA: completed pedestrian corpse did "
+                     "not remain visible at its final C0B2 frame profile="
+                  << expected->name << " dead_flags=" << dead_source_flag()
+                  << " actors=" << held_corpse_positions.size()
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
     std::cout << "field_pistol_attack_seed_qa=passed profile="
               << expected->name << " item="
               << static_cast<unsigned>(expected->item_code)
@@ -1597,7 +1701,13 @@ int run_field_pistol_attack_seed_qa(FieldSceneRuntime& field_scene) {
               << " seed=DF65 timing=spawn-service+live-hit"
               << " held_fire_rounds="
               << static_cast<unsigned>(repeat_rounds_used)
-              << " final_physical=0 pose=down\n";
+              << " final_physical=0 down_start_frame="
+              << static_cast<unsigned>(*down_start_frame)
+              << " death_completion_pass=" << death_completion_pass
+              << " pose=down-final-frame="
+              << static_cast<unsigned>(*final_death_frame)
+              << " corpse_held=8 actual=" << (output / "actual.bmp").string()
+              << '\n';
     return 0;
 }
 
@@ -41908,6 +42018,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> field_party_wipe_qa_path;
         bool field_audio_qa = false;
         bool field_pistol_attack_seed_qa = false;
+        std::optional<std::filesystem::path>
+            field_pistol_attack_seed_qa_path;
         std::optional<std::filesystem::path> field_terrain_mark_qa_path;
         std::optional<std::filesystem::path>
             field_world_effect_repaint_qa_path;
@@ -42348,9 +42460,12 @@ int main(int argc, char** argv) {
                 field_smoke = true;
                 field_audio_qa = true;
             }
-            if (std::string(argv[index]) == "--field-pistol-attack-seed-qa") {
+            if (std::string(argv[index]) == "--field-pistol-attack-seed-qa" &&
+                index + 1 < argc) {
                 field_smoke = true;
                 field_pistol_attack_seed_qa = true;
+                field_pistol_attack_seed_qa_path =
+                    std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-world-activity-qa" &&
                 index + 1 < argc) {
@@ -48531,8 +48646,10 @@ int main(int argc, char** argv) {
             if (field_audio_qa) {
                 return run_field_audio_qa(field_scene);
             }
-            if (field_pistol_attack_seed_qa) {
-                return run_field_pistol_attack_seed_qa(field_scene);
+            if (field_pistol_attack_seed_qa &&
+                field_pistol_attack_seed_qa_path.has_value()) {
+                return run_field_pistol_attack_seed_qa(
+                    field_scene, *field_pistol_attack_seed_qa_path);
             }
             if (field_world_activity_qa_path.has_value()) {
                 return run_field_world_activity_qa(

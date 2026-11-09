@@ -2022,3 +2022,20 @@ as the displayed source price, payment, party record, and contact removal.
 These internal asset checks verify presentation wiring, not an independent
 Genesis portrait comparison; the permanent-hire physical branch also remains
 open. See `field-bulk-generic-contacts-qa/ricky/{actual,hire-offer,hired}.bmp`.
+
+### Scene-2 pedestrian live-combat death tail (partial, 2026-11-08)
+
+The live pistol seed route now continues past the first visible C0B2 frame.
+For kind-11 pedestrians, ROM list `0x8D34` has two frames at rate `0x0200`
+(eight render updates per frame); completion reaches `0xA93E`, which marks the
+ordinary corpse dead while its final pose remains drawable. The three
+New-Game starter presets (Samurai, Decker, and Gator Shaman) each use a real
+Scene-2 pedestrian: held pistol input reduces physical meter 10 to zero,
+checks C0B2 frame 0, requires completion on update 16 with frame 1 and the
+source dead flag, then checks that the same corpse remains active and drawable
+for eight more updates. Debug and Release CTests pass for all three presets
+and write `down-start.bmp`, `down-final.bmp`, and `actual.bmp` under their
+per-preset QA directories. These are internal Qt runtime captures; no matching
+independent Genesis pedestrian-death sequence has been identified. Other
+actor kinds, alternate death continuations, and the broader actor hill remain
+open.
