@@ -9928,6 +9928,180 @@ int main() {
         return context;
     };
 
+    // ROM 0xAD86/0xAE6E dispatches the linked player cast, 0x15830 assigns
+    // the delayed effect to its target record, and 0xB0AC/0xA9A6 route an
+    // E0 spell-death list through 0x1E514 when that list finishes [C]. Keep
+    // this cross-actor path covered with a static default-list guard, whose
+    // item-action profile still owns a live world combat record.
+    {
+        constexpr std::uint16_t kScene = 20U;
+        constexpr std::string_view kGuardId =
+            "player_spell_static_guard_slot_5";
+        auto guard = make_static_default_actor_context(
+            kGuardId, "corp_guard_k05_item06", 5U,
+            ScriptActorActionKind::item, 6U, 5U, 1U, false);
+        guard.movement_scene_id = kScene;
+        const auto guard_spawn = scripts.actor_heartbeat(guard);
+
+        ScriptActorTargetCandidate guard_target{};
+        guard_target.id = std::string(kGuardId);
+        guard_target.world_x = 0x0800U;
+        guard_target.world_y = 0x3500U;
+        guard_target.heading = 0x4000U;
+        guard_target.distance = 0x0100U;
+        guard_target.service_flags = static_cast<std::uint8_t>(
+            srx::ActorStatus::ACTIVE);
+        guard_target.world_activity_actor = true;
+        guard_target.source_record_slot = 5U;
+        guard_target.combatant = guard.combatant;
+
+        auto caster = actor_context(
+            "field_runner_k03_none00", "player_spell_guard_caster", 3U,
+            ScriptActorActionKind::none, 0U, 0U, true);
+        caster.controlled_party_member_id = "party.runner.0";
+        caster.is_controlled_party_actor = true;
+        caster.source_record_slot = 0U;
+        caster.movement_scene_id = kScene;
+        set_actor_facts_from_fixture_record(
+            caster, static_cast<std::uint8_t>(srx::ActorStatus::ACTIVE));
+        auto caster_combatant = spell_caster;
+        caster_combatant.record_type = 0U;
+        caster.combatant = caster_combatant;
+        caster.initial_action_delay = -1;
+        caster.player_spell_code = 1U;
+        caster.ai_target_candidates.push_back(guard_target);
+        caster.action_line_clear = [](
+            const std::uint16_t, const std::uint16_t) { return true; };
+        std::size_t caster_roll = 0U;
+        caster.ai_random_bound = [&caster_roll](const std::uint16_t bound)
+            -> std::optional<std::uint16_t> {
+            if (bound == 0U) {
+                return std::nullopt;
+            }
+            if (bound != 6U) {
+                return static_cast<std::uint16_t>(bound - 1U);
+            }
+            const auto roll = caster_roll++ % 4U == 3U ? 4U : 5U;
+            return static_cast<std::uint16_t>(roll);
+        };
+        const auto caster_spawn = scripts.actor_heartbeat(caster);
+        caster.spawn = false;
+        caster.player_spell_available = true;
+        caster.combat_confirm_held = true;
+        const auto player_cast_to_guard = scripts.actor_heartbeat(caster);
+
+        guard.spawn = false;
+        guard.ai_random_bound = [](
+            const std::uint16_t bound) -> std::optional<std::uint16_t> {
+            return bound == 0U
+                ? std::nullopt
+                : std::optional<std::uint16_t>{0U};
+        };
+        const auto guard_effect_transfer = scripts.actor_heartbeat(guard);
+        guard.phase = ScriptActorHeartbeatPhase::render;
+        std::optional<ScriptActorBehaviorDecision> guard_spell_impact;
+        for (std::uint8_t heartbeat = 0U; heartbeat < 12U; ++heartbeat) {
+            guard_spell_impact = scripts.actor_heartbeat(guard);
+        }
+        const bool player_spell_hit_static_world_record =
+            guard_spawn.has_value() && caster_spawn.has_value() &&
+            player_cast_to_guard.has_value() &&
+            player_cast_to_guard->source_action_dispatch ==
+                std::optional<std::string>{"player_spell"} &&
+            player_cast_to_guard->spell_action_resolution.has_value() &&
+            player_cast_to_guard->spell_action_resolution->spell_id ==
+                "flame_dart" &&
+            player_cast_to_guard->spell_action_resolution->target_id ==
+                std::string{kGuardId} &&
+            player_cast_to_guard->spell_action_resolution->effect_started &&
+            guard_effect_transfer.has_value() && guard_spell_impact.has_value() &&
+            guard_spell_impact->spell_effect_resolution.has_value() &&
+            guard_spell_impact->spell_effect_resolution->target_id ==
+                std::string{kGuardId} &&
+            guard_spell_impact->combat_meter_update.has_value() &&
+            guard_spell_impact->combat_meter_update->source_record_slot == 5U &&
+            guard_spell_impact->combat_meter_update->record_type == 5U &&
+            guard_spell_impact->combat_meter_update->physical_meter == 0U;
+
+        if (player_spell_hit_static_world_record) {
+            guard.combatant->physical_meter =
+                guard_spell_impact->combat_meter_update->physical_meter;
+            guard.combatant->mental_meter =
+                guard_spell_impact->combat_meter_update->mental_meter;
+            if (guard_spell_impact->combat_meter_update
+                    ->source_record_flags_updated) {
+                guard.combatant->source_flags =
+                    guard_spell_impact->combat_meter_update->source_record_flags;
+            }
+            guard.physical_condition = 0U;
+            guard.phase = ScriptActorHeartbeatPhase::behavior;
+        }
+        const auto guard_spell_death_started =
+            player_spell_hit_static_world_record
+                ? scripts.actor_heartbeat(guard)
+                : std::optional<ScriptActorBehaviorDecision>{};
+        bool guard_spell_death_retired = false;
+        if (guard_spell_death_started.has_value() &&
+            guard_spell_death_started->animation_id == "down") {
+            guard.actor_facts = guard_spell_death_started->actor_facts;
+            guard.phase = ScriptActorHeartbeatPhase::render;
+            for (std::size_t heartbeat = 0U; heartbeat < 512U; ++heartbeat) {
+                const auto frame = scripts.actor_heartbeat(guard);
+                if (!frame.has_value()) {
+                    break;
+                }
+                guard.actor_facts = frame->actor_facts;
+                if (!frame->actor_facts.lifecycle.active) {
+                    guard_spell_death_retired = true;
+                    break;
+                }
+                guard.phase = ScriptActorHeartbeatPhase::behavior;
+                const auto service = scripts.actor_heartbeat(guard);
+                if (!service.has_value()) {
+                    break;
+                }
+                guard.actor_facts = service->actor_facts;
+                if (!service->actor_facts.lifecycle.active) {
+                    guard_spell_death_retired = true;
+                    break;
+                }
+                guard.phase = ScriptActorHeartbeatPhase::render;
+            }
+        }
+        if (!expect(player_spell_hit_static_world_record &&
+                        guard_spell_death_started.has_value() &&
+                        guard_spell_death_started->animation_id == "down" &&
+                        guard_spell_death_started->animation_variant ==
+                            "spell_death_e0" &&
+                        !guard_spell_death_started->actor_facts.lifecycle.downed &&
+                        guard_spell_death_retired,
+                    "player flame dart did not traverse selected world target, delayed E0 impact, and static-guard retirement")) {
+            std::cerr << scripts.failure()
+                      << " player_cast="
+                      << (player_cast_to_guard.has_value()
+                              ? player_cast_to_guard->source_action_dispatch.value_or("nil")
+                              : "<missing>")
+                      << " effect_transfer=" << guard_effect_transfer.has_value()
+                      << " effect_resolution="
+                      << (guard_spell_impact.has_value() &&
+                                  guard_spell_impact->spell_effect_resolution.has_value()
+                              ? guard_spell_impact->spell_effect_resolution->outcome
+                              : "<missing>")
+                      << " damage="
+                      << (guard_spell_impact.has_value() &&
+                                  guard_spell_impact->combat_meter_update.has_value()
+                              ? std::to_string(guard_spell_impact->combat_meter_update
+                                                   ->physical_meter)
+                              : "<missing>")
+                      << " spell_death="
+                      << (guard_spell_death_started.has_value()
+                              ? guard_spell_death_started->animation_id
+                              : "<missing>")
+                      << " retired=" << guard_spell_death_retired << '\n';
+            return 24;
+        }
+    }
+
     struct ThonSpellTrace {
         std::optional<ScriptActorBehaviorDecision> cast;
         std::optional<ScriptActorBehaviorDecision> target_effect;

@@ -143,3 +143,11 @@ pixels/audio, other spell callbacks, and the Scene 1 map surround remain
 unresolved. See
 [`actor-ai-heartbeat-source-audit.md`](../actor-ai-heartbeat-source-audit.md)
 and [`audio-playback-verification.md`](../visual-analysis/audio-playback-verification.md).
+
+Debug/Release script-runtime QA also links a player flame dart to the static
+Scene-20 Corp Guard in source slot 5, advances the target-owned code-1 effect
+through its 12 render heartbeats, checks the lethal meter update, and completes
+the E0 spell-death lifecycle. This caught and fixed two bridge assumptions:
+world targets need not be dynamic encounter actors, and E0/E4 spell-death poses
+do not require the ordinary downed fact. This is Lua/runtime integration QA;
+field input/render capture and independent Genesis cast comparison remain open.

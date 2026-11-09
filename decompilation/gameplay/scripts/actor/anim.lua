@@ -333,7 +333,6 @@ local function begin_received_hit_reaction(state, context)
         -- continuation 0xB0D4/0xB10C, no +0x10 b4 and no cue. 0xA9A6 then
         -- runs 0xAB02 and 0x1E514 when the list finishes. The selected kind's
         -- single undirected list supplies its own art and cadence [C: 0x62AC].
-        -- Player spells on world actors are not connected to the live route [H].
         state.damage_reaction_active = true
         state.damage_reaction_animation_complete = false
         state.animation_frame = 0

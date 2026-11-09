@@ -14489,13 +14489,15 @@ GameScriptRuntime::actor_heartbeat(
             context.instance_id == resolution.target_id ||
             (!context.controlled_party_member_id.empty() &&
              context.controlled_party_member_id == resolution.target_id);
+        // Dynamic encounter membership is an AI/content classification, not
+        // the world-record boundary: static default actors also occupy slots
+        // 3..9 and can receive linked effects. Validate the live identity,
+        // record type, and source slot below [C: 0xA93A..0xAA4C].
         const bool target_context_matches = context.combatant.has_value() &&
             target_identity_matches &&
             context.source_record_slot.has_value() &&
             *context.source_record_slot == resolution.target_record_slot &&
             context.combatant->record_type == resolution.target_record_type &&
-            (context.dynamic_world_encounter_actor !=
-             (resolution.target_record_type < 3U)) &&
             ((resolution.target_record_type < 3U &&
               resolution.target_record_slot < 3U) ||
              (resolution.target_record_type >= 3U &&
@@ -14665,7 +14667,14 @@ GameScriptRuntime::actor_heartbeat(
                 "actor_ai.heartbeat returned an unsupported exhausted pose "
                 "for a non-encounter actor");
         }
-        if (!decision.actor_facts.lifecycle.downed) {
+        // ROM 0xB0AC/0xB0E4 install the E0/E4 spell-death lists without
+        // setting the ordinary +0x10 bit-4 downed fact. C0B2 exhaustion still
+        // requires that fact; the semantic animation variant distinguishes
+        // the source spell-death route [C].
+        const bool spell_death_pose =
+            decision.animation_variant == "spell_death_e0" ||
+            decision.animation_variant == "spell_death_e4";
+        if (!decision.actor_facts.lifecycle.downed && !spell_death_pose) {
             return fail(
                 "actor_ai.heartbeat returned an exhausted pose without the "
                 "downed actor fact");
