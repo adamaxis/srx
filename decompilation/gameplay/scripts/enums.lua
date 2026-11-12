@@ -228,7 +228,9 @@ E.WorldEffectSequence = {
     HAGGARD_TWO_BODYGUARDS = "haggard_man_two_bodyguards",
     FACTION_MAFIA_EYE_FIVERS = "faction_mafia_eye_fivers",
     FACTION_HALLOWEENERS = "faction_halloweeners",
-} -- ROM lists 0x1D6E2A, 0x1D7010, 0x1D7038, 0x1D704C, and 0x1D7050 [C]
+    FIELD_ALARM_REINFORCEMENTS = "field_alarm_reinforcements", -- ROM list 0x1E20A [C]
+    SECURITY_GUARD_STOP_ATTACK = "security_guard_stop_attack", -- 0x24402 forwards one 0x1D6A1C template from list 0x1D705C [C]
+} -- ROM lists 0x1D6E2A, 0x1D7010, 0x1D7038, 0x1D704C, 0x1D7050, 0x1D705C, and 0x1E20A [C]
 E.WorldEffectPlacementPolicy = {
     SCREEN_EDGE_CANDIDATES = "screen_edge_candidates",
     MAP_DERIVED_CANDIDATES = "map_derived_candidates",

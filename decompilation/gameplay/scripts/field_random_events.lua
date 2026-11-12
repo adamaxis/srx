@@ -52,6 +52,24 @@ local HAGGARD_CHOICES = {
     { id = "threaten", label = "Threaten to leave the patient alone." },
     { id = "help", label = "Help them." },
 } -- Longplay section 11, frame 930; source dispatch 0x23BB4 [C].
+local SECURITY_GUARD_NO_ID_CHOICES = {
+    { id = "attack", label = "<Attack!!>" }, -- 0x121278 / command 0xD2.
+    { id = "talk", label = "<Talk to him.>" }, -- 0x121278 / command 0xD0.
+}
+local SECURITY_GUARD_NO_ID_PROMPT =
+    "<Since you don't have a badge, you'll have to come up with something else.>" -- 0x121278 / 0x11F168 [C].
+local SECURITY_GUARD_ATTACK_RESULT =
+    "<You quickly pull your weapons and attack!>" -- 0x121290 [C].
+local SECURITY_GUARD_TALK_ONE_SUCCESS_RESULT =
+    "<You barely convince him you have misplaced it.\n\n" ..
+    "Suspicous, he decides to check in with dispatch...>" -- 0x1212A0 -> 0x11F313 [C].
+local SECURITY_GUARD_TALK_SUCCESS_RESULT =
+    "<You manage to convince him you misplaced it.\n\n" ..
+    "He seems satisfied and moves on.>" -- 0x1212B4 -> 0x11F378 [C].
+local SECURITY_GUARD_TALK_DISPATCH_SUCCESS_RESULT =
+    "<Dispatch verifies his check and he waves you by.>" -- 0x121268 -> 0x11F1E0 [C].
+local SECURITY_GUARD_TALK_DISPATCH_ALERT_RESULT =
+    "<Dispatch comes back negative and sounds the alert.>" -- 0x121270 -> 0x11F213 [C].
 -- The event artwork in section 11 frames 000618/000930/000990 matches this
 -- extracted image; give this route its own binding because field_narrator has
 -- no portrait.
@@ -130,8 +148,9 @@ local function party_check()
     return math.floor(quickness_total / active_count), 4 + active_count - 1
 end
 
-local function random_die(bound)
-    local response = game.services.call("random", "bounded_" .. bound)
+local function random_die(bound, service_id)
+    local response = game.services.call(
+        "random", service_id or ("bounded_" .. bound))
     local digits = type(response) == "string" and
         response:match("^roll_(%d+)$") or nil
     local value = digits and tonumber(digits) or nil
@@ -430,6 +449,143 @@ function RandomEvents.present_haggard_man()
     return source_boundary(
         "ROM 0x23BB4 choice continuation is not implemented: " ..
         tostring(choice))
+end
+
+function RandomEvents.present_security_guard_stop()
+    local location = game.location
+    if type(location) ~= "table" or location.type ~= "field_map" or
+       location.id ~= "random_field_event" or
+       location.event_id ~= "security_guard_stop" then
+        return nil
+    end
+
+    -- ROM 0x20FEC supplies the guard message and its MORE command to the
+    -- common 0x1F246 text service. The event content table owns the text;
+    -- FieldDialogueRuntime owns page input and the same-scene return.
+    local opening = event_opening("security_guard_stop")
+    if opening == nil then
+        return source_boundary(
+            "ROM 0x20FEC guard message content is unavailable")
+    end
+    game.ui.say_text(opening, true)
+
+    -- With FFFC22 bit 10 clear, ROM 0x242FA returns the no-ID record
+    -- 0x121278. Its D2/D0 commands enter 0x24402/0x24432 respectively.
+    local state = game.state
+    local has_security_pass
+    if type(state) == "table" then
+        has_security_pass = state["group_item.security_pass"]
+    end
+    if type(has_security_pass) ~= "boolean" then
+        return source_boundary(
+            "ROM 0x242FA requires FFFC22 bit 10; security-pass state is unavailable")
+    end
+    if has_security_pass then
+        return source_boundary(
+            "ROM 0x242FA badge-present roll and dispatch continuation are unresolved")
+    end
+    local choice = game.ui.prompt_text(
+        "security_guard_no_id", SECURITY_GUARD_NO_ID_PROMPT,
+        SECURITY_GUARD_NO_ID_CHOICES)
+    if choice == "talk" then
+        -- ROM 0x24432 reads slot 0 +0x7A. The source attribute sequence
+        -- begins Body at +0x77 and ends Willpower at +0x7C (0xD1AA); +0x7A
+        -- is Charisma, exposed by the named runner fact [C].
+        local party = type(game.party) == "function" and game.party() or nil
+        local first_runner = type(party) == "table" and party[0] or nil
+        local attributes = type(first_runner) == "table" and
+            first_runner.attributes or nil
+        local charisma = type(attributes) == "table" and
+            attributes.charisma or nil
+        if type(charisma) ~= "number" or charisma % 1 ~= 0 or
+           charisma < 0 or charisma > 0xFF then
+            return source_boundary(
+                "ROM 0x24432 requires slot 0 +0x7A Charisma")
+        end
+
+        local combat = game.modules and game.modules.combat or nil
+        if type(combat) ~= "table" or
+           type(combat.roll_thresholded_successes) ~= "function" then
+            return source_boundary(
+                "ROM 0x24432 requires the shared threshold-roll service")
+        end
+        local successes = combat.roll_thresholded_successes(
+            charisma, 6, random_die)
+        if successes == nil then
+            return source_boundary(
+                "ROM 0x24432 Charisma threshold roll is unavailable")
+        end
+        if successes > 1 then
+            -- 0x1212B4 is exactly the terminal text record for 0x11F378;
+            -- the next, independent mage record starts at 0x1212BC.
+            game.ui.say_text(SECURITY_GUARD_TALK_SUCCESS_RESULT, false)
+            return "resolved"
+        end
+        if successes == 1 then
+            -- Record 0x1212A0 supplies a MORE label at 0xFE5BF. The shared
+            -- text operation yields here until CE; only after resumption does
+            -- command 0xCE invoke ROM 0x24392's bounded-100 check.
+            game.ui.say_text(SECURITY_GUARD_TALK_ONE_SUCCESS_RESULT, true)
+            local dispatch_roll = random_die(100, "security_guard_dispatch")
+            if dispatch_roll == nil then
+                return source_boundary(
+                    "ROM 0x24392 requires the shared bounded-100 random service")
+            end
+            if dispatch_roll >= 40 then
+                game.ui.say_text(
+                    SECURITY_GUARD_TALK_DISPATCH_SUCCESS_RESULT, false)
+                return "resolved"
+            end
+
+            local scene = StoryState.scene()
+            if scene == nil or scene % 1 ~= 0 or scene < 0 or
+               scene > E.Scene.LAST_ID then
+                return source_boundary(
+                    "ROM 0x24392 needs the active scene to queue list 0x1D705C")
+            end
+            local sequence_id = E.WorldEffectSequence.SECURITY_GUARD_STOP_ATTACK
+            if not StoryState.queue_world_effect(scene, {
+                   actors = 1,
+                   sequence_id = sequence_id,
+               }) then
+                return source_boundary(
+                    "ROM 0x24392 could not queue one guard from list 0x1D705C")
+            end
+            game.ui.say_text(SECURITY_GUARD_TALK_DISPATCH_ALERT_RESULT, false)
+            return "resolved"
+        end
+        return source_boundary(
+            "ROM 0x24432 returned 0x121298; guard encounter continuation is unresolved")
+    end
+    if choice ~= "attack" then
+        return source_boundary(
+            "ROM 0x121278 selected an unsupported no-ID command: " ..
+            tostring(choice))
+    end
+
+    local scene_reference = game.services.call("field", "scene_reference")
+    local scene_id_text = type(scene_reference) == "string" and
+        scene_reference:match("^scene_(%d+)$") or nil
+    local scene_id = scene_id_text and tonumber(scene_id_text) or nil
+    if scene_id == nil or scene_id % 1 ~= 0 or scene_id < 0 or
+       scene_id > E.Scene.LAST_ID then
+        return source_boundary(
+            "ROM 0x24402 needs the active field scene for list 0x1D705C")
+    end
+
+    local sequence_id = E.WorldEffectSequence.SECURITY_GUARD_STOP_ATTACK
+    local queued = game.services.call(
+        "story", "queue_world_effect_" .. scene_id .. "_1_" .. sequence_id)
+    if queued ~= "queued" then
+        return source_boundary(
+            "ROM 0x24402 list 0x1D705C could not enter the shared actor queue")
+    end
+
+    -- ROM 0x24402 returns 0x121290 after forwarding the single template.
+    -- Combat entry/exit remains a separate source boundary.
+    game.ui.say_text(SECURITY_GUARD_ATTACK_RESULT, false)
+    return source_boundary(
+        "ROM 0x24402 queued the 0x1D6A1C guard and returned 0x121290; combat handoff remains unresolved")
 end
 
 return RandomEvents

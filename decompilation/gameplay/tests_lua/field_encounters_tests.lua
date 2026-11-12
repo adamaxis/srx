@@ -36,6 +36,7 @@ local function actor_row(sequence_order, sequence_id, placement_rule,
         sequence_order = sequence_order,
         selection_kind = selection_kind or "named_sequence",
         sequence_id = sequence_id or "field_alarm_reinforcements",
+        template_offset = 0x1D6A1C,
         actor_name = "corp guard",
         profile_id = profile_id or "corp_guard_k05_item06",
         action_kind = "item",
@@ -388,6 +389,25 @@ eq(alarm_actor_facts.roles.runner, true,
    "alarm actor template keeps its runner role")
 eq(alarm_actor_facts.roles.hostile, true,
    "alarm actor template keeps its hostile role")
+
+local guard_attack_sequence = Encounters.resolve_sequence(
+    2, E.WorldEffectSequence.SECURITY_GUARD_STOP_ATTACK)
+eq(guard_attack_sequence.kind, "dynamic_world_effect_sequence",
+   "source guard Attack resolves through the shared template service")
+eq(guard_attack_sequence.scene_id, 2,
+   "source guard sequence keeps the active scene")
+eq(guard_attack_sequence.placement_policy,
+   E.WorldEffectPlacementPolicy.MAP_DERIVED_CANDIDATES,
+   "ROM 0x24402 D0=1 selects map-derived placement")
+eq(#guard_attack_sequence.actors, 1,
+   "ROM list 0x1D705C resolves its single template")
+eq(guard_attack_sequence.actors[1].profile_id, "corp_guard_k05_item06",
+   "ROM template 0x1D6A1C resolves the corporate guard")
+eq(guard_attack_sequence.actors[1].sequence_id,
+   E.WorldEffectSequence.SECURITY_GUARD_STOP_ATTACK,
+   "direct actor template receives the requested semantic sequence ID")
+eq(guard_attack_sequence.actors[1].sequence_order, 0,
+   "single source template starts at sequence order zero")
 
 local map_sequence = Encounters.resolve_sequence(2, "boris_strike_team")
 eq(map_sequence.placement_policy, "map_derived_candidates",

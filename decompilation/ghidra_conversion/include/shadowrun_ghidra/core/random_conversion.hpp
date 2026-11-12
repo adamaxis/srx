@@ -41,6 +41,8 @@ inline constexpr std::uint32_t jitter_offset = 0x54C4U;
 // 0x167AE resource activity: index JSR 0x0D3A at 0x1697A, marker JSR 0x0D44 at 0x16986.
 inline constexpr std::uint32_t world_activity_resource_index = 0x1697AU;
 inline constexpr std::uint32_t world_activity_marker = 0x16986U;
+// ROM 0x24396: no-ID security guard's post-Talk dispatch check (bound 100).
+inline constexpr std::uint32_t security_guard_dispatch = 0x24396U;
 inline constexpr std::uint32_t random_grid_branch = 0xE664U;
 inline constexpr std::uint32_t random_grid_branch_zero_primary = 0xE672U;
 inline constexpr std::uint32_t random_grid_branch_zero_variant = 0xE688U;

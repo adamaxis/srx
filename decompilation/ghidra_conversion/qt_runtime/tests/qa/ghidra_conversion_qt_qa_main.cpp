@@ -29327,6 +29327,256 @@ int run_field_mitsuhama_scene34_electronics_qa(
     return 0;
 }
 
+struct SecurityGuardTalkRandomFixture {
+    std::uint16_t seed = 0U;
+    std::uint16_t seed_after_dice = 0U;
+    std::uint16_t seed_after_dispatch = 0U;
+    std::uint16_t dispatch_roll = 0U;
+};
+
+std::optional<SecurityGuardTalkRandomFixture>
+security_guard_talk_random_fixture(const std::uint8_t charisma,
+                                   const std::uint16_t dispatch_roll) {
+    if (charisma == 1U && dispatch_roll == 39U) {
+        return SecurityGuardTalkRandomFixture{886U, 38892U, 26141U, 39U};
+    }
+    if (charisma == 1U && dispatch_roll == 40U) {
+        return SecurityGuardTalkRandomFixture{240U, 11350U, 26863U, 40U};
+    }
+    if (charisma == 2U && dispatch_roll == 39U) {
+        return SecurityGuardTalkRandomFixture{395U, 9342U, 25783U, 39U};
+    }
+    if (charisma == 2U && dispatch_roll == 40U) {
+        return SecurityGuardTalkRandomFixture{513U, 48589U, 26722U, 40U};
+    }
+    return std::nullopt;
+}
+
+class SourceRandomTraceScope {
+public:
+    SourceRandomTraceScope() {
+        shadowrun::ghidra_conversion::clear_source_random_trace();
+        shadowrun::ghidra_conversion::set_source_random_trace_enabled(true);
+    }
+    ~SourceRandomTraceScope() { stop(); }
+    void stop() {
+        if (active_) {
+            shadowrun::ghidra_conversion::set_source_random_trace_enabled(false);
+            active_ = false;
+        }
+    }
+
+private:
+    bool active_ = true;
+};
+
+bool resolve_security_guard_no_id_talk_for_qa(
+    FieldSceneRuntime& field_scene,
+    const std::vector<std::string>& source_boundaries,
+    std::string& reason) {
+    const auto has_text = [](const auto& panel,
+                             const std::string_view needle) {
+        for (std::size_t index = 0U; index < panel.text_segment_count; ++index) {
+            if (panel.text_segments[index].find(needle) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto count_boundary = [&source_boundaries](
+                                    const std::string_view boundary) {
+        return std::count(source_boundaries.begin(), source_boundaries.end(),
+                          std::string(boundary));
+    };
+    const auto prompt_count =
+        count_boundary("field.activity.guard_spotted_prompt_opened");
+    const auto return_count =
+        count_boundary("field.dialogue.returned_to_field");
+    const auto& opening = field_scene.dialogue_panel();
+    const bool on_guard_opening_page =
+        opening.has_more && opening.option_count == 1U &&
+        opening.continuation_label == "          < MORE >" &&
+        opening.options[0U].source_label == "          < MORE >" &&
+        has_text(opening, "A secuity guard spots you.") &&
+        has_text(opening, "Show me some ID, pal.");
+    const bool on_guard_choices_page = opening.option_count == 2U &&
+        opening.options[0U].source_label == "<Attack!!>" &&
+        opening.options[1U].source_label == "<Talk to him.>" &&
+        has_text(opening,
+                 "Since you don't have a badge, you'll have to come up "
+                 "with something else.");
+    const auto escape_panel_text = [](const std::string_view text) {
+        std::string escaped;
+        for (const char ch : text) {
+            if (ch == '\n') {
+                escaped += "\\n";
+            } else if (ch == '\r') {
+                escaped += "\\r";
+            } else if (ch == '\t') {
+                escaped += "\\t";
+            } else {
+                escaped += ch;
+            }
+        }
+        return escaped;
+    };
+    if (field_scene.field_scene_reference_for_dump() != 30U ||
+        !field_scene.dialogue_open() ||
+        (!on_guard_opening_page && !on_guard_choices_page)) {
+        reason = "guard dialogue did not match the ROM opening or no-ID choices";
+        reason += " (scene=" + std::to_string(
+            field_scene.field_scene_reference_for_dump()) + ", open=" +
+            (field_scene.dialogue_open() ? "true" : "false") +
+            ", has_more=" + (opening.has_more ? "true" : "false") +
+            ", continuation=" +
+            escape_panel_text(opening.continuation_label) +
+            ", options=" + std::to_string(opening.option_count);
+        for (std::size_t index = 0U; index < opening.option_count; ++index) {
+            reason += ", option[" + std::to_string(index) + "]=" +
+                escape_panel_text(opening.options[index].source_label);
+        }
+        reason += ", text_segments=" +
+            std::to_string(opening.text_segment_count);
+        for (std::size_t index = 0U;
+             index < opening.text_segment_count; ++index) {
+            reason += ", text[" + std::to_string(index) + "]=" +
+                escape_panel_text(opening.text_segments[index]);
+        }
+        reason += ")";
+        return false;
+    }
+
+    const auto actors_before =
+        field_scene.dynamic_world_actor_count_for_dump();
+    if (on_guard_opening_page) {
+        tap_qa_controller_button(field_scene, 0x40U); // ROM 0xCC: MORE.
+    }
+    const auto& choices = field_scene.dialogue_panel();
+    if (!field_scene.dialogue_open() || choices.option_count != 2U ||
+        !has_text(choices,
+                  "Since you don't have a badge, you'll have to come up "
+                  "with something else.") ||
+        choices.options[0U].source_label != "<Attack!!>" ||
+        choices.options[1U].source_label != "<Talk to him.>" ||
+        count_boundary("field.activity.guard_spotted_prompt_opened") !=
+            prompt_count) {
+        reason = "MORE did not expose the exact ROM 0x121278 no-ID options";
+        return false;
+    }
+
+    // ROM 0x24432 reads slot-0 Charisma. Keep the live stat and control only
+    // the formula seed so the command-0xCE draw is exactly the safe boundary.
+    const auto charisma =
+        field_scene.active_runner_record().attributes[3U];
+    const auto random_fixture =
+        security_guard_talk_random_fixture(charisma, 40U);
+    if (!random_fixture.has_value()) {
+        reason = "ordinary slot-0 Charisma has no controlled 40-boundary seed";
+        return false;
+    }
+    field_scene.set_source_random_seed_for_dump(random_fixture->seed);
+    SourceRandomTraceScope random_trace_scope;
+    tap_qa_controller_button(field_scene, 0x10U); // B: Talk (second option).
+    const auto has_talk_intermediate = [&field_scene, &has_text] {
+        const auto& panel = field_scene.dialogue_panel();
+        return has_text(panel,
+                        "You barely convince him you have misplaced it.") &&
+               has_text(panel,
+                        "Suspicous, he decides to check in with dispatch...") &&
+               has_text(panel, "\n\n");
+    };
+    for (std::uint16_t settle = 0U;
+         settle < 120U && !has_talk_intermediate(); ++settle) {
+        field_scene.advance_frame();
+    }
+    const auto& intermediate = field_scene.dialogue_panel();
+    if (!field_scene.dialogue_open() || !has_talk_intermediate() ||
+        !intermediate.has_more || intermediate.option_count != 1U ||
+        intermediate.continuation_label != "          < MORE >" ||
+        intermediate.options[0U].source_label != "          < MORE >" ||
+        field_scene.source_random_seed_for_dump() !=
+            random_fixture->seed_after_dice ||
+        std::any_of(
+            shadowrun::ghidra_conversion::source_random_trace().begin(),
+            shadowrun::ghidra_conversion::source_random_trace().end(),
+            [](const auto& draw) {
+                return draw.rom_site ==
+                    shadowrun::ghidra_conversion::source_random_site::
+                        security_guard_dispatch;
+            }) ||
+        field_scene.dynamic_world_actor_count_for_dump() != actors_before) {
+        reason = "MORE did not pause before the tagged 0x24396 dispatch draw";
+        return false;
+    }
+
+    tap_qa_controller_button(field_scene, 0x40U); // A: command 0xCE / MORE.
+    const auto has_talk_result = [&field_scene, &has_text] {
+        const auto& panel = field_scene.dialogue_panel();
+        return has_text(panel,
+                        "Dispatch verifies his check and he waves you by.");
+    };
+    for (std::uint16_t settle = 0U;
+         settle < 120U && !has_talk_result(); ++settle) {
+        field_scene.advance_frame();
+    }
+    random_trace_scope.stop();
+    const auto& random_trace =
+        shadowrun::ghidra_conversion::source_random_trace();
+    const auto dispatch_draw = std::find_if(
+        random_trace.begin(), random_trace.end(), [](const auto& draw) {
+            return draw.rom_site ==
+                shadowrun::ghidra_conversion::source_random_site::
+                    security_guard_dispatch;
+        });
+    const auto dispatch_draw_count = std::count_if(
+        random_trace.begin(), random_trace.end(), [](const auto& draw) {
+            return draw.rom_site ==
+                shadowrun::ghidra_conversion::source_random_site::
+                    security_guard_dispatch;
+        });
+    if (!field_scene.dialogue_open() || !has_talk_result() ||
+        field_scene.dialogue_panel().option_count != 0U ||
+        dispatch_draw == random_trace.end() || dispatch_draw_count != 1 ||
+        dispatch_draw->bound != 100U ||
+        dispatch_draw->seed_before != random_fixture->seed_after_dice ||
+        dispatch_draw->seed_after != random_fixture->seed_after_dispatch ||
+        (static_cast<std::uint32_t>(dispatch_draw->seed_after) * 100U >> 16U) !=
+            random_fixture->dispatch_roll ||
+        field_scene.dynamic_world_actor_count_for_dump() != actors_before) {
+        reason = "command 0xCE did not produce the tagged 40 boundary and "
+                 "terminal ROM 0x121268 result";
+        reason += " (slot0_charisma=" + std::to_string(
+            charisma) + ", formula_seed=" +
+            std::to_string(random_fixture->seed) + ", dispatch_draws=" +
+            std::to_string(dispatch_draw_count) + ", result_segments=" +
+            std::to_string(field_scene.dialogue_panel().text_segment_count);
+        for (std::size_t index = 0U;
+             index < field_scene.dialogue_panel().text_segment_count; ++index) {
+            reason += ", result[" + std::to_string(index) + "]=" +
+                escape_panel_text(
+                    field_scene.dialogue_panel().text_segments[index]);
+        }
+        reason += ")";
+        return false;
+    }
+
+    tap_qa_controller_button(field_scene, 0x40U); // A: dismiss result.
+    for (std::uint16_t settle = 0U;
+         settle < 120U && field_scene.dialogue_open(); ++settle) {
+        field_scene.advance_frame();
+    }
+    if (field_scene.dialogue_open() ||
+        !finish_field_modal_return_transition(field_scene) ||
+        field_scene.field_scene_reference_for_dump() != 30U ||
+        count_boundary("field.dialogue.returned_to_field") !=
+            return_count + 1) {
+        reason = "the result did not return through the field modal lifecycle";
+        return false;
+    }
+    return true;
+}
+
 int run_field_mitsuhama_after_hours_entry_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -29334,7 +29584,9 @@ int run_field_mitsuhama_after_hours_entry_qa(
     const std::vector<std::uint16_t>& field_audio_events,
     const std::vector<std::string>& source_boundaries,
     const MitsuhamaAfterHoursEntryQaPath path =
-        MitsuhamaAfterHoursEntryQaPath::passkey_success) {
+        MitsuhamaAfterHoursEntryQaPath::passkey_success,
+    const bool security_guard_attack_qa = false,
+    const bool security_guard_talk_qa = false) {
     std::error_code output_error;
     std::filesystem::remove_all(output, output_error);
     if (output_error) {
@@ -29779,14 +30031,286 @@ int run_field_mitsuhama_after_hours_entry_qa(
     }
 
     walk_position = corridor_east_position;
-    const auto lift_approach_updates = walk_until(
+    const auto lift_approach_bound = source_walk_bound(
+        static_cast<std::uint32_t>(walk_position.y - 0x0200U));
+    auto lift_approach_updates = walk_until(
         0x01U,
-        source_walk_bound(static_cast<std::uint32_t>(walk_position.y -
-                                                      0x0200U)),
+        lift_approach_bound,
         [&field_scene] {
             return field_scene.elevator_selector_open_for_dump() ||
                    field_scene.field_scene_reference_for_dump() != 30U;
         });
+    if (security_guard_attack_qa || security_guard_talk_qa) {
+        const auto& opening = field_scene.dialogue_panel();
+        const auto has_text = [](const auto& panel,
+                                 const std::string_view needle) {
+            for (std::size_t index = 0U;
+                 index < panel.text_segment_count; ++index) {
+                if (panel.text_segments[index].find(needle) !=
+                    std::string_view::npos) {
+                    return true;
+                }
+            }
+            return false;
+        };
+        const auto contains_option = [](const auto& panel,
+                                        const std::string_view needle) {
+            for (std::size_t index = 0U; index < panel.option_count; ++index) {
+                if (panel.options[index].source_label.find(needle) !=
+                    std::string_view::npos) {
+                    return true;
+                }
+            }
+            return false;
+        };
+        const auto actors_before =
+            field_scene.dynamic_world_actor_count_for_dump();
+        if (field_scene.field_scene_reference_for_dump() != 30U ||
+            !field_scene.dialogue_open() || !opening.has_more ||
+            opening.option_count != 1U ||
+            opening.options[0U].source_label.find("MORE") ==
+                std::string_view::npos ||
+            !has_text(opening, "A secuity guard spots you") ||
+            !has_text(opening, "Show me some ID")) {
+            std::cerr << "Security guard no-ID Attack QA: production route "
+                         "did not open the source guard MORE page (scene="
+                      << field_scene.field_scene_reference_for_dump()
+                      << ", dialogue=" << field_scene.dialogue_open()
+                      << ", options=" << opening.option_count << ", text="
+                      << has_text(opening, "A secuity guard spots you")
+                      << "/" << has_text(opening, "Show me some ID")
+                      << ", failure=" << field_scene.failure() << ")\n";
+            return 3;
+        }
+
+        tap_qa_controller_button(field_scene, 0x40U); // ROM 0xCC: MORE.
+        const auto& choices = field_scene.dialogue_panel();
+        if (!field_scene.dialogue_open() || choices.option_count != 2U ||
+            !has_text(choices, "Since you don't have a badge") ||
+            !contains_option(choices, "Attack") ||
+            !contains_option(choices, "Talk")) {
+            std::cerr << "Security guard no-ID Attack QA: MORE did not expose "
+                         "the ROM 0x121278 Attack/Talk choices (dialogue="
+                      << field_scene.dialogue_open() << ", options="
+                      << choices.option_count << ", failure="
+                      << field_scene.failure() << ")\n";
+            return 3;
+        }
+
+        if (security_guard_talk_qa) {
+            const auto ordinary_charisma =
+                field_scene.active_runner_record().attributes[3U];
+            std::string guard_failure;
+            if (!resolve_security_guard_no_id_talk_for_qa(
+                    field_scene, source_boundaries, guard_failure)) {
+                std::cerr << "Security guard no-ID Talk QA: "
+                          << guard_failure << " (runtime failure="
+                          << field_scene.failure() << ")\n";
+                return 3;
+            }
+            const auto resumed_at = field_scene.field_entity_world_position();
+            struct ResumedMoveCandidate {
+                std::uint8_t input;
+                std::int32_t dx;
+                std::int32_t dy;
+                std::string_view label;
+            };
+            constexpr std::array<ResumedMoveCandidate, 4U> kMoveCandidates{{
+                {0x01U, 0, -1, "up"}, {0x02U, 0, 1, "down"},
+                {0x04U, -1, 0, "left"}, {0x08U, 1, 0, "right"},
+            }};
+            std::optional<ResumedMoveCandidate> move_candidate;
+            std::array<std::int16_t, 4U> collision_samples{};
+            const auto sample_candidate = [&](const std::size_t index) {
+                const auto& candidate = kMoveCandidates[index];
+                const auto sample_x = static_cast<std::int32_t>(resumed_at.x) +
+                    candidate.dx * 16;
+                const auto sample_y = static_cast<std::int32_t>(resumed_at.y) +
+                    candidate.dy * 16;
+                if (sample_x < 0 || sample_x > 0xFFFF || sample_y < 0 ||
+                    sample_y > 0xFFFF) {
+                    return std::numeric_limits<std::int16_t>::min();
+                }
+                return field_scene.probe_field_collision_for_dump(
+                    static_cast<std::uint16_t>(sample_x),
+                    static_cast<std::uint16_t>(sample_y));
+            };
+            for (std::size_t index = 0U;
+                 index < kMoveCandidates.size(); ++index) {
+                collision_samples[index] = sample_candidate(index);
+                if (!move_candidate.has_value() &&
+                    collision_samples[index] == 0) {
+                    move_candidate = kMoveCandidates[index];
+                }
+            }
+            if (!move_candidate.has_value()) {
+                std::cerr << "Security guard no-ID Talk QA: source collision "
+                             "probes found no clear adjacent movement cell "
+                             "after the terminal return (samples="
+                          << collision_samples[0] << ','
+                          << collision_samples[1] << ','
+                          << collision_samples[2] << ','
+                          << collision_samples[3] << ", transition="
+                          << field_scene.field_interaction_transition_active_for_dump()
+                          << ", modal_return_frames="
+                          << static_cast<unsigned>(
+                                 field_scene.field_modal_return_transition_frames_for_dump())
+                          << ")\n";
+                return 3;
+            }
+            field_scene.set_terrain_probe_trace_enabled_for_dump(true);
+            const auto resumed_updates = walk_until(
+                move_candidate->input, source_walk_bound(0x0010U),
+                [&field_scene, resumed_at, move_candidate] {
+                    const auto position =
+                        field_scene.field_entity_world_position();
+                    return move_candidate->dx < 0
+                        ? position.x < resumed_at.x
+                        : move_candidate->dx > 0
+                            ? position.x > resumed_at.x
+                            : move_candidate->dy < 0
+                                ? position.y < resumed_at.y
+                                : position.y > resumed_at.y;
+                });
+            const auto resumed_position =
+                field_scene.field_entity_world_position();
+            const auto movement_probe_count =
+                field_scene.terrain_probe_trace_for_dump().size();
+            const auto last_movement_collision = movement_probe_count != 0U
+                ? field_scene.terrain_probe_trace_for_dump().back()
+                      .collision_result
+                : static_cast<std::int16_t>(0);
+            field_scene.set_terrain_probe_trace_enabled_for_dump(false);
+            const auto moved = move_candidate->dx < 0
+                ? resumed_position.x < resumed_at.x
+                : move_candidate->dx > 0
+                    ? resumed_position.x > resumed_at.x
+                    : move_candidate->dy < 0
+                        ? resumed_position.y < resumed_at.y
+                        : resumed_position.y > resumed_at.y;
+            if (field_scene.field_scene_reference_for_dump() != 30U ||
+                resumed_updates == 0U || !moved ||
+                field_scene.dialogue_open() ||
+                field_scene.field_interaction_transition_active_for_dump()) {
+                std::cerr << "Security guard no-ID Talk QA: terminal text "
+                             "did not return to ordinary Scene-30 movement "
+                             "(scene="
+                          << field_scene.field_scene_reference_for_dump()
+                          << ", dialogue=" << field_scene.dialogue_open()
+                          << ", direction=" << move_candidate->label
+                          << ", updates=" << resumed_updates << ", position="
+                          << resumed_at.x << ',' << resumed_at.y << "->"
+                          << resumed_position.x << ',' << resumed_position.y
+                          << ", probes=" << collision_samples[0] << ','
+                          << collision_samples[1] << ','
+                          << collision_samples[2] << ','
+                          << collision_samples[3]
+                          << ", interaction_transition="
+                          << field_scene.field_interaction_transition_active_for_dump()
+                          << ", modal_return_frames="
+                          << static_cast<unsigned>(
+                                 field_scene.field_modal_return_transition_frames_for_dump())
+                          << ", mode="
+                          << field_scene.field_interaction_mode_for_dump()
+                          << ", mode_event="
+                          << static_cast<unsigned>(
+                                 field_scene.field_mode_event_code_for_dump())
+                          << ", transition_timer="
+                          << field_scene.field_interaction_transition_timer_for_dump()
+                          << ", movement_probes=" << movement_probe_count
+                          << ", last_collision=" << last_movement_collision
+                          << ", runtime_transition="
+                          << field_scene.field_runtime_state_for_dump()
+                                 .field_transition_requested
+                          << ", runtime_world_activity="
+                          << field_scene.field_runtime_state_for_dump()
+                                 .world_activity_requested
+                          << ", runtime_pending_handler="
+                          << field_scene.field_runtime_state_for_dump()
+                                 .pending_field_scene_handler
+                          << ", runtime_activity_lock="
+                          << field_scene.field_runtime_state_for_dump()
+                                 .field_activity_lock
+                          << ", runtime_activity_countdown="
+                          << field_scene.field_runtime_state_for_dump()
+                                 .world_activity_countdown
+                          << ", runtime_display_service="
+                          << field_scene.field_runtime_state_for_dump()
+                                 .display_service_word
+                          << ", selector="
+                          << field_scene.elevator_selector_open_for_dump()
+                          << ", failure=" << field_scene.failure() << ")\n";
+                return 3;
+            }
+            std::cout << "field_security_guard_no_id_talk_qa=passed "
+                      << "scene=30 slot0_charisma="
+                      << static_cast<unsigned>(ordinary_charisma)
+                      << " dispatch_roll=40 result=0x121268 "
+                      << "direction=" << move_candidate->label
+                      << " resumed_movement=" << resumed_updates << '\n';
+            return 0;
+        }
+
+        tap_qa_controller_button(field_scene, 0x40U); // ROM command 0xD2.
+        for (std::uint16_t settle = 0U;
+             settle < 120U &&
+             field_scene.dynamic_world_actor_count_for_dump() == actors_before;
+             ++settle) {
+            field_scene.advance_frame();
+        }
+        const auto& attack_result = field_scene.dialogue_panel();
+        const auto resolved_boundary = std::find(
+            source_boundaries.begin(), source_boundaries.end(),
+            "field.world_activity.security_guard_stop_attack_sequence_resolved");
+        if (!field_scene.dialogue_open() ||
+            !has_text(attack_result,
+                      "You quickly pull your weapons and attack") ||
+            field_scene.dynamic_world_actor_count_for_dump() !=
+                actors_before + 1U ||
+            resolved_boundary == source_boundaries.end()) {
+            std::cerr << "Security guard no-ID Attack QA: ROM 0x24402 did not "
+                         "queue and resolve its one guard through the field "
+                         "actor service (dialogue="
+                      << field_scene.dialogue_open() << ", actors="
+                      << actors_before << "->"
+                      << field_scene.dynamic_world_actor_count_for_dump()
+                      << ", result="
+                      << has_text(attack_result,
+                                  "You quickly pull your weapons and attack")
+                      << ", failure=" << field_scene.failure() << ")\n";
+            return 3;
+        }
+        std::cout << "field_security_guard_no_id_attack_qa=passed "
+                  << "scene=30 actors=" << actors_before << "->"
+                  << field_scene.dynamic_world_actor_count_for_dump()
+                  << " post_combat_boundary=0x121290\n";
+        return 0;
+    }
+    if (field_scene.dialogue_open() &&
+        !field_scene.elevator_selector_open_for_dump() &&
+        field_scene.field_scene_reference_for_dump() == 30U) {
+        std::string guard_failure;
+        if (!resolve_security_guard_no_id_talk_for_qa(
+                field_scene, source_boundaries, guard_failure)) {
+            std::cerr << "Mitsuhama entry QA: ordinary guard handling failed: "
+                      << guard_failure << " (runtime failure="
+                      << field_scene.failure() << ")\n";
+            return 3;
+        }
+        if (lift_approach_updates >= lift_approach_bound) {
+            std::cerr << "Mitsuhama entry QA: guard return exhausted the "
+                         "original source row-33 movement bound\n";
+            return 3;
+        }
+        const auto resumed_updates = walk_until(
+            0x01U, lift_approach_bound - lift_approach_updates,
+            [&field_scene] {
+                return field_scene.elevator_selector_open_for_dump() ||
+                       field_scene.field_scene_reference_for_dump() != 30U;
+            });
+        lift_approach_updates += resumed_updates;
+    }
+
     const auto lift_transition =
         field_scene.last_field_movement_transition_for_dump();
     const auto lift_contact_image = render_qa_field(field_scene);
@@ -30079,17 +30603,123 @@ int run_field_mitsuhama_after_hours_entry_qa(
         return 3;
     }
     std::uint32_t probe_frames = 0U;
+    std::uint32_t probe_guard_dialogues_seen = 0U;
+    std::string probe_guard_dialogue_failure;
+    const auto service_route_guard_dialogue = [&field_scene,
+                                                &probe_guard_dialogues_seen,
+                                                &probe_guard_dialogue_failure] {
+        const auto has_text = [](const auto& page,
+                                 const std::string_view needle) {
+            for (std::size_t index = 0U;
+                 index < page.text_segment_count; ++index) {
+                if (page.text_segments[index].find(needle) !=
+                    std::string_view::npos) {
+                    return true;
+                }
+            }
+            return false;
+        };
+        if (!field_scene.dialogue_open()) return true;
+        ++probe_guard_dialogues_seen;
+        field_scene.set_controller_nibble(0U);
+        const auto is_guard_opening = [&] {
+            const auto& page = field_scene.dialogue_panel();
+            return page.has_more && page.option_count == 1U &&
+                   has_text(page, "A secuity guard spots you.") &&
+                   has_text(page, "Show me some ID, pal.");
+        };
+        for (std::uint16_t settle = 0U;
+             settle < 120U && !is_guard_opening(); ++settle) {
+            field_scene.advance_frame();
+        }
+        const auto& opening = field_scene.dialogue_panel();
+        if (!is_guard_opening()) {
+            probe_guard_dialogue_failure =
+                std::string("unexpected dialogue interrupted "
+                            "Scene-34 route (more=") +
+                (opening.has_more ? "true" : "false") + ", options=" +
+                std::to_string(opening.option_count) + ", text=";
+            for (std::size_t index = 0U;
+                 index < opening.text_segment_count; ++index) {
+                probe_guard_dialogue_failure += "[" +
+                    std::string(opening.text_segments[index]) + "]";
+            }
+            probe_guard_dialogue_failure += ")";
+            return false;
+        }
+
+        // ROM 0x20FEC loads text record 0x121238, whose 0xCC MORE command
+        // advances through 0x1F246. B selects the second, 0x121278 Talk option.
+        tap_qa_controller_button(field_scene, 0x40U);
+        const auto& choices = field_scene.dialogue_panel();
+        if (!field_scene.dialogue_open() || choices.option_count != 2U ||
+            choices.options[0U].source_label != "<Attack!!>" ||
+            choices.options[1U].source_label != "<Talk to him.>") {
+            probe_guard_dialogue_failure =
+                "guard MORE page did not expose ROM 0x121278 choices";
+            return false;
+        }
+        tap_qa_controller_button(field_scene, 0x10U);
+
+        const auto has_talk_intermediate = [&] {
+            const auto& page = field_scene.dialogue_panel();
+            return has_text(page,
+                            "You barely convince him you have misplaced it.") &&
+                   page.has_more;
+        };
+        const auto has_talk_success = [&] {
+            const auto& page = field_scene.dialogue_panel();
+            return has_text(page,
+                            "You manage to convince him you misplaced it.") ||
+                   has_text(page,
+                            "Dispatch verifies his check and he waves you by.");
+        };
+        for (std::uint16_t settle = 0U;
+             settle < 120U && !has_talk_intermediate() &&
+             !has_talk_success(); ++settle) {
+            field_scene.advance_frame();
+        }
+        if (has_talk_intermediate()) {
+            tap_qa_controller_button(field_scene, 0x40U);
+            for (std::uint16_t settle = 0U;
+                 settle < 120U && !has_talk_success(); ++settle) {
+                field_scene.advance_frame();
+            }
+        }
+        if (!field_scene.dialogue_open() || !has_talk_success()) {
+            probe_guard_dialogue_failure =
+                "ROM 0x24432 Talk did not produce a pass-through result";
+            return false;
+        }
+        tap_qa_controller_button(field_scene, 0x40U);
+        for (std::uint16_t settle = 0U;
+             settle < 120U && field_scene.dialogue_open(); ++settle) {
+            field_scene.advance_frame();
+        }
+        if (field_scene.dialogue_open() ||
+            field_scene.field_scene_reference_for_dump() != 34U ||
+            !finish_field_modal_return_transition(field_scene)) {
+            probe_guard_dialogue_failure =
+                "guard Talk result did not return to Scene-34 movement";
+            return false;
+        }
+        return true;
+    };
     const auto walk_probe_leg =
-        [&field_scene, &probe_trace, &probe_frames, &record_walk_segment](
+        [&field_scene, &probe_trace, &probe_frames, &record_walk_segment,
+         &service_route_guard_dialogue](
             const std::uint8_t input_mask, const std::string_view input_name,
             const std::string_view stage, const std::uint32_t update_limit,
             const auto& reached) {
             const auto start = field_scene.field_entity_world_position();
             std::uint32_t updates = 0U;
             while (updates < update_limit && !reached() &&
-                   !field_scene.dialogue_open() &&
                    !field_scene.field_interaction_open() &&
                    field_scene.field_scene_reference_for_dump() == 34U) {
+                if (field_scene.dialogue_open() &&
+                    !service_route_guard_dialogue()) {
+                    break;
+                }
                 field_scene.set_controller_nibble(input_mask);
                 field_scene.advance_frame();
                 ++updates;
@@ -30109,6 +30739,10 @@ int run_field_mitsuhama_after_hours_entry_qa(
                                                          .field_activity_selection_for_dump())
                             << '\t' << field_scene.failure()
                             << '\n';
+                if (field_scene.dialogue_open() &&
+                    !service_route_guard_dialogue()) {
+                    break;
+                }
             }
             field_scene.set_controller_nibble(0U);
             field_scene.advance_frame();
@@ -30204,6 +30838,22 @@ int run_field_mitsuhama_after_hours_entry_qa(
                   << ", selection=" << static_cast<unsigned>(
                          field_scene.field_activity_selection_for_dump())
                   << ", interaction=" << field_scene.field_interaction_open()
+                  << ", panel_kind=" << static_cast<unsigned>(probe_panel.kind)
+                  << ", panel_options=" << probe_panel.option_count
+                  << ", option_labels=";
+        for (std::size_t index = 0U; index < probe_panel.option_count; ++index) {
+            std::cerr << '[' << index << "]="
+                      << probe_panel.options[index].source_label;
+        }
+        std::cerr << ", panel_text_segments="
+                  << probe_panel.text_segment_count
+                  << ", panel_text=";
+        for (std::size_t index = 0U;
+             index < probe_panel.text_segment_count; ++index) {
+            std::cerr << '[' << index << "]=" << probe_panel.text_segments[index];
+        }
+        std::cerr << ", guard_pages=" << probe_guard_dialogues_seen
+                  << ", guard=" << probe_guard_dialogue_failure
                   << ", failure=" << field_scene.failure() << ")\n";
         return 3;
     }
@@ -43755,6 +44405,10 @@ int main(int argc, char** argv) {
         bool field_pedestrian_contact_qa_only = false;
         std::optional<std::filesystem::path>
             field_mitsuhama_after_hours_entry_qa_path;
+        std::optional<std::filesystem::path>
+            field_security_guard_no_id_attack_qa_path;
+        std::optional<std::filesystem::path>
+            field_security_guard_no_id_talk_qa_path;
         MitsuhamaAfterHoursEntryQaPath field_mitsuhama_after_hours_entry_qa_mode =
             MitsuhamaAfterHoursEntryQaPath::passkey_success;
         std::optional<std::filesystem::path>
@@ -44845,6 +45499,24 @@ int main(int argc, char** argv) {
                 field_smoke = true;
                 field_mitsuhama_after_hours_entry_qa_path =
                     std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-security-guard-no-id-attack-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_security_guard_no_id_attack_qa_path =
+                    std::filesystem::path(argv[++index]);
+                field_mitsuhama_after_hours_entry_qa_path =
+                    field_security_guard_no_id_attack_qa_path;
+            }
+            if (std::string(argv[index]) ==
+                    "--field-security-guard-no-id-talk-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_security_guard_no_id_talk_qa_path =
+                    std::filesystem::path(argv[++index]);
+                field_mitsuhama_after_hours_entry_qa_path =
+                    field_security_guard_no_id_talk_qa_path;
             }
             if (std::string(argv[index]) ==
                     "--field-mitsuhama-after-hours-insufficient-passkey-qa" &&
@@ -46637,6 +47309,21 @@ int main(int argc, char** argv) {
                           << " foreground_masks=matched "
                           << "exact_rgb_differences=reported\n";
                 return 0;
+            }
+            if (field_security_guard_no_id_talk_qa_path.has_value()) {
+                return run_field_mitsuhama_after_hours_entry_qa(
+                    field_scene, asset_root,
+                    *field_security_guard_no_id_talk_qa_path,
+                    field_audio_events, field_source_boundaries,
+                    MitsuhamaAfterHoursEntryQaPath::passkey_success,
+                    false, true);
+            }
+            if (field_security_guard_no_id_attack_qa_path.has_value()) {
+                return run_field_mitsuhama_after_hours_entry_qa(
+                    field_scene, asset_root,
+                    *field_security_guard_no_id_attack_qa_path,
+                    field_audio_events, field_source_boundaries,
+                    MitsuhamaAfterHoursEntryQaPath::passkey_success, true);
             }
             if (field_mitsuhama_after_hours_entry_qa_path.has_value()) {
                 return run_field_mitsuhama_after_hours_entry_qa(

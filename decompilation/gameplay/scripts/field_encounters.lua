@@ -16,6 +16,18 @@ local direct_sequence_placement_policies = {
     [E.WorldEffectSequence.STOKER_MOTEL_AMBUSH] =
         E.WorldEffectPlacementPolicy.MAP_DERIVED_CANDIDATES,
 }
+local template_sequences = {
+    -- ROM 0x24402 forwards exactly the lone 0x1D6A1C actor from list
+    -- 0x1D705C with D0=1. Resolve that source template through the same
+    -- imported actor catalog used by ordinary field encounters.
+    [E.WorldEffectSequence.SECURITY_GUARD_STOP_ATTACK] = {
+        profile_id = "corp_guard_k05_item06",
+        actor_name = "corp guard",
+        placement_policy = E.WorldEffectPlacementPolicy.MAP_DERIVED_CANDIDATES,
+        placement_rule =
+            "map-derived candidates around camera-relative map anchors",
+    },
+}
 
 local function integer(value, minimum, maximum)
     return type(value) == "number" and value % 1 == 0 and
@@ -180,6 +192,33 @@ local function placement_policy_for_direct_sequence(
     placement_rule, sequence_id)
     return direct_sequence_placement_policies[sequence_id] or
         placement_policy_for_rule(placement_rule)
+end
+
+local function resolve_template_sequence(scene_id, sequence_id, descriptor,
+                                         data)
+    local selected
+    for _, row in ipairs(data.dynamic_world_activity_actors or {}) do
+        if row.profile_id == descriptor.profile_id and
+           row.actor_name == descriptor.actor_name and
+           (selected == nil or row.scene_id == scene_id) then
+            selected = row
+            if row.scene_id == scene_id then break end
+        end
+    end
+    if selected == nil then return nil end
+
+    local actor = actor_from_row(selected)
+    actor.sequence_order = 0
+    actor.sequence_id = sequence_id
+    actor.placement_rule = descriptor.placement_rule
+    return {
+        kind = "dynamic_world_effect_sequence",
+        placement_policy = descriptor.placement_policy,
+        scene_id = scene_id,
+        outcome_id = sequence_id,
+        sequence_id = sequence_id,
+        actors = { actor },
+    }
 end
 
 -- ROM 0x1E166 owns the encounter attempt policy. The host supplies semantic
@@ -354,6 +393,11 @@ function Encounters.resolve_sequence(scene_id, sequence_id)
     if data == nil then
         return nil
     end
+    local template_sequence = template_sequences[sequence_id]
+    if template_sequence ~= nil then
+        return resolve_template_sequence(
+            scene_id, sequence_id, template_sequence, data)
+    end
     local actors = ordered_actor_rows(data, function(row)
         return row.scene_id == scene_id and
                row.sequence_id == sequence_id and
@@ -401,7 +445,7 @@ end
 -- (alarm_active) is set. The list's actor template pointer is 0x1D6A1C.
 function Encounters.resolve_alarm_sequence(scene_id)
     return Encounters.resolve_sequence(
-        scene_id, "field_alarm_reinforcements")
+        scene_id, E.WorldEffectSequence.FIELD_ALARM_REINFORCEMENTS)
 end
 
 return Encounters

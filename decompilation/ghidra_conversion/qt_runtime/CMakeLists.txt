@@ -1755,6 +1755,23 @@ add_shadowrun_qt_qa_case(
     --field-mitsuhama-after-hours-entry-qa
     "${CMAKE_CURRENT_BINARY_DIR}/field-mitsuhama-after-hours-entry-qa")
 
+# Exercise the production Scene-30 guard prompt through its ordinary MORE,
+# no-ID choices, and ROM Attack command. The existing six elevator routes keep
+# their original input and outcome expectations.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_security_guard_no_id_attack_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-security-guard-no-id-attack-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-security-guard-no-id-attack-qa")
+
+# Exercise the ROM's slot-0 Charisma Talk check, its terminal success text,
+# shared modal return, and ordinary movement resumption.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_security_guard_no_id_talk_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-security-guard-no-id-talk-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-security-guard-no-id-talk-qa")
+
 # Re-run the physical Scene-30/34 route with a quality-1 passkey. Scene-34
 # record 90 selects level 2, so ROM 0x21628 must retain the three-action prompt
 # and leave the locked map cell, inventory, and action audio unchanged.

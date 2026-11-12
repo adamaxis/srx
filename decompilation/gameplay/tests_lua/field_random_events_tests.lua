@@ -692,4 +692,317 @@ eq(RandomEvents.present_haggard_man(), nil,
 eq(Combat.roll_thresholded_successes(-1, 4, function() return 0 end), nil,
    "negative dice pool rejected")
 
+
+eq(type(RandomEvents.present_security_guard_stop), "function",
+   "ROM 0x20FEC guard prompt has a Lua dialogue task")
+local function run_security_guard(choice, has_security_pass, charisma, rolls,
+                                 pause_at_dispatch_more)
+    local guard_pages = {}
+    local guard_exit = {}
+    local guard_choices = {}
+    local guard_queued_sequence
+    local random_calls = 0
+    local random_actions = {}
+    local dispatch_more_commands = {}
+    local queued_world_effects = {}
+    game = {
+        location = {
+            type = "field_map",
+            id = "random_field_event",
+            event_id = "security_guard_stop",
+        },
+        state = {
+            ["group_item.security_pass"] = has_security_pass == true,
+        },
+        modules = {
+            combat = Combat,
+            world_content_data = {
+                world_activity_event_content = {
+                    { event_id = "security_guard_stop",
+                      opening_text =
+                          "<A secuity guard spots you.>||Show me some ID, pal." },
+                },
+                world_activity_event_choices = {
+                    { event_id = "security_guard_stop", choice_order = 1,
+                      choice_id = "continue" },
+                },
+            },
+        },
+        party = function()
+            return {
+                [0] = { attributes = { charisma = charisma or 2 } },
+            }
+        end,
+        ui = {
+            say_text = function(text, continuation)
+                guard_pages[#guard_pages + 1] = {
+                    text = text,
+                    continuation = continuation,
+                    source = game.dialogue.active.source,
+                }
+                if pause_at_dispatch_more == true and continuation == true and
+                   text:find(
+                       "Suspicous, he decides to check in with dispatch...",
+                       1, true) ~= nil then
+                    dispatch_more_commands[#dispatch_more_commands + 1] =
+                        coroutine.yield("guard_dispatch_more")
+                end
+            end,
+            prompt_text = function(menu_id, prompt, options)
+                guard_choices[#guard_choices + 1] = {
+                    menu_id = menu_id,
+                    prompt = prompt,
+                    options = options,
+                }
+                return choice
+            end,
+        },
+        services = {
+            call = function(domain, action)
+                if domain == "field" and action == "scene_reference" then
+                    return "scene_30"
+                end
+                if domain == "story" and
+                   action ==
+                       "queue_world_effect_30_1_security_guard_stop_attack" then
+                    guard_queued_sequence = action
+                    queued_world_effects[#queued_world_effects + 1] = action
+                    return "queued"
+                end
+                if domain == "random" then
+                    random_calls = random_calls + 1
+                    random_actions[#random_actions + 1] = action
+                    local roll = rolls and rolls[random_calls] or nil
+                    return roll ~= nil and ("roll_" .. roll) or nil
+                end
+                if domain == "dialogue_exit" then
+                    guard_exit[#guard_exit + 1] = action
+                    return "applied"
+                end
+                return nil
+            end,
+        },
+    }
+    local function open_guard()
+        return DialogueFramework.open(
+            E.DialogueSource.FIELD_ACTIVITY,
+            "field_random_events", "present_security_guard_stop")
+    end
+    local guard_task
+    local guard_result
+    if pause_at_dispatch_more == true then
+        guard_task = coroutine.create(open_guard)
+        local resumed, yielded = coroutine.resume(guard_task)
+        assert(resumed, tostring(yielded))
+        guard_result = yielded
+    else
+        guard_result = open_guard()
+    end
+    return guard_result, guard_pages, guard_choices, guard_queued_sequence,
+        guard_exit, random_calls, random_actions, guard_task,
+        dispatch_more_commands, queued_world_effects
+end
+
+if type(RandomEvents.present_security_guard_stop) == "function" then
+    local guard_result, guard_pages, guard_choices, guard_queued_sequence,
+        guard_exit = run_security_guard("attack")
+    eq(type(guard_result), "table",
+       "no-ID Attack returns an explicit post-attack source boundary")
+    eq(guard_result.type, "source_boundary",
+       "partial combat handoff stays visible as a source boundary")
+    eq(guard_result.reason:find("0x121290", 1, true) ~= nil, true,
+       "Attack boundary cites the ROM weapon-draw record")
+    eq(#guard_pages, 2,
+       "Attack returns to the shared source text service")
+    eq(guard_pages[1].text,
+       "<A secuity guard spots you.>||Show me some ID, pal.",
+       "guard message uses extracted source text")
+    eq(guard_pages[1].continuation, true,
+       "guard message waits for the source MORE command")
+    eq(guard_pages[1].source, E.DialogueSource.FIELD_ACTIVITY,
+       "guard message uses the shared field activity dialogue path")
+    eq(guard_pages[2].text,
+       "<You quickly pull your weapons and attack!>",
+       "ROM 0x121290 is shown after the queued Attack outcome")
+    eq(guard_pages[2].continuation, false,
+       "ROM weapon-draw text does not add a continuation command")
+    eq(guard_pages[2].source, E.DialogueSource.FIELD_ACTIVITY,
+       "Attack result stays in the shared field dialogue service")
+    eq(#guard_choices, 1,
+       "guard MORE opens the no-security-ID choice prompt")
+    if guard_choices[1] then
+        eq(guard_choices[1].menu_id, "security_guard_no_id",
+           "guard prompt has a stable menu ID")
+        eq(guard_choices[1].prompt,
+           "<Since you don't have a badge, you'll have to come up with something else.>",
+           "no-ID prompt uses ROM 0x121278 text")
+        eq(#guard_choices[1].options, 2,
+           "ROM 0x121278 presents Attack and Talk")
+        eq(guard_choices[1].options[1].id, "attack",
+           "ROM command 0xD2 selects Attack")
+        eq(guard_choices[1].options[2].id, "talk",
+           "ROM command 0xD0 selects Talk")
+        eq(guard_choices[1].options[1].label, "<Attack!!>",
+           "Attack label uses the shared source button format")
+        eq(guard_choices[1].options[2].label, "<Talk to him.>",
+           "Talk label uses the source button format")
+    end
+    eq(guard_queued_sequence,
+       "queue_world_effect_30_1_security_guard_stop_attack",
+       "Attack queues the one-guard source sequence")
+    eq(#guard_exit, 0,
+       "guard response uses the shared task return lifecycle")
+
+    local talk_result, talk_pages, talk_choices, talk_sequence, _,
+        talk_random_calls = run_security_guard(
+            "talk", false, 2, { 5, 0, 5, 0 })
+    eq(talk_result, "resolved",
+       "ROM 0x24432 result above one returns the explanation outcome")
+    eq(#talk_choices, 1,
+       "Talk follows the same source MORE and no-ID choice lifecycle")
+    eq(#talk_pages, 2,
+       "successful Talk presents the opening and terminal result page")
+    eq(talk_pages[2].text,
+       "<You manage to convince him you misplaced it.\n\n" ..
+       "He seems satisfied and moves on.>",
+       "ROM 0x1212B4 preserves both 0x80-separated sentences from 0x11F378")
+    eq(talk_pages[2].text:find(
+           "You manage to convince him you misplaced it.", 1, true) ~= nil,
+       true, "Talk success keeps the first sentence at 0x11F378")
+    eq(talk_pages[2].text:find(
+           "He seems satisfied and moves on.", 1, true) ~= nil,
+       true, "Talk success keeps the terminal second sentence at 0x11F378")
+    eq(talk_pages[2].continuation, false,
+       "ROM 0x1212B4 is a terminal text record")
+    eq(talk_pages[2].source, E.DialogueSource.FIELD_ACTIVITY,
+       "Talk result stays in the shared field dialogue service")
+    eq(talk_sequence, nil,
+       "successful Talk does not queue a combat actor")
+    eq(talk_random_calls, 4,
+       "two Charisma dice use the shared exploding-six service")
+
+    local waiting_marker, waiting_pages, _, _, _, waiting_random_calls,
+        waiting_random_actions, waiting_task, waiting_more_commands,
+        waiting_effects = run_security_guard(
+            "talk", false, 2, { 5, 0, 0, 39 }, true)
+    eq(waiting_marker, "guard_dispatch_more",
+       "one-success Talk pauses at the CE MORE page")
+    eq(coroutine.status(waiting_task), "suspended",
+       "one-success Talk remains suspended until CE continues MORE")
+    eq(#waiting_pages, 2,
+       "one-success Talk has not presented a result while MORE is pending")
+    eq(waiting_pages[2].continuation, true,
+       "the one-success text waits for its MORE command")
+    eq(waiting_random_calls, 3,
+       "only the Charisma dice have been rolled before MORE resumes")
+    eq(table.concat(waiting_random_actions, ","),
+       "bounded_6,bounded_6,bounded_6",
+       "the tagged dispatch draw is not requested before CE")
+    eq(#waiting_effects, 0,
+       "guard effect is not queued while the MORE page is pending")
+
+    local resumed, failure_result = coroutine.resume(waiting_task, "CE")
+    eq(resumed, true, "CE resumes the one-success Talk continuation")
+    eq(failure_result, "resolved",
+       "roll 39 resolves through the guard dispatch outcome")
+    eq(waiting_more_commands[1], "CE",
+       "the dispatch roll follows the CE continuation")
+    eq(table.concat(waiting_random_actions, ","),
+       "bounded_6,bounded_6,bounded_6,security_guard_dispatch",
+       "the post-CE roll uses the tagged security guard dispatch service")
+    eq(#waiting_effects, 1,
+       "roll 39 queues exactly one guard effect")
+    eq(waiting_effects[1],
+       "queue_world_effect_30_1_security_guard_stop_attack",
+       "roll 39 queues the source guard stop-attack sequence")
+    eq(#waiting_pages, 3,
+       "roll 39 shows the negative dispatch response after the guard effect")
+    eq(waiting_pages[3].text,
+       "<Dispatch comes back negative and sounds the alert.>",
+       "roll 39 presents the alert response")
+    eq(waiting_pages[3].continuation, false,
+       "the roll-39 alert response is terminal")
+
+    local safe_result, safe_pages, _, safe_sequence, _, safe_random_calls,
+        safe_random_actions, _, _, safe_effects = run_security_guard(
+            "talk", false, 2, { 5, 0, 0, 40 })
+    eq(safe_result, "resolved",
+       "roll 40 resolves through the safe Talk outcome")
+    eq(#safe_pages, 3,
+       "roll 40 shows its MORE page followed by the safe result")
+    eq(safe_pages[2].text,
+       "<You barely convince him you have misplaced it.\n\n" ..
+       "Suspicous, he decides to check in with dispatch...>",
+       "ROM 0x1212A0 preserves its complete two-sentence text")
+    eq(safe_pages[2].continuation, true,
+       "ROM 0x1212A0 uses the shared MORE continuation at 0xFE5BF")
+    eq(safe_pages[3].text,
+       "<Dispatch verifies his check and he waves you by.>",
+       "ROM 0x121268 presents the verified-dispatch safe result")
+    eq(safe_pages[3].continuation, false,
+       "roll 40 safe result is terminal")
+    eq(safe_pages[3].source, E.DialogueSource.FIELD_ACTIVITY,
+       "all Talk pages stay in the shared field dialogue service")
+    eq(safe_sequence, nil,
+       "roll 40 does not queue a guard effect")
+    eq(#safe_effects, 0,
+       "roll 40 leaves the world-effect queue unchanged")
+    eq(safe_random_calls, 4,
+       "one-success Talk consumes its dice and bounded-100 check")
+    eq(safe_random_actions[4], "security_guard_dispatch",
+       "roll 40 uses the site-tagged dispatch service")
+
+    local zero_success, zero_pages, _, zero_sequence, _, zero_random_calls =
+        run_security_guard("talk", false, 1, { 0 })
+    eq(type(zero_success), "table",
+       "zero Talk successes remain an explicit encounter boundary")
+    eq(zero_success.reason:find("0x121298", 1, true) ~= nil, true,
+       "zero successes name the ROM attack page")
+    eq(#zero_pages, 1,
+       "unfinished encounter branch does not invent a result page")
+    eq(zero_sequence, nil,
+       "zero successes do not pretend the guard encounter was started")
+    eq(zero_random_calls, 1,
+       "zero-success branch consumes one source die")
+
+    local invalid_runner_result = nil
+    game.party = function() return { [0] = { attributes = {} } } end
+    game.services.call = function(domain, action)
+        if domain == "dialogue_exit" then return "applied" end
+        return nil
+    end
+    local invalid_runner_pages = {}
+    game.ui.say_text = function(text, continuation)
+        invalid_runner_pages[#invalid_runner_pages + 1] = {
+            text = text, continuation = continuation,
+            source = game.dialogue.active.source,
+        }
+    end
+    game.ui.prompt_text = function() return "talk" end
+    invalid_runner_result = DialogueFramework.open(
+        E.DialogueSource.FIELD_ACTIVITY,
+        "field_random_events", "present_security_guard_stop")
+    eq(type(invalid_runner_result), "table",
+       "missing slot-zero Charisma stays an explicit source boundary")
+    eq(invalid_runner_result.reason:find("Charisma", 1, true) ~= nil, true,
+       "missing runner fact identifies the ROM source field")
+    eq(#invalid_runner_pages, 1,
+       "missing source runner fact does not fabricate a Talk result")
+
+    local badge_result, badge_pages, badge_choices, badge_sequence, _,
+        badge_random_calls = run_security_guard("attack", true)
+    eq(type(badge_result), "table",
+       "badge-present continuation remains an explicit boundary")
+    eq(badge_result.reason:find("badge-present", 1, true) ~= nil, true,
+       "badge state follows the ROM 0x242FA branch")
+    eq(#badge_pages, 1,
+       "badge-present handler keeps the opening MORE page")
+    eq(#badge_choices, 0,
+       "no-ID choices are not shown when FFFC22 bit 10 is set")
+    eq(badge_sequence, nil,
+       "badge-present branch does not queue the no-ID Attack list")
+    eq(badge_random_calls, 0,
+       "unimplemented badge roll does not consume random state")
+end
+
 print(("field_random_events_tests: %d checks"):format(checks))

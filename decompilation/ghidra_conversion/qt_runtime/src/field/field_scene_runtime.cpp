@@ -1332,6 +1332,12 @@ FieldSceneRuntime::FieldSceneRuntime(
                 }
                 return std::nullopt;
             }
+            if (service_id == "random.security_guard_dispatch") {
+                const auto roll = source_random_bound(
+                    100U, source_random_site::security_guard_dispatch);
+                return "roll_" +
+                       std::to_string(static_cast<std::uint16_t>(roll));
+            }
             constexpr std::string_view kBoundedRandomPrefix =
                 "random.bounded_";
             if (service_id.rfind(kBoundedRandomPrefix, 0U) == 0U) {
@@ -9472,11 +9478,30 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         }
         if (continuation == MovementModeTransitionContinuation::
                                 guard_spotted_field_event) {
-            // 0x20FEC points at the 0x121238/0x122030 field-message program.
-            // The current gameplay message runner cannot decode that record [H].
-            source_boundary(
-                "field.activity.guard_spotted_message_0x121238_0x122030_unresolved");
-            return integration::PendingFieldSceneHandlerResult::unresolved;
+            // ROM 0x20FEC supplies the text profile to the shared 0x1F246
+            // message service. Reuse its field-dialogue page lifecycle [C].
+            const auto scene_id = static_cast<std::uint8_t>(
+                state_.field_scene_buffers.scene_reference);
+            game_scripts_.set_location_context(
+                "field_map", "random_field_event", "field.world_event",
+                "field_narrator", "security_guard_stop", scene_id);
+            if (!field_dialogue_.open_gameplay_task(
+                    scripting::ScriptDialogueSource::field_activity,
+                    "field_random_events",
+                    "present_security_guard_stop")) {
+                std::string reason =
+                    "field.activity.guard_spotted_prompt_failed";
+                const auto& detail =
+                    field_dialogue_.panel().source_boundary_reason;
+                if (!detail.empty()) {
+                    reason += ":";
+                    reason.append(detail);
+                }
+                source_boundary(reason);
+                return integration::PendingFieldSceneHandlerResult::unresolved;
+            }
+            source_boundary("field.activity.guard_spotted_prompt_opened");
+            return integration::PendingFieldSceneHandlerResult::resumed_field;
         }
         if (continuation ==
             MovementModeTransitionContinuation::scene_37_antechamber_entry) {
