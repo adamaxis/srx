@@ -315,6 +315,9 @@ void apply_matrix_font_name_word_flips(QImage& font) {
     const auto mirror = [&font, &cell](const int source, const int dest) {
         const auto flipped = font.copy(cell(source)).mirrored(true, false);
         QPainter painter(&font);
+        // Transparent pixels are part of the source tile write. Replace the
+        // destination cell rather than compositing over its raw glyph.
+        painter.setCompositionMode(QPainter::CompositionMode_Source);
         painter.drawImage(cell(dest).topLeft(), flipped);
     };
     constexpr int kOpenParen = 0x28 - 0x20;
