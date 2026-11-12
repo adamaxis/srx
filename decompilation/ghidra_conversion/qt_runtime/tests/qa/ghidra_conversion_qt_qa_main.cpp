@@ -8,6 +8,7 @@
 #include "shadowrun_ghidra/core/asset_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/random_conversion.hpp"
+#include "shadowrun_ghidra/entities/movement_metric_conversion.hpp"
 #include "shadowrun_ghidra/field/vid_phone_service_conversion.hpp"
 #include "shadowrun_ghidra/integration/recruited_runner_conversation_conversion.hpp"
 #include "shadowrun_ghidra/session/recruited_runner_service_conversion.hpp"
