@@ -617,6 +617,8 @@ enum class ActorInteractionFlag : std::uint8_t {
 enum class ActorBehaviorFlag : std::uint8_t {
     action_window_open = 1U << 4U,
     resettable_effect_state = 1U << 6U,
+    // Live +0xB0 bit 6 is also the flee flag set by ROM 0x13E9E.
+    fleeing = 1U << 6U,
     high_effect_route = 1U << 7U,
 };
 
@@ -5483,8 +5485,14 @@ void FieldSceneRuntime::advance_default_field_actors(
             const bool escort_formation_route = actor_flag_is_set(
                 actor.source_behavior_flags,
                 ActorBehaviorFlag::high_effect_route);
+            // ROM 0x1397A sends a +0xB0.6 fleeing record straight to
+            // 0x13E8C -> 0x13E9E -> 0x145A2, which keeps routing it toward
+            // its saved boundary destination without consulting the target
+            // pool. Keep its movement services available off-screen too.
+            const bool flee_route = actor_flag_is_set(
+                actor.source_behavior_flags, ActorBehaviorFlag::fleeing);
             context.movement_allowed = has_candidate_in_source_pool ||
-                                       escort_formation_route;
+                                       escort_formation_route || flee_route;
 
             context.movement_services_available =
                 context.movement_allowed;

@@ -2095,6 +2095,59 @@ check(escort_concluded ~= nil and
       heartbeat_state.actor_facts.behavior.escort == false,
       "escort conclusion applies as a semantic actor lifecycle transition")
 
+-- ROM 0x1397A continues an off-screen fleeing record through 0x13E8C and
+-- 0x145A2 without consulting the target pool. Start the flee on-screen, then
+-- model an empty off-screen target pool; the host keeps movement services
+-- available for +0xB0.6 fleeing records, and Lua must keep routing.
+local flee48_context = movement_fixture(false)
+flee48_context.actor_id = "field_scene_2_actor_0"
+flee48_context.profile_id = "pedestrian_k0b_none00"
+flee48_context.visual_profile_id = E.ActorVisualProfile.PEDESTRIAN_RAT_SHAMAN
+flee48_context.action_kind = R.ActionKind.none
+flee48_context.action_code = E.ItemId.NONE
+flee48_context.initial_bearing_degrees = 45
+flee48_context.entry_delay = 0
+flee48_context.entry_animation_frame_count = 1
+flee48_context.live_field_actor = true
+flee48_context.phase = "behavior"
+flee48_context.spawn = true
+flee48_context.world_activity_active = true
+flee48_context.movement_allowed = true
+flee48_context.actor_facts = actor_facts({
+    lifecycle = { active = true },
+    roles = { pedestrian = true },
+})
+flee48_context.source_camera_x = 0x2000
+flee48_context.source_camera_y = 0x2000
+flee48_context.source_camera_limit_x = 0x7000
+flee48_context.source_camera_limit_y = 0x7000
+flee48_context.measure_destination = function()
+    return { bearing_degrees = 45, distance = 0x500, step_cost = 0x500 }
+end
+flee48_context.ai_random_bound = function() return 0 end
+check(ActorAI.heartbeat(flee48_context) ~= nil,
+      "flee48 pedestrian bootstrap heartbeat succeeds")
+local flee48_state = game.actors[flee48_context.actor_id]
+flee48_context.spawn = false
+local flee48_visible_heartbeat = ActorAI.heartbeat(flee48_context)
+local flee48_position_x = flee48_state.movement_step.state.position_x
+local flee48_position_y = flee48_state.movement_step.state.position_y
+flee48_context.source_projection_active = false
+flee48_context.movement_allowed = true
+flee48_context.movement_services_available = true
+flee48_context.ai_target_candidates = {}
+flee48_context.movement_state.position_x = flee48_position_x
+flee48_context.movement_state.position_y = flee48_position_y
+flee48_state.behavior_timer = 0
+local flee48_offscreen_heartbeat = ActorAI.heartbeat(flee48_context)
+check(flee48_offscreen_heartbeat ~= nil and
+      flee48_state.actor_facts.behavior.fleeing and
+      flee48_state.ai_think_path == "continue_movement" and
+      flee48_state.actor_facts.lifecycle.active and
+      flee48_state.movement_step ~= nil and
+      flee48_state.movement_step.state.position_x ~= flee48_position_x,
+      "0x1397A off-screen flee keeps advancing with an empty target pool [C: 0x1397A..0x13E9E, 0x145A2]")
+
 game.movement.follow_route_step_clear = follow_route_step_clear
 
 print(string.format("ai_think tests: %d/%d passed", pass, total))
