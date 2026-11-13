@@ -5080,9 +5080,12 @@
         if (sampled_title_byte(Qt::Key_Space) != kTitleStartButton ||
             sampled_title_byte(Qt::Key_Return) != kTitleStartButton ||
             sampled_title_byte(Qt::Key_Enter) != kTitleStartButton ||
+            sampled_title_byte(Qt::Key_A) != kStartupMenuA ||
             sampled_title_byte(Qt::Key_Z) != kStartupMenuA ||
-            sampled_title_byte(Qt::Key_X) != kStartupMenuB) {
-            return fail("title keys did not distinguish Start from menu A/B");
+            sampled_title_byte(Qt::Key_X) != kStartupMenuB ||
+            sampled_field_button_byte(Qt::Key_A) != kStartupMenuA ||
+            sampled_field_button_byte(Qt::Key_Z) != kStartupMenuA) {
+            return fail("A keys did not map to Genesis A while Start stayed distinct");
         }
         pending_title_controller_word_ = static_cast<std::uint16_t>(
             static_cast<std::uint16_t>(kTitleStartButton) << 8U);

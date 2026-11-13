@@ -26,7 +26,31 @@ local function check(condition, label)
     end
 end
 
-check(#shop_ids == 5, "the source shop catalog contains five menus")
+check(#shop_ids == 6, "the source shop catalog contains six menus")
+
+for selected_tab = 0, 5 do
+    Shop.open_menu("ares_weapon_emporium")
+    for _ = 1, selected_tab do
+        Shop.advance_menu(E.Pad.RIGHT, E.MenuBPolicy.ROM)
+    end
+    local result = Shop.advance_menu(E.Pad.A, E.MenuBPolicy.ROM)
+    check(result.open and result.event == "tab_selected" and
+          result.action_panel == 0 and
+          result.action_cursor == selected_tab and
+          result.selected_action == selected_tab,
+          "A latches Ares source tab " .. selected_tab ..
+          " and stays on the tab row (ROM 0x56D64 -> 0x587DA)")
+    local entered = Shop.advance_menu(E.Pad.DOWN, E.MenuBPolicy.ROM)
+    check(entered.open and entered.event == "panel_changed" and
+          entered.action_panel == 1 and entered.action_cursor == 0 and
+          entered.selected_action == selected_tab,
+          "Down enters the latched Ares tab " .. selected_tab .. " list")
+end
+
+Shop.open_menu("ares_weapon_emporium")
+local start_result = Shop.advance_menu(E.Pad.START, E.MenuBPolicy.ROM)
+check(not start_result.open and start_result.event == "returned_to_field",
+      "ROM Start exits the shop while C remains the runner-change button")
 
 local function open(shop_id)
     local state = Shop.open_menu(shop_id)
@@ -36,17 +60,20 @@ local function open(shop_id)
 end
 
 local function rom_root_action(shop_id)
+    local direct_selector = Shop.catalog[shop_id].menu_result == 1
     local result = Shop.advance_menu(E.Pad.A, E.MenuBPolicy.ROM)
     check(result.open and
-          result.event == (Shop.catalog[shop_id].menu_result == 1
-              and "equipment_upgrade_selected" or "no_change"),
-          shop_id .. " ROM A uses the source action-panel gate")
+          result.event == (direct_selector
+              and "equipment_upgrade_selected" or "tab_selected") and
+          (direct_selector or (result.action_panel == 0 and
+                               result.action_cursor == 0)),
+          shop_id .. " ROM A selects the highlighted tab")
     Shop.open_menu(shop_id)
     result = Shop.advance_menu(E.Pad.B, E.MenuBPolicy.ROM)
     check(result.open and
-          result.event == (Shop.catalog[shop_id].menu_result == 1
-              and "equipment_upgrade_selected" or "no_change"),
-          shop_id .. " ROM B follows the A branch and does not exit")
+          result.event == (direct_selector
+              and "equipment_upgrade_selected" or "tab_selected"),
+          shop_id .. " ROM B follows the A tab-confirm branch")
 end
 
 local function action_panel_event(shop_id)

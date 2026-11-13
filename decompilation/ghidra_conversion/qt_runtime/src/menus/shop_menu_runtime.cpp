@@ -787,6 +787,8 @@ std::optional<ShopMenuEvent> ShopMenuController::apply_script_snapshot(
         event = ShopMenuEvent::selection_moved;
     } else if (snapshot.event == "panel_changed") {
         event = ShopMenuEvent::panel_changed;
+    } else if (snapshot.event == "tab_selected") {
+        event = ShopMenuEvent::tab_selected;
     } else if (snapshot.event == "purchase_selected") {
         event = ShopMenuEvent::purchase_selected;
     } else if (snapshot.event == "sale_selected") {
@@ -821,7 +823,11 @@ std::optional<ShopMenuEvent> ShopMenuController::apply_script_snapshot(
         static_cast<std::int8_t>(snapshot.action_panel);
     source_state_.action_selection.selected_action =
         static_cast<std::int8_t>(snapshot.selected_action);
-    if (event == ShopMenuEvent::panel_changed && snapshot.action_panel != 0U) {
+    // ROM 0x587DA redraws the latched tab's offers after an A/B tab confirm;
+    // entering the list (0x58CDE) shows the highlighted group.
+    if (event == ShopMenuEvent::tab_selected ||
+        (event == ShopMenuEvent::panel_changed &&
+         snapshot.action_panel != 0U)) {
         displayed_offer_group_ = selected_group();
         displayed_offer_group_source_index_ = selected_group_index();
     }

@@ -15584,6 +15584,12 @@ void FieldSceneRuntime::advance_frame() {
             }
             shop_boundary("panel_changed");
             break;
+        case ShopMenuEvent::tab_selected:
+            if (source_audio_event_callback_) {
+                source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
+            }
+            shop_boundary("tab_selected");
+            break;
         case ShopMenuEvent::purchase_selected:
             if (source_audio_event_callback_) {
                 source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));

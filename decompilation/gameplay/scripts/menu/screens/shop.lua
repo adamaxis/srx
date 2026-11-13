@@ -57,8 +57,12 @@ function Shop.input(menu, controller_events)
         return move_panel(1)
     elseif (controller_events & (E.Pad.A | E.Pad.B)) ~= 0 then
         if menu.action_panel == 0 then
+            -- ROM 0x56CFE: on the tab row (0xFFF0D1 == 0) A/B skip 0x56DC4
+            -- and call 0x587DA, which latches the highlighted tab
+            -- (0xFFF0D0 -> 0xFFF0B8) and redraws its offers; the cursor
+            -- stays on the tab row until Down enters the list.
             menu.selected_action = menu.action_cursor
-            return event("no_change")
+            return event("tab_selected")
         end
         local group = definition.groups[
             menu.menu_result == 1 and 1 or menu.selected_action + 1]

@@ -229,6 +229,14 @@ int main() {
                     "selection_moved")) == ShopMenuEvent::selection_moved) ||
         !expect(menu.selected_group() == ShopActionGroup::armor) ||
         !expect(menu.displayed_offer_group() == ShopActionGroup::weapons) ||
+        // ROM 0x56D64 -> 0x587DA: A/B on the tab row latches the highlighted
+        // tab and redraws its offers without entering the list.
+        !expect(menu.apply_script_snapshot(snapshot(
+                    "ares_weapon_emporium", 1U, -1, 1U, 0U, 1U,
+                    "tab_selected")) == ShopMenuEvent::tab_selected) ||
+        !expect(!menu.offers_panel_active()) ||
+        !expect(menu.selected_group() == ShopActionGroup::armor) ||
+        !expect(menu.displayed_offer_group() == ShopActionGroup::armor) ||
         !expect(menu.apply_script_snapshot(snapshot(
                     "ares_weapon_emporium", 1U, -1, 0U, 1U, 1U,
                     "panel_changed")) == ShopMenuEvent::panel_changed) ||

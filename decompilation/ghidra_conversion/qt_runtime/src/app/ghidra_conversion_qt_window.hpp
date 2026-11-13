@@ -19,6 +19,7 @@
 #include "field_scene_runtime.hpp"
 #include "audio_playback.hpp"
 #include "cab_map_caption_presenter.hpp"
+#include "controller_key_mapping.hpp"
 #include "frame_debug_server.hpp"
 #include "genesis_image_compositor.hpp"
 #include "menu_b_policy_settings.hpp"
@@ -86,79 +87,8 @@ constexpr std::int64_t kStartupOptionsMenuRoute = 43;
 constexpr std::int64_t kMenuRouteAlwaysCancelPolicy = 1;
 constexpr std::int64_t kMenuRouteForwardAction = 1;
 constexpr std::int64_t kMenuRouteCancelAction = 11;
-constexpr std::uint8_t kTitleStartButton = 0x80U;
 constexpr std::size_t kTitleCircuitPhaseCount = 7U;
 constexpr std::size_t kTitleCircuitPaletteRevealPassCount = 3U;
-
-std::uint8_t sampled_menu_byte(const int key) {
-    switch (key) {
-    case Qt::Key_Up:
-        return kStartupMenuUp;
-    case Qt::Key_Down:
-        return kStartupMenuDown;
-    case Qt::Key_Z:
-        return kStartupMenuA;
-    case Qt::Key_X:
-        return kStartupMenuB;
-    case Qt::Key_C:
-        return kStartupMenuC;
-    case Qt::Key_Space:
-    case Qt::Key_Return:
-    case Qt::Key_Enter:
-        return kStartupMenuA;
-    default:
-        return 0U;
-    }
-}
-
-std::uint8_t sampled_start_options_byte(const int key) {
-    if (key == Qt::Key_Left) return kStartupMenuLeft;
-    if (key == Qt::Key_Right) return kStartupMenuRight;
-    return sampled_menu_byte(key);
-}
-
-// 0x1A9E's title break is driven by the latched Genesis Start bit. Startup
-// menus still map these keys to A; the title loop has its own input contract.
-std::uint8_t sampled_title_byte(const int key) {
-    switch (key) {
-    case Qt::Key_Space:
-    case Qt::Key_Return:
-    case Qt::Key_Enter:
-        return kTitleStartButton;
-    default:
-        return sampled_menu_byte(key);
-    }
-}
-
-std::uint8_t sampled_field_direction_bit(const int key) {
-    switch (key) {
-    case Qt::Key_Up:
-        return 0x01U;
-    case Qt::Key_Down:
-        return 0x02U;
-    case Qt::Key_Left:
-        return 0x04U;
-    case Qt::Key_Right:
-        return 0x08U;
-    default:
-        return 0U;
-    }
-}
-
-// 0x195C publishes Genesis port bit 7 as the high-byte Start edge. Startup
-// menus deliberately treat Space/Enter as A for their own input contract, but
-// the field coordinator must keep Start distinct because ROM 0x0B1A branches
-// on 0x8000 after the edge expansion.
-std::uint8_t sampled_field_button_byte(const int key) {
-    switch (key) {
-    case Qt::Key_Space:
-    case Qt::Key_Return:
-    case Qt::Key_Enter:
-        return 0x80U;
-    default:
-        return sampled_menu_byte(key);
-    }
-}
 
 QString phase_title(const StartupIntegrationPhase phase) {
     return QStringLiteral("Shadowrun - Ghidra Conversion Qt [%1]")

@@ -103,6 +103,17 @@ target_link_libraries(shadowrun_frame_debug_server_test
 add_test(NAME shadowrun_frame_debug_server
          COMMAND shadowrun_frame_debug_server_test)
 
+add_executable(shadowrun_ghidra_controller_key_mapping_test
+    tests/app/controller_key_mapping_test.cpp)
+target_include_directories(shadowrun_ghidra_controller_key_mapping_test
+    PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/app"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../include")
+target_link_libraries(shadowrun_ghidra_controller_key_mapping_test
+    PRIVATE Qt6::Core)
+add_test(NAME shadowrun_ghidra_controller_key_mapping
+         COMMAND shadowrun_ghidra_controller_key_mapping_test)
+
 # Exhaustive controller-mask audit for the source Hotel status/Options path.
 # This headless test exercises the runtime controller without constructing the
 # Qt window or starting audio.

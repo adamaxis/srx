@@ -111,6 +111,7 @@ enum class ShopMenuEvent : std::uint8_t {
     no_change,
     selection_moved,
     panel_changed,
+    tab_selected,
     purchase_selected,
     sale_selected,
     offer_unavailable,
