@@ -80,9 +80,16 @@
           "type": "action",
           "actionId": "story.set_fact",
           "arguments": {"factId":"motel_bill_paid","value":true},
-          "next": "package_handoff"
+          "next": "michael_package_contents"
         },
-        "package_handoff": { "type": "page", "eventId": "package-handoff", "next": "stay_on_map" },
+        "michael_package_contents": { "type": "page", "eventId": "michael-package-contents", "next": "michael_package_letter" },
+        "michael_package_letter": { "type": "page", "eventId": "michael-package-letter", "next": "michael_package_cyberdeck" },
+        "michael_package_cyberdeck": { "type": "page", "eventId": "michael-package-cyberdeck", "next": "michael_package_wristband" },
+        "michael_package_wristband": { "type": "page", "eventId": "michael-package-wristband", "next": "michael_package_fee" },
+        "michael_package_fee": { "type": "page", "eventId": "michael-package-fee", "next": "michael_package_holopix_ivanna" },
+        "michael_package_holopix_ivanna": { "type": "page", "eventId": "michael-package-holopix-ivanna", "next": "michael_package_holopix_caleb" },
+        "michael_package_holopix_caleb": { "type": "page", "eventId": "michael-package-holopix-caleb", "next": "michael_package_credstick" },
+        "michael_package_credstick": { "type": "page", "eventId": "michael-package-credstick", "next": "stay_on_map" },
         "jump_house_after_insufficient": { "type": "page", "eventId": "jump-house", "next": "stay_on_map" },
         "prepare_referral": {
           "type": "action",
@@ -178,15 +185,22 @@
       }
     },
     "stoker_motel.package_handoff_result": {
-      "entryNode": "package_handoff",
+      "entryNode": "michael_package_contents",
       "speakerId": "stoker",
       "textProfile": "stoker.motel",
       "provenance": {
-        "romAddresses": ["0x53A78", "0x53AB6", "0x213FA", "0x1F246", "0x1F3C4"],
+        "romAddresses": ["0x53A78", "0x53AB6", "0x213FA", "0xF487C", "0xF431A", "0xF43C1", "0xF44E0", "0xF456A", "0xF4648", "0xF46D1", "0xF4746", "0xF47AA", "0xF48E0", "0xF48F4", "0xF4908", "0x219C8", "0x219B6", "0x1F246", "0x1F3C4"],
         "scope": "paid_michael_package_handoff_and_same_map_return"
       },
       "nodes": {
-        "package_handoff": { "type": "page", "eventId": "package-handoff", "next": "stay_on_map" },
+        "michael_package_contents": { "type": "page", "eventId": "michael-package-contents", "next": "michael_package_letter" },
+        "michael_package_letter": { "type": "page", "eventId": "michael-package-letter", "next": "michael_package_cyberdeck" },
+        "michael_package_cyberdeck": { "type": "page", "eventId": "michael-package-cyberdeck", "next": "michael_package_wristband" },
+        "michael_package_wristband": { "type": "page", "eventId": "michael-package-wristband", "next": "michael_package_fee" },
+        "michael_package_fee": { "type": "page", "eventId": "michael-package-fee", "next": "michael_package_holopix_ivanna" },
+        "michael_package_holopix_ivanna": { "type": "page", "eventId": "michael-package-holopix-ivanna", "next": "michael_package_holopix_caleb" },
+        "michael_package_holopix_caleb": { "type": "page", "eventId": "michael-package-holopix-caleb", "next": "michael_package_credstick" },
+        "michael_package_credstick": { "type": "page", "eventId": "michael-package-credstick", "next": "stay_on_map" },
         "stay_on_map": { "type": "terminal", "outcome": { "type": "continue_in_place" } }
       }
     }

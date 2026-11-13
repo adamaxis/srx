@@ -806,6 +806,38 @@
           "continuation_key": "",
           "title_key": "stoker.motel.package-handoff.title"
         },
+        "michael-package-contents": {
+          "continuation_key": "shared.more",
+          "title_key": "stoker.motel.michael-package.contents.title"
+        },
+        "michael-package-letter": {
+          "continuation_key": "shared.more",
+          "title_key": "stoker.motel.michael-package.letter.title"
+        },
+        "michael-package-cyberdeck": {
+          "continuation_key": "shared.more",
+          "title_key": "stoker.motel.michael-package.cyberdeck.title"
+        },
+        "michael-package-wristband": {
+          "continuation_key": "shared.more",
+          "title_key": "stoker.motel.michael-package.wristband.title"
+        },
+        "michael-package-fee": {
+          "continuation_key": "shared.more",
+          "title_key": "stoker.motel.michael-package.fee.title"
+        },
+        "michael-package-holopix-ivanna": {
+          "continuation_key": "shared.more",
+          "title_key": "stoker.motel.michael-package.holopix-ivanna.title"
+        },
+        "michael-package-holopix-caleb": {
+          "continuation_key": "shared.more",
+          "title_key": "stoker.motel.michael-package.holopix-caleb.title"
+        },
+        "michael-package-credstick": {
+          "continuation_key": "",
+          "title_key": "stoker.motel.michael-package.credstick.title"
+        },
         "package-question": {
           "continuation_key": "",
           "title_key": "stoker.motel.package-question.title"

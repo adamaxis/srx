@@ -25,6 +25,49 @@ local text_file = assert(io.open(
 local script_text = Json.decode(text_file:read("*a")).texts
 text_file:close()
 
+local michael_contents_pages = {
+    {
+        id = "michael-package-contents",
+        key = "stoker.motel.michael-package.contents.title",
+        text = [[<The creds roll off your stick and in return you are handed a crumpled plastic box.||Opening it you find|a scented letter,|a cyberdeck,|a wristband,|and two holopix.>]],
+    },
+    {
+        id = "michael-package-letter",
+        key = "stoker.motel.michael-package.letter.title",
+        text = [[<The letter addressed to|Michael reads as follows:||  M--I don't trust our|Johnson, and neither|should you!  His story|just doesn't wash and you|know it.  I'm out on this|one and I hope you are|too.  I'll wait for you|at the Tarislar City Inn|in Puyallup Barrens.||      Tabatha Shale >]],
+    },
+    {
+        id = "michael-package-cyberdeck",
+        key = "stoker.motel.michael-package.cyberdeck.title",
+        text = [[<The cyberdeck is a small Allegiance Alpha that hasn't seen much use.||These decks are fine to dabble in cyberspace but lack real power.>]],
+    },
+    {
+        id = "michael-package-wristband",
+        key = "stoker.motel.michael-package.wristband.title",
+        text = [[The wristband is a DocWagon homing beacon.||When its wearer's condition becomes critical, a DocWagon Trauma Team is dispatched to retrieve him.||The wearer is then resuscitated and dropped off at Seattle General Hospital.]],
+    },
+    {
+        id = "michael-package-fee",
+        key = "stoker.motel.michael-package.fee.title",
+        text = [[The fee is around 10% of the wearer's credstick balance, guaranteed not to exceed 5,000$.||You slip it on your wrist and lock the clasp.]],
+    },
+    {
+        id = "michael-package-holopix-ivanna",
+        key = "stoker.motel.michael-package.holopix-ivanna.title",
+        text = [[|<Holopix>|||        Dr. Ivanna|     Haversheen, M.D.||         Seattle|     General Hospital||    Haversheen Clinic]],
+    },
+    {
+        id = "michael-package-holopix-caleb",
+        key = "stoker.motel.michael-package.holopix-caleb.title",
+        text = [[|<Holopix>|||        Mr. Caleb|     Brightmore, Esq.||     Problems solved.||   Worries eliminated.]],
+    },
+    {
+        id = "michael-package-credstick",
+        key = "stoker.motel.michael-package.credstick.title",
+        text = [[Finally, you uncover a credstick hidden under the holopix.||It has a balance of 500$!||The irony of this discovery wears off after a moment.]],
+    },
+}
+
 local queued_choices, choices, pages, services = {}, {}, {}, {}
 local service_results = {}
 local function reset(...)
@@ -70,7 +113,12 @@ game = {
             assert(text_profile == "stoker.motel")
             local key = event.title_key
             assert(script_text[key] ~= nil, "missing Stoker text " .. key)
-            pages[#pages + 1] = { id = event_id, key = key }
+            pages[#pages + 1] = {
+                id = event_id,
+                key = key,
+                text = script_text[key],
+                continuation_key = event.continuation_key,
+            }
             return true
         end,
     },
@@ -121,6 +169,20 @@ local function expect_page(index, event_id)
         "expected Stoker page " .. event_id)
 end
 
+local function expect_michael_contents(first_index)
+    for offset, expected in ipairs(michael_contents_pages) do
+        local page = pages[first_index + offset - 1]
+        assert(page ~= nil and page.id == expected.id,
+            "expected Michael contents page " .. expected.id)
+        assert(page.key == expected.key and page.text == expected.text,
+            "wrong ROM text for Michael contents page " .. expected.id)
+        local continuation_key =
+            offset == #michael_contents_pages and "" or "shared.more"
+        assert(page.continuation_key == continuation_key,
+            "wrong ROM continuation for " .. expected.id)
+    end
+end
+
 -- Source gate and ordered A/B/C menu: the package choice is present while
 -- FFFC1E trigger bit 0 is clear. There is no invented opening_dialogue_seen
 -- save fact controlling the page sequence.
@@ -158,21 +220,23 @@ assert(result.type == "continue_in_place")
 expect_page(2, "leave")
 
 -- Michael branch: command 0x30 precedes the debt question, and command 0x05
--- branches into either the package handoff or Jump House low-funds page.
+-- selects Michael's eight-page contents sequence or Jump House low-funds page.
 service_results["michael_package.prepare_debt_offer"] = "ready"
 service_results["michael_package.pay_debt"] = "paid"
 reset("package", "debt-payment")
 result = outcome(MichaelPackage.stoker_interaction())
 assert(result.type == "continue_in_place" and
        game.state.motel_bill_paid == true)
-expect_page(2, "package-handoff")
+expect_michael_contents(2)
+assert(#pages == 1 + #michael_contents_pages)
 assert(services[1].operation == "prepare_debt_offer" and
        services[2].operation == "pay_debt")
 
 reset()
 result = outcome(MichaelPackage.present_package_handoff())
 assert(result.type == "continue_in_place")
-expect_page(1, "package-handoff")
+expect_michael_contents(1)
+assert(#pages == #michael_contents_pages)
 
 game.state.motel_bill_paid = false
 service_results["michael_package.pay_debt"] = "insufficient"
@@ -217,6 +281,9 @@ reset()
 result = outcome(MichaelPackage.present_field_exit_prompt())
 assert(result.type == "continue_in_place" and #choices == 0)
 expect_page(1, "package-handoff")
+assert(pages[1].key == "stoker.motel.package-handoff.title" and
+       pages[1].text ==
+           "<Stoker squints at you with his one good eye.>||Here's the package.  Don't slot this up!")
 
 game.field.package_run_status = "none"
 service_results["random.bounded_100"] = "roll_79"

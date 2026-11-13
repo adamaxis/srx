@@ -2309,7 +2309,7 @@ int main() {
 
     constexpr std::array<std::pair<StokerMotelPromptId, std::string_view>, 3>
         kLuaResolvedTitleOnlyPrompts{{
-            {StokerMotelPromptId::package_handoff, "Here's the package"},
+            {StokerMotelPromptId::package_handoff, "crumpled plastic box"},
             {StokerMotelPromptId::leave_notice, "seeing you, chum"},
             {StokerMotelPromptId::jump_house_referral, "Jump House"},
         }};
@@ -2326,13 +2326,35 @@ int main() {
                         std::string_view::npos;
             }
         }
-        const bool prompt_has_no_choices = runtime.panel().option_count == 0U;
-        const bool prompt_has_text =
+        bool prompt_has_text =
             runtime.panel().text_segment_count != 0U;
+        // The paid Michael handoff is the ROM's eight-page 0xF487C chain:
+        // the first seven pages carry the FFE5BF < MORE > continuation, and
+        // the eighth (0xF47AA) is the choice-free terminal page.
+        bool michael_pages_ok = true;
+        if (prompt == StokerMotelPromptId::package_handoff) {
+            michael_pages_ok = runtime.panel().has_more;
+            for (std::size_t segment = 0U;
+                 segment < runtime.panel().text_segment_count; ++segment) {
+                michael_pages_ok = michael_pages_ok &&
+                    runtime.panel().text_segments[segment].find(
+                        "Here's the package") == std::string_view::npos;
+            }
+            for (std::size_t page = 1U; page < 8U; ++page) {
+                michael_pages_ok = michael_pages_ok &&
+                    runtime.advance_controller_events(0x4000U) ==
+                        FieldDialogueAdvanceResult::prompt_advanced &&
+                    runtime.open() &&
+                    runtime.panel().has_more == (page < 7U);
+            }
+            prompt_has_text = runtime.panel().text_segment_count != 0U;
+        }
+        const bool prompt_has_no_choices = runtime.panel().option_count == 0U;
         const auto prompt_result = runtime.advance_controller_events(0x4000U);
         const auto prompt_outcome = runtime.take_gameplay_task_outcome();
         const bool framework_completion = index == 0U;
         if (!expect(expected_text_found) ||
+            !expect(michael_pages_ok) ||
             !expect(prompt_has_no_choices) ||
             !expect(prompt_has_text) ||
             !expect(prompt_result ==
@@ -2456,18 +2478,21 @@ int main() {
                 std::array<std::uint8_t, 3>{0x00U, 0x01U, 0x80U}) ||
         !expect(debt_payment_state.followup_state.story_flags == 0x1CU) ||
         !expect([&runtime]() {
+            bool box_text = false;
+            bool contents_text = false;
+            bool courier_text = false;
             for (std::size_t index = 0U;
                  index < runtime.panel().text_segment_count; ++index) {
-                if (runtime.panel().text_segments[index].find(
-                        "Here's the package") != std::string_view::npos) {
-                    return true;
-                }
+                const auto segment = runtime.panel().text_segments[index];
+                box_text = box_text || segment.find("crumpled plastic box") !=
+                    std::string_view::npos;
+                contents_text = contents_text || segment.find("two holopix") !=
+                    std::string_view::npos;
+                courier_text = courier_text || segment.find(
+                    "Here's the package") != std::string_view::npos;
             }
-            return false;
-        }()) ||
-        !expect(runtime.advance_controller_events(0x4000U) ==
-                FieldDialogueAdvanceResult::typed_outcome_requested) ||
-        !expect(!runtime.open())) {
+            return box_text && contents_text && !courier_text;
+        }())) {
         std::cerr << "Stoker paid graph funds="
                   << debt_payment_outcome.remaining_funds
                   << " payment=" << static_cast<int>(debt_payment_outcome.result)
@@ -2481,6 +2506,50 @@ int main() {
                   << " text-count=" << runtime.panel().text_segment_count
                   << " text=" << runtime.panel().text_segments[0]
                   << " boundary=" << boundary << '\n';
+        return 75;
+    }
+
+    struct MichaelPageTextExpectation {
+        std::string_view primary;
+        std::string_view secondary;
+    };
+    const std::array<MichaelPageTextExpectation, 7>
+        michael_contents_followups{{
+            {"Tabatha Shale", ""},
+            {"Allegiance Alpha", ""},
+            {"DocWagon homing beacon", ""},
+            {"lock the clasp", ""},
+            {"Haversheen Clinic", ""},
+            {"Worries eliminated.", ""},
+            {"credstick hidden under the holopix", "500$!"},
+        }};
+    for (const auto& expected_text : michael_contents_followups) {
+        if (!expect(runtime.advance_controller_events(0x4000U) ==
+                    FieldDialogueAdvanceResult::prompt_advanced) ||
+            !expect([&runtime, expected_text]() {
+                bool primary_found = false;
+                bool secondary_found = expected_text.secondary.empty();
+                for (std::size_t index = 0U;
+                     index < runtime.panel().text_segment_count; ++index) {
+                    const auto segment = runtime.panel().text_segments[index];
+                    primary_found = primary_found || segment.find(
+                        expected_text.primary) != std::string_view::npos;
+                    secondary_found = secondary_found ||
+                        (!expected_text.secondary.empty() &&
+                         segment.find(expected_text.secondary) !=
+                             std::string_view::npos);
+                }
+                return primary_found && secondary_found;
+            }())) {
+            std::cerr << "Stoker Michael contents continuation missing: "
+                      << expected_text.primary << '\n';
+            return 75;
+        }
+    }
+    if (!expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::typed_outcome_requested) ||
+        !expect(!runtime.open())) {
+        std::cerr << "Stoker Michael contents did not finish at the ROM endpoint\n";
         return 75;
     }
     // A different source can supply its resolved speaker/event view without

@@ -23497,9 +23497,13 @@ int run_field_stoker_collision_to_dialogue_qa(
     press_button(0x40U);
     const auto& package_handoff = field_scene.dialogue_panel();
     bool package_text_present = false;
+    bool courier_text_present = false;
     for (std::size_t index = 0;
          index < package_handoff.text_segment_count; ++index) {
         package_text_present = package_text_present ||
+            package_handoff.text_segments[index].find(
+                "crumpled plastic box") != std::string_view::npos;
+        courier_text_present = courier_text_present ||
             package_handoff.text_segments[index].find("Here's the package") !=
                 std::string_view::npos;
     }
@@ -23508,14 +23512,42 @@ int run_field_stoker_collision_to_dialogue_qa(
             std::optional<std::uint32_t>{500U} ||
         (field_scene.field_world_fact_flags_for_dump() & 1U) == 0U ||
         package_handoff.actor_name != "Stoker" ||
-        package_handoff.option_count != 0U ||
+        !package_handoff.has_more ||
         !package_text_present ||
+        courier_text_present ||
         !save_frame("stoker-package-handoff", false)) {
         std::cerr << "Stoker collision QA: successful payment did not update "
                      "the wallet and show the source package handoff\n";
         return 3;
     }
     write_state("paid-package-handoff");
+
+    // ROM 0xF487C continues through Michael's letter, cyberdeck, DocWagon
+    // wristband, fee, two holopix, and the hidden credstick (eight pages).
+    constexpr std::array<std::string_view, 7> kMichaelContinuationText{{
+        "Tabatha Shale", "Allegiance Alpha", "DocWagon homing beacon",
+        "lock the clasp", "Haversheen Clinic", "Worries eliminated.",
+        "credstick hidden under the holopix"}};
+    for (const auto expected_text : kMichaelContinuationText) {
+        press_button(0x40U);
+        bool continuation_text_present = false;
+        const auto& continuation = field_scene.dialogue_panel();
+        for (std::size_t index = 0;
+             index < continuation.text_segment_count; ++index) {
+            continuation_text_present = continuation_text_present ||
+                continuation.text_segments[index].find(expected_text) !=
+                    std::string_view::npos;
+        }
+        const bool final_page = expected_text ==
+            kMichaelContinuationText.back();
+        if (!field_scene.dialogue_open() || !continuation_text_present ||
+            continuation.has_more == final_page ||
+            (final_page && continuation.option_count != 0U)) {
+            std::cerr << "Stoker collision QA: Michael contents page missing: "
+                      << expected_text << '\n';
+            return 3;
+        }
+    }
 
     const auto stoker_music_count_before =
         field_scene.field_music_requests().size();
@@ -55726,6 +55758,19 @@ int main(int argc, char** argv) {
                             StokerMotelPromptId::package_handoff)) {
                         std::cerr << "field dialogue dump: modal-return handoff prompt did not open\n";
                         return 3;
+                    }
+                    // Seven ROM 0xF487C continuation pages precede the
+                    // terminal Michael credstick page.
+                    for (std::uint8_t page = 1U; page < 8U; ++page) {
+                        settle_qa_dialogue_input(modal_return_scene);
+                        modal_return_scene.set_controller_port_byte(0x40U);
+                        modal_return_scene.advance_frame();
+                        modal_return_scene.set_controller_port_byte(0U);
+                        modal_return_scene.advance_frame();
+                        if (!modal_return_scene.dialogue_open()) {
+                            std::cerr << "field dialogue dump: Michael contents closed before its final page\n";
+                            return 3;
+                        }
                     }
                     settle_qa_dialogue_input(modal_return_scene);
                     bool modal_returned = false;
