@@ -1,5 +1,6 @@
 #include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
 #include "shadowrun_ghidra/scripting/cyberdeck_menu_bindings.hpp"
+#include "shadowrun_ghidra/world/post_intro_mode_conversion.hpp"
 extern "C" {
 #include <lauxlib.h>
 #include <lua.h>
@@ -40,6 +41,7 @@ using shadowrun::ghidra_conversion::scripting::ScriptMenuPartyMember;
 using shadowrun::ghidra_conversion::scripting::ScriptMenuRouteBindings;
 using shadowrun::ghidra_conversion::scripting::ScriptMenuRouteStartArguments;
 using shadowrun::ghidra_conversion::scripting::ScriptPersistentValue;
+using shadowrun::ghidra_conversion::cab_mode_selection_plan;
 using shadowrun::ghidra_conversion::scripting::ScriptMatrixRunState;
 using shadowrun::ghidra_conversion::scripting::ScriptMatrixRunStatus;
 using shadowrun::ghidra_conversion::scripting::ScriptMatrixRunInfoKind;
@@ -3944,6 +3946,14 @@ int main() {
                           failures);
                     settle_taxi_outline();
                 }
+
+                const auto taxi_row = route.row.value_or(0);
+                const auto taxi_map_plan = cab_mode_selection_plan(
+                    static_cast<std::uint8_t>(taxi_row), 4U);
+                check(route.row.has_value() && taxi_row == target_row &&
+                          taxi_map_plan.record_index == destination_region,
+                      "taxi outline and caption use each ROM destination record",
+                      failures);
 
                 runtime.advance_menu_route(
                     kTaxiConfirmButtons[confirm_index]);

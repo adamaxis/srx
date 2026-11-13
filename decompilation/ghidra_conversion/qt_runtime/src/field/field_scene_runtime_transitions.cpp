@@ -196,7 +196,8 @@ DoorReturnSide door_return_side_from_collision_samples(
 
 bool FieldSceneRuntime::prepare_runtime_field_scene(
     const std::uint16_t scene_reference,
-    const std::optional<SceneRunnerPosition> requested_spawn) {
+    const std::optional<SceneRunnerPosition> requested_spawn,
+    const std::optional<std::uint16_t> world_mode_override) {
     if (!field_session_source_assets_ || !field_asset_catalog_ ||
         scene_reference >= kFieldSceneProfileCount) {
         return false;
@@ -276,7 +277,7 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
     }
 
     const auto interaction_mode =
-        select_scene_interaction_mode(scene_reference);
+        select_scene_interaction_mode(scene_reference, world_mode_override);
     if (!interaction_mode.has_value()) {
         return false;
     }
@@ -294,9 +295,9 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
     field_map_priority_overlay_ =
         std::move(next_field_map_priority_overlay);
     reset_field_map_cell_words();
-    // ROM 0x167AE selects FFDF40 before 0xA800's conditional actor decision.
-    // Install the destination mode before the native actor population pass so
-    // its Lua selector sees the same source state on resource-scene entry.
+    // ROM 0x167AE selects FFDF40 before 0xA800's conditional actor decision;
+    // taxi entry 0x136DE clears it. Install the resolved destination mode
+    // before native actor population so Lua sees the source state on entry.
     field_movement_transition_state_.world_mode =
         same_scene && !force_scene_entry ? prior_world_mode : *interaction_mode;
     refresh_effect_terrain_marker_cell();
@@ -337,7 +338,7 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
     field_movement_transition_state_.scene_id = scene_reference;
     field_world_activity_timeout_state_.scene_id = scene_reference;
     // A same-scene 0x2BD2 redraw preserves FFDF40; the value was chosen above
-    // before actor population to match the 0x167AE -> 0xA800 source order.
+    // before actor population to match the source scene-entry order.
     field_movement_transition_state_.field_origin_x =
         static_cast<std::uint16_t>(state_.field_scene_buffers.camera_x);
     world_frame_logic_state_.world_mode = scene_reference;

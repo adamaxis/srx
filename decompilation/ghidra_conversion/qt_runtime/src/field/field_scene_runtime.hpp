@@ -1954,7 +1954,8 @@ private:
         const scripting::ScriptTaskStep& step);
     bool prepare_runtime_field_scene(
         std::uint16_t scene_reference,
-        std::optional<SceneRunnerPosition> requested_spawn = std::nullopt);
+        std::optional<SceneRunnerPosition> requested_spawn = std::nullopt,
+        std::optional<std::uint16_t> world_mode_override = std::nullopt);
     void dispatch_field_map_scene_entry(std::uint16_t scene_id);
     std::optional<std::size_t> projected_terrain_cell() const;
     bool mark_field_terrain_cell(std::size_t cell);

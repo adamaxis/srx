@@ -82,9 +82,10 @@ bool world_map_effect_sets_carry(const WorldMapEffectInput& input);
 
 // ROM 0x167AE after FFDDC4 is published: scene < 0x15 selects interaction
 // mode 1, scene < 0x2C selects 2, and scene < 0x38 selects 3. Scene >= 0x38
-// is the source stop, not a mode.
+// is the source stop, not a mode. Taxi entry 0x136DE supplies mode 0 directly.
 std::optional<std::uint16_t> select_scene_interaction_mode(
-    std::uint16_t scene_id);
+    std::uint16_t scene_id,
+    std::optional<std::uint16_t> world_mode_override = std::nullopt);
 
 struct WeightedWorldSelection {
     std::uint16_t result = 0;

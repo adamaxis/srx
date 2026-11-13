@@ -61612,6 +61612,7 @@ int main(int argc, char** argv) {
                     return render_qa_field(field_scene);
                 };
                 constexpr std::uint8_t kRedmondRegion = 2U;
+                constexpr std::uint8_t kRenrakuRegion = 5U;
                 if (field_scene.field_scene_reference_for_dump() !=
                     kRedmondRegion) {
                     std::cerr << "field taxi dump: route fixture did not "
@@ -61654,6 +61655,19 @@ int main(int argc, char** argv) {
                 for (int frame = 2; frame < 10; ++frame) {
                     field_scene.advance_frame();
                 }
+                tap_qa_controller_button(field_scene, 0x02U); // Down: Renraku.
+                for (int frame = 0; frame < 12; ++frame) {
+                    field_scene.advance_frame();
+                }
+                const auto taxi_route =
+                    field_scene.field_menu_route_snapshot_for_dump();
+                if (!taxi_route.row.has_value() ||
+                    *taxi_route.row != 3 ||
+                    taxi_route.top_selection_id != "renraku_arcology") {
+                    std::cerr << "field taxi dump: Down did not select the "
+                                 "Renraku cursor row\n";
+                    return 3;
+                }
                 const auto taxi_scene = capture_field_scene();
                 const bool taxi_unchanged = taxi_scene == field_before_taxi;
                 bool taxi_has_sidebar_pixels = false;
@@ -61686,7 +61700,12 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 const auto selection_plan = cab_mode_selection_plan(
-                    kRedmondRegion, 4U);
+                    static_cast<std::uint8_t>(*taxi_route.row), 4U);
+                if (selection_plan.record_index != kRenrakuRegion) {
+                    std::cerr << "field taxi dump: Renraku row did not resolve "
+                                 "to ROM destination record 5\n";
+                    return 3;
+                }
                 constexpr std::array<std::array<std::string_view, 2>, 4>
                     kFinalCursorTiles{{
                         {{"top.left", "cursor-top-left.bmp"}},
@@ -62086,6 +62105,16 @@ int main(int argc, char** argv) {
                                  "not complete the fade and load scene 0\n";
                     return 3;
                 }
+                // ROM 0x136DE clears FFDF40 on taxi arrival. A scene-derived
+                // nonzero mode blocks ordinary door contact and the event-31
+                // field-terminal branch (Penumbra buildings and vidphones).
+                if (field_scene.field_interaction_mode_for_dump() != 0U) {
+                    std::cerr << "field taxi dump: taxi arrival kept nonzero "
+                                 "FFDF40 mode "
+                              << field_scene.field_interaction_mode_for_dump()
+                              << " instead of ROM 0x136DE's 0\n";
+                    return 3;
+                }
                 const auto downtown_arrival = capture_field_scene();
                 std::size_t visible_destination_pixels = 0U;
                 for (int y = 0; y < downtown_arrival.height(); ++y) {
@@ -62114,7 +62143,7 @@ int main(int argc, char** argv) {
                 std::cout << "field_taxi_dump=written path="
                           << field_taxi_dump_path->string()
                           << " selected_region=" << static_cast<int>(
-                                 selection_plan.mode)
+                                 selection_plan.record_index)
                           << " neutral_frames=30 clean_cancel=1 "
                           << "confirmed_destination=0 arrival_scene="
                           << field_scene.field_scene_reference_for_dump()

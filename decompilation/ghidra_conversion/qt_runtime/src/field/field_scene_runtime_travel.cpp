@@ -290,10 +290,15 @@ bool FieldSceneRuntime::transition_to_field_destination(
                   : route == FieldDestinationTransitionRoute::vid_phone
                         ? "field.vid_phone."
                         : "field.elevator.";
+    const auto world_mode_override =
+        route == FieldDestinationTransitionRoute::taxi
+            ? std::optional<std::uint16_t>{0U}
+            : std::nullopt;
     if (!field_session_source_assets_ ||
         scene_reference >=
             field_session_source_assets_->field_scene_resources.size() ||
-        !prepare_runtime_field_scene(scene_reference, requested_spawn)) {
+        !prepare_runtime_field_scene(
+            scene_reference, requested_spawn, world_mode_override)) {
         source_boundary(std::string(source_prefix) +
                         "destination_prepare_unresolved");
         return false;

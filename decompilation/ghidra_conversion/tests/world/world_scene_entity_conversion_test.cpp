@@ -1,4 +1,5 @@
 #include "shadowrun_ghidra/world/world_scene_entity_conversion.hpp"
+#include "shadowrun_ghidra/world/post_intro_mode_conversion.hpp"
 
 namespace {
 
@@ -149,6 +150,28 @@ int main() {
                 select_scene_interaction_mode(0x37U) == 3U &&
                 !select_scene_interaction_mode(0x38U).has_value())) {
         return 10;
+    }
+    if (!expect(select_scene_interaction_mode(3U) == 1U &&
+                select_scene_interaction_mode(3U, 0U) == 0U &&
+                select_scene_interaction_mode(5U, 0U) == 0U &&
+                !select_scene_interaction_mode(0x38U, 0U).has_value())) {
+        return 11;
+    }
+
+    // ROM 0xD4456 initializes region-to-cursor; 0xD445D maps every cursor
+    // row back to its destination record. The taxi renderer consumes the row.
+    constexpr std::array<std::uint8_t, 7> kRomCursorToRegion{{
+        6U, 4U, 2U, 5U, 0U, 3U, 1U}};
+    constexpr std::array<std::uint8_t, 7> kRomRegionToCursor{{
+        4U, 6U, 2U, 5U, 1U, 3U, 0U}};
+    for (std::uint8_t region = 0U; region < 7U; ++region) {
+        const auto row = kRomRegionToCursor[region];
+        const auto map_plan = cab_mode_selection_plan(row, 4U);
+        if (row >= kRomCursorToRegion.size() ||
+            kRomCursorToRegion[row] != region ||
+            map_plan.record_index != region) {
+            return 12;
+        }
     }
 
     return 0;

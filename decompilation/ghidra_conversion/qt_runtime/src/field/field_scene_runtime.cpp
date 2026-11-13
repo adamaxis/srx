@@ -18175,13 +18175,21 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             routed_menu.top_selection_id);
         const auto phase = routed_menu.top_page;
         if (!region.has_value() || !phase.has_value() ||
-            *phase < 0 || *phase > 4) {
+            *phase < 0 || *phase > 4 || !routed_menu.row.has_value() ||
+            *routed_menu.row < 0 || *routed_menu.row >= 7) {
             source_boundary("field.taxi.selection_unresolved");
             return;
         }
+        // FFF09C is the ROM cursor row consumed by 0xD445D. Lua's region
+        // source value is that table's result, not a cursor index.
         const auto plan = cab_mode_selection_plan(
-            scripting::script_field_region_source_value(*region),
+            static_cast<std::uint8_t>(*routed_menu.row),
             static_cast<std::uint8_t>(*phase));
+        if (plan.record_index !=
+            scripting::script_field_region_source_value(*region)) {
+            source_boundary("field.taxi.selection_unresolved");
+            return;
+        }
         constexpr int kTile = 8;
         const auto x = plan.cursor_x;
         const auto y = plan.cursor_y;

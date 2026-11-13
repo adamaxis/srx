@@ -480,6 +480,13 @@ add_test(NAME shadowrun_ghidra_gameplay_script_menu_route
 set_tests_properties(shadowrun_ghidra_gameplay_script_menu_route PROPERTIES
     SKIP_RETURN_CODE 77)
 
+add_executable(shadowrun_ghidra_world_scene_entity_conversion_test
+    ../tests/world/world_scene_entity_conversion_test.cpp)
+target_link_libraries(shadowrun_ghidra_world_scene_entity_conversion_test
+    PRIVATE shadowrun_ghidra_conversion_modules)
+add_test(NAME shadowrun_ghidra_world_scene_entity_conversion
+         COMMAND shadowrun_ghidra_world_scene_entity_conversion_test)
+
 add_executable(shadowrun_world_content_tsv_loader_test
     tests/scripting/world_content_tsv_loader_test.cpp)
 target_include_directories(shadowrun_world_content_tsv_loader_test

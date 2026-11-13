@@ -96,7 +96,14 @@ bool world_map_effect_sets_carry(const WorldMapEffectInput& input) {
 }
 
 std::optional<std::uint16_t> select_scene_interaction_mode(
-    const std::uint16_t scene_id) {
+    const std::uint16_t scene_id,
+    const std::optional<std::uint16_t> world_mode_override) {
+    if (scene_id >= 0x38U) {
+        return std::nullopt;
+    }
+    if (world_mode_override.has_value()) {
+        return world_mode_override;
+    }
     if (scene_id < 0x15U) {
         return 1U;
     }
