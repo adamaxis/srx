@@ -952,16 +952,29 @@ if type(RandomEvents.present_security_guard_stop) == "function" then
     eq(safe_random_actions[4], "security_guard_dispatch",
        "roll 40 uses the site-tagged dispatch service")
 
-    local zero_success, zero_pages, _, zero_sequence, _, zero_random_calls =
-        run_security_guard("talk", false, 1, { 0 })
-    eq(type(zero_success), "table",
-       "zero Talk successes remain an explicit encounter boundary")
-    eq(zero_success.reason:find("0x121298", 1, true) ~= nil, true,
-       "zero successes name the ROM attack page")
-    eq(#zero_pages, 1,
-       "unfinished encounter branch does not invent a result page")
-    eq(zero_sequence, nil,
-       "zero successes do not pretend the guard encounter was started")
+    local zero_success, zero_pages, _, zero_sequence, _, zero_random_calls,
+        _, _, _, zero_effects = run_security_guard(
+            "talk", false, 1, { 0 })
+    eq(zero_success, "resolved",
+       "zero Talk successes resolve after queuing the ROM guard encounter")
+    eq(#zero_pages, 2,
+       "zero-success Talk shows its terminal result after the opening page")
+    eq(zero_pages[2].text,
+       "<You try a lame story.\n\n" ..
+       "You realize this isn't going to work about the time he attacks.>",
+       "ROM 0x121298 preserves the complete failed-story text")
+    eq(zero_pages[2].continuation, false,
+       "ROM 0x121298 has no trailing MORE command")
+    eq(zero_pages[2].source, E.DialogueSource.FIELD_ACTIVITY,
+       "zero-success text stays in the shared field dialogue service")
+    eq(zero_sequence,
+       "queue_world_effect_30_1_" ..
+           E.WorldEffectSequence.SECURITY_GUARD_STOP_ATTACK,
+       "zero successes queue one guard from ROM list 0x1D705C")
+    eq(#zero_effects, 1,
+       "zero-success Talk queues exactly one world effect")
+    eq(zero_effects[1], zero_sequence,
+       "the queued zero-success effect uses the guard stop sequence")
     eq(zero_random_calls, 1,
        "zero-success branch consumes one source die")
 

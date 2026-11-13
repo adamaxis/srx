@@ -63,6 +63,9 @@ local SECURITY_GUARD_ATTACK_RESULT =
 local SECURITY_GUARD_TALK_ONE_SUCCESS_RESULT =
     "<You barely convince him you have misplaced it.\n\n" ..
     "Suspicous, he decides to check in with dispatch...>" -- 0x1212A0 -> 0x11F313 [C].
+local SECURITY_GUARD_TALK_ZERO_SUCCESS_RESULT =
+    "<You try a lame story.\n\n" ..
+    "You realize this isn't going to work about the time he attacks.>" -- 0x121298 -> 0x11F248 [C].
 local SECURITY_GUARD_TALK_SUCCESS_RESULT =
     "<You manage to convince him you misplaced it.\n\n" ..
     "He seems satisfied and moves on.>" -- 0x1212B4 -> 0x11F378 [C].
@@ -515,6 +518,24 @@ function RandomEvents.present_security_guard_stop()
             return source_boundary(
                 "ROM 0x24432 Charisma threshold roll is unavailable")
         end
+        if successes == 0 then
+            local scene = StoryState.scene()
+            if scene == nil or scene % 1 ~= 0 or scene < 0 or
+               scene > E.Scene.LAST_ID then
+                return source_boundary(
+                    "ROM 0x24432 needs the active scene to queue list 0x1D705C")
+            end
+            local sequence_id = E.WorldEffectSequence.SECURITY_GUARD_STOP_ATTACK
+            if not StoryState.queue_world_effect(scene, {
+                   actors = 1,
+                   sequence_id = sequence_id,
+               }) then
+                return source_boundary(
+                    "ROM 0x24432 could not queue one guard from list 0x1D705C")
+            end
+            game.ui.say_text(SECURITY_GUARD_TALK_ZERO_SUCCESS_RESULT, false)
+            return "resolved"
+        end
         if successes > 1 then
             -- 0x1212B4 is exactly the terminal text record for 0x11F378;
             -- the next, independent mage record starts at 0x1212BC.
@@ -555,7 +576,7 @@ function RandomEvents.present_security_guard_stop()
             return "resolved"
         end
         return source_boundary(
-            "ROM 0x24432 returned 0x121298; guard encounter continuation is unresolved")
+            "ROM 0x24432 returned an unexpected negative Talk success count")
     end
     if choice ~= "attack" then
         return source_boundary(
