@@ -43,6 +43,8 @@ inline constexpr std::uint32_t world_activity_resource_index = 0x1697AU;
 inline constexpr std::uint32_t world_activity_marker = 0x16986U;
 // ROM 0x24396: no-ID security guard's post-Talk dispatch check (bound 100).
 inline constexpr std::uint32_t security_guard_dispatch = 0x24396U;
+// ROM 0x2430C: badge-present security guard check (bound 100).
+inline constexpr std::uint32_t security_guard_badge = 0x2430CU;
 inline constexpr std::uint32_t random_grid_branch = 0xE664U;
 inline constexpr std::uint32_t random_grid_branch_zero_primary = 0xE672U;
 inline constexpr std::uint32_t random_grid_branch_zero_variant = 0xE688U;

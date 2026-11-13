@@ -1340,6 +1340,12 @@ FieldSceneRuntime::FieldSceneRuntime(
                 return "roll_" +
                        std::to_string(static_cast<std::uint16_t>(roll));
             }
+            if (service_id == "random.security_guard_badge") {
+                const auto roll = source_random_bound(
+                    100U, source_random_site::security_guard_badge);
+                return "roll_" +
+                       std::to_string(static_cast<std::uint16_t>(roll));
+            }
             constexpr std::string_view kBoundedRandomPrefix =
                 "random.bounded_";
             if (service_id.rfind(kBoundedRandomPrefix, 0U) == 0U) {

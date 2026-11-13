@@ -696,7 +696,7 @@ eq(Combat.roll_thresholded_successes(-1, 4, function() return 0 end), nil,
 eq(type(RandomEvents.present_security_guard_stop), "function",
    "ROM 0x20FEC guard prompt has a Lua dialogue task")
 local function run_security_guard(choice, has_security_pass, charisma, rolls,
-                                 pause_at_dispatch_more)
+                                 pause_at_dispatch_more, pause_at_badge_more)
     local guard_pages = {}
     local guard_exit = {}
     local guard_choices = {}
@@ -740,12 +740,21 @@ local function run_security_guard(choice, has_security_pass, charisma, rolls,
                     continuation = continuation,
                     source = game.dialogue.active.source,
                 }
-                if pause_at_dispatch_more == true and continuation == true and
-                   text:find(
-                       "Suspicous, he decides to check in with dispatch...",
-                       1, true) ~= nil then
+                local talk_dispatch_more =
+                    pause_at_dispatch_more == true and continuation == true and
+                    text:find(
+                        "Suspicous, he decides to check in with dispatch...",
+                        1, true) ~= nil
+                local badge_dispatch_more =
+                    pause_at_badge_more == true and continuation == true and
+                    text:find(
+                        "He checks your ID and calls dispatch to verify it.",
+                        1, true) ~= nil
+                if talk_dispatch_more or badge_dispatch_more then
+                    local marker = badge_dispatch_more and
+                        "guard_badge_more" or "guard_dispatch_more"
                     dispatch_more_commands[#dispatch_more_commands + 1] =
-                        coroutine.yield("guard_dispatch_more")
+                        coroutine.yield(marker)
                 end
             end,
             prompt_text = function(menu_id, prompt, options)
@@ -790,7 +799,7 @@ local function run_security_guard(choice, has_security_pass, charisma, rolls,
     end
     local guard_task
     local guard_result
-    if pause_at_dispatch_more == true then
+    if pause_at_dispatch_more == true or pause_at_badge_more == true then
         guard_task = coroutine.create(open_guard)
         local resumed, yielded = coroutine.resume(guard_task)
         assert(resumed, tostring(yielded))
@@ -1002,20 +1011,93 @@ if type(RandomEvents.present_security_guard_stop) == "function" then
     eq(#invalid_runner_pages, 1,
        "missing source runner fact does not fabricate a Talk result")
 
-    local badge_result, badge_pages, badge_choices, badge_sequence, _,
-        badge_random_calls = run_security_guard("attack", true)
-    eq(type(badge_result), "table",
-       "badge-present continuation remains an explicit boundary")
-    eq(badge_result.reason:find("badge-present", 1, true) ~= nil, true,
-       "badge state follows the ROM 0x242FA branch")
-    eq(#badge_pages, 1,
-       "badge-present handler keeps the opening MORE page")
-    eq(#badge_choices, 0,
-       "no-ID choices are not shown when FFFC22 bit 10 is set")
-    eq(badge_sequence, nil,
-       "badge-present branch does not queue the no-ID Attack list")
-    eq(badge_random_calls, 0,
-       "unimplemented badge roll does not consume random state")
+    local badge_pass, badge_pass_pages, badge_pass_choices, _, _,
+        badge_pass_random_calls, badge_pass_actions, _, _, badge_pass_effects =
+        run_security_guard("attack", true, nil, { 20 })
+    eq(badge_pass, "resolved",
+       "ROM 0x242FA roll 20 returns the badge-pass branch")
+    eq(#badge_pass_choices, 0,
+       "badge-present branch does not show no-ID choices")
+    eq(badge_pass_pages[2].text,
+       "<You show the ID, and he waves you past.>",
+       "ROM 0x12124C returns the badge-pass text")
+    eq(badge_pass_pages[2].continuation, false,
+       "ROM 0x12124C is terminal")
+    eq(#badge_pass_effects, 0,
+       "badge-pass branch queues no world effect")
+    eq(badge_pass_random_calls, 1,
+       "badge-pass branch consumes only the ROM 0x2430C roll")
+    eq(badge_pass_actions[1], "security_guard_badge",
+       "badge roll uses its source-site random tag")
+
+    local badge_wait, badge_wait_pages, _, _, _, badge_wait_calls,
+        badge_wait_actions, badge_wait_task, badge_more_commands,
+        badge_wait_effects = run_security_guard(
+            "attack", true, nil, { 19, 40 }, false, true)
+    eq(badge_wait, "guard_badge_more",
+       "ROM 0x121254 pauses at its MORE continuation")
+    eq(coroutine.status(badge_wait_task), "suspended",
+       "badge verification waits for CE before its dispatch roll")
+    eq(#badge_wait_pages, 2,
+       "the badge check text is visible while MORE is pending")
+    eq(badge_wait_pages[2].text,
+       "<He checks your ID and calls dispatch to verify it.>",
+       "ROM 0x121254 returns the ID verification text")
+    eq(badge_wait_pages[2].continuation, true,
+       "ROM 0x121254 carries the MORE label at 0x0FE5BF")
+    eq(badge_wait_calls, 1,
+       "badge dispatch does not roll before CE")
+    eq(table.concat(badge_wait_actions, ","), "security_guard_badge",
+       "only the ROM 0x2430C badge check ran before CE")
+    eq(#badge_wait_effects, 0,
+       "badge dispatch queues no effect while MORE is pending")
+    local badge_resumed, badge_safe_result =
+        coroutine.resume(badge_wait_task, "CE")
+    eq(badge_resumed, true, "CE resumes the badge verification route")
+    eq(badge_safe_result, "resolved",
+       "ROM 0x24392 roll 40 returns its verification success")
+    eq(badge_more_commands[1], "CE",
+       "the badge dispatch roll follows CE")
+    eq(table.concat(badge_wait_actions, ","),
+       "security_guard_badge,security_guard_dispatch",
+       "badge and dispatch rolls use their source-site tags")
+    eq(#badge_wait_pages, 3,
+       "the successful dispatch reply follows the badge verification page")
+    eq(badge_wait_pages[3].text,
+       "<Dispatch verifies his check and he waves you by.>",
+       "ROM 0x121268 returns the verified-dispatch text")
+    eq(badge_wait_pages[3].continuation, false,
+       "ROM 0x121268 is terminal")
+    eq(#badge_wait_effects, 0,
+       "verified dispatch queues no world effect")
+    eq(#badge_wait_actions, 2,
+       "the badge path consumes two random calls after CE resumes")
+
+    local badge_alert, badge_alert_pages, _, _, _, badge_alert_calls,
+        badge_alert_actions, _, _, badge_alert_effects =
+        run_security_guard("attack", true, nil, { 19, 39 })
+    eq(badge_alert, "resolved",
+       "ROM 0x24392 roll 39 returns the dispatch-alert branch")
+    eq(badge_alert_pages[2].text,
+       "<He checks your ID and calls dispatch to verify it.>",
+       "the alert route first returns the badge verification text")
+    eq(badge_alert_pages[2].continuation, true,
+       "badge verification waits on its MORE continuation")
+    eq(badge_alert_pages[3].text,
+       "<Dispatch comes back negative and sounds the alert.>",
+       "ROM 0x121270 returns the negative-dispatch text")
+    eq(badge_alert_pages[3].continuation, false,
+       "ROM 0x121270 is terminal")
+    eq(#badge_alert_effects, 1,
+       "dispatch roll below 40 queues one guard effect")
+    eq(badge_alert_effects[1],
+       "queue_world_effect_30_1_security_guard_stop_attack",
+       "the alert branch queues ROM list 0x1D705C")
+    eq(table.concat(badge_alert_actions, ","),
+       "security_guard_badge,security_guard_dispatch",
+       "the alert route consumes the badge and dispatch site rolls")
+    eq(badge_alert_calls, 2,
+       "the alert route consumes exactly two rolls")
 end
 
 print(("field_random_events_tests: %d checks"):format(checks))

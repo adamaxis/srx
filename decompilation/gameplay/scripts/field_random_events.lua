@@ -73,6 +73,10 @@ local SECURITY_GUARD_TALK_DISPATCH_SUCCESS_RESULT =
     "<Dispatch verifies his check and he waves you by.>" -- 0x121268 -> 0x11F1E0 [C].
 local SECURITY_GUARD_TALK_DISPATCH_ALERT_RESULT =
     "<Dispatch comes back negative and sounds the alert.>" -- 0x121270 -> 0x11F213 [C].
+local SECURITY_GUARD_BADGE_PASS_RESULT =
+    "<You show the ID, and he waves you past.>" -- 0x12124C -> 0x11F098 [C].
+local SECURITY_GUARD_BADGE_VERIFY_RESULT =
+    "<He checks your ID and calls dispatch to verify it.>" -- 0x121254 -> 0x11F133 [C].
 -- The event artwork in section 11 frames 000618/000930/000990 matches this
 -- extracted image; give this route its own binding because field_narrator has
 -- no portrait.
@@ -239,6 +243,37 @@ end
 
 local function source_boundary(reason)
     return { type = "source_boundary", reason = reason }
+end
+
+local function security_guard_dispatch_result()
+    -- The MORE/CE continuation at 0x121254 and the one-success Talk route
+    -- both reach ROM 0x24392.
+    local dispatch_roll = random_die(100, "security_guard_dispatch")
+    if dispatch_roll == nil then
+        return source_boundary(
+            "ROM 0x24392 requires the shared bounded-100 random service")
+    end
+    if dispatch_roll >= 40 then
+        game.ui.say_text(SECURITY_GUARD_TALK_DISPATCH_SUCCESS_RESULT, false)
+        return "resolved"
+    end
+
+    local scene = StoryState.scene()
+    if scene == nil or scene % 1 ~= 0 or scene < 0 or
+       scene > E.Scene.LAST_ID then
+        return source_boundary(
+            "ROM 0x24392 needs the active scene to queue list 0x1D705C")
+    end
+    local sequence_id = E.WorldEffectSequence.SECURITY_GUARD_STOP_ATTACK
+    if not StoryState.queue_world_effect(scene, {
+           actors = 1,
+           sequence_id = sequence_id,
+       }) then
+        return source_boundary(
+            "ROM 0x24392 could not queue one guard from list 0x1D705C")
+    end
+    game.ui.say_text(SECURITY_GUARD_TALK_DISPATCH_ALERT_RESULT, false)
+    return "resolved"
 end
 
 function RandomEvents.present_faction_disturbance()
@@ -484,8 +519,19 @@ function RandomEvents.present_security_guard_stop()
             "ROM 0x242FA requires FFFC22 bit 10; security-pass state is unavailable")
     end
     if has_security_pass then
-        return source_boundary(
-            "ROM 0x242FA badge-present roll and dispatch continuation are unresolved")
+        -- ROM 0x2430C draws in [0, 100); rolls below 20 return 0x121254.
+        local badge_roll = random_die(100, "security_guard_badge")
+        if badge_roll == nil then
+            return source_boundary(
+                "ROM 0x242FA requires the shared bounded-100 random service")
+        end
+        if badge_roll >= 20 then
+            game.ui.say_text(SECURITY_GUARD_BADGE_PASS_RESULT, false)
+            return "resolved"
+        end
+        -- 0x121254 has MORE followed by command CE, which invokes 0x24392.
+        game.ui.say_text(SECURITY_GUARD_BADGE_VERIFY_RESULT, true)
+        return security_guard_dispatch_result()
     end
     local choice = game.ui.prompt_text(
         "security_guard_no_id", SECURITY_GUARD_NO_ID_PROMPT,
@@ -547,33 +593,7 @@ function RandomEvents.present_security_guard_stop()
             -- text operation yields here until CE; only after resumption does
             -- command 0xCE invoke ROM 0x24392's bounded-100 check.
             game.ui.say_text(SECURITY_GUARD_TALK_ONE_SUCCESS_RESULT, true)
-            local dispatch_roll = random_die(100, "security_guard_dispatch")
-            if dispatch_roll == nil then
-                return source_boundary(
-                    "ROM 0x24392 requires the shared bounded-100 random service")
-            end
-            if dispatch_roll >= 40 then
-                game.ui.say_text(
-                    SECURITY_GUARD_TALK_DISPATCH_SUCCESS_RESULT, false)
-                return "resolved"
-            end
-
-            local scene = StoryState.scene()
-            if scene == nil or scene % 1 ~= 0 or scene < 0 or
-               scene > E.Scene.LAST_ID then
-                return source_boundary(
-                    "ROM 0x24392 needs the active scene to queue list 0x1D705C")
-            end
-            local sequence_id = E.WorldEffectSequence.SECURITY_GUARD_STOP_ATTACK
-            if not StoryState.queue_world_effect(scene, {
-                   actors = 1,
-                   sequence_id = sequence_id,
-               }) then
-                return source_boundary(
-                    "ROM 0x24392 could not queue one guard from list 0x1D705C")
-            end
-            game.ui.say_text(SECURITY_GUARD_TALK_DISPATCH_ALERT_RESULT, false)
-            return "resolved"
+            return security_guard_dispatch_result()
         end
         return source_boundary(
             "ROM 0x24432 returned an unexpected negative Talk success count")
