@@ -44,6 +44,7 @@
 #include "shadowrun_ghidra/menus/cyberware_detail_conversion.hpp"
 #include "genesis_image_compositor.hpp"
 #include "numeric_visual_renderer.hpp"
+#include "shop_balance_display_renderer.hpp"
 #include "field_map_composition.hpp"
 #include "matrix_map_presenter.hpp"
 #include "matrix_datastore_facts.hpp"
@@ -72,6 +73,7 @@
 namespace shadowrun::ghidra_conversion::qt_runtime {
 
 using field_scene_detail::field_shop_cost_context;
+using field_scene_detail::command_overview_text_tint;
 using field_scene_detail::draw_command_overview_number;
 using field_scene_detail::make_field_shop_progression_input;
 
@@ -952,9 +954,8 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
 
     paint_field_hud_overlays(painter);
     if (field_funds_.has_value()) {
-        draw_command_overview_number(
-            painter, command_overview_font_, 144, 200, *field_funds_,
-            NumericVisualAlignment::left, true);
+        draw_field_shop_balance(painter, command_overview_font_,
+                                *field_funds_, command_overview_text_tint());
         draw_command_overview_text(painter, 200, 200, "$");
     }
 
@@ -1171,9 +1172,8 @@ void FieldSceneRuntime::paint_field_shop_notice(QPainter& painter) const {
     }
     paint_field_hud_overlays(painter);
     if (field_funds_.has_value()) {
-        draw_command_overview_number(
-            painter, command_overview_font_, 144, 200, *field_funds_,
-            NumericVisualAlignment::left, true);
+        draw_field_shop_balance(painter, command_overview_font_,
+                                *field_funds_, command_overview_text_tint());
         draw_command_overview_text(painter, 200, 200, "$");
     }
 }

@@ -50,6 +50,7 @@ set(SHADOWRUN_GHIDRA_QT_GAME_SOURCES
     src/field/field_scene_runtime_debug.cpp
     src/field/field_scene_runtime_travel.cpp
     src/field/field_scene_runtime_shop_paint.cpp
+    src/field/shop_balance_display_renderer.cpp
     src/field/field_scene_runtime_world_effects.cpp
     src/field/field_map_composition.cpp
     src/field/matrix_map_presenter.cpp
@@ -193,7 +194,8 @@ target_compile_definitions(shadowrun_ghidra_conversion_qt_qa
 
 add_executable(shadowrun_numeric_visual_renderer_test
     tests/rendering/numeric_visual_renderer_test.cpp
-    src/rendering/numeric_visual_renderer.cpp)
+    src/rendering/numeric_visual_renderer.cpp
+    src/field/shop_balance_display_renderer.cpp)
 set_target_properties(shadowrun_numeric_visual_renderer_test PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
     RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
