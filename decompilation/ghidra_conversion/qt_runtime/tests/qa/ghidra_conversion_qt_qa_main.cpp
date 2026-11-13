@@ -5305,7 +5305,9 @@ int run_field_hidden_camera_qa(
         });
     const bool faction_result_saved =
         save_qa_image(faction_output, "actual.bmp", faction_result_image);
-    if (!faction_result.open || faction_result.has_more ||
+    // Record 0x120F90 carries a MORE label (0xFE5BF) whose command is the
+    // terminal record 0x120FA4 (text 0x11D1C9).
+    if (!faction_result.open || !faction_result.has_more ||
         !faction_result_text_contains || !faction_result_saved ||
         faction_result_image.isNull() ||
         faction_result_image.size() != QSize(kSceneWidth, kSceneHeight)) {
@@ -5315,6 +5317,31 @@ int run_field_hidden_camera_qa(
                   << " more=" << faction_result.has_more
                   << " text_match=" << faction_result_text_contains
                   << " image_saved=" << faction_result_saved
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U);
+    const auto& faction_continuation = field_scene.dialogue_panel();
+    const auto faction_continuation_image = render_qa_field(field_scene);
+    const auto faction_continuation_text_contains = std::any_of(
+        faction_continuation.text_segments.begin(),
+        faction_continuation.text_segments.begin() +
+            static_cast<std::ptrdiff_t>(
+                faction_continuation.text_segment_count),
+        [](const std::string_view segment) {
+            return segment.find("They continue on down the street") !=
+                   std::string_view::npos;
+        });
+    const bool faction_continuation_saved = save_qa_image(
+        faction_output, "continuation.bmp", faction_continuation_image);
+    if (!faction_continuation.open || faction_continuation.has_more ||
+        !faction_continuation_text_contains || !faction_continuation_saved) {
+        std::cerr << "field hidden-camera QA: faction no-flag MORE did not "
+                     "show the ROM text at 0x11D1C9; dialogue="
+                  << faction_continuation.open
+                  << " more=" << faction_continuation.has_more
+                  << " text_match=" << faction_continuation_text_contains
+                  << " image_saved=" << faction_continuation_saved
                   << " failure=" << field_scene.failure() << '\n';
         return 3;
     }

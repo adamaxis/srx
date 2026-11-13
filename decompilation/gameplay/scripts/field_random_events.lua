@@ -12,10 +12,17 @@ local ALARM_RESULT =
     "of a hidden security camera.>"
 local NERVES_RESULT =
     "<Nothing happens, though. Maybe it's just your nerves.>"
+-- ROM record 0x120F90 (text 0x11D128) carries a MORE label at 0xFE5BF whose
+-- command is record 0x120FA4 (text 0x11D1C9), the terminal second page.
 local FACTION_NEUTRAL_RESULT =
-    "<Impressive figures pass through the parting crowd.>||" ..
+    "<Impressive figures pass through the parting crowd.||" ..
     "Your first impression is that they are veteran shadowrunners.||" ..
-    "Then you see they are wearing gang colors!>"
+    "Then you see they are wearing gang colors!?>"
+local FACTION_NEUTRAL_CONTINUATION =
+    "<They continue on down the street in an air of confidence, not " ..
+    "bothering to harrass those they pass.||" ..
+    "Gangs going pro?  You doubt it!!||" ..
+    "Shrugging, you continue on your way.>"
 local FACTION_MAFIA_RESULT =
     "<A gang of Eye-Fivers jump out of the crowd.>||" ..
     "So, you chose to serve the Yakuza?||" ..
@@ -24,6 +31,9 @@ local FACTION_HALLOWEENER_RESULT =
     "<Some Halloweeners appear out of the crowd.>||" ..
     "Hey, Mafia boy!  You chose the wrong side to ally with!||" ..
     "Yakuza rules this town!"
+local FACTION_LIST_FAILURE_RESULT =
+    "<You glimpse someone taking your picture with a holocam.>||" ..
+    "The person quickly disappears into the crowd."
 local HAGGARD_HELP_RESULT =
     "<You grab the man and hold him while the henchmen straight-jacket " ..
     "him and drag him off.>||Here's fifty nuyen. Now get lost."
@@ -245,6 +255,18 @@ local function source_boundary(reason)
     return { type = "source_boundary", reason = reason }
 end
 
+local function faction_actor_sequence_failed(reason)
+    -- ROM 0x238C8 selects one of 20 optional resource bundles before it
+    -- returns text record 0x120E20 (0x11CF74). The native shared text page
+    -- represents that no-combat fallback; keep the source RNG draw here.
+    if random_die(20) == nil then
+        return source_boundary(
+            reason .. "; ROM 0x238C8 fallback resource roll is unavailable")
+    end
+    game.ui.say_text(FACTION_LIST_FAILURE_RESULT, false)
+    return "resolved"
+end
+
 local function security_guard_dispatch_result()
     -- The MORE/CE continuation at 0x121254 and the one-success Talk route
     -- both reach ROM 0x24392.
@@ -306,14 +328,14 @@ function RandomEvents.present_faction_disturbance()
         local outcome = scene ~= nil and
             Encounters.resolve_sequence(scene, sequence_id) or nil
         if outcome == nil or #outcome.actors ~= 4 then
-            return source_boundary(
+            return faction_actor_sequence_failed(
                 "ROM 0x23876 four-actor Mafia sequence is unavailable")
         end
         if not StoryState.queue_world_effect(scene, {
                sequence_id = outcome.sequence_id,
                actors = #outcome.actors,
            }) then
-            return source_boundary(
+            return faction_actor_sequence_failed(
                 "ROM 0x23876 Mafia actor sequence could not be queued")
         end
         -- 0x23876 chooses the Eye-Fiver record only after attempting the
@@ -335,14 +357,14 @@ function RandomEvents.present_faction_disturbance()
         local outcome = scene ~= nil and
             Encounters.resolve_sequence(scene, sequence_id) or nil
         if outcome == nil or #outcome.actors ~= 4 then
-            return source_boundary(
+            return faction_actor_sequence_failed(
                 "ROM 0x23876 four-actor Halloweener sequence is unavailable")
         end
         if not StoryState.queue_world_effect(scene, {
                sequence_id = outcome.sequence_id,
                actors = #outcome.actors,
            }) then
-            return source_boundary(
+            return faction_actor_sequence_failed(
                 "ROM 0x23876 Halloweener actor sequence could not be queued")
         end
         -- Bit 2 is reached only when bit 1 is clear. The matching four-entry
@@ -351,7 +373,8 @@ function RandomEvents.present_faction_disturbance()
         return "resolved"
     end
 
-    game.ui.say_text(FACTION_NEUTRAL_RESULT, false)
+    game.ui.say_text(FACTION_NEUTRAL_RESULT, true)
+    game.ui.say_text(FACTION_NEUTRAL_CONTINUATION, false)
     return "resolved"
 end
 

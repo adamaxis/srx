@@ -107,11 +107,12 @@ eq(RandomEvents.present_hidden_camera(), nil,
    "unrelated event cannot enter hidden-camera handler")
 
 local function run_faction_disturbance(
-    mafia_route, halloweener_route, queue_result)
+    mafia_route, halloweener_route, queue_result, sequence_available)
     local pages = {}
     local route_calls = {}
     local sequence_calls = {}
     local queue_calls = {}
+    local random_calls = {}
     local flags = {
         faction_disturbance_mafia_route_enabled = mafia_route,
         faction_disturbance_halloweener_route_enabled = halloweener_route,
@@ -220,6 +221,10 @@ local function run_faction_disturbance(
                 if domain == "field" and action == "scene_reference" then
                     return "scene_0"
                 end
+                if domain == "random" and action == "bounded_20" then
+                    random_calls[#random_calls + 1] = action
+                    return "roll_0"
+                end
                 if domain == "story" and
                    action:match("^queue_world_effect_") then
                     queue_calls[#queue_calls + 1] = action
@@ -235,35 +240,54 @@ local function run_faction_disturbance(
             scene_id = scene_id,
             sequence_id = sequence_id,
         }
+        if sequence_available == false then
+            return nil
+        end
         return resolve_sequence(scene_id, sequence_id)
     end
     local result = RandomEvents.present_faction_disturbance()
     Encounters.resolve_sequence = resolve_sequence
     return result, pages, route_calls,
-           sequence_calls, queue_calls
+           sequence_calls, queue_calls, random_calls
 end
 
-local faction_result, faction_pages, faction_services =
+local faction_result, faction_pages, faction_services,
+      faction_sequence_calls, faction_queue_calls =
     run_faction_disturbance("disabled", "disabled")
 eq(faction_result, "resolved",
    "ROM 0x23876 neutral faction route resolves")
-eq(#faction_pages, 2, "neutral faction route has opening and result pages")
+eq(#faction_pages, 3,
+   "neutral faction route has opening, result and continuation pages")
 eq(faction_pages[1].text, "disturbance opening",
    "neutral route uses the extracted event opening")
 eq(faction_pages[1].continuation, true,
    "neutral route opening waits for its single MORE command")
 -- ROM 0x23876 reaches the no-flag text at 0x11D128 without spawning actors.
 eq(faction_pages[2].text,
-   "<Impressive figures pass through the parting crowd.>||" ..
+   "<Impressive figures pass through the parting crowd.||" ..
    "Your first impression is that they are veteran shadowrunners.||" ..
-   "Then you see they are wearing gang colors!>",
+   "Then you see they are wearing gang colors!?>",
    "neutral faction route uses the ROM result record")
-eq(faction_pages[2].continuation, false,
-   "neutral faction result is a terminal text page")
+-- Record 0x120F90 has a MORE label (0xFE5BF) whose command is record
+-- 0x120FA4 (text 0x11D1C9), so the gang-colors page is not terminal.
+eq(faction_pages[2].continuation, true,
+   "neutral faction result waits for its MORE command")
+eq(faction_pages[3].text,
+   "<They continue on down the street in an air of confidence, not " ..
+   "bothering to harrass those they pass.||" ..
+   "Gangs going pro?  You doubt it!!||" ..
+   "Shrugging, you continue on your way.>",
+   "neutral faction MORE shows the ROM 0x11D1C9 continuation")
+eq(faction_pages[3].continuation, false,
+   "neutral faction continuation is the terminal text page")
 eq(table.concat(faction_services, ","),
    "faction_disturbance_mafia_route_enabled," ..
    "faction_disturbance_halloweener_route_enabled",
    "ROM bit-1 route check precedes the bit-2 route check")
+eq(#faction_sequence_calls, 0,
+   "no-flag gang-colors text does not resolve an actor sequence")
+eq(#faction_queue_calls, 0,
+   "no-flag gang-colors text does not queue combat actors")
 
 local mafia_result, mafia_pages, mafia_services,
       mafia_sequence_calls, mafia_queue_calls =
@@ -324,12 +348,44 @@ eq(both_routes_sequences[1].sequence_id,
    "faction_mafia_eye_fivers",
    "both set bits queue only the Mafia actor sequence")
 
-local busy_faction_result, busy_faction_pages =
+local busy_faction_result, busy_faction_pages, _, busy_sequence_calls,
+      busy_queue_calls, busy_random_calls =
     run_faction_disturbance("enabled", "disabled", "busy")
-eq(busy_faction_result.type, "source_boundary",
-   "a rejected actor-list queue remains an explicit boundary")
-eq(#busy_faction_pages, 1,
-   "a rejected actor-list queue does not claim the fight started")
+eq(busy_faction_result, "resolved",
+   "a failed ROM actor-list start resolves to its fallback event")
+eq(#busy_faction_pages, 2,
+   "a failed actor-list start shows the ROM holocam fallback")
+eq(busy_faction_pages[2].text,
+   "<You glimpse someone taking your picture with a holocam.>||" ..
+   "The person quickly disappears into the crowd.",
+   "failed actor-list start uses the fallback text at ROM 0x11CF74")
+eq(busy_faction_pages[2].continuation, false,
+   "holocam fallback is a terminal text page")
+eq(#busy_sequence_calls, 1,
+   "fallback follows an attempted faction actor sequence")
+eq(#busy_queue_calls, 1,
+   "fallback follows a rejected faction world-effect queue")
+eq(table.concat(busy_random_calls, ","), "bounded_20",
+   "ROM 0x238C8 consumes its bounded-20 fallback resource selection")
+
+local missing_sequence_result, missing_sequence_pages, _,
+      missing_sequence_calls, missing_sequence_queues,
+      missing_sequence_random =
+    run_faction_disturbance("enabled", "disabled", nil, false)
+eq(missing_sequence_result, "resolved",
+   "an unavailable ROM actor list resolves to the holocam fallback")
+eq(#missing_sequence_pages, 2,
+   "an unavailable actor list displays the fallback result page")
+eq(missing_sequence_pages[2].text,
+   "<You glimpse someone taking your picture with a holocam.>||" ..
+   "The person quickly disappears into the crowd.",
+   "unavailable actor list uses ROM text 0x11CF74")
+eq(#missing_sequence_calls, 1,
+   "the missing-list fallback follows the ROM sequence attempt")
+eq(#missing_sequence_queues, 0,
+   "an unavailable actor list does not queue a nonexistent world effect")
+eq(table.concat(missing_sequence_random, ","), "bounded_20",
+   "missing-list fallback preserves the ROM resource-selection draw")
 
 local unknown_faction_result, unknown_faction_pages =
     run_faction_disturbance(nil, "disabled")
