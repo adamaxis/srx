@@ -3886,6 +3886,9 @@
         const std::filesystem::path& output_directory) {
         host_frame_timer_.stop();
         std::filesystem::create_directories(output_directory);
+        const auto audio_wav_path =
+            output_directory / "opening-start-skip-audio.wav";
+        set_audio_wav_output(audio_wav_path);
         if (prepare_opening_dump(0U) != 0) {
             return 3;
         }
@@ -3904,6 +3907,11 @@
             return 3;
         }
 
+        // prepare_opening_dump disables presentation holds for fixture setup.
+        // Restore the production blocking timeline before the Start edge.
+        opening_presentation_holds_enabled_ = true;
+        const auto start_audio_event = audio_playback_->events().size();
+        const auto start_mixer_frame = audio_playback_->mixer().frame();
         QKeyEvent start_press(QEvent::KeyPress, Qt::Key_Space,
                               Qt::NoModifier);
         const auto boundary_start = presentation_boundaries_.size();
@@ -3974,14 +3982,231 @@
         const auto field_start_position =
             field_scene_runtime_.field_entity_world_position();
 
-        // A skipped movie must take the same ROM-backed New Game field
-        // handoff as a completed movie: its scene-entry Lua rule walks the
-        // runner into Stoker's first-visit dialogue without controller input.
-        std::uint32_t arrival_frames = 0U;
-        for (; arrival_frames < 256U &&
-               !field_scene_runtime_.dialogue_open(); ++arrival_frames) {
-            field_scene_runtime_.advance_frame();
+        // Drive the real Qt source-frame loop through the field audio handoff,
+        // PCM output, opening walk, motel-sign fade, and Stoker's dialogue.
+        constexpr std::uint32_t kPostSkipAudioFrames = 200U;
+        std::optional<std::uint32_t> arrival_frame;
+        // First mixer frame rendered under the 0x12F6 field fade-in hold.
+        std::optional<std::uint64_t> field_visible_frame;
+        const auto note_field_visible = [this, &field_visible_frame] {
+            if (!field_visible_frame && !opening_presentation_holds_.empty() &&
+                opening_presentation_holds_.front().kind ==
+                    OpeningPresentationHoldKind::fade_in) {
+                field_visible_frame = audio_playback_->mixer().frame();
+            }
+        };
+        for (std::uint32_t frame = 0U; frame < kPostSkipAudioFrames; ++frame) {
+            advance_one_source_frame();
+            note_field_visible();
+            if (!arrival_frame && field_scene_runtime_.dialogue_open()) {
+                arrival_frame = frame + 1U;
+            }
         }
+        // The opening presentation may hold the field black while the source
+        // scene and audio services finish their blocking work. Keep driving
+        // the same production loop until its existing Stoker-arrival check is
+        // reached; the first 200 frames above remain the required PCM window.
+        for (std::uint32_t frame = 0U;
+             frame < 256U && !arrival_frame.has_value(); ++frame) {
+            advance_one_source_frame();
+            note_field_visible();
+            if (field_scene_runtime_.dialogue_open()) {
+                arrival_frame = kPostSkipAudioFrames + frame + 1U;
+            }
+        }
+        audio_playback_->finish_output();
+        if (!arrival_frame.has_value()) {
+            std::cerr << "opening Start-skip QA: Stoker's dialogue did not "
+                         "open within the 200-frame audio capture\n";
+            return 3;
+        }
+        const auto arrival_frames = *arrival_frame;
+
+        // Song ids: 0x59C72/0x59C92/0x59CB8 request the three intro songs;
+        // the New Game field profile word at 0x172CC0 selects the field song.
+        constexpr std::uint16_t kIntroSongFirst = 0x10U;
+        constexpr std::uint16_t kIntroSongLast = 0x12U;
+        constexpr std::uint16_t kFieldSong = 0x0FU;
+        // 0x07F0 setup between its 0x53126 and the 0x2900 song request
+        // (emulator: fade end 3554, song 3562).
+        constexpr std::uint64_t kFieldSongSetupFrames = 8U;
+        constexpr std::uint64_t kAudioFadeFrames =
+            static_cast<std::uint64_t>(kGemsFadeSteps) * kGemsFadeStepFrames;
+        // 0x59CFE's 0x131C: 17 passes x two VBlanks over the movie.
+        constexpr std::uint64_t kStartExitPaletteFrames = 34U;
+        // Emulator ground truth, Start at +300: song 0x0F at 378 (0x131C,
+        // 0x59D0A's 0x53126, 0x07F0's 0x53126, then the 8-frame setup) and
+        // the field's first visible picture at 444.
+        constexpr std::uint64_t kStartToFieldSongFrames =
+            kStartExitPaletteFrames + 2U * kAudioFadeFrames +
+            kFieldSongSetupFrames;
+        constexpr std::uint64_t kStartToFieldVisibleFrames = 444U - 300U;
+        static_assert(kStartToFieldSongFrames == 378U - 300U);
+
+        const auto& audio_events = audio_playback_->events();
+        const auto audio_begin = audio_events.begin() +
+            static_cast<std::ptrdiff_t>(start_audio_event);
+        const auto intro_start = std::find_if(
+            audio_begin, audio_events.end(), [](const AudioEvent& event) {
+                return event.op == AudioOp::start &&
+                       event.id >= kIntroSongFirst &&
+                       event.id <= kIntroSongLast;
+            });
+        if (intro_start != audio_events.end()) {
+            std::cerr << "opening Start-skip QA: intro music id 0x" << std::hex
+                      << intro_start->id << std::dec
+                      << " started after the Start edge\n";
+            return 3;
+        }
+        const auto field_music = std::find_if(
+            audio_begin, audio_events.end(), [](const AudioEvent& event) {
+                return event.op == AudioOp::start && event.id == kFieldSong;
+            });
+        if (field_music == audio_events.end()) {
+            std::cerr << "opening Start-skip QA: field music 0x0F did not "
+                         "start\n";
+            return 3;
+        }
+        std::vector<std::uint64_t> fade_end_frames;
+        for (auto event = audio_begin; event != field_music; ++event) {
+            if (event->op == AudioOp::stop_all) {
+                fade_end_frames.push_back(event->frame);
+            }
+        }
+        if (fade_end_frames.size() != 2U) {
+            std::cerr << "opening Start-skip QA: expected exactly two "
+                         "op-0x16 fades before 0x0F, got "
+                      << fade_end_frames.size() << '\n';
+            return 3;
+        }
+        if (field_music->frame !=
+            fade_end_frames.back() + kFieldSongSetupFrames) {
+            std::cerr << "opening Start-skip QA: 0x0F started "
+                      << (field_music->frame - fade_end_frames.back())
+                      << " frames after the second fade; expected "
+                      << kFieldSongSetupFrames << '\n';
+            return 3;
+        }
+        if (field_music->frame - start_mixer_frame != kStartToFieldSongFrames) {
+            std::cerr << "opening Start-skip QA: 0x0F started "
+                      << (field_music->frame - start_mixer_frame)
+                      << " frames after Start; emulator "
+                      << kStartToFieldSongFrames << '\n';
+            return 3;
+        }
+        if (!field_visible_frame.has_value() ||
+            *field_visible_frame - start_mixer_frame !=
+                kStartToFieldVisibleFrames) {
+            std::cerr << "opening Start-skip QA: field became visible "
+                      << (field_visible_frame.has_value()
+                              ? static_cast<std::int64_t>(
+                                    *field_visible_frame - start_mixer_frame)
+                              : -1)
+                      << " frames after Start; emulator "
+                      << kStartToFieldVisibleFrames << '\n';
+            return 3;
+        }
+
+        std::ifstream wav(audio_wav_path, std::ios::binary);
+        wav.seekg(44, std::ios::beg);
+        if (!wav) {
+            std::cerr << "opening Start-skip QA: could not read rendered PCM\n";
+            return 3;
+        }
+        std::vector<std::int16_t> pcm;
+        std::int16_t sample = 0;
+        while (wav.read(reinterpret_cast<char*>(&sample), sizeof(sample))) {
+            pcm.push_back(sample);
+        }
+        const auto frame_count =
+            pcm.size() / (2U * kAudioSamplesPerFrame);
+        std::vector<std::int32_t> frame_peaks(frame_count, 0);
+        for (std::size_t frame = 0U; frame < frame_count; ++frame) {
+            for (std::size_t sample_index = 0U;
+                 sample_index < 2U * kAudioSamplesPerFrame; ++sample_index) {
+                const auto value = std::abs(static_cast<std::int32_t>(
+                    pcm[frame * 2U * kAudioSamplesPerFrame + sample_index]));
+                frame_peaks[frame] = std::max(frame_peaks[frame], value);
+            }
+        }
+        std::vector<std::uint64_t> fade_start_frames;
+        for (auto event = audio_begin; event != audio_events.end(); ++event) {
+            if (event->op == AudioOp::attenuate && event->id == kGemsFadeStep) {
+                fade_start_frames.push_back(event->frame);
+            }
+        }
+        if (fade_start_frames.size() < 3U) {
+            std::cerr << "opening Start-skip QA: motel-sign audio fade was "
+                         "not observed\n";
+            return 3;
+        }
+        const auto first_fade = fade_start_frames.front();
+        const auto second_fade_end = fade_end_frames.back();
+        if (second_fade_end >= frame_peaks.size()) {
+            std::cerr << "opening Start-skip QA: rendered PCM ended before "
+                         "the second fade\n";
+            return 3;
+        }
+        auto previous_step_peak = std::numeric_limits<std::int32_t>::max();
+        for (auto step_start = first_fade; step_start <= second_fade_end;
+             step_start += kGemsFadeStepFrames) {
+            const auto step_end = std::min<std::uint64_t>(
+                step_start + kGemsFadeStepFrames - 1U, second_fade_end);
+            auto step_peak = 0;
+            for (auto frame = step_start; frame <= step_end; ++frame) {
+                step_peak = std::max(step_peak, frame_peaks[frame]);
+            }
+            if (step_peak > previous_step_peak) {
+                std::cerr << "opening Start-skip QA: fade PCM peak envelope "
+                          << "increased at step frame " << step_start << " from "
+                          << previous_step_peak << " to " << step_peak << '\n';
+                return 3;
+            }
+            previous_step_peak = step_peak;
+        }
+        const auto release_start = fade_end_frames.front();
+        if (release_start == 0U) {
+            std::cerr << "opening Start-skip QA: first release has no prior "
+                         "PCM frame\n";
+            return 3;
+        }
+        for (auto frame = release_start; frame <= second_fade_end; ++frame) {
+            if (frame_peaks[frame] > frame_peaks[frame - 1U]) {
+                std::cerr << "opening Start-skip QA: release PCM peak "
+                          << "increased at frame " << frame << " from "
+                          << frame_peaks[frame - 1U] << " to "
+                          << frame_peaks[frame] << '\n';
+                return 3;
+            }
+        }
+        const auto motel_fade = fade_start_frames[2U];
+        const auto motel_delay = motel_fade > field_music->frame
+            ? motel_fade - field_music->frame
+            : 0U;
+        if (motel_delay < 30U) {
+            std::cerr << "opening Start-skip QA: motel-sign fade started "
+                      << motel_delay
+                      << " frames after 0x0F; expected at least 30\n";
+            return 3;
+        }
+        bool full_level = false;
+        for (auto event = audio_begin; event != audio_events.end() &&
+             event->frame < motel_fade; ++event) {
+            if (event->op == AudioOp::attenuate) {
+                full_level = event->id == 0U;
+            }
+        }
+        bool field_song_audible = false;
+        for (auto frame = field_music->frame;
+             frame < motel_fade && frame < frame_peaks.size(); ++frame) {
+            field_song_audible = field_song_audible || frame_peaks[frame] > 0;
+        }
+        if (!full_level || !field_song_audible) {
+            std::cerr << "opening Start-skip QA: 0x0F was not audible at "
+                         "attenuation 0 before the motel-sign fade\n";
+            return 3;
+        }
+
         const auto& arrival = field_scene_runtime_.dialogue_panel();
         const auto field_arrival_position =
             field_scene_runtime_.field_entity_world_position();
@@ -4042,6 +4267,8 @@
                   << field_scene_runtime_.state().field_scene_buffers
                          .scene_reference
                   << " arrival_frames=" << arrival_frames
+                  << " music_frame=" << field_music->frame
+                  << " motel_fade_frame=" << motel_fade
                   << " actual=" << actual_path.string()
                   << " stoker_arrival=" << arrival_path.string() << '\n';
         return 0;

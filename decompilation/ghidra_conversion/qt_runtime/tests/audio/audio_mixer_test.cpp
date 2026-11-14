@@ -297,6 +297,38 @@ int main() {
         check(loud, "level 0 restores output");
     }
 
+    // 0x53126 tail: op 0x16 releases the song at level 0x78 and op 0x20
+    // level 0 lands in the same frame. The release must render exactly as if
+    // the level had stayed at 0x78 (no burst of the stopped song).
+    {
+        constexpr std::uint8_t kFadeEndLevel =
+            static_cast<std::uint8_t>(kGemsFadeStep * kGemsFadeSteps);
+        AudioMixer restored(bank, true), held(bank, true);
+        CaptureSink restored_sink, held_sink;
+        for (auto* mixer : {&restored, &held}) {
+            mixer->start(kEnding);
+            mixer->attenuate(kFadeEndLevel);
+        }
+        for (int i = 0; i < 10; ++i) {
+            restored.advance_frame(&restored_sink);
+            held.advance_frame(&held_sink);
+        }
+        restored.stop_all();
+        restored.attenuate(0U);
+        held.stop_all();
+        for (int i = 0; i < 3; ++i) {
+            restored.advance_frame(&restored_sink);
+            held.advance_frame(&held_sink);
+        }
+        bool any_tail = false;
+        for (std::size_t i = 10U * kAudioSamplesPerFrame * 2U;
+             i < held_sink.samples.size(); ++i)
+            any_tail = any_tail || held_sink.samples[i] != 0;
+        check(any_tail, "the faded release tail is audible at level 0x78");
+        check(restored_sink.samples == held_sink.samples,
+              "level 0 after op 0x16 does not raise the released tail");
+    }
+
     // WAV sink.
     {
         const auto path = std::filesystem::temp_directory_path() / "srx_audio_mixer_test.wav";

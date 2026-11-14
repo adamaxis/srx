@@ -122,6 +122,8 @@ private:
         std::optional<std::uint64_t> loop_start;
         std::optional<std::uint64_t> loop_end;
         std::size_t release_left = 0U; // nonzero: releasing
+        // Gain (0x7F - level) latched at key-off; caps the release tail.
+        std::uint8_t release_gain = kAudioAttenuationSilent;
         std::uint64_t started = 0U;    // start order, for stealing
     };
 

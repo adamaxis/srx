@@ -149,6 +149,16 @@ void AudioMixer::start(const std::uint16_t id) {
 void AudioMixer::release(Voice& voice) {
     if (voice.active && voice.release_left == 0U) {
         voice.release_left = kAudioReleaseSamples;
+        // Key-off hands the channel's tail to its release envelope; the
+        // sequencer no longer drives it. 0x53126 sends op 0x16 (0x52FA0) at
+        // level 0x78 and op 0x20 level 0 (0x53156) in the same frame, so the
+        // tail must not be raised by that restore: latch the level in effect
+        // at key-off and never render the tail louder than it. [H: release
+        // stand-in; the GEMS Z80 TL path is not traced]
+        const auto level = std::min<std::int32_t>(
+            attenuation_, kAudioAttenuationSilent);
+        voice.release_gain = static_cast<std::uint8_t>(
+            kAudioAttenuationSilent - level);
     }
 }
 
@@ -194,6 +204,15 @@ void AudioMixer::advance_voice(Voice& voice, const std::size_t samples,
                 const auto ramp = static_cast<std::int32_t>(voice.release_left);
                 left = left * ramp / static_cast<std::int32_t>(kAudioReleaseSamples);
                 right = right * ramp / static_cast<std::int32_t>(kAudioReleaseSamples);
+                const auto current_level = std::min<std::int32_t>(
+                    attenuation_, kAudioAttenuationSilent);
+                const auto current_gain =
+                    static_cast<std::int32_t>(kAudioAttenuationSilent) -
+                    current_level;
+                if (current_gain > voice.release_gain) {
+                    left = left * voice.release_gain / current_gain;
+                    right = right * voice.release_gain / current_gain;
+                }
             }
             mix[i * 2U] += left;
             mix[i * 2U + 1U] += right;
