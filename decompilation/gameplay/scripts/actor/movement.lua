@@ -659,9 +659,16 @@ local function creature_movement_step_distance(context, state)
     local combat_quickness = type(combat_attributes) == "table" and
         combat_attributes.quickness or nil
     -- Contexts without a live Quickness byte keep the host vector list.
+    -- Pedestrians (+0x9E bit 5) never read Quickness: ROM 0xB60A..0xB624
+    -- picks BE82/BE62 from FFDF84 alone and 0xB666 then enters the 0xB6E4
+    -- distance bands, so they take the source path without a combatant.
     -- Walk Fast is an earlier ROM branch and does not require Quickness.
+    local facts = context.actor_facts
+    local pedestrian = type(facts) == "table" and
+        type(facts.roles) == "table" and facts.roles.pedestrian == true
     local attribute_speed =
         context.dynamic_world_encounter_actor == true or
+        pedestrian or
         type(combat_quickness) == "number"
     if not attribute_speed and not walk_fast_selected then
         return context.movement_default_step_distance

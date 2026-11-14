@@ -1119,6 +1119,21 @@ check(source_movement_step(false, true, false, 1, 0x500, false) == 30 and
 check(source_movement_step(true, false, true, 9, 0x500, false) == 22 and
       source_movement_step(true, false, false, 9, 0x500, false) == 10,
       "0xB610 uses the special pedestrian vector by FFDF84 state [C]")
+local function static_pedestrian_step(world_active, route_distance)
+    local speed_context = {
+        dynamic_world_encounter_actor = false,
+        actor_facts = actor_facts({ roles = { pedestrian = true } }),
+        movement_actor_facts = actor_facts(),
+        world_activity_active = world_active == true,
+        movement_default_step_distance = 40,
+    }
+    return R.creature_movement_step_distance(speed_context, {
+        movement_route_distance = route_distance,
+    })
+end
+check(static_pedestrian_step(false, 0x500) == 10 and
+      static_pedestrian_step(true, 0x500) == 22,
+      "static pedestrian uses ROM BE62/BE82 vectors without Quickness [C]")
 for _, band in ipairs({
     { 0x00FF, 8 }, { 0x0100, 10 }, { 0x01FF, 10 },
     { 0x0200, 15 }, { 0x035F, 15 }, { 0x0360, 20 },
@@ -1129,6 +1144,10 @@ for _, band in ipairs({
           string.format("0xB6E4 distance band at %04X selects %d",
                         band[1], band[2]))
 end
+check(static_pedestrian_step(false, 0x00FF) == 8 and
+      static_pedestrian_step(false, 0x0200) == 15 and
+      static_pedestrian_step(false, 0x0360) == 20,
+      "static pedestrian keeps the ROM B6E4 distance bands [C]")
 check(source_movement_step(false, false, true, 9, 0x0100, false) == 10 and
       source_movement_step(false, false, true, 9, 0x0100, true) == 31,
       "0xB666 skips the distance bands when +0x10 bit 1 is set [C]")
