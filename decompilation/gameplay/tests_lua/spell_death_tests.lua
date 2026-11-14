@@ -13,6 +13,13 @@ game.modules.magic = require("magic")
 game.modules.items = require("items")
 local pass, total = 0, 0
 local function check(c, m) total = total + 1; if c then pass = pass + 1 else print("FAIL: " .. m) end end
+local function clear_actor_states()
+    -- actor modules retain the table created by H.make_game; clear it in
+    -- place so the heartbeat and this test continue to share spawn storage.
+    for actor_id in pairs(game.actors) do
+        game.actors[actor_id] = nil
+    end
+end
 local function hit(kind, lifecycle, variant)
     local st = { visual_profile_id = kind, actor_facts = {
             lifecycle = { active = lifecycle.active == true,
@@ -43,7 +50,7 @@ check(not st.spell_death and cue == R.Animator.down_audio(K.HUMAN_GUARD),
       "plain zero meter is AFF2 -> B330")
 
 local function lethal_flame_bolt(blocked_pose)
-    game.actors = {}
+    clear_actor_states()
     local target_id = blocked_pose and "thon" or "ordinary_actor"
     local combatant = {
         is_party_member = false,
@@ -98,7 +105,7 @@ check(thon_result ~= nil and thon_result.record_type == nil and
       "kind-15 Thon suppresses the flame-bolt death pose by named host fact")
 
 local function spell_death_lifecycle(variant)
-    game.actors = {}
+    clear_actor_states()
     local actor_id = "static-guard-" .. variant
     local facts = {
         lifecycle = { active = true, thinking_enabled = true,
