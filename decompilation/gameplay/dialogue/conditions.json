@@ -798,22 +798,37 @@
         "scope": "guard_frosty_option_root"
       }
     },
-    "salish.sinsearach.gate.lady_gillian_available": {
-      "expression": {
-        "all": [
-          { "fact": "story.michael_mission_told", "op": "eq", "value": true },
-          { "fact": "story.ritual_of_binding", "op": "eq", "value": true },
-          { "fact": "story.red_buffalo_woman", "op": "eq", "value": true },
-          { "fact": "story.ilene_met", "op": "eq", "value": true },
-          { "fact": "story.gillian_initiation", "op": "eq", "value": true },
-          { "fact": "story.group_item.gift_lady_gillian", "op": "eq", "value": false },
-          { "fact": "story.frosty_met", "op": "eq", "value": false }
-        ]
-      },
-      "provenance": {
-        "romAddresses": ["0x21CE4", "0x21D00", "0x0F57E4"],
-        "scope": "command_34_lady_gillian_root_gates"
-      }
+    "salish.sinsearach.gate.mission_not_told": {
+      "expression": { "fact": "story.michael_mission_told", "op": "eq", "value": false },
+      "provenance": { "romAddresses": ["0x21CEA", "0x21CF2", "0x0F4D14"], "scope": "command_34_bit13_clear" }
+    },
+    "salish.sinsearach.gate.ritual_not_started": {
+      "expression": { "fact": "story.ritual_of_binding", "op": "eq", "value": false },
+      "provenance": { "romAddresses": ["0x21D10", "0x21D14", "0x2196C"], "scope": "command_34_bit17_clear" }
+    },
+    "salish.sinsearach.gate.reentry_pending": {
+      "expression": { "fact": "story.field_dialogue_flag_bit_4", "op": "eq", "value": true },
+      "provenance": { "romAddresses": ["0x21D98", "0x21DA4", "0x21DAC"], "scope": "command_34_reentry_choice" }
+    },
+    "salish.sinsearach.gate.red_buffalo_not_met": {
+      "expression": { "fact": "story.red_buffalo_woman", "op": "eq", "value": false },
+      "provenance": { "romAddresses": ["0x21D18", "0x21D90", "0x0F4D3C"], "scope": "command_34_bit18_clear" }
+    },
+    "salish.sinsearach.gate.gillian_gift_held": {
+      "expression": { "fact": "story.group_item.gift_lady_gillian", "op": "eq", "value": true },
+      "provenance": { "romAddresses": ["0x21D20", "0x21D60", "0x0F4D50"], "scope": "command_34_group_item_bit5" }
+    },
+    "salish.sinsearach.gate.ilene_not_met": {
+      "expression": { "fact": "story.ilene_met", "op": "eq", "value": false },
+      "provenance": { "romAddresses": ["0x21D28", "0x21D58", "0x0F4D64"], "scope": "command_34_bit19_clear" }
+    },
+    "salish.sinsearach.gate.gillian_not_initiated": {
+      "expression": { "fact": "story.gillian_initiation", "op": "eq", "value": false },
+      "provenance": { "romAddresses": ["0x21D30", "0x21D50", "0x0F4D78"], "scope": "command_34_bit20_clear" }
+    },
+    "salish.sinsearach.gate.frosty_not_met": {
+      "expression": { "fact": "story.frosty_met", "op": "eq", "value": false },
+      "provenance": { "romAddresses": ["0x21D38", "0x21D48", "0x0F57E4"], "scope": "command_34_bit30_clear" }
     },
     "salish.sinsearach.gate.frosty_expected": {
       "expression": {

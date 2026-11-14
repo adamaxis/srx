@@ -41722,8 +41722,11 @@ int run_field_sinsearach_gate_choice_permutation_qa(
         return 3;
     }
 
-    for (const std::uint8_t bit : {9U, 13U, 17U, 19U}) {
+    for (const std::uint8_t bit : {9U, 17U, 19U}) {
         if (!field_scene.set_story_flag_for_dump(bit, true)) return 3;
+    }
+    if (!field_scene.set_story_flag_for_dump(13U, frosty_elders_route)) {
+        return 3;
     }
     if (!field_scene.set_story_flag_for_dump(18U, !hostile_question_route) ||
         !field_scene.set_story_flag_for_dump(20U, !question_route) ||
@@ -43241,6 +43244,10 @@ int run_field_red_buffalo_physical_entry_qa(
     // The positional checkpoint uses the New Game runner record, so restore
     // the matching known New Game Notebook tip words for this service test.
     field_scene.seed_notebook_tip_flags_for_qa({{1U, 0U, 0U}});
+    field_scene.set_group_item_flags_for_dump(1U << 6U);
+    field_scene.seed_field_mode_flags_for_qa((1U << 0U) | (1U << 29U));
+    field_scene.seed_field_mode_effect_flags_for_qa(
+        (1U << 2U) | (1U << 29U));
     if (field_scene.field_scene_reference_for_dump() != 6U ||
         field_scene.field_entity_world_position().x != kStartX ||
         field_scene.field_entity_world_position().y != kStartY ||
@@ -43535,17 +43542,24 @@ int run_field_red_buffalo_physical_entry_qa(
     }
     const auto result_flags = field_scene.field_world_fact_flags_for_dump();
     const auto notebook_flags = field_scene.notebook_story_flags_for_dump();
+    const auto group_items = field_scene.group_item_flags_for_dump();
     const auto effects = field_scene.field_mode_effect_flags_for_dump();
-    const bool notebook_result = notebook_flags.has_value() &&
-        ((*notebook_flags & (1U << 5U)) != 0U) &&
-        ((*notebook_flags & (1U << 6U)) == 0U);
-    const bool effect_result = (effects & (1U << 29U)) == 0U &&
-                               (effects & (1U << 30U)) != 0U;
+    const auto mode_flags = field_scene.field_mode_flags_for_dump();
+    const bool notebook_unchanged = notebook_flags == 1U;
+    const bool item_result = group_items.has_value() &&
+        ((*group_items & (1U << 6U)) == 0U) &&
+        ((*group_items & (1U << 5U)) != 0U);
+    const bool mode_result = (mode_flags & (1U << 29U)) == 0U &&
+                             (mode_flags & (1U << 30U)) != 0U;
+    constexpr std::uint32_t kInitialModeEffectFlags =
+        (1U << 2U) | (1U << 29U);
+    const bool effects_unchanged = effects == kInitialModeEffectFlags;
     if (field_scene.dialogue_open() ||
         field_scene.field_modal_return_transition_frames_for_dump() != 0U ||
         field_scene.field_scene_reference_for_dump() != 6U ||
-        (result_flags & (1U << 18U)) == 0U || !notebook_result ||
-        !effect_result || !save("same-map-return", true)) {
+        (result_flags & (1U << 18U)) == 0U || !notebook_unchanged ||
+        !item_result || !mode_result || !effects_unchanged ||
+        !save("same-map-return", true)) {
         std::cerr << "Red Buffalo QA: completing the gift conversation did "
                      "not commit its gated story state or same-map return "
                      "(dialogue=" << field_scene.dialogue_open()
@@ -43553,8 +43567,10 @@ int run_field_red_buffalo_physical_entry_qa(
                   << field_scene.field_scene_reference_for_dump()
                   << ", trigger18="
                   << ((result_flags & (1U << 18U)) != 0U)
-                  << ", notebook=" << notebook_result
-                  << ", effects=" << effect_result
+                  << ", notebook_unchanged=" << notebook_unchanged
+                  << ", group_items=" << item_result
+                  << ", FFFC30=" << mode_result
+                  << ", FFFC34_unchanged=" << effects_unchanged
                   << ", return_prompt_opens="
                   << std::count(
                          source_boundaries.begin() +

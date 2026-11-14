@@ -130,8 +130,17 @@ local function register_core_actions(registry)
         return true
     end)
 
+    registry:register("field.set_dialogue_flag", function(arguments)
+        assert(is_integer(arguments.flagBit, 0, 7) and
+               type(arguments.value) == "boolean",
+            "field.set_dialogue_flag needs a flagBit and boolean value")
+        game.state["field_dialogue_flag_bit_" .. arguments.flagBit] =
+            arguments.value
+        return true
+    end)
+
     registry:register("field.set_notebook_tip_flag", function(arguments)
-        assert(is_integer(arguments.flagBit, 0, 31) and
+        assert(is_integer(arguments.flagBit, 0, 95) and
                type(arguments.value) == "boolean",
             "field.set_notebook_tip_flag needs a flagBit and boolean value")
         game.state["notebook_tip_flag_bit_" .. arguments.flagBit] =

@@ -279,17 +279,25 @@ game.location.speaker_id = red_buffalo_service.speaker_id
 
 game.state.ritual_of_binding = true
 game.state.red_buffalo_woman = false
+game.state["group_item.gift_red_buffalo_woman"] = true
+game.state["group_item.gift_lady_gillian"] = false
 game.state.notebook_tip_flag_bit_5 = false
 game.state.notebook_tip_flag_bit_6 = true
+game.state.field_mode_flag_bit_29 = true
+game.state.field_mode_flag_bit_30 = false
 game.state.field_mode_effect_flag_bit_29 = true
 game.state.field_mode_effect_flag_bit_30 = false
 choices = { "more", "more" }
 assert(RedBuffalo.present_indexed_title_service() == "field_return")
 assert(game.state.red_buffalo_woman == true)
-assert(game.state.notebook_tip_flag_bit_5 == true and
-       game.state.notebook_tip_flag_bit_6 == false and
-       game.state.field_mode_effect_flag_bit_29 == false and
-       game.state.field_mode_effect_flag_bit_30 == true)
+assert(game.state["group_item.gift_red_buffalo_woman"] == false and
+       game.state["group_item.gift_lady_gillian"] == true and
+       game.state.field_mode_flag_bit_29 == false and
+       game.state.field_mode_flag_bit_30 == true and
+       game.state.notebook_tip_flag_bit_5 == false and
+       game.state.notebook_tip_flag_bit_6 == true and
+       game.state.field_mode_effect_flag_bit_29 == true and
+       game.state.field_mode_effect_flag_bit_30 == false)
 
 -- ROM prompt node 0xF5888 has separate no-business and More outcomes. The
 -- former leaves the lodge; the latter advances into the penthouse passage.

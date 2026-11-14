@@ -3,6 +3,7 @@
 -- completion facts, while the host presents the typed dialogue operations.
 local E = require("enums")
 local StoryFacts = require("story_facts")
+local GroupItems = require("group_items")
 local HarlequinDialogue = require("harlequin_dialogue")
 
 local RedBuffalo = {}
@@ -61,10 +62,10 @@ function RedBuffalo.present_indexed_title_service()
 
         -- Completing the gift exchange records the meeting [C: 0x5435C].
         StoryFacts.set(E.StoryFact.RED_BUFFALO_WOMAN)
-        game.state.notebook_tip_flag_bit_6 = false
-        game.state.notebook_tip_flag_bit_5 = true
-        game.state.field_mode_effect_flag_bit_29 = false
-        game.state.field_mode_effect_flag_bit_30 = true
+        GroupItems.set(E.GroupItemId.GIFT_RED_BUFFALO_WOMAN, false)
+        GroupItems.set(E.GroupItemId.GIFT_LADY_GILLIAN, true)
+        game.state.field_mode_flag_bit_29 = false
+        game.state.field_mode_flag_bit_30 = true
         return "field_return"
     end
 

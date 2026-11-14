@@ -53,14 +53,24 @@ do
     check(handler == 0x21CE4,
           "cmd34 table entry resolves to the Sinsearach state selector")
     check(u16(0x21CEA) == 0x0801 and u16(0x21CEC) == 0x000D and
-          u16(0x21D10) == 0x0801 and u16(0x21D12) == 0x0011 and
+          u16(0x21CF2) == 0x41F9 and u32(0x21CF4) == 0xF4D14,
+          "cmd34 checks FFFC1E bit13 first and opens F4D14 when clear")
+    check(u16(0x21D10) == 0x0801 and u16(0x21D12) == 0x0011 and
           u16(0x21D18) == 0x0801 and u16(0x21D1A) == 0x0012 and
           u16(0x21D20) == 0x0800 and u16(0x21D22) == 0x0005 and
           u16(0x21D28) == 0x0801 and u16(0x21D2A) == 0x0013 and
           u16(0x21D30) == 0x0801 and u16(0x21D32) == 0x0014 and
-          u16(0x21D38) == 0x0801 and u16(0x21D3A) == 0x001E and
-          u16(0x21D48) == 0x41F9 and u32(0x21D4A) == 0xF57E4,
-          "cmd34 checks bit13, story bits17/18/19/20/30, and item bit5 before root F57E4")
+          u16(0x21D38) == 0x0801 and u16(0x21D3A) == 0x001E,
+          "cmd34 tests FFFC1E bits17/18/19/20/30 around FFFC22 item bit5 in ROM order")
+    check(u16(0x21D40) == 0x41F9 and u32(0x21D42) == 0xF4D8C and
+          u16(0x21D48) == 0x41F9 and u32(0x21D4A) == 0xF57E4 and
+          u16(0x21D50) == 0x41F9 and u32(0x21D52) == 0xF4D78 and
+          u16(0x21D58) == 0x41F9 and u32(0x21D5A) == 0xF4D64 and
+          u16(0x21D88) == 0x41F9 and u32(0x21D8A) == 0xF4D50 and
+          u16(0x21D90) == 0x41F9 and u32(0x21D92) == 0xF4D3C and
+          u16(0x21DAC) == 0x41F9 and u32(0x21DAE) == 0xF4D00 and
+          u16(0x21DC4) == 0x41F9 and u32(0x21DC6) == 0xF4CEC,
+          "cmd34 destination roots preserve each prerequisite, gift, re-entry, and first-audience outcome")
     check(u32(0x12CCB4 + 4 * 0x35) == 0x21DCC,
           "cmd35 is the separate 0x21DCC response handler")
 end

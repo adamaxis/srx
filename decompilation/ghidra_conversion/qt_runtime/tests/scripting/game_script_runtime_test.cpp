@@ -15197,6 +15197,12 @@ int main() {
     scripts.set_story_state({
         {"ritual_of_binding", true},
         {"red_buffalo_woman", false},
+        {"group_item.gift_red_buffalo_woman", true},
+        {"group_item.gift_lady_gillian", false},
+        {"field_mode_flag_bit_29", true},
+        {"field_mode_flag_bit_30", false},
+        {"field_mode_effect_flag_bit_29", true},
+        {"field_mode_effect_flag_bit_30", false},
     });
     const auto red_buffalo_route =
         scripts.resolve_field_location_route(red_buffalo_context);
@@ -15222,11 +15228,13 @@ int main() {
                     red_buffalo_task.result_id ==
                         std::optional<std::string>{"field_return"} &&
                     scripts.story_state().at("red_buffalo_woman") && !has_story_fact(scripts.story_state(), "story_trigger_active_18") &&
-                    scripts.story_state().at("notebook_tip_flag_bit_5") &&
-                    !scripts.story_state().at("notebook_tip_flag_bit_6") &&
-                    !scripts.story_state().at("field_mode_effect_flag_bit_29") &&
-                    scripts.story_state().at("field_mode_effect_flag_bit_30"),
-                "Red Buffalo's gated gift branch did not update its source completion facts")) {
+                    scripts.story_state().at("group_item.gift_lady_gillian") &&
+                    !scripts.story_state().at("group_item.gift_red_buffalo_woman") &&
+                    !scripts.story_state().at("field_mode_flag_bit_29") &&
+                    scripts.story_state().at("field_mode_flag_bit_30") &&
+                    scripts.story_state().at("field_mode_effect_flag_bit_29") &&
+                    !scripts.story_state().at("field_mode_effect_flag_bit_30"),
+                "Red Buffalo must exchange FFFC22 items and write FFFC30 without changing FFFC34")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
     }
@@ -17692,6 +17700,9 @@ int main() {
             {"ilene_met", bit_19},
             {"gillian_initiation", bit_20},
             {"frosty_met", bit_30},
+            {"field_dialogue_flag_bit_4", false},
+            {"field_mode_flag_bit_30", true},
+            {"field_mode_flag_bit_31", false},
             {"group_item.gift_lady_gillian", group_item_5},
         });
 
@@ -17767,22 +17778,84 @@ int main() {
             gate_variant =
                 sinsearach_fare_scripts.complete_native_operation(true);
         } else {
-            if (!expect(spirit_page_is(gate_variant, "elders_escort"),
-                        "Sinsearach command 0x34 opened Lady Gillian outside its ROM gate")) {
+            const auto expect_gate_page = [&](const std::string_view page) {
+                if (spirit_page_is(gate_variant, page)) return true;
                 std::cerr << "mask=" << static_cast<unsigned>(mask) << " "
                           << sinsearach_fare_scripts.failure() << '\n';
+                return false;
+            };
+            const auto advance_gate_page = [&] {
+                gate_variant =
+                    sinsearach_fare_scripts.complete_native_operation(true);
+            };
+            if (!bit_13) {
+                if (!expect_gate_page("elders_escort")) return 18;
+                advance_gate_page();
+                if (!expect_gate_page("elders_busy")) return 18;
+                advance_gate_page();
+            } else if (!bit_17) {
+                if (!expect_gate_page("gillian_first_audience")) return 18;
+                advance_gate_page();
+                gate_variant = sinsearach_fare_scripts
+                    .complete_native_menu_choice("no");
+                if (!expect_gate_page("ritual_no_response")) return 18;
+                advance_gate_page();
+            } else if (!bit_18) {
+                if (!expect_gate_page("ritual_friendship_not_done")) return 18;
+                advance_gate_page();
+            } else if (group_item_5) {
+                if (!expect(
+                        gate_variant.operation.has_value() &&
+                            gate_variant.operation->type ==
+                                ScriptNativeOperation::Type::service_call &&
+                            gate_variant.operation->service_id ==
+                                "party.award_karma_1" &&
+                            !sinsearach_fare_scripts.story_state().at(
+                                "group_item.gift_lady_gillian"),
+                        "Sinsearach gift route omitted item consumption or +1 Karma")) {
+                    std::cerr << "mask=" << static_cast<unsigned>(mask) << " "
+                              << sinsearach_fare_scripts.failure() << '\n';
+                    return 18;
+                }
+                gate_variant = sinsearach_fare_scripts
+                    .complete_native_service_result("applied");
+                if (!expect_gate_page("gillian_return_offering")) return 18;
+                if (!expect(
+                        !sinsearach_fare_scripts.story_state().at(
+                            "field_mode_flag_bit_30") &&
+                            sinsearach_fare_scripts.story_state().at(
+                                "field_mode_flag_bit_31"),
+                        "Sinsearach gift route did not move FFFC30 bit30 to bit31")) {
+                    std::cerr << "mask=" << static_cast<unsigned>(mask) << " "
+                              << sinsearach_fare_scripts.failure() << '\n';
+                    return 18;
+                }
+                advance_gate_page();
+                if (!expect_gate_page("gillian_return_thanks")) return 18;
+                advance_gate_page();
+                if (!expect_gate_page("gillian_return_ritual")) return 18;
+                advance_gate_page();
+            } else if (!bit_19) {
+                if (!expect_gate_page("ritual_fellowship_not_done")) return 18;
+                advance_gate_page();
+            } else if (!bit_20) {
+                if (!expect_gate_page("gillian_trial_fellowship")) return 18;
+                advance_gate_page();
+                gate_variant = sinsearach_fare_scripts
+                    .complete_native_menu_choice("no");
+                if (!expect_gate_page("ritual_banish")) return 18;
+                advance_gate_page();
+            } else if (bit_30) {
+                if (!expect_gate_page("gillian_busy")) return 18;
+                advance_gate_page();
+            } else {
+                // Every prerequisite passed, so lady_gillian_available must
+                // have handled this mask above.
+                static_cast<void>(expect(
+                    false, "Sinsearach gate matrix reached an impossible mask"));
+                std::cerr << "mask=" << static_cast<unsigned>(mask) << '\n';
                 return 18;
             }
-            gate_variant =
-                sinsearach_fare_scripts.complete_native_operation(true);
-            if (!expect(spirit_page_is(gate_variant, "elders_busy"),
-                        "Sinsearach fallback lost the source Elders-busy page")) {
-                std::cerr << "mask=" << static_cast<unsigned>(mask) << " "
-                          << sinsearach_fare_scripts.failure() << '\n';
-                return 18;
-            }
-            gate_variant =
-                sinsearach_fare_scripts.complete_native_operation(true);
         }
         if (!expect(fare_menu_has_choices(gate_variant, "copt_fare_offer"),
                     "Sinsearach gate matrix route did not return to the fare prompt")) {

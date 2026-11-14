@@ -729,6 +729,42 @@
         "lady_gillian_greeting": {
           "continuation_key": "",
           "title_key": "salish.sinsearach.page.lady_gillian_greeting"
+        },
+        "ritual_friendship_not_done": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.sinsearach.page.ritual_friendship_not_done"
+        },
+        "ritual_fellowship_not_done": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.sinsearach.page.ritual_fellowship_not_done"
+        },
+        "gillian_return_thanks": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.sinsearach.page.gillian_return_thanks"
+        },
+        "gillian_return_ritual": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.sinsearach.page.gillian_return_ritual"
+        },
+        "ritual_thon_answer": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.sinsearach.page.ritual_thon_answer"
+        },
+        "ritual_frosty_answer": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.sinsearach.page.ritual_frosty_answer"
+        },
+        "ritual_frosty_expected": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.sinsearach.page.ritual_frosty_expected"
+        },
+        "ritual_frosty_not_ready": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.sinsearach.page.ritual_frosty_not_ready"
+        },
+        "gillian_busy": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.sinsearach.page.gillian_busy"
         }
       },
       "name": "Lady Gillian",
@@ -764,6 +800,58 @@
     },
     "salish_sinsearach_narrator": {
       "events": {
+        "gillian_reentry_intro": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.sinsearach.page.gillian_reentry_intro"
+        },
+        "gillian_first_audience": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.sinsearach.page.gillian_first_audience"
+        },
+        "ritual_explanation_excellent": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.sinsearach.page.ritual_explanation_excellent"
+        },
+        "ritual_explanation_parts": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.sinsearach.page.ritual_explanation_parts"
+        },
+        "ritual_explanation_bundle": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.sinsearach.page.ritual_explanation_bundle"
+        },
+        "ritual_no_response": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.sinsearach.page.ritual_no_response"
+        },
+        "gillian_return_offering": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.sinsearach.page.gillian_return_offering"
+        },
+        "gillian_trial_fellowship": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.sinsearach.page.gillian_trial_fellowship"
+        },
+        "ritual_banish": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.sinsearach.page.ritual_banish"
+        },
+        "ritual_initiation_pleased": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.sinsearach.page.ritual_initiation_pleased"
+        },
+        "ritual_initiation_assembled": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.sinsearach.page.ritual_initiation_assembled"
+        },
+        "ritual_initiation_declaration": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.sinsearach.page.ritual_initiation_declaration"
+        },
+        "ritual_initiation_chant": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.sinsearach.page.ritual_initiation_chant"
+        },
         "elders_escort": {
           "continuation_key": "shared.more",
           "title_key": "salish.sinsearach.page.elders_escort"

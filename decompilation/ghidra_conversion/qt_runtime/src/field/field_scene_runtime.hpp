@@ -1647,6 +1647,9 @@ public:
         field_mode_flags_ = flags;
         field_mode_flags_resolved_ = true;
     }
+    void seed_field_mode_effect_flags_for_qa(std::uint32_t flags) noexcept {
+        field_mode_effect_flags_ = flags;
+    }
     std::uint32_t field_auxiliary_flags_for_dump() const noexcept {
         return field_auxiliary_flags_;
     }

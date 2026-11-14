@@ -33,6 +33,8 @@ local function action_registry()
             -- Command 0x2B at 0x21B82 learns Michael's alias and prepares the
             -- source field-mode state for the next same-map service visit.
             game.state.michael_alias_learned = true
+            assert(game.services.call("party", "award_karma_1") == "applied",
+                "Boris Michael alias reward requires an available party")
             game.state.field_dialogue_flag_bit_1 = true
             game.state.field_mode_flag_bit_6 = false
             game.state.field_mode_flag_bit_7 = false

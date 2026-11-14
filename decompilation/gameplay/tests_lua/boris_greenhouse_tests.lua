@@ -84,6 +84,8 @@ local function new_game(choices, flags, funds, package_run_status, inventory)
         purchase_calls = {},
         inventory = {},
         phase = {},
+        runner_karma = { 7, 15, 3 },
+        karma_awards = {},
         services = {},
         modules = {
             world_content_data = {
@@ -158,6 +160,13 @@ local function new_game(choices, flags, funds, package_run_status, inventory)
     end
 
     instance.services.call = function(domain, operation)
+        if domain == "party" and operation == "award_karma_1" then
+            instance.karma_awards[#instance.karma_awards + 1] = operation
+            for slot = 1, #instance.runner_karma do
+                instance.runner_karma[slot] = instance.runner_karma[slot] + 1
+            end
+            return "applied"
+        end
         assert(domain == "building", "unexpected Boris service: " .. tostring(domain))
         local item_code, rating, item_amount = operation:match(
             "^purchase_runner_item_(%d+)_(%d+)_(%d+)$")
@@ -390,9 +399,14 @@ assert(outcome.type == "continue_in_place" and state.funds == 1199 and
        state.seen_events[#state.seen_events].text_key ==
            "boris.greenhouse.page.insufficient_funds")
 
-state = new_game({ "more", "information", "accept", "michael", "more" }, {
+state = new_game({
+    "more", "information", "accept", "michael", "more",
+    "more", "information", "michael", "later",
+}, {
     tarislar_asked_shale = true,
 }, 1000)
+local initial_karma = { state.runner_karma[1], state.runner_karma[2],
+                        state.runner_karma[3] }
 outcome = Boris.present_indexed_title_service()
 assert(outcome.type == "continue_in_place" and state.funds == 500 and
        state.state.field_dialogue_flag_bit_2 == true and
@@ -405,7 +419,19 @@ assert(outcome.type == "continue_in_place" and state.funds == 500 and
        state.seen_pages[3].text_key == "boris.greenhouse.page.paid_information" and
        state.seen_pages[3].choice_ids[1] == "michael" and
        state.seen_pages[3].choice_ids[2] == "david" and
-       state.seen_pages[3].choice_ids[3] == "later")
+       state.seen_pages[3].choice_ids[3] == "later" and
+       #state.karma_awards == 1 and
+       state.runner_karma[1] == initial_karma[1] + 1 and
+       state.runner_karma[2] == initial_karma[2] + 1 and
+       state.runner_karma[3] == initial_karma[3] + 1,
+       "Michael alias reveal awards exactly one Karma to each runner")
+outcome = Boris.present_indexed_title_service()
+assert(outcome.type == "continue_in_place" and
+       #state.karma_awards == 1 and
+       state.runner_karma[1] == initial_karma[1] + 1 and
+       state.runner_karma[2] == initial_karma[2] + 1 and
+       state.runner_karma[3] == initial_karma[3] + 1,
+       "Michael alias repeat path awards no additional Karma")
 
 -- Fake host for story_state.advance_strike_team (ROM 0x1F1E0) in scene 2:
 -- FFFBFB read/write plus the Boris Strike Team follow-up list queue.
