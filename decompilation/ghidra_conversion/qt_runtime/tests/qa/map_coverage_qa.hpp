@@ -33,6 +33,7 @@ struct MapCoverageRow {
     std::string arrival_xy;
     std::string arrival_mode;
     std::string port_ref;
+    std::string script;
 };
 
 struct MapCoverageRect {
@@ -53,8 +54,15 @@ struct MapCoverageAttempt {
     std::uint16_t backup_x{};
     std::uint16_t backup_y{};
     bool backup_captured{};
+    std::uint16_t lead_x{};
+    std::uint16_t lead_y{};
+    std::uint8_t door_facing{};
+    std::uint8_t door_bank{0xFFU};
+    bool lead_captured{};
     std::uint16_t observed_mode{};
     std::uint8_t observed_event{};
+    std::string approach_side;
+    std::uint32_t prompt_inputs{};
     std::string note;
 };
 
@@ -84,12 +92,12 @@ inline std::vector<MapCoverageRow> map_coverage_read_rows(
     }
     while (std::getline(input, line)) {
         const auto fields = map_coverage_split_tsv(line);
-        if (fields.size() != 10U) {
+        if (fields.size() != 11U) {
             return {};
         }
         rows.push_back(MapCoverageRow{
             fields[0], fields[1], fields[2], fields[3], fields[4],
-            fields[5], fields[6], fields[7], fields[8], fields[9]});
+            fields[5], fields[6], fields[7], fields[8], fields[9], fields[10]});
     }
     return rows;
 }
@@ -220,6 +228,73 @@ inline void map_coverage_tap(
     runtime.advance_frame();
 }
 
+inline std::optional<std::string> map_coverage_return_side(
+    std::string_view trigger) {
+    const auto marker = trigger.find("return_side=");
+    if (marker == std::string_view::npos) {
+        return std::nullopt;
+    }
+    const auto start = marker + 12U;
+    const auto end = trigger.find(';', start);
+    const auto side = trigger.substr(
+        start, end == std::string_view::npos ? end : end - start);
+    if (side == "north" || side == "east" || side == "south" || side == "west") {
+        return std::string(side);
+    }
+    return std::nullopt;
+}
+
+inline std::vector<std::string> map_coverage_approach_sides(
+    std::string_view trigger) {
+    const std::array<std::string_view, 4> all{{
+        "north", "east", "south", "west"}};
+    std::vector<std::string> sides;
+    if (const auto preferred = map_coverage_return_side(trigger)) {
+        sides.push_back(*preferred);
+    }
+    for (const auto side : all) {
+        if (std::find(sides.begin(), sides.end(), side) == sides.end()) {
+            sides.emplace_back(side);
+        }
+    }
+    return sides;
+}
+
+inline bool map_coverage_side_possible(
+    const MapCoverageRect& rect, const std::string_view side) {
+    if (side == "north") return rect.y0 >= 0x80U;
+    if (side == "east") return rect.x1 <= 0xFF7FU;
+    if (side == "south") return rect.y1 <= 0xFF7FU;
+    if (side == "west") return rect.x0 >= 0x80U;
+    return false;
+}
+
+inline std::uint8_t map_coverage_position_on_side(
+    FieldSceneRuntime& runtime, const MapCoverageRect& rect,
+    const std::string_view side) {
+    const std::uint32_t cx = (static_cast<std::uint32_t>(rect.x0) + rect.x1) / 2U;
+    const std::uint32_t cy = (static_cast<std::uint32_t>(rect.y0) + rect.y1) / 2U;
+    std::uint32_t x = cx;
+    std::uint32_t y = cy;
+    std::uint8_t input = 0U;
+    if (side == "north" && rect.y0 >= 0x80U) {
+        y = rect.y0 - 0x80U;
+        input = 0x02U;
+    } else if (side == "east" && rect.x1 <= 0xFF7FU) {
+        x = rect.x1 + 0x80U;
+        input = 0x04U;
+    } else if (side == "south" && rect.y1 <= 0xFF7FU) {
+        y = rect.y1 + 0x80U;
+        input = 0x01U;
+    } else if (side == "west" && rect.x0 >= 0x80U) {
+        x = rect.x0 - 0x80U;
+        input = 0x08U;
+    }
+    runtime.set_field_entity_world_position_for_dump(
+        static_cast<std::uint16_t>(x), static_cast<std::uint16_t>(y));
+    return input;
+}
+
 inline std::uint8_t map_coverage_direction(
     FieldSceneRuntime& runtime, const MapCoverageRect& rect) {
     const auto position = runtime.field_entity_world_position();
@@ -258,13 +333,59 @@ inline bool map_coverage_near_rect(
     return x_gap <= 0x180U && y_gap <= 0x180U;
 }
 
+// ROM 0xBC36/0xBC66: the return bank is bits 5-6 of the first door-cell
+// collision byte (FFEF10..12, written by 0xE8A0 from the door record code),
+// not the party facing. The lead word of each 12-byte 0xBD34 entry is added
+// to the lead position held when the door probe hit (before that step).
+inline std::optional<std::array<std::int16_t, 2>>
+map_coverage_return_offset(const std::uint8_t bank) {
+    switch (bank) {
+    case 0U: return std::array<std::int16_t, 2>{0, -0x0140};   // 0xBD34
+    case 1U: return std::array<std::int16_t, 2>{0x01E0, 0};    // 0xBD40
+    case 2U: return std::array<std::int16_t, 2>{0, 0x0140};    // 0xBD4C
+    case 3U: return std::array<std::int16_t, 2>{-0x01E0, 0};   // 0xBD58
+    default: return std::nullopt;
+    }
+}
+
+inline std::optional<std::uint8_t> map_coverage_rom_bank(
+    std::string_view trigger) {
+    const auto marker = trigger.find(";bank=");
+    if (marker == std::string_view::npos ||
+        marker + 6U >= trigger.size()) {
+        return std::nullopt;
+    }
+    const char digit = trigger[marker + 6U];
+    if (digit < '0' || digit > '3') {
+        return std::nullopt;
+    }
+    return static_cast<std::uint8_t>(digit - '0');
+}
+
+inline std::uint8_t map_coverage_script_prompt_button(
+    std::string_view script) {
+    if (script == "0x053F98" || script == "0x020484") {
+        return 0x40U; // A accepts the ROM prompt branch.
+    }
+    if (script == "0x05432E") {
+        // Title service 18 (0x15FD5C+0x48): scene 6 event 1 shows text and
+        // both branches set d6=-1 (0x5438A, 0x5439C); A dismisses it.
+        return 0x40U;
+    }
+    if (script == "0x05448A") {
+        return 0x10U; // B exercises the alternate ROM prompt branch.
+    }
+    return 0U;
+}
+
 template <typename StartupState>
 inline MapCoverageAttempt map_coverage_drive_rect(
     FieldSceneRuntime& runtime, const StartupState&,
     const std::uint16_t source_scene, const MapCoverageRect& rect,
     const std::optional<std::uint32_t> expected_event,
     const std::uint32_t frame_budget, const std::string_view row_category,
-    const std::string_view trigger) {
+    const std::string_view trigger, const std::string_view approach_side = {},
+    const std::string_view script = {}) {
     MapCoverageAttempt result;
     result.setup = true;
     const auto starting_scene = runtime.field_scene_reference_for_dump();
@@ -273,7 +394,10 @@ inline MapCoverageAttempt map_coverage_drive_rect(
     } else if (trigger.find("camX<0x1400") != std::string_view::npos) {
         runtime.set_field_camera_world_position_for_dump(0x1300U, 0U);
     }
-    const auto direction = map_coverage_direction(runtime, rect);
+    const auto direction = approach_side.empty()
+        ? map_coverage_direction(runtime, rect)
+        : map_coverage_position_on_side(runtime, rect, approach_side);
+    result.approach_side = std::string(approach_side);
     const auto target_floor = trigger.find("floor=");
     const auto target_cursor = trigger.find("input_cursor=");
     const auto selector = target_floor != std::string_view::npos
@@ -285,6 +409,9 @@ inline MapCoverageAttempt map_coverage_drive_rect(
     bool selector_done = false;
     std::uint32_t near_rect_frames = 0U;
     std::uint32_t frames_used = 0U;
+    std::uint32_t prompt_inputs_used = 0U;
+    const auto prompt_button = map_coverage_script_prompt_button(script);
+    const bool script_stays_on_scene = prompt_button != 0U;
     std::uint16_t last_scene = starting_scene;
     while (frames_used < frame_budget) {
         const auto position = runtime.field_entity_world_position();
@@ -299,6 +426,8 @@ inline MapCoverageAttempt map_coverage_drive_rect(
                                   (near_rect_frames % 8U == 1U)
             ? 0x40U
             : (result.trigger_seen ? 0U : direction);
+        const auto probe_before = runtime.field_collision_probe_state_for_dump();
+        const bool door_already_fired = result.transition_fired;
         runtime.set_controller_port_byte(port);
         runtime.advance_frame();
         ++frames_used;
@@ -324,14 +453,44 @@ inline MapCoverageAttempt map_coverage_drive_rect(
         }
         const auto scene = runtime.field_scene_reference_for_dump();
         const bool transition_pending = runtime.field_transition_pending_for_dump();
-        if (!result.backup_captured &&
-            (scene != starting_scene || transition_pending)) {
-            result.backup_x = position.x;
-            result.backup_y = position.y;
-            result.backup_captured = true;
+        // The door contact is the frame on which the port records its probe
+        // triplet; the ROM saves from the lead position held before that
+        // frame's step (0xB834 -> 0xBC36 runs before the move is applied).
+        // Blocked-move recoveries can also record a triplet, so the last
+        // recording before the door transition fires is the one kept.
+        const auto probe_after = runtime.field_collision_probe_state_for_dump();
+        const bool door_contact_recorded = row_category == "door" &&
+            (probe_after.initialized != probe_before.initialized ||
+             probe_after.points[0].x != probe_before.points[0].x ||
+             probe_after.points[0].y != probe_before.points[0].y);
+        if (!door_already_fired && door_contact_recorded) {
+            result.lead_x = position.x;
+            result.lead_y = position.y;
+            result.door_facing = runtime.field_entity_direction_for_dump();
+            result.lead_captured = true;
+            const auto bank = map_coverage_rom_bank(trigger);
+            const auto offset = bank ? map_coverage_return_offset(*bank)
+                                     : std::nullopt;
+            if (offset) {
+                result.door_bank = *bank;
+                result.backup_x = static_cast<std::uint16_t>(
+                    static_cast<std::int32_t>(position.x) + (*offset)[0]);
+                result.backup_y = static_cast<std::uint16_t>(
+                    static_cast<std::int32_t>(position.y) + (*offset)[1]);
+                result.backup_captured = true;
+            }
+        }
+        if (prompt_button != 0U && prompt_inputs_used < 1U &&
+            (runtime.dialogue_open() || runtime.field_mode_text_open_for_dump() ||
+             runtime.field_interaction_open()) &&
+            frames_used + 2U <= frame_budget) {
+            map_coverage_tap(runtime, prompt_button);
+            frames_used += 2U;
+            ++prompt_inputs_used;
+            result.prompt_inputs = prompt_inputs_used;
         }
         if (scene != source_scene || scene != last_scene ||
-            transition_pending) {
+            (transition_pending && !script_stays_on_scene)) {
             result.transition_fired = true;
         }
         last_scene = scene;
@@ -384,7 +543,9 @@ inline MapCoverageAttempt map_coverage_drive_rect(
         }
         const auto scene = runtime.field_scene_reference_for_dump();
         result.transition_fired = result.transition_fired ||
-            scene != starting_scene || runtime.field_transition_pending_for_dump();
+            scene != starting_scene ||
+            (runtime.field_transition_pending_for_dump() &&
+             !script_stays_on_scene);
         if (scene != starting_scene) {
             break;
         }
@@ -395,12 +556,119 @@ inline MapCoverageAttempt map_coverage_drive_rect(
     result.observed_x = position.x;
     result.observed_y = position.y;
     result.observed_mode = runtime.field_interaction_mode_for_dump();
+    if (approach_side.empty() &&
+        (row_category == "edge" || row_category == "door" ||
+         row_category == "bexit")) {
+        result.approach_side = "nearest";
+    }
     if (!result.trigger_seen) {
         result.note = "controller input did not produce the ROM event";
     } else if (selector.has_value() && !selector_done) {
         result.note = "menu selector did not reach its ROM option";
     }
     return result;
+}
+
+struct MapCoverageApproachProbe {
+    bool event_found{};
+    bool entry_passed{};
+    std::string entry_side;
+    std::string approach_side;
+    std::string tried_sides;
+};
+
+inline void map_coverage_set_mode(
+    FieldSceneRuntime& runtime, const std::string_view category,
+    const std::uint16_t scene, const std::string_view gate) {
+    if (const auto mode = map_coverage_mode(gate)) {
+        runtime.set_field_interaction_mode_for_dump(*mode);
+    } else if (category == "cave") {
+        runtime.set_field_interaction_mode_for_dump(3U);
+    } else if (category == "travel" && scene <= 6U) {
+        runtime.set_field_interaction_mode_for_dump(0U);
+    }
+}
+
+template <typename StartupState>
+inline MapCoverageApproachProbe map_coverage_probe_approach_sides(
+    const StartupState& startup_state, const MapCoverageRow& row,
+    const std::uint16_t source_scene, const MapCoverageRect& rect,
+    const std::optional<std::uint32_t> expected_event) {
+    MapCoverageApproachProbe probe;
+    for (const auto& side : map_coverage_approach_sides(row.trigger)) {
+        if (!map_coverage_side_possible(rect, side)) {
+            continue;
+        }
+        if (!probe.tried_sides.empty()) probe.tried_sides += ",";
+        probe.tried_sides += side;
+        FieldSceneRuntime runtime([](std::string_view) {});
+        if (!runtime.bootstrap_for_scene_dump(startup_state, source_scene)) {
+            continue;
+        }
+        map_coverage_set_mode(
+            runtime, row.category, source_scene, row.gate);
+        const auto attempt = map_coverage_drive_rect(
+            runtime, startup_state, source_scene, rect, expected_event,
+            600U, row.category, row.trigger, side, row.script);
+        if (attempt.trigger_seen || attempt.observed_scene != source_scene) {
+            probe.event_found = true;
+            probe.approach_side = side;
+            return probe;
+        }
+    }
+    return probe;
+}
+
+template <typename StartupState>
+inline MapCoverageApproachProbe map_coverage_probe_bexit_sides(
+    const StartupState& startup_state, const MapCoverageRow& entry,
+    const MapCoverageRow& exit_row, const std::uint16_t interior_scene,
+    const MapCoverageRect& entry_rect, const MapCoverageRect& exit_rect) {
+    MapCoverageApproachProbe probe;
+    const auto entry_scene = map_coverage_scene(entry.scene);
+    if (!entry_scene) {
+        return probe;
+    }
+    const auto entry_sides = map_coverage_approach_sides(entry.trigger);
+    const auto exit_sides = map_coverage_approach_sides(exit_row.trigger);
+    for (const auto& exit_side : exit_sides) {
+        if (!map_coverage_side_possible(exit_rect, exit_side)) {
+            continue;
+        }
+        for (const auto& entry_side : entry_sides) {
+            if (!map_coverage_side_possible(entry_rect, entry_side)) {
+                continue;
+            }
+            if (!probe.tried_sides.empty()) probe.tried_sides += ",";
+            probe.tried_sides += entry_side + ">" + exit_side;
+            FieldSceneRuntime runtime([](std::string_view) {});
+            if (!runtime.bootstrap_for_scene_dump(startup_state, *entry_scene)) {
+                continue;
+            }
+            map_coverage_set_mode(runtime, entry.category, *entry_scene, entry.gate);
+            const auto entered = map_coverage_drive_rect(
+                runtime, startup_state, *entry_scene, entry_rect,
+                map_coverage_event(entry.trigger), 600U, "door", entry.trigger,
+                entry_side, entry.script);
+            if (!entered.transition_fired ||
+                runtime.field_scene_reference_for_dump() != interior_scene) {
+                continue;
+            }
+            probe.entry_passed = true;
+            if (probe.entry_side.empty()) probe.entry_side = entry_side;
+            const auto exited = map_coverage_drive_rect(
+                runtime, startup_state, interior_scene, exit_rect,
+                map_coverage_event(exit_row.trigger), 600U, "bexit",
+                exit_row.trigger, exit_side);
+            if (exited.trigger_seen || exited.transition_fired) {
+                probe.event_found = true;
+                probe.entry_side = entry_side;
+                probe.approach_side = exit_side;
+                return probe;
+            }
+        }
+    }
+    return probe;
 }
 
 inline std::string map_coverage_sanitize(std::string value) {
@@ -457,6 +725,10 @@ inline int run_map_coverage_qa(
             auto rect = map_coverage_rect(physical_trigger);
             std::optional<std::uint32_t> expected_event =
                 map_coverage_event(physical_trigger);
+            MapCoverageApproachProbe approach_probe;
+            std::string selected_approach_side;
+            std::string selected_entry_side;
+            bool bexit_entrance_passed = row.category != "bexit";
             if (!rect && row.category == "travel" &&
                 physical_trigger.find("Call Taxi menu") != std::string::npos &&
                 source_scene) {
@@ -503,12 +775,58 @@ inline int run_map_coverage_qa(
                         }
                     }
                 }
+                const bool side_sensitive_row = row.category == "edge" ||
+                    row.category == "door" || row.category == "bexit" ||
+                    (row.category == "travel" && expected_event &&
+                     *expected_event == 0x1FU);
+                if (side_sensitive_row && rect) {
+                    if (row.category == "bexit" && paired_entry) {
+                        const auto entry_rect = map_coverage_rect(paired_entry->trigger);
+                        if (entry_rect) {
+                            approach_probe = map_coverage_probe_bexit_sides(
+                                startup_state, *paired_entry, row, *source_scene,
+                                *entry_rect, *rect);
+                            bexit_entrance_passed = approach_probe.entry_passed;
+                            selected_entry_side = approach_probe.entry_side;
+                        }
+                    } else if (row.category != "bexit") {
+                        auto approach_row = row;
+                        approach_row.trigger = physical_trigger;
+                        approach_probe = map_coverage_probe_approach_sides(
+                            startup_state, approach_row, *source_scene, *rect,
+                            expected_event);
+                    }
+                    selected_approach_side = approach_probe.approach_side;
+                    if (selected_approach_side.empty()) {
+                        for (const auto& side : map_coverage_approach_sides(
+                                 row.category == "bexit" ? row.trigger : physical_trigger)) {
+                            if (map_coverage_side_possible(*rect, side)) {
+                                selected_approach_side = side;
+                            }
+                        }
+                    }
+                    if (selected_entry_side.empty() && paired_entry) {
+                        const auto entry_rect = map_coverage_rect(paired_entry->trigger);
+                        if (entry_rect) {
+                            for (const auto& side : map_coverage_approach_sides(
+                                     paired_entry->trigger)) {
+                                if (map_coverage_side_possible(*entry_rect, side)) {
+                                    selected_entry_side = side;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
                 FieldSceneRuntime runtime([](std::string_view) {});
                 if (runtime.bootstrap_for_scene_dump(startup_state, bootstrap_scene)) {
                     attempt.setup = true;
                     bool source_ready = true;
                     if (bexit_entry != std::string::npos) {
-                        if (!paired_entry) {
+                        if (!bexit_entrance_passed) {
+                            source_ready = false;
+                            attempt.note = "paired entrance did not PASS; exit left untested";
+                        } else if (!paired_entry) {
                             source_ready = false;
                             attempt.note = "paired ROM entrance row is unavailable";
                         } else {
@@ -519,10 +837,14 @@ inline int run_map_coverage_qa(
                                 source_ready = false;
                                 attempt.note = "paired entrance scene could not be bootstrapped";
                             } else {
+                                map_coverage_set_mode(
+                                    runtime, paired_entry->category, *outside_scene,
+                                    paired_entry->gate);
                                 const auto entered = map_coverage_drive_rect(
                                     runtime, startup_state, *outside_scene,
                                     *outside_rect, map_coverage_event(paired_entry->trigger),
-                                    600U, "door", paired_entry->trigger);
+                                    600U, "door", paired_entry->trigger,
+                                    selected_entry_side, paired_entry->script);
                                 attempt = entered;
                                 if (!entered.transition_fired ||
                                     runtime.field_scene_reference_for_dump() != *source_scene) {
@@ -536,15 +858,14 @@ inline int run_map_coverage_qa(
                                 }
                             }
                         }
-                    } else if (const auto mode = map_coverage_mode(row.gate)) {
-                        runtime.set_field_interaction_mode_for_dump(*mode);
-                    } else if (row.category == "cave") {
-                        runtime.set_field_interaction_mode_for_dump(3U);
-                    } else if (row.category == "travel" && *source_scene <= 6U) {
-                        runtime.set_field_interaction_mode_for_dump(0U);
+                    } else {
+                        map_coverage_set_mode(
+                            runtime, row.category, *source_scene, row.gate);
                     }
                     if (!source_ready) {
-                        status = "MISSING";
+                        status = row.category == "bexit" &&
+                                 !bexit_entrance_passed
+                            ? "PRESENT-UNTESTED" : "MISSING";
                         diff = attempt.note;
                     } else if (!rect) {
                         std::uint8_t input = 0U;
@@ -605,7 +926,8 @@ inline int run_map_coverage_qa(
                             : 600U;
                         const auto driven = map_coverage_drive_rect(
                             runtime, startup_state, *source_scene, *rect,
-                            expected_event, remaining_frames, row.category, row.trigger);
+                            expected_event, remaining_frames, row.category,
+                            physical_trigger, selected_approach_side, row.script);
                         auto combined = driven;
                         combined.setup = true;
                         combined.frames_used += attempt.frames_used;
@@ -613,6 +935,12 @@ inline int run_map_coverage_qa(
                             combined.backup_x = attempt.backup_x;
                             combined.backup_y = attempt.backup_y;
                             combined.backup_captured = attempt.backup_captured;
+                            combined.lead_x = attempt.lead_x;
+                            combined.lead_y = attempt.lead_y;
+                            combined.door_facing = attempt.door_facing;
+                            combined.door_bank = attempt.door_bank;
+                            combined.lead_captured = attempt.lead_captured;
+                            combined.prompt_inputs += attempt.prompt_inputs;
                         }
                         attempt = std::move(combined);
                         if (row.category == "cave" &&
@@ -623,11 +951,30 @@ inline int run_map_coverage_qa(
                     }
                     const bool death_wake_row = row.category == "travel" &&
                         row.trigger.find("party-down") != std::string::npos;
+                    const bool scripted_no_door = row.script == "0x053F98" ||
+                        row.script == "0x020484" || row.script == "0x05448A" ||
+                        row.script == "0x05432E";
                     if (status.empty() && death_wake_row) {
                         status = "MISSING";
                         diff = attempt.note.empty()
                             ? "party-down prerequisite was not reached"
                             : attempt.note;
+                    } else if (status.empty() && scripted_no_door &&
+                               attempt.trigger_seen &&
+                               attempt.prompt_inputs != 0U &&
+                               attempt.observed_scene == *source_scene) {
+                        // The ROM script always shows its text (0x1F246)
+                        // before deciding d6, so a PASS needs the port's
+                        // dialogue to have opened, not just no transition.
+                        status = "PASS";
+                        diff = "ROM script " + row.script +
+                            " handled the event without generic door transition";
+                    } else if (status.empty() && scripted_no_door &&
+                               attempt.observed_scene != *source_scene) {
+                        status = "WRONG";
+                        diff = "ROM script " + row.script +
+                            " expected no generic door transition; observed scene=" +
+                            std::to_string(attempt.observed_scene);
                     } else if (status.empty() && row.port_ref == "MISSING") {
                         status = "MISSING";
                         diff = "no port reference; " + attempt.note;
@@ -700,8 +1047,44 @@ inline int run_map_coverage_qa(
                         }
                     }
                 } else {
-                    status = "MISSING";
+                    status = row.category == "bexit" &&
+                             !bexit_entrance_passed
+                        ? "PRESENT-UNTESTED" : "MISSING";
                     diff = "fresh scene bootstrap failed";
+                }
+            }
+            if (!approach_probe.tried_sides.empty()) {
+                diff += ";approach_sides_tried=" + approach_probe.tried_sides;
+            }
+            if (!selected_approach_side.empty()) {
+                diff += ";approach_side=" + selected_approach_side;
+            }
+            if (row.category == "bexit" && !selected_entry_side.empty()) {
+                diff += ";entry_side=" + selected_entry_side;
+            }
+            if (row.script != "-") {
+                diff += ";script=" + row.script;
+                if (attempt.prompt_inputs != 0U) {
+                    const auto button = map_coverage_script_prompt_button(row.script);
+                    diff += ";prompt=" + std::string(
+                        button == 0x10U ? "B" : "A") +
+                        ";prompt_inputs=" + std::to_string(attempt.prompt_inputs);
+                }
+            }
+            if (attempt.lead_captured) {
+                const auto facing = attempt.door_facing == 0U ? "N" :
+                    attempt.door_facing == 2U ? "E" :
+                    attempt.door_facing == 4U ? "S" :
+                    attempt.door_facing == 6U ? "W" : "?";
+                diff += ";door_lead=" + map_coverage_hex(attempt.lead_x) +
+                    "," + map_coverage_hex(attempt.lead_y) +
+                    ";facing=" + facing;
+                if (attempt.door_bank <= 3U) {
+                    diff += ";rom_bank=" + std::to_string(attempt.door_bank);
+                }
+                if (attempt.backup_captured) {
+                    diff += ";FFDE26=" + map_coverage_hex(attempt.backup_x) +
+                        "," + map_coverage_hex(attempt.backup_y);
                 }
             }
             observed_event = attempt.observed_event == 0U

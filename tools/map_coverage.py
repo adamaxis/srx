@@ -41,6 +41,7 @@ FIELDS = (
     "arrival_xy",
     "arrival_mode",
     "port_ref",
+    "script",
 )
 CATEGORY_ORDER = {
     name: index
@@ -100,6 +101,7 @@ def make_row(
     arrival_xy: str = "-",
     arrival_mode: int | str = "-",
     port_ref: str = "MISSING",
+    script: str = "-",
 ) -> dict[str, str]:
     return {
         "row_id": row_id,
@@ -112,7 +114,37 @@ def make_row(
         "arrival_xy": str(arrival_xy),
         "arrival_mode": str(arrival_mode),
         "port_ref": port_ref,
+        "script": script,
     }
+
+
+def rom_script_event_handlers(rom: bytes) -> dict[tuple[int, int], int]:
+    """Find scene/event comparisons in the field-door script call chain."""
+    # 0x1F5CA calls the 0x1F65A..0x20634 chain. 0x53A78 dispatches the
+    # scene-specific hooks in 0x53A78..0x545B4. CMPI.B absolute-long pairs
+    # identify FFFBF8 (scene) followed by FFFBF9 (event).
+    regions = ((0x1F65A, 0x20710), (0x53A78, 0x54600))
+    scene_operand = bytes((0x00, 0xFF, 0xFB, 0xF8))
+    event_operand = bytes((0x00, 0xFF, 0xFB, 0xF9))
+
+    def comparisons(start: int, end: int, operand: bytes) -> list[tuple[int, int]]:
+        found: list[tuple[int, int]] = []
+        for address in range(start, min(end, len(rom)) - 7):
+            if rom[address:address + 2] == b"\x0c\x39" and \
+                    rom[address + 4:address + 8] == operand:
+                found.append((address, rom[address + 3]))
+        return found
+
+    handlers: dict[tuple[int, int], int] = {}
+    for start, end in regions:
+        scenes = comparisons(start, end, scene_operand)
+        events = comparisons(start, end, event_operand)
+        for index, (scene_address, scene) in enumerate(scenes):
+            next_scene = scenes[index + 1][0] if index + 1 < len(scenes) else end
+            for event_address, event in events:
+                if scene_address < event_address < next_scene:
+                    handlers[(scene, event)] = event_address
+    return handlers
 
 
 def rom_collision_rows(rom: bytes) -> list[dict[str, object]]:
@@ -180,6 +212,7 @@ def build_rows(rom_path: Path) -> list[dict[str, str]]:
     cave_data_path = root / "decompilation/gameplay/scripts/data/world_links_data.lua"
     link_lines: dict[int, int] = {}
     link_kinds: dict[int, str] = {}
+    return_sides: dict[int, str] = {}
     for number, line in enumerate(links_path.read_text(encoding="utf-8").splitlines(), 1):
         found = re.search(r"source record 0x([0-9A-Fa-f]{6})", line)
         if found:
@@ -188,6 +221,9 @@ def build_rows(rom_path: Path) -> list[dict[str, str]]:
             kind = re.search(r"transition = \{ kind = '([^']+)'", line)
             if kind:
                 link_kinds[address] = kind.group(1)
+            side = re.search(r"return_side = '([^']+)'", line)
+            if side:
+                return_sides[address] = side.group(1)
 
     link_fn = source_line(links_code_path, "function WorldLinks.door_contact")
     edge_fn = source_line(links_code_path, "function WorldLinks.transition_at")
@@ -205,6 +241,7 @@ def build_rows(rom_path: Path) -> list[dict[str, str]]:
 
     rows: list[dict[str, str]] = []
     records = rom_collision_rows(rom)
+    script_handlers = rom_script_event_handlers(rom)
     by_scene: dict[int, list[dict[str, object]]] = {
         scene: [item for item in records if item["scene"] == scene]
         for scene in range(SCENE_COUNT)
@@ -255,7 +292,7 @@ def build_rows(rom_path: Path) -> list[dict[str, str]]:
             rows.append(make_row(
                 f"edge-s{scene:02x}-r{address:06x}-{branch_id}", scene, "edge",
                 f"0x{address:06X};arrival=0x{arrival:06X};consume=0x0B7B8>0x1651E>0x1F5CA>0x03168",
-                f"rect:x={x0}..{x1},y={y0}..{y1};event=0x10;{branch}",
+                f"rect:x={x0}..{x1},y={y0}..{y1};event=0x10;{branch};return_side={return_sides.get(address, 'unknown')}",
                 "FFDF40=0", destination, lead, 0,
                 record_ref(address, links_code_path, edge_fn),
             ))
@@ -290,14 +327,17 @@ def build_rows(rom_path: Path) -> list[dict[str, str]]:
         direct_doors.append(item)
         x0, x1, y0, y1 = item["bounds"]  # type: ignore[misc]
         dest = int(destination)
+        script_address = script_handlers.get((scene, event))
         rows.append(make_row(
             f"door-s{scene:02x}-r{address:06x}", scene, "door",
             f"0x{address:06X};table=0x{int(item['event_table']) + event:06X};consume=0x0B7B8>0x1651E>0x1F5CA>0x167AE",
-            f"rect:x={x0}..{x1},y={y0}..{y1};event=0x{event:02X};FFDE14[{event}]=0x{dest:02X}",
-            "FFDF40=0",
+            # 0xBC36: return bank = bits 5-6 of the door cell code (FFEF10).
+            f"rect:x={x0}..{x1},y={y0}..{y1};event=0x{event:02X};FFDE14[{event}]=0x{dest:02X};return_side={return_sides.get(address, 'unknown')};bank={(int(item['raw_code']) >> 5) & 3}",
+            "FFDF40=0" + (f";script=0x{script_address:06X}" if script_address else ""),
             dest, "scene-entry ROM position not resolved by this record",
             scene_mode(dest),
             record_ref(address, links_code_path, link_fn),
+            f"0x{script_address:06X}" if script_address else "-",
         ))
 
     # Pair each direct entrance with the event-0 return rectangle in its
@@ -315,7 +355,7 @@ def build_rows(rom_path: Path) -> list[dict[str, str]]:
                 f"bexit-s{interior:02x}-entry{entry_address:06x}-r{exit_address:06x}",
                 interior, "bexit",
                 f"entry=0x{entry_address:06X};exit=0x{exit_address:06X};consume=0x0A98>0x02F32",
-                f"rect:x={x0}..{x1},y={y0}..{y1};event=0x00;restore=FFDE26",
+                f"rect:x={x0}..{x1},y={y0}..{y1};event=0x00;restore=FFDE26;return_side={return_sides.get(exit_address, 'unknown')}",
                 f"FFDF40={scene_mode(interior)}",
                 source, "FFDE26 (saved source door point)", 0,
                 record_ref(exit_address, links_code_path, return_fn),
@@ -479,7 +519,7 @@ def build_rows(rom_path: Path) -> list[dict[str, str]]:
         rows.append(make_row(
             f"travel-terminal-s{scene:02x}-r{address:06x}", scene, "travel",
             f"0x{address:06X};menu=0x0DB26;taxi=0xD4456/0xD445D;vid-phone=0x0E4C8",
-            f"rect:x={x0}..{x1},y={y0}..{y1};event=0x1F;menu=Call Taxi/Vid-Phone/Cyberspace/Exit",
+            f"rect:x={x0}..{x1},y={y0}..{y1};event=0x1F;menu=Call Taxi/Vid-Phone/Cyberspace/Exit;return_side={return_sides.get(address, 'unknown')}",
             "field-terminal",
             "menu-selected", "preserve source position unless a map route is selected",
             "selected route",
@@ -489,7 +529,7 @@ def build_rows(rom_path: Path) -> list[dict[str, str]]:
             f"travel-vidphone-s{scene:02x}-r{address:06x}",
             scene, "travel",
             f"0x{address:06X};field-terminal=0x0DB26;vid-phone=0x0E4C8;return=0x22CE8",
-            f"rect:x={x0}..{x1},y={y0}..{y1};event=0x1F;menu=Vid-Phone;call-and-return",
+            f"rect:x={x0}..{x1},y={y0}..{y1};event=0x1F;menu=Vid-Phone;call-and-return;return_side={return_sides.get(address, 'unknown')}",
             "field terminal;contact menu",
             scene, "preserve source position", "preserve source FFDF40",
             ref(field_activities_path, phone_fn),
@@ -643,10 +683,16 @@ def self_test(rows: list[dict[str, str]]) -> None:
     by_id = {row["row_id"]: row for row in rows}
     door = by_id["door-s00-r0d57f0"]
     assert door["trigger"] == (
-        "rect:x=27136..27647,y=10240..10751;event=0x01;FFDE14[1]=0x0C"
+        "rect:x=27136..27647,y=10240..10751;event=0x01;"
+        "FFDE14[1]=0x0C;return_side=south;bank=2"
     ), door
     assert door["scene"] == "0" and door["dest_scene"] == "12"
     assert door["arrival_mode"] == "1"
+    assert door["script"] == "0x01FE98", door
+    assert by_id["door-s01-r17d9a2"]["script"] == "0x05448A"
+    assert by_id["door-s02-r1730fc"]["script"] == "0x020484"
+    assert by_id["door-s02-r173110"]["script"] == "0x053F98"
+    assert by_id["door-s02-r17311a"]["script"] == "0x020592"
 
     death = by_id["travel-death-s00-002aea"]
     assert death["scene"] == "0"
