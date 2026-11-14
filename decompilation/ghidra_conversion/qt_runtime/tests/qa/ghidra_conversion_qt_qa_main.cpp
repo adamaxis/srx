@@ -44950,6 +44950,8 @@ int main(int argc, char** argv) {
             field_vid_phone_passage_qa_path;
         std::optional<std::filesystem::path>
             field_matrix_cyber_info_qa_path;
+        std::optional<std::filesystem::path>
+            field_cyberdeck_gate_qa_path;
         std::optional<std::array<std::filesystem::path, 2>>
             field_matrix_gpgx_test_deck_qa_paths;
         std::optional<std::filesystem::path>
@@ -46138,6 +46140,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_matrix_cyber_info_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-cyberdeck-gate-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_cyberdeck_gate_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -47407,6 +47416,7 @@ int main(int argc, char** argv) {
                 field_riannons_magic_shop_entry_qa_path.has_value() ||
                 field_dr_bobs_clinic_entry_qa_path.has_value() ||
                 field_matrix_cyber_info_qa_path.has_value() ||
+                field_cyberdeck_gate_qa_path.has_value() ||
                 field_matrix_gpgx_test_deck_qa_paths.has_value() ||
                 field_matrix_traversal_entry_qa_path.has_value() ||
                 field_wylie_gala_inn_qa_path.has_value() ||
@@ -49099,6 +49109,195 @@ int main(int argc, char** argv) {
                 }
                 return 0;
             }
+            if (field_cyberdeck_gate_qa_path.has_value()) {
+                const auto output = *field_cyberdeck_gate_qa_path;
+                std::filesystem::create_directories(output);
+                std::error_code clear_error;
+                clear_qa_bitmap_artifacts(output, clear_error);
+                if (clear_error) {
+                    std::cerr << "Cyberdeck gate QA: could not clear old "
+                                 "captures: "
+                              << clear_error.message() << '\n';
+                    return 3;
+                }
+                const auto panel_contains = [](const FieldSceneRuntime& scene,
+                                               const std::string_view needle) {
+                    const auto& panel = scene.dialogue_panel();
+                    std::string rendered_text;
+                    for (std::size_t line = 0U;
+                         line < panel.text_segment_count; ++line) {
+                        if (!rendered_text.empty() &&
+                            rendered_text.back() != ' ') {
+                            rendered_text.push_back(' ');
+                        }
+                        for (const auto character :
+                             panel.text_segments[line]) {
+                            const bool whitespace = character == ' ' ||
+                                                    character == '\t' ||
+                                                    character == '\r' ||
+                                                    character == '\n';
+                            if (whitespace) {
+                                if (!rendered_text.empty() &&
+                                    rendered_text.back() != ' ') {
+                                    rendered_text.push_back(' ');
+                                }
+                            } else {
+                                rendered_text.push_back(character);
+                            }
+                        }
+                    }
+                    return rendered_text.find(needle) != std::string::npos;
+                };
+                const auto enter_denial = [&output, &panel_contains](
+                                              FieldSceneRuntime& scene,
+                                              const std::string_view message,
+                                              const std::string_view image_name) {
+                    const auto funds =
+                        scene.field_funds_for_dump().value_or(0U);
+                    if (!scene.open_ordinary_field_terminal_for_dump(
+                            1U << 2U, funds)) {
+                        return false;
+                    }
+                    tap_qa_controller_button(scene, 0x02U);
+                    tap_qa_controller_button(scene, 0x02U);
+                    tap_qa_controller_button(scene, 0x40U);
+                    if (!scene.dialogue_open() ||
+                        !panel_contains(scene, message)) {
+                        std::cerr << "Cyberdeck gate QA: expected '" << message
+                                  << "' open=" << scene.dialogue_open()
+                                  << " panel lines="
+                                  << scene.dialogue_panel().text_segment_count;
+                        for (std::size_t line = 0U;
+                             line < scene.dialogue_panel().text_segment_count;
+                             ++line) {
+                            std::cerr << " ["
+                                      << scene.dialogue_panel().text_segments[line]
+                                      << ']';
+                        }
+                        std::cerr << '\n';
+                        return false;
+                    }
+                    const auto image = render_qa_field(scene);
+                    return image.size() == QSize(kSceneWidth, kSceneHeight) &&
+                           save_qa_image(output, image_name, image);
+                };
+
+                FieldSceneRuntime new_game_scene(
+                    [](const std::string_view) {},
+                    [](const std::uint16_t) {});
+                if (!new_game_scene.bootstrap(smoke_state)) {
+                    std::cerr << "Cyberdeck gate QA: New Game field bootstrap "
+                                 "failed: "
+                              << new_game_scene.failure() << '\n';
+                    return 3;
+                }
+                if (new_game_scene.field_matrix_deck_record_for_dump()
+                        .has_value() ||
+                    new_game_scene.cyberdeck_available_for_dump() !=
+                        std::optional<bool>{false}) {
+                    std::cerr << "Cyberdeck gate QA: New Game created a "
+                                 "deck record before ownership\n";
+                    return 3;
+                }
+                if (!enter_denial(new_game_scene,
+                                  "cyberdeck to enter cyberspace",
+                                  "no-deck.bmp")) {
+                    std::cerr << "Cyberdeck gate QA: New Game did not show "
+                                 "the ROM 0xC21B2 no-deck page\n";
+                    return 3;
+                }
+
+                FieldSceneRuntime package_scene(
+                    [](const std::string_view) {},
+                    [](const std::uint16_t) {});
+                if (!package_scene.bootstrap(smoke_state)) {
+                    std::cerr << "Cyberdeck gate QA: package field bootstrap "
+                                 "failed: "
+                              << package_scene.failure() << '\n';
+                    return 3;
+                }
+                // Supply only the 250-nuyen prerequisite. The production
+                // Stoker choice and debt callback must set deck availability.
+                package_scene.set_field_funds_for_dump(250U);
+                if (!package_scene.open_stoker_dialogue_for_dump(
+                        StokerMotelPromptId::manager_greeting_with_package)) {
+                    std::cerr << "Cyberdeck gate QA: Stoker package menu did "
+                                 "not open through Lua\n";
+                    return 3;
+                }
+                constexpr std::array<std::uint16_t, 3> kPackageChoices{{
+                    0x4000U, 0x2000U, 0x4000U}};
+                for (const auto input : kPackageChoices) {
+                    if (package_scene.advance_stoker_dialogue_for_dump(input) !=
+                        FieldDialogueAdvanceResult::prompt_advanced) {
+                        std::cerr << "Cyberdeck gate QA: production Stoker "
+                                     "debt choice did not advance\n";
+                        return 3;
+                    }
+                }
+                if (package_scene.field_funds_for_dump() != 500U ||
+                    package_scene.cyberdeck_available_for_dump() !=
+                        std::optional<bool>{true} ||
+                    package_scene.field_matrix_deck_record_for_dump()
+                        .has_value()) {
+                    std::cerr << "Cyberdeck gate QA: Stoker payment did not "
+                                 "leave 500 nuyen and the cleared ROM deck "
+                                 "record\n";
+                    return 3;
+                }
+                for (std::size_t page = 0U; page < 8U &&
+                                              package_scene.dialogue_open();
+                     ++page) {
+                    if (package_scene.advance_stoker_dialogue_for_dump(
+                            0x4000U) ==
+                        FieldDialogueAdvanceResult::source_boundary) {
+                        std::cerr << "Cyberdeck gate QA: Michael package "
+                                     "handoff reached a source boundary\n";
+                        return 3;
+                    }
+                }
+                if (package_scene.dialogue_open()) {
+                    std::cerr << "Cyberdeck gate QA: Michael package handoff "
+                                 "did not close\n";
+                    return 3;
+                }
+                for (std::size_t frame = 0U; frame < 60U; ++frame) {
+                    package_scene.advance_frame();
+                }
+                if (package_scene.dialogue_open() ||
+                    !enter_denial(package_scene,
+                                  "MPCP chips are fried",
+                                  "no-mpcp-after-package.bmp")) {
+                    std::cerr << "Cyberdeck gate QA: after Michael's package "
+                                 "did not show ROM 0xC2202 with deck access "
+                                 "set and MPCP zero\n";
+                    return 3;
+                }
+
+                FieldSceneRuntime datajack_scene(
+                    [](const std::string_view) {},
+                    [](const std::uint16_t) {});
+                if (!datajack_scene.bootstrap(smoke_state) ||
+                    !datajack_scene.seed_cyberspace_access_for_dump()) {
+                    std::cerr << "Cyberdeck gate QA: ROM Test Deck setup "
+                                 "failed\n";
+                    return 3;
+                }
+                // ROM 0x59B7E provides a functioning debug Test Deck. Clear
+                // only the runner's +0x90 Datajack bit for the final gate.
+                datajack_scene.active_runner_record().cyberware_flags &=
+                    static_cast<std::uint16_t>(~0x0001U);
+                if (!enter_denial(datajack_scene, "datajack",
+                                  "no-datajack.bmp")) {
+                    std::cerr << "Cyberdeck gate QA: ROM 0xC2252 did not "
+                                 "follow the deck and MPCP checks\n";
+                    return 3;
+                }
+                std::cout << "field_cyberdeck_gate_qa=passed pages="
+                             "0xC21B2,0xC2202,0xC2252\n";
+                return 0;
+            }
+
             if (field_matrix_cyber_info_qa_path.has_value()) {
                 const auto output = *field_matrix_cyber_info_qa_path;
                 std::filesystem::create_directories(output);
@@ -49260,6 +49459,59 @@ int main(int argc, char** argv) {
                     }
                     return false;
                 };
+                const auto rom_description_cells_match =
+                    [&has_matrix_green](const QImage& image,
+                                        const std::string& description,
+                                        const int x, const int y,
+                                        const std::size_t columns) {
+                        std::size_t start = 0U;
+                        int row = 0;
+                        const auto row_has_text =
+                            [&image, &has_matrix_green, x, y, columns](
+                                const int line) {
+                                const auto top = y + line * 8;
+                                return top >= 0 && top + 8 <= image.height() &&
+                                       x >= 0 &&
+                                       x + static_cast<int>(columns * 8U) <=
+                                           image.width() &&
+                                       has_matrix_green(
+                                           image,
+                                           QRect(x, top,
+                                                 static_cast<int>(columns * 8U),
+                                                 8));
+                            };
+                        while (start <= description.size()) {
+                            const auto end = description.find('|', start);
+                            auto remaining = std::string_view(description).substr(
+                                start, end == std::string::npos
+                                           ? std::string::npos
+                                           : end - start);
+                            while (!remaining.empty()) {
+                                if (remaining.size() < columns) {
+                                    if (!row_has_text(row++)) return false;
+                                    break;
+                                }
+                                auto split = remaining.rfind(' ', columns - 1U);
+                                if (split == std::string_view::npos ||
+                                    split == 0U) {
+                                    split = columns;
+                                }
+                                if (!row_has_text(row++)) return false;
+                                remaining.remove_prefix(
+                                    split + (split < remaining.size() &&
+                                                     remaining[split] == ' '
+                                                 ? 1U
+                                                 : 0U));
+                            }
+                            if (end == std::string::npos) break;
+                            start = end + 1U;
+                            // A high-bit 0x80 control advances the ROM text
+                            // cursor by one full row at each pipe marker.
+                            if (row_has_text(row)) return false;
+                            ++row;
+                        }
+                        return row > 0;
+                    };
                 const auto source_pixels_match_at =
                     [&asset_root](
                         const QImage& image,
@@ -49557,6 +49809,34 @@ int main(int argc, char** argv) {
                         "cyberdeck-cell-" +
                         (cell < 10 ? std::string("0") : std::string()) +
                         std::to_string(cell));
+                    const auto title_strip_asset =
+                        std::filesystem::path("cyberspace/matrix") /
+                        ("detail-strip-" + std::to_string(cell) + ".bmp");
+                    // ROM 0x18836..0x18862 skips the 0x18886 title strip
+                    // for an empty program slot; 0x1897C leaves it blank.
+                    const bool title_strip_expected =
+                        cell >= 12 ||
+                        kExpectedCyberdeckCellSizes[
+                            static_cast<std::size_t>(cell)] != 0U;
+                    const bool title_strip_matches =
+                        title_strip_expected
+                            ? source_pixels_match_at(image, 216, 24,
+                                                     title_strip_asset)
+                            : !has_matrix_green(image, QRect(216, 24, 48, 8));
+                    // ROM 0x18902 uses $C628 (x=160,y=96), D1=18 for
+                    // program descriptions. Utility descriptions use the
+                    // shared $C2A6 (x=152,y=40), D1=20 path instead.
+                    const bool description_position_matches =
+                        cell < 12
+                            ? (kExpectedCyberdeckCellSizes[
+                                   static_cast<std::size_t>(cell)] == 0U ||
+                               rom_description_cells_match(
+                                   image,
+                                   route.top_matrix_deck_description,
+                                   160, 96, 18U))
+                            : rom_description_cells_match(
+                                  image, route.top_matrix_deck_description,
+                                  152, 40, 20U);
                     const auto column = cell % 4;
                     const auto row = cell / 4;
                     const auto phase = route.top_matrix_deck_palette_phase
@@ -49593,7 +49873,8 @@ int main(int argc, char** argv) {
                         !route.top_matrix_deck_description.empty() &&
                         image.size() == QSize(kSceneWidth, kSceneHeight) &&
                         full_cyberdeck_frame(image) && cursor_matches &&
-                        parent_surface_matches;
+                        parent_surface_matches && title_strip_matches &&
+                        description_position_matches;
                     if (!state_matches) {
                         std::cerr << "Matrix CyberInfo QA: grid cell "
                                   << cell
@@ -49807,6 +50088,18 @@ int main(int argc, char** argv) {
                                  "contain the complete 320x224 screen\n";
                     return 3;
                 }
+                // ROM 0x18C28 writes E4404 at $C1AC (x=176,y=24):
+                // " MATRIX RUN" followed by the header rule at y=32.
+                // The no-run message then starts at $C42C (x=176,y=64).
+                if (!has_matrix_green(run_info_image, QRect(176, 24, 128, 8)) ||
+                    !has_matrix_green(run_info_image, QRect(176, 32, 112, 8)) ||
+                    !has_matrix_green(run_info_image, QRect(176, 64, 112, 8)) ||
+                    !has_matrix_green(run_info_image, QRect(176, 72, 112, 8))) {
+                    std::cerr << "Matrix CyberInfo QA: Run Info title or "
+                                 "$C42C/$C4AC text rows do not match the ROM "
+                                 "plane cells\n";
+                    return 3;
+                }
                 if (!route.top_matrix_deck_program_ratings_present ||
                     !route.top_matrix_deck_active_programs_present ||
                     !route.top_matrix_deck_program_slot_status_present ||
@@ -49840,6 +50133,26 @@ int main(int argc, char** argv) {
                 if (!full_cyberdeck_frame(deck_stats_image)) {
                     std::cerr << "Matrix CyberInfo QA: Deck Stats image is "
                                  "cropped or its lower edge is blank\n";
+                    return 3;
+                }
+                // ROM 0x18B5C writes E3902 at $C2A8 (x=160,y=40),
+                // followed by source labels and values at $C346 and the
+                // subsequent $80/$100 plane-row advances.
+                constexpr std::array<int, 10> kDeckStatsLabelRows{{
+                    48, 56, 72, 80, 88, 104, 120, 128, 136, 144}};
+                const bool deck_stats_cells_match = std::all_of(
+                    kDeckStatsLabelRows.begin(), kDeckStatsLabelRows.end(),
+                    [&deck_stats_image, &has_matrix_green](const int y) {
+                        return has_matrix_green(
+                                   deck_stats_image, QRect(160, y, 112, 8)) &&
+                               has_matrix_green(
+                                   deck_stats_image, QRect(272, y, 32, 8));
+                    });
+                if (!has_matrix_green(deck_stats_image,
+                                      QRect(160, 40, 112, 8)) ||
+                    !deck_stats_cells_match) {
+                    std::cerr << "Matrix CyberInfo QA: Deck Stats labels or "
+                                 "values do not match the ROM plane cells\n";
                     return 3;
                 }
                 if (!route.top_matrix_deck_program_ratings_present ||
@@ -49920,6 +50233,9 @@ int main(int argc, char** argv) {
                     !source_pixels_match_at(
                         program_prompt_image, 184, 16,
                         "cyberspace/matrix/program-icon-11.bmp") ||
+                    !source_pixels_match_at(
+                        program_prompt_image, 216, 24,
+                        "cyberspace/matrix/detail-strip-11.bmp") ||
                     !has_matrix_green(program_prompt_image,
                                       QRect(216, 24, 48, 8)) ||
                     !has_matrix_green(program_prompt_image,

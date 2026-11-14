@@ -11229,7 +11229,11 @@ bool FieldSceneRuntime::bootstrap(
             }
             if (name == "cyberspace_mpcp_functional") {
                 if (!field_matrix_deck_record_.has_value()) {
-                    return std::nullopt;
+                    // ROM 0xE40C treats the uninitialized FFFBBE record as
+                    // MPCP zero. Michael's package sets deck ownership but
+                    // does not install chips, so the next menu opens the
+                    // ROM's C2202 rejection page.
+                    return false;
                 }
                 return field_matrix_deck_record_->mpcp != 0U;
             }
@@ -18452,27 +18456,6 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                         draw_matrix_text(left, kRowY[line], value);
                     }
                 };
-            const auto draw_matrix_compact_text = [this, &painter](
-                                                      const int x,
-                                                      const int y,
-                                                      const std::string_view value) {
-                auto current_x = x;
-                for (const auto character : value) {
-                    const auto code = static_cast<unsigned char>(character);
-                    if (code < 0x20U || code > 0x7EU) {
-                        current_x += 5;
-                        continue;
-                    }
-                    const auto glyph = static_cast<int>(code - 0x20U);
-                    painter.drawImage(
-                        QPoint(current_x, y), matrix_map_font_,
-                        QRect((glyph % 16) * 8, (glyph / 16) * 8, 8, 8));
-                    // The runner's compact labels retain the spacing visible
-                    // in the independent GPGX Test Deck capture. Program
-                    // titles use the imported source tile strips below.
-                    current_x += 5;
-                }
-            };
             const auto draw_matrix_rows = [&draw_matrix_text](
                                               const int x, const int y,
                                               const std::string& text,
@@ -18495,25 +18478,31 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             };
             const auto draw_wrapped_matrix_description =
                 [&draw_matrix_text](const int x, const int y,
+                                    const std::size_t columns,
                                     const std::string& text) {
-                    constexpr std::size_t kColumns = 18U;
                     std::size_t start = 0U;
                     int line = 0;
-                    while (start <= text.size() && line < 12) {
+                    while (start <= text.size()) {
                         const auto end = text.find('|', start);
                         auto remaining = std::string_view(text).substr(
                             start, end == std::string::npos
                                        ? std::string::npos
                                        : end - start);
-                        while (!remaining.empty() && line < 12) {
-                            if (remaining.size() <= kColumns) {
+                        while (!remaining.empty()) {
+                            // 0xC160 also counts the terminating control
+                            // byte, so a final fragment fits only when its
+                            // glyphs plus that byte stay within D1 cells.
+                            if (remaining.size() < columns) {
                                 draw_matrix_text(x, y + line * 8, remaining);
                                 ++line;
                                 break;
                             }
-                            auto split = remaining.rfind(' ', kColumns);
+                            // 0xC160 counts the first glyph as column 1, so
+                            // the last word boundary on an 18-cell row is at
+                            // string offset 17 (likewise offset 19 for 20).
+                            auto split = remaining.rfind(' ', columns - 1U);
                             if (split == std::string_view::npos || split == 0U) {
-                                split = kColumns;
+                                split = columns;
                             }
                             draw_matrix_text(x, y + line * 8,
                                              remaining.substr(0U, split));
@@ -18529,7 +18518,7 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                         // The ROM description stream at 0xE31F2 uses an
                         // explicit 0x80 paragraph advance after the wrapped
                         // sentence. The pipe marker preserves that blank row.
-                        if (line < 12) ++line;
+                        ++line;
                     }
                 };
 
@@ -18726,12 +18715,6 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                     painter.drawImage(
                         184, 16, matrix_cyberdeck_program_icons_[selected]);
                     if (selected < 12U) {
-                        // ROM 0x1882E selects the six-cell title strip from
-                        // the 0xD9EE8 table. The offline extractor publishes
-                        // that source art as an individually named asset.
-                        painter.drawImage(
-                            216, 24,
-                            matrix_cyberdeck_detail_strips_[selected]);
                         // 0x1A16A writes its two common label grids from
                         // D9ED4/D9EDE. This image is their offline extraction.
                         painter.drawImage(
@@ -18744,10 +18727,6 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                                                    .top_matrix_deck_program_ratings[
                                                        selected]));
                         }
-                    } else if (selected < routed_menu.top_option_labels.size()) {
-                        draw_matrix_compact_text(
-                            216, 24,
-                            routed_menu.top_option_labels[selected]);
                     }
                     if (selected < 12U) {
                         if (routed_menu
@@ -18781,8 +18760,12 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                             }
                         }
                     }
+                    // 0x18902 passes D1=18 for the 0xE31F2 program strings
+                    // at $C628; the utility descriptions use D1=20 at $C2A6.
                     draw_wrapped_matrix_description(
-                        160, 96,
+                        selected < 12U ? 160 : 152,
+                        selected < 12U ? 96 : 40,
+                        selected < 12U ? 18U : 20U,
                         routed_menu.top_matrix_deck_description);
                 } else {
                     draw_matrix_rows(176, 64,
@@ -18801,6 +18784,15 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                         176, 88,
                         routed_menu
                             .top_matrix_storage_empty_message_lines[1]);
+                }
+                // ROM 0x18886 reads D9EE8 + d6*12 and draws six title tiles
+                // at $C1B6 for every utility entry and every installed
+                // program. For an empty program slot (d7 <= 11, rating <= 0)
+                // 0x18836..0x18862 returns after the $C42C "Empty Utility
+                // Slot" text, so the panel cleared by 0x1897C has no title.
+                if (selected_program_available) {
+                    painter.drawImage(
+                        216, 24, matrix_cyberdeck_detail_strips_[selected]);
                 }
                 painter.drawImage(12 + column * 32, 20 + row * 40,
                                   matrix_cyberdeck_cursors_[deck_palette_phase]);
@@ -18860,19 +18852,12 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                         painter.drawImage(
                             0, 0, matrix_cyberdeck_runner_detail_headers_);
                     }
-                    if (routed_menu
-                            .top_matrix_deck_parent_program_name_present) {
-                        if (program < 12) {
-                            painter.drawImage(
-                                216, 24,
-                                matrix_cyberdeck_detail_strips_[
-                                    static_cast<std::size_t>(program)]);
-                        } else {
-                            draw_matrix_compact_text(
-                                216, 24,
-                                routed_menu.top_matrix_deck_parent_program_name);
-                        }
-                    }
+                    // ROM 0x18886 uses the same D9EE8 strip for the parent
+                    // program title, including the four utility entries.
+                    painter.drawImage(
+                        216, 24,
+                        matrix_cyberdeck_detail_strips_[
+                            static_cast<std::size_t>(program)]);
                     if (program < 12 &&
                         routed_menu
                             .top_matrix_deck_program_ratings_present) {

@@ -1933,6 +1933,11 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_matrix_cyber_info_
                  --field-matrix-cyber-info-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-matrix-cyber-info-qa")
 
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_cyberdeck_gate_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-cyberdeck-gate-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-cyberdeck-gate-qa")
+
 # Drive the production field terminal, System Search, jack-in, and CyberInfo
 # route from ROM Test Deck state, then compare the right-panel pixels and
 # source-foreground masks against independent headless GPGX captures. Full RGB

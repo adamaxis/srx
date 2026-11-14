@@ -552,6 +552,11 @@ bool paint_matrix_run_info_text(
         }
     };
 
+    // ROM 0x18C28 streams E4404 at $C1AC, then consumes the embedded 0x80
+    // row control before drawing the bracketed 12-cell rule at y=32.
+    draw_text(176, 24, " MATRIX  RUN");
+    draw_text(176, 32, std::string("[") + std::string(12U, '\\'));
+
     switch (info.kind) {
     case scripting::ScriptMatrixRunInfoKind::no_run:
         // ROM 0x18C50 writes at $C42C. Its 0x80 byte is a row control, so

@@ -1172,6 +1172,9 @@ public:
     field_matrix_deck_record_for_dump() const noexcept {
         return field_matrix_deck_record_;
     }
+    std::optional<bool> cyberdeck_available_for_dump() const noexcept {
+        return cyberdeck_available_;
+    }
     // The Boris event-6 QA starts at the information-already-paid branch;
     // New Game clears FFFC26, so seed that known byte without replaying the
     // separate $500 purchase route.
