@@ -115,7 +115,7 @@ int main() {
     }
 
     FieldSceneVariantState variant{};
-    variant.field_mode = 2;
+    variant.mode_event_code = 2;
     variant.scene_id = 2;
     variant.camera_x = 0x1000U;
     if (!expect(!toggle_field_scene_variant(variant) &&
@@ -123,7 +123,7 @@ int main() {
         return 9;
     }
 
-    variant.field_mode = 0x10U;
+    variant.mode_event_code = 0x10U;
     variant.scene_id = 0;
     variant.camera_x = 0x13FFU;
     if (!expect(toggle_field_scene_variant(variant) && variant.scene_id == 3U &&

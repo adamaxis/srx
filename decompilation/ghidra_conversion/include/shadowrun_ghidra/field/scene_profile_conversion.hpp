@@ -152,7 +152,7 @@ constexpr std::array<std::uint16_t, 8>
         0x0980U}};
 
 struct FieldSceneVariantState {
-    std::uint8_t field_mode = 0; // FFFBF9
+    std::uint8_t mode_event_code = 0; // FFFBF9
     std::uint16_t scene_id = 0; // FFDDC4
     std::uint16_t camera_x = 0; // FFDDC6
     std::optional<std::array<std::uint16_t, 8>> pending_profile;

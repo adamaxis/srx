@@ -773,12 +773,12 @@ E.PartyWipeRunnerRefresh = {
 -- ANDI.W #0xFF80 before the scene loader publishes FFFBF8 [C].
 E.PartyWipeArrival = {
     [E.PartyWipeDestination.DOCWAGON] = {
-        scene = 0, x = 0x6200, y = 0x2D00,
-        -- 0x2AEA raw (0x6260,0x2D40), aligned by 0x2B90 [C]
+        scene = 0, x = 0x6900, y = 0x3A80,
+        -- 0x2AEA camera anchor is 0x6260/0x2D40; actor record 0 follows [C]
     },
     [E.PartyWipeDestination.LITTLE_CHIBA] = {
-        scene = 2, x = 0x6680, y = 0x2300,
-        -- 0x2B24 raw (0x66F0,0x2310), aligned by 0x2B90 [C]
+        scene = 2, x = 0x6F00, y = 0x2780,
+        -- 0x2B24 camera anchor is 0x66F0/0x2310; actor record 0 follows [C]
     },
 }
 -- Lua menu state names the visible section. The numeric page selectors and

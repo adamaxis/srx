@@ -122,6 +122,14 @@ check(cap.leader.meters.physical == 9 and cap.leader.meters.mental == 10,
       "meters above floor kept")
 check(cap.wake_destination == "docwagon",
       "paid motel bill selects DocWagon")
+local docwagon_arrival = P.wake_arrival(true)
+check(docwagon_arrival.scene == 0 and docwagon_arrival.x == 0x6900 and
+      docwagon_arrival.y == 0x3A80,
+      "DocWagon wake uses ROM actor-0 coordinates, not camera anchor")
+local little_chiba_arrival = P.wake_arrival(false)
+check(little_chiba_arrival.scene == 2 and little_chiba_arrival.x == 0x6F00 and
+      little_chiba_arrival.y == 0x2780,
+      "Little Chiba wake uses ROM actor-0 coordinates, not camera anchor")
 
 -- ROM 0x391A walks semantic party roles, wraps after the roster-end member,
 -- and skips dead/downed members unless the named override is enabled [C].
@@ -288,19 +296,19 @@ RunRegistry.clear_active_offer_after_party_wipe()
 check(RunRegistry.active_offer == nil,
       "0x1E68C clears the active Lua run on failure")
 
--- 0xC7D2 chooses the two 0x2A32/0x2A44 paths. 0x2B78 aligns their
--- continuation coordinates to 0x80-unit placement boundaries [C].
+-- 0xC7D2 chooses the two 0x2A32/0x2A44 paths. 0x2B78 aligns the camera
+-- anchor, then copies the following coordinate pair to actor record 0 [C].
 local docwagon_destination = P.wake_destination(true)
 local docwagon_arrival = E.PartyWipeArrival[docwagon_destination]
 check(docwagon_destination == E.PartyWipeDestination.DOCWAGON and
-      docwagon_arrival.scene == 0 and docwagon_arrival.x == 0x6200 and
-      docwagon_arrival.y == 0x2D00,
+      docwagon_arrival.scene == 0 and docwagon_arrival.x == 0x6900 and
+      docwagon_arrival.y == 0x3A80,
       "paid motel flag selects DocWagon scene 0 arrival")
 local little_chiba_destination = P.wake_destination(false)
 local little_chiba_arrival = E.PartyWipeArrival[little_chiba_destination]
 check(little_chiba_destination == E.PartyWipeDestination.LITTLE_CHIBA and
-      little_chiba_arrival.scene == 2 and little_chiba_arrival.x == 0x6680 and
-      little_chiba_arrival.y == 0x2300,
+      little_chiba_arrival.scene == 2 and little_chiba_arrival.x == 0x6F00 and
+      little_chiba_arrival.y == 0x2780,
       "unpaid motel flag selects Little Chiba scene 2 arrival")
 
 -- ROM 0xC778..0xC79C chooses a distinct speaker profile for each wake scene.

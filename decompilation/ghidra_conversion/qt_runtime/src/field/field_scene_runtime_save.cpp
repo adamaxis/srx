@@ -1131,7 +1131,10 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
     field_camera_follow_.horizontal_step = 0;
     field_camera_follow_.vertical_step = 0;
     field_movement_transition_state_.scene_id = restored.scene;
-    field_movement_transition_state_.world_mode = restored.mode;
+    // ROM 0x594E0 clears FFDF40 before restoring the saved scene. Old host
+    // saves may carry the scene-derived 0x167AE mode, but that transient must
+    // not survive load and disable street door contact.
+    field_movement_transition_state_.world_mode = 0U;
     refresh_effect_terrain_marker_cell();
     field_world_activity_timeout_state_ = WorldActivityTimeoutState{};
     field_world_activity_timeout_state_.scene_id = restored.scene;

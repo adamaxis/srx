@@ -296,10 +296,15 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
         std::move(next_field_map_priority_overlay);
     reset_field_map_cell_words();
     // ROM 0x167AE selects FFDF40 before 0xA800's conditional actor decision;
-    // taxi entry 0x136DE clears it. Install the resolved destination mode
-    // before native actor population so Lua sees the source state on entry.
+    // 0x136DE (taxi, paid travel, party-wipe wake) clears it through the
+    // caller's override. The 0x2CE0 cave/mode-exit route writes FFDDC4 and
+    // the FFE10A/C spawn only (0x2D44..), so FFDF40 keeps its prior value.
+    // Install the resolved destination mode before native actor population
+    // so Lua sees the source state on entry.
     field_movement_transition_state_.world_mode =
-        same_scene && !force_scene_entry ? prior_world_mode : *interaction_mode;
+        (same_scene && !force_scene_entry) || apply_mode_transition_spawn
+            ? prior_world_mode
+            : *interaction_mode;
     refresh_effect_terrain_marker_cell();
     if (!same_scene || field_world_activity_scene_entry_pending_ ||
         force_scene_entry) {
@@ -361,6 +366,30 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
     source_boundary("field.world_activity.scene_prepared");
     return true;
 }
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
+bool FieldSceneRuntime::enter_field_mode_transition_for_dump(
+    const std::uint16_t scene_reference, const std::uint16_t spawn_x,
+    const std::uint16_t spawn_y) {
+    field_pending_mode_transition_scene_ = scene_reference;
+    field_pending_mode_transition_spawn_ =
+        SceneRunnerPosition{spawn_x, spawn_y};
+    field_world_activity_scene_entry_pending_ = true;
+    if (!prepare_runtime_field_scene(scene_reference)) {
+        field_pending_mode_transition_scene_.reset();
+        field_pending_mode_transition_spawn_.reset();
+        field_world_activity_scene_entry_pending_ = false;
+        return false;
+    }
+    field_pending_mode_transition_scene_.reset();
+    field_world_activity_scene_entry_pending_ = false;
+    field_entity_.world_position = SceneRunnerPosition{spawn_x, spawn_y};
+    field_movement_state_.position_x = spawn_x;
+    field_movement_state_.position_y = spawn_y;
+    field_entity_.visible = true;
+    return true;
+}
+#endif
 
 void FieldSceneRuntime::snapshot_world_activity_source_scene() {
     WorldActivityReturnSnapshot snapshot{};
@@ -1028,6 +1057,16 @@ void FieldSceneRuntime::record_field_door_contact(
         static_cast<std::uint16_t>(*camera_y);
     field_collision_probe_state_.initialized = true;
 }
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
+bool FieldSceneRuntime::capture_field_door_contact_for_dump() {
+    field_collision_probe_state_.initialized = false;
+    record_field_door_contact({0xC0U, 0U, 0U});
+    const bool captured = field_collision_probe_state_.initialized;
+    field_collision_probe_state_ = CollisionProbeState{};
+    return captured;
+}
+#endif
 
 std::uint16_t FieldSceneRuntime::field_door_exit_heading(
     const std::uint16_t entry_heading) {

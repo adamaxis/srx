@@ -1002,6 +1002,14 @@ public:
     std::uint16_t field_interaction_mode_for_dump() const noexcept {
         return field_movement_transition_state_.world_mode;
     }
+#ifdef SHADOWRUN_QT_QA_DRIVER
+    bool capture_field_door_contact_for_dump();
+    bool enter_field_destination_for_dump(std::uint16_t scene_reference,
+                                          std::string_view route);
+    bool enter_field_mode_transition_for_dump(std::uint16_t scene_reference,
+                                              std::uint16_t spawn_x,
+                                              std::uint16_t spawn_y);
+#endif
     // Scene-entry QA checkpoint: 0x03074 selects the interaction mode for
     // the loaded field before ordinary movement resumes. Keep this setter on
     // the dump/test surface rather than exposing a second gameplay control.

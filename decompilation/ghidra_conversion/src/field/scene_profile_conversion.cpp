@@ -105,7 +105,7 @@ std::size_t copy_terrain_layers(
 }
 
 bool toggle_field_scene_variant(FieldSceneVariantState& state) {
-    if (state.field_mode != 0x10U) {
+    if (state.mode_event_code != 0x10U) {
         return false;
     }
     if (state.scene_id == 0U) {

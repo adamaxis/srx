@@ -290,10 +290,16 @@ bool FieldSceneRuntime::transition_to_field_destination(
                   : route == FieldDestinationTransitionRoute::vid_phone
                         ? "field.vid_phone."
                         : "field.elevator.";
+    // ROM 0x136DE clears FFDF40 (0x136E4) for every FFDDC4 change it makes:
+    // taxi/region changes via 0x136B6, paid dialogue travel (0x21E84,
+    // 0x229F2, 0x24DB6) and the party-wipe wake (0x2A8E, 0x2B0E). Elevator
+    // floors load through 0x16A8E, which does not write FFDF40, so they keep
+    // the current (building 0x167AE) mode.
     const auto world_mode_override =
-        route == FieldDestinationTransitionRoute::taxi
+        route != FieldDestinationTransitionRoute::elevator
             ? std::optional<std::uint16_t>{0U}
-            : std::nullopt;
+            : std::optional<std::uint16_t>{
+                  field_movement_transition_state_.world_mode};
     if (!field_session_source_assets_ ||
         scene_reference >=
             field_session_source_assets_->field_scene_resources.size() ||
@@ -414,6 +420,26 @@ bool FieldSceneRuntime::transition_to_field_destination(
     source_boundary(std::string(source_prefix) + "destination_loaded");
     return true;
 }
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
+bool FieldSceneRuntime::enter_field_destination_for_dump(
+    const std::uint16_t scene_reference, const std::string_view route) {
+    FieldDestinationTransitionRoute selected_route;
+    if (route == "elevator") {
+        selected_route = FieldDestinationTransitionRoute::elevator;
+    } else if (route == "taxi") {
+        selected_route = FieldDestinationTransitionRoute::taxi;
+    } else if (route == "vid_phone") {
+        selected_route = FieldDestinationTransitionRoute::vid_phone;
+    } else if (route == "dialogue_scene_entry") {
+        selected_route = FieldDestinationTransitionRoute::dialogue_scene_entry;
+    } else {
+        return false;
+    }
+    return transition_to_field_destination(scene_reference, selected_route,
+                                           std::nullopt);
+}
+#endif
 
 
 void FieldSceneRuntime::advance_field_elevator_selector() {

@@ -2343,6 +2343,13 @@ int run_field_party_wipe_qa(
     }
     field_scene.set_source_random_seed_for_dump(0x4000U);
     field_scene.set_field_world_frame_counter_for_dump(0x0200U);
+    if (field_scene.field_interaction_mode_for_dump() != 0U ||
+        !field_scene.capture_field_door_contact_for_dump()) {
+        std::cerr << "field party-wipe QA: fresh New Game scene did not "
+                     "admit Downtown door contact; mode="
+                  << field_scene.field_interaction_mode_for_dump() << '\n';
+        return 3;
+    }
 
     // ROM 0x391A cycles after 0xC716 [C]. Seed both hired records and start on
     // slot 2 so the wipe dismisses them and the source walk returns to Joshua.
@@ -2411,21 +2418,24 @@ int run_field_party_wipe_qa(
             leader_hud.primary_runner && leader_hud.flags_byte == leader_flags &&
             fade_marker.marker == -1 && fade_marker.countdown == 3U &&
             !field_scene.world_effect_player_spawn_pending_for_dump();
+        const bool street_door_ready =
+            field_scene.field_interaction_mode_for_dump() == 0U &&
+            field_scene.capture_field_door_contact_for_dump();
         const auto image = render_qa_field(field_scene);
         return !field_scene.dialogue_open() &&
                field_scene.elevator_scene_transition_phase_for_dump() ==
                    FieldSceneTransitionPhase::idle &&
                field_scene.field_scene_reference_for_dump() == expected_scene &&
                arrival.x == expected_x && arrival.y == expected_y &&
-               runner_refresh_ok && wake_page_saved &&
+               runner_refresh_ok && street_door_ready && wake_page_saved &&
                save_qa_image(output, image_name, image);
     };
 
     if (!exercise_wipe(
-            true, 0U, 0x6200U, 0x2D00U, "docwagon.bmp",
+            true, 0U, 0x6900U, 0x3A80U, "docwagon.bmp",
             "docwagon-wake.bmp", "field.mode.entry.docwagon.sprite")) {
         std::cerr << "field party-wipe QA: paid-bill wipe did not arrive at "
-                     "DocWagon scene 0 position 0x6200,0x2D00; scene="
+                     "DocWagon scene 0 actor-0 position 0x6900,0x3A80; scene="
                   << field_scene.field_scene_reference_for_dump()
                   << " position=" << field_scene.field_entity_world_position().x
                   << ',' << field_scene.field_entity_world_position().y
@@ -2436,11 +2446,11 @@ int run_field_party_wipe_qa(
         return 3;
     }
     if (!exercise_wipe(
-            false, 2U, 0x6680U, 0x2300U, "actual.bmp",
+            false, 2U, 0x6F00U, 0x2780U, "actual.bmp",
             "little-chiba-wake.bmp",
             "field.mode.entry.little.chiba.sprite")) {
         std::cerr << "field party-wipe QA: unpaid-bill wipe did not arrive at "
-                     "Little Chiba scene 2 position 0x6680,0x2300; scene="
+                     "Little Chiba scene 2 actor-0 position 0x6F00,0x2780; scene="
                   << field_scene.field_scene_reference_for_dump()
                   << " position=" << field_scene.field_entity_world_position().x
                   << ',' << field_scene.field_entity_world_position().y
@@ -2474,9 +2484,54 @@ int run_field_party_wipe_qa(
                   << wake_mismatches << " pixels\n";
         return 3;
     }
+    constexpr std::array<std::string_view, 4U> entry_routes{
+        "dialogue_scene_entry", "elevator", "taxi", "vid_phone"};
+    for (const auto route : entry_routes) {
+        if (!field_scene.enter_field_destination_for_dump(2U, route) ||
+            !field_scene.enter_field_destination_for_dump(0U, route) ||
+            field_scene.field_scene_reference_for_dump() != 0U ||
+            field_scene.field_interaction_mode_for_dump() != 0U ||
+            !field_scene.capture_field_door_contact_for_dump()) {
+            std::cerr << "field party-wipe QA: Downtown door contact failed "
+                         "after scene-entry route " << route << " mode="
+                      << field_scene.field_interaction_mode_for_dump()
+                      << " scene=" << field_scene.field_scene_reference_for_dump()
+                      << " failure=" << field_scene.failure() << '\n';
+            return 3;
+        }
+        QString save_error;
+        const auto save_snapshot =
+            field_scene.capture_game_save_snapshot_for_dump(&save_error);
+        if (!save_snapshot.has_value() ||
+            !field_scene.restore_game_save_snapshot_for_dump(
+                *save_snapshot, &save_error) ||
+            field_scene.field_scene_reference_for_dump() != 0U ||
+            field_scene.field_interaction_mode_for_dump() != 0U ||
+            !field_scene.capture_field_door_contact_for_dump()) {
+            std::cerr << "field party-wipe QA: save/load lost Downtown door "
+                         "state after route " << route << " error="
+                      << save_error.toStdString() << '\n';
+            return 3;
+        }
+    }
+    if (!field_scene.enter_field_mode_transition_for_dump(
+            2U, 0x6F00U, 0x2780U) ||
+        !field_scene.enter_field_mode_transition_for_dump(
+            0U, 0x6900U, 0x3A80U) ||
+        field_scene.field_scene_reference_for_dump() != 0U ||
+        field_scene.field_interaction_mode_for_dump() != 0U ||
+        !field_scene.capture_field_door_contact_for_dump()) {
+        std::cerr << "field party-wipe QA: Downtown door contact failed "
+                     "after map-edge/mode-transition scene preparation; mode="
+                  << field_scene.field_interaction_mode_for_dump()
+                  << " scene=" << field_scene.field_scene_reference_for_dump()
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
     std::cout << "field_party_wipe_qa=passed "
-                 "docwagon=scene0@0x6200,0x2D00 "
-                 "little_chiba=scene2@0x6680,0x2300 "
+                 "docwagon=scene0@0x6900,0x3A80 "
+                 "little_chiba=scene2@0x6F00,0x2780 "
+                 "entry_routes=4 map_edge=1 downtown_door_contact=1 "
                  "gpgx_frame_21228_pixel_mismatches=0 actual.bmp="
               << output.string() << '\n';
     return 0;
@@ -44296,6 +44351,147 @@ int run_field_tarislar_tomb_departure_qa(
     return 0;
 }
 
+int run_field_edge_exit_qa(
+    FieldSceneRuntime& field_scene,
+    const std::string_view route_name,
+    const std::filesystem::path& output,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) return 3;
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) return 3;
+
+    struct EdgeRoute {
+        const char* name;
+        std::uint16_t source_scene;
+        std::uint16_t destination_scene;
+        std::uint16_t start_x;
+        std::uint16_t start_y;
+        std::uint16_t camera_x;
+        std::uint16_t camera_y;
+        std::uint8_t input;
+    };
+    // These are all ROM event-16 edge routes: scene 0 west/east, scene 3
+    // east, and scene 5 west (records 0x0D57FA/0x0D582C/0x18ABFA/0x067C72).
+    constexpr std::array<EdgeRoute, 4> routes{{
+        {"scene0_west", 0U, 3U, 0x0300U, 0x2C00U, 0U, 0x2400U, 0x04U},
+        {"scene0_east", 0U, 5U, 0x7500U, 0x2C00U, 0x6500U, 0x2400U, 0x08U},
+        {"scene3_east", 3U, 0U, 0x7B00U, 0x2C00U, 0x6B00U, 0x2400U, 0x08U},
+        {"scene5_west", 5U, 0U, 0x0300U, 0x3A00U, 0U, 0x3200U, 0x04U},
+    }};
+    const auto selected = std::find_if(
+        routes.begin(), routes.end(), [route_name](const auto& route) {
+            return route.name == route_name;
+        });
+    if (selected == routes.end()) {
+        std::cerr << "field edge exit QA: unknown route " << route_name
+                  << '\n';
+        return 2;
+    }
+    const auto& route = *selected;
+    if (!field_scene.reenter_field_scene_for_dump(route.source_scene)) {
+        std::cerr << "field edge exit QA: could not enter scene "
+                  << route.source_scene << '\n';
+        return 3;
+    }
+    field_scene.set_field_entity_world_position_for_dump(
+        route.start_x, route.start_y);
+    field_scene.set_field_camera_world_position_for_dump(
+        route.camera_x, route.camera_y);
+    // Streets run with FFDF40 == 0: only 0x167AE (building entry) writes
+    // modes 1..3, and 0x2F4E/0x136E4/0x594E0 clear it. 0x0992 reaches the
+    // 0x03168 variant selector only from that zero mode.
+    field_scene.set_field_interaction_mode_for_dump(0U);
+    const auto initial_event = field_scene.field_mode_event_code_for_dump();
+    bool event16_published = false;
+    bool observed_movement = false;
+    bool moved_in_exit_direction = false;
+    int event_result_kind = -1;
+    field_scene.set_controller_nibble(route.input);
+    for (std::uint16_t tick = 0U; tick < 120U; ++tick) {
+        const auto before = field_scene.field_entity_world_position();
+        field_scene.advance_frame();
+        const auto after = field_scene.field_entity_world_position();
+        const auto delta_x = static_cast<std::int32_t>(after.x) -
+                             static_cast<std::int32_t>(before.x);
+        if (!observed_movement && delta_x != 0) {
+            observed_movement = true;
+            moved_in_exit_direction = route.input == 0x04U
+                                          ? delta_x < 0
+                                          : delta_x > 0;
+        }
+        if (initial_event != 0x10U &&
+            field_scene.field_mode_event_code_for_dump() == 0x10U) {
+            event16_published = true;
+            event_result_kind = static_cast<int>(
+                field_scene.last_field_movement_transition_for_dump().kind);
+        }
+        if (field_scene.field_scene_reference_for_dump() !=
+            route.source_scene) {
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    const auto destination_scene =
+        field_scene.field_scene_reference_for_dump();
+    const auto final_position = field_scene.field_entity_world_position();
+    const auto has_boundary = [&source_boundaries](
+                                  const std::string_view boundary) {
+        return std::find(source_boundaries.begin(), source_boundaries.end(),
+                         boundary) != source_boundaries.end();
+    };
+    const bool transition_requested =
+        has_boundary("field.runtime.field_transition_requested");
+    const bool variant_selected =
+        has_boundary("field.runtime.scene_variant_selected");
+    // 0x03174..0x031EA writes FFDDC4/FFE114 only; FFDF40 stays zero.
+    const auto arrival_mode = field_scene.field_interaction_mode_for_dump();
+    const bool passed = initial_event != 0x10U && event16_published &&
+                        transition_requested && variant_selected &&
+                        moved_in_exit_direction &&
+                        destination_scene == route.destination_scene &&
+                        arrival_mode == 0U;
+    std::ofstream trace(output / "edge-routes.tsv", std::ios::trunc);
+    if (!trace) return 3;
+    trace << "route\tinitial_event\tevent16_published\tmoved_x\t"
+             "source_scene\tdestination_scene\texpected_scene\tcamera_x\t"
+             "world_x\tworld_y\trequest_boundary\tvariant_selected\n";
+    trace << route.name << '\t' << static_cast<unsigned>(initial_event)
+          << '\t' << event16_published << '\t'
+          << moved_in_exit_direction << '\t' << route.source_scene << '\t'
+          << destination_scene << '\t' << route.destination_scene << '\t'
+          << field_scene.field_camera_follow_for_dump().camera_x << '\t'
+          << final_position.x << '\t' << final_position.y << '\t'
+          << transition_requested << '\t' << variant_selected << '\n';
+    trace.close();
+    if (!trace || !passed) {
+        std::cerr << "field edge exit QA: " << route.name
+                  << " event16=" << event16_published
+                  << " arrival_mode=" << arrival_mode
+                  << " event_result=" << event_result_kind
+                  << " moved_in_direction=" << moved_in_exit_direction
+                  << " scene=" << destination_scene
+                  << " expected=" << route.destination_scene
+                  << " position=(" << final_position.x << ','
+                  << final_position.y << ')'
+                  << " world_mode=" << field_scene.field_interaction_mode_for_dump()
+                  << " interaction_active="
+                  << field_scene.field_interaction_transition_active_for_dump()
+                  << " transition_pending="
+                  << field_scene.field_transition_pending_for_dump()
+                  << " transition_requested_boundary=" << transition_requested
+                  << " variant_selected_boundary=" << variant_selected
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+    std::cout << "field_edge_exit_qa=passed route=" << route.name
+              << " event=16 direction="
+              << (route.input == 0x08U ? "east" : "west")
+              << " trace=" << (output / "edge-routes.tsv").string() << '\n';
+    return 0;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -44328,6 +44524,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_gang_contract_target_entry_qa_path;
         std::optional<std::filesystem::path> field_transition_qa_path;
+        std::optional<std::filesystem::path> field_edge_exit_qa_path;
+        std::optional<std::string> field_edge_exit_qa_route;
         std::optional<std::filesystem::path> field_alarm_qa_path;
         std::optional<std::filesystem::path> field_world_activity_qa_path;
         std::optional<std::filesystem::path> field_party_wipe_qa_path;
@@ -44746,6 +44944,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_transition_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-edge-exit-qa" &&
+                index + 2 < argc) {
+                field_smoke = true;
+                field_edge_exit_qa_route = argv[++index];
+                field_edge_exit_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-alarm-qa" &&
@@ -52115,6 +52320,11 @@ int main(int argc, char** argv) {
                 std::cout << "field_transition_qa=passed fade_frames=17 palette_steps=9 transition_pending=yes sound_events=0 artifacts="
                           << field_transition_qa_path->string() << '\n';
                 return 0;
+            }
+            if (field_edge_exit_qa_path.has_value()) {
+                return run_field_edge_exit_qa(
+                    field_scene, *field_edge_exit_qa_route,
+                    *field_edge_exit_qa_path, field_source_boundaries);
             }
             if (field_movement_qa_path.has_value()) {
                 std::filesystem::create_directories(

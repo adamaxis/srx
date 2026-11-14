@@ -8606,7 +8606,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
     field_runtime_callbacks_.toggle_field_scene_variant = [this](
                                                                   auto& runtime) {
         FieldSceneVariantState variant{};
-        variant.field_mode = runtime.field_mode;
+        variant.mode_event_code = runtime.mode_event_code;
         variant.scene_id = runtime.scene_id;
         variant.camera_x = state_.field_scene_buffers.camera_x;
         variant.pending_profile = field_pending_scene_profile_;

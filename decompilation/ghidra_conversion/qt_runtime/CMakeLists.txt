@@ -786,6 +786,25 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_transition_qa
                  --field-transition-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-transition-qa")
 
+# Walk into every ROM event-16 map edge using controller input, then require
+# the field runtime to select the ROM scene variant for that exit.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_edge_exit_scene0_west_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-edge-exit-qa scene0_west
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-edge-exit-qa/scene0-west")
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_edge_exit_scene0_east_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-edge-exit-qa scene0_east
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-edge-exit-qa/scene0-east")
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_edge_exit_scene3_east_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-edge-exit-qa scene3_east
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-edge-exit-qa/scene3-east")
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_edge_exit_scene5_west_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-edge-exit-qa scene5_west
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-edge-exit-qa/scene5-west")
+
 # The active field event byte selects a named resource scene, samples its ROM
 # bound into a typed floor index, and carries that state through the existing
 # Security Terminal result prompt. Captures also verify full-scene replacement
