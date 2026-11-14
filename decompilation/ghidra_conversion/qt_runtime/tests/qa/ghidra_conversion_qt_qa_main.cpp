@@ -25178,30 +25178,82 @@ int run_field_scene2_pedestrians_qa(
         return 3;
     }
     const auto fleeing_position = flee_positions.front();
-    field_scene.set_field_camera_world_position_for_dump(0U, 0U);
+    const auto offscreen_camera_x = static_cast<std::uint16_t>(
+        fleeing_position.x + 0x2000U);
+    const auto offscreen_camera_y = static_cast<std::uint16_t>(
+        fleeing_position.y + 0x2000U);
+    field_scene.set_field_camera_world_position_for_dump(
+        offscreen_camera_x, offscreen_camera_y);
+    EntityProjectionState offscreen_projection{};
+    offscreen_projection.world_x = fleeing_position.x;
+    offscreen_projection.world_y = fleeing_position.y;
+    const auto offscreen_projection_result =
+        project_entity_screen_position_standard(
+            offscreen_projection, offscreen_camera_x, offscreen_camera_y);
     const auto offscreen_visible_before =
         field_scene.visible_default_actor_count_for_dump();
-    bool flee_moved_offscreen = false;
+    bool offscreen_flee_position_held = true;
+    bool projection_cleared_at_each_actor_service = true;
     for (std::size_t frame = 0U; frame < 36U; ++frame) {
+        const auto positions_before =
+            field_scene.active_default_actor_positions_for_dump();
+        if (positions_before.size() != 3U) {
+            offscreen_flee_position_held = false;
+            break;
+        }
+        const auto service_position = positions_before.front();
+        const auto service_camera_x = static_cast<std::uint16_t>(
+            service_position.x + 0x2000U);
+        const auto service_camera_y = static_cast<std::uint16_t>(
+            service_position.y + 0x2000U);
+        field_scene.set_field_camera_world_position_for_dump(
+            service_camera_x, service_camera_y);
+        EntityProjectionState service_projection{};
+        service_projection.world_x = service_position.x;
+        service_projection.world_y = service_position.y;
+        if (project_entity_screen_position_standard(
+                service_projection, service_camera_x,
+                service_camera_y).visible) {
+            projection_cleared_at_each_actor_service = false;
+        }
         field_scene.advance_frame();
         const auto positions =
             field_scene.active_default_actor_positions_for_dump();
-        if (positions.size() == 3U &&
-            (positions.front().x != fleeing_position.x ||
-             positions.front().y != fleeing_position.y)) {
-            flee_moved_offscreen = true;
+        if (positions.size() != 3U ||
+            positions.front().x != fleeing_position.x ||
+            positions.front().y != fleeing_position.y) {
+            offscreen_flee_position_held = false;
         }
     }
     flee_positions = field_scene.active_default_actor_positions_for_dump();
-    if (offscreen_visible_before != 0U || flee_positions.size() != 3U ||
+    if (offscreen_projection_result.visible ||
+        offscreen_visible_before != 0U || flee_positions.size() != 3U ||
         actor_flags() < 0 || (actor_flags() & 0x40) == 0 ||
         field_scene.default_actor_physical_meter_for_dump(0U) !=
             wounded_meter ||
-        !flee_moved_offscreen) {
-        std::cerr << "Scene-2 flee QA: offscreen pedestrian lost its active "
-                     "flee route or stopped moving; visible_before="
+        !offscreen_flee_position_held ||
+        !projection_cleared_at_each_actor_service) {
+        const auto offscreen_debug = field_scene.debug_inspection_fields();
+        std::cerr << "Scene-2 flee QA: offscreen pedestrian moved after its "
+                     "projection cleared; visible_before="
                   << offscreen_visible_before << " flags=" << actor_flags()
+                  << " projected=" << offscreen_projection_result.visible
                   << " actors=" << flee_positions.size()
+                  << " held=" << offscreen_flee_position_held
+                  << " projected_each_service="
+                  << !projection_cleared_at_each_actor_service
+                  << " final_xy="
+                  << offscreen_debug.value(QStringLiteral(
+                         "actor.field_scene_2_actor_0.x")).toInt(-1)
+                  << ","
+                  << offscreen_debug.value(QStringLiteral(
+                         "actor.field_scene_2_actor_0.y")).toInt(-1)
+                  << " camera="
+                  << offscreen_debug.value(QStringLiteral("field.camera.x"))
+                         .toInt(-1)
+                  << ","
+                  << offscreen_debug.value(QStringLiteral("field.camera.y"))
+                         .toInt(-1)
                   << " meter="
                   << (field_scene.default_actor_physical_meter_for_dump(0U)
                           .has_value()
@@ -25214,17 +25266,37 @@ int run_field_scene2_pedestrians_qa(
     field_scene.set_field_camera_world_position_for_dump(
         static_cast<std::uint16_t>(flee_positions.front().x - 0x0800U),
         static_cast<std::uint16_t>(flee_positions.front().y - 0x0800U));
+    EntityProjectionState fleeing_projection{};
+    fleeing_projection.world_x = flee_positions.front().x;
+    fleeing_projection.world_y = flee_positions.front().y;
+    const auto fleeing_projection_result =
+        project_entity_screen_position_standard(
+            fleeing_projection,
+            static_cast<std::uint16_t>(flee_positions.front().x - 0x0800U),
+            static_cast<std::uint16_t>(flee_positions.front().y - 0x0800U));
+    const auto recentered_visible_actors =
+        field_scene.visible_default_actor_count_for_dump();
+    const auto fleeing_sprite_available =
+        field_scene.default_actor_sprite_available_for_dump(0U);
     const auto fleeing_actual = render_qa_field(field_scene);
-    if (fleeing_actual.isNull() ||
+    if (!fleeing_projection_result.visible ||
+        !fleeing_sprite_available || recentered_visible_actors == 0U ||
+        fleeing_actual.isNull() ||
         !fleeing_actual.save(QString::fromStdWString(
             (output / "flee-actual.bmp").wstring()))) {
-        std::cerr << "Scene-2 flee QA: could not save flee-actual.bmp\n";
+        std::cerr << "Scene-2 flee QA: projected fleeing actor did not return "
+                     "to the drawable set; projection="
+                  << fleeing_projection_result.visible
+                  << " sprite=" << fleeing_sprite_available
+                  << " visible=" << recentered_visible_actors
+                  << " failure=" << field_scene.failure() << '\n';
         return 3;
     }
     std::cout << "field_scene2_pedestrians_qa=passed spawned=3 "
               << "moved_actor=0 frames<= " << kMaximumFieldFrames
               << " wounded_meter=" << static_cast<unsigned>(*wounded_meter)
-              << " offscreen_flee=continued frames=36 actual="
+              << " offscreen_flee=held frames=36 recentered_visible="
+              << recentered_visible_actors << " actual="
               << (output / "actual.bmp").string() << " flee_actual="
               << (output / "flee-actual.bmp").string() << '\n';
     return 0;

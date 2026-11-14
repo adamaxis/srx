@@ -5156,6 +5156,11 @@ void FieldSceneRuntime::advance_default_field_actors(
                 : actor.initial_heading,
             false,
         };
+        const bool escort_formation_route = actor_flag_is_set(
+            actor.source_behavior_flags,
+            ActorBehaviorFlag::high_effect_route);
+        const bool flee_route = actor_flag_is_set(
+            actor.source_behavior_flags, ActorBehaviorFlag::fleeing);
         context.source_think_suppressed = field_think_token_claimed_;
         context.actor_motion_suppressed = state_.field_lock != 0U;
         context.thon_action_cooldown_remaining =
@@ -5488,17 +5493,14 @@ void FieldSceneRuntime::advance_default_field_actors(
             // targets the Joshua record at FFFC04 and does not consult the
             // ordinary actor-target pool. Keep that formation route's typed
             // movement services available even when its pool is empty.
-            const bool escort_formation_route = actor_flag_is_set(
-                actor.source_behavior_flags,
-                ActorBehaviorFlag::high_effect_route);
-            // ROM 0x1397A sends a +0xB0.6 fleeing record straight to
-            // 0x13E8C -> 0x13E9E -> 0x145A2, which keeps routing it toward
-            // its saved boundary destination without consulting the target
-            // pool. Keep its movement services available off-screen too.
-            const bool flee_route = actor_flag_is_set(
-                actor.source_behavior_flags, ActorBehaviorFlag::fleeing);
-            context.movement_allowed = has_candidate_in_source_pool ||
-                                       escort_formation_route || flee_route;
+            // ROM 0x13E8C tests projected +0x0C: nonzero enters
+            // 0x13E9E -> 0x145A2, while zero branches to 0x13E40 without
+            // advancing the route. Preserve the empty-pool flee route only
+            // while its source projection remains active.
+            context.movement_allowed = escort_formation_route ||
+                (flee_route
+                    ? context.source_projection_active.value_or(false)
+                    : has_candidate_in_source_pool);
 
             context.movement_services_available =
                 context.movement_allowed;
@@ -5727,6 +5729,16 @@ void FieldSceneRuntime::advance_default_field_actors(
 
         if (actor.source_actor_has_waypoint_data) {
             provide_source_profile_patrol_movement_services(context, actor);
+        }
+        // The patrol movement provider above enables its route unconditionally.
+        // ROM 0x13E8C still bypasses 0x145A2 for a zero-projection fleeing
+        // record, so keep that source branch authoritative after all providers.
+        if (flee_route && !escort_formation_route) {
+            const bool projection_active =
+                context.source_projection_active.value_or(false);
+            context.movement_allowed = projection_active;
+            context.movement_services_available =
+                projection_active;
         }
         if (source_default_item_action) {
             context.action_line_clear = [this, &actor](

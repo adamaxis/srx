@@ -2095,10 +2095,10 @@ check(escort_concluded ~= nil and
       heartbeat_state.actor_facts.behavior.escort == false,
       "escort conclusion applies as a semantic actor lifecycle transition")
 
--- ROM 0x1397A continues an off-screen fleeing record through 0x13E8C and
--- 0x145A2 without consulting the target pool. Start the flee on-screen, then
--- model an empty off-screen target pool; the host keeps movement services
--- available for +0xB0.6 fleeing records, and Lua must keep routing.
+-- ROM 0x1397A dispatches a projected fleeing record through 0x13E8C and
+-- 0x145A2 without consulting the target pool. The host keeps movement
+-- services available while its projection remains active, and Lua must keep
+-- routing that saved flee destination.
 local flee48_context = movement_fixture(false)
 flee48_context.actor_id = "field_scene_2_actor_0"
 flee48_context.profile_id = "pedestrian_k0b_none00"
@@ -2132,21 +2132,21 @@ flee48_context.spawn = false
 local flee48_visible_heartbeat = ActorAI.heartbeat(flee48_context)
 local flee48_position_x = flee48_state.movement_step.state.position_x
 local flee48_position_y = flee48_state.movement_step.state.position_y
-flee48_context.source_projection_active = false
+flee48_context.source_projection_active = true
 flee48_context.movement_allowed = true
 flee48_context.movement_services_available = true
 flee48_context.ai_target_candidates = {}
 flee48_context.movement_state.position_x = flee48_position_x
 flee48_context.movement_state.position_y = flee48_position_y
 flee48_state.behavior_timer = 0
-local flee48_offscreen_heartbeat = ActorAI.heartbeat(flee48_context)
-check(flee48_offscreen_heartbeat ~= nil and
+local flee48_projected_heartbeat = ActorAI.heartbeat(flee48_context)
+check(flee48_projected_heartbeat ~= nil and
       flee48_state.actor_facts.behavior.fleeing and
-      flee48_state.ai_think_path == "continue_movement" and
+      flee48_state.ai_think_path == "flee" and
       flee48_state.actor_facts.lifecycle.active and
       flee48_state.movement_step ~= nil and
       flee48_state.movement_step.state.position_x ~= flee48_position_x,
-      "0x1397A off-screen flee keeps advancing with an empty target pool [C: 0x1397A..0x13E9E, 0x145A2]")
+      "0x1397A projected flee keeps advancing with an empty target pool [C: 0x1397A..0x13E9E, 0x145A2]")
 
 game.movement.follow_route_step_clear = follow_route_step_clear
 
