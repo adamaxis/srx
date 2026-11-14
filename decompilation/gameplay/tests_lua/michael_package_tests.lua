@@ -115,6 +115,8 @@ game = {
             assert(script_text[key] ~= nil, "missing Stoker text " .. key)
             pages[#pages + 1] = {
                 id = event_id,
+                speaker_id = speaker_id,
+                portrait_alias = speaker.portrait_alias or "none",
                 key = key,
                 text = script_text[key],
                 continuation_key = event.continuation_key,
@@ -181,6 +183,27 @@ local function expect_michael_contents(first_index)
         assert(page.continuation_key == continuation_key,
             "wrong ROM continuation for " .. expected.id)
     end
+    -- 0x219C8 (callback 0x22) loads profile 0x121E68 for page 0xF46D1;
+    -- 0x219B6 (callback 0x21) loads 0x121E98 for 0xF4746. Record 0xF4908
+    -- (credstick 0xF47AA) has no callback, so Caleb's picture stays.
+    local ivanna_page = pages[first_index + 5]
+    assert(ivanna_page.speaker_id == "ivanna_haversheen" and
+           ivanna_page.portrait_alias ==
+               "dialogue.portraits.ivanna.haversheen",
+        "Ivanna holopix page did not select the ROM portrait")
+    local credstick_page = pages[first_index + 7]
+    assert(credstick_page.portrait_alias ==
+               "dialogue.portraits.caleb.brightmore",
+        "credstick page must keep Caleb's 0x121E98 picture")
+    for index = first_index, first_index + 4 do
+        assert(pages[index].portrait_alias == "dialogue.portraits.stoker.motel",
+            "pre-holopix package pages keep Stoker's portrait")
+    end
+    local caleb_page = pages[first_index + 6]
+    assert(caleb_page.speaker_id == "caleb_brightmore" and
+           caleb_page.portrait_alias ==
+               "dialogue.portraits.caleb.brightmore",
+        "Caleb holopix page did not select the ROM portrait")
 end
 
 -- Source gate and ordered A/B/C menu: the package choice is present while

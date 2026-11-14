@@ -9,6 +9,13 @@ return {
         narrator = "council_island_hospital_narrator",
         text_profile = "council_island_hospital",
         entry_text = "seattle_general_hospital.entry.default",
+        -- ROM 0x1F878 checks FFFC30 bit 3 and selects text at 0x111A7B.
+        entry_text_variants = {
+            {
+                fact = "field_mode_flag_bit_3",
+                text = "seattle_general_hospital.entry.michael_holopix",
+            },
+        },
     },
     council_island_hospital = {
         narrator = "council_island_hospital_narrator",

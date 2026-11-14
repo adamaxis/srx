@@ -1161,6 +1161,10 @@ public:
     std::optional<std::uint32_t> field_funds_for_dump() const noexcept {
         return field_funds_;
     }
+    std::optional<std::uint8_t>
+    field_runner_feature_flags_for_dump() const noexcept {
+        return field_runner_feature_flags_;
+    }
     void set_field_funds_for_dump(const std::uint32_t funds) noexcept {
         field_funds_ = funds;
     }

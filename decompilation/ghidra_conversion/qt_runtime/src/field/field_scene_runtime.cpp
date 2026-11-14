@@ -1128,6 +1128,8 @@ FieldSceneRuntime::FieldSceneRuntime(
                 (payment_state.runner_feature_flags & 0x01U) != 0U;
         }
         notebook_tip_flags_[0] = payment_state.followup_state.story_flags;
+        field_mode_flags_ = payment_state.followup_state.story_flags;
+        field_mode_flags_resolved_ = true;
         notebook_referral_flags_ =
             payment_state.followup_state.referral_flags;
         return outcome;
@@ -1153,6 +1155,8 @@ FieldSceneRuntime::FieldSceneRuntime(
                 command, followup_state);
             if (command == StokerMotelFollowupCommand::debt_collection) {
                 notebook_tip_flags_[0] = followup_state.story_flags;
+                field_mode_flags_ = followup_state.story_flags;
+                field_mode_flags_resolved_ = true;
             } else {
                 notebook_referral_flags_ = followup_state.referral_flags;
             }

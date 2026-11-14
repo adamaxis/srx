@@ -149,6 +149,15 @@ local function assert_hospital_field_context()
     return site
 end
 
+local function entry_text(site)
+    for _, variant in ipairs(site.entry_text_variants or {}) do
+        if game.state[variant.fact] == true then
+            return variant.text
+        end
+    end
+    return site.entry_text
+end
+
 function Hospital.present_field_exit_prompt()
     local site = assert_hospital_field_context()
 
@@ -163,7 +172,7 @@ function Hospital.present_field_exit_prompt()
 
     local choice = game.ui.prompt_text_key(
         "hospital_service_offer",
-        site.entry_text,
+        entry_text(site),
         { "services", "leave" })
     if choice == "services" then
         return "hospital-options"

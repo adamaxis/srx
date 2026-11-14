@@ -87,9 +87,9 @@
         "michael_package_cyberdeck": { "type": "page", "eventId": "michael-package-cyberdeck", "next": "michael_package_wristband" },
         "michael_package_wristband": { "type": "page", "eventId": "michael-package-wristband", "next": "michael_package_fee" },
         "michael_package_fee": { "type": "page", "eventId": "michael-package-fee", "next": "michael_package_holopix_ivanna" },
-        "michael_package_holopix_ivanna": { "type": "page", "eventId": "michael-package-holopix-ivanna", "next": "michael_package_holopix_caleb" },
-        "michael_package_holopix_caleb": { "type": "page", "eventId": "michael-package-holopix-caleb", "next": "michael_package_credstick" },
-        "michael_package_credstick": { "type": "page", "eventId": "michael-package-credstick", "next": "stay_on_map" },
+        "michael_package_holopix_ivanna": { "type": "page", "eventId": "michael-package-holopix-ivanna", "speakerId": "ivanna_haversheen", "next": "michael_package_holopix_caleb" },
+        "michael_package_holopix_caleb": { "type": "page", "eventId": "michael-package-holopix-caleb", "speakerId": "caleb_brightmore", "next": "michael_package_credstick" },
+        "michael_package_credstick": { "type": "page", "eventId": "michael-package-credstick", "speakerId": "caleb_brightmore", "next": "stay_on_map" },
         "jump_house_after_insufficient": { "type": "page", "eventId": "jump-house", "next": "stay_on_map" },
         "prepare_referral": {
           "type": "action",
@@ -198,9 +198,9 @@
         "michael_package_cyberdeck": { "type": "page", "eventId": "michael-package-cyberdeck", "next": "michael_package_wristband" },
         "michael_package_wristband": { "type": "page", "eventId": "michael-package-wristband", "next": "michael_package_fee" },
         "michael_package_fee": { "type": "page", "eventId": "michael-package-fee", "next": "michael_package_holopix_ivanna" },
-        "michael_package_holopix_ivanna": { "type": "page", "eventId": "michael-package-holopix-ivanna", "next": "michael_package_holopix_caleb" },
-        "michael_package_holopix_caleb": { "type": "page", "eventId": "michael-package-holopix-caleb", "next": "michael_package_credstick" },
-        "michael_package_credstick": { "type": "page", "eventId": "michael-package-credstick", "next": "stay_on_map" },
+        "michael_package_holopix_ivanna": { "type": "page", "eventId": "michael-package-holopix-ivanna", "speakerId": "ivanna_haversheen", "next": "michael_package_holopix_caleb" },
+        "michael_package_holopix_caleb": { "type": "page", "eventId": "michael-package-holopix-caleb", "speakerId": "caleb_brightmore", "next": "michael_package_credstick" },
+        "michael_package_credstick": { "type": "page", "eventId": "michael-package-credstick", "speakerId": "caleb_brightmore", "next": "stay_on_map" },
         "stay_on_map": { "type": "terminal", "outcome": { "type": "continue_in_place" } }
       }
     }

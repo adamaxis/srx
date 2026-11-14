@@ -23561,6 +23561,50 @@ int run_field_stoker_collision_to_dialogue_qa(
     // QA fixture for the paid source branch; this does not claim an in-game
     // funds-acquisition route.
     field_scene.set_field_funds_for_dump(250U);
+    // 0x213FA..0x21456 has no item add/remove and writes no deck record:
+    // 0x21428 only sets FF018F bit 0. MPCP (FFFBBE) stays 0 and programs
+    // stay unset, so the deck menu later rejects with 0xC2202.
+    const auto collect_item_state = [&]() {
+        std::map<std::string, QJsonValue> found;
+        std::function<void(const QJsonValue&, const std::string&, bool)> walk =
+            [&](const QJsonValue& value, const std::string& path, bool keep) {
+                if (keep) {
+                    found[path] = value;
+                }
+                if (value.isObject()) {
+                    const auto object = value.toObject();
+                    for (auto it = object.begin(); it != object.end(); ++it) {
+                        const auto key = it.key().toLower();
+                        walk(it.value(), path + "/" + it.key().toStdString(),
+                             key.contains("item") || key.contains("inventor") ||
+                                 key.contains("equip"));
+                    }
+                } else if (value.isArray()) {
+                    const auto array = value.toArray();
+                    for (qsizetype i = 0; i < array.size(); ++i) {
+                        walk(array[i], path + "/" + std::to_string(i), false);
+                    }
+                }
+            };
+        QString snapshot_error;
+        const auto snapshot =
+            field_scene.capture_game_save_snapshot_for_dump(&snapshot_error);
+        if (snapshot.has_value()) {
+            walk(QJsonValue(*snapshot), "", false);
+        }
+        return found;
+    };
+    const auto items_before_payment = collect_item_state();
+    const auto deck_before_payment = field_scene.field_matrix_deck_record_for_dump();
+    if (items_before_payment.empty()) {
+        std::cerr << "Stoker collision QA: no item state in the save snapshot\n";
+        return 3;
+    }
+    const auto stoker_karma_before = field_scene.party_karma_for_dump();
+    if (!stoker_karma_before.has_value()) {
+        std::cerr << "Stoker collision QA: party Karma unavailable before payment\n";
+        return 3;
+    }
     press_button(0x20U);
     const auto& debt_question = field_scene.dialogue_panel();
     if (!field_scene.dialogue_open() ||
@@ -23610,8 +23654,91 @@ int run_field_stoker_collision_to_dialogue_qa(
         "Tabatha Shale", "Allegiance Alpha", "DocWagon homing beacon",
         "lock the clasp", "Haversheen Clinic", "Worries eliminated.",
         "credstick hidden under the holopix"}};
+    // 0x219C8 (callback 0x22) and 0x219B6 (callback 0x21) load profiles
+    // 0x121E68 and 0x121E98 through 0x1F292; the 7x9-tile picture is drawn at
+    // (16,32). Record 0xF4908 (credstick) has no callback, so the Caleb
+    // picture stays; the five earlier pages keep Stoker's 0x121FA0.
+    const auto load_portrait = [&](const char* file) {
+        return QImage(QString::fromStdWString(
+                   (asset_root / "dialogue" / "portraits" / file).wstring()))
+            .convertToFormat(QImage::Format_RGB32);
+    };
+    const QImage stoker_picture = load_portrait("stoker-motel.bmp");
+    const QImage ivanna_picture = load_portrait("ivanna-haversheen.bmp");
+    const QImage caleb_picture = load_portrait("caleb-brightmore.bmp");
+    if (stoker_picture.size() != QSize(56, 72) ||
+        ivanna_picture.size() != QSize(56, 72) ||
+        caleb_picture.size() != QSize(56, 72) ||
+        ivanna_picture == stoker_picture || caleb_picture == stoker_picture ||
+        ivanna_picture == caleb_picture) {
+        std::cerr << "Stoker collision QA: holopix portrait assets missing "
+                     "or not distinct 56x72 ROM decodes\n";
+        return 3;
+    }
+    // The live frame carries the dialogue palette brightness, so compare the
+    // drawn cell to the decode pixel-for-pixel through a one-to-one colour
+    // map: same pixel layout, same palette indices, any uniform CRAM level.
+    const auto same_picture = [](const QImage& drawn, const QImage& expected) {
+        if (drawn.size() != expected.size()) {
+            return false;
+        }
+        std::map<QRgb, QRgb> forward;
+        std::map<QRgb, QRgb> reverse;
+        for (int y = 0; y < expected.height(); ++y) {
+            for (int x = 0; x < expected.width(); ++x) {
+                const auto e = expected.pixel(x, y);
+                const auto d = drawn.pixel(x, y);
+                const auto [f, f_new] = forward.emplace(e, d);
+                const auto [r, r_new] = reverse.emplace(d, e);
+                if (f->second != d || r->second != e) {
+                    return false;
+                }
+            }
+        }
+        return forward.size() > 4U;
+    };
+    const auto drawn_picture = [&](const std::string& name) {
+        const auto frame = render_field();
+        const auto crop = frame.copy(16, 32, 56, 72)
+                              .convertToFormat(QImage::Format_RGB32);
+        // Crops go in a subdirectory: the checkpoint count covers output/.
+        std::filesystem::create_directories(output / "holopix");
+        crop.save(QString::fromStdWString(
+            (output / "holopix" / ("portrait-" + name + ".bmp")).wstring()));
+        return crop;
+    };
+    if (!same_picture(drawn_picture("package-contents"), stoker_picture)) {
+        std::cerr << "Stoker collision QA: package contents page does not "
+                     "draw Stoker's picture at (16,32)\n";
+        return 3;
+    }
+    std::size_t michael_page_index = 0U;
     for (const auto expected_text : kMichaelContinuationText) {
         press_button(0x40U);
+        {
+            const QImage* expected_picture = &stoker_picture;
+            const char* expected_name = "stoker";
+            if (expected_text == "Haversheen Clinic") {
+                expected_picture = &ivanna_picture;
+                expected_name = "ivanna";
+            } else if (expected_text == "Worries eliminated." ||
+                       expected_text ==
+                           "credstick hidden under the holopix") {
+                expected_picture = &caleb_picture;
+                expected_name = "caleb";
+            }
+            const auto crop = drawn_picture(
+                "page-" + std::to_string(++michael_page_index));
+            if (!same_picture(crop, *expected_picture) ||
+                (expected_picture != &stoker_picture &&
+                 same_picture(crop, stoker_picture))) {
+                std::cerr << "Stoker collision QA: Michael page \""
+                          << expected_text << "\" did not draw the "
+                          << expected_name << " picture pixel-for-pixel at "
+                             "(16,32)\n";
+                return 3;
+            }
+        }
         bool continuation_text_present = false;
         const auto& continuation = field_scene.dialogue_panel();
         for (std::size_t index = 0;
@@ -23629,6 +23756,75 @@ int run_field_stoker_collision_to_dialogue_qa(
                       << expected_text << '\n';
             return 3;
         }
+        if (expected_text == "Worries eliminated." &&
+            continuation.portrait_alias !=
+                "dialogue.portraits.caleb.brightmore") {
+            std::cerr << "Stoker collision QA: Caleb holopix page selected "
+                         "the wrong portrait: "
+                      << continuation.portrait_alias << '\n';
+            return 3;
+        }
+    }
+
+    const auto stoker_karma_after = field_scene.party_karma_for_dump();
+    if (!stoker_karma_after.has_value()) {
+        std::cerr << "Stoker collision QA: party Karma unavailable after payment\n";
+        return 3;
+    }
+    for (std::size_t index = 0U; index < stoker_karma_before->size(); ++index) {
+        const auto expected_karma = static_cast<std::uint8_t>(
+            (*stoker_karma_before)[index] + 1U);
+        if ((*stoker_karma_after)[index] != expected_karma) {
+            std::cerr << "Stoker collision QA: payment did not award one Karma "
+                         "to each runner\n";
+            return 3;
+        }
+    }
+    const auto runner_feature_flags =
+        field_scene.field_runner_feature_flags_for_dump();
+    if (!runner_feature_flags.has_value() ||
+        (*runner_feature_flags & 0x01U) == 0U) {
+        std::cerr << "Stoker collision QA: payment did not set FF018F bit 0\n";
+        return 3;
+    }
+
+    const auto deck_after_payment = field_scene.field_matrix_deck_record_for_dump();
+    const auto mpcp_of = [](const std::optional<CyberdeckRecord>& deck) {
+        return deck.has_value() && deck->mpcp.has_value() ? *deck->mpcp : 0U;
+    };
+    const auto programs_of = [](const std::optional<CyberdeckRecord>& deck) {
+        return deck.has_value() ? deck->program_ratings
+                                : std::optional<std::array<std::uint8_t, 12>>{};
+    };
+    if (mpcp_of(deck_after_payment) != 0U ||
+        mpcp_of(deck_before_payment) != 0U ||
+        programs_of(deck_after_payment) != programs_of(deck_before_payment) ||
+        (programs_of(deck_after_payment).has_value() &&
+         *programs_of(deck_after_payment) != std::array<std::uint8_t, 12>{})) {
+        std::cerr << "Stoker collision QA: Michael's package wrote MPCP or "
+                     "program ratings; ROM 0x213FA..0x21456 writes neither\n";
+        return 3;
+    }
+    const auto items_after_payment = collect_item_state();
+    if (items_after_payment != items_before_payment) {
+        std::cerr << "Stoker collision QA: Michael's package changed runner "
+                     "items; ROM 0x213FA..0x21456 has no item add/remove\n";
+        for (const auto& [path, value] : items_after_payment) {
+            const auto before = items_before_payment.find(path);
+            if (before == items_before_payment.end() || before->second != value) {
+                std::cerr << "  changed: " << path << '\n';
+            }
+        }
+        return 3;
+    }
+
+    const auto paid_field_mode_flags =
+        field_scene.field_mode_flags_for_dump();
+    if ((paid_field_mode_flags & 0x1FU) != 0x1CU) {
+        std::cerr << "Stoker collision QA: paid branch expected FFFC30 "
+                     "bits 0..4 to be 0x1C in Lua-visible field flags; got "
+                  << paid_field_mode_flags << '\n';
+        return 3;
     }
 
     const auto stoker_music_count_before =

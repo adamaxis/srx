@@ -7887,6 +7887,15 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             rom, 0x121E98U),
         "sprite", "0x12CC90/0x121E98/0x20990", false, manifest, written,
         missing, blank);
+    // Michael's package (list 0xF487C) callback 0x22 at 0x219C8 loads
+    // profile 0x121E68 through 0x1F292 for the Dr. Ivanna Haversheen
+    // holopix page 0xF46D1; callback 0x21 at 0x219B6 reuses Caleb's 0x121E98.
+    write_catalog_asset(
+        root, "dialogue/portraits/ivanna-haversheen.bmp",
+        shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
+            rom, 0x121E68U),
+        "sprite", "0x219C8/0x121E68/0x1F292", false, manifest, written,
+        missing, blank);
     // Scene 19's non-special event-30 path at 0x20990 loads this portrait
     // profile with prompt record 0xF3FAC. The ROM narrative calls the person
     // an old man but does not give him a name.
