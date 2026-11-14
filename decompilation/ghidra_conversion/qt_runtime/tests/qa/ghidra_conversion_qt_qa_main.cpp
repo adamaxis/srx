@@ -2559,7 +2559,8 @@ int run_field_ganger_walk_facing_qa(
         return 3;
     }
     clear_qa_bitmap_artifacts(output, error);
-    if (error || !field_scene.seed_current_run_for_dump("ghoul_bounty")) {
+    if (error || !field_scene.bootstrap_for_scene_dump(startup_state, kScene) ||
+        !field_scene.seed_current_run_for_dump("ghoul_bounty")) {
         std::cerr << "field ganger facing QA: could not prepare the run\n";
         return 3;
     }
@@ -2945,6 +2946,194 @@ int run_field_ganger_walk_facing_qa(
         return 3;
     }
 
+    // Exercise the same input path against a real kind-4 Ork Ganger. The
+    // second ganger is kept outside the active viewport so B selects this
+    // source-order-0 target through the normal field controller service.
+    const auto melee_runner_position =
+        field_scene.field_entity_world_position();
+    const auto other_ganger_x = static_cast<std::uint16_t>(
+        melee_runner_position.x + 0x3000U);
+    if (!field_scene.set_default_actor_world_position_for_dump(
+            gangers[0].active_actor_index,
+            static_cast<std::uint16_t>(melee_runner_position.x + 0x0100U),
+            melee_runner_position.y) ||
+        !field_scene.set_default_actor_world_position_for_dump(
+            gangers[1].active_actor_index, other_ganger_x,
+            melee_runner_position.y) ||
+        !field_scene.set_default_actor_frozen_for_dump(
+            gangers[1].active_actor_index, true)) {
+        std::cerr << "field ganger melee QA: could not stage the live actors\n";
+        return 3;
+    }
+    auto& melee_runner = field_scene.active_runner_record();
+    melee_runner.flags = static_cast<std::uint16_t>(
+        melee_runner.flags | 0x0300U);
+    melee_runner.equipped_inventory_slot = -1;
+    melee_runner.equipped_item_code = 0U;
+    melee_runner.animation_action_gate = -1;
+    const auto ganger_id = gangers[0].actor_instance_id;
+    const auto ganger_meter_before =
+        field_scene.default_actor_physical_meter_for_dump(0U);
+    std::ofstream ganger_trace(output / "ganger-melee.tsv", std::ios::trunc);
+    if (!ganger_trace) {
+        std::cerr << "field ganger melee QA: trace could not be opened\n";
+        return 3;
+    }
+    ganger_trace << "frame\tinput\tactor\tselected\tactive\tworld_x\t"
+                    "world_y\tcamera_x\tcamera_y\tscreen_x\tscreen_y\t"
+                    "rom_y_offset\tsprite_emitted\tmeter\t+0xB0\t+0x9E\n";
+    auto ganger_frame = std::size_t{0U};
+    const auto write_ganger_frame = [&field_scene, &ganger_id, &ganger_trace,
+                                     &ganger_frame](const char* input) {
+        const auto actors =
+            field_scene.active_default_actor_animations_for_dump();
+        const auto actor = std::find_if(
+            actors.begin(), actors.end(), [&ganger_id](const auto& candidate) {
+                return candidate.actor_instance_id == ganger_id;
+            });
+        const auto camera_x = static_cast<std::uint16_t>(
+            field_scene.state().field_scene_buffers.camera_x);
+        const auto camera_y = static_cast<std::uint16_t>(
+            field_scene.state().field_scene_buffers.camera_y);
+        auto screen_x = std::uint16_t{0U};
+        auto screen_y = std::uint16_t{0U};
+        bool projected = false;
+        bool emitted = false;
+        std::uint16_t world_x = 0U;
+        std::uint16_t world_y = 0U;
+        if (actor != actors.end()) {
+            world_x = actor->world_x;
+            world_y = actor->world_y;
+            EntityProjectionState projection{};
+            projection.world_x = world_x;
+            projection.world_y = world_y;
+            projection.sprite_offset_y = 0;
+            projected = project_entity_screen_position_standard(
+                projection, camera_x, camera_y).visible;
+            screen_x = projection.screen_x;
+            screen_y = projection.screen_y;
+            emitted = projected &&
+                field_scene.default_actor_sprite_available_for_dump(
+                    actor->source_order);
+        }
+        const auto meter =
+            field_scene.default_actor_physical_meter_for_dump(0U);
+        const auto debug = field_scene.debug_inspection_fields();
+        const auto key = QStringLiteral("actor.%1.")
+                             .arg(QString::fromStdString(ganger_id));
+        const auto behavior = debug.value(key + QStringLiteral("activity_flags"))
+                                  .toInt(-1);
+        const auto roles = debug.value(key + QStringLiteral("special_flags"))
+                               .toInt(-1);
+        ganger_trace << ganger_frame++ << '\t' << input << '\t' << ganger_id
+                     << '\t'
+                     << (field_scene.selected_default_actor_id_for_dump() ==
+                         std::optional<std::string>{ganger_id})
+                     << '\t' << (actor != actors.end()) << '\t' << world_x
+                     << '\t' << world_y << '\t' << camera_x << '\t'
+                     << camera_y << '\t' << screen_x << '\t' << screen_y
+                     << '\t' << 0 << '\t' << emitted << '\t'
+                     << (meter.has_value() ? std::to_string(*meter)
+                                           : "inactive")
+                     << '\t' << behavior << '\t' << roles << '\n';
+    };
+    write_ganger_frame("neutral");
+    bool selected_ganger = false;
+    for (std::uint8_t attempt = 0U; attempt < 4U; ++attempt) {
+        field_scene.set_controller_port_byte(0x10U);
+        field_scene.advance_frame();
+        write_ganger_frame("B");
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        write_ganger_frame("neutral");
+        if (field_scene.selected_default_actor_id_for_dump() ==
+            std::optional<std::string>{ganger_id}) {
+            selected_ganger = true;
+            break;
+        }
+    }
+    field_scene.set_source_random_seed_for_dump(0x000CU);
+    if (!field_scene.set_default_actor_world_position_for_dump(
+            gangers[0].active_actor_index,
+            static_cast<std::uint16_t>(melee_runner_position.x + 0x0100U),
+            melee_runner_position.y)) {
+        std::cerr << "field ganger melee QA: target moved before the strike\n";
+        return 3;
+    }
+    field_scene.set_controller_port_byte(0x40U);
+    field_scene.advance_frame();
+    write_ganger_frame("A");
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    write_ganger_frame("neutral");
+    const auto ganger_meter_after =
+        field_scene.default_actor_physical_meter_for_dump(0U);
+    const auto melee_actors =
+        field_scene.active_default_actor_animations_for_dump();
+    const auto hit_ganger = std::find_if(
+        melee_actors.begin(), melee_actors.end(), [&ganger_id](const auto& actor) {
+            return actor.actor_instance_id == ganger_id &&
+                   actor.script_profile_id == "ork_ganger_k04_none00";
+        });
+    const auto ganger_camera_x = static_cast<std::uint16_t>(
+        field_scene.state().field_scene_buffers.camera_x);
+    const auto ganger_camera_y = static_cast<std::uint16_t>(
+        field_scene.state().field_scene_buffers.camera_y);
+    EntityProjectionState ganger_projection{};
+    bool ganger_projected = false;
+    if (hit_ganger != melee_actors.end()) {
+        ganger_projection.world_x = hit_ganger->world_x;
+        ganger_projection.world_y = hit_ganger->world_y;
+        // ROM actor-kind-4 templates also leave +0x08 clear.
+        ganger_projection.sprite_offset_y = 0;
+        ganger_projected = project_entity_screen_position_standard(
+            ganger_projection, ganger_camera_x, ganger_camera_y).visible;
+    }
+    bool ganger_sprite_emitted =
+        hit_ganger != melee_actors.end() && ganger_projected &&
+        field_scene.default_actor_sprite_available_for_dump(
+            hit_ganger->source_order);
+    const auto ganger_melee_image = render_qa_field(field_scene);
+    const bool ganger_attack_pose =
+        field_scene.field_entity_attack_pose_for_dump();
+    write_ganger_frame("post-hit");
+    if (!selected_ganger || !ganger_meter_before.has_value() ||
+        !ganger_meter_after.has_value() || !ganger_attack_pose ||
+        hit_ganger == melee_actors.end() || !ganger_projected ||
+        !ganger_sprite_emitted || ganger_melee_image.isNull() ||
+        !ganger_melee_image.save(QString::fromStdWString(
+            (output / "ganger-melee.bmp").wstring()))) {
+        std::cerr << "field ganger melee QA: controller melee did not execute "
+                     "while the live ganger remained projected and drawable"
+                  << " selected=" << selected_ganger << " meter="
+                  << (ganger_meter_before.has_value()
+                          ? std::to_string(*ganger_meter_before)
+                          : "inactive")
+                  << "->"
+                  << (ganger_meter_after.has_value()
+                          ? std::to_string(*ganger_meter_after)
+                          : "inactive")
+                  << " attack_pose=" << ganger_attack_pose
+                  << " projected=" << ganger_projected
+                  << " emitted=" << ganger_sprite_emitted
+                  << " attack_pose="
+                  << field_scene.field_entity_attack_pose_for_dump()
+                  << " line_clear="
+                  << field_scene.player_action_line_clear_to_default_actor_for_dump(
+                         0U)
+                  << " target_distance="
+                  << field_scene.default_actor_ai_target_distance_for_dump(0U)
+                         .value_or(0xFFFFU)
+                  << " player="
+                  << field_scene.field_entity_world_position().x << ','
+                  << field_scene.field_entity_world_position().y
+                  << " selected_id="
+                  << field_scene.selected_default_actor_id_for_dump()
+                         .value_or("<none>")
+                  << '\n';
+        return 3;
+    }
+
     std::cout << "field_ganger_walk_facing_qa=passed capture_frame="
               << capture_frame << " east=dir"
               << static_cast<unsigned>(east_walker->direction) << "/frame"
@@ -2953,7 +3142,10 @@ int run_field_ganger_walk_facing_qa(
               << "/frame" << static_cast<unsigned>(west_walker->frame)
               << " hflip={right:" << east_walker->horizontal_flip
               << ",left:" << west_walker->horizontal_flip << "} actual="
-              << (output / "actual.bmp").string() << '\n';
+              << (output / "actual.bmp").string()
+              << " melee_swing_meter="
+              << static_cast<unsigned>(*ganger_meter_before) << "->"
+              << static_cast<unsigned>(*ganger_meter_after) << '\n';
     return 0;
 }
 
@@ -25550,6 +25742,342 @@ int run_field_scene2_pedestrians_qa(
               << recentered_visible_actors << " actual="
               << (output / "actual.bmp").string() << " flee_actual="
               << (output / "flee-actual.bmp").string() << '\n';
+
+    // Replay the reported melee case through ordinary B/A controller input
+    // against Downtown's source pedestrian, then trace every service through
+    // flee or the zero-meter down state. The camera follows the staged runner.
+    const auto melee_output = output / "downtown-melee";
+    std::filesystem::create_directories(melee_output, directory_error);
+    if (directory_error ||
+        !field_scene.reenter_field_scene_for_dump(0U)) {
+        std::cerr << "Downtown melee QA: scene entry failed: "
+                  << field_scene.failure() << '\n';
+        return 3;
+    }
+    auto downtown_actors =
+        field_scene.active_default_actor_animations_for_dump();
+    const auto find_pedestrian = [&downtown_actors](
+                                     const std::string& actor_id) {
+        return std::find_if(
+            downtown_actors.begin(), downtown_actors.end(),
+            [&actor_id](const auto& actor) {
+                return actor.actor_instance_id == actor_id &&
+                       actor.script_profile_id ==
+                           "pedestrian_k0b_none00";
+            });
+    };
+    auto pedestrian = std::find_if(
+        downtown_actors.begin(), downtown_actors.end(), [](const auto& actor) {
+            return actor.source_order == 0U &&
+                   actor.script_profile_id == "pedestrian_k0b_none00";
+        });
+    if (pedestrian == downtown_actors.end()) {
+        std::cerr << "Downtown melee QA: source pedestrian 0 did not spawn"
+                  << " active=" << downtown_actors.size() << '\n';
+        return 3;
+    }
+    const auto pedestrian_id = pedestrian->actor_instance_id;
+    for (std::uint16_t frame = 0U; frame < 160U &&
+                                  field_scene.default_actor_transition_complete_for_dump(
+                                      0U) != std::optional<bool>{true};
+         ++frame) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    }
+    downtown_actors = field_scene.active_default_actor_animations_for_dump();
+    pedestrian = find_pedestrian(pedestrian_id);
+    if (pedestrian == downtown_actors.end() ||
+        field_scene.default_actor_transition_complete_for_dump(0U) !=
+            std::optional<bool>{true}) {
+        std::cerr << "Downtown melee QA: source actor entry did not complete"
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+    auto& melee_runner = field_scene.active_runner_record();
+    melee_runner.flags = static_cast<std::uint16_t>(
+        melee_runner.flags | 0x0300U);
+    melee_runner.equipped_inventory_slot = -1;
+    melee_runner.equipped_item_code = 0U;
+    melee_runner.animation_action_gate = -1;
+    field_scene.set_field_entity_world_position_for_dump(
+        static_cast<std::uint16_t>(pedestrian->world_x + 0x0080U),
+        pedestrian->world_y);
+    field_scene.set_field_camera_world_position_for_dump(
+        pedestrian->world_x >= 0x0800U
+            ? static_cast<std::uint16_t>(pedestrian->world_x - 0x0800U)
+            : 0U,
+        pedestrian->world_y >= 0x0700U
+            ? static_cast<std::uint16_t>(pedestrian->world_y - 0x0700U)
+            : 0U);
+    field_scene.set_source_random_seed_for_dump(0x000CU);
+
+    const auto write_melee_frame = [&field_scene, &pedestrian_id](
+                                       std::ofstream& trace,
+                                       const std::size_t frame,
+                                       const char* input) {
+        const auto actors =
+            field_scene.active_default_actor_animations_for_dump();
+        const auto actor = std::find_if(
+            actors.begin(), actors.end(), [&pedestrian_id](const auto& item) {
+                return item.actor_instance_id == pedestrian_id;
+            });
+        const auto camera_x = static_cast<std::uint16_t>(
+            field_scene.state().field_scene_buffers.camera_x);
+        const auto camera_y = static_cast<std::uint16_t>(
+            field_scene.state().field_scene_buffers.camera_y);
+        bool projected = false;
+        bool emitted = false;
+        auto screen_x = std::uint16_t{0U};
+        auto screen_y = std::uint16_t{0U};
+        std::uint16_t world_x = 0U;
+        std::uint16_t world_y = 0U;
+        auto meter = field_scene.default_actor_physical_meter_for_dump(0U);
+        const auto debug = field_scene.debug_inspection_fields();
+        const auto activity_key = QStringLiteral("actor.%1.activity_flags")
+                                      .arg(QString::fromStdString(
+                                          pedestrian_id));
+        const auto activity_flags = debug.value(activity_key).toInt(-1);
+        const auto special_key = QStringLiteral("actor.%1.special_flags")
+                                     .arg(QString::fromStdString(
+                                         pedestrian_id));
+        const auto special_flags = debug.value(special_key).toInt(-1);
+        if (actor != actors.end()) {
+            world_x = actor->world_x;
+            world_y = actor->world_y;
+            EntityProjectionState projection{};
+            projection.world_x = world_x;
+            projection.world_y = world_y;
+            // ROM's Downtown pedestrian template at 0xD5538 leaves +0x08=0.
+            projection.sprite_offset_y = 0;
+            const auto result = project_entity_screen_position_standard(
+                projection, camera_x, camera_y);
+            projected = result.visible;
+            screen_x = projection.screen_x;
+            screen_y = projection.screen_y;
+            emitted = field_scene.default_actor_sprite_available_for_dump(
+                          actor->source_order) && projected;
+        } else {
+            meter.reset();
+        }
+        trace << frame << '\t' << input << '\t'
+              << (actor != actors.end()) << '\t' << world_x << '\t'
+              << world_y << '\t' << camera_x << '\t' << camera_y << '\t'
+              << screen_x << '\t' << screen_y << '\t' << 0 << '\t'
+              << projected << '\t' << emitted << '\t'
+              << (meter.has_value() ? std::to_string(*meter) : "inactive")
+              << '\t' << activity_flags << '\t' << special_flags << '\n';
+        return std::tuple{actor != actors.end(), projected, emitted,
+                          meter.value_or(0U), activity_flags};
+    };
+
+    std::ofstream melee_trace(melee_output / "downtown-melee.tsv",
+                              std::ios::trunc);
+    if (!melee_trace) {
+        std::cerr << "Downtown melee QA: trace could not be opened\n";
+        return 3;
+    }
+    melee_trace << "frame\tinput\tactive\tworld_x\tworld_y\tcamera_x\t"
+                   "camera_y\tscreen_x\tscreen_y\trom_y_offset\t"
+                   "projected\tsprite_emitted\tmeter\t+0xB0\t+0x9E\n";
+    auto melee_frame = std::size_t{0U};
+    const auto initial_melee_state = write_melee_frame(
+        melee_trace, melee_frame++, "neutral");
+    if (!std::get<0>(initial_melee_state) ||
+        !std::get<1>(initial_melee_state) ||
+        !std::get<2>(initial_melee_state)) {
+        std::cerr << "Downtown melee QA: pedestrian was not drawn before input"
+                  << '\n';
+        return 3;
+    }
+    const auto initial_meter =
+        field_scene.default_actor_physical_meter_for_dump(0U);
+    bool target_selected = false;
+    for (std::uint8_t attempt = 0U; attempt < 4U; ++attempt) {
+        field_scene.set_controller_port_byte(0x10U);
+        field_scene.advance_frame();
+        auto state = write_melee_frame(
+            melee_trace, melee_frame++, "B");
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        state = write_melee_frame(melee_trace, melee_frame++, "neutral");
+        if (field_scene.selected_default_actor_id_for_dump() ==
+                std::optional<std::string>{pedestrian_id} &&
+            std::get<0>(state)) {
+            target_selected = true;
+            break;
+        }
+    }
+    if (!target_selected || !initial_meter.has_value()) {
+        std::cerr << "Downtown melee QA: ordinary B input did not select the "
+                     "source pedestrian"
+                  << " selected="
+                  << field_scene.selected_default_actor_id_for_dump()
+                         .value_or("<none>")
+                  << '\n';
+        return 3;
+    }
+    field_scene.set_source_random_seed_for_dump(0x000CU);
+    bool melee_hit = false;
+    bool terminal_state = false;
+    auto last_meter = initial_meter;
+    for (std::uint8_t strike = 0U; strike < 48U && !terminal_state; ++strike) {
+        if (strike != 0U) {
+            downtown_actors =
+                field_scene.active_default_actor_animations_for_dump();
+            pedestrian = find_pedestrian(pedestrian_id);
+            if (pedestrian == downtown_actors.end()) {
+                terminal_state = true;
+                break;
+            }
+            field_scene.set_field_entity_world_position_for_dump(
+                static_cast<std::uint16_t>(pedestrian->world_x + 0x0080U),
+                pedestrian->world_y);
+            field_scene.set_field_camera_world_position_for_dump(
+                pedestrian->world_x >= 0x0800U
+                    ? static_cast<std::uint16_t>(pedestrian->world_x - 0x0800U)
+                    : 0U,
+                pedestrian->world_y >= 0x0700U
+                    ? static_cast<std::uint16_t>(pedestrian->world_y - 0x0700U)
+                    : 0U);
+            field_scene.set_controller_port_byte(0U);
+            field_scene.advance_frame();
+            write_melee_frame(melee_trace, melee_frame++, "neutral");
+            if (field_scene.selected_default_actor_id_for_dump() !=
+                std::optional<std::string>{pedestrian_id}) {
+                for (std::uint8_t attempt = 0U; attempt < 4U; ++attempt) {
+                    field_scene.set_controller_port_byte(0x10U);
+                    field_scene.advance_frame();
+                    write_melee_frame(melee_trace, melee_frame++, "B");
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                    write_melee_frame(melee_trace, melee_frame++, "neutral");
+                    if (field_scene.selected_default_actor_id_for_dump() ==
+                        std::optional<std::string>{pedestrian_id}) {
+                        break;
+                    }
+                }
+            }
+        }
+        field_scene.set_controller_port_byte(0x40U);
+        field_scene.advance_frame();
+        auto state = write_melee_frame(melee_trace, melee_frame++, "A");
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        state = write_melee_frame(melee_trace, melee_frame++, "neutral");
+        const auto meter = field_scene.default_actor_physical_meter_for_dump(0U);
+        melee_hit = melee_hit ||
+                    (meter.has_value() && *meter < *initial_meter);
+        last_meter = meter;
+        terminal_state = std::get<4>(state) >= 0 &&
+                         (((static_cast<unsigned>(std::get<4>(state)) &
+                            0x40U) != 0U) ||
+                          (meter.has_value() && *meter == 0U) || !meter);
+        for (std::uint8_t wait = 0U; wait < 60U && !terminal_state; ++wait) {
+            field_scene.set_controller_port_byte(0U);
+            field_scene.advance_frame();
+            state = write_melee_frame(
+                melee_trace, melee_frame++, "neutral");
+            const auto current_meter =
+                field_scene.default_actor_physical_meter_for_dump(0U);
+            melee_hit = melee_hit ||
+                        (current_meter.has_value() &&
+                         *current_meter < *initial_meter);
+            last_meter = current_meter;
+            terminal_state =
+                (std::get<4>(state) >= 0 &&
+                 (static_cast<unsigned>(std::get<4>(state)) & 0x40U) != 0U) ||
+                (current_meter.has_value() && *current_meter == 0U) ||
+                !current_meter;
+        }
+        if (!terminal_state && last_meter == initial_meter) {
+            continue;
+        }
+    }
+    if (!melee_hit) {
+        std::cerr << "Downtown melee QA: ordinary A input did not damage the "
+                     "selected actor; meter "
+                  << static_cast<unsigned>(*initial_meter) << "->"
+                  << (last_meter.has_value()
+                          ? std::to_string(*last_meter)
+                          : "inactive")
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+    if (!terminal_state) {
+        std::cerr << "Downtown melee QA: controller strikes did not carry the "
+                     "pedestrian to a ROM terminal state within 48 attempts; "
+                     "meter="
+                  << (last_meter.has_value() ? std::to_string(*last_meter)
+                                             : "inactive")
+                  << '\n';
+        return 3;
+    }
+
+    // At the same live post-hit pose, place the ROM projection just inside
+    // the left edge (+0x70/+0x63 are accepted by 0x5ABE). The QA helper used
+    // to reject a descriptor whose pixels straddled the canvas here.
+    downtown_actors = field_scene.active_default_actor_animations_for_dump();
+    pedestrian = find_pedestrian(pedestrian_id);
+    if (pedestrian == downtown_actors.end()) {
+        std::cerr << "Downtown melee QA: hit actor retired before the ROM-edge "
+                     "draw check failure=" << field_scene.failure()
+                  << " active_records=" << downtown_actors.size() << '\n';
+        for (const auto& actor : downtown_actors) {
+            std::cerr << "  live actor=" << actor.actor_instance_id
+                      << " source_order=" << actor.source_order
+                      << " profile=" << actor.script_profile_id
+                      << " animation=" << actor.animation_id << '\n';
+        }
+        const auto lifecycle =
+            field_scene.default_actor_lifecycle_for_dump(0U);
+        if (lifecycle.has_value()) {
+            std::cerr << "  source_order_0 lifecycle active="
+                      << lifecycle->active << " downed=" << lifecycle->downed
+                      << " dead=" << lifecycle->dead << '\n';
+        } else {
+            std::cerr << "  source_order_0 lifecycle unavailable\n";
+        }
+        return 3;
+    }
+    const auto edge_camera_x = static_cast<std::uint16_t>(
+        pedestrian->world_x + 0x00E0U);
+    const auto edge_camera_y = static_cast<std::uint16_t>(
+        pedestrian->world_y + 0x01D0U);
+    field_scene.set_field_camera_world_position_for_dump(edge_camera_x,
+                                                          edge_camera_y);
+    EntityProjectionState edge_projection{};
+    edge_projection.world_x = pedestrian->world_x;
+    edge_projection.world_y = pedestrian->world_y;
+    edge_projection.sprite_offset_y = 0;
+    const auto edge_result = project_entity_screen_position_standard(
+        edge_projection, edge_camera_x, edge_camera_y);
+    const auto edge_draw_count =
+        field_scene.visible_default_actor_count_for_dump();
+    const auto edge_capture = render_qa_field(field_scene);
+    if (!edge_result.visible || edge_projection.screen_x != 0x72U ||
+        edge_projection.screen_y != 0x63U ||
+        !field_scene.default_actor_sprite_available_for_dump(
+            pedestrian->source_order) || edge_draw_count == 0U ||
+        edge_capture.isNull() ||
+        !edge_capture.save(QString::fromStdWString(
+            (melee_output / "rom-window-left-edge.bmp").wstring()))) {
+        std::cerr << "Downtown melee QA: active hit actor was not emitted at "
+                     "ROM projection x=0x72"
+                  << " projected=" << edge_result.visible
+                  << " screen=" << edge_projection.screen_x << ','
+                  << edge_projection.screen_y
+                  << " descriptors=" << edge_draw_count << '\n';
+        return 3;
+    }
+    std::cout << "downtown_melee_disappearance_qa=passed actor="
+              << pedestrian_id << " initial_meter="
+              << static_cast<unsigned>(*initial_meter) << " final_meter="
+              << (last_meter.has_value() ? std::to_string(*last_meter)
+                                         : "inactive")
+              << " flee_or_dead=" << terminal_state
+              << " rom_edge_x=0x72 descriptors=" << edge_draw_count
+              << " trace="
+              << (melee_output / "downtown-melee.tsv").string() << '\n';
     return 0;
 }
 
@@ -25917,9 +26445,48 @@ int run_field_region_map_pedestrians_qa(
              "\tsource_list\tspawn_x\tspawn_y\twaypoint_x\twaypoint_y"
              "\tfinal_x\tfinal_y\tframes_to_waypoint\tcells_clear\n";
 
+    // ROM 0x1E166 may add random-encounter actors beside the three static
+    // source-list pedestrians, so the population is the three source-order
+    // records captured at entry, tracked by identity. Losing any one of them
+    // (or swapping it for an encounter actor) still fails the patrol check.
+    std::array<std::string, 3> static_pedestrian_ids{};
+    const auto source_pedestrian_ids = [&field_scene]() {
+        std::array<std::optional<std::string>, 3> ids{};
+        std::size_t matches = 0U;
+        for (const auto& actor :
+             field_scene.active_default_actor_animations_for_dump()) {
+            if (actor.script_profile_id == "pedestrian_k0b_none00" &&
+                actor.source_order < ids.size()) {
+                ++matches;
+                ids[actor.source_order] = actor.actor_instance_id;
+            }
+        }
+        return std::pair{ids, matches};
+    };
+    const auto pedestrian_positions = [&field_scene, &static_pedestrian_ids]() {
+        const auto snapshots =
+            field_scene.active_default_actor_animations_for_dump();
+        std::vector<SceneRunnerPosition> positions;
+        for (const auto& id : static_pedestrian_ids) {
+            const auto actor = std::find_if(
+                snapshots.begin(), snapshots.end(), [&id](const auto& item) {
+                    return item.actor_instance_id == id;
+                });
+            if (actor == snapshots.end()) {
+                break;
+            }
+            positions.push_back({actor->world_x, actor->world_y});
+        }
+        return positions;
+    };
+
     for (const auto& region : kRegions) {
         field_scene.set_field_entity_world_position_for_dump(0x1000U,
                                                               0x1000U);
+        // Keep route and encounter selection repeatable. Random encounters
+        // remain enabled and are filtered from the pedestrian population below.
+        field_scene.set_source_random_seed_for_dump(0x4000U);
+        field_scene.set_field_world_frame_counter_for_dump(0x0200U);
         if (!field_scene.reenter_field_scene_for_dump(region.scene)) {
             std::cerr << "Region-map pedestrians QA: scene " << region.scene
                       << " (" << region.name << ") entry failed: "
@@ -25927,14 +26494,24 @@ int run_field_region_map_pedestrians_qa(
             return 3;
         }
 
-        const auto spawn_positions =
-            field_scene.active_default_actor_positions_for_dump();
-        if (field_scene.default_actor_count_for_dump() != 3U ||
+        const auto [source_ids, source_matches] = source_pedestrian_ids();
+        const bool source_ids_complete = std::all_of(
+            source_ids.begin(), source_ids.end(),
+            [](const auto& id) { return id.has_value(); });
+        if (source_ids_complete) {
+            for (std::size_t index = 0U; index < source_ids.size(); ++index) {
+                static_pedestrian_ids[index] = *source_ids[index];
+            }
+        }
+        const auto spawn_positions = pedestrian_positions();
+        if (!source_ids_complete ||
+            source_matches != region.spawn_positions.size() ||
             spawn_positions.size() != region.spawn_positions.size()) {
             std::cerr << "Region-map pedestrians QA: scene " << region.scene
-                      << " expected three source pedestrians, got actors="
+                      << " expected three source pedestrians, got pedestrians="
+                      << source_matches << " total actors="
                       << field_scene.default_actor_count_for_dump()
-                      << " positions=" << spawn_positions.size() << '\n';
+                      << '\n';
             return 3;
         }
         for (std::size_t actor_index = 0U;
@@ -25954,11 +26531,19 @@ int run_field_region_map_pedestrians_qa(
                 : std::uint16_t{0U};
             field_scene.set_field_camera_world_position_for_dump(camera_x,
                                                                   camera_y);
+            EntityProjectionState projection{};
+            projection.world_x = actual.x;
+            projection.world_y = actual.y;
+            const bool projected = project_entity_screen_position_standard(
+                projection, camera_x, camera_y).visible;
             if (actual.x != expected.x || actual.y != expected.y ||
                 profile != std::optional<std::string>{
                                "pedestrian_k0b_none00"} ||
                 slot != std::optional<FieldWorldActorSlot>{
                             kSlots[actor_index]} ||
+                !projected ||
+                !field_scene.default_actor_sprite_available_for_dump(
+                    static_cast<std::uint16_t>(actor_index)) ||
                 field_scene.visible_default_actor_count_for_dump() == 0U) {
                 std::cerr << "Region-map pedestrians QA: scene "
                           << region.scene << " source order " << actor_index
@@ -25974,17 +26559,34 @@ int run_field_region_map_pedestrians_qa(
         std::array<bool, 3> route_cells_clear{{true, true, true}};
         std::array<std::size_t, 3> frames_to_waypoint{};
         std::size_t frames = 0U;
+        std::size_t peak_actor_count = field_scene.default_actor_count_for_dump();
         for (; frames < kMaximumFieldFrames &&
                !std::all_of(waypoint_reached.begin(), waypoint_reached.end(),
                             [](const bool reached) { return reached; });
              ++frames) {
             field_scene.advance_frame();
-            const auto positions =
-                field_scene.active_default_actor_positions_for_dump();
+            peak_actor_count = std::max(
+                peak_actor_count, field_scene.default_actor_count_for_dump());
+            const auto positions = pedestrian_positions();
             if (positions.size() != region.spawn_positions.size()) {
+                const auto actor_debug =
+                    field_scene.debug_inspection_fields();
                 std::cerr << "Region-map pedestrians QA: scene "
-                          << region.scene
-                          << " lost a default pedestrian during patrol\n";
+                          << region.scene << " patrol pedestrian-count changed from "
+                          << region.spawn_positions.size() << " to "
+                          << positions.size() << " failure="
+                          << field_scene.failure() << " active="
+                          << actor_debug.value(QStringLiteral(
+                                 "field.actor_count")).toInt(-1)
+                          << '\n';
+                for (const auto& key : actor_debug.keys()) {
+                    if (key.startsWith(QStringLiteral("actor."))) {
+                        std::cerr << "  " << key.toStdString() << '='
+                                  << actor_debug.value(key).toVariant()
+                                         .toString().toStdString()
+                                  << '\n';
+                    }
+                }
                 return 3;
             }
             for (std::size_t actor_index = 0U;
@@ -26009,6 +26611,7 @@ int run_field_region_map_pedestrians_qa(
                 }
             }
         }
+        const auto final_positions = pedestrian_positions();
         if (!std::all_of(waypoint_reached.begin(), waypoint_reached.end(),
                          [](const bool reached) { return reached; }) ||
             !std::all_of(route_cells_clear.begin(), route_cells_clear.end(),
@@ -26020,12 +26623,19 @@ int run_field_region_map_pedestrians_qa(
                       << waypoint_reached[0] << ',' << waypoint_reached[1]
                       << ',' << waypoint_reached[2] << " clear="
                       << route_cells_clear[0] << ',' << route_cells_clear[1]
-                      << ',' << route_cells_clear[2] << ")\n";
+                      << ',' << route_cells_clear[2] << " final=";
+            for (std::size_t actor_index = 0U;
+                 actor_index < final_positions.size(); ++actor_index) {
+                std::cerr << (actor_index == 0U ? "" : ";")
+                          << final_positions[actor_index].x << ','
+                          << final_positions[actor_index].y;
+            }
+            std::cerr << " frames_to_waypoint=" << frames_to_waypoint[0]
+                      << ',' << frames_to_waypoint[1] << ','
+                      << frames_to_waypoint[2] << ")\n";
             return 3;
         }
 
-        const auto final_positions =
-            field_scene.active_default_actor_positions_for_dump();
         for (std::size_t actor_index = 0U;
              actor_index < final_positions.size(); ++actor_index) {
             trace << region.scene << '\t' << region.name << '\t'
@@ -26073,7 +26683,8 @@ int run_field_region_map_pedestrians_qa(
                   << " region=" << region.name
                   << " source_list=0x" << std::hex << region.source_list_offset
                   << std::dec << " spawned=3 first_waypoints=3 frames="
-                  << frames << " actual=" << bitmap.string() << '\n';
+                  << frames << " peak_actors=" << peak_actor_count
+                  << " actual=" << bitmap.string() << '\n';
     }
 
     return 0;

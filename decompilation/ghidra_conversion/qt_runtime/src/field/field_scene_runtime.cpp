@@ -5771,8 +5771,14 @@ void FieldSceneRuntime::advance_default_field_actors(
 
         const auto decision = game_scripts_.actor_heartbeat(context);
         if (!decision.has_value()) {
+            // A rejected Lua decision leaves no valid service result for this
+            // record, so it is retired, but never silently: a still-projected
+            // actor vanishing on screen is the visible symptom of this path.
             failure_ = game_scripts_.failure();
             source_boundary("field.actor.lua_behavior_failed");
+            std::fprintf(stderr,
+                         "field actor %s retired: Lua heartbeat rejected: %s\n",
+                         actor.actor_instance_id.c_str(), failure_.c_str());
             actor.active = false;
             continue;
         }

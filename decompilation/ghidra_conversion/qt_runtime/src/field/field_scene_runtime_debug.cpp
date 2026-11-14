@@ -2015,14 +2015,10 @@ std::size_t FieldSceneRuntime::visible_default_actor_count_for_dump() const {
                  .visible) {
             continue;
         }
-        const auto left = static_cast<int>(projection.screen_x) -
-                          kGenesisSpriteOrigin + sprite.origin_x;
-        const auto top = static_cast<int>(projection.screen_y) -
-                         kGenesisSpriteOrigin + sprite.origin_y;
-        if (left < 272 && left + sprite.image->width() > 0 && top < 224 &&
-            top + sprite.image->height() > 0) {
-            ++visible;
-        }
+        // Match ROM 0x481E/0x5A62/0x622C: once the source projection is inside
+        // the standard window and a sprite exists, the actor descriptor is
+        // emitted. Pixel clipping happens later; it is not an actor draw gate.
+        ++visible;
     }
     return visible;
 }

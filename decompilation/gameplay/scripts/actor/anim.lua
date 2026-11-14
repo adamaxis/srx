@@ -35,13 +35,16 @@ local function snapshot(state, action, audio_event, projectile_movement,
                         target_heading_audio_event)
     local movement_bearing_degrees = state.movement_bearing_degrees
     local movement_route_distance = state.movement_route_distance
-    if type(R.action_movement_locked) == "function" and
-       R.action_movement_locked(state) then
+    if (type(R.action_movement_locked) == "function" and
+        R.action_movement_locked(state)) or
+       state.damage_reaction_active == true then
         -- Source action continuations retain their route while the finite
-        -- weapon/spell selector runs, but movement resumes only after that
-        -- pose completes (ROM 0xB3EE/0xAFE2 -> 0xB574 via 0xA8EA). Keep the
-        -- stored Lua route for its next pass while withholding movement facts
-        -- from the host during the lockout. [C]
+        -- weapon/spell selector runs, and hurt/down continuations retain it
+        -- while their pose owns the actor service (ROM 0xB07E/0xB330). In
+        -- both cases movement resumes only on a later eligible pass. Keep the
+        -- stored Lua route but withhold movement facts when this pass has no
+        -- movement step, so the host does not treat a held pose as an
+        -- incomplete step. [C]
         movement_bearing_degrees = nil
         movement_route_distance = nil
     end
