@@ -18,6 +18,7 @@
 #include "shadowrun_ghidra/scripting/run_location_catalog.hpp"
 #include "shadowrun_ghidra/world/post_intro_mode_conversion.hpp"
 #include "numeric_visual_renderer.hpp"
+#include "map_coverage_qa.hpp"
 
 #include <QImage>
 #include <QJsonArray>
@@ -45672,7 +45673,16 @@ int main(int argc, char** argv) {
         std::optional<std::uint32_t> opening_dump_start;
         std::optional<std::uint32_t> opening_dump_end;
         std::optional<std::filesystem::path> opening_dump_directory;
+        std::optional<std::filesystem::path> map_coverage_rows_path;
+        std::optional<std::filesystem::path> map_coverage_results_path;
         for (int index = 1; index < argc; ++index) {
+            if (std::string(argv[index]) == "--map-coverage" &&
+                index + 2 < argc) {
+                field_smoke = true;
+                map_coverage_rows_path = std::filesystem::path(argv[++index]);
+                map_coverage_results_path =
+                    std::filesystem::path(argv[++index]);
+            }
             if (std::string(argv[index]) == "--field-movement-qa" &&
                 index + 1 < argc) {
                 field_smoke = true;
@@ -47324,6 +47334,13 @@ int main(int argc, char** argv) {
                                    smoke_state_error)) {
                 std::cerr << smoke_state_error << '\n';
                 return 3;
+            }
+            if (map_coverage_rows_path.has_value() &&
+                map_coverage_results_path.has_value()) {
+                return shadowrun::ghidra_conversion::qt_runtime::qa::
+                    run_map_coverage_qa(
+                        smoke_state, *map_coverage_rows_path,
+                        *map_coverage_results_path);
             }
             // This route starts at the field-ready boundary emitted after a
             // completed New Game intro. Exercise the source handoff state

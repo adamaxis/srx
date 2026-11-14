@@ -192,6 +192,49 @@ target_compile_definitions(shadowrun_ghidra_conversion_qt_qa
         SHADOWRUN_QT_QA_DRIVER=1
         SHADOWRUN_US_ROM_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../input/shadowrun_genesis_us.bin")
 
+# ROM map-coverage matrix (tools/map_coverage.py). The checked-in rows must
+# match a fresh ROM extraction, and every row the checked-in baseline records
+# as PASS must still pass. WRONG/MISSING baseline rows never fail; fixes that
+# flip rows to PASS are printed so the baseline can be refreshed.
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+set(SRX_MAP_COVERAGE_TOOL "${CMAKE_CURRENT_SOURCE_DIR}/../../../tools/map_coverage.py")
+set(SRX_MAP_COVERAGE_FIXTURES
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/tests_lua/fixtures/map_coverage")
+add_test(NAME shadowrun_map_coverage_rows_drift
+    COMMAND "${Python3_EXECUTABLE}" "${SRX_MAP_COVERAGE_TOOL}"
+        --rom "${CMAKE_CURRENT_SOURCE_DIR}/../../input/shadowrun_genesis_us.bin"
+        --rows "${SRX_MAP_COVERAGE_FIXTURES}/rows.tsv"
+        --self-test --check-drift)
+add_test(NAME shadowrun_ghidra_conversion_qt_map_coverage_pass_qa
+    COMMAND "${Python3_EXECUTABLE}" "${SRX_MAP_COVERAGE_TOOL}"
+        --rom "${CMAKE_CURRENT_SOURCE_DIR}/../../input/shadowrun_genesis_us.bin"
+        --rows "${SRX_MAP_COVERAGE_FIXTURES}/rows.tsv"
+        --baseline "${SRX_MAP_COVERAGE_FIXTURES}/baseline_results.tsv"
+        --run-qa "$<TARGET_FILE:shadowrun_ghidra_conversion_qt_qa>"
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --out-dir "${CMAKE_CURRENT_BINARY_DIR}/map-coverage-pass-qa"
+        --only-baseline-pass)
+set_tests_properties(shadowrun_ghidra_conversion_qt_map_coverage_pass_qa
+    PROPERTIES LABELS "map_coverage"
+               ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy")
+# The full matrix takes ~18 minutes, so it is opt-in:
+#   cmake -DSRX_MAP_COVERAGE_FULL=ON . && ctest -L map_coverage_full
+# Narrow a run with: tools/map_coverage.py --run-qa <qa exe> --match <regex>.
+option(SRX_MAP_COVERAGE_FULL "Register the full ~18 minute map-coverage matrix test" OFF)
+if(SRX_MAP_COVERAGE_FULL)
+    add_test(NAME shadowrun_ghidra_conversion_qt_map_coverage_qa
+        COMMAND "${Python3_EXECUTABLE}" "${SRX_MAP_COVERAGE_TOOL}"
+            --rom "${CMAKE_CURRENT_SOURCE_DIR}/../../input/shadowrun_genesis_us.bin"
+            --rows "${SRX_MAP_COVERAGE_FIXTURES}/rows.tsv"
+            --baseline "${SRX_MAP_COVERAGE_FIXTURES}/baseline_results.tsv"
+            --run-qa "$<TARGET_FILE:shadowrun_ghidra_conversion_qt_qa>"
+            --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+            --out-dir "${CMAKE_CURRENT_BINARY_DIR}/map-coverage-qa")
+    set_tests_properties(shadowrun_ghidra_conversion_qt_map_coverage_qa
+        PROPERTIES LABELS "map_coverage;map_coverage_full" TIMEOUT 3600
+                   ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy")
+endif()
+
 add_executable(shadowrun_numeric_visual_renderer_test
     tests/rendering/numeric_visual_renderer_test.cpp
     src/rendering/numeric_visual_renderer.cpp
