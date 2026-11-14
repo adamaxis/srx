@@ -56258,8 +56258,10 @@ int main(int argc, char** argv) {
                     new_game_runner.behavior_meter != 10U ||
                     source_collision_rectangles.size() <= 91U ||
                     source_collision_rectangles[91U].value != 0xC2U ||
-                    field_scene.field_funds_for_dump() != 20U) {
-                    std::cerr << "field Hotel QA: fresh New Game does not have the source Stoker doorway and 20-nuyen wallet\n";
+                    field_scene.field_funds_for_dump() != 20U ||
+                    field_scene.field_matrix_deck_record_for_dump()
+                        .has_value()) {
+                    std::cerr << "field Hotel QA: fresh New Game does not have the source Stoker doorway, 20-nuyen wallet, and empty deck state\n";
                     return 3;
                 }
                 std::ofstream route(output / "physical-route.tsv",

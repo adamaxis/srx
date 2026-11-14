@@ -648,6 +648,33 @@ int main() {
         return 9;
     }
 
+    // ROM 0x7291A/0x72A1A/0x72B1A writes these item codes into each fresh
+    // Joshua record at +0x66. FF018F bit 0 is clear in every template, so the
+    // source starts without a deck or program ratings.
+    constexpr std::array<std::uint8_t, 8U> kSamuraiItems{{
+        0x02U, 0x2CU, 0x0EU, 0x10U, 0U, 0U, 0U, 0U}};
+    constexpr std::array<std::uint8_t, 8U> kDeckerItems{{
+        0x03U, 0x2DU, 0x10U, 0x10U, 0U, 0U, 0U, 0U}};
+    constexpr std::array<std::uint8_t, 8U> kGatorShamanItems{{
+        0x02U, 0x2DU, 0x13U, 0x11U, 0x12U, 0U, 0U, 0x2AU}};
+    const auto has_starting_items_and_no_deck = [](
+        const auto& record,
+        const std::array<std::uint8_t, 8U>& expected_items) {
+        return std::equal(expected_items.begin(), expected_items.end(),
+                          record.begin() + 0x66U) &&
+               (record[0x8FU] & 0x01U) == 0U;
+    };
+    const auto& decker_template =
+        load_state.startup_records->joshua_archetypes[1U].record;
+    const auto& gator_shaman_template =
+        load_state.startup_records->joshua_archetypes[2U].record;
+    if (!has_starting_items_and_no_deck(samurai, kSamuraiItems) ||
+        !has_starting_items_and_no_deck(decker_template, kDeckerItems) ||
+        !has_starting_items_and_no_deck(gator_shaman_template,
+                                        kGatorShamanItems)) {
+        return 27;
+    }
+
     if (enter_start_options_integration(load_state, load_callbacks) !=
             StartupIntegrationEvent::entered_start_options ||
         load_state.phase != StartupIntegrationPhase::start_options_shell ||
@@ -811,6 +838,9 @@ int main() {
         !new_game_state.joshua_selection.has_value() ||
         new_game_state.joshua_selection->live_joshua_record !=
             new_game_state.startup_records->joshua_archetypes[1].record ||
+        !has_starting_items_and_no_deck(
+            new_game_state.joshua_selection->live_joshua_record,
+            kDeckerItems) ||
         new_game_state.joshua_selection->record_selection_markers !=
             std::array<std::uint16_t, 3>{0U, 1U, 2U} ||
         !has_event(new_game_state, "joshua_archetype.initialized") ||
