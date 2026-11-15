@@ -21,9 +21,16 @@ function Ilene.prepare_scene_20_entry()
     end
 
     if StoryFacts.is_set(E.StoryFact.RED_BUFFALO_WOMAN) ~= true or
-       StoryFacts.is_set(E.StoryFact.ILENE_MET) ~= false or
-       game.state.field_mode_effect_flag_bit_0 ~= false or
-       game.state.notebook_tip_flag_bit_12 ~= true then
+       StoryFacts.is_set(E.StoryFact.ILENE_MET) ~= false then
+        return "continue"
+    end
+
+    -- [C] ROM 0x543D4..0x543EC arms the handoff when FFFC34 bit 0 is set
+    -- (bne at 0x543DE) or, failing that, when FFFC38 bit 12 is set (beq
+    -- skip at 0x543EC). FFFC38 bit 12 is Notebook tip index 76; 0x54402
+    -- clears both after the contact.
+    if game.state.field_mode_effect_flag_bit_0 ~= true and
+       game.state.notebook_tip_flag_bit_76 ~= true then
         return "continue"
     end
 
@@ -51,8 +58,9 @@ function Ilene.complete_scene_20_activity()
     game.state.field_mode_flag_bit_31 = false
     game.state.field_mode_effect_flag_bit_0 = false
     game.state.field_mode_effect_flag_bit_1 = true
-    game.state.field_auxiliary_flag_bit_12 = false
-    game.state.field_auxiliary_flag_bit_13 = false
+    -- [C] ROM 0x54440..0x54454 clears FFFC38 bits 12 and 13.
+    game.state.notebook_tip_flag_bit_76 = false
+    game.state.notebook_tip_flag_bit_77 = false
 
     game.ui.say_text(ACTIVITY_TEXT, false)
     return "completed"

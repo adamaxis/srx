@@ -12934,8 +12934,11 @@ int run_field_scene20_physical_entry_qa(
             std::cerr << "Scene-20 Ilene QA: could not seed ROM story bits\n";
             return 3;
         }
+        // [C] ROM 0x543E2..0x543EC gates the handoff on FFFC38 bit 12
+        // (third Notebook word), not FFFC30 bit 12. Bit 13 is seeded too so
+        // the 0x54446/0x5444A clears are observable after contact.
         field_scene.seed_notebook_tip_flags_for_qa(
-            {{1U << 12U, 0U, 0U}});
+            {{0U, 0U, (1U << 12U) | (1U << 13U)}});
         field_scene.set_field_exit_alternate_result_for_dump(0);
     }
 
@@ -13408,7 +13411,15 @@ int run_field_scene20_physical_entry_qa(
         constexpr auto kFieldModeEffectBit1 = std::uint32_t{1U} << 1U;
         constexpr auto kAuxiliaryBit12 = std::uint32_t{1U} << 12U;
         constexpr auto kAuxiliaryBit13 = std::uint32_t{1U} << 13U;
+        // [C] 0x54440..0x54454 clears FFFC38 (Notebook word 2) bits 12/13.
+        constexpr auto kNotebookWord2Bit12 = std::uint32_t{1U} << 12U;
+        constexpr auto kNotebookWord2Bit13 = std::uint32_t{1U} << 13U;
+        const auto contact_tip_flags =
+            field_scene.notebook_tip_flags_for_dump();
         if (!field_scene.dialogue_open() || contact_updates != 24U ||
+            !contact_tip_flags.has_value() ||
+            ((*contact_tip_flags)[2] &
+             (kNotebookWord2Bit12 | kNotebookWord2Bit13)) != 0U ||
             field_scene.field_dialogue_first_text_delay_for_dump() != 23U ||
             !dialogue_matches ||
             field_scene.pending_world_effect_for_dump() ||

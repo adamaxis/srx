@@ -5224,7 +5224,7 @@ int main() {
         {"red_buffalo_woman", true},
         {"ilene_met", false},
         {"field_mode_effect_flag_bit_0", false},
-        {"notebook_tip_flag_bit_12", true},
+        {"notebook_tip_flag_bit_76", true},
         {"pending_world_effect", false},
     });
     scripts.set_field_mode_context(
@@ -5262,7 +5262,7 @@ int main() {
         {"red_buffalo_woman", true},
         {"ilene_met", false},
         {"field_mode_effect_flag_bit_0", false},
-        {"notebook_tip_flag_bit_12", true},
+        {"notebook_tip_flag_bit_76", true},
         {"pending_world_effect", false},
     };
     auto ilene_blocked_facts = ilene_allowed_facts;
@@ -5275,16 +5275,36 @@ int main() {
     const bool blocks_already_met = verify_ilene_gate_blocks(
         ilene_blocked_facts, ScriptFieldModeContext{2U, 0U, 0},
         "hollywood_correctional_facility");
+    // [C] ROM 0x543D4..0x543EC: FFFC34 bit 0 OR FFFC38 bit 12 (tip 76)
+    // arms FFE182; with both clear the service returns without arming.
     ilene_blocked_facts = ilene_allowed_facts;
-    ilene_blocked_facts["field_mode_effect_flag_bit_0"] = true;
-    const bool blocks_effect_flag = verify_ilene_gate_blocks(
-        ilene_blocked_facts, ScriptFieldModeContext{2U, 0U, 0},
-        "hollywood_correctional_facility");
-    ilene_blocked_facts = ilene_allowed_facts;
-    ilene_blocked_facts["notebook_tip_flag_bit_12"] = false;
+    ilene_blocked_facts["notebook_tip_flag_bit_76"] = false;
     const bool blocks_tip_gate = verify_ilene_gate_blocks(
         ilene_blocked_facts, ScriptFieldModeContext{2U, 0U, 0},
         "hollywood_correctional_facility");
+    // The FFFC30 copy of bit 12 (tip 12) is a different word; it must not
+    // satisfy the FFFC38 gate.
+    ilene_blocked_facts["notebook_tip_flag_bit_12"] = true;
+    const bool blocks_wrong_tip_word = verify_ilene_gate_blocks(
+        ilene_blocked_facts, ScriptFieldModeContext{2U, 0U, 0},
+        "hollywood_correctional_facility");
+    auto ilene_effect_only_facts = ilene_allowed_facts;
+    ilene_effect_only_facts["notebook_tip_flag_bit_76"] = false;
+    ilene_effect_only_facts["field_mode_effect_flag_bit_0"] = true;
+    scripts.set_story_state(ilene_effect_only_facts);
+    scripts.set_field_mode_context(ScriptFieldModeContext{2U, 0U, 0});
+    scripts.set_location_context(
+        "building", "hollywood_correctional_facility",
+        "field.scene_20.ilene_gate", "field_narrator");
+    const auto ilene_effect_only_result =
+        scripts.call_string("ilene", "prepare_scene_20_entry");
+    const auto ilene_effect_only_state = scripts.story_state();
+    const auto ilene_effect_only_marker =
+        ilene_effect_only_state.find("pending_world_effect");
+    const bool arms_on_effect_flag =
+        ilene_effect_only_result == std::optional<std::string>{"continue"} &&
+        ilene_effect_only_marker != ilene_effect_only_state.end() &&
+        ilene_effect_only_marker->second;
     const bool blocks_alternate_result = verify_ilene_gate_blocks(
         ilene_allowed_facts, ScriptFieldModeContext{2U, 0U, 1},
         "hollywood_correctional_facility");
@@ -5292,7 +5312,8 @@ int main() {
         ilene_allowed_facts, ScriptFieldModeContext{2U, 0U, 0},
         "council_island_hospital");
     if (!expect(blocks_missing_shaman && blocks_already_met &&
-                    blocks_effect_flag && blocks_tip_gate &&
+                    arms_on_effect_flag && blocks_tip_gate &&
+                    blocks_wrong_tip_word &&
                     blocks_alternate_result && blocks_wrong_location,
                 "Ilene service 19 armed FFE182 outside one or more ROM gates")) {
         std::cerr << scripts.failure() << '\n';
