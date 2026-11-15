@@ -1104,6 +1104,11 @@ public:
     std::uint8_t shop_menu_mode() const noexcept {
         return field_shop_menu_.menu_mode();
     }
+    std::string_view shop_menu_title_key_for_dump() const noexcept {
+        return field_shop_active_definition_.has_value()
+            ? std::string_view(field_shop_active_definition_->title_key)
+            : std::string_view{};
+    }
     std::int8_t shop_menu_result() const noexcept {
         return field_shop_menu_.menu_result();
     }

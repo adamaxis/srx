@@ -2,6 +2,7 @@
 #include "shadowrun_ghidra/field/field_action_cost_conversion.hpp"
 
 #include <algorithm>
+#include <array>
 #include <optional>
 
 namespace {
@@ -372,6 +373,20 @@ int main() {
                 "shop.cyberware.description.datajack"});
     }
     wire_masters_definition.groups.push_back(wire_cyberware);
+    const std::array<const char*, 2U> hospital_cyberware_catalog_ids{
+        "council_island_hospital_cyberware",
+        "seattle_general_hospital_cyberware",
+    };
+    for (const auto* catalog_id : hospital_cyberware_catalog_ids) {
+        auto hospital_definition = wire_masters_definition;
+        hospital_definition.id = catalog_id;
+        ShopMenuController hospital_menu;
+        if (!expect(hospital_menu.open(
+                ShopId::wire_masters, hospital_definition,
+                confirmation_choice_ids))) {
+            return 53;
+        }
+    }
     ShopMenuController wire_menu;
     const FieldActionCostContext wire_cost_context{7U, 0U, 0U, 2U};
     if (!expect(wire_menu.open(

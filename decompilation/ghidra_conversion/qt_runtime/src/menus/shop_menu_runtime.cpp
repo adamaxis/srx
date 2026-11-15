@@ -53,8 +53,13 @@ bool ShopMenuController::open(
         (shop == ShopId::medicine_lodge &&
          definition.id == "medicine_lodge" &&
          definition.menu_result == 0 && definition.groups.size() == 4U) ||
+        // ROM 0x56AC0's mode-1 service is shared; FFF0B6 selects the label.
         (shop == ShopId::wire_masters &&
-         definition.id == "wire_masters" && definition.menu_mode == 7U &&
+         (definition.id == "wire_masters" ||
+          definition.id == "little_chiba_cyberware" ||
+          definition.id == "council_island_hospital_cyberware" ||
+          definition.id == "seattle_general_hospital_cyberware") &&
+         definition.menu_mode == 7U &&
          definition.menu_result == 1 && definition.groups.size() == 1U &&
          definition.equipment_upgrade_meter_thresholds.size() == 16U &&
          definition.groups.front().equipment_upgrade_offers.size() == 8U) ||

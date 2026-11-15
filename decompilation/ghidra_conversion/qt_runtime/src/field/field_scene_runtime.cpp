@@ -14994,10 +14994,47 @@ void FieldSceneRuntime::advance_frame() {
             static_cast<void>(begin_native_menu_source_entry_return());
         } else if (result == FieldDialogueAdvanceResult::
                        hospital_cyberware_requested) {
+            // ROM 0xCA16 enters 0x56AC0 with FFF0B7=1. The shared service
+            // reads its title root through FFF0B6 at 0x56B4E: Seattle 0x0B
+            // (0x1F84E), Council Island 0x0A (0x1FA20), Little Chiba 0x08
+            // (0x1F97C). All use the eight-row stock from 0x1AB060.
+            // Site -> catalog view lives in data/hospital_sites.lua.
             hospital_service_session_active_ = false;
-            open_command_overview(
-                static_cast<std::uint16_t>(srx::MenuScreen::CYBERWARE));
-            source_boundary("field.hospital.cyberware_opened");
+            const auto catalog = game_scripts_.call_string(
+                "council_island_hospital", "cyberware_catalog_id");
+            const std::string cyberware_catalog_id =
+                catalog.value_or(std::string{});
+            if (cyberware_catalog_id.empty()) {
+                field_shop_active_definition_.reset();
+                source_boundary(
+                    "field.shop.hospital_cyberware.location_unavailable");
+                (void)field_dialogue_.present_source_boundary_for_host(
+                    "The ROM cyberware service has no catalog for this "
+                    "hospital location.");
+            } else {
+                field_shop_active_definition_ =
+                    game_scripts_.shop_definition(cyberware_catalog_id);
+                const auto script_menu =
+                    game_scripts_.open_shop_menu(cyberware_catalog_id);
+                if (field_shop_active_definition_.has_value() &&
+                    script_menu.has_value() &&
+                    field_shop_menu_.open(
+                        ShopId::wire_masters,
+                        *field_shop_active_definition_,
+                        field_menu_text_.confirmation_choice_ids) &&
+                    field_shop_menu_.apply_script_snapshot(*script_menu)
+                        .has_value()) {
+                    source_boundary("field.shop.hospital_cyberware.opened");
+                } else {
+                    (void)game_scripts_.close_shop_menu();
+                    field_shop_active_definition_.reset();
+                    source_boundary(
+                        "field.shop.hospital_cyberware.definition_unavailable");
+                    (void)field_dialogue_.present_source_boundary_for_host(
+                        "The ROM cyberware service definition could not be "
+                        "loaded from its Lua catalog.");
+                }
+            }
         } else if (result == FieldDialogueAdvanceResult::
                        hospital_medical_attention_requested) {
             (void)begin_hospital_menu_task("present_medical_attention");

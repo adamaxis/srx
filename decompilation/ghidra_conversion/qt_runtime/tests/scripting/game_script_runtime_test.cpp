@@ -18360,6 +18360,14 @@ int main() {
     scripts.set_location_context(
         "building", kCouncilHospital, "council_island_hospital",
         "council_island_hospital_narrator");
+    if (!expect(scripts.call_string("council_island_hospital",
+                                    "cyberware_catalog_id") ==
+                    std::optional<std::string>(
+                        "council_island_hospital_cyberware"),
+                "hospital Cyberware must resolve the site's Lua catalog")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
     scripts.set_field_mode_context(ScriptFieldModeContext{4U, 4U, 0});
     auto hospital_task = scripts.start_task(
         "council_island_hospital", "present_field_exit_prompt");

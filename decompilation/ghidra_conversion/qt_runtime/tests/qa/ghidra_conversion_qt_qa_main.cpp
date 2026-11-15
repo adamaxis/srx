@@ -16161,7 +16161,7 @@ int run_field_scene26_event1_physical_entry_qa(
             return 3;
         }
         write_state("little-chiba-entry");
-        const auto probe = field_scene.field_collision_probe_state_for_dump();
+        auto probe = field_scene.field_collision_probe_state_for_dump();
         tap_qa_controller_button(field_scene, 0x40U); // A: services
         const auto& options = field_scene.dialogue_panel();
         if (!field_scene.dialogue_open() ||
@@ -16171,12 +16171,148 @@ int run_field_scene26_event1_physical_entry_qa(
             options.options[0U].source_label != "Medical Attn." ||
             options.options[1U].source_label != "Cyberware" ||
             options.options[2U].source_label != "Exit" ||
+            options.portrait_alias !=
+                "field.mode.entry.little.chiba.sprite" ||
             field_scene.field_scene_reference_for_dump() != 2U ||
             !save("little-chiba-hospital-options")) {
             std::cerr << "Little Chiba hospital QA: services did not open "
                          "Hospital Options (0xC928) in scene 2\n";
             return 3;
         }
+
+        auto& cyberware_runner = field_scene.active_runner_record();
+        cyberware_runner.cyberware_flags = 0U;
+        cyberware_runner.set_cyberware_essence_tens(9U);
+        cyberware_runner.set_cyberware_essence_ones(9U);
+        field_scene.set_field_funds_for_dump(50000U);
+        tap_qa_controller_button(field_scene, 0x02U); // Down: Cyberware.
+        tap_qa_controller_button(field_scene, 0x40U); // A: open service.
+        if (!field_scene.shop_menu_open() ||
+            field_scene.command_overview_open() ||
+            field_scene.shop_menu_mode() != 7U ||
+            field_scene.shop_menu_result() != 1 ||
+            field_scene.shop_menu_title_key_for_dump() !=
+                "shop.service.option.little_chiba" ||
+            field_scene.shop_menu_group() != ShopActionGroup::cyberware ||
+            field_scene.shop_menu_cursor() != 0U ||
+            !field_scene.shop_menu_offers_active() ||
+            !save("little-chiba-cyberware-service")) {
+            std::cerr << "Little Chiba Cyberware QA: hospital selection did "
+                         "not open the mode-7 cyberware service (shop="
+                      << field_scene.shop_menu_open() << ", overview="
+                      << field_scene.command_overview_open() << ", mode="
+                      << static_cast<unsigned>(field_scene.shop_menu_mode())
+                      << ", result=" << field_scene.shop_menu_result()
+                      << ", title="
+                      << field_scene.shop_menu_title_key_for_dump()
+                      << ")\n";
+            return 3;
+        }
+
+        constexpr std::array<std::uint32_t, 8> kRomCyberwarePrices{{
+            500U, 3000U, 1500U, 4000U, 1500U, 10000U, 3000U, 20000U,
+        }};
+        for (std::size_t index = 0U;
+             index < kRomCyberwarePrices.size(); ++index) {
+            if (index > 0U) {
+                tap_qa_controller_button(field_scene, 0x08U); // Right.
+            }
+            tap_qa_controller_button(field_scene, 0x40U); // A: inspect price.
+            if (!field_scene.shop_transaction_confirmation_open() ||
+                field_scene.shop_transaction_amount() !=
+                    kRomCyberwarePrices[index]) {
+                std::cerr << "Little Chiba Cyberware QA: ROM table price row "
+                          << index << " was not shown (amount="
+                          << field_scene.shop_transaction_amount()
+                          << ", expected=" << kRomCyberwarePrices[index]
+                          << ")\n";
+                return 3;
+            }
+            tap_qa_controller_button(field_scene, 0x40U); // Default No.
+            if (!field_scene.shop_menu_open() ||
+                field_scene.shop_transaction_confirmation_open() ||
+                field_scene.shop_menu_cursor() != index) {
+                std::cerr << "Little Chiba Cyberware QA: declining row "
+                          << index << " did not return to the stock list\n";
+                return 3;
+            }
+        }
+
+        tap_qa_controller_button(field_scene, 0x10U); // B selects current row.
+        if (!field_scene.shop_menu_open() ||
+            !field_scene.shop_transaction_confirmation_open() ||
+            field_scene.shop_transaction_amount() !=
+                kRomCyberwarePrices.back()) {
+            std::cerr << "Little Chiba Cyberware QA: B did not dispatch the "
+                         "selected ROM cyberware row\n";
+            return 3;
+        }
+        tap_qa_controller_button(field_scene, 0x40U); // Default No.
+        if (!field_scene.shop_menu_open() ||
+            field_scene.shop_transaction_confirmation_open() ||
+            field_scene.shop_transaction_waiting_for_event()) {
+            std::cerr << "Little Chiba Cyberware QA: B action did not return "
+                         "to the ROM service list\n";
+            return 3;
+        }
+        const auto field_counter_before_exit =
+            field_scene.field_world_frame_counter_for_dump();
+        tap_qa_controller_button(field_scene, 0x80U); // Start: ROM exit.
+        for (std::uint8_t frame = 0U; frame < 40U; ++frame) {
+            field_scene.advance_frame();
+        }
+        if (field_scene.shop_menu_open() ||
+            field_scene.command_overview_open() ||
+            field_scene.dialogue_open() ||
+            field_scene.field_scene_reference_for_dump() != 2U ||
+            field_scene.field_world_frame_counter_for_dump() ==
+                field_counter_before_exit) {
+            std::cerr << "Little Chiba Cyberware QA: service exit did not "
+                         "return to an advancing field (shop="
+                      << field_scene.shop_menu_open() << ", overview="
+                      << field_scene.command_overview_open() << ", dialogue="
+                      << field_scene.dialogue_open() << ", scene="
+                      << field_scene.field_scene_reference_for_dump()
+                      << ", field_frame="
+                      << field_scene.field_world_frame_counter_for_dump()
+                      << ")\n";
+            return 3;
+        }
+
+        for (std::uint16_t walk = 0U;
+             walk < 240U && !field_scene.dialogue_open(); ++walk) {
+            step(0x01U); // Re-enter the hospital to exercise its Exit row.
+        }
+        for (std::uint8_t settle = 0U; settle < 60U; ++settle) {
+            step(0U);
+        }
+        for (std::uint16_t settle = 0U;
+             settle < 300U && field_scene.dialogue_open() &&
+             !field_scene.dialogue_panel().source_complete;
+             ++settle) {
+            step(0U);
+        }
+        const auto& reentry = field_scene.dialogue_panel();
+        if (!field_scene.dialogue_open() ||
+            reentry.option_count != 2U ||
+            reentry.text_segment_count == 0U ||
+            reentry.text_segments[0U].find("Little Chiba's Chop Shop") ==
+                std::string_view::npos) {
+            std::cerr << "Little Chiba Cyberware QA: service exit did not "
+                         "resume the field site interaction\n";
+            return 3;
+        }
+        tap_qa_controller_button(field_scene, 0x40U); // A: Services again.
+        if (!field_scene.dialogue_open() ||
+            !field_scene.field_dialogue_uses_hospital_layout_for_dump() ||
+            field_scene.dialogue_panel().option_count != 3U ||
+            field_scene.dialogue_panel().selected_option != 0U) {
+            std::cerr << "Little Chiba Cyberware QA: re-entry did not reopen "
+                         "Hospital Options\n";
+            return 3;
+        }
+        probe = field_scene.field_collision_probe_state_for_dump();
+
         tap_qa_controller_button(field_scene, 0x02U); // Down: Cyberware
         tap_qa_controller_button(field_scene, 0x02U); // Down: Exit
         tap_qa_controller_button(field_scene, 0x40U); // A: Yes/No (No)
@@ -16238,7 +16374,7 @@ int run_field_scene26_event1_physical_entry_qa(
         const auto declined = field_scene.field_entity_world_position();
         if (field_scene.dialogue_open() ||
             field_scene.field_scene_reference_for_dump() != 2U ||
-            count_boundary("field.door.service_close_return") != 1 ||
+            count_boundary("field.door.service_close_return") != 2 ||
             declined.x != second_probe.points[0U].x ||
             declined.y != second_probe.points[0U].y ||
             field_scene.field_entity_heading_for_dump() != 0x8000U ||

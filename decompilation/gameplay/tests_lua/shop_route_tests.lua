@@ -26,7 +26,9 @@ local function check(condition, label)
     end
 end
 
-check(#shop_ids == 6, "the source shop catalog contains six menus")
+check(#shop_ids == 9,
+      "the source shop catalog contains nine menus, including the three " ..
+      "site labels for the shared hospital ROM service (0xCA16 -> 0x56AC0)")
 
 for selected_tab = 0, 5 do
     Shop.open_menu("ares_weapon_emporium")

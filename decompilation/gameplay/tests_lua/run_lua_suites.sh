@@ -34,6 +34,8 @@ for t in menu_tests menu_b_policy_tests shop_route_tests generic_menu_input_test
   run "$t" "decompilation/gameplay/tests_lua/$t.lua"
 done
 set -- decompilation/gameplay/world/entities/*/interactions.json
+run "hospital_cyberware_tests" \
+  "decompilation/gameplay/tests_lua/hospital_cyberware_tests.lua"
 run "same_map_prompt_return_tests" \
   "decompilation/gameplay/tests_lua/same_map_prompt_return_tests.lua" "$@"
 # Informational only: the pre-split reference predates the ROM combat fixes (17130f9c onward),

@@ -289,4 +289,12 @@ function Hospital.present_leave_confirmation()
     end
 end
 
+-- Hospital Options -> Cyberware (ROM 0xCA16) enters the shared 0x56AC0
+-- service; the host opens the site's catalog view returned here.
+function Hospital.cyberware_catalog_id()
+    local site = assert_hospital_field_context()
+    return assert(site.cyberware_catalog,
+                  "hospital site has no cyberware catalog")
+end
+
 return Hospital

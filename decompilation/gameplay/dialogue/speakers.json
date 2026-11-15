@@ -207,7 +207,7 @@
         }
       },
       "name": "Narration",
-      "portrait_alias": "none",
+      "portrait_alias": "field.mode.entry.little.chiba.sprite",
       "text_profile": "little_chiba"
     },
     "council_medicine_lodge_narrator": {

@@ -495,4 +495,31 @@ M.catalog = {
     },
 }
 
+-- ROM 0x1F84E / 0x1FA20 / 0x1F97C select Seattle (0x0B), Council
+-- Island (0x0A), and Little Chiba (0x08) text roots. The shared 0x56AC0
+-- mode-1 service uses the same stock as Wire-Masters (0x1FBA2), with the
+-- active root's title.
+local wire_masters_cyberware = M.catalog.wire_masters
+local source_cyberware_group = wire_masters_cyberware.groups[1]
+local function hospital_cyberware_catalog(title_key)
+    return {
+        menu_mode = wire_masters_cyberware.menu_mode,
+        menu_result = wire_masters_cyberware.menu_result,
+        title_key = title_key,
+        text_keys = wire_masters_cyberware.text_keys,
+        equipment_upgrade_meter_thresholds =
+            wire_masters_cyberware.equipment_upgrade_meter_thresholds,
+        groups = {
+            group(source_cyberware_group.id, title_key, title_key, {}, {},
+                  source_cyberware_group.equipment_upgrade_offers),
+        },
+    }
+end
+M.catalog.little_chiba_cyberware = hospital_cyberware_catalog(
+    "shop.service.option.little_chiba")
+M.catalog.council_island_hospital_cyberware = hospital_cyberware_catalog(
+    "shop.service.option.council_island_hospital")
+M.catalog.seattle_general_hospital_cyberware = hospital_cyberware_catalog(
+    "shop.service.option.seattle_general_hospital")
+
 return M
