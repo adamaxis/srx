@@ -3,6 +3,9 @@
 namespace shadowrun::ghidra_conversion {
 namespace {
 
+constexpr std::uint16_t kRomProjectedInteractionDelayFrames =
+    0x10U; // FFDF3C at ROM 0x0BA8E.
+
 std::uint16_t rotate_direction_slot_for_entity_heading(
     const std::uint8_t direction_slot) {
     const auto word = static_cast<std::uint16_t>(direction_slot);
@@ -241,7 +244,8 @@ advance_entity_movement_and_mode_transition(
         }
         if (callbacks.project_entity_world_interaction()) {
             state.interaction_transition_pending = true;
-            state.interaction_transition_timer = 0x10U;
+            state.interaction_transition_timer =
+                kRomProjectedInteractionDelayFrames;
             state.world_interaction_lock = true;
             result.kind = EntityMovementModeTransitionResultKind::
                 projected_interaction_pending;

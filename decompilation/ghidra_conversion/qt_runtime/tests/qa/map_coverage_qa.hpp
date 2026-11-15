@@ -48,6 +48,9 @@ struct MapCoverageAttempt {
     bool trigger_seen{};
     bool transition_fired{};
     std::uint32_t frames_used{};
+    std::uint32_t trigger_frame{};
+    std::uint32_t transition_pending_frame{};
+    std::uint32_t first_new_scene_frame{};
     std::uint16_t observed_scene{};
     std::uint16_t observed_x{};
     std::uint16_t observed_y{};
@@ -419,7 +422,8 @@ inline MapCoverageAttempt map_coverage_drive_rect(
     const std::optional<std::uint32_t> expected_event,
     const std::uint32_t frame_budget, const std::string_view row_category,
     const std::string_view trigger, const std::string_view approach_side = {},
-    const std::string_view script = {}) {
+    const std::string_view script = {},
+    std::uint32_t* frame_clock = nullptr) {
     MapCoverageAttempt result;
     result.setup = true;
     const auto starting_scene = runtime.field_scene_reference_for_dump();
@@ -492,7 +496,11 @@ inline MapCoverageAttempt map_coverage_drive_rect(
                 : (result.trigger_seen ? 0U : direction);
         const auto probe_before = runtime.field_collision_probe_state_for_dump();
         const bool door_already_fired = result.transition_fired;
+        const bool trigger_was_seen = result.trigger_seen;
         runtime.set_controller_port_byte(port);
+        if (frame_clock != nullptr) {
+            ++*frame_clock;
+        }
         runtime.advance_frame();
         ++frames_used;
         const auto event = runtime.field_mode_event_code_for_dump();
@@ -515,8 +523,23 @@ inline MapCoverageAttempt map_coverage_drive_rect(
             *expected_event != 0U && before_event == *expected_event) {
             result.trigger_seen = true;
         }
+        if (!trigger_was_seen && result.trigger_seen) {
+            result.trigger_frame = frame_clock != nullptr
+                ? *frame_clock
+                : frames_used;
+        }
         const auto scene = runtime.field_scene_reference_for_dump();
+        if (scene != starting_scene && result.first_new_scene_frame == 0U) {
+            result.first_new_scene_frame = frame_clock != nullptr
+                ? *frame_clock
+                : frames_used;
+        }
         const bool transition_pending = runtime.field_transition_pending_for_dump();
+        if (transition_pending && result.transition_pending_frame == 0U) {
+            result.transition_pending_frame = frame_clock != nullptr
+                ? *frame_clock
+                : frames_used;
+        }
         // The door contact is the frame on which the port records its probe
         // triplet; the ROM saves from the lead position held before that
         // frame's step (0xB834 -> 0xBC36 runs before the move is applied).
@@ -685,6 +708,9 @@ inline MapCoverageAttempt map_coverage_drive_rect(
     }
     runtime.set_controller_port_byte(0U);
     for (std::uint32_t tail = 0U; tail < 60U && frames_used < frame_budget; ++tail) {
+        if (frame_clock != nullptr) {
+            ++*frame_clock;
+        }
         runtime.advance_frame();
         ++frames_used;
         const auto event = runtime.field_mode_event_code_for_dump();
@@ -692,10 +718,21 @@ inline MapCoverageAttempt map_coverage_drive_rect(
             result.observed_event = event;
         }
         const auto scene = runtime.field_scene_reference_for_dump();
+        const bool transition_pending =
+            runtime.field_transition_pending_for_dump();
+        if (transition_pending && result.transition_pending_frame == 0U) {
+            result.transition_pending_frame = frame_clock != nullptr
+                ? *frame_clock
+                : frames_used;
+        }
+        if (scene != starting_scene && result.first_new_scene_frame == 0U) {
+            result.first_new_scene_frame = frame_clock != nullptr
+                ? *frame_clock
+                : frames_used;
+        }
         result.transition_fired = result.transition_fired ||
             scene != starting_scene ||
-            (runtime.field_transition_pending_for_dump() &&
-             !script_stays_on_scene);
+            (transition_pending && !script_stays_on_scene);
         if (scene != starting_scene) {
             break;
         }
@@ -845,6 +882,253 @@ inline MapCoverageApproachProbe map_coverage_probe_bexit_sides(
         }
     }
     return probe;
+}
+
+template <typename StartupState>
+inline int run_map_coverage_bexit_timing_qa(
+    const StartupState& startup_state, const std::filesystem::path& rows_path,
+    const std::filesystem::path& results_path) {
+    constexpr std::string_view kEntryRowId = "door-s00-r0d5796";
+    constexpr std::string_view kExitRowId =
+        "bexit-s0a-entry0d5796-r1d6178";
+    constexpr std::uint32_t kRomBuildingFadePalettePasses = 17U;
+    constexpr std::uint32_t kRomDoorInteractionDelayFrames =
+        0x10U; // FFDF3C initialized at ROM 0x0BA8E.
+    constexpr std::uint32_t kRomSceneSetupWaitFrames = 1U; // 0x0920
+    constexpr std::uint32_t kRomFieldLoopWaitFrames = 1U; // 0x0952
+    const auto rows = map_coverage_read_rows(rows_path);
+    const auto find_row = [&rows](const std::string_view id)
+        -> const MapCoverageRow* {
+        const auto found = std::find_if(rows.begin(), rows.end(),
+            [id](const MapCoverageRow& row) { return row.row_id == id; });
+        return found == rows.end() ? nullptr : &*found;
+    };
+    const auto* entry = find_row(kEntryRowId);
+    const auto* exit_row = find_row(kExitRowId);
+    if (entry == nullptr || exit_row == nullptr) {
+        std::cerr << "building-exit timing QA: paired baseline PASS rows are missing\n";
+        return 3;
+    }
+    const auto outside_scene = map_coverage_scene(entry->scene);
+    const auto interior_scene = map_coverage_scene(exit_row->scene);
+    const auto outside_rect = map_coverage_rect(entry->trigger);
+    const auto exit_rect = map_coverage_rect(exit_row->trigger);
+    const auto exit_destination = map_coverage_scene(exit_row->dest_scene);
+    if (!outside_scene || !interior_scene || !outside_rect || !exit_rect ||
+        !exit_destination) {
+        std::cerr << "building-exit timing QA: selected row fields are unresolved\n";
+        return 3;
+    }
+
+    std::uint32_t exit_frame_clock = 0U;
+    std::uint32_t exit_trigger_frame = 0U;
+    std::uint32_t fade_out_started_frame = 0U;
+    std::uint32_t first_new_scene_frame = 0U;
+    std::uint32_t fade_in_started_frame = 0U;
+    std::uint32_t transition_completed_frame = 0U;
+    std::uint32_t fade_out_palette_steps = 0U;
+    std::uint32_t fade_in_palette_steps = 0U;
+    bool measuring_exit = false;
+    bool entry_transition_started = false;
+    bool entry_transition_completed = false;
+    FieldSceneRuntime runtime([&](const std::string_view boundary) {
+        if (!measuring_exit) {
+            if (boundary == "field.building_transition.fade_out_started") {
+                entry_transition_started = true;
+            }
+            if (boundary == "field.building_transition.completed") {
+                entry_transition_completed = true;
+            }
+            return;
+        }
+        if (exit_trigger_frame == 0U &&
+            boundary.rfind("field.exit.", 0U) == 0U) {
+            exit_trigger_frame = exit_frame_clock;
+        }
+        if (boundary == "field.building_transition.palette_step") {
+            if (fade_in_started_frame == 0U) {
+                ++fade_out_palette_steps;
+            } else {
+                ++fade_in_palette_steps;
+            }
+        } else if (boundary ==
+                   "field.building_transition.fade_out_started") {
+            fade_out_started_frame = exit_frame_clock;
+        } else if (boundary ==
+                   "field.scene.transition.display_service_released") {
+            first_new_scene_frame = exit_frame_clock;
+        } else if (boundary ==
+                   "field.building_transition.fade_in_started") {
+            fade_in_started_frame = exit_frame_clock;
+        } else if (boundary == "field.building_transition.completed") {
+            transition_completed_frame = exit_frame_clock;
+        }
+    });
+    if (!runtime.bootstrap_for_scene_dump(startup_state, *outside_scene)) {
+        std::cerr << "building-exit timing QA: outside scene bootstrap failed: "
+                  << runtime.failure() << '\n';
+        return 3;
+    }
+    map_coverage_set_mode(runtime, entry->category, *outside_scene,
+                          entry->gate);
+    const auto entered = map_coverage_drive_rect(
+        runtime, startup_state, *outside_scene, *outside_rect,
+        map_coverage_event(entry->trigger), 600U, "door", entry->trigger,
+        "south", entry->script);
+    if (!entered.transition_fired ||
+        runtime.field_scene_reference_for_dump() != *interior_scene) {
+        std::cerr << "building-exit timing QA: paired entry did not reach scene "
+                  << *interior_scene << '\n';
+        return 3;
+    }
+    runtime.set_controller_port_byte(0U);
+    for (std::uint32_t frame = 0U;
+         entry_transition_started && frame < 100U &&
+         !entry_transition_completed; ++frame) {
+        runtime.advance_frame();
+    }
+    if (entry_transition_started && !entry_transition_completed) {
+        std::cerr << "building-exit timing QA: paired entry fade-in did not "
+                     "complete before the exit walk\n";
+        return 3;
+    }
+
+    measuring_exit = true;
+    const auto exited = map_coverage_drive_rect(
+        runtime, startup_state, *interior_scene, *exit_rect,
+        map_coverage_event(exit_row->trigger), 600U, "bexit",
+        exit_row->trigger, "north", {}, &exit_frame_clock);
+    if (exited.transition_pending_frame != 0U) {
+        exit_trigger_frame = exited.transition_pending_frame;
+    } else if (exit_trigger_frame == 0U) {
+        exit_trigger_frame = exited.trigger_frame;
+    }
+    if (!exited.transition_fired ||
+        runtime.field_scene_reference_for_dump() != *exit_destination ||
+        exited.first_new_scene_frame == 0U) {
+        std::cerr << "building-exit timing QA: ordinary exit did not reach scene "
+                  << *exit_destination << '\n';
+        return 3;
+    }
+
+    runtime.set_controller_port_byte(0U);
+    while (transition_completed_frame == 0U && exit_frame_clock < 180U) {
+        ++exit_frame_clock;
+        runtime.advance_frame();
+    }
+    std::uint32_t control_return_frame = exited.first_new_scene_frame;
+    if (transition_completed_frame != 0U) {
+        ++exit_frame_clock;
+        runtime.advance_frame();
+        control_return_frame = exit_frame_clock;
+    }
+
+    const auto measured_new_scene_frame = first_new_scene_frame != 0U
+        ? first_new_scene_frame : exited.first_new_scene_frame;
+    const auto measured_fade_out_start_frame = fade_out_started_frame != 0U
+        ? fade_out_started_frame : exit_trigger_frame;
+    const auto new_scene_frames =
+        measured_new_scene_frame - measured_fade_out_start_frame;
+    const auto control_return_frames =
+        control_return_frame - measured_fade_out_start_frame;
+    const auto request_to_control_return_frames =
+        control_return_frame - exit_trigger_frame;
+    const auto request_to_fade_out_start_frames =
+        fade_out_started_frame == 0U
+            ? 0U : fade_out_started_frame - exit_trigger_frame;
+    const auto request_to_new_scene_frames =
+        measured_new_scene_frame - exit_trigger_frame;
+    const auto contact_to_new_scene_frames =
+        measured_new_scene_frame - exited.trigger_frame;
+    const auto expected_control_return_frames =
+        2U * static_cast<std::uint32_t>(kRomBuildingTransitionVBlanks) +
+        kRomSceneSetupWaitFrames + kRomFieldLoopWaitFrames;
+    const auto contact_to_request_frames =
+        exit_trigger_frame - exited.trigger_frame;
+    const auto contact_to_control_return_frames =
+        control_return_frame - exited.trigger_frame;
+    const auto new_scene_to_fade_in_frames =
+        fade_in_started_frame == 0U
+            ? 0U : fade_in_started_frame - measured_new_scene_frame;
+    const bool passes =
+        fade_out_started_frame != 0U && first_new_scene_frame != 0U &&
+        new_scene_frames == kRomBuildingTransitionVBlanks &&
+        control_return_frames == expected_control_return_frames &&
+        contact_to_request_frames == kRomDoorInteractionDelayFrames &&
+        request_to_fade_out_start_frames == 1U &&
+        request_to_new_scene_frames ==
+            1U + kRomBuildingTransitionVBlanks &&
+        contact_to_new_scene_frames ==
+            kRomDoorInteractionDelayFrames + 1U +
+                kRomBuildingTransitionVBlanks &&
+        contact_to_control_return_frames ==
+            kRomDoorInteractionDelayFrames + 1U +
+                expected_control_return_frames &&
+        new_scene_to_fade_in_frames == kRomSceneSetupWaitFrames &&
+        fade_out_palette_steps == kRomBuildingFadePalettePasses &&
+        fade_in_palette_steps == kRomBuildingFadePalettePasses;
+
+    std::ofstream results(results_path, std::ios::trunc);
+    if (!results) {
+        std::cerr << "building-exit timing QA: could not open results file\n";
+        return 3;
+    }
+    results << "row\tcontact_to_request_vblanks\t"
+               "request_to_fade_out_start_vblanks\t"
+               "fade_out_start_to_new_scene_vblanks\t"
+               "request_to_new_scene_vblanks\tcontact_to_new_scene_vblanks\t"
+               "fade_out_start_to_control_return_vblanks\t"
+               "request_to_control_return_vblanks\t"
+               "contact_to_control_return_vblanks\t"
+               "new_scene_to_fade_in_start_vblanks\tfade_out_palette_steps\t"
+               "fade_in_palette_steps\tstatus\n"
+            << exit_row->row_id << '\t' << contact_to_request_frames << '\t'
+            << request_to_fade_out_start_frames << '\t' << new_scene_frames
+            << '\t' << request_to_new_scene_frames << '\t'
+            << contact_to_new_scene_frames << '\t'
+            << control_return_frames << '\t'
+            << request_to_control_return_frames << '\t'
+            << contact_to_control_return_frames << '\t'
+            << new_scene_to_fade_in_frames << '\t'
+            << fade_out_palette_steps << '\t'
+            << fade_in_palette_steps << '\t' << (passes ? "PASS" : "FAIL")
+            << '\n';
+    std::cout << "building_exit_timing row=" << exit_row->row_id
+              << " rect_contact_frame=" << exited.trigger_frame
+              << " transition_pending_frame="
+              << exited.transition_pending_frame
+              << " contact_to_request_vblanks="
+              << contact_to_request_frames
+              << " request_to_fade_out_start_vblanks="
+              << request_to_fade_out_start_frames
+              << " fade_out_start_to_new_scene_vblanks=" << new_scene_frames
+              << " request_to_new_scene_vblanks="
+              << request_to_new_scene_frames
+              << " contact_to_new_scene_vblanks="
+              << contact_to_new_scene_frames
+              << " fade_out_start_to_control_return_vblanks="
+              << control_return_frames
+              << " request_to_control_return_vblanks="
+              << request_to_control_return_frames
+              << " contact_to_control_return_vblanks="
+              << contact_to_control_return_frames
+              << " new_scene_to_fade_in_start_vblanks="
+              << new_scene_to_fade_in_frames
+              << " fade_out_palette_steps=" << fade_out_palette_steps
+              << " fade_in_palette_steps=" << fade_in_palette_steps
+              << " expected_vblanks="
+              << static_cast<unsigned>(kRomBuildingTransitionVBlanks)
+              << "/"
+              << expected_control_return_frames
+              << " contact_expected=16/51/87 hold=1"
+              << " artifacts=" << results_path.string() << '\n';
+    if (!passes) {
+        std::cerr << "FAIL: ordinary building exit timing must match the ROM's "
+                     "16-frame door gate, 34-VBlank fade-out, 1-VBlank "
+                     "scene wait, 34-VBlank fade-in, and field-loop wait\n";
+        return 1;
+    }
+    return 0;
 }
 
 inline std::string map_coverage_sanitize(std::string value) {

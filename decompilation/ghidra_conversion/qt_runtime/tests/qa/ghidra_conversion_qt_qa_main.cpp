@@ -14020,7 +14020,10 @@ int run_field_scene20_physical_entry_qa(
             }
         }
         for (std::uint16_t settle = 0U;
-             settle < 120U && !scene2_is_live(); ++settle) {
+             settle < 120U &&
+             (!scene2_is_live() ||
+              field_scene.building_scene_transition_active_for_dump());
+             ++settle) {
             field_scene.advance_frame();
             ++frame;
         }
@@ -45944,12 +45947,25 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> opening_dump_directory;
         std::optional<std::filesystem::path> map_coverage_rows_path;
         std::optional<std::filesystem::path> map_coverage_results_path;
+        std::optional<std::filesystem::path>
+            building_exit_timing_rows_path;
+        std::optional<std::filesystem::path>
+            building_exit_timing_results_path;
         for (int index = 1; index < argc; ++index) {
             if (std::string(argv[index]) == "--map-coverage" &&
                 index + 2 < argc) {
                 field_smoke = true;
                 map_coverage_rows_path = std::filesystem::path(argv[++index]);
                 map_coverage_results_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-building-exit-timing-qa" &&
+                index + 2 < argc) {
+                field_smoke = true;
+                building_exit_timing_rows_path =
+                    std::filesystem::path(argv[++index]);
+                building_exit_timing_results_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-movement-qa" &&
@@ -47634,6 +47650,13 @@ int main(int argc, char** argv) {
                                 map_coverage_bootstrap_scene(
                                     row_startup_state, scene, category, runtime);
                         });
+            }
+            if (building_exit_timing_rows_path.has_value() &&
+                building_exit_timing_results_path.has_value()) {
+                return shadowrun::ghidra_conversion::qt_runtime::qa::
+                    run_map_coverage_bexit_timing_qa(
+                        smoke_state, *building_exit_timing_rows_path,
+                        *building_exit_timing_results_path);
             }
             // This route starts at the field-ready boundary emitted after a
             // completed New Game intro. Exercise the source handoff state

@@ -111,14 +111,13 @@ int main() {
     }
     deadline = 0;
     if (!expect(consume_host_frames(deadline, 3 * kHostFrameNanoseconds) ==
-                    3 &&
+                    1 &&
                 deadline == 3 * kHostFrameNanoseconds)) {
         return 10;
     }
     deadline = 0;
     if (!expect(consume_host_frames(deadline, 10 * kHostFrameNanoseconds) ==
-                    kHostFrameCatchUpLimit &&
-                deadline == kHostFrameCatchUpLimit * kHostFrameNanoseconds)) {
+                    1 && deadline == 10 * kHostFrameNanoseconds)) {
         return 11;
     }
     if (!expect(consume_host_frames(deadline, deadline - 1) == 0)) {

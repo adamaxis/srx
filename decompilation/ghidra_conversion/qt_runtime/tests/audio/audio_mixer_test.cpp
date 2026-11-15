@@ -6,8 +6,10 @@
 #include "audio_mixer.hpp"
 #include "audio_resources.hpp"
 #include "gems_commands.hpp"
+#include <shadowrun_ghidra/core/timing_conversion.hpp>
 
 #include <cstdint>
+#include <deque>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -379,6 +381,143 @@ int main() {
         check(queue.pending_bytes() == 64U && queue.dropped_bytes() == 16U,
               "PCM queue drops only the oldest whole frames past its cap");
         check(queue.flush(0U, accept6) == 0U, "PCM queue writes nothing with no device space");
+    }
+
+    // Model the production source-frame scheduler and bounded PCM queue with
+    // a real-time sink that consumes one 735-sample frame every 1/60 second.
+    // The 144-frame window is the verified Start-skip-to-field-visible
+    // timeline; the 100 ms host pause exercises a delayed Qt timer callback.
+    {
+        using shadowrun::ghidra_conversion::consume_host_frames;
+        using shadowrun::ghidra_conversion::kHostFrameNanoseconds;
+        constexpr std::size_t kBytesPerGameAudioFrame =
+            kAudioSamplesPerFrame * 4U;
+        constexpr std::size_t kDeviceBufferFrames = 4U;
+        constexpr std::size_t kPcmQueueFrames = 8U;
+        constexpr std::uint32_t kStartSkipVisibleFrame = 144U;
+        constexpr std::uint32_t kFieldSongStartFrame = 78U;
+        constexpr std::uint32_t kHostPauseAfterSourceFrame = 70U;
+        constexpr std::int64_t kHostTimerIntervalNanoseconds = 16'000'000LL;
+        constexpr std::int64_t kSceneLoadPauseNanoseconds = 100'000'000LL;
+
+        PcmQueue pcm_queue(kBytesPerGameAudioFrame * kPcmQueueFrames);
+        std::deque<char> device_buffer;
+        std::vector<std::uint32_t> heard_frames;
+        std::int64_t source_deadline_ns = 0;
+        std::int64_t elapsed_ns = 0;
+        std::int64_t next_device_frame_ns = 0;
+        std::uint32_t source_frame = 0U;
+        std::size_t maximum_pending_frames = 0U;
+        std::uint32_t maximum_source_frames_per_callback = 0U;
+        bool injected_host_pause = false;
+
+        const auto consume_device_frame = [&] {
+            if (device_buffer.size() < kBytesPerGameAudioFrame) {
+                return;
+            }
+            const auto frame_id = static_cast<std::uint8_t>(
+                device_buffer.front());
+            for (std::size_t byte = 0U;
+                 byte < kBytesPerGameAudioFrame; ++byte) {
+                device_buffer.pop_front();
+            }
+            heard_frames.push_back(frame_id);
+        };
+        const auto submit_source_frame = [&](const std::uint32_t frame_id) {
+            const std::vector<char> pcm(
+                kBytesPerGameAudioFrame,
+                static_cast<char>(static_cast<std::uint8_t>(frame_id)));
+            pcm_queue.push(pcm.data(), pcm.size());
+            const auto free_bytes =
+                kBytesPerGameAudioFrame * kDeviceBufferFrames -
+                device_buffer.size();
+            pcm_queue.flush(free_bytes, [&](const char* data,
+                                            const std::size_t bytes) {
+                device_buffer.insert(device_buffer.end(), data,
+                                     data + bytes);
+                return static_cast<long long>(bytes);
+            });
+            const auto pending_bytes =
+                device_buffer.size() + pcm_queue.pending_bytes();
+            const auto pending_frames =
+                (pending_bytes + kBytesPerGameAudioFrame - 1U) /
+                kBytesPerGameAudioFrame;
+            maximum_pending_frames =
+                std::max(maximum_pending_frames, pending_frames);
+        };
+
+        while (source_frame < kStartSkipVisibleFrame) {
+            elapsed_ns += kHostTimerIntervalNanoseconds;
+            if (!injected_host_pause &&
+                source_frame >= kHostPauseAfterSourceFrame) {
+                elapsed_ns += kSceneLoadPauseNanoseconds;
+                injected_host_pause = true;
+            }
+            while (next_device_frame_ns <= elapsed_ns) {
+                consume_device_frame();
+                next_device_frame_ns += kHostFrameNanoseconds;
+            }
+
+            const auto due_frames = static_cast<std::uint32_t>(
+                consume_host_frames(source_deadline_ns, elapsed_ns));
+            maximum_source_frames_per_callback = std::max(
+                maximum_source_frames_per_callback, due_frames);
+            for (std::uint32_t frame = 0U;
+                 frame < due_frames && source_frame < kStartSkipVisibleFrame;
+                 ++frame, ++source_frame) {
+                submit_source_frame(source_frame);
+            }
+        }
+
+        // Continue beyond the field-visible boundary and drain every queued
+        // frame, as the production loop keeps submitting after the handoff.
+        const auto post_handoff_frames = 12U;
+        for (std::uint32_t frame = 0U; frame < post_handoff_frames; ++frame) {
+            elapsed_ns += kHostTimerIntervalNanoseconds;
+            while (next_device_frame_ns <= elapsed_ns) {
+                consume_device_frame();
+                next_device_frame_ns += kHostFrameNanoseconds;
+            }
+            submit_source_frame(source_frame++);
+        }
+        while (!device_buffer.empty() || pcm_queue.pending_bytes() != 0U) {
+            elapsed_ns += kHostFrameNanoseconds;
+            consume_device_frame();
+            const auto free_bytes =
+                kBytesPerGameAudioFrame * kDeviceBufferFrames -
+                device_buffer.size();
+            pcm_queue.flush(free_bytes, [&](const char* data,
+                                            const std::size_t bytes) {
+                device_buffer.insert(device_buffer.end(), data,
+                                     data + bytes);
+                return static_cast<long long>(bytes);
+            });
+        }
+
+        const auto dropped_frames = static_cast<std::uint64_t>(
+            pcm_queue.dropped_bytes() / kBytesPerGameAudioFrame);
+        const auto maximum_latency_ms = static_cast<std::uint32_t>(
+            (maximum_pending_frames * 1000U + 59U) / 60U);
+        std::cout << "start_skip_live_audio frames="
+                  << kStartSkipVisibleFrame
+                  << " song_start_frame=" << kFieldSongStartFrame
+                  << " host_pause_ms=100 max_batch_frames="
+                  << maximum_source_frames_per_callback
+                  << " max_pending_frames=" << maximum_pending_frames
+                  << " max_latency_ms=" << maximum_latency_ms
+                  << " dropped_frames=" << dropped_frames << '\n';
+        check(maximum_pending_frames <= kDeviceBufferFrames,
+              "Start-skip live audio latency exceeds the four-frame device buffer");
+        check(dropped_frames == 0U,
+              "Start-skip live audio dropped PCM frames");
+        bool audio_frames_ordered =
+            heard_frames.size() == source_frame;
+        for (std::size_t index = 0U;
+             audio_frames_ordered && index < heard_frames.size(); ++index) {
+            audio_frames_ordered = heard_frames[index] == index;
+        }
+        check(audio_frames_ordered,
+              "Start-skip live audio preserves every PCM frame in order");
     }
 
     if (failures != 0) {

@@ -598,6 +598,22 @@ function Building.resolve_field_location_route(context)
         }, context, E.FieldLocationSceneOutcome.SCENE_CHANGE)
     end
 
+    -- Ordinary interior door exits have no event table entry. The source
+    -- returns through 0x0A98 -> 0x2F32 -> 0x2BD2. Apply the scene fade only
+    -- when the host confirms a saved source-scene return on event 0; elevator
+    -- floor events, edge exits, travel, and cave events keep their own routes.
+    if context.saved_source_scene_return_pending == true and
+       context.event_code == "event_0" and
+       context.transition.kind == "return_to_field" then
+        local route = no_route(context.event_code)
+        route.scene_outcome = E.FieldLocationSceneOutcome.SCENE_CHANGE
+        route.scene_transition_policy =
+            E.FieldSceneTransitionPolicy.BUILDING_FADE
+        route.scene_transition_vblanks =
+            E.FieldSceneTransitionVBlanks.BUILDING_FADE
+        return route
+    end
+
     if context.transition.kind ~= "enter_scene" then
         return no_route(context.event_code)
     end

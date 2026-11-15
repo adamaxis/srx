@@ -1046,6 +1046,13 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_barrier_sprite_qa
 # using normal movement, dismiss its Lua-owned entry narration with A, verify
 # the retained scene-13 route, then walk south into its null-table event-0
 # transition and confirm the source-selected scene-0 destination.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_building_exit_timing_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-building-exit-timing-qa
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/tests_lua/fixtures/map_coverage/rows.tsv"
+    "${CMAKE_CURRENT_BINARY_DIR}/building-exit-timing-qa.tsv")
+
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_jump_house_entry_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-jump-house-entry-qa
@@ -3005,9 +3012,11 @@ add_test(NAME shadowrun_ghidra_audio_playback
 # release ramp, voice stealing, 0x53126 fade timeline, gates.
 add_executable(shadowrun_ghidra_audio_mixer_test
     tests/audio/audio_mixer_test.cpp
-    ${SHADOWRUN_GHIDRA_AUDIO_CORE_SOURCES})
+    ${SHADOWRUN_GHIDRA_AUDIO_CORE_SOURCES}
+    ../src/core/timing_conversion.cpp)
 target_include_directories(shadowrun_ghidra_audio_mixer_test
-    PRIVATE ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS})
+    PRIVATE ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS}
+            "${CMAKE_CURRENT_SOURCE_DIR}/../include")
 set_target_properties(shadowrun_ghidra_audio_mixer_test PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
     RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"

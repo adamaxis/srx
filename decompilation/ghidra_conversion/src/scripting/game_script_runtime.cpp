@@ -7948,6 +7948,8 @@ GameScriptRuntime::resolve_field_location_route(
     const auto input_index = lua_absindex(state, -1);
     lua_pushinteger(state, context.scene_id);
     lua_setfield(state, input_index, "scene_id");
+    lua_pushboolean(state, context.saved_source_scene_return_pending);
+    lua_setfield(state, input_index, "saved_source_scene_return_pending");
     lua_pushboolean(
         state, context.field_mode == field_exit_mode_value(
                                          FieldExitMode::building_interaction));

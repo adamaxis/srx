@@ -1867,10 +1867,32 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                 field_movement_transition_state_.mode_event_code),
             event_metadata.event_table_available,
             event_metadata.event_mode_table,
-            field_exit_alternate_result_});
+            field_exit_alternate_result_,
+            world_activity_return_snapshot_.has_value() &&
+                world_activity_return_snapshot_->scene_buffers.scene_reference !=
+                    runtime_state.scene_id});
     FieldScriptRoute event_route{};
     if (resolved_event_route.has_value()) {
         event_route = *resolved_event_route;
+        if (event_route.kind == FieldScriptRouteKind::no_route &&
+            event_route.scene_transition_policy ==
+                FieldSceneTransitionPolicy::building_fade &&
+            world_activity_return_snapshot_.has_value() &&
+            field_door_return_point_.valid &&
+            field_door_return_point_.return_anchor !=
+                FieldLocationReturnAnchor::none &&
+            field_door_return_point_.scene_id ==
+                world_activity_return_snapshot_->scene_buffers
+                    .scene_reference) {
+            // The transition-only route adds the 0x2BD2 fade policy. Keep
+            // the saved 0xBC36 door-return record that owns the source pose.
+            event_route.return_anchor =
+                field_door_return_point_.return_anchor;
+            event_route.return_facing =
+                field_door_return_point_.return_facing;
+            event_route.return_music_policy =
+                field_door_return_point_.return_music_policy;
+        }
     } else {
         source_boundary("field.exit.building_route_script_failed");
     }
@@ -9051,7 +9073,11 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                             field_movement_transition_state_.mode_event_code),
                         event_metadata.event_table_available,
                         event_metadata.event_mode_table,
-                        field_exit_alternate_result_});
+                        field_exit_alternate_result_,
+                        world_activity_return_snapshot_.has_value() &&
+                            world_activity_return_snapshot_->scene_buffers
+                                    .scene_reference !=
+                                state_.field_scene_buffers.scene_reference});
                 if (route.has_value()) {
                     if (route->kind == FieldScriptRouteKind::area_event &&
                         route->area_event_target.has_value()) {
@@ -9072,6 +9098,30 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                         active_field_script_route_ = *route;
                         source_boundary(
                             "field.exit.resource_activity_return_selected");
+                    } else if (route->kind ==
+                                   FieldScriptRouteKind::no_route &&
+                               route->scene_transition_policy ==
+                                   FieldSceneTransitionPolicy::building_fade) {
+                        active_field_script_route_ = *route;
+                        if (world_activity_return_snapshot_.has_value() &&
+                            field_door_return_point_.valid &&
+                            field_door_return_point_.return_anchor !=
+                                FieldLocationReturnAnchor::none &&
+                            field_door_return_point_.scene_id ==
+                                world_activity_return_snapshot_
+                                    ->scene_buffers.scene_reference) {
+                            // Preserve the saved source-door pose while this
+                            // route contributes transition timing only.
+                            active_field_script_route_->return_anchor =
+                                field_door_return_point_.return_anchor;
+                            active_field_script_route_->return_facing =
+                                field_door_return_point_.return_facing;
+                            active_field_script_route_->return_music_policy =
+                                field_door_return_point_.return_music_policy;
+                        }
+                        capture_field_building_transition_source_image();
+                        source_boundary(
+                            "field.exit.ordinary_building_return_fade_selected");
                     } else if (route->kind ==
                                FieldScriptRouteKind::source_boundary) {
                         active_field_script_route_ = *route;

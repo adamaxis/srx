@@ -163,6 +163,7 @@ struct FieldScriptRouteContext {
     bool event_table_available = false;
     std::array<std::uint8_t, 32> event_table{};
     std::int8_t alternate_result = 0;
+    bool saved_source_scene_return_pending = false;
 };
 
 // A location can bind its indexed title service and its generic exit prompt

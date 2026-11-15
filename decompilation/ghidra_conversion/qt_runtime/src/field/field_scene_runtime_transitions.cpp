@@ -617,6 +617,7 @@ void FieldSceneRuntime::advance_field_scene_transition_after_modal() {
             return;
         }
         field_building_scene_transition_active_ = true;
+        field_building_transition_fade_in_wait_pending_ = false;
         suppress_field_modal_close_input();
         source_boundary("field.building_transition.fade_out_started");
         return;
@@ -761,6 +762,12 @@ void FieldSceneRuntime::advance_field_building_scene_transition() {
     if (!field_building_scene_transition_active_) {
         return;
     }
+    if (field_building_transition_fade_in_wait_pending_) {
+        field_building_transition_fade_in_wait_pending_ = false;
+        source_boundary("field.building_transition.pre_fade_in_vblank");
+        source_boundary("field.building_transition.fade_in_started");
+        return;
+    }
     const auto update = field_scene_transition_.advance();
     if (update.palette_step_changed) {
         source_boundary("field.building_transition.palette_step");
@@ -779,11 +786,24 @@ void FieldSceneRuntime::advance_field_building_scene_transition() {
             source_boundary("field.building_transition.fade_in_unresolved");
             return;
         }
-        source_boundary("field.building_transition.fade_in_started");
+        const bool ordinary_building_door_return =
+            active_field_script_route_.has_value() &&
+            active_field_script_route_->kind ==
+                FieldScriptRouteKind::no_route &&
+            active_field_script_route_->scene_transition_policy ==
+                FieldSceneTransitionPolicy::building_fade;
+        if (ordinary_building_door_return) {
+            // ROM 0x0920 waits one VBlank after 0x2F32 scene setup and before
+            // the first 0x12F6 fade-in palette pass.
+            field_building_transition_fade_in_wait_pending_ = true;
+        } else {
+            source_boundary("field.building_transition.fade_in_started");
+        }
         return;
     }
     if (update.completed) {
         field_building_scene_transition_active_ = false;
+        field_building_transition_fade_in_wait_pending_ = false;
         field_building_transition_source_image_ = QImage{};
         active_field_script_route_.reset();
         source_boundary("field.building_transition.completed");
