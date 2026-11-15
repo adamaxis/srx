@@ -47470,7 +47470,31 @@ int main(int argc, char** argv) {
                 return shadowrun::ghidra_conversion::qt_runtime::qa::
                     run_map_coverage_qa(
                         smoke_state, *map_coverage_rows_path,
-                        *map_coverage_results_path);
+                        *map_coverage_results_path,
+                        [&](const auto& row_startup_state,
+                            const std::uint16_t scene,
+                            const std::string_view category,
+                            FieldSceneRuntime& runtime,
+                            const std::filesystem::path& output_root,
+                            std::vector<std::uint16_t>& audio_events,
+                            std::vector<std::string>& boundaries) {
+                            if (category == "elevator" && scene == 26U) {
+                                if (!runtime.bootstrap_for_scene_dump(
+                                        row_startup_state, 2U)) {
+                                    return false;
+                                }
+                                return run_field_scene26_event1_physical_entry_qa(
+                                           runtime, asset_root,
+                                           output_root / "scene26-source-route",
+                                           audio_events, boundaries,
+                                           "employee_recruitment", true, 0U) == 0 &&
+                                       runtime.field_scene_reference_for_dump() ==
+                                           scene;
+                            }
+                            return shadowrun::ghidra_conversion::qt_runtime::qa::
+                                map_coverage_bootstrap_scene(
+                                    row_startup_state, scene, category, runtime);
+                        });
             }
             // This route starts at the field-ready boundary emitted after a
             // completed New Game intro. Exercise the source handoff state

@@ -161,6 +161,20 @@ inline std::optional<std::uint32_t> map_coverage_event(
         trigger.substr(start, end == std::string_view::npos ? end : end - start)));
 }
 
+inline std::optional<std::uint32_t> map_coverage_trigger_number(
+    std::string_view trigger, const std::string_view name) {
+    std::string marker(name);
+    marker.push_back('=');
+    const auto marker_start = trigger.find(marker);
+    if (marker_start == std::string_view::npos) {
+        return std::nullopt;
+    }
+    const auto start = marker_start + marker.size();
+    const auto end = trigger.find(';', start);
+    return map_coverage_number(trigger.substr(
+        start, end == std::string_view::npos ? end : end - start));
+}
+
 inline std::optional<std::uint16_t> map_coverage_scene(
     std::string_view scene) {
     const auto value = map_coverage_number(scene);
@@ -362,6 +376,26 @@ inline std::optional<std::uint8_t> map_coverage_rom_bank(
     return static_cast<std::uint8_t>(digit - '0');
 }
 
+inline std::optional<std::string> map_coverage_side_hint(
+    std::string_view trigger, const std::string_view name) {
+    std::string marker = ";";
+    marker.append(name);
+    marker.push_back('=');
+    const auto start_marker = trigger.find(marker);
+    if (start_marker == std::string_view::npos) {
+        return std::nullopt;
+    }
+    const auto start = start_marker + marker.size();
+    const auto end = trigger.find(';', start);
+    const auto side = trigger.substr(
+        start, end == std::string_view::npos ? end : end - start);
+    if (side == "north" || side == "east" || side == "south" ||
+        side == "west") {
+        return std::string(side);
+    }
+    return std::nullopt;
+}
+
 inline std::uint8_t map_coverage_script_prompt_button(
     std::string_view script) {
     if (script == "0x053F98" || script == "0x020484") {
@@ -389,31 +423,59 @@ inline MapCoverageAttempt map_coverage_drive_rect(
     MapCoverageAttempt result;
     result.setup = true;
     const auto starting_scene = runtime.field_scene_reference_for_dump();
+    std::uint32_t frames_used = 0U;
+    bool elevator_cooldown_ready = true;
+    if (row_category == "elevator") {
+        while (runtime.world_activity_request_timeout_for_dump() != 0U &&
+               frames_used < 60U) {
+            runtime.set_controller_nibble(0U);
+            runtime.advance_frame();
+            ++frames_used;
+        }
+        elevator_cooldown_ready =
+            runtime.world_activity_request_timeout_for_dump() == 0U;
+        if (!elevator_cooldown_ready) {
+            result.note = "prior world activity did not release within the source 60-frame cooldown";
+        }
+    }
+    if (row_category == "elevator" && source_scene == 26U) {
+        // Match the scene-26 elevator QA's post-entry walk checkpoint after
+        // its real scene-2 event-1 route has loaded the destination.
+        runtime.set_field_entity_world_position_for_dump(0x0A00U, 0x0500U);
+        runtime.set_field_camera_world_position_for_dump(0x0200U, 0U);
+        runtime.set_field_entity_heading_for_dump(0U);
+    }
     if (trigger.find("camX>=0x1400") != std::string_view::npos) {
         runtime.set_field_camera_world_position_for_dump(0x1400U, 0U);
     } else if (trigger.find("camX<0x1400") != std::string_view::npos) {
         runtime.set_field_camera_world_position_for_dump(0x1300U, 0U);
     }
-    const auto direction = approach_side.empty()
-        ? map_coverage_direction(runtime, rect)
-        : map_coverage_position_on_side(runtime, rect, approach_side);
+    const auto direction = row_category == "elevator"
+        ? static_cast<std::uint8_t>(0x01U)
+        : approach_side.empty()
+            ? map_coverage_direction(runtime, rect)
+            : map_coverage_position_on_side(runtime, rect, approach_side);
     result.approach_side = std::string(approach_side);
-    const auto target_floor = trigger.find("floor=");
-    const auto target_cursor = trigger.find("input_cursor=");
-    const auto selector = target_floor != std::string_view::npos
-        ? map_coverage_number(trigger.substr(target_floor + 6U))
-        : (target_cursor != std::string_view::npos
-            ? map_coverage_number(trigger.substr(target_cursor + 13U))
-            : std::optional<std::uint32_t>{});
+    const auto target_floor = map_coverage_trigger_number(trigger, "floor");
+    const auto target_cursor = map_coverage_trigger_number(trigger, "input_cursor");
+    const auto selector = target_floor ? target_floor : target_cursor;
     bool selector_driven = false;
     bool selector_done = false;
     std::uint32_t near_rect_frames = 0U;
-    std::uint32_t frames_used = 0U;
     std::uint32_t prompt_inputs_used = 0U;
     const auto prompt_button = map_coverage_script_prompt_button(script);
     const bool script_stays_on_scene = prompt_button != 0U;
     std::uint16_t last_scene = starting_scene;
-    while (frames_used < frame_budget) {
+    if (row_category == "elevator" && source_scene >= 31U &&
+        source_scene <= 34U) {
+        for (std::uint8_t align = 0U; align < 6U; ++align) {
+            runtime.set_controller_nibble(0x08U);
+            runtime.advance_frame();
+            ++frames_used;
+        }
+        runtime.set_controller_nibble(0U);
+    }
+    while (frames_used < frame_budget && elevator_cooldown_ready) {
         const auto position = runtime.field_entity_world_position();
         const bool in_rect = position.x >= rect.x0 && position.x <= rect.x1 &&
                              position.y >= rect.y0 && position.y <= rect.y1;
@@ -422,10 +484,12 @@ inline MapCoverageAttempt map_coverage_drive_rect(
             ++near_rect_frames;
         }
         const auto before_event = runtime.field_mode_event_code_for_dump();
-        const auto port = !result.trigger_seen && near_rect &&
+        const auto port = row_category == "elevator"
+            ? (selector_driven ? 0U : direction)
+            : !result.trigger_seen && near_rect &&
                                   (near_rect_frames % 8U == 1U)
-            ? 0x40U
-            : (result.trigger_seen ? 0U : direction);
+                ? 0x40U
+                : (result.trigger_seen ? 0U : direction);
         const auto probe_before = runtime.field_collision_probe_state_for_dump();
         const bool door_already_fired = result.transition_fired;
         runtime.set_controller_port_byte(port);
@@ -498,8 +562,95 @@ inline MapCoverageAttempt map_coverage_drive_rect(
             break;
         }
         if (result.trigger_seen && !selector_driven &&
-            ((row_category == "elevator" && selector.has_value()) ||
-             trigger.find("Call Taxi menu") != std::string_view::npos ||
+            row_category == "elevator" && selector.has_value() &&
+            runtime.elevator_selector_open_for_dump()) {
+            selector_driven = true;
+            runtime.set_controller_port_byte(0U);
+            const auto wait_frames = [&](const std::uint32_t count) {
+                if (count > frame_budget - frames_used) {
+                    return false;
+                }
+                for (std::uint32_t wait = 0U; wait < count; ++wait) {
+                    runtime.advance_frame();
+                    ++frames_used;
+                    if (runtime.field_scene_reference_for_dump() !=
+                        starting_scene) {
+                        return false;
+                    }
+                }
+                return true;
+            };
+            // The source route releases the opening input, lets the selector
+            // settle, then drives the selected floor through the same inputs
+            // as the scene-26/group QA routes.
+            bool selector_sequence_ready = wait_frames(31U);
+            const auto current_floor = map_coverage_trigger_number(
+                trigger, "current_floor");
+            const auto actual_current_floor = static_cast<std::uint32_t>(
+                runtime.elevator_selector_current_floor_for_dump());
+            const auto target_floor = *selector;
+            if (!current_floor || actual_current_floor != *current_floor ||
+                target_floor >= 6U || !runtime.elevator_selector_open_for_dump()) {
+                selector_sequence_ready = false;
+                result.note = "selector opened at a floor different from its ROM group";
+            }
+            if (selector_sequence_ready) {
+                if (frames_used + 2U > frame_budget) {
+                    selector_sequence_ready = false;
+                } else {
+                    map_coverage_tap(runtime, 0x20U); // source B selector input
+                    frames_used += 2U;
+                }
+            }
+            if (selector_sequence_ready) {
+                auto selected_floor = actual_current_floor;
+                while (selected_floor != target_floor) {
+                    const bool moving_up = selected_floor < target_floor;
+                    const auto next_floor = moving_up
+                        ? selected_floor + 1U : selected_floor - 1U;
+                    if (frames_used + 2U > frame_budget) {
+                        selector_sequence_ready = false;
+                        break;
+                    }
+                    map_coverage_tap(
+                        runtime, moving_up ? 0x01U : 0x02U);
+                    frames_used += 2U;
+                    if (runtime.elevator_selector_selected_floor_for_dump() !=
+                        next_floor ||
+                        !wait_frames(8U)) {
+                        selector_sequence_ready = false;
+                        result.note = "selector D-pad input did not select the next floor";
+                        break;
+                    }
+                    selected_floor = next_floor;
+                }
+            }
+            if (selector_sequence_ready &&
+                runtime.elevator_selector_selected_floor_for_dump() ==
+                    target_floor && frames_used + 2U <= frame_budget) {
+                const auto floor_distance = target_floor > actual_current_floor
+                    ? target_floor - actual_current_floor
+                    : actual_current_floor - target_floor;
+                map_coverage_tap(runtime, 0x40U); // source A starts the lift
+                frames_used += 2U;
+                const auto lift_wait = floor_distance * 17U * 8U - 1U;
+                if (wait_frames(lift_wait) &&
+                    !runtime.elevator_selector_animating_for_dump() &&
+                    runtime.elevator_selector_current_floor_for_dump() ==
+                        target_floor &&
+                    runtime.elevator_selector_selected_floor_for_dump() ==
+                        target_floor && frames_used + 2U <= frame_budget) {
+                    map_coverage_tap(runtime, 0x80U); // source Start commits
+                    frames_used += 2U;
+                    selector_done = true;
+                } else {
+                    result.note = "selector lift did not settle at the ROM floor";
+                }
+            } else if (selector_sequence_ready) {
+                result.note = "selector floor could not be confirmed within the frame budget";
+            }
+        } else if (result.trigger_seen && !selector_driven &&
+            (trigger.find("Call Taxi menu") != std::string_view::npos ||
              trigger.find("menu=Vid-Phone") != std::string_view::npos)) {
             selector_driven = true;
             const bool taxi_route =
@@ -515,8 +666,7 @@ inline MapCoverageAttempt map_coverage_drive_rect(
                     ++frames_used;
                 }
             }
-            const auto steps = row_category == "elevator" && selector
-                ? *selector : (vid_phone ? 1U : (selector ? *selector : 0U));
+            const auto steps = vid_phone ? 1U : (selector ? *selector : 0U);
             for (std::uint32_t tap = 0U;
                  tap < steps && frames_used + 2U <= frame_budget; ++tap) {
                 map_coverage_tap(runtime, 0x02U);
@@ -561,9 +711,35 @@ inline MapCoverageAttempt map_coverage_drive_rect(
          row_category == "bexit")) {
         result.approach_side = "nearest";
     }
-    if (!result.trigger_seen) {
+    if (result.note.empty() && !result.trigger_seen &&
+        row_category == "elevator") {
+        const auto movement = runtime.last_field_movement_transition_for_dump();
+        const auto position = runtime.field_entity_world_position();
+        result.note = "elevator selector absent;position=" +
+            map_coverage_hex(position.x) + "," + map_coverage_hex(position.y) +
+            ";mode_event=" + map_coverage_hex(
+                runtime.field_mode_event_code_for_dump()) +
+            ";collision=" + map_coverage_hex(
+                runtime.field_terrain_collision_code_for_dump()) +
+            ";movement_event=" + map_coverage_hex(
+                static_cast<std::uint8_t>(movement.event_code)) +
+            ";activity_timeout=" + std::to_string(
+                runtime.world_activity_request_timeout_for_dump());
+    } else if (result.note.empty() && row_category == "elevator" && selector_done &&
+               !result.transition_fired) {
+        result.note = "selector confirmed without a scene handoff;current=" +
+            std::to_string(runtime.elevator_selector_current_floor_for_dump()) +
+            ";selected=" + std::to_string(
+                runtime.elevator_selector_selected_floor_for_dump()) +
+            ";selector_open=" + std::to_string(
+                runtime.elevator_selector_open_for_dump()) +
+            ";transition_phase=" + std::to_string(static_cast<unsigned>(
+                runtime.elevator_scene_transition_phase_for_dump())) +
+            ";pending=" + std::to_string(
+                runtime.field_transition_pending_for_dump());
+    } else if (result.note.empty() && !result.trigger_seen) {
         result.note = "controller input did not produce the ROM event";
-    } else if (selector.has_value() && !selector_done) {
+    } else if (result.note.empty() && selector.has_value() && !selector_done) {
         result.note = "menu selector did not reach its ROM option";
     }
     return result;
@@ -679,9 +855,51 @@ inline std::string map_coverage_sanitize(std::string value) {
 }
 
 template <typename StartupState>
+inline bool map_coverage_bootstrap_scene(
+    const StartupState& startup_state, const std::uint16_t scene,
+    const std::string_view category, FieldSceneRuntime& runtime) {
+    if (category != "elevator") {
+        return runtime.bootstrap_for_scene_dump(startup_state, scene);
+    }
+    if (!startup_state.field_session_source_assets.has_value() ||
+        !startup_state.joshua_selection.has_value()) {
+        return false;
+    }
+    const auto scene_input = integration::make_field_scene_input(
+        *startup_state.field_session_source_assets, scene);
+    if (!scene_input.has_value()) {
+        return false;
+    }
+
+    // The elevator route QAs bootstrap from the scene's restored descriptor
+    // position and camera. Reuse that typed setup so the physical event is
+    // reached through ordinary movement rather than by placing the runner at
+    // the collision rectangle.
+    auto scene_startup_state = startup_state;
+    shadowrun::ghidra_conversion::SaveFieldRestoreState descriptor_spawn{};
+    descriptor_spawn.world_mode = scene;
+    descriptor_spawn.camera_x = static_cast<std::uint16_t>(
+        scene_input->source_metadata.initial_camera_x_fixed);
+    descriptor_spawn.camera_y = static_cast<std::uint16_t>(
+        scene_input->source_metadata.initial_camera_y_fixed);
+    for (std::size_t slot = 0U;
+         slot < descriptor_spawn.runner_positions.size(); ++slot) {
+        const auto& spawn = scene_input->source_metadata.initial_field_records[slot];
+        descriptor_spawn.runner_positions[slot] =
+            shadowrun::ghidra_conversion::RestoredRunnerPosition{
+                spawn.x, spawn.y};
+    }
+    descriptor_spawn.roster.default_record.bytes =
+        startup_state.joshua_selection->live_joshua_record;
+    descriptor_spawn.active_runner_slot = 0U;
+    scene_startup_state.restored_field_state = std::move(descriptor_spawn);
+    return runtime.bootstrap_for_scene_dump(scene_startup_state, scene);
+}
+
+template <typename StartupState, typename BootstrapRow>
 inline int run_map_coverage_qa(
     const StartupState& startup_state, const std::filesystem::path& rows_path,
-    const std::filesystem::path& results_path) {
+    const std::filesystem::path& results_path, BootstrapRow&& bootstrap_row) {
     const auto rows = map_coverage_read_rows(rows_path);
     if (rows.empty()) {
         std::cerr << "map coverage: row input is empty or malformed\n";
@@ -780,21 +998,47 @@ inline int run_map_coverage_qa(
                     (row.category == "travel" && expected_event &&
                      *expected_event == 0x1FU);
                 if (side_sensitive_row && rect) {
+                    const auto baseline_approach_side = map_coverage_side_hint(
+                        row.trigger, "baseline_approach_side");
+                    const auto baseline_entry_side = map_coverage_side_hint(
+                        row.trigger, "baseline_entry_side");
                     if (row.category == "bexit" && paired_entry) {
                         const auto entry_rect = map_coverage_rect(paired_entry->trigger);
                         if (entry_rect) {
-                            approach_probe = map_coverage_probe_bexit_sides(
-                                startup_state, *paired_entry, row, *source_scene,
-                                *entry_rect, *rect);
+                            if (baseline_entry_side && baseline_approach_side &&
+                                map_coverage_side_possible(
+                                    *entry_rect, *baseline_entry_side) &&
+                                map_coverage_side_possible(
+                                    *rect, *baseline_approach_side)) {
+                                // A recorded passing approach already fixed
+                                // both sides; the actual row run below still
+                                // repeats the entrance and exit checks.
+                                approach_probe.entry_passed = true;
+                                approach_probe.entry_side =
+                                    *baseline_entry_side;
+                                approach_probe.approach_side =
+                                    *baseline_approach_side;
+                            } else {
+                                approach_probe = map_coverage_probe_bexit_sides(
+                                    startup_state, *paired_entry, row,
+                                    *source_scene, *entry_rect, *rect);
+                            }
                             bexit_entrance_passed = approach_probe.entry_passed;
                             selected_entry_side = approach_probe.entry_side;
                         }
                     } else if (row.category != "bexit") {
-                        auto approach_row = row;
-                        approach_row.trigger = physical_trigger;
-                        approach_probe = map_coverage_probe_approach_sides(
-                            startup_state, approach_row, *source_scene, *rect,
-                            expected_event);
+                        if (baseline_approach_side &&
+                            map_coverage_side_possible(
+                                *rect, *baseline_approach_side)) {
+                            approach_probe.approach_side =
+                                *baseline_approach_side;
+                        } else {
+                            auto approach_row = row;
+                            approach_row.trigger = physical_trigger;
+                            approach_probe = map_coverage_probe_approach_sides(
+                                startup_state, approach_row, *source_scene,
+                                *rect, expected_event);
+                        }
                     }
                     selected_approach_side = approach_probe.approach_side;
                     if (selected_approach_side.empty()) {
@@ -818,8 +1062,19 @@ inline int run_map_coverage_qa(
                         }
                     }
                 }
-                FieldSceneRuntime runtime([](std::string_view) {});
-                if (runtime.bootstrap_for_scene_dump(startup_state, bootstrap_scene)) {
+                std::vector<std::uint16_t> field_audio_events;
+                std::vector<std::string> source_boundaries;
+                FieldSceneRuntime runtime(
+                    [&source_boundaries](const std::string_view boundary) {
+                        source_boundaries.emplace_back(boundary);
+                    },
+                    [&field_audio_events](const std::uint16_t event) {
+                        field_audio_events.push_back(event);
+                    });
+                if (bootstrap_row(
+                        startup_state, bootstrap_scene, row.category, runtime,
+                        results_path.parent_path(), field_audio_events,
+                        source_boundaries)) {
                     attempt.setup = true;
                     bool source_ready = true;
                     if (bexit_entry != std::string::npos) {
@@ -920,10 +1175,25 @@ inline int run_map_coverage_qa(
                         attempt.observed_mode = runtime.field_interaction_mode_for_dump();
                         attempt.frames_used = 600U;
                     } else {
+                        std::uint32_t frame_budget = 600U;
+                        if (row.category == "elevator") {
+                            const auto current_floor =
+                                map_coverage_trigger_number(
+                                    physical_trigger, "current_floor");
+                            const auto target_floor =
+                                map_coverage_trigger_number(
+                                    physical_trigger, "floor");
+                            if (current_floor && target_floor) {
+                                const auto distance = *current_floor > *target_floor
+                                    ? *current_floor - *target_floor
+                                    : *target_floor - *current_floor;
+                                frame_budget += distance * 17U * 8U;
+                            }
+                        }
                         const auto remaining_frames = row.category == "bexit"
-                            ? (attempt.frames_used < 600U
-                                  ? 600U - attempt.frames_used : 0U)
-                            : 600U;
+                            ? (attempt.frames_used < frame_budget
+                                  ? frame_budget - attempt.frames_used : 0U)
+                            : frame_budget;
                         const auto driven = map_coverage_drive_rect(
                             runtime, startup_state, *source_scene, *rect,
                             expected_event, remaining_frames, row.category,

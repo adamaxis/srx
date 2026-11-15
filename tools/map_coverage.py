@@ -382,6 +382,10 @@ def build_rows(rom_path: Path) -> list[dict[str, str]]:
                     for index in range(max_floor + 1)]
         if any(child >= SCENE_COUNT for child in children):
             continue
+        try:
+            current_floor = children.index(scene)
+        except ValueError:
+            continue
         address = int(item["record"])
         x0, x1, y0, y1 = item["bounds"]  # type: ignore[misc]
         for floor, destination in enumerate(children):
@@ -392,7 +396,8 @@ def build_rows(rom_path: Path) -> list[dict[str, str]]:
                 f"elevator-s{scene:02x}-r{address:06x}-floor{floor}",
                 scene, "elevator",
                 f"0x{address:06X};group=0x{group:06X};consume=0x0167AE>0x58DE0>0x16A8E",
-                f"rect:x={x0}..{x1},y={y0}..{y1};event=0x1D;floor={floor}",
+                f"rect:x={x0}..{x1},y={y0}..{y1};event=0x1D;floor={floor};"
+                f"current_floor={current_floor};return_side={return_sides.get(address, 'unknown')}",
                 f"FFDF40={scene_mode(scene)}",
                 destination, "scene-entry ROM position not resolved by this record",
                 scene_mode(scene),
@@ -708,6 +713,8 @@ def self_test(rows: list[dict[str, str]]) -> None:
     assert "door-s07-r1b459c" not in by_id
     assert "cave-room01-north-r1b459c" in by_id
     assert "elevator-s1a-r1d9d6a-floor0" not in by_id
+    elevator = by_id["elevator-s1a-r1d9d6a-floor1"]
+    assert "floor=1;current_floor=0;return_side=south" in elevator["trigger"]
 
 
 def write_rows(path: Path, rows: list[dict[str, str]]) -> None:
@@ -889,7 +896,8 @@ def run_qa(args: argparse.Namespace, rows: list[dict[str, str]]) -> int:
     if not baseline:
         print(f"map coverage: baseline {args.baseline} is empty", file=sys.stderr)
         return 2
-    selected = [row for row in rows if row["category"] in RUNTIME_CATEGORIES]
+    selected = [dict(row) for row in rows
+                if row["category"] in RUNTIME_CATEGORIES]
     if args.only_baseline_pass:
         selected = [row for row in selected
                     if baseline.get(row["row_id"], {}).get("status") == "PASS"]
@@ -901,6 +909,23 @@ def run_qa(args: argparse.Namespace, rows: list[dict[str, str]]) -> int:
     if not selected:
         print("map coverage: no rows selected", file=sys.stderr)
         return 2
+    for row in selected:
+        # Only a row that PASSed with a recorded side may skip the side probe;
+        # every other row still probes all sides. The row's checks are unchanged.
+        prior = baseline.get(row["row_id"], {})
+        if prior.get("status") != "PASS":
+            continue
+        prior_diff = prior.get("diff", "")
+        for source_name, hint_name in (
+            ("approach_side", "baseline_approach_side"),
+            ("entry_side", "baseline_entry_side"),
+        ):
+            match = re.search(
+                rf"(?:^|;){source_name}=(north|east|south|west)(?:;|$)",
+                prior_diff,
+            )
+            if match:
+                row["trigger"] += f";{hint_name}={match.group(1)}"
     args.out_dir.mkdir(parents=True, exist_ok=True)
     rows_path = args.out_dir / "rows.tsv"
     results_path = args.out_dir / "results.tsv"

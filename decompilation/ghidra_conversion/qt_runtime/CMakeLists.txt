@@ -205,18 +205,31 @@ add_test(NAME shadowrun_map_coverage_rows_drift
         --rom "${CMAKE_CURRENT_SOURCE_DIR}/../../input/shadowrun_genesis_us.bin"
         --rows "${SRX_MAP_COVERAGE_FIXTURES}/rows.tsv"
         --self-test --check-drift)
-add_test(NAME shadowrun_ghidra_conversion_qt_map_coverage_pass_qa
-    COMMAND "${Python3_EXECUTABLE}" "${SRX_MAP_COVERAGE_TOOL}"
-        --rom "${CMAKE_CURRENT_SOURCE_DIR}/../../input/shadowrun_genesis_us.bin"
-        --rows "${SRX_MAP_COVERAGE_FIXTURES}/rows.tsv"
-        --baseline "${SRX_MAP_COVERAGE_FIXTURES}/baseline_results.tsv"
-        --run-qa "$<TARGET_FILE:shadowrun_ghidra_conversion_qt_qa>"
-        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
-        --out-dir "${CMAKE_CURRENT_BINARY_DIR}/map-coverage-pass-qa"
-        --only-baseline-pass)
-set_tests_properties(shadowrun_ghidra_conversion_qt_map_coverage_pass_qa
-    PROPERTIES LABELS "map_coverage"
-               ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy")
+# The baseline-PASS rerun is split into two shards so each fits the default
+# ctest timeout and they run in parallel under -j; together they still rerun
+# every baseline PASS row.
+foreach(_srx_mc_shard IN ITEMS core elevator)
+    if(_srx_mc_shard STREQUAL "core")
+        set(_srx_mc_name shadowrun_ghidra_conversion_qt_map_coverage_pass_qa)
+        set(_srx_mc_categories "edge,door,bexit,cave,travel")
+    else()
+        set(_srx_mc_name shadowrun_ghidra_conversion_qt_map_coverage_pass_elevator_qa)
+        set(_srx_mc_categories "elevator")
+    endif()
+    add_test(NAME ${_srx_mc_name}
+        COMMAND "${Python3_EXECUTABLE}" "${SRX_MAP_COVERAGE_TOOL}"
+            --rom "${CMAKE_CURRENT_SOURCE_DIR}/../../input/shadowrun_genesis_us.bin"
+            --rows "${SRX_MAP_COVERAGE_FIXTURES}/rows.tsv"
+            --baseline "${SRX_MAP_COVERAGE_FIXTURES}/baseline_results.tsv"
+            --run-qa "$<TARGET_FILE:shadowrun_ghidra_conversion_qt_qa>"
+            --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+            --out-dir "${CMAKE_CURRENT_BINARY_DIR}/map-coverage-pass-qa-${_srx_mc_shard}"
+            --categories "${_srx_mc_categories}"
+            --only-baseline-pass)
+    set_tests_properties(${_srx_mc_name}
+        PROPERTIES LABELS "map_coverage"
+                   ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy")
+endforeach()
 # The full matrix takes ~18 minutes, so it is opt-in:
 #   cmake -DSRX_MAP_COVERAGE_FULL=ON . && ctest -L map_coverage_full
 # Narrow a run with: tools/map_coverage.py --run-qa <qa exe> --match <regex>.

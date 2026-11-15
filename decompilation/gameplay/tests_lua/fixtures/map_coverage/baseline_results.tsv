@@ -1,135 +1,135 @@
 row_id	category	attempted	status	observed_event	transition_fired	dest_scene	arrival_xy	arrival_mode	diff
-edge-s00-r0d57fa-camXlt0x1400	edge	1	PASS	0x10	1	3	0x7880,0x2B00	0	observed route matches all resolved ROM outputs;approach_sides_tried=east;approach_side=east
-edge-s00-r0d5804-camXlt0x1400	edge	1	PASS	0x10	1	3	0x7880,0x2B00	0	observed route matches all resolved ROM outputs;approach_sides_tried=east;approach_side=east
-edge-s00-r0d580e-camXlt0x1400	edge	1	PASS	0x10	1	3	0x7880,0x2B00	0	observed route matches all resolved ROM outputs;approach_sides_tried=east;approach_side=east
-edge-s00-r0d5818-camXlt0x1400	edge	1	PASS	0x10	1	3	0x7880,0x2B00	0	observed route matches all resolved ROM outputs;approach_sides_tried=east;approach_side=east
-edge-s00-r0d5822-camXlt0x1400	edge	1	PASS	0x10	1	3	0x7880,0x2B00	0	observed route matches all resolved ROM outputs;approach_sides_tried=east;approach_side=east
-edge-s00-r0d582c-camXgteq0x1400	edge	1	PASS	0x10	1	5	0x600,0x3A00	0	observed route matches all resolved ROM outputs;approach_sides_tried=west;approach_side=west
-edge-s00-r0d5836-camXgteq0x1400	edge	1	PASS	0x10	1	5	0x600,0x3A00	0	observed route matches all resolved ROM outputs;approach_sides_tried=west;approach_side=west
-edge-s03-r18abfa-sceneeq3	edge	1	PASS	0x10	1	0	0x300,0x2A80	0	observed route matches all resolved ROM outputs;approach_sides_tried=west;approach_side=west
-edge-s03-r18ac04-sceneeq3	edge	1	PASS	0x10	1	0	0x300,0x2A80	0	observed route matches all resolved ROM outputs;approach_sides_tried=west;approach_side=west
-edge-s03-r18ac0e-sceneeq3	edge	1	PASS	0x10	1	0	0x300,0x2A80	0	observed route matches all resolved ROM outputs;approach_sides_tried=west;approach_side=west
-edge-s03-r18ac18-sceneeq3	edge	1	PASS	0x10	1	0	0x300,0x2A80	0	observed route matches all resolved ROM outputs;approach_sides_tried=west;approach_side=west
-edge-s03-r18ac22-sceneeq3	edge	1	PASS	0x10	1	0	0x300,0x2A80	0	observed route matches all resolved ROM outputs;approach_sides_tried=west;approach_side=west
-edge-s05-r067c72-sceneeq5	edge	1	PASS	0x10	1	0	0x7400,0x2C00	0	observed route matches all resolved ROM outputs;approach_sides_tried=east;approach_side=east
-edge-s05-r067c7c-sceneeq5	edge	1	PASS	0x10	1	0	0x7400,0x2C00	0	observed route matches all resolved ROM outputs;approach_sides_tried=east;approach_side=east
-door-s00-r0d5796	door	1	PASS	0x6	1	10	0xF00,0xCC0	1	observed route matches all resolved ROM outputs;approach_sides_tried=south;approach_side=south;script=0x01FFA0;door_lead=0x20FF,0x87F;facing=N;rom_bank=2;FFDE26=0x20FF,0x9BF
-door-s00-r0d57aa	door	1	PASS	0x5	1	21	0x6AFF,0x857	2	observed route matches all resolved ROM outputs;approach_sides_tried=south;approach_side=south;script=0x020656;door_lead=0x6AFF,0x87F;facing=N;rom_bank=2;FFDE26=0x6AFF,0x9BF
-door-s00-r0d57b4	door	1	PASS	0x4	1	30	0x10FF,0x2A57	2	observed route matches all resolved ROM outputs;approach_sides_tried=south;approach_side=south;script=0x020640;door_lead=0x10FF,0x2A7F;facing=N;rom_bank=2;FFDE26=0x10FF,0x2BBF
-door-s00-r0d57be	door	1	PASS	0x2	1	18	0xF00,0xD00	1	observed route matches all resolved ROM outputs;approach_sides_tried=south;approach_side=south;script=0x01FEEE;door_lead=0x40FF,0x2A7F;facing=N;rom_bank=2;FFDE26=0x40FF,0x2BBF
-door-s00-r0d57c8	door	1	PASS	0x7	1	21	0x4FF,0x3857	2	observed route matches all resolved ROM outputs;approach_sides_tried=south;approach_side=south;script=0x01FFE6;door_lead=0x4FF,0x387F;facing=N;rom_bank=2;FFDE26=0x4FF,0x39BF
-door-s00-r0d57d2	door	1	PASS	0x8	1	50	0x1900,0x4280	3	observed route matches all resolved ROM outputs;approach_sides_tried=south;approach_side=south;script=0x020024;door_lead=0x24FF,0x387F;facing=N;rom_bank=2;FFDE26=0x24FF,0x39BF
-door-s00-r0d57dc	door	1	PASS	0x9	1	51	0x3300,0x4280	3	observed route matches all resolved ROM outputs;approach_sides_tried=south;approach_side=south;script=0x020030;door_lead=0x46FF,0x387F;facing=N;rom_bank=2;FFDE26=0x46FF,0x39BF
-door-s00-r0d57f0	door	1	PASS	0x1	1	12	0x600,0xCC0	1	observed route matches all resolved ROM outputs;approach_sides_tried=south;approach_side=south;script=0x01FE98;door_lead=0x6AFF,0x2A7F;facing=N;rom_bank=2;FFDE26=0x6AFF,0x2BBF
-door-s01-r17d998	door	1	PASS	0x8	1	50	0x1900,0x4280	3	observed route matches all resolved ROM outputs;approach_sides_tried=south;approach_side=south;script=0x020406;door_lead=0xAFF,0xC7F;facing=N;rom_bank=2;FFDE26=0xAFF,0xDBF
-door-s01-r17d9a2	door	1	PASS	0x7	0	1	0x2EFF,0xC57	0	ROM script 0x05448A handled the event without generic door transition;approach_sides_tried=south;approach_side=south;script=0x05448A;prompt=B;prompt_inputs=1;door_lead=0x2EFF,0xC7F;facing=N;rom_bank=2;FFDE26=0x2EFF,0xDBF
-door-s01-r17d9c0	door	1	PASS	0x4	1	15	0x500,0xBC0	1	observed route matches all resolved ROM outputs;approach_sides_tried=south;approach_side=south;script=0x02038A;door_lead=0x32FF,0x227F;facing=N;rom_bank=2;FFDE26=0x32FF,0x23BF
-door-s01-r17d9ca	door	1	PASS	0x2	1	26	0x50FF,0x2457	2	observed route matches all resolved ROM outputs;approach_sides_tried=south;approach_side=south;script=0x0206C6;door_lead=0x50FF,0x247F;facing=N;rom_bank=2;FFDE26=0x50FF,0x25BF
-door-s01-r17d9f2	door	1	PASS	0xA	1	51	0x3300,0x4280	3	observed route matches all resolved ROM outputs;approach_sides_tried=south;approach_side=south;script=0x020412;door_lead=0x6FF,0x527F;facing=N;rom_bank=2;FFDE26=0x6FF,0x53BF
-door-s01-r17d9fc	door	1	PASS	0x9	1	13	0x2AFF,0x5057	1	observed route matches all resolved ROM outputs;approach_sides_tried=south;approach_side=south;script=0x0203C8;door_lead=0x2AFF,0x507F;facing=N;rom_bank=2;FFDE26=0x2AFF,0x51BF
-door-s01-r17da06	door	1	PASS	0x9	1	13	0x32FF,0x5057	1	observed route matches all resolved ROM outputs;approach_sides_tried=south;approach_side=south;script=0x0203C8;door_lead=0x32FF,0x507F;facing=N;rom_bank=2;FFDE26=0x32FF,0x51BF
-door-s01-r17da10	door	1	PASS	0xB	1	52	0x2700,0x2500	3	observed route matches all resolved ROM outputs;approach_sides_tried=south;approach_side=south;door_lead=0x50FF,0x527F;facing=N;rom_bank=2;FFDE26=0x50FF,0x53BF
-door-s02-r1730fc	door	1	PASS	0x4	0	2	0x1CFF,0xA57	0	ROM script 0x020484 handled the event without generic door transition;approach_sides_tried=south;approach_side=south;script=0x020484;prompt=A;prompt_inputs=1;door_lead=0x1CFF,0xA7F;facing=N;rom_bank=2;FFDE26=0x1CFF,0xBBF
-door-s02-r173106	door	1	PASS	0x5	1	19	0xD00,0xCC0	1	observed route matches all resolved ROM outputs;approach_sides_tried=south;approach_side=south;script=0x0204CA;door_lead=0x2CFF,0xA7F;facing=N;rom_bank=2;FFDE26=0x2CFF,0xBBF
-door-s02-r173110	door	1	PASS	0x6	0	2	0x52FF,0x657	0	ROM script 0x053F98 handled the event without generic door transition;approach_sides_tried=south;approach_side=south;script=0x053F98;prompt=A;prompt_inputs=1;door_lead=0x52FF,0x67F;facing=N;rom_bank=2;FFDE26=0x52FF,0x7BF
-door-s02-r17311a	door	1	PASS	0x8	1	52	0x2700,0x2500	3	observed route matches all resolved ROM outputs;approach_sides_tried=south;approach_side=south;script=0x020592;door_lead=0x70FF,0xA7F;facing=N;rom_bank=2;FFDE26=0x70FF,0xBBF
-door-s02-r173156	door	1	PASS	0x9	1	26	0x68FF,0x4A57	2	observed route matches all resolved ROM outputs;approach_sides_tried=south;approach_side=south;script=0x020554;door_lead=0x68FF,0x4A7F;facing=N;rom_bank=2;FFDE26=0x68FF,0x4BBF
-door-s02-r173160	door	1	PASS	0x3	1	26	0x44FF,0x4C57	2	observed route matches all resolved ROM outputs;approach_sides_tried=south;approach_side=south;script=0x020446;door_lead=0x44FF,0x4C7F;facing=N;rom_bank=2;FFDE26=0x44FF,0x4DBF
-door-s02-r17316a	door	1	PASS	0x7	1	26	0x2EFF,0x4C57	2	observed route matches all resolved ROM outputs;approach_sides_tried=south;approach_side=south;script=0x0545D0;door_lead=0x2EFF,0x4C7F;facing=N;rom_bank=2;FFDE26=0x2EFF,0x4DBF
-door-s02-r173174	door	1	PASS	0x7	1	26	0x1AFF,0x4657	2	observed route matches all resolved ROM outputs;approach_sides_tried=south;approach_side=south;script=0x0545D0;door_lead=0x1AFF,0x467F;facing=N;rom_bank=2;FFDE26=0x1AFF,0x47BF
-door-s03-r18ab8c	door	1	PASS	0x3	1	30	0x2CFF,0xC57	2	observed route matches all resolved ROM outputs;approach_sides_tried=south;approach_side=south;script=0x053BE8;door_lead=0x2CFF,0xC7F;facing=N;rom_bank=2;FFDE26=0x2CFF,0xDBF
-door-s03-r18ab96	door	1	PASS	0x6	1	41	0x70FF,0x657	2	observed route matches all resolved ROM outputs;approach_sides_tried=south;approach_side=south;script=0x0206A4;door_lead=0x70FF,0x67F;facing=N;rom_bank=2;FFDE26=0x70FF,0x7BF
-door-s03-r18aba0	door	1	PASS	0x2	1	21	0x8FF,0x1657	2	observed route matches all resolved ROM outputs;approach_sides_tried=south;approach_side=south;script=0x05416E;door_lead=0x8FF,0x167F;facing=N;rom_bank=2;FFDE26=0x8FF,0x17BF
-door-s03-r18abaa	door	1	PASS	0x5	1	11	0x500,0xC20	1	observed route matches all resolved ROM outputs;approach_sides_tried=south;approach_side=south;script=0x020226;door_lead=0x26FF,0x247F;facing=N;rom_bank=2;FFDE26=0x26FF,0x25BF
-door-s03-r18abbe	door	1	PASS	0x4	1	13	0x4CFF,0x3C57	1	observed route matches all resolved ROM outputs;approach_sides_tried=south;approach_side=south;script=0x0201E8;door_lead=0x4CFF,0x3C7F;facing=N;rom_bank=2;FFDE26=0x4CFF,0x3DBF
-door-s03-r18abd2	door	1	PASS	0x8	1	52	0x2700,0x2500	3	observed route matches all resolved ROM outputs;approach_sides_tried=south;approach_side=south;script=0x0202B6;door_lead=0x58FF,0x247F;facing=N;rom_bank=2;FFDE26=0x58FF,0x25BF
-door-s03-r18abdc	door	1	PASS	0x7	1	51	0x3300,0x4280	3	observed route matches all resolved ROM outputs;approach_sides_tried=south;approach_side=south;script=0x0202AA;door_lead=0x4EFF,0xC7F;facing=N;rom_bank=2;FFDE26=0x4EFF,0xDBF
-door-s03-r18abe6	door	1	PASS	0x7	1	51	0x3300,0x4280	3	observed route matches all resolved ROM outputs;approach_sides_tried=south;approach_side=south;script=0x0202AA;door_lead=0x50FF,0xC7F;facing=N;rom_bank=2;FFDE26=0x50FF,0xDBF
-door-s03-r18abf0	door	1	PASS	0x9	1	53	0x700,0x2200	3	observed route matches all resolved ROM outputs;approach_sides_tried=south;approach_side=south;script=0x0202C2;door_lead=0x78FF,0x1E7F;facing=N;rom_bank=2;FFDE26=0x78FF,0x1FBF
-door-s04-r15bdba	door	1	PASS	0x2	1	13	0xCFF,0x2257	1	observed route matches all resolved ROM outputs;approach_sides_tried=south;approach_side=south;script=0x0200A6;door_lead=0xCFF,0x227F;facing=N;rom_bank=2;FFDE26=0xCFF,0x23BF
-door-s04-r15bdc4	door	1	PASS	0x1	1	10	0xF00,0xCC0	1	observed route matches all resolved ROM outputs;approach_sides_tried=south;approach_side=south;script=0x020060;door_lead=0x2EFF,0x1E7F;facing=N;rom_bank=2;FFDE26=0x2EFF,0x1FBF
-door-s04-r15bde2	door	1	PASS	0x5	1	13	0x2A57,0x38D7	1	observed route matches all resolved ROM outputs;approach_sides_tried=east;approach_side=east;script=0x0200E4;door_lead=0x2A7F,0x38FF;facing=N;rom_bank=1;FFDE26=0x2C5F,0x38FF
-door-s05-r067c36	door	1	PASS	0x6	1	35	0x26FF,0xC57	2	observed route matches all resolved ROM outputs;approach_sides_tried=south;approach_side=south;script=0x054092;door_lead=0x26FF,0xC7F;facing=N;rom_bank=2;FFDE26=0x26FF,0xDBF
-door-s05-r067c68	door	1	PASS	0x1	1	16	0x900,0xCC0	1	observed route matches all resolved ROM outputs;approach_sides_tried=south;approach_side=south;script=0x0205B6;door_lead=0x56FF,0x367F;facing=N;rom_bank=2;FFDE26=0x56FF,0x37BF
-door-s06-r14c112	door	1	PASS	0x1	0	6	0x60FF,0x4057	0	ROM script 0x05432E handled the event without generic door transition;approach_sides_tried=south;approach_side=south;script=0x05432E;prompt=A;prompt_inputs=1;door_lead=0x60FF,0x407F;facing=N;rom_bank=2;FFDE26=0x60FF,0x41BF
-bexit-s0a-entry0d5796-r1d6178	bexit	1	PASS	0x6	1	0	0x20FF,0x9BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x20FF,0x87F;facing=N;rom_bank=2;FFDE26=0x20FF,0x9BF
-bexit-s0a-entry0d5796-r1d6182	bexit	1	PASS	0x6	1	0	0x20FF,0x9BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x20FF,0x87F;facing=N;rom_bank=2;FFDE26=0x20FF,0x9BF
-bexit-s0a-entry15bdc4-r1d6178	bexit	1	PASS	0x1	1	4	0x2EFF,0x1FBF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x2EFF,0x1E7F;facing=N;rom_bank=2;FFDE26=0x2EFF,0x1FBF
-bexit-s0a-entry15bdc4-r1d6182	bexit	1	PASS	0x1	1	4	0x2EFF,0x1FBF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x2EFF,0x1E7F;facing=N;rom_bank=2;FFDE26=0x2EFF,0x1FBF
-bexit-s0b-entry18abaa-r1d5af8	bexit	1	PASS	0x5	1	3	0x26FF,0x25BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x26FF,0x247F;facing=N;rom_bank=2;FFDE26=0x26FF,0x25BF
-bexit-s0b-entry18abaa-r1d5b02	bexit	1	PASS	0x5	1	3	0x26FF,0x25BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x26FF,0x247F;facing=N;rom_bank=2;FFDE26=0x26FF,0x25BF
-bexit-s0c-entry0d57f0-r1d604a	bexit	1	PASS	0x1	1	0	0x6AFF,0x2BBF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x6AFF,0x2A7F;facing=N;rom_bank=2;FFDE26=0x6AFF,0x2BBF
-bexit-s0c-entry0d57f0-r1d6054	bexit	1	PASS	0x1	1	0	0x6AFF,0x2BBF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x6AFF,0x2A7F;facing=N;rom_bank=2;FFDE26=0x6AFF,0x2BBF
+edge-s00-r0d57fa-camXlt0x1400	edge	1	PASS	0x10	1	3	0x7880,0x2B00	0	observed route matches all resolved ROM outputs;approach_side=east
+edge-s00-r0d5804-camXlt0x1400	edge	1	PASS	0x10	1	3	0x7880,0x2B00	0	observed route matches all resolved ROM outputs;approach_side=east
+edge-s00-r0d580e-camXlt0x1400	edge	1	PASS	0x10	1	3	0x7880,0x2B00	0	observed route matches all resolved ROM outputs;approach_side=east
+edge-s00-r0d5818-camXlt0x1400	edge	1	PASS	0x10	1	3	0x7880,0x2B00	0	observed route matches all resolved ROM outputs;approach_side=east
+edge-s00-r0d5822-camXlt0x1400	edge	1	PASS	0x10	1	3	0x7880,0x2B00	0	observed route matches all resolved ROM outputs;approach_side=east
+edge-s00-r0d582c-camXgteq0x1400	edge	1	PASS	0x10	1	5	0x600,0x3A00	0	observed route matches all resolved ROM outputs;approach_side=west
+edge-s00-r0d5836-camXgteq0x1400	edge	1	PASS	0x10	1	5	0x600,0x3A00	0	observed route matches all resolved ROM outputs;approach_side=west
+edge-s03-r18abfa-sceneeq3	edge	1	PASS	0x10	1	0	0x300,0x2A80	0	observed route matches all resolved ROM outputs;approach_side=west
+edge-s03-r18ac04-sceneeq3	edge	1	PASS	0x10	1	0	0x300,0x2A80	0	observed route matches all resolved ROM outputs;approach_side=west
+edge-s03-r18ac0e-sceneeq3	edge	1	PASS	0x10	1	0	0x300,0x2A80	0	observed route matches all resolved ROM outputs;approach_side=west
+edge-s03-r18ac18-sceneeq3	edge	1	PASS	0x10	1	0	0x300,0x2A80	0	observed route matches all resolved ROM outputs;approach_side=west
+edge-s03-r18ac22-sceneeq3	edge	1	PASS	0x10	1	0	0x300,0x2A80	0	observed route matches all resolved ROM outputs;approach_side=west
+edge-s05-r067c72-sceneeq5	edge	1	PASS	0x10	1	0	0x7400,0x2C00	0	observed route matches all resolved ROM outputs;approach_side=east
+edge-s05-r067c7c-sceneeq5	edge	1	PASS	0x10	1	0	0x7400,0x2C00	0	observed route matches all resolved ROM outputs;approach_side=east
+door-s00-r0d5796	door	1	PASS	0x6	1	10	0xF00,0xCC0	1	observed route matches all resolved ROM outputs;approach_side=south;script=0x01FFA0;door_lead=0x20FF,0x87F;facing=N;rom_bank=2;FFDE26=0x20FF,0x9BF
+door-s00-r0d57aa	door	1	PASS	0x5	1	21	0x6AFF,0x857	2	observed route matches all resolved ROM outputs;approach_side=south;script=0x020656;door_lead=0x6AFF,0x87F;facing=N;rom_bank=2;FFDE26=0x6AFF,0x9BF
+door-s00-r0d57b4	door	1	PASS	0x4	1	30	0x10FF,0x2A57	2	observed route matches all resolved ROM outputs;approach_side=south;script=0x020640;door_lead=0x10FF,0x2A7F;facing=N;rom_bank=2;FFDE26=0x10FF,0x2BBF
+door-s00-r0d57be	door	1	PASS	0x2	1	18	0xF00,0xD00	1	observed route matches all resolved ROM outputs;approach_side=south;script=0x01FEEE;door_lead=0x40FF,0x2A7F;facing=N;rom_bank=2;FFDE26=0x40FF,0x2BBF
+door-s00-r0d57c8	door	1	PASS	0x7	1	21	0x4FF,0x3857	2	observed route matches all resolved ROM outputs;approach_side=south;script=0x01FFE6;door_lead=0x4FF,0x387F;facing=N;rom_bank=2;FFDE26=0x4FF,0x39BF
+door-s00-r0d57d2	door	1	PASS	0x8	1	50	0x1900,0x4280	3	observed route matches all resolved ROM outputs;approach_side=south;script=0x020024;door_lead=0x24FF,0x387F;facing=N;rom_bank=2;FFDE26=0x24FF,0x39BF
+door-s00-r0d57dc	door	1	PASS	0x9	1	51	0x3300,0x4280	3	observed route matches all resolved ROM outputs;approach_side=south;script=0x020030;door_lead=0x46FF,0x387F;facing=N;rom_bank=2;FFDE26=0x46FF,0x39BF
+door-s00-r0d57f0	door	1	PASS	0x1	1	12	0x600,0xCC0	1	observed route matches all resolved ROM outputs;approach_side=south;script=0x01FE98;door_lead=0x6AFF,0x2A7F;facing=N;rom_bank=2;FFDE26=0x6AFF,0x2BBF
+door-s01-r17d998	door	1	PASS	0x8	1	50	0x1900,0x4280	3	observed route matches all resolved ROM outputs;approach_side=south;script=0x020406;door_lead=0xAFF,0xC7F;facing=N;rom_bank=2;FFDE26=0xAFF,0xDBF
+door-s01-r17d9a2	door	1	PASS	0x7	0	1	0x2EFF,0xC57	0	ROM script 0x05448A handled the event without generic door transition;approach_side=south;script=0x05448A;prompt=B;prompt_inputs=1;door_lead=0x2EFF,0xC7F;facing=N;rom_bank=2;FFDE26=0x2EFF,0xDBF
+door-s01-r17d9c0	door	1	PASS	0x4	1	15	0x500,0xBC0	1	observed route matches all resolved ROM outputs;approach_side=south;script=0x02038A;door_lead=0x32FF,0x227F;facing=N;rom_bank=2;FFDE26=0x32FF,0x23BF
+door-s01-r17d9ca	door	1	PASS	0x2	1	26	0x50FF,0x2457	2	observed route matches all resolved ROM outputs;approach_side=south;script=0x0206C6;door_lead=0x50FF,0x247F;facing=N;rom_bank=2;FFDE26=0x50FF,0x25BF
+door-s01-r17d9f2	door	1	PASS	0xA	1	51	0x3300,0x4280	3	observed route matches all resolved ROM outputs;approach_side=south;script=0x020412;door_lead=0x6FF,0x527F;facing=N;rom_bank=2;FFDE26=0x6FF,0x53BF
+door-s01-r17d9fc	door	1	PASS	0x9	1	13	0x2AFF,0x5057	1	observed route matches all resolved ROM outputs;approach_side=south;script=0x0203C8;door_lead=0x2AFF,0x507F;facing=N;rom_bank=2;FFDE26=0x2AFF,0x51BF
+door-s01-r17da06	door	1	PASS	0x9	1	13	0x32FF,0x5057	1	observed route matches all resolved ROM outputs;approach_side=south;script=0x0203C8;door_lead=0x32FF,0x507F;facing=N;rom_bank=2;FFDE26=0x32FF,0x51BF
+door-s01-r17da10	door	1	PASS	0xB	1	52	0x2700,0x2500	3	observed route matches all resolved ROM outputs;approach_side=south;door_lead=0x50FF,0x527F;facing=N;rom_bank=2;FFDE26=0x50FF,0x53BF
+door-s02-r1730fc	door	1	PASS	0x4	0	2	0x1CFF,0xA57	0	ROM script 0x020484 handled the event without generic door transition;approach_side=south;script=0x020484;prompt=A;prompt_inputs=1;door_lead=0x1CFF,0xA7F;facing=N;rom_bank=2;FFDE26=0x1CFF,0xBBF
+door-s02-r173106	door	1	PASS	0x5	1	19	0xD00,0xCC0	1	observed route matches all resolved ROM outputs;approach_side=south;script=0x0204CA;door_lead=0x2CFF,0xA7F;facing=N;rom_bank=2;FFDE26=0x2CFF,0xBBF
+door-s02-r173110	door	1	PASS	0x6	0	2	0x52FF,0x657	0	ROM script 0x053F98 handled the event without generic door transition;approach_side=south;script=0x053F98;prompt=A;prompt_inputs=1;door_lead=0x52FF,0x67F;facing=N;rom_bank=2;FFDE26=0x52FF,0x7BF
+door-s02-r17311a	door	1	PASS	0x8	1	52	0x2700,0x2500	3	observed route matches all resolved ROM outputs;approach_side=south;script=0x020592;door_lead=0x70FF,0xA7F;facing=N;rom_bank=2;FFDE26=0x70FF,0xBBF
+door-s02-r173156	door	1	PASS	0x9	1	26	0x68FF,0x4A57	2	observed route matches all resolved ROM outputs;approach_side=south;script=0x020554;door_lead=0x68FF,0x4A7F;facing=N;rom_bank=2;FFDE26=0x68FF,0x4BBF
+door-s02-r173160	door	1	PASS	0x3	1	26	0x44FF,0x4C57	2	observed route matches all resolved ROM outputs;approach_side=south;script=0x020446;door_lead=0x44FF,0x4C7F;facing=N;rom_bank=2;FFDE26=0x44FF,0x4DBF
+door-s02-r17316a	door	1	PASS	0x7	1	26	0x2EFF,0x4C57	2	observed route matches all resolved ROM outputs;approach_side=south;script=0x0545D0;door_lead=0x2EFF,0x4C7F;facing=N;rom_bank=2;FFDE26=0x2EFF,0x4DBF
+door-s02-r173174	door	1	PASS	0x7	1	26	0x1AFF,0x4657	2	observed route matches all resolved ROM outputs;approach_side=south;script=0x0545D0;door_lead=0x1AFF,0x467F;facing=N;rom_bank=2;FFDE26=0x1AFF,0x47BF
+door-s03-r18ab8c	door	1	PASS	0x3	1	30	0x2CFF,0xC57	2	observed route matches all resolved ROM outputs;approach_side=south;script=0x053BE8;door_lead=0x2CFF,0xC7F;facing=N;rom_bank=2;FFDE26=0x2CFF,0xDBF
+door-s03-r18ab96	door	1	PASS	0x6	1	41	0x70FF,0x657	2	observed route matches all resolved ROM outputs;approach_side=south;script=0x0206A4;door_lead=0x70FF,0x67F;facing=N;rom_bank=2;FFDE26=0x70FF,0x7BF
+door-s03-r18aba0	door	1	PASS	0x2	1	21	0x8FF,0x1657	2	observed route matches all resolved ROM outputs;approach_side=south;script=0x05416E;door_lead=0x8FF,0x167F;facing=N;rom_bank=2;FFDE26=0x8FF,0x17BF
+door-s03-r18abaa	door	1	PASS	0x5	1	11	0x500,0xC20	1	observed route matches all resolved ROM outputs;approach_side=south;script=0x020226;door_lead=0x26FF,0x247F;facing=N;rom_bank=2;FFDE26=0x26FF,0x25BF
+door-s03-r18abbe	door	1	PASS	0x4	1	13	0x4CFF,0x3C57	1	observed route matches all resolved ROM outputs;approach_side=south;script=0x0201E8;door_lead=0x4CFF,0x3C7F;facing=N;rom_bank=2;FFDE26=0x4CFF,0x3DBF
+door-s03-r18abd2	door	1	PASS	0x8	1	52	0x2700,0x2500	3	observed route matches all resolved ROM outputs;approach_side=south;script=0x0202B6;door_lead=0x58FF,0x247F;facing=N;rom_bank=2;FFDE26=0x58FF,0x25BF
+door-s03-r18abdc	door	1	PASS	0x7	1	51	0x3300,0x4280	3	observed route matches all resolved ROM outputs;approach_side=south;script=0x0202AA;door_lead=0x4EFF,0xC7F;facing=N;rom_bank=2;FFDE26=0x4EFF,0xDBF
+door-s03-r18abe6	door	1	PASS	0x7	1	51	0x3300,0x4280	3	observed route matches all resolved ROM outputs;approach_side=south;script=0x0202AA;door_lead=0x50FF,0xC7F;facing=N;rom_bank=2;FFDE26=0x50FF,0xDBF
+door-s03-r18abf0	door	1	PASS	0x9	1	53	0x700,0x2200	3	observed route matches all resolved ROM outputs;approach_side=south;script=0x0202C2;door_lead=0x78FF,0x1E7F;facing=N;rom_bank=2;FFDE26=0x78FF,0x1FBF
+door-s04-r15bdba	door	1	PASS	0x2	1	13	0xCFF,0x2257	1	observed route matches all resolved ROM outputs;approach_side=south;script=0x0200A6;door_lead=0xCFF,0x227F;facing=N;rom_bank=2;FFDE26=0xCFF,0x23BF
+door-s04-r15bdc4	door	1	PASS	0x1	1	10	0xF00,0xCC0	1	observed route matches all resolved ROM outputs;approach_side=south;script=0x020060;door_lead=0x2EFF,0x1E7F;facing=N;rom_bank=2;FFDE26=0x2EFF,0x1FBF
+door-s04-r15bde2	door	1	PASS	0x5	1	13	0x2A57,0x38D7	1	observed route matches all resolved ROM outputs;approach_side=east;script=0x0200E4;door_lead=0x2A7F,0x38FF;facing=N;rom_bank=1;FFDE26=0x2C5F,0x38FF
+door-s05-r067c36	door	1	PASS	0x6	1	35	0x26FF,0xC57	2	observed route matches all resolved ROM outputs;approach_side=south;script=0x054092;door_lead=0x26FF,0xC7F;facing=N;rom_bank=2;FFDE26=0x26FF,0xDBF
+door-s05-r067c68	door	1	PASS	0x1	1	16	0x900,0xCC0	1	observed route matches all resolved ROM outputs;approach_side=south;script=0x0205B6;door_lead=0x56FF,0x367F;facing=N;rom_bank=2;FFDE26=0x56FF,0x37BF
+door-s06-r14c112	door	1	PASS	0x1	0	6	0x60FF,0x4057	0	ROM script 0x05432E handled the event without generic door transition;approach_side=south;script=0x05432E;prompt=A;prompt_inputs=1;door_lead=0x60FF,0x407F;facing=N;rom_bank=2;FFDE26=0x60FF,0x41BF
+bexit-s0a-entry0d5796-r1d6178	bexit	1	PASS	0x6	1	0	0x20FF,0x9BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x20FF,0x87F;facing=N;rom_bank=2;FFDE26=0x20FF,0x9BF
+bexit-s0a-entry0d5796-r1d6182	bexit	1	PASS	0x6	1	0	0x20FF,0x9BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x20FF,0x87F;facing=N;rom_bank=2;FFDE26=0x20FF,0x9BF
+bexit-s0a-entry15bdc4-r1d6178	bexit	1	PASS	0x1	1	4	0x2EFF,0x1FBF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x2EFF,0x1E7F;facing=N;rom_bank=2;FFDE26=0x2EFF,0x1FBF
+bexit-s0a-entry15bdc4-r1d6182	bexit	1	PASS	0x1	1	4	0x2EFF,0x1FBF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x2EFF,0x1E7F;facing=N;rom_bank=2;FFDE26=0x2EFF,0x1FBF
+bexit-s0b-entry18abaa-r1d5af8	bexit	1	PASS	0x5	1	3	0x26FF,0x25BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x26FF,0x247F;facing=N;rom_bank=2;FFDE26=0x26FF,0x25BF
+bexit-s0b-entry18abaa-r1d5b02	bexit	1	PASS	0x5	1	3	0x26FF,0x25BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x26FF,0x247F;facing=N;rom_bank=2;FFDE26=0x26FF,0x25BF
+bexit-s0c-entry0d57f0-r1d604a	bexit	1	PASS	0x1	1	0	0x6AFF,0x2BBF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x6AFF,0x2A7F;facing=N;rom_bank=2;FFDE26=0x6AFF,0x2BBF
+bexit-s0c-entry0d57f0-r1d6054	bexit	1	PASS	0x1	1	0	0x6AFF,0x2BBF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x6AFF,0x2A7F;facing=N;rom_bank=2;FFDE26=0x6AFF,0x2BBF
 bexit-s0d-entry14c112-r1b3ce4	bexit	1	PRESENT-UNTESTED	-	0	0	0x0,0x0	0	paired entrance did not PASS; exit left untested;approach_sides_tried=south>north,north>north,east>north,west>north,south>east,north>east,east>east,west>east,south>south,north>south,east>south,west>south,south>west,north>west,east>west,west>west;approach_side=west;entry_side=south
 bexit-s0d-entry14c112-r1b3cee	bexit	1	PRESENT-UNTESTED	-	0	0	0x0,0x0	0	paired entrance did not PASS; exit left untested;approach_sides_tried=south>north,north>north,east>north,west>north,south>east,north>east,east>east,west>east,south>south,north>south,east>south,west>south,south>west,north>west,east>west,west>west;approach_side=west;entry_side=south
-bexit-s0d-entry15bdba-r1b3ce4	bexit	1	PASS	0x2	1	4	0xCFF,0x23BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0xCFF,0x227F;facing=N;rom_bank=2;FFDE26=0xCFF,0x23BF
-bexit-s0d-entry15bdba-r1b3cee	bexit	1	PASS	0x2	1	4	0xCFF,0x23BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0xCFF,0x227F;facing=N;rom_bank=2;FFDE26=0xCFF,0x23BF
-bexit-s0d-entry15bde2-r1b3ce4	bexit	1	PASS	0x5	1	4	0x2C5F,0x38FF	0	observed route matches all resolved ROM outputs;approach_sides_tried=east>north;approach_side=north;entry_side=east;door_lead=0x2A7F,0x38FF;facing=N;rom_bank=1;FFDE26=0x2C5F,0x38FF
-bexit-s0d-entry15bde2-r1b3cee	bexit	1	PASS	0x5	1	4	0x2C5F,0x38FF	0	observed route matches all resolved ROM outputs;approach_sides_tried=east>north;approach_side=north;entry_side=east;door_lead=0x2A7F,0x38FF;facing=N;rom_bank=1;FFDE26=0x2C5F,0x38FF
+bexit-s0d-entry15bdba-r1b3ce4	bexit	1	PASS	0x2	1	4	0xCFF,0x23BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0xCFF,0x227F;facing=N;rom_bank=2;FFDE26=0xCFF,0x23BF
+bexit-s0d-entry15bdba-r1b3cee	bexit	1	PASS	0x2	1	4	0xCFF,0x23BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0xCFF,0x227F;facing=N;rom_bank=2;FFDE26=0xCFF,0x23BF
+bexit-s0d-entry15bde2-r1b3ce4	bexit	1	PASS	0x5	1	4	0x2C5F,0x38FF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=east;door_lead=0x2A7F,0x38FF;facing=N;rom_bank=1;FFDE26=0x2C5F,0x38FF
+bexit-s0d-entry15bde2-r1b3cee	bexit	1	PASS	0x5	1	4	0x2C5F,0x38FF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=east;door_lead=0x2A7F,0x38FF;facing=N;rom_bank=1;FFDE26=0x2C5F,0x38FF
 bexit-s0d-entry1730fc-r1b3ce4	bexit	1	PRESENT-UNTESTED	-	0	0	0x0,0x0	0	paired entrance did not PASS; exit left untested;approach_sides_tried=south>north,north>north,east>north,west>north,south>east,north>east,east>east,west>east,south>south,north>south,east>south,west>south,south>west,north>west,east>west,west>west;approach_side=west;entry_side=south
 bexit-s0d-entry1730fc-r1b3cee	bexit	1	PRESENT-UNTESTED	-	0	0	0x0,0x0	0	paired entrance did not PASS; exit left untested;approach_sides_tried=south>north,north>north,east>north,west>north,south>east,north>east,east>east,west>east,south>south,north>south,east>south,west>south,south>west,north>west,east>west,west>west;approach_side=west;entry_side=south
 bexit-s0d-entry17d9a2-r1b3ce4	bexit	1	PRESENT-UNTESTED	-	0	0	0x0,0x0	0	paired entrance did not PASS; exit left untested;approach_sides_tried=south>north,north>north,east>north,west>north,south>east,north>east,east>east,west>east,south>south,north>south,east>south,west>south,south>west,north>west,east>west,west>west;approach_side=west;entry_side=south
 bexit-s0d-entry17d9a2-r1b3cee	bexit	1	PRESENT-UNTESTED	-	0	0	0x0,0x0	0	paired entrance did not PASS; exit left untested;approach_sides_tried=south>north,north>north,east>north,west>north,south>east,north>east,east>east,west>east,south>south,north>south,east>south,west>south,south>west,north>west,east>west,west>west;approach_side=west;entry_side=south
-bexit-s0d-entry17d9fc-r1b3ce4	bexit	1	PASS	0x9	1	1	0x2AFF,0x51BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x2AFF,0x507F;facing=N;rom_bank=2;FFDE26=0x2AFF,0x51BF
-bexit-s0d-entry17d9fc-r1b3cee	bexit	1	PASS	0x9	1	1	0x2AFF,0x51BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x2AFF,0x507F;facing=N;rom_bank=2;FFDE26=0x2AFF,0x51BF
-bexit-s0d-entry17da06-r1b3ce4	bexit	1	PASS	0x9	1	1	0x32FF,0x51BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x32FF,0x507F;facing=N;rom_bank=2;FFDE26=0x32FF,0x51BF
-bexit-s0d-entry17da06-r1b3cee	bexit	1	PASS	0x9	1	1	0x32FF,0x51BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x32FF,0x507F;facing=N;rom_bank=2;FFDE26=0x32FF,0x51BF
-bexit-s0d-entry18abbe-r1b3ce4	bexit	1	PASS	0x4	1	3	0x4CFF,0x3DBF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x4CFF,0x3C7F;facing=N;rom_bank=2;FFDE26=0x4CFF,0x3DBF
-bexit-s0d-entry18abbe-r1b3cee	bexit	1	PASS	0x4	1	3	0x4CFF,0x3DBF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x4CFF,0x3C7F;facing=N;rom_bank=2;FFDE26=0x4CFF,0x3DBF
-bexit-s0f-entry17d9c0-r1d5d2a	bexit	1	PASS	0x4	1	1	0x32FF,0x23BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x32FF,0x227F;facing=N;rom_bank=2;FFDE26=0x32FF,0x23BF
-bexit-s0f-entry17d9c0-r1d5d34	bexit	1	PASS	0x4	1	1	0x32FF,0x23BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x32FF,0x227F;facing=N;rom_bank=2;FFDE26=0x32FF,0x23BF
-bexit-s10-entry067c68-r1d627c	bexit	1	PASS	0x1	1	5	0x56FF,0x37BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x56FF,0x367F;facing=N;rom_bank=2;FFDE26=0x56FF,0x37BF
-bexit-s10-entry067c68-r1d6286	bexit	1	PASS	0x1	1	5	0x56FF,0x37BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x56FF,0x367F;facing=N;rom_bank=2;FFDE26=0x56FF,0x37BF
-bexit-s12-entry0d57be-r1d5e24	bexit	1	PASS	0x2	1	0	0x40FF,0x2BBF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x40FF,0x2A7F;facing=N;rom_bank=2;FFDE26=0x40FF,0x2BBF
-bexit-s12-entry0d57be-r1d5e2e	bexit	1	PASS	0x2	1	0	0x40FF,0x2BBF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x40FF,0x2A7F;facing=N;rom_bank=2;FFDE26=0x40FF,0x2BBF
-bexit-s13-entry173106-r1d5f3c	bexit	1	PASS	0x5	1	2	0x2CFF,0xBBF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x2CFF,0xA7F;facing=N;rom_bank=2;FFDE26=0x2CFF,0xBBF
-bexit-s13-entry173106-r1d5f46	bexit	1	PASS	0x5	1	2	0x2CFF,0xBBF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x2CFF,0xA7F;facing=N;rom_bank=2;FFDE26=0x2CFF,0xBBF
-bexit-s15-entry0d57aa-r1d7962	bexit	1	PASS	0x5	1	0	0x6AFF,0x9BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x6AFF,0x87F;facing=N;rom_bank=2;FFDE26=0x6AFF,0x9BF
-bexit-s15-entry0d57aa-r1d796c	bexit	1	PASS	0x5	1	0	0x6AFF,0x9BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x6AFF,0x87F;facing=N;rom_bank=2;FFDE26=0x6AFF,0x9BF
-bexit-s15-entry0d57aa-r1d7976	bexit	1	PASS	0x5	1	0	0x6AFF,0x9BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x6AFF,0x87F;facing=N;rom_bank=2;FFDE26=0x6AFF,0x9BF
-bexit-s15-entry0d57aa-r1d7980	bexit	1	PASS	0x5	1	0	0x6AFF,0x9BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x6AFF,0x87F;facing=N;rom_bank=2;FFDE26=0x6AFF,0x9BF
-bexit-s15-entry0d57c8-r1d7962	bexit	1	PASS	0x7	1	0	0x4FF,0x39BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x4FF,0x387F;facing=N;rom_bank=2;FFDE26=0x4FF,0x39BF
-bexit-s15-entry0d57c8-r1d796c	bexit	1	PASS	0x7	1	0	0x4FF,0x39BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x4FF,0x387F;facing=N;rom_bank=2;FFDE26=0x4FF,0x39BF
-bexit-s15-entry0d57c8-r1d7976	bexit	1	PASS	0x7	1	0	0x4FF,0x39BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x4FF,0x387F;facing=N;rom_bank=2;FFDE26=0x4FF,0x39BF
-bexit-s15-entry0d57c8-r1d7980	bexit	1	PASS	0x7	1	0	0x4FF,0x39BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x4FF,0x387F;facing=N;rom_bank=2;FFDE26=0x4FF,0x39BF
-bexit-s15-entry18aba0-r1d7962	bexit	1	PASS	0x2	1	3	0x8FF,0x17BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x8FF,0x167F;facing=N;rom_bank=2;FFDE26=0x8FF,0x17BF
-bexit-s15-entry18aba0-r1d796c	bexit	1	PASS	0x2	1	3	0x8FF,0x17BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x8FF,0x167F;facing=N;rom_bank=2;FFDE26=0x8FF,0x17BF
-bexit-s15-entry18aba0-r1d7976	bexit	1	PASS	0x2	1	3	0x8FF,0x17BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x8FF,0x167F;facing=N;rom_bank=2;FFDE26=0x8FF,0x17BF
-bexit-s15-entry18aba0-r1d7980	bexit	1	PASS	0x2	1	3	0x8FF,0x17BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x8FF,0x167F;facing=N;rom_bank=2;FFDE26=0x8FF,0x17BF
+bexit-s0d-entry17d9fc-r1b3ce4	bexit	1	PASS	0x9	1	1	0x2AFF,0x51BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x2AFF,0x507F;facing=N;rom_bank=2;FFDE26=0x2AFF,0x51BF
+bexit-s0d-entry17d9fc-r1b3cee	bexit	1	PASS	0x9	1	1	0x2AFF,0x51BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x2AFF,0x507F;facing=N;rom_bank=2;FFDE26=0x2AFF,0x51BF
+bexit-s0d-entry17da06-r1b3ce4	bexit	1	PASS	0x9	1	1	0x32FF,0x51BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x32FF,0x507F;facing=N;rom_bank=2;FFDE26=0x32FF,0x51BF
+bexit-s0d-entry17da06-r1b3cee	bexit	1	PASS	0x9	1	1	0x32FF,0x51BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x32FF,0x507F;facing=N;rom_bank=2;FFDE26=0x32FF,0x51BF
+bexit-s0d-entry18abbe-r1b3ce4	bexit	1	PASS	0x4	1	3	0x4CFF,0x3DBF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x4CFF,0x3C7F;facing=N;rom_bank=2;FFDE26=0x4CFF,0x3DBF
+bexit-s0d-entry18abbe-r1b3cee	bexit	1	PASS	0x4	1	3	0x4CFF,0x3DBF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x4CFF,0x3C7F;facing=N;rom_bank=2;FFDE26=0x4CFF,0x3DBF
+bexit-s0f-entry17d9c0-r1d5d2a	bexit	1	PASS	0x4	1	1	0x32FF,0x23BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x32FF,0x227F;facing=N;rom_bank=2;FFDE26=0x32FF,0x23BF
+bexit-s0f-entry17d9c0-r1d5d34	bexit	1	PASS	0x4	1	1	0x32FF,0x23BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x32FF,0x227F;facing=N;rom_bank=2;FFDE26=0x32FF,0x23BF
+bexit-s10-entry067c68-r1d627c	bexit	1	PASS	0x1	1	5	0x56FF,0x37BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x56FF,0x367F;facing=N;rom_bank=2;FFDE26=0x56FF,0x37BF
+bexit-s10-entry067c68-r1d6286	bexit	1	PASS	0x1	1	5	0x56FF,0x37BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x56FF,0x367F;facing=N;rom_bank=2;FFDE26=0x56FF,0x37BF
+bexit-s12-entry0d57be-r1d5e24	bexit	1	PASS	0x2	1	0	0x40FF,0x2BBF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x40FF,0x2A7F;facing=N;rom_bank=2;FFDE26=0x40FF,0x2BBF
+bexit-s12-entry0d57be-r1d5e2e	bexit	1	PASS	0x2	1	0	0x40FF,0x2BBF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x40FF,0x2A7F;facing=N;rom_bank=2;FFDE26=0x40FF,0x2BBF
+bexit-s13-entry173106-r1d5f3c	bexit	1	PASS	0x5	1	2	0x2CFF,0xBBF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x2CFF,0xA7F;facing=N;rom_bank=2;FFDE26=0x2CFF,0xBBF
+bexit-s13-entry173106-r1d5f46	bexit	1	PASS	0x5	1	2	0x2CFF,0xBBF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x2CFF,0xA7F;facing=N;rom_bank=2;FFDE26=0x2CFF,0xBBF
+bexit-s15-entry0d57aa-r1d7962	bexit	1	PASS	0x5	1	0	0x6AFF,0x9BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x6AFF,0x87F;facing=N;rom_bank=2;FFDE26=0x6AFF,0x9BF
+bexit-s15-entry0d57aa-r1d796c	bexit	1	PASS	0x5	1	0	0x6AFF,0x9BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x6AFF,0x87F;facing=N;rom_bank=2;FFDE26=0x6AFF,0x9BF
+bexit-s15-entry0d57aa-r1d7976	bexit	1	PASS	0x5	1	0	0x6AFF,0x9BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x6AFF,0x87F;facing=N;rom_bank=2;FFDE26=0x6AFF,0x9BF
+bexit-s15-entry0d57aa-r1d7980	bexit	1	PASS	0x5	1	0	0x6AFF,0x9BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x6AFF,0x87F;facing=N;rom_bank=2;FFDE26=0x6AFF,0x9BF
+bexit-s15-entry0d57c8-r1d7962	bexit	1	PASS	0x7	1	0	0x4FF,0x39BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x4FF,0x387F;facing=N;rom_bank=2;FFDE26=0x4FF,0x39BF
+bexit-s15-entry0d57c8-r1d796c	bexit	1	PASS	0x7	1	0	0x4FF,0x39BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x4FF,0x387F;facing=N;rom_bank=2;FFDE26=0x4FF,0x39BF
+bexit-s15-entry0d57c8-r1d7976	bexit	1	PASS	0x7	1	0	0x4FF,0x39BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x4FF,0x387F;facing=N;rom_bank=2;FFDE26=0x4FF,0x39BF
+bexit-s15-entry0d57c8-r1d7980	bexit	1	PASS	0x7	1	0	0x4FF,0x39BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x4FF,0x387F;facing=N;rom_bank=2;FFDE26=0x4FF,0x39BF
+bexit-s15-entry18aba0-r1d7962	bexit	1	PASS	0x2	1	3	0x8FF,0x17BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x8FF,0x167F;facing=N;rom_bank=2;FFDE26=0x8FF,0x17BF
+bexit-s15-entry18aba0-r1d796c	bexit	1	PASS	0x2	1	3	0x8FF,0x17BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x8FF,0x167F;facing=N;rom_bank=2;FFDE26=0x8FF,0x17BF
+bexit-s15-entry18aba0-r1d7976	bexit	1	PASS	0x2	1	3	0x8FF,0x17BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x8FF,0x167F;facing=N;rom_bank=2;FFDE26=0x8FF,0x17BF
+bexit-s15-entry18aba0-r1d7980	bexit	1	PASS	0x2	1	3	0x8FF,0x17BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x8FF,0x167F;facing=N;rom_bank=2;FFDE26=0x8FF,0x17BF
 bexit-s1a-entry173110-r1d9d92	bexit	1	PRESENT-UNTESTED	-	0	0	0x0,0x0	0	paired entrance did not PASS; exit left untested;approach_sides_tried=south>north,north>north,east>north,west>north,south>east,north>east,east>east,west>east,south>south,north>south,east>south,west>south,south>west,north>west,east>west,west>west;approach_side=west;entry_side=south
 bexit-s1a-entry173110-r1d9d9c	bexit	1	PRESENT-UNTESTED	-	0	0	0x0,0x0	0	paired entrance did not PASS; exit left untested;approach_sides_tried=south>north,north>north,east>north,west>north,south>east,north>east,east>east,west>east,south>south,north>south,east>south,west>south,south>west,north>west,east>west,west>west;approach_side=west;entry_side=south
 bexit-s1a-entry173110-r1d9da6	bexit	1	PRESENT-UNTESTED	-	0	0	0x0,0x0	0	paired entrance did not PASS; exit left untested;approach_sides_tried=south>north,north>north,east>north,west>north,south>east,north>east,east>east,west>east,south>south,north>south,east>south,west>south,south>west,north>west,east>west,west>west;approach_side=west;entry_side=south
 bexit-s1a-entry173110-r1d9db0	bexit	1	PRESENT-UNTESTED	-	0	0	0x0,0x0	0	paired entrance did not PASS; exit left untested;approach_sides_tried=south>north,north>north,east>north,west>north,south>east,north>east,east>east,west>east,south>south,north>south,east>south,west>south,south>west,north>west,east>west,west>west;approach_side=west;entry_side=south
-bexit-s1a-entry173156-r1d9d92	bexit	1	PASS	0x9	1	2	0x68FF,0x4BBF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x68FF,0x4A7F;facing=N;rom_bank=2;FFDE26=0x68FF,0x4BBF
-bexit-s1a-entry173156-r1d9d9c	bexit	1	PASS	0x9	1	2	0x68FF,0x4BBF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x68FF,0x4A7F;facing=N;rom_bank=2;FFDE26=0x68FF,0x4BBF
-bexit-s1a-entry173156-r1d9da6	bexit	1	PASS	0x9	1	2	0x68FF,0x4BBF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x68FF,0x4A7F;facing=N;rom_bank=2;FFDE26=0x68FF,0x4BBF
-bexit-s1a-entry173156-r1d9db0	bexit	1	PASS	0x9	1	2	0x68FF,0x4BBF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x68FF,0x4A7F;facing=N;rom_bank=2;FFDE26=0x68FF,0x4BBF
-bexit-s1a-entry173160-r1d9d92	bexit	1	PASS	0x3	1	2	0x44FF,0x4DBF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x44FF,0x4C7F;facing=N;rom_bank=2;FFDE26=0x44FF,0x4DBF
-bexit-s1a-entry173160-r1d9d9c	bexit	1	PASS	0x3	1	2	0x44FF,0x4DBF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x44FF,0x4C7F;facing=N;rom_bank=2;FFDE26=0x44FF,0x4DBF
-bexit-s1a-entry173160-r1d9da6	bexit	1	PASS	0x3	1	2	0x44FF,0x4DBF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x44FF,0x4C7F;facing=N;rom_bank=2;FFDE26=0x44FF,0x4DBF
-bexit-s1a-entry173160-r1d9db0	bexit	1	PASS	0x3	1	2	0x44FF,0x4DBF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x44FF,0x4C7F;facing=N;rom_bank=2;FFDE26=0x44FF,0x4DBF
-bexit-s1a-entry17316a-r1d9d92	bexit	1	PASS	0x7	1	2	0x2EFF,0x4DBF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x2EFF,0x4C7F;facing=N;rom_bank=2;FFDE26=0x2EFF,0x4DBF
-bexit-s1a-entry17316a-r1d9d9c	bexit	1	PASS	0x7	1	2	0x2EFF,0x4DBF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x2EFF,0x4C7F;facing=N;rom_bank=2;FFDE26=0x2EFF,0x4DBF
-bexit-s1a-entry17316a-r1d9da6	bexit	1	PASS	0x7	1	2	0x2EFF,0x4DBF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x2EFF,0x4C7F;facing=N;rom_bank=2;FFDE26=0x2EFF,0x4DBF
-bexit-s1a-entry17316a-r1d9db0	bexit	1	PASS	0x7	1	2	0x2EFF,0x4DBF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x2EFF,0x4C7F;facing=N;rom_bank=2;FFDE26=0x2EFF,0x4DBF
-bexit-s1a-entry173174-r1d9d92	bexit	1	PASS	0x7	1	2	0x1AFF,0x47BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x1AFF,0x467F;facing=N;rom_bank=2;FFDE26=0x1AFF,0x47BF
-bexit-s1a-entry173174-r1d9d9c	bexit	1	PASS	0x7	1	2	0x1AFF,0x47BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x1AFF,0x467F;facing=N;rom_bank=2;FFDE26=0x1AFF,0x47BF
-bexit-s1a-entry173174-r1d9da6	bexit	1	PASS	0x7	1	2	0x1AFF,0x47BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x1AFF,0x467F;facing=N;rom_bank=2;FFDE26=0x1AFF,0x47BF
-bexit-s1a-entry173174-r1d9db0	bexit	1	PASS	0x7	1	2	0x1AFF,0x47BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x1AFF,0x467F;facing=N;rom_bank=2;FFDE26=0x1AFF,0x47BF
-bexit-s1a-entry17d9ca-r1d9d92	bexit	1	PASS	0x2	1	1	0x50FF,0x25BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x50FF,0x247F;facing=N;rom_bank=2;FFDE26=0x50FF,0x25BF
-bexit-s1a-entry17d9ca-r1d9d9c	bexit	1	PASS	0x2	1	1	0x50FF,0x25BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x50FF,0x247F;facing=N;rom_bank=2;FFDE26=0x50FF,0x25BF
-bexit-s1a-entry17d9ca-r1d9da6	bexit	1	PASS	0x2	1	1	0x50FF,0x25BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x50FF,0x247F;facing=N;rom_bank=2;FFDE26=0x50FF,0x25BF
-bexit-s1a-entry17d9ca-r1d9db0	bexit	1	PASS	0x2	1	1	0x50FF,0x25BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x50FF,0x247F;facing=N;rom_bank=2;FFDE26=0x50FF,0x25BF
-bexit-s1e-entry0d57b4-r1db38e	bexit	1	PASS	0x4	1	0	0x10FF,0x2BBF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x10FF,0x2A7F;facing=N;rom_bank=2;FFDE26=0x10FF,0x2BBF
-bexit-s1e-entry0d57b4-r1db398	bexit	1	PASS	0x4	1	0	0x10FF,0x2BBF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x10FF,0x2A7F;facing=N;rom_bank=2;FFDE26=0x10FF,0x2BBF
-bexit-s1e-entry18ab8c-r1db38e	bexit	1	PASS	0x3	1	3	0x2CFF,0xDBF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x2CFF,0xC7F;facing=N;rom_bank=2;FFDE26=0x2CFF,0xDBF
-bexit-s1e-entry18ab8c-r1db398	bexit	1	PASS	0x3	1	3	0x2CFF,0xDBF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x2CFF,0xC7F;facing=N;rom_bank=2;FFDE26=0x2CFF,0xDBF
-bexit-s23-entry067c36-r1dc8ae	bexit	1	PASS	0x6	1	5	0x26FF,0xDBF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x26FF,0xC7F;facing=N;rom_bank=2;FFDE26=0x26FF,0xDBF
-bexit-s23-entry067c36-r1dc8b8	bexit	1	PASS	0x6	1	5	0x26FF,0xDBF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x26FF,0xC7F;facing=N;rom_bank=2;FFDE26=0x26FF,0xDBF
-bexit-s29-entry18ab96-r1de6e0	bexit	1	PASS	0x6	1	3	0x70FF,0x7BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x70FF,0x67F;facing=N;rom_bank=2;FFDE26=0x70FF,0x7BF
-bexit-s29-entry18ab96-r1de6ea	bexit	1	PASS	0x6	1	3	0x70FF,0x7BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x70FF,0x67F;facing=N;rom_bank=2;FFDE26=0x70FF,0x7BF
-bexit-s29-entry18ab96-r1de6f4	bexit	1	PASS	0x6	1	3	0x70FF,0x7BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x70FF,0x67F;facing=N;rom_bank=2;FFDE26=0x70FF,0x7BF
-bexit-s29-entry18ab96-r1de6fe	bexit	1	PASS	0x6	1	3	0x70FF,0x7BF	0	observed route matches all resolved ROM outputs;approach_sides_tried=south>north;approach_side=north;entry_side=south;door_lead=0x70FF,0x67F;facing=N;rom_bank=2;FFDE26=0x70FF,0x7BF
+bexit-s1a-entry173156-r1d9d92	bexit	1	PASS	0x9	1	2	0x68FF,0x4BBF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x68FF,0x4A7F;facing=N;rom_bank=2;FFDE26=0x68FF,0x4BBF
+bexit-s1a-entry173156-r1d9d9c	bexit	1	PASS	0x9	1	2	0x68FF,0x4BBF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x68FF,0x4A7F;facing=N;rom_bank=2;FFDE26=0x68FF,0x4BBF
+bexit-s1a-entry173156-r1d9da6	bexit	1	PASS	0x9	1	2	0x68FF,0x4BBF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x68FF,0x4A7F;facing=N;rom_bank=2;FFDE26=0x68FF,0x4BBF
+bexit-s1a-entry173156-r1d9db0	bexit	1	PASS	0x9	1	2	0x68FF,0x4BBF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x68FF,0x4A7F;facing=N;rom_bank=2;FFDE26=0x68FF,0x4BBF
+bexit-s1a-entry173160-r1d9d92	bexit	1	PASS	0x3	1	2	0x44FF,0x4DBF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x44FF,0x4C7F;facing=N;rom_bank=2;FFDE26=0x44FF,0x4DBF
+bexit-s1a-entry173160-r1d9d9c	bexit	1	PASS	0x3	1	2	0x44FF,0x4DBF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x44FF,0x4C7F;facing=N;rom_bank=2;FFDE26=0x44FF,0x4DBF
+bexit-s1a-entry173160-r1d9da6	bexit	1	PASS	0x3	1	2	0x44FF,0x4DBF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x44FF,0x4C7F;facing=N;rom_bank=2;FFDE26=0x44FF,0x4DBF
+bexit-s1a-entry173160-r1d9db0	bexit	1	PASS	0x3	1	2	0x44FF,0x4DBF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x44FF,0x4C7F;facing=N;rom_bank=2;FFDE26=0x44FF,0x4DBF
+bexit-s1a-entry17316a-r1d9d92	bexit	1	PASS	0x7	1	2	0x2EFF,0x4DBF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x2EFF,0x4C7F;facing=N;rom_bank=2;FFDE26=0x2EFF,0x4DBF
+bexit-s1a-entry17316a-r1d9d9c	bexit	1	PASS	0x7	1	2	0x2EFF,0x4DBF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x2EFF,0x4C7F;facing=N;rom_bank=2;FFDE26=0x2EFF,0x4DBF
+bexit-s1a-entry17316a-r1d9da6	bexit	1	PASS	0x7	1	2	0x2EFF,0x4DBF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x2EFF,0x4C7F;facing=N;rom_bank=2;FFDE26=0x2EFF,0x4DBF
+bexit-s1a-entry17316a-r1d9db0	bexit	1	PASS	0x7	1	2	0x2EFF,0x4DBF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x2EFF,0x4C7F;facing=N;rom_bank=2;FFDE26=0x2EFF,0x4DBF
+bexit-s1a-entry173174-r1d9d92	bexit	1	PASS	0x7	1	2	0x1AFF,0x47BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x1AFF,0x467F;facing=N;rom_bank=2;FFDE26=0x1AFF,0x47BF
+bexit-s1a-entry173174-r1d9d9c	bexit	1	PASS	0x7	1	2	0x1AFF,0x47BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x1AFF,0x467F;facing=N;rom_bank=2;FFDE26=0x1AFF,0x47BF
+bexit-s1a-entry173174-r1d9da6	bexit	1	PASS	0x7	1	2	0x1AFF,0x47BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x1AFF,0x467F;facing=N;rom_bank=2;FFDE26=0x1AFF,0x47BF
+bexit-s1a-entry173174-r1d9db0	bexit	1	PASS	0x7	1	2	0x1AFF,0x47BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x1AFF,0x467F;facing=N;rom_bank=2;FFDE26=0x1AFF,0x47BF
+bexit-s1a-entry17d9ca-r1d9d92	bexit	1	PASS	0x2	1	1	0x50FF,0x25BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x50FF,0x247F;facing=N;rom_bank=2;FFDE26=0x50FF,0x25BF
+bexit-s1a-entry17d9ca-r1d9d9c	bexit	1	PASS	0x2	1	1	0x50FF,0x25BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x50FF,0x247F;facing=N;rom_bank=2;FFDE26=0x50FF,0x25BF
+bexit-s1a-entry17d9ca-r1d9da6	bexit	1	PASS	0x2	1	1	0x50FF,0x25BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x50FF,0x247F;facing=N;rom_bank=2;FFDE26=0x50FF,0x25BF
+bexit-s1a-entry17d9ca-r1d9db0	bexit	1	PASS	0x2	1	1	0x50FF,0x25BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x50FF,0x247F;facing=N;rom_bank=2;FFDE26=0x50FF,0x25BF
+bexit-s1e-entry0d57b4-r1db38e	bexit	1	PASS	0x4	1	0	0x10FF,0x2BBF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x10FF,0x2A7F;facing=N;rom_bank=2;FFDE26=0x10FF,0x2BBF
+bexit-s1e-entry0d57b4-r1db398	bexit	1	PASS	0x4	1	0	0x10FF,0x2BBF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x10FF,0x2A7F;facing=N;rom_bank=2;FFDE26=0x10FF,0x2BBF
+bexit-s1e-entry18ab8c-r1db38e	bexit	1	PASS	0x3	1	3	0x2CFF,0xDBF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x2CFF,0xC7F;facing=N;rom_bank=2;FFDE26=0x2CFF,0xDBF
+bexit-s1e-entry18ab8c-r1db398	bexit	1	PASS	0x3	1	3	0x2CFF,0xDBF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x2CFF,0xC7F;facing=N;rom_bank=2;FFDE26=0x2CFF,0xDBF
+bexit-s23-entry067c36-r1dc8ae	bexit	1	PASS	0x6	1	5	0x26FF,0xDBF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x26FF,0xC7F;facing=N;rom_bank=2;FFDE26=0x26FF,0xDBF
+bexit-s23-entry067c36-r1dc8b8	bexit	1	PASS	0x6	1	5	0x26FF,0xDBF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x26FF,0xC7F;facing=N;rom_bank=2;FFDE26=0x26FF,0xDBF
+bexit-s29-entry18ab96-r1de6e0	bexit	1	PASS	0x6	1	3	0x70FF,0x7BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x70FF,0x67F;facing=N;rom_bank=2;FFDE26=0x70FF,0x7BF
+bexit-s29-entry18ab96-r1de6ea	bexit	1	PASS	0x6	1	3	0x70FF,0x7BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x70FF,0x67F;facing=N;rom_bank=2;FFDE26=0x70FF,0x7BF
+bexit-s29-entry18ab96-r1de6f4	bexit	1	PASS	0x6	1	3	0x70FF,0x7BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x70FF,0x67F;facing=N;rom_bank=2;FFDE26=0x70FF,0x7BF
+bexit-s29-entry18ab96-r1de6fe	bexit	1	PASS	0x6	1	3	0x70FF,0x7BF	0	observed route matches all resolved ROM outputs;approach_side=north;entry_side=south;door_lead=0x70FF,0x67F;facing=N;rom_bank=2;FFDE26=0x70FF,0x7BF
 bexit-s32-entry0d57d2-r1e90d6	bexit	1	MISSING	0x8	0	50	0x18FF,0x4BCB	3	no map transition within 600 input frames;approach_sides_tried=south>north,north>north,east>north,west>north,south>east,north>east,east>east,west>east,south>south;approach_side=south;entry_side=south;door_lead=0x24FF,0x387F;facing=N;rom_bank=2;FFDE26=0x24FF,0x39BF
 bexit-s32-entry0d57d2-r1e90e0	bexit	1	MISSING	0x8	0	50	0x1780,0x4CFF	3	controller input did not produce the ROM event;approach_sides_tried=south>north,north>north,east>north,west>north,south>east,north>east,east>east,west>east,south>south,north>south,east>south,west>south,south>west,north>west,east>west,west>west;approach_side=west;entry_side=south;door_lead=0x24FF,0x387F;facing=N;rom_bank=2;FFDE26=0x24FF,0x39BF
 bexit-s32-entry17d998-r1e90d6	bexit	1	MISSING	0x8	0	50	0x18FF,0x4BCB	3	no map transition within 600 input frames;approach_sides_tried=south>north,north>north,east>north,west>north,south>east,north>east,east>east,west>east,south>south;approach_side=south;entry_side=south;door_lead=0xAFF,0xC7F;facing=N;rom_bank=2;FFDE26=0xAFF,0xDBF
@@ -150,182 +150,182 @@ bexit-s34-entry18abd2-r1e969e	bexit	1	MISSING	0x8	0	52	0x26FF,0x2DCB	3	no map tr
 bexit-s34-entry18abd2-r1e96a8	bexit	1	MISSING	0x8	0	52	0x2580,0x2EFF	3	controller input did not produce the ROM event;approach_sides_tried=south>north,north>north,east>north,west>north,south>east,north>east,east>east,west>east,south>south,north>south,east>south,west>south,south>west,north>west,east>west,west>west;approach_side=west;entry_side=south;door_lead=0x58FF,0x247F;facing=N;rom_bank=2;FFDE26=0x58FF,0x25BF
 bexit-s35-entry18abf0-r1e98a6	bexit	1	MISSING	0x9	0	53	0x6FF,0x2DCB	3	no map transition within 600 input frames;approach_sides_tried=south>north,north>north,east>north,west>north,south>east,north>east,east>east,west>east,south>south;approach_side=south;entry_side=south;door_lead=0x78FF,0x1E7F;facing=N;rom_bank=2;FFDE26=0x78FF,0x1FBF
 bexit-s35-entry18abf0-r1e98b0	bexit	1	MISSING	0x9	0	53	0x580,0x2EFF	3	controller input did not produce the ROM event;approach_sides_tried=south>north,north>north,east>north,west>north,south>east,north>east,east>east,west>east,south>south,north>south,east>south,west>south,south>west,north>west,east>west,west>west;approach_side=west;entry_side=south;door_lead=0x78FF,0x1E7F;facing=N;rom_bank=2;FFDE26=0x78FF,0x1FBF
-elevator-s15-r1d794e-floor1	elevator	1	MISSING	-	0	21	0x2EEF,0x47F	2	no map transition within 600 input frames
-elevator-s15-r1d794e-floor2	elevator	1	MISSING	-	0	21	0x2EEF,0x47F	2	no map transition within 600 input frames
-elevator-s15-r1d794e-floor3	elevator	1	MISSING	-	0	21	0x2EEF,0x47F	2	no map transition within 600 input frames
-elevator-s15-r1d794e-floor4	elevator	1	MISSING	-	0	21	0x2EEF,0x47F	2	no map transition within 600 input frames
-elevator-s15-r1d7958-floor1	elevator	1	MISSING	-	0	21	0x30EF,0x47F	2	no map transition within 600 input frames
-elevator-s15-r1d7958-floor2	elevator	1	MISSING	-	0	21	0x30EF,0x47F	2	no map transition within 600 input frames
-elevator-s15-r1d7958-floor3	elevator	1	MISSING	-	0	21	0x30EF,0x47F	2	no map transition within 600 input frames
-elevator-s15-r1d7958-floor4	elevator	1	MISSING	-	0	21	0x30EF,0x47F	2	no map transition within 600 input frames
-elevator-s16-r1d8064-floor0	elevator	1	MISSING	-	0	22	0x2EEF,0x47F	2	no map transition within 600 input frames
-elevator-s16-r1d8064-floor2	elevator	1	MISSING	-	0	22	0x2EEF,0x47F	2	no map transition within 600 input frames
-elevator-s16-r1d8064-floor3	elevator	1	MISSING	-	0	22	0x2EEF,0x47F	2	no map transition within 600 input frames
-elevator-s16-r1d8064-floor4	elevator	1	MISSING	-	0	22	0x2EEF,0x47F	2	no map transition within 600 input frames
-elevator-s16-r1d806e-floor0	elevator	1	MISSING	-	0	22	0x30EF,0x47F	2	no map transition within 600 input frames
-elevator-s16-r1d806e-floor2	elevator	1	MISSING	-	0	22	0x30EF,0x47F	2	no map transition within 600 input frames
-elevator-s16-r1d806e-floor3	elevator	1	MISSING	-	0	22	0x30EF,0x47F	2	no map transition within 600 input frames
-elevator-s16-r1d806e-floor4	elevator	1	MISSING	-	0	22	0x30EF,0x47F	2	no map transition within 600 input frames
-elevator-s17-r1d885c-floor0	elevator	1	MISSING	-	0	23	0x2EEF,0x47F	2	no map transition within 600 input frames
-elevator-s17-r1d885c-floor1	elevator	1	MISSING	-	0	23	0x2EEF,0x47F	2	no map transition within 600 input frames
-elevator-s17-r1d885c-floor3	elevator	1	MISSING	-	0	23	0x2EEF,0x47F	2	no map transition within 600 input frames
-elevator-s17-r1d885c-floor4	elevator	1	MISSING	-	0	23	0x2EEF,0x47F	2	no map transition within 600 input frames
-elevator-s17-r1d8866-floor0	elevator	1	MISSING	-	0	23	0x30EF,0x47F	2	no map transition within 600 input frames
-elevator-s17-r1d8866-floor1	elevator	1	MISSING	-	0	23	0x30EF,0x47F	2	no map transition within 600 input frames
-elevator-s17-r1d8866-floor3	elevator	1	MISSING	-	0	23	0x30EF,0x47F	2	no map transition within 600 input frames
-elevator-s17-r1d8866-floor4	elevator	1	MISSING	-	0	23	0x30EF,0x47F	2	no map transition within 600 input frames
-elevator-s18-r1d8064-floor0	elevator	1	MISSING	-	0	24	0x2EEF,0x47F	2	no map transition within 600 input frames
-elevator-s18-r1d8064-floor1	elevator	1	MISSING	-	0	24	0x2EEF,0x47F	2	no map transition within 600 input frames
-elevator-s18-r1d8064-floor2	elevator	1	MISSING	-	0	24	0x2EEF,0x47F	2	no map transition within 600 input frames
-elevator-s18-r1d8064-floor4	elevator	1	MISSING	-	0	24	0x2EEF,0x47F	2	no map transition within 600 input frames
-elevator-s18-r1d806e-floor0	elevator	1	MISSING	-	0	24	0x30EF,0x47F	2	no map transition within 600 input frames
-elevator-s18-r1d806e-floor1	elevator	1	MISSING	-	0	24	0x30EF,0x47F	2	no map transition within 600 input frames
-elevator-s18-r1d806e-floor2	elevator	1	MISSING	-	0	24	0x30EF,0x47F	2	no map transition within 600 input frames
-elevator-s18-r1d806e-floor4	elevator	1	MISSING	-	0	24	0x30EF,0x47F	2	no map transition within 600 input frames
-elevator-s19-r1d8f92-floor0	elevator	1	MISSING	-	0	25	0x2EEF,0x47F	2	no map transition within 600 input frames
-elevator-s19-r1d8f92-floor1	elevator	1	MISSING	-	0	25	0x2EEF,0x47F	2	no map transition within 600 input frames
-elevator-s19-r1d8f92-floor2	elevator	1	MISSING	-	0	25	0x2EEF,0x47F	2	no map transition within 600 input frames
-elevator-s19-r1d8f92-floor3	elevator	1	MISSING	-	0	25	0x2EEF,0x47F	2	no map transition within 600 input frames
-elevator-s19-r1d8f9c-floor0	elevator	1	MISSING	-	0	25	0x30EF,0x47F	2	no map transition within 600 input frames
-elevator-s19-r1d8f9c-floor1	elevator	1	MISSING	-	0	25	0x30EF,0x47F	2	no map transition within 600 input frames
-elevator-s19-r1d8f9c-floor2	elevator	1	MISSING	-	0	25	0x30EF,0x47F	2	no map transition within 600 input frames
-elevator-s19-r1d8f9c-floor3	elevator	1	MISSING	-	0	25	0x30EF,0x47F	2	no map transition within 600 input frames
-elevator-s1a-r1d9d6a-floor1	elevator	1	MISSING	-	0	26	0x8EF,0x47F	2	no map transition within 600 input frames
-elevator-s1a-r1d9d6a-floor2	elevator	1	MISSING	-	0	26	0x8EF,0x47F	2	no map transition within 600 input frames
-elevator-s1a-r1d9d6a-floor3	elevator	1	MISSING	-	0	26	0x8EF,0x47F	2	no map transition within 600 input frames
-elevator-s1a-r1d9d74-floor1	elevator	1	MISSING	-	0	26	0xAEF,0x47F	2	no map transition within 600 input frames
-elevator-s1a-r1d9d74-floor2	elevator	1	MISSING	-	0	26	0xAEF,0x47F	2	no map transition within 600 input frames
-elevator-s1a-r1d9d74-floor3	elevator	1	MISSING	-	0	26	0xAEF,0x47F	2	no map transition within 600 input frames
-elevator-s1b-r1da576-floor0	elevator	1	MISSING	-	0	27	0x8EF,0x47F	2	no map transition within 600 input frames
-elevator-s1b-r1da576-floor2	elevator	1	MISSING	-	0	27	0x8EF,0x47F	2	no map transition within 600 input frames
-elevator-s1b-r1da576-floor3	elevator	1	MISSING	-	0	27	0x8EF,0x47F	2	no map transition within 600 input frames
-elevator-s1b-r1da580-floor0	elevator	1	MISSING	-	0	27	0xAEF,0x47F	2	no map transition within 600 input frames
-elevator-s1b-r1da580-floor2	elevator	1	MISSING	-	0	27	0xAEF,0x47F	2	no map transition within 600 input frames
-elevator-s1b-r1da580-floor3	elevator	1	MISSING	-	0	27	0xAEF,0x47F	2	no map transition within 600 input frames
-elevator-s1c-r1dacb0-floor0	elevator	1	MISSING	-	0	28	0x8EF,0x47F	2	no map transition within 600 input frames
-elevator-s1c-r1dacb0-floor1	elevator	1	MISSING	-	0	28	0x8EF,0x47F	2	no map transition within 600 input frames
-elevator-s1c-r1dacb0-floor3	elevator	1	MISSING	-	0	28	0x8EF,0x47F	2	no map transition within 600 input frames
-elevator-s1c-r1dacba-floor0	elevator	1	MISSING	-	0	28	0xAEF,0x47F	2	no map transition within 600 input frames
-elevator-s1c-r1dacba-floor1	elevator	1	MISSING	-	0	28	0xAEF,0x47F	2	no map transition within 600 input frames
-elevator-s1c-r1dacba-floor3	elevator	1	MISSING	-	0	28	0xAEF,0x47F	2	no map transition within 600 input frames
-elevator-s1d-r1dacb0-floor0	elevator	1	MISSING	-	0	29	0x8EF,0x47F	2	no map transition within 600 input frames
-elevator-s1d-r1dacb0-floor1	elevator	1	MISSING	-	0	29	0x8EF,0x47F	2	no map transition within 600 input frames
-elevator-s1d-r1dacb0-floor2	elevator	1	MISSING	-	0	29	0x8EF,0x47F	2	no map transition within 600 input frames
-elevator-s1d-r1dacba-floor0	elevator	1	MISSING	-	0	29	0xAEF,0x47F	2	no map transition within 600 input frames
-elevator-s1d-r1dacba-floor1	elevator	1	MISSING	-	0	29	0xAEF,0x47F	2	no map transition within 600 input frames
-elevator-s1d-r1dacba-floor2	elevator	1	MISSING	-	0	29	0xAEF,0x47F	2	no map transition within 600 input frames
-elevator-s1e-r1db366-floor1	elevator	1	MISSING	-	0	30	0x38EF,0x47F	2	no map transition within 600 input frames
-elevator-s1e-r1db366-floor2	elevator	1	MISSING	-	0	30	0x38EF,0x47F	2	no map transition within 600 input frames
-elevator-s1e-r1db366-floor3	elevator	1	MISSING	-	0	30	0x38EF,0x47F	2	no map transition within 600 input frames
-elevator-s1e-r1db366-floor4	elevator	1	MISSING	-	0	30	0x38EF,0x47F	2	no map transition within 600 input frames
-elevator-s1e-r1db370-floor1	elevator	1	MISSING	-	0	30	0x3AEF,0x47F	2	no map transition within 600 input frames
-elevator-s1e-r1db370-floor2	elevator	1	MISSING	-	0	30	0x3AEF,0x47F	2	no map transition within 600 input frames
-elevator-s1e-r1db370-floor3	elevator	1	MISSING	-	0	30	0x3AEF,0x47F	2	no map transition within 600 input frames
-elevator-s1e-r1db370-floor4	elevator	1	MISSING	-	0	30	0x3AEF,0x47F	2	no map transition within 600 input frames
-elevator-s1f-r1db94a-floor0	elevator	1	MISSING	-	0	31	0x38EF,0x47F	2	no map transition within 600 input frames
-elevator-s1f-r1db94a-floor2	elevator	1	MISSING	-	0	31	0x38EF,0x47F	2	no map transition within 600 input frames
-elevator-s1f-r1db94a-floor3	elevator	1	MISSING	-	0	31	0x38EF,0x47F	2	no map transition within 600 input frames
-elevator-s1f-r1db94a-floor4	elevator	1	MISSING	-	0	31	0x38EF,0x47F	2	no map transition within 600 input frames
-elevator-s1f-r1db954-floor0	elevator	1	MISSING	-	0	31	0x3AEF,0x47F	2	no map transition within 600 input frames
-elevator-s1f-r1db954-floor2	elevator	1	MISSING	-	0	31	0x3AEF,0x47F	2	no map transition within 600 input frames
-elevator-s1f-r1db954-floor3	elevator	1	MISSING	-	0	31	0x3AEF,0x47F	2	no map transition within 600 input frames
-elevator-s1f-r1db954-floor4	elevator	1	MISSING	-	0	31	0x3AEF,0x47F	2	no map transition within 600 input frames
-elevator-s20-r1dbfdc-floor0	elevator	1	MISSING	-	0	32	0x38EF,0x47F	2	no map transition within 600 input frames
-elevator-s20-r1dbfdc-floor1	elevator	1	MISSING	-	0	32	0x38EF,0x47F	2	no map transition within 600 input frames
-elevator-s20-r1dbfdc-floor3	elevator	1	MISSING	-	0	32	0x38EF,0x47F	2	no map transition within 600 input frames
-elevator-s20-r1dbfdc-floor4	elevator	1	MISSING	-	0	32	0x38EF,0x47F	2	no map transition within 600 input frames
-elevator-s20-r1dbfe6-floor0	elevator	1	MISSING	-	0	32	0x3AEF,0x47F	2	no map transition within 600 input frames
-elevator-s20-r1dbfe6-floor1	elevator	1	MISSING	-	0	32	0x3AEF,0x47F	2	no map transition within 600 input frames
-elevator-s20-r1dbfe6-floor3	elevator	1	MISSING	-	0	32	0x3AEF,0x47F	2	no map transition within 600 input frames
-elevator-s20-r1dbfe6-floor4	elevator	1	MISSING	-	0	32	0x3AEF,0x47F	2	no map transition within 600 input frames
-elevator-s21-r1dbfdc-floor0	elevator	1	MISSING	-	0	33	0x38EF,0x47F	2	no map transition within 600 input frames
-elevator-s21-r1dbfdc-floor1	elevator	1	MISSING	-	0	33	0x38EF,0x47F	2	no map transition within 600 input frames
-elevator-s21-r1dbfdc-floor2	elevator	1	MISSING	-	0	33	0x38EF,0x47F	2	no map transition within 600 input frames
-elevator-s21-r1dbfdc-floor4	elevator	1	MISSING	-	0	33	0x38EF,0x47F	2	no map transition within 600 input frames
-elevator-s21-r1dbfe6-floor0	elevator	1	MISSING	-	0	33	0x3AEF,0x47F	2	no map transition within 600 input frames
-elevator-s21-r1dbfe6-floor1	elevator	1	MISSING	-	0	33	0x3AEF,0x47F	2	no map transition within 600 input frames
-elevator-s21-r1dbfe6-floor2	elevator	1	MISSING	-	0	33	0x3AEF,0x47F	2	no map transition within 600 input frames
-elevator-s21-r1dbfe6-floor4	elevator	1	MISSING	-	0	33	0x3AEF,0x47F	2	no map transition within 600 input frames
-elevator-s22-r1db94a-floor0	elevator	1	MISSING	-	0	34	0x38EF,0x47F	2	no map transition within 600 input frames
-elevator-s22-r1db94a-floor1	elevator	1	MISSING	-	0	34	0x38EF,0x47F	2	no map transition within 600 input frames
-elevator-s22-r1db94a-floor2	elevator	1	MISSING	-	0	34	0x38EF,0x47F	2	no map transition within 600 input frames
-elevator-s22-r1db94a-floor3	elevator	1	MISSING	-	0	34	0x38EF,0x47F	2	no map transition within 600 input frames
-elevator-s22-r1db954-floor0	elevator	1	MISSING	-	0	34	0x3AEF,0x47F	2	no map transition within 600 input frames
-elevator-s22-r1db954-floor1	elevator	1	MISSING	-	0	34	0x3AEF,0x47F	2	no map transition within 600 input frames
-elevator-s22-r1db954-floor2	elevator	1	MISSING	-	0	34	0x3AEF,0x47F	2	no map transition within 600 input frames
-elevator-s22-r1db954-floor3	elevator	1	MISSING	-	0	34	0x3AEF,0x47F	2	no map transition within 600 input frames
-elevator-s23-r1dc886-floor1	elevator	1	MISSING	-	0	35	0x26EF,0x147F	2	no map transition within 600 input frames
-elevator-s23-r1dc886-floor2	elevator	1	MISSING	-	0	35	0x26EF,0x147F	2	no map transition within 600 input frames
-elevator-s23-r1dc886-floor3	elevator	1	MISSING	-	0	35	0x26EF,0x147F	2	no map transition within 600 input frames
-elevator-s23-r1dc886-floor4	elevator	1	MISSING	-	0	35	0x26EF,0x147F	2	no map transition within 600 input frames
-elevator-s23-r1dc886-floor5	elevator	1	MISSING	-	0	35	0x26EF,0x147F	2	no map transition within 600 input frames
-elevator-s23-r1dc890-floor1	elevator	1	MISSING	-	0	35	0x28EF,0x147F	2	no map transition within 600 input frames
-elevator-s23-r1dc890-floor2	elevator	1	MISSING	-	0	35	0x28EF,0x147F	2	no map transition within 600 input frames
-elevator-s23-r1dc890-floor3	elevator	1	MISSING	-	0	35	0x28EF,0x147F	2	no map transition within 600 input frames
-elevator-s23-r1dc890-floor4	elevator	1	MISSING	-	0	35	0x28EF,0x147F	2	no map transition within 600 input frames
-elevator-s23-r1dc890-floor5	elevator	1	MISSING	-	0	35	0x28EF,0x147F	2	no map transition within 600 input frames
-elevator-s24-r1dcf98-floor0	elevator	1	MISSING	-	0	36	0x26EF,0x147F	2	no map transition within 600 input frames
-elevator-s24-r1dcf98-floor2	elevator	1	MISSING	-	0	36	0x26EF,0x147F	2	no map transition within 600 input frames
-elevator-s24-r1dcf98-floor3	elevator	1	MISSING	-	0	36	0x26EF,0x147F	2	no map transition within 600 input frames
-elevator-s24-r1dcf98-floor4	elevator	1	MISSING	-	0	36	0x26EF,0x147F	2	no map transition within 600 input frames
-elevator-s24-r1dcf98-floor5	elevator	1	MISSING	-	0	36	0x26EF,0x147F	2	no map transition within 600 input frames
-elevator-s24-r1dcfa2-floor0	elevator	1	MISSING	-	0	36	0x28EF,0x147F	2	no map transition within 600 input frames
-elevator-s24-r1dcfa2-floor2	elevator	1	MISSING	-	0	36	0x28EF,0x147F	2	no map transition within 600 input frames
-elevator-s24-r1dcfa2-floor3	elevator	1	MISSING	-	0	36	0x28EF,0x147F	2	no map transition within 600 input frames
-elevator-s24-r1dcfa2-floor4	elevator	1	MISSING	-	0	36	0x28EF,0x147F	2	no map transition within 600 input frames
-elevator-s24-r1dcfa2-floor5	elevator	1	MISSING	-	0	36	0x28EF,0x147F	2	no map transition within 600 input frames
-elevator-s25-r1dcf98-floor0	elevator	1	MISSING	-	0	37	0x26EF,0x147F	2	no map transition within 600 input frames
-elevator-s25-r1dcf98-floor1	elevator	1	MISSING	-	0	37	0x26EF,0x147F	2	no map transition within 600 input frames
-elevator-s25-r1dcf98-floor3	elevator	1	MISSING	-	0	37	0x26EF,0x147F	2	no map transition within 600 input frames
-elevator-s25-r1dcf98-floor4	elevator	1	MISSING	-	0	37	0x26EF,0x147F	2	no map transition within 600 input frames
-elevator-s25-r1dcf98-floor5	elevator	1	MISSING	-	0	37	0x26EF,0x147F	2	no map transition within 600 input frames
-elevator-s25-r1dcfa2-floor0	elevator	1	MISSING	-	0	37	0x28EF,0x147F	2	no map transition within 600 input frames
-elevator-s25-r1dcfa2-floor1	elevator	1	MISSING	-	0	37	0x28EF,0x147F	2	no map transition within 600 input frames
-elevator-s25-r1dcfa2-floor3	elevator	1	MISSING	-	0	37	0x28EF,0x147F	2	no map transition within 600 input frames
-elevator-s25-r1dcfa2-floor4	elevator	1	MISSING	-	0	37	0x28EF,0x147F	2	no map transition within 600 input frames
-elevator-s25-r1dcfa2-floor5	elevator	1	MISSING	-	0	37	0x28EF,0x147F	2	no map transition within 600 input frames
-elevator-s26-r1dd6d6-floor0	elevator	1	MISSING	-	0	38	0x26EF,0x147F	2	no map transition within 600 input frames
-elevator-s26-r1dd6d6-floor1	elevator	1	MISSING	-	0	38	0x26EF,0x147F	2	no map transition within 600 input frames
-elevator-s26-r1dd6d6-floor2	elevator	1	MISSING	-	0	38	0x26EF,0x147F	2	no map transition within 600 input frames
-elevator-s26-r1dd6d6-floor4	elevator	1	MISSING	-	0	38	0x26EF,0x147F	2	no map transition within 600 input frames
-elevator-s26-r1dd6d6-floor5	elevator	1	MISSING	-	0	38	0x26EF,0x147F	2	no map transition within 600 input frames
-elevator-s26-r1dd6e0-floor0	elevator	1	MISSING	-	0	38	0x28EF,0x147F	2	no map transition within 600 input frames
-elevator-s26-r1dd6e0-floor1	elevator	1	MISSING	-	0	38	0x28EF,0x147F	2	no map transition within 600 input frames
-elevator-s26-r1dd6e0-floor2	elevator	1	MISSING	-	0	38	0x28EF,0x147F	2	no map transition within 600 input frames
-elevator-s26-r1dd6e0-floor4	elevator	1	MISSING	-	0	38	0x28EF,0x147F	2	no map transition within 600 input frames
-elevator-s26-r1dd6e0-floor5	elevator	1	MISSING	-	0	38	0x28EF,0x147F	2	no map transition within 600 input frames
-elevator-s27-r1ddc20-floor0	elevator	1	MISSING	-	0	39	0x14EF,0x47F	2	no map transition within 600 input frames
-elevator-s27-r1ddc20-floor1	elevator	1	MISSING	-	0	39	0x14EF,0x47F	2	no map transition within 600 input frames
-elevator-s27-r1ddc20-floor2	elevator	1	MISSING	-	0	39	0x14EF,0x47F	2	no map transition within 600 input frames
-elevator-s27-r1ddc20-floor3	elevator	1	MISSING	-	0	39	0x14EF,0x47F	2	no map transition within 600 input frames
-elevator-s27-r1ddc20-floor5	elevator	1	MISSING	-	0	39	0x14EF,0x47F	2	no map transition within 600 input frames
-elevator-s27-r1ddc2a-floor0	elevator	1	MISSING	-	0	39	0x16EF,0x47F	2	no map transition within 600 input frames
-elevator-s27-r1ddc2a-floor1	elevator	1	MISSING	-	0	39	0x16EF,0x47F	2	no map transition within 600 input frames
-elevator-s27-r1ddc2a-floor2	elevator	1	MISSING	-	0	39	0x16EF,0x47F	2	no map transition within 600 input frames
-elevator-s27-r1ddc2a-floor3	elevator	1	MISSING	-	0	39	0x16EF,0x47F	2	no map transition within 600 input frames
-elevator-s27-r1ddc2a-floor5	elevator	1	MISSING	-	0	39	0x16EF,0x47F	2	no map transition within 600 input frames
-elevator-s28-r1de112-floor0	elevator	1	MISSING	-	0	40	0x14EF,0x47F	2	no map transition within 600 input frames
-elevator-s28-r1de112-floor1	elevator	1	MISSING	-	0	40	0x14EF,0x47F	2	no map transition within 600 input frames
-elevator-s28-r1de112-floor2	elevator	1	MISSING	-	0	40	0x14EF,0x47F	2	no map transition within 600 input frames
-elevator-s28-r1de112-floor3	elevator	1	MISSING	-	0	40	0x14EF,0x47F	2	no map transition within 600 input frames
-elevator-s28-r1de112-floor4	elevator	1	MISSING	-	0	40	0x14EF,0x47F	2	no map transition within 600 input frames
-elevator-s28-r1de11c-floor0	elevator	1	MISSING	-	0	40	0x16EF,0x47F	2	no map transition within 600 input frames
-elevator-s28-r1de11c-floor1	elevator	1	MISSING	-	0	40	0x16EF,0x47F	2	no map transition within 600 input frames
-elevator-s28-r1de11c-floor2	elevator	1	MISSING	-	0	40	0x16EF,0x47F	2	no map transition within 600 input frames
-elevator-s28-r1de11c-floor3	elevator	1	MISSING	-	0	40	0x16EF,0x47F	2	no map transition within 600 input frames
-elevator-s28-r1de11c-floor4	elevator	1	MISSING	-	0	40	0x16EF,0x47F	2	no map transition within 600 input frames
-elevator-s29-r1de6b8-floor1	elevator	1	MISSING	-	0	41	0x2EF,0x1E7F	2	no map transition within 600 input frames
-elevator-s29-r1de6b8-floor2	elevator	1	MISSING	-	0	41	0x2EF,0x1E7F	2	no map transition within 600 input frames
-elevator-s29-r1de6c2-floor1	elevator	1	MISSING	-	0	41	0x4EF,0x1E7F	2	no map transition within 600 input frames
-elevator-s29-r1de6c2-floor2	elevator	1	MISSING	-	0	41	0x4EF,0x1E7F	2	no map transition within 600 input frames
-elevator-s2a-r1decd2-floor0	elevator	1	MISSING	-	0	42	0x2EF,0x207F	2	no map transition within 600 input frames
-elevator-s2a-r1decd2-floor2	elevator	1	MISSING	-	0	42	0x2EF,0x207F	2	no map transition within 600 input frames
-elevator-s2a-r1decdc-floor0	elevator	1	MISSING	-	0	42	0x4EF,0x207F	2	no map transition within 600 input frames
-elevator-s2a-r1decdc-floor2	elevator	1	MISSING	-	0	42	0x4EF,0x207F	2	no map transition within 600 input frames
-elevator-s2b-r1decd2-floor0	elevator	1	MISSING	-	0	43	0x2EF,0x207F	2	no map transition within 600 input frames
-elevator-s2b-r1decd2-floor1	elevator	1	MISSING	-	0	43	0x2EF,0x207F	2	no map transition within 600 input frames
-elevator-s2b-r1decdc-floor0	elevator	1	MISSING	-	0	43	0x4EF,0x207F	2	no map transition within 600 input frames
-elevator-s2b-r1decdc-floor1	elevator	1	MISSING	-	0	43	0x4EF,0x207F	2	no map transition within 600 input frames
+elevator-s15-r1d794e-floor1	elevator	1	PASS	-	1	22	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s15-r1d794e-floor2	elevator	1	PASS	-	1	23	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s15-r1d794e-floor3	elevator	1	PASS	-	1	24	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s15-r1d794e-floor4	elevator	1	PASS	-	1	25	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s15-r1d7958-floor1	elevator	1	PASS	-	1	22	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s15-r1d7958-floor2	elevator	1	PASS	-	1	23	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s15-r1d7958-floor3	elevator	1	PASS	-	1	24	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s15-r1d7958-floor4	elevator	1	PASS	-	1	25	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s16-r1d8064-floor0	elevator	1	PASS	-	1	21	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s16-r1d8064-floor2	elevator	1	PASS	-	1	23	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s16-r1d8064-floor3	elevator	1	PASS	-	1	24	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s16-r1d8064-floor4	elevator	1	PASS	-	1	25	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s16-r1d806e-floor0	elevator	1	PASS	-	1	21	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s16-r1d806e-floor2	elevator	1	PASS	-	1	23	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s16-r1d806e-floor3	elevator	1	PASS	-	1	24	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s16-r1d806e-floor4	elevator	1	PASS	-	1	25	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s17-r1d885c-floor0	elevator	1	PASS	-	1	21	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s17-r1d885c-floor1	elevator	1	PASS	-	1	22	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s17-r1d885c-floor3	elevator	1	PASS	-	1	24	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s17-r1d885c-floor4	elevator	1	PASS	-	1	25	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s17-r1d8866-floor0	elevator	1	PASS	-	1	21	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s17-r1d8866-floor1	elevator	1	PASS	-	1	22	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s17-r1d8866-floor3	elevator	1	PASS	-	1	24	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s17-r1d8866-floor4	elevator	1	PASS	-	1	25	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s18-r1d8064-floor0	elevator	1	PASS	-	1	21	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s18-r1d8064-floor1	elevator	1	PASS	-	1	22	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s18-r1d8064-floor2	elevator	1	PASS	-	1	23	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s18-r1d8064-floor4	elevator	1	PASS	-	1	25	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s18-r1d806e-floor0	elevator	1	PASS	-	1	21	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s18-r1d806e-floor1	elevator	1	PASS	-	1	22	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s18-r1d806e-floor2	elevator	1	PASS	-	1	23	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s18-r1d806e-floor4	elevator	1	PASS	-	1	25	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s19-r1d8f92-floor0	elevator	1	PASS	-	1	21	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s19-r1d8f92-floor1	elevator	1	PASS	-	1	22	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s19-r1d8f92-floor2	elevator	1	PASS	-	1	23	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s19-r1d8f92-floor3	elevator	1	PASS	-	1	24	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s19-r1d8f9c-floor0	elevator	1	PASS	-	1	21	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s19-r1d8f9c-floor1	elevator	1	PASS	-	1	22	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s19-r1d8f9c-floor2	elevator	1	PASS	-	1	23	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s19-r1d8f9c-floor3	elevator	1	PASS	-	1	24	0x3000,0x600	2	observed route matches all resolved ROM outputs
+elevator-s1a-r1d9d6a-floor1	elevator	1	PASS	0x1	1	27	0xA00,0x500	2	observed route matches all resolved ROM outputs
+elevator-s1a-r1d9d6a-floor2	elevator	1	PASS	0x1	1	28	0xA00,0x500	2	observed route matches all resolved ROM outputs
+elevator-s1a-r1d9d6a-floor3	elevator	1	PASS	0x1	1	29	0xA00,0x500	2	observed route matches all resolved ROM outputs
+elevator-s1a-r1d9d74-floor1	elevator	1	PASS	0x1	1	27	0xA00,0x500	2	observed route matches all resolved ROM outputs
+elevator-s1a-r1d9d74-floor2	elevator	1	PASS	0x1	1	28	0xA00,0x500	2	observed route matches all resolved ROM outputs
+elevator-s1a-r1d9d74-floor3	elevator	1	PASS	0x1	1	29	0xA00,0x500	2	observed route matches all resolved ROM outputs
+elevator-s1b-r1da576-floor0	elevator	1	PASS	-	1	26	0xA00,0x500	2	observed route matches all resolved ROM outputs
+elevator-s1b-r1da576-floor2	elevator	1	PASS	-	1	28	0xA00,0x500	2	observed route matches all resolved ROM outputs
+elevator-s1b-r1da576-floor3	elevator	1	PASS	-	1	29	0xA00,0x500	2	observed route matches all resolved ROM outputs
+elevator-s1b-r1da580-floor0	elevator	1	PASS	-	1	26	0xA00,0x500	2	observed route matches all resolved ROM outputs
+elevator-s1b-r1da580-floor2	elevator	1	PASS	-	1	28	0xA00,0x500	2	observed route matches all resolved ROM outputs
+elevator-s1b-r1da580-floor3	elevator	1	PASS	-	1	29	0xA00,0x500	2	observed route matches all resolved ROM outputs
+elevator-s1c-r1dacb0-floor0	elevator	1	PASS	-	1	26	0xA00,0x500	2	observed route matches all resolved ROM outputs
+elevator-s1c-r1dacb0-floor1	elevator	1	PASS	-	1	27	0xA00,0x500	2	observed route matches all resolved ROM outputs
+elevator-s1c-r1dacb0-floor3	elevator	1	PASS	-	1	29	0xA00,0x500	2	observed route matches all resolved ROM outputs
+elevator-s1c-r1dacba-floor0	elevator	1	PASS	-	1	26	0xA00,0x500	2	observed route matches all resolved ROM outputs
+elevator-s1c-r1dacba-floor1	elevator	1	PASS	-	1	27	0xA00,0x500	2	observed route matches all resolved ROM outputs
+elevator-s1c-r1dacba-floor3	elevator	1	PASS	-	1	29	0xA00,0x500	2	observed route matches all resolved ROM outputs
+elevator-s1d-r1dacb0-floor0	elevator	1	PASS	-	1	26	0xA00,0x500	2	observed route matches all resolved ROM outputs
+elevator-s1d-r1dacb0-floor1	elevator	1	PASS	-	1	27	0xA00,0x500	2	observed route matches all resolved ROM outputs
+elevator-s1d-r1dacb0-floor2	elevator	1	PASS	-	1	28	0xA00,0x500	2	observed route matches all resolved ROM outputs
+elevator-s1d-r1dacba-floor0	elevator	1	PASS	-	1	26	0xA00,0x500	2	observed route matches all resolved ROM outputs
+elevator-s1d-r1dacba-floor1	elevator	1	PASS	-	1	27	0xA00,0x500	2	observed route matches all resolved ROM outputs
+elevator-s1d-r1dacba-floor2	elevator	1	PASS	-	1	28	0xA00,0x500	2	observed route matches all resolved ROM outputs
+elevator-s1e-r1db366-floor1	elevator	1	PASS	-	1	31	0x3800,0x600	2	observed route matches all resolved ROM outputs
+elevator-s1e-r1db366-floor2	elevator	1	PASS	-	1	32	0x3800,0x600	2	observed route matches all resolved ROM outputs
+elevator-s1e-r1db366-floor3	elevator	1	PASS	-	1	33	0x3800,0x600	2	observed route matches all resolved ROM outputs
+elevator-s1e-r1db366-floor4	elevator	1	PASS	-	1	34	0x3800,0x600	2	observed route matches all resolved ROM outputs
+elevator-s1e-r1db370-floor1	elevator	1	PASS	-	1	31	0x3800,0x600	2	observed route matches all resolved ROM outputs
+elevator-s1e-r1db370-floor2	elevator	1	PASS	-	1	32	0x3800,0x600	2	observed route matches all resolved ROM outputs
+elevator-s1e-r1db370-floor3	elevator	1	PASS	-	1	33	0x3800,0x600	2	observed route matches all resolved ROM outputs
+elevator-s1e-r1db370-floor4	elevator	1	PASS	-	1	34	0x3800,0x600	2	observed route matches all resolved ROM outputs
+elevator-s1f-r1db94a-floor0	elevator	1	PASS	-	1	30	0x3A00,0x600	2	observed route matches all resolved ROM outputs
+elevator-s1f-r1db94a-floor2	elevator	1	PASS	-	1	32	0x3800,0x600	2	observed route matches all resolved ROM outputs
+elevator-s1f-r1db94a-floor3	elevator	1	PASS	-	1	33	0x3800,0x600	2	observed route matches all resolved ROM outputs
+elevator-s1f-r1db94a-floor4	elevator	1	PASS	-	1	34	0x3800,0x600	2	observed route matches all resolved ROM outputs
+elevator-s1f-r1db954-floor0	elevator	1	PASS	-	1	30	0x3A00,0x600	2	observed route matches all resolved ROM outputs
+elevator-s1f-r1db954-floor2	elevator	1	PASS	-	1	32	0x3800,0x600	2	observed route matches all resolved ROM outputs
+elevator-s1f-r1db954-floor3	elevator	1	PASS	-	1	33	0x3800,0x600	2	observed route matches all resolved ROM outputs
+elevator-s1f-r1db954-floor4	elevator	1	PASS	-	1	34	0x3800,0x600	2	observed route matches all resolved ROM outputs
+elevator-s20-r1dbfdc-floor0	elevator	1	PASS	-	1	30	0x3A00,0x600	2	observed route matches all resolved ROM outputs
+elevator-s20-r1dbfdc-floor1	elevator	1	PASS	-	1	31	0x3800,0x600	2	observed route matches all resolved ROM outputs
+elevator-s20-r1dbfdc-floor3	elevator	1	PASS	-	1	33	0x3800,0x600	2	observed route matches all resolved ROM outputs
+elevator-s20-r1dbfdc-floor4	elevator	1	PASS	-	1	34	0x3800,0x600	2	observed route matches all resolved ROM outputs
+elevator-s20-r1dbfe6-floor0	elevator	1	PASS	-	1	30	0x3A00,0x600	2	observed route matches all resolved ROM outputs
+elevator-s20-r1dbfe6-floor1	elevator	1	PASS	-	1	31	0x3800,0x600	2	observed route matches all resolved ROM outputs
+elevator-s20-r1dbfe6-floor3	elevator	1	PASS	-	1	33	0x3800,0x600	2	observed route matches all resolved ROM outputs
+elevator-s20-r1dbfe6-floor4	elevator	1	PASS	-	1	34	0x3800,0x600	2	observed route matches all resolved ROM outputs
+elevator-s21-r1dbfdc-floor0	elevator	1	PASS	-	1	30	0x3A00,0x600	2	observed route matches all resolved ROM outputs
+elevator-s21-r1dbfdc-floor1	elevator	1	PASS	-	1	31	0x3800,0x600	2	observed route matches all resolved ROM outputs
+elevator-s21-r1dbfdc-floor2	elevator	1	PASS	-	1	32	0x3800,0x600	2	observed route matches all resolved ROM outputs
+elevator-s21-r1dbfdc-floor4	elevator	1	PASS	-	1	34	0x3800,0x600	2	observed route matches all resolved ROM outputs
+elevator-s21-r1dbfe6-floor0	elevator	1	PASS	-	1	30	0x3A00,0x600	2	observed route matches all resolved ROM outputs
+elevator-s21-r1dbfe6-floor1	elevator	1	PASS	-	1	31	0x3800,0x600	2	observed route matches all resolved ROM outputs
+elevator-s21-r1dbfe6-floor2	elevator	1	PASS	-	1	32	0x3800,0x600	2	observed route matches all resolved ROM outputs
+elevator-s21-r1dbfe6-floor4	elevator	1	PASS	-	1	34	0x3800,0x600	2	observed route matches all resolved ROM outputs
+elevator-s22-r1db94a-floor0	elevator	1	PASS	-	1	30	0x3A00,0x600	2	observed route matches all resolved ROM outputs
+elevator-s22-r1db94a-floor1	elevator	1	PASS	-	1	31	0x3800,0x600	2	observed route matches all resolved ROM outputs
+elevator-s22-r1db94a-floor2	elevator	1	PASS	-	1	32	0x3800,0x600	2	observed route matches all resolved ROM outputs
+elevator-s22-r1db94a-floor3	elevator	1	PASS	-	1	33	0x3800,0x600	2	observed route matches all resolved ROM outputs
+elevator-s22-r1db954-floor0	elevator	1	PASS	-	1	30	0x3A00,0x600	2	observed route matches all resolved ROM outputs
+elevator-s22-r1db954-floor1	elevator	1	PASS	-	1	31	0x3800,0x600	2	observed route matches all resolved ROM outputs
+elevator-s22-r1db954-floor2	elevator	1	PASS	-	1	32	0x3800,0x600	2	observed route matches all resolved ROM outputs
+elevator-s22-r1db954-floor3	elevator	1	PASS	-	1	33	0x3800,0x600	2	observed route matches all resolved ROM outputs
+elevator-s23-r1dc886-floor1	elevator	1	PASS	-	1	36	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s23-r1dc886-floor2	elevator	1	PASS	-	1	37	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s23-r1dc886-floor3	elevator	1	PASS	-	1	38	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s23-r1dc886-floor4	elevator	1	PASS	-	1	39	0x1600,0x500	2	observed route matches all resolved ROM outputs
+elevator-s23-r1dc886-floor5	elevator	1	PASS	-	1	40	0x1600,0x500	2	observed route matches all resolved ROM outputs
+elevator-s23-r1dc890-floor1	elevator	1	PASS	-	1	36	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s23-r1dc890-floor2	elevator	1	PASS	-	1	37	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s23-r1dc890-floor3	elevator	1	PASS	-	1	38	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s23-r1dc890-floor4	elevator	1	PASS	-	1	39	0x1600,0x500	2	observed route matches all resolved ROM outputs
+elevator-s23-r1dc890-floor5	elevator	1	PASS	-	1	40	0x1600,0x500	2	observed route matches all resolved ROM outputs
+elevator-s24-r1dcf98-floor0	elevator	1	PASS	-	1	35	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s24-r1dcf98-floor2	elevator	1	PASS	-	1	37	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s24-r1dcf98-floor3	elevator	1	PASS	-	1	38	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s24-r1dcf98-floor4	elevator	1	PASS	-	1	39	0x1600,0x500	2	observed route matches all resolved ROM outputs
+elevator-s24-r1dcf98-floor5	elevator	1	PASS	-	1	40	0x1600,0x500	2	observed route matches all resolved ROM outputs
+elevator-s24-r1dcfa2-floor0	elevator	1	PASS	-	1	35	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s24-r1dcfa2-floor2	elevator	1	PASS	-	1	37	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s24-r1dcfa2-floor3	elevator	1	PASS	-	1	38	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s24-r1dcfa2-floor4	elevator	1	PASS	-	1	39	0x1600,0x500	2	observed route matches all resolved ROM outputs
+elevator-s24-r1dcfa2-floor5	elevator	1	PASS	-	1	40	0x1600,0x500	2	observed route matches all resolved ROM outputs
+elevator-s25-r1dcf98-floor0	elevator	1	PASS	-	1	35	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s25-r1dcf98-floor1	elevator	1	PASS	-	1	36	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s25-r1dcf98-floor3	elevator	1	PASS	-	1	38	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s25-r1dcf98-floor4	elevator	1	PASS	-	1	39	0x1600,0x500	2	observed route matches all resolved ROM outputs
+elevator-s25-r1dcf98-floor5	elevator	1	PASS	-	1	40	0x1600,0x500	2	observed route matches all resolved ROM outputs
+elevator-s25-r1dcfa2-floor0	elevator	1	PASS	-	1	35	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s25-r1dcfa2-floor1	elevator	1	PASS	-	1	36	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s25-r1dcfa2-floor3	elevator	1	PASS	-	1	38	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s25-r1dcfa2-floor4	elevator	1	PASS	-	1	39	0x1600,0x500	2	observed route matches all resolved ROM outputs
+elevator-s25-r1dcfa2-floor5	elevator	1	PASS	-	1	40	0x1600,0x500	2	observed route matches all resolved ROM outputs
+elevator-s26-r1dd6d6-floor0	elevator	1	PASS	-	1	35	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s26-r1dd6d6-floor1	elevator	1	PASS	-	1	36	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s26-r1dd6d6-floor2	elevator	1	PASS	-	1	37	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s26-r1dd6d6-floor4	elevator	1	PASS	-	1	39	0x1600,0x500	2	observed route matches all resolved ROM outputs
+elevator-s26-r1dd6d6-floor5	elevator	1	PASS	-	1	40	0x1600,0x500	2	observed route matches all resolved ROM outputs
+elevator-s26-r1dd6e0-floor0	elevator	1	PASS	-	1	35	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s26-r1dd6e0-floor1	elevator	1	PASS	-	1	36	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s26-r1dd6e0-floor2	elevator	1	PASS	-	1	37	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s26-r1dd6e0-floor4	elevator	1	PASS	-	1	39	0x1600,0x500	2	observed route matches all resolved ROM outputs
+elevator-s26-r1dd6e0-floor5	elevator	1	PASS	-	1	40	0x1600,0x500	2	observed route matches all resolved ROM outputs
+elevator-s27-r1ddc20-floor0	elevator	1	PASS	-	1	35	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s27-r1ddc20-floor1	elevator	1	PASS	-	1	36	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s27-r1ddc20-floor2	elevator	1	PASS	-	1	37	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s27-r1ddc20-floor3	elevator	1	PASS	-	1	38	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s27-r1ddc20-floor5	elevator	1	PASS	-	1	40	0x1600,0x500	2	observed route matches all resolved ROM outputs
+elevator-s27-r1ddc2a-floor0	elevator	1	PASS	-	1	35	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s27-r1ddc2a-floor1	elevator	1	PASS	-	1	36	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s27-r1ddc2a-floor2	elevator	1	PASS	-	1	37	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s27-r1ddc2a-floor3	elevator	1	PASS	-	1	38	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s27-r1ddc2a-floor5	elevator	1	PASS	-	1	40	0x1600,0x500	2	observed route matches all resolved ROM outputs
+elevator-s28-r1de112-floor0	elevator	1	PASS	-	1	35	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s28-r1de112-floor1	elevator	1	PASS	-	1	36	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s28-r1de112-floor2	elevator	1	PASS	-	1	37	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s28-r1de112-floor3	elevator	1	PASS	-	1	38	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s28-r1de112-floor4	elevator	1	PASS	-	1	39	0x1600,0x500	2	observed route matches all resolved ROM outputs
+elevator-s28-r1de11c-floor0	elevator	1	PASS	-	1	35	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s28-r1de11c-floor1	elevator	1	PASS	-	1	36	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s28-r1de11c-floor2	elevator	1	PASS	-	1	37	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s28-r1de11c-floor3	elevator	1	PASS	-	1	38	0x2800,0x1580	2	observed route matches all resolved ROM outputs
+elevator-s28-r1de11c-floor4	elevator	1	PASS	-	1	39	0x1600,0x500	2	observed route matches all resolved ROM outputs
+elevator-s29-r1de6b8-floor1	elevator	1	PASS	-	1	42	0x500,0x2300	2	observed route matches all resolved ROM outputs
+elevator-s29-r1de6b8-floor2	elevator	1	PASS	-	1	43	0x500,0x2300	2	observed route matches all resolved ROM outputs
+elevator-s29-r1de6c2-floor1	elevator	1	PASS	-	1	42	0x500,0x2300	2	observed route matches all resolved ROM outputs
+elevator-s29-r1de6c2-floor2	elevator	1	PASS	-	1	43	0x500,0x2300	2	observed route matches all resolved ROM outputs
+elevator-s2a-r1decd2-floor0	elevator	1	PASS	-	1	41	0x500,0x2300	2	observed route matches all resolved ROM outputs
+elevator-s2a-r1decd2-floor2	elevator	1	PASS	-	1	43	0x500,0x2300	2	observed route matches all resolved ROM outputs
+elevator-s2a-r1decdc-floor0	elevator	1	PASS	-	1	41	0x500,0x2300	2	observed route matches all resolved ROM outputs
+elevator-s2a-r1decdc-floor2	elevator	1	PASS	-	1	43	0x500,0x2300	2	observed route matches all resolved ROM outputs
+elevator-s2b-r1decd2-floor0	elevator	1	PASS	-	1	41	0x500,0x2300	2	observed route matches all resolved ROM outputs
+elevator-s2b-r1decd2-floor1	elevator	1	PASS	-	1	42	0x500,0x2300	2	observed route matches all resolved ROM outputs
+elevator-s2b-r1decdc-floor0	elevator	1	PASS	-	1	41	0x500,0x2300	2	observed route matches all resolved ROM outputs
+elevator-s2b-r1decdc-floor1	elevator	1	PASS	-	1	42	0x500,0x2300	2	observed route matches all resolved ROM outputs
 cave-room00-east-r14c0f4	cave	1	MISSING	0x9	0	6	0x7580,0x8D7	3	cave room gate not established by a natural incoming route
 cave-room00-north-r14c0ea	cave	1	MISSING	-	0	6	0xFF,0x5380	3	cave room gate not established by a natural incoming route
 cave-room00-south-r14c0fe	cave	1	MISSING	-	0	6	0x76FF,0x6F80	3	cave room gate not established by a natural incoming route
@@ -385,14 +385,14 @@ travel-taxi-r0-cursor3	travel	1	MISSING	-	0	0	0x2D7,0x387F	0	no map transition w
 travel-taxi-r0-cursor4	travel	1	MISSING	-	0	0	0x2D7,0x387F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
 travel-taxi-r0-cursor5	travel	1	MISSING	-	0	0	0x2D7,0x387F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
 travel-taxi-r0-cursor6	travel	1	MISSING	-	0	0	0x2D7,0x387F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
-travel-terminal-s00-r0d5840	travel	1	PASS	-	0	0	0x2D7,0x387F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s00-r0d584a	travel	1	PASS	-	0	0	0x18EF,0x87F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s00-r0d5854	travel	1	PASS	-	0	0	0x70D7,0x87F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s00-r0d585e	travel	1	PASS	-	0	0	0x74D7,0x387F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-vidphone-s00-r0d5840	travel	1	PASS	-	0	0	0x2D7,0x387F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s00-r0d584a	travel	1	PASS	-	0	0	0x18EF,0x87F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s00-r0d5854	travel	1	PASS	-	0	0	0x70D7,0x87F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s00-r0d585e	travel	1	PASS	-	0	0	0x74D7,0x387F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
+travel-terminal-s00-r0d5840	travel	1	PASS	-	0	0	0x2D7,0x387F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s00-r0d584a	travel	1	PASS	-	0	0	0x18EF,0x87F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s00-r0d5854	travel	1	PASS	-	0	0	0x70D7,0x87F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s00-r0d585e	travel	1	PASS	-	0	0	0x74D7,0x387F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-vidphone-s00-r0d5840	travel	1	PASS	-	0	0	0x2D7,0x387F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s00-r0d584a	travel	1	PASS	-	0	0	0x18EF,0x87F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s00-r0d5854	travel	1	PASS	-	0	0	0x70D7,0x87F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s00-r0d585e	travel	1	PASS	-	0	0	0x74D7,0x387F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
 travel-taxi-r1-cursor0	travel	1	MISSING	-	0	1	0x4D7,0xC7F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
 travel-taxi-r1-cursor1	travel	1	MISSING	-	0	1	0x4D7,0xC7F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
 travel-taxi-r1-cursor2	travel	1	MISSING	-	0	1	0x4D7,0xC7F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
@@ -400,14 +400,14 @@ travel-taxi-r1-cursor3	travel	1	MISSING	-	0	1	0x4D7,0xC7F	0	no map transition wi
 travel-taxi-r1-cursor4	travel	1	MISSING	-	0	1	0x4D7,0xC7F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
 travel-taxi-r1-cursor5	travel	1	MISSING	-	0	1	0x4D7,0xC7F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
 travel-taxi-r1-cursor6	travel	1	MISSING	-	0	1	0x4D7,0xC7F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
-travel-terminal-s01-r17da1a	travel	1	PASS	-	0	1	0x4D7,0xC7F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s01-r17da24	travel	1	PASS	-	0	1	0x38D7,0xC7F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s01-r17da2e	travel	1	PASS	-	0	1	0x54EF,0x527F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s01-r17da38	travel	1	PASS	-	0	1	0xAD7,0x527F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-vidphone-s01-r17da1a	travel	1	PASS	-	0	1	0x4D7,0xC7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s01-r17da24	travel	1	PASS	-	0	1	0x38D7,0xC7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s01-r17da2e	travel	1	PASS	-	0	1	0x54EF,0x527F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s01-r17da38	travel	1	PASS	-	0	1	0xAD7,0x527F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
+travel-terminal-s01-r17da1a	travel	1	PASS	-	0	1	0x4D7,0xC7F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s01-r17da24	travel	1	PASS	-	0	1	0x38D7,0xC7F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s01-r17da2e	travel	1	PASS	-	0	1	0x54EF,0x527F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s01-r17da38	travel	1	PASS	-	0	1	0xAD7,0x527F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-vidphone-s01-r17da1a	travel	1	PASS	-	0	1	0x4D7,0xC7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s01-r17da24	travel	1	PASS	-	0	1	0x38D7,0xC7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s01-r17da2e	travel	1	PASS	-	0	1	0x54EF,0x527F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s01-r17da38	travel	1	PASS	-	0	1	0xAD7,0x527F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
 travel-death-s02-002b24	travel	1	MISSING	0x2	1	2	0x3CE0,0x288C	0	party-down prerequisite not reached by map input
 travel-taxi-r2-cursor0	travel	1	MISSING	-	0	2	0x74D7,0xA7F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
 travel-taxi-r2-cursor1	travel	1	MISSING	-	0	2	0x74D7,0xA7F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
@@ -416,12 +416,12 @@ travel-taxi-r2-cursor3	travel	1	MISSING	-	0	2	0x74D7,0xA7F	0	no map transition w
 travel-taxi-r2-cursor4	travel	1	MISSING	-	0	2	0x74D7,0xA7F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
 travel-taxi-r2-cursor5	travel	1	MISSING	-	0	2	0x74D7,0xA7F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
 travel-taxi-r2-cursor6	travel	1	MISSING	-	0	2	0x74D7,0xA7F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
-travel-terminal-s02-r17317e	travel	1	PASS	-	0	2	0x74D7,0xA7F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s02-r173188	travel	1	PASS	-	0	2	0x40D7,0x4C7F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s02-r173192	travel	1	PASS	-	0	2	0x20D7,0xA7F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-vidphone-s02-r17317e	travel	1	PASS	-	0	2	0x74D7,0xA7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s02-r173188	travel	1	PASS	-	0	2	0x40D7,0x4C7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s02-r173192	travel	1	PASS	-	0	2	0x20D7,0xA7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
+travel-terminal-s02-r17317e	travel	1	PASS	-	0	2	0x74D7,0xA7F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s02-r173188	travel	1	PASS	-	0	2	0x40D7,0x4C7F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s02-r173192	travel	1	PASS	-	0	2	0x20D7,0xA7F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-vidphone-s02-r17317e	travel	1	PASS	-	0	2	0x74D7,0xA7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s02-r173188	travel	1	PASS	-	0	2	0x40D7,0x4C7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s02-r173192	travel	1	PASS	-	0	2	0x20D7,0xA7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
 travel-taxi-r3-cursor0	travel	1	MISSING	-	0	3	0x7AD7,0x67F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
 travel-taxi-r3-cursor1	travel	1	MISSING	-	0	3	0x7AD7,0x67F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
 travel-taxi-r3-cursor2	travel	1	MISSING	-	0	3	0x7AD7,0x67F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
@@ -429,14 +429,14 @@ travel-taxi-r3-cursor3	travel	1	MISSING	-	0	3	0x7AD7,0x67F	0	no map transition w
 travel-taxi-r3-cursor4	travel	1	MISSING	-	0	3	0x7AD7,0x67F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
 travel-taxi-r3-cursor5	travel	1	MISSING	-	0	3	0x7AD7,0x67F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
 travel-taxi-r3-cursor6	travel	1	MISSING	-	0	3	0x7AD7,0x67F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
-travel-terminal-s03-r18ac2c	travel	1	PASS	-	0	3	0x7AD7,0x67F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s03-r18ac36	travel	1	PASS	-	0	3	0xCEF,0xE7F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s03-r18ac40	travel	1	PASS	-	0	3	0x14D7,0x407F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s03-r18ac4a	travel	1	PASS	-	0	3	0x68D7,0x387F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-vidphone-s03-r18ac2c	travel	1	PASS	-	0	3	0x7AD7,0x67F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s03-r18ac36	travel	1	PASS	-	0	3	0xCEF,0xE7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s03-r18ac40	travel	1	PASS	-	0	3	0x14D7,0x407F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s03-r18ac4a	travel	1	PASS	-	0	3	0x68D7,0x387F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
+travel-terminal-s03-r18ac2c	travel	1	PASS	-	0	3	0x7AD7,0x67F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s03-r18ac36	travel	1	PASS	-	0	3	0xCEF,0xE7F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s03-r18ac40	travel	1	PASS	-	0	3	0x14D7,0x407F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s03-r18ac4a	travel	1	PASS	-	0	3	0x68D7,0x387F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-vidphone-s03-r18ac2c	travel	1	PASS	-	0	3	0x7AD7,0x67F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s03-r18ac36	travel	1	PASS	-	0	3	0xCEF,0xE7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s03-r18ac40	travel	1	PASS	-	0	3	0x14D7,0x407F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s03-r18ac4a	travel	1	PASS	-	0	3	0x68D7,0x387F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
 travel-taxi-r4-cursor0	travel	1	MISSING	-	0	4	0x6D7,0x227F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
 travel-taxi-r4-cursor1	travel	1	MISSING	-	0	4	0x6D7,0x227F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
 travel-taxi-r4-cursor2	travel	1	MISSING	-	0	4	0x6D7,0x227F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
@@ -444,8 +444,8 @@ travel-taxi-r4-cursor3	travel	1	MISSING	-	0	4	0x6D7,0x227F	0	no map transition w
 travel-taxi-r4-cursor4	travel	1	MISSING	-	0	4	0x6D7,0x227F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
 travel-taxi-r4-cursor5	travel	1	MISSING	-	0	4	0x6D7,0x227F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
 travel-taxi-r4-cursor6	travel	1	MISSING	-	0	4	0x6D7,0x227F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
-travel-terminal-s04-r15bdec	travel	1	PASS	-	0	4	0x6D7,0x227F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-vidphone-s04-r15bdec	travel	1	PASS	-	0	4	0x6D7,0x227F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
+travel-terminal-s04-r15bdec	travel	1	PASS	-	0	4	0x6D7,0x227F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-vidphone-s04-r15bdec	travel	1	PASS	-	0	4	0x6D7,0x227F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
 travel-taxi-r5-cursor0	travel	1	MISSING	-	0	5	0x5ED7,0x347F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
 travel-taxi-r5-cursor1	travel	1	MISSING	-	0	5	0x5ED7,0x347F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
 travel-taxi-r5-cursor2	travel	1	MISSING	-	0	5	0x5ED7,0x347F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
@@ -453,14 +453,14 @@ travel-taxi-r5-cursor3	travel	1	MISSING	-	0	5	0x5ED7,0x347F	0	no map transition 
 travel-taxi-r5-cursor4	travel	1	MISSING	-	0	5	0x5ED7,0x347F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
 travel-taxi-r5-cursor5	travel	1	MISSING	-	0	5	0x5ED7,0x347F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
 travel-taxi-r5-cursor6	travel	1	MISSING	-	0	5	0x5ED7,0x347F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
-travel-terminal-s05-r067c86	travel	1	PASS	-	0	5	0x5ED7,0x347F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s05-r067c90	travel	1	PASS	-	0	5	0x12D7,0xC7F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s05-r067c9a	travel	1	PASS	-	0	5	0x3CD7,0xC7F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s05-r067ca4	travel	1	PASS	-	0	5	0x50D7,0xC7F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-vidphone-s05-r067c86	travel	1	PASS	-	0	5	0x5ED7,0x347F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s05-r067c90	travel	1	PASS	-	0	5	0x12D7,0xC7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s05-r067c9a	travel	1	PASS	-	0	5	0x3CD7,0xC7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s05-r067ca4	travel	1	PASS	-	0	5	0x50D7,0xC7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
+travel-terminal-s05-r067c86	travel	1	PASS	-	0	5	0x5ED7,0x347F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s05-r067c90	travel	1	PASS	-	0	5	0x12D7,0xC7F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s05-r067c9a	travel	1	PASS	-	0	5	0x3CD7,0xC7F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s05-r067ca4	travel	1	PASS	-	0	5	0x50D7,0xC7F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-vidphone-s05-r067c86	travel	1	PASS	-	0	5	0x5ED7,0x347F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s05-r067c90	travel	1	PASS	-	0	5	0x12D7,0xC7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s05-r067c9a	travel	1	PASS	-	0	5	0x3CD7,0xC7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s05-r067ca4	travel	1	PASS	-	0	5	0x50D7,0xC7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
 travel-taxi-r6-cursor0	travel	1	MISSING	-	0	6	0x1CEF,0x87F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
 travel-taxi-r6-cursor1	travel	1	MISSING	-	0	6	0x1CEF,0x87F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
 travel-taxi-r6-cursor2	travel	1	MISSING	-	0	6	0x1CEF,0x87F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
@@ -468,100 +468,100 @@ travel-taxi-r6-cursor3	travel	1	MISSING	-	0	6	0x1CEF,0x87F	0	no map transition w
 travel-taxi-r6-cursor4	travel	1	MISSING	-	0	6	0x1CEF,0x87F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
 travel-taxi-r6-cursor5	travel	1	MISSING	-	0	6	0x1CEF,0x87F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
 travel-taxi-r6-cursor6	travel	1	MISSING	-	0	6	0x1CEF,0x87F	0	no map transition within 600 input frames;approach_sides_tried=south;approach_side=south
-travel-terminal-s06-r14c0e0	travel	1	PASS	-	0	6	0x1CEF,0x87F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-vidphone-s06-r14c0e0	travel	1	PASS	-	0	6	0x1CEF,0x87F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-terminal-s15-r1d7a20	travel	1	PASS	-	0	21	0xED7,0xE7F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s15-r1d7a2a	travel	1	PASS	-	0	21	0x8D7,0x3A7F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s15-r1d7a34	travel	1	PASS	-	0	21	0x1CD7,0xE7F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-vidphone-s15-r1d7a20	travel	1	PASS	-	0	21	0xED7,0xE7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s15-r1d7a2a	travel	1	PASS	-	0	21	0x8D7,0x3A7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s15-r1d7a34	travel	1	PASS	-	0	21	0x1CD7,0xE7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-terminal-s16-r1d814a	travel	1	PASS	-	0	22	0xCD7,0x327F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s16-r1d8154	travel	1	PASS	-	0	22	0xAD7,0x1A7F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s16-r1d815e	travel	1	PASS	-	0	22	0x1ED7,0x327F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-vidphone-s16-r1d814a	travel	1	PASS	-	0	22	0xCD7,0x327F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s16-r1d8154	travel	1	PASS	-	0	22	0xAD7,0x1A7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s16-r1d815e	travel	1	PASS	-	0	22	0x1ED7,0x327F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-terminal-s17-r1d8960	travel	1	PASS	-	0	23	0x10D7,0x47F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s17-r1d896a	travel	1	PASS	-	0	23	0x28D7,0x167F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-vidphone-s17-r1d8960	travel	1	PASS	-	0	23	0x10D7,0x47F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s17-r1d896a	travel	1	PASS	-	0	23	0x28D7,0x167F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-terminal-s18-r1d814a	travel	1	PASS	-	0	24	0xCD7,0x327F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s18-r1d8154	travel	1	PASS	-	0	24	0xAD7,0x1A7F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s18-r1d815e	travel	1	PASS	-	0	24	0x1ED7,0x327F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-vidphone-s18-r1d814a	travel	1	PASS	-	0	24	0xCD7,0x327F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s18-r1d8154	travel	1	PASS	-	0	24	0xAD7,0x1A7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s18-r1d815e	travel	1	PASS	-	0	24	0x1ED7,0x327F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-terminal-s19-r1d906e	travel	1	PASS	-	0	25	0x1AD7,0x47F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s19-r1d9078	travel	1	PASS	-	0	25	0x40D7,0x47F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-vidphone-s19-r1d906e	travel	1	PASS	-	0	25	0x1AD7,0x47F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s19-r1d9078	travel	1	PASS	-	0	25	0x40D7,0x47F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-terminal-s1a-r1d9e5a	travel	1	PASS	-	0	26	0x20D7,0x227F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-vidphone-s1a-r1d9e5a	travel	1	PASS	-	0	26	0x20D7,0x227F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-terminal-s1c-r1dad96	travel	1	PASS	-	0	28	0x20D7,0x107F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s1c-r1dada0	travel	1	PASS	-	0	28	0x3CD7,0xE7F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-vidphone-s1c-r1dad96	travel	1	PASS	-	0	28	0x20D7,0x107F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s1c-r1dada0	travel	1	PASS	-	0	28	0x3CD7,0xE7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-terminal-s1d-r1dad96	travel	1	PASS	-	0	29	0x20D7,0x107F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s1d-r1dada0	travel	1	PASS	-	0	29	0x3CD7,0xE7F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-vidphone-s1d-r1dad96	travel	1	PASS	-	0	29	0x20D7,0x107F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s1d-r1dada0	travel	1	PASS	-	0	29	0x3CD7,0xE7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-terminal-s1e-r1db424	travel	1	PASS	-	0	30	0xED7,0x1C7F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s1e-r1db42e	travel	1	PASS	-	0	30	0x30D7,0x207F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-vidphone-s1e-r1db424	travel	1	PASS	-	0	30	0xED7,0x1C7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s1e-r1db42e	travel	1	PASS	-	0	30	0x30D7,0x207F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-terminal-s1f-r1db9fe	travel	1	PASS	-	0	31	0x28EF,0xC7F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s1f-r1dba08	travel	1	PASS	-	0	31	0xED7,0x347F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-vidphone-s1f-r1db9fe	travel	1	PASS	-	0	31	0x28EF,0xC7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s1f-r1dba08	travel	1	PASS	-	0	31	0xED7,0x347F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-terminal-s20-r1dc0a4	travel	1	PASS	-	0	32	0x1CD7,0x47F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s20-r1dc0ae	travel	1	PASS	-	0	32	0x32D7,0x3E7F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-vidphone-s20-r1dc0a4	travel	1	PASS	-	0	32	0x1CD7,0x47F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s20-r1dc0ae	travel	1	PASS	-	0	32	0x32D7,0x3E7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-terminal-s21-r1dc0a4	travel	1	PASS	-	0	33	0x1CD7,0x47F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s21-r1dc0ae	travel	1	PASS	-	0	33	0x32D7,0x3E7F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-vidphone-s21-r1dc0a4	travel	1	PASS	-	0	33	0x1CD7,0x47F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s21-r1dc0ae	travel	1	PASS	-	0	33	0x32D7,0x3E7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-terminal-s22-r1db9fe	travel	1	PASS	-	0	34	0x28EF,0xC7F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s22-r1dba08	travel	1	PASS	-	0	34	0xED7,0x347F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-vidphone-s22-r1db9fe	travel	1	PASS	-	0	34	0x28EF,0xC7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s22-r1dba08	travel	1	PASS	-	0	34	0xED7,0x347F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-terminal-s24-r1dd074	travel	1	PASS	-	0	36	0x2D7,0xA7F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s24-r1dd07e	travel	1	PASS	-	0	36	0x56D7,0x387F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-vidphone-s24-r1dd074	travel	1	PASS	-	0	36	0x2D7,0xA7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s24-r1dd07e	travel	1	PASS	-	0	36	0x56D7,0x387F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-terminal-s25-r1dd074	travel	1	PASS	-	0	37	0x2D7,0xA7F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s25-r1dd07e	travel	1	PASS	-	0	37	0x56D7,0x387F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-vidphone-s25-r1dd074	travel	1	PASS	-	0	37	0x2D7,0xA7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s25-r1dd07e	travel	1	PASS	-	0	37	0x56D7,0x387F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-terminal-s26-r1dd79e	travel	1	PASS	-	0	38	0x10D7,0x47F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s26-r1dd7a8	travel	1	PASS	-	0	38	0x12D7,0x2E7F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s26-r1dd7b2	travel	1	PASS	-	0	38	0x54D7,0x2A7F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-vidphone-s26-r1dd79e	travel	1	PASS	-	0	38	0x10D7,0x47F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s26-r1dd7a8	travel	1	PASS	-	0	38	0x12D7,0x2E7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s26-r1dd7b2	travel	1	PASS	-	0	38	0x54D7,0x2A7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-terminal-s27-r1ddca2	travel	1	PASS	-	0	39	0x12EF,0x107F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s27-r1ddcac	travel	1	PASS	-	0	39	0x2ED7,0x267F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-vidphone-s27-r1ddca2	travel	1	PASS	-	0	39	0x12EF,0x107F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s27-r1ddcac	travel	1	PASS	-	0	39	0x2ED7,0x267F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-terminal-s28-r1de1c6	travel	1	PASS	-	0	40	0x8D7,0x327F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-vidphone-s28-r1de1c6	travel	1	PASS	-	0	40	0x8D7,0x327F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-terminal-s29-r1de7bc	travel	1	PASS	-	0	41	0x38D7,0x487F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s29-r1de7c6	travel	1	PASS	-	0	41	0x14EF,0x1A7F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-vidphone-s29-r1de7bc	travel	1	PASS	-	0	41	0x38D7,0x487F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s29-r1de7c6	travel	1	PASS	-	0	41	0x14EF,0x1A7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-terminal-s2a-r1dedc2	travel	1	PASS	-	0	42	0x2ED7,0x107F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s2a-r1dedcc	travel	1	PASS	-	0	42	0xAD7,0x447F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s2a-r1dedd6	travel	1	PASS	-	0	42	0x12D7,0x307F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-vidphone-s2a-r1dedc2	travel	1	PASS	-	0	42	0x2ED7,0x107F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s2a-r1dedcc	travel	1	PASS	-	0	42	0xAD7,0x447F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s2a-r1dedd6	travel	1	PASS	-	0	42	0x12D7,0x307F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-terminal-s2b-r1dedc2	travel	1	PASS	-	0	43	0x2ED7,0x107F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s2b-r1dedcc	travel	1	PASS	-	0	43	0xAD7,0x447F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-terminal-s2b-r1dedd6	travel	1	PASS	-	0	43	0x12D7,0x307F	0	terminal event observed; no fixed map destination;approach_sides_tried=south;approach_side=south
-travel-vidphone-s2b-r1dedc2	travel	1	PASS	-	0	43	0x2ED7,0x107F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s2b-r1dedcc	travel	1	PASS	-	0	43	0xAD7,0x447F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
-travel-vidphone-s2b-r1dedd6	travel	1	PASS	-	0	43	0x12D7,0x307F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_sides_tried=south;approach_side=south
+travel-terminal-s06-r14c0e0	travel	1	PASS	-	0	6	0x1CEF,0x87F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-vidphone-s06-r14c0e0	travel	1	PASS	-	0	6	0x1CEF,0x87F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-terminal-s15-r1d7a20	travel	1	PASS	-	0	21	0xED7,0xE7F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s15-r1d7a2a	travel	1	PASS	-	0	21	0x8D7,0x3A7F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s15-r1d7a34	travel	1	PASS	-	0	21	0x1CD7,0xE7F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-vidphone-s15-r1d7a20	travel	1	PASS	-	0	21	0xED7,0xE7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s15-r1d7a2a	travel	1	PASS	-	0	21	0x8D7,0x3A7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s15-r1d7a34	travel	1	PASS	-	0	21	0x1CD7,0xE7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-terminal-s16-r1d814a	travel	1	PASS	-	0	22	0xCD7,0x327F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s16-r1d8154	travel	1	PASS	-	0	22	0xAD7,0x1A7F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s16-r1d815e	travel	1	PASS	-	0	22	0x1ED7,0x327F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-vidphone-s16-r1d814a	travel	1	PASS	-	0	22	0xCD7,0x327F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s16-r1d8154	travel	1	PASS	-	0	22	0xAD7,0x1A7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s16-r1d815e	travel	1	PASS	-	0	22	0x1ED7,0x327F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-terminal-s17-r1d8960	travel	1	PASS	-	0	23	0x10D7,0x47F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s17-r1d896a	travel	1	PASS	-	0	23	0x28D7,0x167F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-vidphone-s17-r1d8960	travel	1	PASS	-	0	23	0x10D7,0x47F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s17-r1d896a	travel	1	PASS	-	0	23	0x28D7,0x167F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-terminal-s18-r1d814a	travel	1	PASS	-	0	24	0xCD7,0x327F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s18-r1d8154	travel	1	PASS	-	0	24	0xAD7,0x1A7F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s18-r1d815e	travel	1	PASS	-	0	24	0x1ED7,0x327F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-vidphone-s18-r1d814a	travel	1	PASS	-	0	24	0xCD7,0x327F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s18-r1d8154	travel	1	PASS	-	0	24	0xAD7,0x1A7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s18-r1d815e	travel	1	PASS	-	0	24	0x1ED7,0x327F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-terminal-s19-r1d906e	travel	1	PASS	-	0	25	0x1AD7,0x47F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s19-r1d9078	travel	1	PASS	-	0	25	0x40D7,0x47F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-vidphone-s19-r1d906e	travel	1	PASS	-	0	25	0x1AD7,0x47F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s19-r1d9078	travel	1	PASS	-	0	25	0x40D7,0x47F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-terminal-s1a-r1d9e5a	travel	1	PASS	-	0	26	0x20D7,0x227F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-vidphone-s1a-r1d9e5a	travel	1	PASS	-	0	26	0x20D7,0x227F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-terminal-s1c-r1dad96	travel	1	PASS	-	0	28	0x20D7,0x107F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s1c-r1dada0	travel	1	PASS	-	0	28	0x3CD7,0xE7F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-vidphone-s1c-r1dad96	travel	1	PASS	-	0	28	0x20D7,0x107F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s1c-r1dada0	travel	1	PASS	-	0	28	0x3CD7,0xE7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-terminal-s1d-r1dad96	travel	1	PASS	-	0	29	0x20D7,0x107F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s1d-r1dada0	travel	1	PASS	-	0	29	0x3CD7,0xE7F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-vidphone-s1d-r1dad96	travel	1	PASS	-	0	29	0x20D7,0x107F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s1d-r1dada0	travel	1	PASS	-	0	29	0x3CD7,0xE7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-terminal-s1e-r1db424	travel	1	PASS	-	0	30	0xED7,0x1C7F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s1e-r1db42e	travel	1	PASS	-	0	30	0x30D7,0x207F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-vidphone-s1e-r1db424	travel	1	PASS	-	0	30	0xED7,0x1C7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s1e-r1db42e	travel	1	PASS	-	0	30	0x30D7,0x207F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-terminal-s1f-r1db9fe	travel	1	PASS	-	0	31	0x28EF,0xC7F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s1f-r1dba08	travel	1	PASS	-	0	31	0xED7,0x347F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-vidphone-s1f-r1db9fe	travel	1	PASS	-	0	31	0x28EF,0xC7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s1f-r1dba08	travel	1	PASS	-	0	31	0xED7,0x347F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-terminal-s20-r1dc0a4	travel	1	PASS	-	0	32	0x1CD7,0x47F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s20-r1dc0ae	travel	1	PASS	-	0	32	0x32D7,0x3E7F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-vidphone-s20-r1dc0a4	travel	1	PASS	-	0	32	0x1CD7,0x47F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s20-r1dc0ae	travel	1	PASS	-	0	32	0x32D7,0x3E7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-terminal-s21-r1dc0a4	travel	1	PASS	-	0	33	0x1CD7,0x47F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s21-r1dc0ae	travel	1	PASS	-	0	33	0x32D7,0x3E7F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-vidphone-s21-r1dc0a4	travel	1	PASS	-	0	33	0x1CD7,0x47F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s21-r1dc0ae	travel	1	PASS	-	0	33	0x32D7,0x3E7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-terminal-s22-r1db9fe	travel	1	PASS	-	0	34	0x28EF,0xC7F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s22-r1dba08	travel	1	PASS	-	0	34	0xED7,0x347F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-vidphone-s22-r1db9fe	travel	1	PASS	-	0	34	0x28EF,0xC7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s22-r1dba08	travel	1	PASS	-	0	34	0xED7,0x347F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-terminal-s24-r1dd074	travel	1	PASS	-	0	36	0x2D7,0xA7F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s24-r1dd07e	travel	1	PASS	-	0	36	0x56D7,0x387F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-vidphone-s24-r1dd074	travel	1	PASS	-	0	36	0x2D7,0xA7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s24-r1dd07e	travel	1	PASS	-	0	36	0x56D7,0x387F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-terminal-s25-r1dd074	travel	1	PASS	-	0	37	0x2D7,0xA7F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s25-r1dd07e	travel	1	PASS	-	0	37	0x56D7,0x387F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-vidphone-s25-r1dd074	travel	1	PASS	-	0	37	0x2D7,0xA7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s25-r1dd07e	travel	1	PASS	-	0	37	0x56D7,0x387F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-terminal-s26-r1dd79e	travel	1	PASS	-	0	38	0x10D7,0x47F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s26-r1dd7a8	travel	1	PASS	-	0	38	0x12D7,0x2E7F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s26-r1dd7b2	travel	1	PASS	-	0	38	0x54D7,0x2A7F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-vidphone-s26-r1dd79e	travel	1	PASS	-	0	38	0x10D7,0x47F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s26-r1dd7a8	travel	1	PASS	-	0	38	0x12D7,0x2E7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s26-r1dd7b2	travel	1	PASS	-	0	38	0x54D7,0x2A7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-terminal-s27-r1ddca2	travel	1	PASS	-	0	39	0x12EF,0x107F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s27-r1ddcac	travel	1	PASS	-	0	39	0x2ED7,0x267F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-vidphone-s27-r1ddca2	travel	1	PASS	-	0	39	0x12EF,0x107F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s27-r1ddcac	travel	1	PASS	-	0	39	0x2ED7,0x267F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-terminal-s28-r1de1c6	travel	1	PASS	-	0	40	0x8D7,0x327F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-vidphone-s28-r1de1c6	travel	1	PASS	-	0	40	0x8D7,0x327F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-terminal-s29-r1de7bc	travel	1	PASS	-	0	41	0x38D7,0x487F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s29-r1de7c6	travel	1	PASS	-	0	41	0x14EF,0x1A7F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-vidphone-s29-r1de7bc	travel	1	PASS	-	0	41	0x38D7,0x487F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s29-r1de7c6	travel	1	PASS	-	0	41	0x14EF,0x1A7F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-terminal-s2a-r1dedc2	travel	1	PASS	-	0	42	0x2ED7,0x107F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s2a-r1dedcc	travel	1	PASS	-	0	42	0xAD7,0x447F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s2a-r1dedd6	travel	1	PASS	-	0	42	0x12D7,0x307F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-vidphone-s2a-r1dedc2	travel	1	PASS	-	0	42	0x2ED7,0x107F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s2a-r1dedcc	travel	1	PASS	-	0	42	0xAD7,0x447F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s2a-r1dedd6	travel	1	PASS	-	0	42	0x12D7,0x307F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-terminal-s2b-r1dedc2	travel	1	PASS	-	0	43	0x2ED7,0x107F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s2b-r1dedcc	travel	1	PASS	-	0	43	0xAD7,0x447F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-terminal-s2b-r1dedd6	travel	1	PASS	-	0	43	0x12D7,0x307F	0	terminal event observed; no fixed map destination;approach_side=south
+travel-vidphone-s2b-r1dedc2	travel	1	PASS	-	0	43	0x2ED7,0x107F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s2b-r1dedcc	travel	1	PASS	-	0	43	0xAD7,0x447F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
+travel-vidphone-s2b-r1dedd6	travel	1	PASS	-	0	43	0x12D7,0x307F	0	Vid-Phone event observed; ROM handler returns to source scene;approach_side=south
 spawn-activity-dynamic-world-activity-actors-s00-n0	spawn	0	PRESENT-UNTESTED	-	0	-	-	-	static port presence only
 spawn-activity-dynamic-world-activity-actors-s00-n1	spawn	0	PRESENT-UNTESTED	-	0	-	-	-	static port presence only
 spawn-activity-dynamic-world-activity-actors-s00-n2	spawn	0	PRESENT-UNTESTED	-	0	-	-	-	static port presence only
