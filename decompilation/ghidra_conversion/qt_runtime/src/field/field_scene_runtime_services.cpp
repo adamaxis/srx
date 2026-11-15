@@ -1788,6 +1788,14 @@ bool FieldSceneRuntime::load_pocket_secretary_menu_content() {
         return fail(
             "Pocket Secretary Lua root menu has the wrong row count");
     }
+    const auto options_definition = game_scripts_.menu(
+        "pocket_secretary", "options", "pocket_secretary.options",
+        "options");
+    if (!options_definition.has_value() ||
+        options_definition->choices.size() !=
+            kPocketSecretaryBPolicyOptionCount) {
+        return fail("Pocket Secretary Options Lua menu is invalid");
+    }
     const auto root_text_definition = game_scripts_.menu(
         "pocket_secretary", "root_text_entries",
         "pocket_secretary.root.text", "catalog");
@@ -1810,12 +1818,16 @@ bool FieldSceneRuntime::load_pocket_secretary_menu_content() {
     const auto* title = game_scripts_.dialogue_text(definition->title_key);
     const auto* separator = game_scripts_.dialogue_text(
         root_text_definition->choices[0].label_key);
-    if (title == nullptr || separator == nullptr) {
-        return fail("Pocket Secretary root title or separator text is missing");
+    const auto* options_title =
+        game_scripts_.dialogue_text(options_definition->title_key);
+    if (title == nullptr || separator == nullptr || options_title == nullptr) {
+        return fail(
+            "Pocket Secretary root or Options title/separator text is missing");
     }
     PocketSecretaryMenuContent content{};
     content.title = *title;
     content.separator = *separator;
+    content.options_title = *options_title;
     for (std::size_t index = 0; index < definition->choices.size(); ++index) {
         const auto& choice = definition->choices[index];
         const auto* label = game_scripts_.dialogue_text(choice.label_key);
@@ -1824,6 +1836,16 @@ bool FieldSceneRuntime::load_pocket_secretary_menu_content() {
         }
         content.choices[index] = PocketSecretaryMenuContent::Choice{
             choice.id, *label};
+    }
+    for (std::size_t index = 0;
+         index < options_definition->choices.size(); ++index) {
+        const auto& choice = options_definition->choices[index];
+        const auto* label = game_scripts_.dialogue_text(choice.label_key);
+        if (label == nullptr) {
+            return fail("Pocket Secretary Options label is missing");
+        }
+        content.b_policy_options[index] =
+            PocketSecretaryMenuContent::Choice{choice.id, *label};
     }
     for (std::size_t index = 0;
          index < notebook_definition->choices.size(); ++index) {

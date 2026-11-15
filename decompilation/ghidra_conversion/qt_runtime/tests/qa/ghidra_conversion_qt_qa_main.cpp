@@ -22,6 +22,8 @@
 
 #include <QImage>
 #include <QJsonArray>
+#include <QSettings>
+#include <QTemporaryDir>
 
 #include <algorithm>
 #include <array>
@@ -64959,6 +64961,36 @@ int main(int argc, char** argv) {
                 return 0;
             }
             if (field_secretary_dump_path.has_value()) {
+                QTemporaryDir menu_policy_directory;
+                if (!menu_policy_directory.isValid()) {
+                    std::cerr << "field secretary dump: temporary settings "
+                                 "directory failed\n";
+                    return 3;
+                }
+                QSettings menu_policy_settings(
+                    menu_policy_directory.filePath(
+                        QStringLiteral("menu-policy.ini")),
+                    QSettings::IniFormat);
+                menu_policy_settings.setValue(
+                    QStringLiteral("menu/b_policy"), QStringLiteral("rom"));
+                menu_policy_settings.sync();
+                field_scene.set_menu_b_policy("rom");
+                field_scene.set_menu_b_policy_changed_callback(
+                    [&menu_policy_settings](
+                        const shadowrun::ghidra_conversion::scripting::
+                            ScriptMenuBPolicy policy) {
+                        const auto value =
+                            policy == shadowrun::ghidra_conversion::
+                                          scripting::ScriptMenuBPolicy::
+                                              always_cancel
+                                ? shadowrun::ghidra_conversion::qt_runtime::
+                                      kMenuBPolicyAlwaysCancel
+                                : shadowrun::ghidra_conversion::qt_runtime::
+                                      kMenuBPolicyRom;
+                        shadowrun::ghidra_conversion::qt_runtime::
+                            store_menu_b_policy_setting(menu_policy_settings,
+                                                        value);
+                    });
                 // Keep the source E660 lower-bezel animation repeatable in
                 // Debug and Release dumps. This QA seed does not establish
                 // the live game's unresolved PRNG seed source.
@@ -65237,7 +65269,7 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 auto previous_secretary_scene = secretary_scene;
-                for (std::uint8_t selection = 1U; selection <= 4U;
+                for (std::uint8_t selection = 1U; selection <= 5U;
                      ++selection) {
                     tap_qa_controller_button(field_scene, 0x02U); // Down.
                     if (field_scene.pocket_secretary_selection() !=
@@ -65273,13 +65305,62 @@ int main(int argc, char** argv) {
                     }
                     previous_secretary_scene = secretary_scene;
                 }
-                // ROM 0xC2A6: the maximum row is 4, or 5 when FFF101 (or the
-                // kDebugMenuAlwaysUnlockedForTesting override) exposes the
-                // hidden, unlabelled debug row. Visit it silently before the wrap.
-                int last_row_y = 120;
+                if (field_scene.pocket_secretary_selection() != 5U ||
+                    !image_has_green_ink(secretary_scene, 88, 136, 192, 8)) {
+                    std::cerr << "field secretary dump: port OPTIONS row "
+                                 "is not visible at the end of the root\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U); // Open OPTIONS.
+                if (field_scene.field_menu_route_screen_for_dump() !=
+                        static_cast<std::uint16_t>(
+                            PortMenuScreen::pocket_secretary_options)) {
+                    std::cerr << "field secretary dump: OPTIONS did not "
+                                 "open from the Pocket Secretary root\n";
+                    return 3;
+                }
+                auto options_scene = render_secretary_scene();
+                if (!image_has_green_ink(options_scene, 88, 32, 144, 8) ||
+                    !image_has_green_ink(options_scene, 112, 56, 192, 8)) {
+                    std::cerr << "field secretary dump: ROM policy option "
+                                 "text is not visible in the submenu\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U); // Toggle.
+                options_scene = render_secretary_scene();
+                if (field_scene.menu_b_policy() != "always_cancel" ||
+                    shadowrun::ghidra_conversion::qt_runtime::
+                            load_menu_b_policy_setting(menu_policy_settings) !=
+                        shadowrun::ghidra_conversion::qt_runtime::
+                            kMenuBPolicyAlwaysCancel ||
+                    !image_has_green_ink(options_scene, 112, 56, 192, 8)) {
+                    std::cerr << "field secretary dump: A did not update "
+                                 "runtime policy, label, and temporary setting\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x80U); // B backs out.
+                secretary_scene = render_secretary_scene();
+                if (field_scene.field_menu_route_screen_for_dump() !=
+                        static_cast<std::uint16_t>(srx::MenuScreen::POCKET_SECRETARY) ||
+                    field_scene.pocket_secretary_selection() != 5U ||
+                    field_scene.menu_b_policy() != "always_cancel" ||
+                    shadowrun::ghidra_conversion::qt_runtime::
+                            load_menu_b_policy_setting(menu_policy_settings) !=
+                        shadowrun::ghidra_conversion::qt_runtime::
+                            kMenuBPolicyAlwaysCancel) {
+                    std::cerr << "field secretary dump: B did not return to "
+                                 "OPTIONS with the saved policy active\n";
+                    return 3;
+                }
+                field_scene.set_menu_b_policy("rom");
+                previous_secretary_scene = secretary_scene;
+
+                // The port's OPTIONS row follows the five source rows; the
+                // test-only hidden debug row is now the seventh row.
+                int last_row_y = 136;
                 if (field_scene.pocket_secretary_debug_row_visible()) {
                     tap_qa_controller_button(field_scene, 0x02U); // Down.
-                    if (field_scene.pocket_secretary_selection() != 5U ||
+                    if (field_scene.pocket_secretary_selection() != 6U ||
                         !field_audio_events.empty()) {
                         std::cerr << "field secretary dump: Down did not "
                                      "select the hidden debug row silently\n";
@@ -65287,7 +65368,7 @@ int main(int argc, char** argv) {
                     }
                     secretary_scene = render_secretary_scene();
                     previous_secretary_scene = secretary_scene;
-                    last_row_y = 136;
+                    last_row_y = 152;
                 }
                 tap_qa_controller_button(field_scene, 0x02U); // Down wraps.
                 if (field_scene.pocket_secretary_selection() != 0U ||

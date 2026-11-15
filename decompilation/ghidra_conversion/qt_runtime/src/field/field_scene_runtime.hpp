@@ -313,6 +313,9 @@ struct PocketSecretaryMenuContent {
     std::string title;
     std::string separator;
     std::array<Choice, kPocketSecretaryFieldMenuRowCount> choices{};
+    std::string options_title;
+    std::array<Choice, kPocketSecretaryBPolicyOptionCount>
+        b_policy_options{};
     std::array<std::string, kNotebookChoiceCount> notebook_choice_ids{};
 };
 
@@ -374,6 +377,24 @@ public:
     void set_menu_b_policy(std::string policy) {
         menu_b_policy_ = policy == "always_cancel" ? "always_cancel" : "rom";
         field_dialogue_.set_menu_b_policy(menu_b_policy_);
+        if (menu_b_policy_changed_callback_) {
+            menu_b_policy_changed_callback_(
+                menu_b_policy_ == "always_cancel"
+                    ? scripting::ScriptMenuBPolicy::always_cancel
+                    : scripting::ScriptMenuBPolicy::rom);
+        }
+    }
+    void set_menu_b_policy(scripting::ScriptMenuBPolicy policy) {
+        set_menu_b_policy(
+            policy == scripting::ScriptMenuBPolicy::always_cancel
+                ? "always_cancel" : "rom");
+    }
+    std::string_view menu_b_policy() const noexcept {
+        return menu_b_policy_;
+    }
+    void set_menu_b_policy_changed_callback(
+        std::function<void(scripting::ScriptMenuBPolicy)> callback) {
+        menu_b_policy_changed_callback_ = std::move(callback);
     }
     const std::vector<std::uint16_t>& field_music_requests() const noexcept {
         return field_music_requests_;
@@ -1670,7 +1691,7 @@ public:
         return field_render_effect_flags_;
     }
     // FFF101 rule, or the kDebugMenuAlwaysUnlockedForTesting override: the
-    // hidden sixth (unlabelled) Pocket Secretary row is selectable.
+    // hidden seventh (unlabelled) Pocket Secretary row is selectable.
     bool pocket_secretary_debug_row_visible() const noexcept {
         return debug_menu_unlocked_;
     }
@@ -2549,6 +2570,8 @@ private:
     bool menu_route_active_ = false;
     std::uint16_t menu_route_screen_ = 0U;
     std::string menu_b_policy_ = "rom";
+    std::function<void(scripting::ScriptMenuBPolicy)>
+        menu_b_policy_changed_callback_;
     std::optional<int> menu_route_posture_bar_selection_;
     std::optional<scripting::ScriptMenuRouteSnapshot::MagicView>
         menu_route_magic_view_;

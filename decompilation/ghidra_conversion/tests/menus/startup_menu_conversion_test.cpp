@@ -1,5 +1,6 @@
 #include "shadowrun_ghidra/menus/startup_menu_conversion.hpp"
 
+#include <iostream>
 #include <string>
 #include <vector>
 
@@ -102,25 +103,18 @@ int main() {
                     StartOptionsMenuEvent::enter_save_load_menu)) {
         return 17;
     }
-    int menu_b_policy_direction = 0;
-    StartOptionsMenuCallbacks policy_callbacks;
-    policy_callbacks.change_menu_b_policy = [&](const int direction) {
-        menu_b_policy_direction = direction;
-    };
     if (!expect(advance_start_options_menu(
-                    start, kStartupMenuLeft, policy_callbacks) ==
-                    StartOptionsMenuEvent::selection_moved &&
-                menu_b_policy_direction == -1 &&
+                    start, kStartupMenuLeft, {}) ==
+                    StartOptionsMenuEvent::waiting &&
                 start.selected == StartOptionsChoice::new_game &&
                 advance_start_options_menu(
-                    start, kStartupMenuRight, policy_callbacks) ==
-                    StartOptionsMenuEvent::selection_moved &&
-                menu_b_policy_direction == 1 &&
+                    start, kStartupMenuRight, {}) ==
+                    StartOptionsMenuEvent::waiting &&
                 advance_start_options_menu(
                     start, kStartupMenuRight | kStartupMenuA,
-                    policy_callbacks) ==
-                    StartOptionsMenuEvent::enter_joshua_archetype_menu &&
-                menu_b_policy_direction == 1)) {
+                    {}) ==
+                    StartOptionsMenuEvent::enter_joshua_archetype_menu)) {
+        std::cerr << "FAIL start Options must ignore Left/Right policy input\n";
         return 16;
     }
 

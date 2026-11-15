@@ -2882,6 +2882,7 @@ struct GameScriptRuntime::Impl {
         deck_commit,
         program_unloaded,
         menu_b_policy,
+        set_menu_b_policy,
     };
 
     lua_State* state = nullptr;
@@ -3769,6 +3770,27 @@ struct GameScriptRuntime::Impl {
             lua_pushlstring(lua, policy.data(), policy.size());
             return 1;
         }
+        case MenuBinding::set_menu_b_policy: {
+            std::string value;
+            const auto& setter =
+                self->menu_route_bindings.game.set_menu_b_policy;
+            if (!setter || !read_string(lua, 1, value)) {
+                lua_pushboolean(lua, 0);
+                return 1;
+            }
+            ScriptMenuBPolicy policy;
+            if (value == "rom") {
+                policy = ScriptMenuBPolicy::rom;
+            } else if (value == "always_cancel") {
+                policy = ScriptMenuBPolicy::always_cancel;
+            } else {
+                lua_pushboolean(lua, 0);
+                return 1;
+            }
+            setter(policy);
+            lua_pushboolean(lua, 1);
+            return 1;
+        }
         case MenuBinding::nuyen: {
             const auto funds = self->menu_route_bindings.game.nuyen
                                    ? self->menu_route_bindings.game.nuyen()
@@ -3957,6 +3979,8 @@ struct GameScriptRuntime::Impl {
                          MenuBinding::program_unloaded);
         add_menu_binding(state, table_index, "menu_b_policy",
                          MenuBinding::menu_b_policy);
+        add_menu_binding(state, table_index, "set_menu_b_policy",
+                         MenuBinding::set_menu_b_policy);
     }
 
     bool refresh_menu_route_snapshot() {

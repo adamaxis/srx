@@ -13,8 +13,23 @@ inline constexpr std::size_t kNotebookTipCount = 96U;
 inline constexpr std::size_t kNotebookMrJohnsonCount = 5U;
 inline constexpr std::size_t kNotebookContactCount = 13U;
 inline constexpr std::size_t kNotebookShadowrunnerCount = 10U;
-// Field-mode caller at ROM 0xC2A6 selects this five-row variant.
-inline constexpr std::size_t kPocketSecretaryFieldMenuRowCount = 5U;
+// The native Pocket Secretary root appends its port-only Options row after
+// the five source choices.
+inline constexpr std::size_t kPocketSecretaryFieldMenuRowCount = 6U;
+inline constexpr std::size_t kPocketSecretaryBPolicyOptionCount = 2U;
+// Highest selectable root row: the Options row, or the hidden debug row one
+// past it when FFF101 (or the test override) unlocks it.
+inline constexpr std::uint8_t kPocketSecretaryOptionsRow =
+    static_cast<std::uint8_t>(kPocketSecretaryFieldMenuRowCount - 1U);
+inline constexpr std::uint8_t kPocketSecretaryDebugRow =
+    static_cast<std::uint8_t>(kPocketSecretaryFieldMenuRowCount);
+
+// This port-only screen ID is declared in gameplay/scripts/enums.lua as
+// E.MenuScreen.POCKET_SECRETARY_OPTIONS. It is outside the generated ROM
+// selector enums because no cartridge screen owns it.
+enum class PortMenuScreen : std::uint16_t {
+    pocket_secretary_options = 53U,
+};
 
 enum class NotebookMenuOption : std::uint8_t {
     current_run,

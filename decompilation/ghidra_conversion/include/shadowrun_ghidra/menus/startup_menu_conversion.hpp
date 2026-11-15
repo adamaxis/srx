@@ -126,9 +126,6 @@ struct StartOptionsMenuCallbacks {
     std::function<void()> draw_new_game_load_game_grid;
     std::function<void()> draw_start_options_title;
     std::function<void(StartOptionsChoice)> draw_start_options_cursor;
-    // Port setting displayed on the existing Options screen. Left/Right cycle
-    // the B policy without changing the ROM New Game/Load Game selector.
-    std::function<void(int)> change_menu_b_policy;
 };
 
 enum class StartOptionsMenuEvent {

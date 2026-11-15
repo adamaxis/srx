@@ -3,7 +3,10 @@
 #include <QSettings>
 #include <QTemporaryDir>
 
+#include <fstream>
+#include <iterator>
 #include <iostream>
+#include <string>
 
 namespace {
 
@@ -19,6 +22,19 @@ bool check(const bool condition, const char* message) {
 } // namespace
 
 int main() {
+    std::ifstream window_source{SHADOWRUN_QT_WINDOW_SOURCE_PATH};
+    if (!check(window_source.good(),
+               "could not read start-menu presenter source")) {
+        return 1;
+    }
+    const std::string presenter_source{
+        std::istreambuf_iterator<char>(window_source),
+        std::istreambuf_iterator<char>()};
+    if (!check(presenter_source.find("B MODE:") == std::string::npos,
+               "start Options must draw no B MODE text")) {
+        return 1;
+    }
+
     QTemporaryDir directory;
     if (!check(directory.isValid(), "temporary settings directory failed")) {
         return 1;

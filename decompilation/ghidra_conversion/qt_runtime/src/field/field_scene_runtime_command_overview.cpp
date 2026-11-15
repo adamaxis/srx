@@ -1343,8 +1343,8 @@ void FieldSceneRuntime::begin_pocket_secretary() {
     if (!command_overview_.open()) {
         return;
     }
-    // ROM 0xC2A6 normally uses FFF101 to choose four or five labeled rows.
-    // The temporary test override exposes its sixth, unlabeled debug row.
+    // The source's five rows are followed by the port-only Options row. The
+    // temporary test override keeps the formerly hidden debug row afterward.
     initialize_pocket_secretary_menu(
         pocket_secretary_, debug_menu_unlocked_,
         {[this] { source_boundary("field.pocket_secretary.transfer_menu_assets"); },
@@ -1352,6 +1352,8 @@ void FieldSceneRuntime::begin_pocket_secretary() {
          [this] { source_boundary("field.pocket_secretary.render_menu_text"); },
          [this] { source_boundary("field.pocket_secretary.render_menu_numbers"); },
          {}, {}});
+    pocket_secretary_.maximum_selection = debug_menu_unlocked_ ? kPocketSecretaryDebugRow
+                             : kPocketSecretaryOptionsRow;
     dismiss_runner_ = DismissRunnerMenuState{};
     dismiss_runner_random_grid_effect_ = RandomGridEffectState{};
     dismiss_runner_effect_frames_ = 0U;

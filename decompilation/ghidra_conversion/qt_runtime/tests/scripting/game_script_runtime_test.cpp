@@ -12198,23 +12198,36 @@ int main() {
     const auto pocket_secretary_root_text = scripts.menu(
         "pocket_secretary", "root_text_entries",
         "pocket_secretary.root.text", "catalog");
+    const auto pocket_secretary_options = scripts.menu(
+        "pocket_secretary", "options", "pocket_secretary.options",
+        "options");
     const auto* pocket_secretary_title =
         scripts.dialogue_text("pocket_secretary.root.title");
     const auto* pocket_secretary_separator =
         scripts.dialogue_text("pocket_secretary.root.text.option.separator");
-    constexpr std::array<std::string_view, 5> kPocketSecretaryFieldChoiceIds{{
+    const auto* pocket_secretary_options_title =
+        scripts.dialogue_text("pocket_secretary.options.title");
+    constexpr std::array<std::string_view, 6> kPocketSecretaryFieldChoiceIds{{
         "notebook", "group_items", "cyberdeck", "dismiss_runner",
-        "save_load"}};
-    constexpr std::array<std::string_view, 5> kPocketSecretaryLabels{{
+        "save_load", "options"}};
+    constexpr std::array<std::string_view, 6> kPocketSecretaryLabels{{
         "Notebook", "Group Items", "Cyberdeck", "Dismiss Runner",
-        "Save/Load Game"}};
-    constexpr std::array<std::string_view, 5>
+        "Save/Load Game", "Options"}};
+    constexpr std::array<std::string_view, 6>
         kPocketSecretaryLabelKeys{{
             "pocket_secretary.option.notebook",
             "pocket_secretary.option.group_items",
             "pocket_secretary.option.cyberdeck",
             "pocket_secretary.option.dismiss_runner",
-            "pocket_secretary.option.save_load"}};
+            "pocket_secretary.option.save_load",
+            "pocket_secretary.option.options"}};
+    constexpr std::array<std::string_view, 2> kBPolicyOptionIds{{
+        "b_button_rom", "b_button_always_cancel"}};
+    constexpr std::array<std::string_view, 2> kBPolicyOptionLabels{{
+        "B BUTTON: ROM", "B BUTTON: ALWAYS CANCEL"}};
+    constexpr std::array<std::string_view, 2> kBPolicyOptionLabelKeys{{
+        "pocket_secretary.options.option.b_button_rom",
+        "pocket_secretary.options.option.b_button_always_cancel"}};
     bool pocket_secretary_rows_match =
         pocket_secretary_root.has_value() &&
         pocket_secretary_root->choices.size() ==
@@ -12230,6 +12243,19 @@ int main() {
                 label != nullptr && *label == kPocketSecretaryLabels[index];
         }
     }
+    bool b_policy_options_match =
+        pocket_secretary_options.has_value() &&
+        pocket_secretary_options->choices.size() == kBPolicyOptionIds.size();
+    if (b_policy_options_match) {
+        for (std::size_t index = 0; index < kBPolicyOptionIds.size(); ++index) {
+            const auto& choice = pocket_secretary_options->choices[index];
+            const auto* label = scripts.dialogue_text(choice.label_key);
+            b_policy_options_match = b_policy_options_match &&
+                choice.id == kBPolicyOptionIds[index] &&
+                choice.label_key == kBPolicyOptionLabelKeys[index] &&
+                label != nullptr && *label == kBPolicyOptionLabels[index];
+        }
+    }
     if (!expect(pocket_secretary_root.has_value() &&
                     pocket_secretary_root->title_key ==
                         "pocket_secretary.root.title" &&
@@ -12239,8 +12265,14 @@ int main() {
                     pocket_secretary_root_text->choices[0].label_key ==
                         "pocket_secretary.root.text.option.separator" &&
                     pocket_secretary_rows_match &&
+                    pocket_secretary_options.has_value() &&
+                    pocket_secretary_options->title_key ==
+                        "pocket_secretary.options.title" &&
+                    b_policy_options_match &&
                     pocket_secretary_title != nullptr &&
                     *pocket_secretary_title == " Main Menu" &&
+                    pocket_secretary_options_title != nullptr &&
+                    *pocket_secretary_options_title == " Options" &&
                     pocket_secretary_separator != nullptr &&
                     *pocket_secretary_separator ==
                         std::string("[") + std::string(10U, '\\'),

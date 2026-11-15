@@ -1,5 +1,6 @@
 #include "field_menu_text_catalog.hpp"
 
+#include "shadowrun_ghidra/menus/pocket_secretary_menu_conversion.hpp"
 #include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
 
 #include <algorithm>
@@ -256,10 +257,14 @@ bool has_pocket_secretary_text_label_prefix(const std::string_view key) {
 
 bool is_pocket_secretary_text_label_key(
     const std::string_view key,
-    const std::array<std::string, 5>& root_choice_ids,
+    const std::array<std::string, kPocketSecretaryFieldMenuRowCount>&
+        root_choice_ids,
     const std::array<std::string, 1>& root_text_ids,
+    const std::array<std::string, kPocketSecretaryBPolicyOptionCount>&
+        b_policy_option_ids,
     const FieldMenuTextCatalog& catalog) {
     if (key == "pocket_secretary.root.title" ||
+        key == "pocket_secretary.options.title" ||
         key == "pocket_secretary.notebook.options.title") {
         return true;
     }
@@ -267,6 +272,9 @@ bool is_pocket_secretary_text_label_key(
                key, "pocket_secretary.option.", root_choice_ids) ||
            has_semantic_label_key(
                key, "pocket_secretary.root.text.option.", root_text_ids) ||
+           has_semantic_label_key(
+               key, "pocket_secretary.options.option.",
+               b_policy_option_ids) ||
            has_semantic_label_key(
                key, "pocket_secretary.dismiss.option.",
                catalog.dismiss_runner_choice_ids) ||
@@ -520,10 +528,16 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     const ConversionAssetCatalog& assets,
     shadowrun::ghidra_conversion::scripting::GameScriptRuntime& scripts) {
     FieldMenuTextLoadResult result;
-    std::array<std::string, 5> pocket_secretary_root_choice_ids{};
+    std::array<std::string, kPocketSecretaryFieldMenuRowCount>
+        pocket_secretary_root_choice_ids{};
     load_script_id_list(
         scripts, "pocket_secretary", "root",
         pocket_secretary_root_choice_ids, result.errors);
+    std::array<std::string, kPocketSecretaryBPolicyOptionCount>
+        pocket_secretary_b_policy_option_ids{};
+    load_script_id_list(
+        scripts, "pocket_secretary", "options",
+        pocket_secretary_b_policy_option_ids, result.errors);
     std::array<std::string, 1> pocket_secretary_root_text_ids{};
     std::array<std::string, 1> pocket_secretary_root_text{};
     load_script_menu_labels(
@@ -993,7 +1007,9 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
         if (has_pocket_secretary_text_label_prefix(key)) {
             if (!is_pocket_secretary_text_label_key(
                     key, pocket_secretary_root_choice_ids,
-                    pocket_secretary_root_text_ids, result.catalog)) {
+                    pocket_secretary_root_text_ids,
+                    pocket_secretary_b_policy_option_ids,
+                    result.catalog)) {
                 result.errors.emplace_back(
                     "unknown Pocket Secretary text label key: " + key);
             }

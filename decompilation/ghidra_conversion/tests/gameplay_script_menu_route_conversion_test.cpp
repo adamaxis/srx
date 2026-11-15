@@ -1493,7 +1493,7 @@ int main() {
     check(runtime.open_menu_route(kCommand),
           "open command for semantic runner-fact route", failures);
     runtime.advance_menu_route(0x4000U); // Pocket Secretary.
-    for (int row = 0; row < 5; ++row) {
+    for (int row = 0; row < 6; ++row) {
         runtime.advance_menu_route(0x0200U);
     }
     runtime.advance_menu_route(0x4000U); // Debug menu.
@@ -1526,7 +1526,7 @@ int main() {
     check(runtime.open_menu_route(kCommand),
           "open command for Matrix debug route", failures);
     runtime.advance_menu_route(0x4000U); // Pocket Secretary.
-    for (int row = 0; row < 5; ++row) {
+    for (int row = 0; row < 6; ++row) {
         runtime.advance_menu_route(0x0200U);
     }
     runtime.advance_menu_route(0x4000U); // Debug menu.
@@ -2809,7 +2809,7 @@ int main() {
           "Pull Plug rebuilds Command after its 64-frame source logout",
           failures);
     runtime.advance_menu_route(0x4000U); // Reopen Pocket Secretary.
-    for (int row = 0; row < 5; ++row) {
+    for (int row = 0; row < 6; ++row) {
         runtime.advance_menu_route(0x0200U);
     }
     runtime.advance_menu_route(0x4000U); // Debug row is still unlocked.
@@ -3113,7 +3113,7 @@ int main() {
     check(runtime.open_menu_route(kCommand),
           "reopen command after Matrix Crash System logout", failures);
     runtime.advance_menu_route(0x4000U); // Pocket Secretary.
-    for (int row = 0; row < 5; ++row) runtime.advance_menu_route(0x0200U);
+    for (int row = 0; row < 6; ++row) runtime.advance_menu_route(0x0200U);
     runtime.advance_menu_route(0x4000U); // Debug menu remains unlocked.
     check(runtime.menu_route_snapshot().top_screen == kDebugMenu,
           "Crash System logout preserves the unlocked debug menu", failures);

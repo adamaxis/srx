@@ -4,12 +4,17 @@
 -- 3 Dismiss Runner 0xC448, 4 Save/Load 0xEFB4, 5 Debug menu 0x599DA (hidden unlabeled row, FFF101 != 0; docs/12) [C].
 -- Save/Load sets FFF0DC = FF and FFF0CD = FF after 0x59360 / 0x596C4 (0xF124 / 0xF178) -> the Command menu exits [C].
 local E = require("enums")
+local Text = require("pocket_secretary")
 local P, O, N, R, T, MM = E.Pad, E.PocketOption, E.NotebookOption,
                          E.MenuRegion, E.MenuTransition, E.MenuMessage
 local POCKET_OPTION_ORDER = {
     O.NOTEBOOK, O.GROUP_ITEMS, O.CYBERDECK,
-    O.DISMISS_RUNNER, O.SAVE_LOAD, O.DEBUG,
+    O.DISMISS_RUNNER, O.SAVE_LOAD, O.OPTIONS, O.DEBUG,
 }
+local OPTIONS_ROW
+for index, option in ipairs(POCKET_OPTION_ORDER) do
+    if option == O.OPTIONS then OPTIONS_ROW = index - 1 end
+end
 local Grid = require("menu.rules.random_grid")
 local Cursor = require("menu.rules.cursor")
 local M = { window = E.WindowPlane.SIDEBAR }
@@ -18,7 +23,9 @@ function M.new() return { row = 0, grid_cells = Grid.cells, grid_effect_frames =
 function M.enter(st, ctx)
     Grid.reset()
     st.grid_effect_frames = 0
-    st.max = ctx.game.pocket_extra_row() and 5 or 4
+    -- The port's OPTIONS row follows the five source rows. The test-only
+    -- hidden debug row remains after it when the extended row is enabled.
+    st.max = ctx.game.pocket_extra_row() and OPTIONS_ROW + 1 or OPTIONS_ROW
     -- 0x10918..0x10AE6 build with display off (docs/09 s10.7) [C]; 15 black frames, display back on at line 216
     -- (emulator 8660..8675) [C emulator]
     ctx.host.blank(E.DisplayBlank.OFF); ctx.redraw(R.FULL); ctx.host.blank(E.DisplayBlank.ON, 15, 216)
@@ -47,7 +54,8 @@ function M.input(st, events, ctx)
         end
         if selected_option == O.DISMISS_RUNNER then return { transition = T.PUSH, screen = E.MenuScreen.DISMISS_RUNNER } end
         if selected_option == O.SAVE_LOAD then return { transition = T.PUSH, screen = E.MenuScreen.SAVE_LOAD } end
-        return { transition = T.PUSH, screen = E.MenuScreen.DEBUG_MENU }   -- row 5 (only when FFF101 != 0): debug menu 0x599DA [C]
+        if selected_option == O.OPTIONS then return { transition = T.PUSH, screen = E.MenuScreen.POCKET_SECRETARY_OPTIONS } end
+        return { transition = T.PUSH, screen = E.MenuScreen.DEBUG_MENU }   -- row 6 (only when FFF101 != 0): debug menu 0x599DA [C]
     end
     if events & P.C ~= 0 then
         ctx.sound(E.MenuSound.MOVE)
@@ -59,12 +67,66 @@ end
 function M.child_returned(st, child, res, ctx)
     if res.exit_menu then return { transition = T.POP, result = { exit_menu = true } } end
     if res.exit_secretary then return { transition = T.POP, result = { exit_menu = false } } end    -- FFF0DC < 0 only [C]   -- FFF0DC<0 -> rts; FFF0CD -> exit [C]
-    st.row = 0 -- [C] 0xC2C8 clears the shared row before the C2AA rebuild.
+    if child == E.MenuScreen.POCKET_SECRETARY_OPTIONS then
+        st.row = OPTIONS_ROW -- port-only: return to the OPTIONS row it opened from
+    else
+        st.row = 0 -- [C] 0xC2C8 clears the shared row before the C2AA rebuild.
+    end
     -- Direct children redraw only the inner C3E6 grid before returning to
     -- C2AA. The lower bezel is outside that clear and keeps its E660 writes.
     st.grid_effect_frames = Grid.frames
     st.grid_cells = Grid.cells
     ctx.host.blank(E.DisplayBlank.OFF); ctx.redraw(R.FULL); ctx.host.blank(E.DisplayBlank.ON)  -- bra 0xC2AA rebuild [C]
+end
+
+local OPTIONS_LAYOUT = {
+    title_x = 88, title_y = 32,
+    separator_x = 88, separator_y = 40,
+    label_x = 112, label_y = 56,
+    cursor_x = 96, cursor_y = 56,
+    row_spacing = 16,
+}
+
+local Options = { window = E.WindowPlane.SIDEBAR }
+function Options.new()
+    local ids, title = Text.options()
+    return {
+        row = 0,
+        title = title,
+        option_ids = ids,
+        labels = {},
+        layout = OPTIONS_LAYOUT,
+        policy = E.MenuBPolicy.ROM,
+    }
+end
+
+local function refresh_options_label(st, ctx)
+    -- An absent host callback means the source-faithful ROM policy.
+    st.policy = ctx.game.menu_b_policy and ctx.game.menu_b_policy()
+        or E.MenuBPolicy.ROM
+    st.labels = {
+        st.policy == E.MenuBPolicy.ALWAYS_CANCEL
+            and "b_button_always_cancel" or "b_button_rom",
+    }
+end
+
+function Options.enter(st, ctx)
+    refresh_options_label(st, ctx)
+    ctx.redraw(R.SUBMENU)
+end
+
+function Options.input(st, events, ctx)
+    if events & P.B ~= 0 then return { transition = T.POP } end
+    if events & P.START ~= 0 then return { transition = T.POP } end
+    if events & (P.A | P.LEFT | P.RIGHT) ~= 0 then
+        local next_policy = st.policy == E.MenuBPolicy.ALWAYS_CANCEL
+            and E.MenuBPolicy.ROM or E.MenuBPolicy.ALWAYS_CANCEL
+        if not ctx.game.set_menu_b_policy or
+           ctx.game.set_menu_b_policy(next_policy) == false then return end
+        refresh_options_label(st, ctx)
+        ctx.redraw(R.SUBMENU)
+        return
+    end
 end
 
 -- Group Items 0xC8C8 displays the available catalog entries, then waits for a
@@ -433,5 +495,5 @@ end
 return { PocketSecretary = M, GroupItems = GroupItems, Notebook = Notebook,
          Tips = Tips, Johnsons = Johnsons, Contacts = Contacts,
          Shadowrunners = Shadowrunners, Dismiss = Dismiss,
-         CurrentRun = CurrentRun,
+         CurrentRun = CurrentRun, Options = Options,
          row_cursor = Cursor.step }

@@ -568,6 +568,13 @@ struct ScriptMatrixWorldState {
     std::optional<ScriptMatrixMapKnowledge> map_knowledge;
 };
 
+// Typed host value for the port-only B-button preference exposed to the
+// synchronous menu route. Lua maps these values to enums.MenuBPolicy strings.
+enum class ScriptMenuBPolicy : std::uint8_t {
+    rom,
+    always_cancel,
+};
+
 struct ScriptMenuRouteGame {
     std::function<void()> reselect_leader;
     std::function<int()> leader_posture;
@@ -625,6 +632,7 @@ struct ScriptMenuRouteGame {
     // Port-only menu preference; values are enums.MenuBPolicy strings.
     // An absent callback uses the source-faithful ROM behavior.
     std::function<std::string()> menu_b_policy;
+    std::function<void(ScriptMenuBPolicy)> set_menu_b_policy;
 };
 
 struct ScriptMenuRouteBindings {

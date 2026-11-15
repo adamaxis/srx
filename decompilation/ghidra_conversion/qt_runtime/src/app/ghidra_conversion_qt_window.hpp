@@ -134,8 +134,16 @@ public:
                   audio_playback_->stop_resource(sound);
               }
           }) {
-        menu_b_policy_ = load_menu_b_policy_setting();
-        field_scene_runtime_.set_menu_b_policy(menu_b_policy_);
+        field_scene_runtime_.set_menu_b_policy(load_menu_b_policy_setting());
+        field_scene_runtime_.set_menu_b_policy_changed_callback(
+            [this](const scripting::ScriptMenuBPolicy policy) {
+                QSettings settings;
+                const auto setting =
+                    policy == scripting::ScriptMenuBPolicy::always_cancel
+                        ? kMenuBPolicyAlwaysCancel : kMenuBPolicyRom;
+                shadowrun::ghidra_conversion::qt_runtime::
+                    store_menu_b_policy_setting(settings, setting);
+            });
         debug_event_queue_enabled_ = debug_port.has_value();
         setWindowTitle(QStringLiteral("Shadowrun - Ghidra Conversion Qt"));
         setFixedSize(kSceneWidth * kSceneScale, kSceneHeight * kSceneScale);
@@ -726,25 +734,13 @@ private:
             load_menu_b_policy_setting(settings);
     }
 
-    void change_menu_b_policy(const int direction) {
-        if (direction == 0) {
-            return;
-        }
-        menu_b_policy_ = menu_b_policy_ == "rom"
-            ? "always_cancel" : "rom";
-        field_scene_runtime_.set_menu_b_policy(menu_b_policy_);
-        QSettings settings;
-        shadowrun::ghidra_conversion::qt_runtime::
-            store_menu_b_policy_setting(settings, menu_b_policy_);
-    }
-
     void advance_start_options_input(const std::uint8_t sampled) {
         if (sampled != 0U) {
             const auto routed = startup_scripts_.call_integers(
                 "menu.route", "external_input_disposition",
                 {kStartupOptionsMenuRoute,
                  static_cast<std::int64_t>(sampled) << 8U,
-                 menu_b_policy_ == "always_cancel"
+                 field_scene_runtime_.menu_b_policy() == "always_cancel"
                      ? kMenuRouteAlwaysCancelPolicy : 0,
                  1});
             if (!routed.has_value() || routed->size() != 2U) {
@@ -1301,9 +1297,6 @@ private:
             no_op,
             [this](const StartOptionsChoice choice) {
                 start_options_cursor_ = choice;
-            },
-            [this](const int direction) {
-                change_menu_b_policy(direction);
             },
         };
         startup_callbacks_.save_load = {
@@ -2785,13 +2778,6 @@ private:
             draw_startup_layout(painter, kStartOptionsPlaneVram,
                                 kStartOptionsLayout,
                                 &*startup_options_menu_);
-            const auto policy_label = menu_b_policy_ == "always_cancel"
-                ? std::string_view("B MODE: ALWAYS CANCEL (L/R)")
-                : std::string_view("B MODE: ROM (L/R)");
-            draw_startup_text(
-                painter, startup_menu_vram_x(kStartOptionsPlaneVram),
-                startup_menu_line_y(kStartOptionsPlaneVram, 7U),
-                policy_label, source_text_color(0U));
             draw_cursor(painter, startup_menu_vram_x(kStartOptionsCursorVram),
                         startup_menu_cursor_y(
                             kStartOptionsCursorVram,
@@ -3177,7 +3163,6 @@ private:
     JoshuaArchetypeChoice selected_archetype_ =
         JoshuaArchetypeChoice::samurai;
     StartOptionsChoice start_options_cursor_ = StartOptionsChoice::new_game;
-    std::string menu_b_policy_ = "rom";
     SaveSlotChoice save_load_cursor_ = SaveSlotChoice::slot_one;
     JoshuaArchetypeChoice joshua_cursor_ = JoshuaArchetypeChoice::samurai;
     JoshuaArchetypeChoice joshua_preview_ = JoshuaArchetypeChoice::samurai;

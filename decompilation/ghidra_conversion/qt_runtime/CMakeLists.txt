@@ -148,6 +148,8 @@ add_executable(shadowrun_ghidra_menu_b_policy_settings_test
     tests/menus/menu_b_policy_settings_test.cpp)
 target_include_directories(shadowrun_ghidra_menu_b_policy_settings_test
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/app")
+target_compile_definitions(shadowrun_ghidra_menu_b_policy_settings_test
+    PRIVATE "SHADOWRUN_QT_WINDOW_SOURCE_PATH=\"${CMAKE_CURRENT_SOURCE_DIR}/src/app/ghidra_conversion_qt_window.hpp\"")
 target_link_libraries(shadowrun_ghidra_menu_b_policy_settings_test
     PRIVATE Qt6::Core)
 add_test(NAME shadowrun_ghidra_menu_b_policy_settings
@@ -1424,6 +1426,16 @@ target_compile_definitions(
     SHADOWRUN_CONVERSION_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../assets")
 add_test(NAME shadowrun_ghidra_conversion_qt_startup_integration_qa
          COMMAND shadowrun_ghidra_conversion_qt_startup_integration_test)
+
+# The startup Options selector must retain the ROM New Game/Load Game input
+# behavior after the port-only B policy moves into the Pocket Secretary.
+add_executable(shadowrun_ghidra_conversion_qt_startup_menu_conversion_test
+    ../tests/menus/startup_menu_conversion_test.cpp)
+target_link_libraries(
+    shadowrun_ghidra_conversion_qt_startup_menu_conversion_test
+    PRIVATE shadowrun_ghidra_conversion_modules)
+add_test(NAME shadowrun_ghidra_conversion_qt_startup_menu_conversion
+         COMMAND shadowrun_ghidra_conversion_qt_startup_menu_conversion_test)
 
 # Ordinary Right/Up input from the New Game spawn contacts scene-2 record 92
 # (the physical Ares entrance), publishes event 11, waits through the source

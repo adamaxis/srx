@@ -342,8 +342,8 @@ end)
 -- ---- pocket secretary --------------------------------------------------------------------------------------
 section('pocket secretary', function()
 local r7, l7, g7 = mk(); r7:frame(P.A); local s0 = #l7.sounds; r7:frame(P.DOWN); r7:frame(P.UP); check(top(r7) == S.POCKET_SECRETARY and #l7.sounds == s0, "PS nav silent [C]")
-r7:frame(P.UP); check(st(r7).row == 4, "PS wrap to 4 [C 0xC376]")
-local r7x = mk({ extra = true }); r7x:frame(P.A); r7x:frame(P.UP); check(st(r7x).row == 5, "FFF101 extra row [C]")
+r7:frame(P.UP); check(st(r7).row == 5, "PS wrap to the last row, the port OPTIONS row after the 5 ROM rows [C 0xC376 wrap]")
+local r7x = mk({ extra = true }); r7x:frame(P.A); r7x:frame(P.UP); check(st(r7x).row == 6, "FFF101 extra row after OPTIONS [C]")
 local f7, d7 = require("menu.rules.random_grid").frames, g7.draws or 0   -- Grid state is module-wide (r7x reset it)
 r7:frame(P.DOWN); check(st(r7).row == 0 and st(r7).grid_effect_frames == f7 + 1 and g7.draws == d7 + 3, "0xE660 every frame, 3 RNG draws [C]")
 r7:frame(P.B); check(top(r7) == S.POCKET_SECRETARY, "B ignored (A bit14 only) [C]")
@@ -469,7 +469,7 @@ end
 -- dispatches the chosen slot through 0x59360. This path does not test FFDF84;
 -- its world-activity timer is scheduled/cleared at 0x1DBAA/0x1DBF0 [C].
 section('save/load 0x59172 [C]', function()
-local function sl(o) local r, l, g = mk(o); r:frame(P.A); r:frame(P.UP); r:frame(P.A); return r, l, g end
+local function sl(o) local r, l, g = mk(o); r:frame(P.A); r:frame(P.UP); r:frame(P.UP); r:frame(P.A); return r, l, g end   -- 0 -> OPTIONS (5) -> Save/Load (4)
 local r9, l9, g9 = sl({ combat = true }); check(top(r9) == S.SAVE_LOAD, "an active FFDF84 world timer does not block the ROM Save/Load path [C 0x59092/0x59172/0x59360]")
 r9:frame(P.A); check(top(r9) == S.SAVE_SLOT, "Save opens its slot list while FFDF84 is active [C]")
 r9 = sl({ outside_area = false }); check(top(r9) == S.MESSAGE and st(r9).message == MM.SAVE_OUTSIDE_ONLY, "the existing host outside-area restriction remains")
@@ -481,7 +481,7 @@ r9:frame(P.UP); check(st(r9).row == 1 and #l9.sounds == s9, "2 rows, silent wrap
 r9:frame(P.B); check(top(r9) == S.SAVE_SLOT and st(r9).title == "save_game" and st(r9).labels[1] == "game_1" and st(r9).labels[2] == "game_2", "B confirms; occupied slots keep the static Game N labels [C]")
 check(st(r9).layout.title_x == 88 and st(r9).layout.separator_x == 88 and st(r9).layout.label_x == 112 and st(r9).layout.cursor_x == 96 and st(r9).layout.label_y == 56, "Save Slot rows use ROM C39C/C398 coordinates [C]")
 r9:frame(P.START); check(top(r9) == S.POCKET_SECRETARY and g9.saved == nil, "slot Start = abort -> PS")
-r9:frame(P.UP); r9:frame(P.A); r9:frame(P.A); r9:frame(P.DOWN); r9:frame(P.C)
+r9:frame(P.UP); r9:frame(P.UP); r9:frame(P.A); r9:frame(P.A); r9:frame(P.DOWN); r9:frame(P.C)
 check(g9.saved == 1 and st(r9).message == MM.GAME_SAVED, "save slot 2"); r9:frame(P.A)
 check(not r9:is_open() and l9.closed, "save -> FFF0CD exits menu [C 0xF178]")
 r9, l9, g9 = sl({ save_ok = false }); r9:frame(P.A); r9:frame(P.A)

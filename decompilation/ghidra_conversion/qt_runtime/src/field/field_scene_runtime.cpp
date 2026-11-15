@@ -10167,6 +10167,8 @@ void FieldSceneRuntime::configure_field_menu_route() {
             case srx::MenuScreen::MESSAGE:
             case srx::MenuScreen::DISMISS_RUNNER:
             case srx::MenuScreen::SAVE_LOAD:
+            case static_cast<srx::MenuScreen>(
+                PortMenuScreen::pocket_secretary_options):
             case srx::MenuScreen::SAVE_SLOT:
             case srx::MenuScreen::GROUP_ITEMS:
             case srx::MenuScreen::CYBERDECK:
@@ -10582,7 +10584,7 @@ void FieldSceneRuntime::configure_field_menu_route() {
     };
     bindings.game.pocket_extra_row = [this] {
         return debug_menu_unlocked_ ||
-               pocket_secretary_.maximum_selection > 4U;
+               pocket_secretary_.maximum_selection > kPocketSecretaryOptionsRow;
     };
     bindings.game.in_combat = [this] {
         // FFDF84 is the active marker [C]; the native timeout state keeps
@@ -10630,7 +10632,8 @@ void FieldSceneRuntime::configure_field_menu_route() {
     bindings.game.consume_debug_unlock = [this] {
         debug_menu_unlocked_ = kDebugMenuAlwaysUnlockedForTesting;
         pocket_secretary_.maximum_selection =
-            debug_menu_unlocked_ ? 5U : 4U;
+            debug_menu_unlocked_ ? kPocketSecretaryDebugRow
+                                 : kPocketSecretaryOptionsRow;
     };
     bindings.game.seed_debug_contacts = [this] {
         // ROM 0x59C48 writes 0x1C7F to FFFC2C; keep that encoding in C++.
@@ -10867,6 +10870,10 @@ void FieldSceneRuntime::configure_field_menu_route() {
         // Cyberdeck editor has no session effects to clear.
     };
     bindings.game.menu_b_policy = [this] { return menu_b_policy_; };
+    bindings.game.set_menu_b_policy = [this](
+        const scripting::ScriptMenuBPolicy policy) {
+        set_menu_b_policy(policy);
+    };
     game_scripts_.set_menu_route_bindings(std::move(bindings));
 }
 
@@ -19109,11 +19116,15 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                                       srx::MenuScreen::SAVE_LOAD) ||
             menu_route_screen_ == static_cast<std::uint16_t>(
                                       srx::MenuScreen::SAVE_SLOT);
+        const bool pocket_secretary_options_screen =
+            menu_route_screen_ == static_cast<std::uint16_t>(
+                                      PortMenuScreen::pocket_secretary_options);
         const bool save_load_message =
             menu_route_screen_ == static_cast<std::uint16_t>(
                                       srx::MenuScreen::MESSAGE) &&
             !routed_menu.top_title.empty();
-        if (save_load_screen || save_load_message) {
+        if (save_load_screen || pocket_secretary_options_screen ||
+            save_load_message) {
             // Replace the Pocket Secretary rows with a clean child panel.
             painter.drawImage(24, 24, pocket_secretary_grid_);
             if (save_load_message) {
@@ -19148,7 +19159,14 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             const bool save_slot_screen =
                 menu_route_screen_ == static_cast<std::uint16_t>(
                                           srx::MenuScreen::SAVE_SLOT);
-            if (save_slot_screen) {
+            if (pocket_secretary_options_screen) {
+                draw_command_overview_text(
+                    painter, title_x, title_y,
+                    pocket_secretary_menu_content_.options_title);
+                draw_command_overview_text(
+                    painter, separator_x, separator_y,
+                    pocket_secretary_menu_content_.separator);
+            } else if (save_slot_screen) {
                 const auto title_id = std::find(
                     field_menu_text_.save_load_slot_title_text_ids.begin(),
                     field_menu_text_.save_load_slot_title_text_ids.end(),
@@ -19176,6 +19194,24 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                     : field_menu_text_.save_load_option_labels;
             for (std::size_t row = 0;
                  row < routed_menu.top_option_labels.size(); ++row) {
+                if (pocket_secretary_options_screen) {
+                    const auto& choice_id =
+                        routed_menu.top_option_labels[row];
+                    const auto choice = std::find_if(
+                        pocket_secretary_menu_content_.b_policy_options.begin(),
+                        pocket_secretary_menu_content_.b_policy_options.end(),
+                        [&choice_id](const auto& option) {
+                            return option.id == choice_id;
+                        });
+                    if (choice !=
+                        pocket_secretary_menu_content_.b_policy_options.end()) {
+                        draw_command_overview_text(
+                            painter, label_x,
+                            label_y + static_cast<int>(row) * row_spacing,
+                            choice->label);
+                    }
+                    continue;
+                }
                 const auto label_id = std::find(
                     label_ids.begin(), label_ids.end(),
                     routed_menu.top_option_labels[row]);

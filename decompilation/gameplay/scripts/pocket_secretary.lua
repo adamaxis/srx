@@ -23,12 +23,24 @@ function PocketSecretary.root()
         "cyberdeck",
         "dismiss_runner",
         "save_load",
+        "options",
     }, "pocket_secretary.root.title", {
         "pocket_secretary.option.notebook",
         "pocket_secretary.option.group_items",
         "pocket_secretary.option.cyberdeck",
         "pocket_secretary.option.dismiss_runner",
         "pocket_secretary.option.save_load",
+        "pocket_secretary.option.options",
+    }
+end
+
+function PocketSecretary.options()
+    return {
+        "b_button_rom",
+        "b_button_always_cancel",
+    }, "pocket_secretary.options.title", {
+        "pocket_secretary.options.option.b_button_rom",
+        "pocket_secretary.options.option.b_button_always_cancel",
     }
 end
 
