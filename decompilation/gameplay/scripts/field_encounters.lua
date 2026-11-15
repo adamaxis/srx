@@ -28,6 +28,18 @@ local template_sequences = {
             "map-derived candidates around camera-relative map anchors",
     },
 }
+local watcher_template_sequences = {
+    [E.WorldEffectSequence.PHANTASMAL_WATCHER_EYE_FIVERS_FOUR] = {
+        { actor_name = "eye5r 2", profile_id = "eye5r_2_k07_item04" },
+        { actor_name = "eye5r 2", profile_id = "eye5r_2_k07_item04" },
+        { actor_name = "eye5r 1", profile_id = "eye5r_1_k07_item01" },
+        { actor_name = "eye5r 1", profile_id = "eye5r_1_k07_item01" },
+    },
+    [E.WorldEffectSequence.PHANTASMAL_WATCHER_EYE_FIVERS_TWO] = {
+        { actor_name = "eye5r 1", profile_id = "eye5r_1_k07_item01" },
+        { actor_name = "eye5r 1", profile_id = "eye5r_1_k07_item01" },
+    },
+} -- ROM lists 0x1D6DAE / 0x1D6DB6: 0x1D65C6 and 0x1D657C [C].
 
 local function integer(value, minimum, maximum)
     return type(value) == "number" and value % 1 == 0 and
@@ -221,6 +233,38 @@ local function resolve_template_sequence(scene_id, sequence_id, descriptor,
     }
 end
 
+local function resolve_watcher_template_sequence(
+    scene_id, sequence_id, descriptors, data)
+    local actors = {}
+    for order, descriptor in ipairs(descriptors) do
+        local selected
+        for _, row in ipairs(data.dynamic_world_activity_actors or {}) do
+            if row.scene_id == scene_id and
+               row.profile_id == descriptor.profile_id and
+               row.actor_name == descriptor.actor_name then
+                selected = row
+                break
+            end
+        end
+        if selected == nil then return nil end
+
+        local actor = actor_from_row(selected)
+        actor.sequence_order = order - 1
+        actor.sequence_id = sequence_id
+        actor.placement_rule =
+            "map-derived candidates around camera-relative map anchors"
+        actors[#actors + 1] = actor
+    end
+    return {
+        kind = "dynamic_world_effect_sequence",
+        placement_policy = E.WorldEffectPlacementPolicy.MAP_DERIVED_CANDIDATES,
+        scene_id = scene_id,
+        outcome_id = sequence_id,
+        sequence_id = sequence_id,
+        actors = actors,
+    }
+end
+
 -- ROM 0x1E166 owns the encounter attempt policy. The host supplies semantic
 -- world facts and a normalized chance only when this function asks for one,
 -- so blocked/not-due field passes do not consume random state.
@@ -397,6 +441,11 @@ function Encounters.resolve_sequence(scene_id, sequence_id)
     if template_sequence ~= nil then
         return resolve_template_sequence(
             scene_id, sequence_id, template_sequence, data)
+    end
+    local watcher_sequence = watcher_template_sequences[sequence_id]
+    if watcher_sequence ~= nil then
+        return resolve_watcher_template_sequence(
+            scene_id, sequence_id, watcher_sequence, data)
     end
     local actors = ordered_actor_rows(data, function(row)
         return row.scene_id == scene_id and

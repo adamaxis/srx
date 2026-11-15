@@ -407,7 +407,7 @@ local function run_haggard(choice, event_id, configuration)
         [100] = { 0 },
     }
     local random_indices = {}
-    local funds = 125
+    local funds = configuration.initial_nuyen or 125
     game = {
         location = {
             type = "field_map",
@@ -438,7 +438,10 @@ local function run_haggard(choice, event_id, configuration)
                 },
             }
         end,
-        nuyen = function() return funds end,
+        nuyen = function()
+            if configuration.missing_nuyen then return nil end
+            return funds
+        end,
         set_nuyen = function(value) funds = value end,
         ui = {
             say_text = function(text, continuation, speaker_id, text_profile)
@@ -500,6 +503,290 @@ local function run_haggard(choice, event_id, configuration)
         "field_random_events", "present_haggard_man")
     return task_result, dialogue_pages, exit_calls, funds, random_calls,
         prompt_titles, prompt_speakers, queued_world_effects
+end
+
+local function run_watcher(choice, configuration)
+    configuration = configuration or {}
+    local dialogue_pages = {}
+    local exit_calls = {}
+    local random_calls = {}
+    local prompt_titles = {}
+    local prompt_options = {}
+    local prompt_speakers = {}
+    local queued_world_effects = {}
+    local random_values = configuration.random_values or { [6] = { 0 } }
+    local random_indices = {}
+    local funds = configuration.initial_nuyen or 125
+    local nuyen_writes = 0
+    game = {
+        location = {
+            type = "field_map",
+            id = "random_field_event",
+            event_id = "phantasmal_watcher",
+            scene_id = configuration.scene_id or 5,
+        },
+        modules = {
+            combat = Combat,
+            world_content_data = {
+                world_activity_event_content = {
+                    {
+                        event_id = "phantasmal_watcher",
+                        opening_text =
+                            "<The shadowy image of a watcher, a phantasmal " ..
+                            "magical messenger, materializes in front of you.>" ..
+                            "||Come quickly!||My master needs help!",
+                    },
+                },
+                world_activity_event_choices = {
+                    {
+                        event_id = "phantasmal_watcher",
+                        choice_order = 1,
+                        choice_id = "accept_watcher_request",
+                        label = "Take me to him.  I'll help.",
+                    },
+                    {
+                        event_id = "phantasmal_watcher",
+                        choice_order = 2,
+                        choice_id = "insult",
+                        label = "Slot off, frag-face!!!",
+                    },
+                },
+            },
+        },
+        party = function()
+            return {
+                [0] = { attributes = { body = configuration.body or 1 } },
+            }
+        end,
+        nuyen = function() return funds end,
+        set_nuyen = function(value)
+            funds = value
+            nuyen_writes = nuyen_writes + 1
+        end,
+        ui = {
+            say_text = function(text, continuation, speaker_id, text_profile)
+                dialogue_pages[#dialogue_pages + 1] = {
+                    text = text,
+                    continuation = continuation,
+                    speaker_id = speaker_id,
+                    text_profile = text_profile,
+                }
+            end,
+            prompt_text = function(menu_id, prompt, options,
+                                   speaker_id, text_profile)
+                eq(menu_id, "phantasmal_watcher", "watcher menu id")
+                prompt_titles[#prompt_titles + 1] = prompt
+                prompt_options[#prompt_options + 1] = options
+                prompt_speakers[#prompt_speakers + 1] = {
+                    speaker_id = speaker_id,
+                    text_profile = text_profile,
+                }
+                return choice
+            end,
+        },
+        services = {
+            call = function(domain, action)
+                if domain == "field" and action == "scene_reference" then
+                    return "scene_" .. tostring(game.location.scene_id)
+                end
+                if domain == "story" and
+                   action:match("^queue_world_effect_") then
+                    queued_world_effects[#queued_world_effects + 1] = action
+                    return configuration.queue_result or "queued"
+                end
+                if domain == "random" then
+                    random_calls[#random_calls + 1] = action
+                    local bound = type(action) == "string" and
+                        tonumber(action:match("^bounded_(%d+)$")) or nil
+                    if bound == nil then return "invalid_random_result" end
+                    random_indices[bound] = (random_indices[bound] or 0) + 1
+                    local values = random_values[bound]
+                    local value = type(values) == "table" and
+                        values[random_indices[bound]] or nil
+                    if value == nil then return "invalid_random_result" end
+                    return "roll_" .. tostring(value)
+                end
+                eq(domain, "dialogue_exit",
+                   "watcher exit uses the common executor service")
+                exit_calls[#exit_calls + 1] = action
+                return "applied"
+            end,
+        },
+    }
+    local task_result = DialogueFramework.open(
+        E.DialogueSource.RANDOM_ENCOUNTER,
+        "field_random_events", "present_phantasmal_watcher")
+    return task_result, dialogue_pages, exit_calls, funds, random_calls,
+        prompt_titles, prompt_options, prompt_speakers, queued_world_effects,
+        nuyen_writes
+end
+
+-- ROM prompt 0x120F00's rows and the following text records are exercised in
+-- source order; the MORE-bearing pages continue before their next record.
+do
+local watcher_insult, watcher_insult_pages, watcher_insult_exit,
+      watcher_insult_funds, watcher_insult_random, watcher_insult_titles,
+      watcher_insult_options, watcher_insult_speakers,
+      watcher_insult_effects, watcher_insult_writes =
+    run_watcher("insult", { body = 2 })
+eq(watcher_insult, "resolved", "watcher insult resolves")
+eq(watcher_insult_titles[1],
+   "<The shadowy image of a watcher, a phantasmal magical messenger, " ..
+   "materializes in front of you.>||Come quickly!||My master needs help!",
+   "watcher prompt uses the extracted opening")
+eq(#watcher_insult_options[1], 2, "watcher prompt has two choices")
+eq(watcher_insult_options[1][1].id, "accept_watcher_request",
+   "watcher first choice is Accept")
+eq(watcher_insult_options[1][1].label, "Take me to him.  I'll help.",
+   "watcher Accept label matches the source row")
+eq(watcher_insult_options[1][2].id, "insult",
+   "watcher second choice is Insult")
+eq(watcher_insult_options[1][2].label, "Slot off, frag-face!!!",
+   "watcher Insult label matches the source row")
+eq(watcher_insult_speakers[1].speaker_id, "haggard_man_event",
+   "watcher prompt uses the field event illustration binding")
+eq(watcher_insult_speakers[1].text_profile, "field.world_event",
+   "watcher prompt uses the field event text profile")
+eq(#watcher_insult_pages, 1, "Insult has one terminal text page")
+-- ROM text 0x11D893.
+eq(watcher_insult_pages[1].text,
+   "This is horrible!  Where's your compassion?!||" ..
+   "<The watcher vanishes.>", "watcher Insult text")
+eq(watcher_insult_pages[1].continuation, false,
+   "Insult record has no continuation")
+eq(watcher_insult_pages[1].speaker_id, "haggard_man_event",
+   "watcher Insult keeps the event illustration binding")
+eq(watcher_insult_pages[1].text_profile, "field.world_event",
+   "watcher Insult keeps the event text profile")
+eq(watcher_insult_funds, 125, "Insult does not award nuyen")
+eq(watcher_insult_writes, 0, "Insult does not write nuyen")
+eq(#watcher_insult_random, 0, "Insult does not roll Body")
+eq(#watcher_insult_effects, 0, "Insult queues no actor list")
+eq(table.concat(watcher_insult_exit, ","), "stay,fade_83,lock_60",
+   "watcher returns through the haggard same-map dialogue exit")
+
+local watcher_zero, watcher_zero_pages, _, watcher_zero_funds,
+      watcher_zero_random, _, _, watcher_zero_speakers,
+      watcher_zero_effects, watcher_zero_writes = run_watcher(
+    "accept_watcher_request", {
+        body = 1,
+        random_values = { [6] = { 0 } },
+    })
+eq(watcher_zero, "resolved", "zero-success watcher sequence resolves")
+eq(#watcher_zero_pages, 3,
+   "zero-success path shows accept, gang attack, and thanks pages")
+-- ROM text 0x11D8D9, followed by the 0x9A Body dispatch.
+eq(watcher_zero_pages[1].text,
+   "<The watcher leads you through some side streets.||" ..
+   "He points ahead, and you see an old man being brutally beaten " ..
+   "by a group of Eye-Fivers.>", "watcher acceptance text")
+eq(watcher_zero_pages[1].continuation, true,
+   "acceptance record has the shared MORE label")
+-- ROM text 0x11D965, which continues to record 0x120F5C.
+eq(watcher_zero_pages[2].text,
+   "<The mage looks up.||" ..
+   "The Eye-Fivers turn around, following his gaze.>||" ..
+   "Look, some new meat to tenderize!  Get him, boys!",
+   "watcher zero-success text")
+eq(watcher_zero_pages[2].continuation, true,
+   "zero-success record has the shared MORE label")
+-- ROM text 0x11DA7E.
+eq(watcher_zero_pages[3].text,
+   "<As the gangers come at you, you catch the mage giving you a wave " ..
+   "of thanks.||He then shimmers and fades to nothingness.>",
+   "watcher thanks-and-fade text")
+eq(watcher_zero_pages[3].continuation, false,
+   "watcher thanks-and-fade record is terminal")
+eq(watcher_zero_pages[1].speaker_id, "haggard_man_event",
+   "watcher acceptance keeps the field event illustration binding")
+eq(watcher_zero_pages[2].text_profile, "field.world_event",
+   "watcher attack result keeps the field event text profile")
+eq(watcher_zero_pages[3].speaker_id, "haggard_man_event",
+   "watcher thanks keeps the field event illustration binding")
+eq(watcher_zero_funds, 125, "zero-success combat path does not award nuyen")
+eq(watcher_zero_writes, 0, "zero-success combat path does not write nuyen")
+eq(table.concat(watcher_zero_random, ","), "bounded_6",
+   "zero-success branch rolls the first runner Body once")
+eq(watcher_zero_effects[1],
+   "queue_world_effect_5_4_phantasmal_watcher_eye_fivers_four",
+   "zero-success branch queues both Eye Fiver 2 and both Eye Fiver 1")
+eq(#watcher_zero_effects, 1,
+   "zero-success branch queues one watcher actor list")
+
+local watcher_one, watcher_one_pages, _, watcher_one_funds,
+      watcher_one_random, _, _, _, watcher_one_effects, watcher_one_writes =
+    run_watcher("accept_watcher_request", {
+        body = 1,
+        random_values = { [6] = { 5, 0 } },
+    })
+eq(watcher_one, "resolved", "one-success watcher sequence resolves")
+eq(#watcher_one_pages, 3,
+   "one-success path shows accept, gang attack, and thanks pages")
+-- ROM text 0x11D9DE.
+eq(watcher_one_pages[2].text,
+   "<The mage looks at you pleadingly.||" ..
+   "The Eye-Fivers turn and size you up.||" ..
+   "A couple of them run away, but the rest stay behind.>||" ..
+   "You want to play, too, do you?", "watcher one-success text")
+eq(watcher_one_pages[2].continuation, true,
+   "one-success record has the shared MORE label")
+eq(watcher_one_funds, 125, "one-success combat path does not award nuyen")
+eq(watcher_one_writes, 0, "one-success combat path does not write nuyen")
+eq(table.concat(watcher_one_random, ","), "bounded_6,bounded_6",
+   "one-success branch uses the controlled exploding-six Body roll")
+eq(watcher_one_effects[1],
+   "queue_world_effect_5_2_phantasmal_watcher_eye_fivers_two",
+   "one-success branch queues two Eye Fiver 1 actors")
+eq(#watcher_one_effects, 1,
+   "one-success branch queues one watcher actor list")
+
+local watcher_two_plus, watcher_two_pages, _, watcher_two_funds,
+      watcher_two_random, _, _, _, watcher_two_effects, watcher_two_writes =
+    run_watcher("accept_watcher_request", {
+        body = 2,
+        initial_nuyen = 375,
+        random_values = { [6] = { 5, 0, 5, 0 } },
+    })
+eq(watcher_two_plus, "resolved", "two-success watcher reward resolves")
+eq(#watcher_two_pages, 2,
+   "two-success path shows accept and reward pages only")
+-- ROM text 0x11DAF8.
+eq(watcher_two_pages[2].text,
+   "<The Eye-Fivers see you and scatter immediately.||" ..
+   "The mage addresses you.>||Thank you for your help.||" ..
+   "This, I'm afraid, is all I can offer in return.||" ..
+   "<He hands you 200 nuyen.>", "watcher reward text")
+eq(watcher_two_pages[2].continuation, false,
+   "watcher reward record is terminal")
+eq(watcher_two_funds, 575,
+   "two-success branch adds exactly 200 nuyen")
+eq(watcher_two_writes, 1,
+   "two-success branch writes the reward exactly once")
+eq(#watcher_two_random, 4,
+   "two-success branch rolls exactly two controlled exploding sixes")
+eq(#watcher_two_effects, 0,
+   "two-success branch starts no Eye-Fiver sequence")
+
+local watcher_failed_start, watcher_failed_pages, _, watcher_failed_funds,
+      watcher_failed_random, _, _, _, watcher_failed_effects,
+      watcher_failed_writes = run_watcher("accept_watcher_request", {
+    body = 1,
+    initial_nuyen = 40,
+    random_values = { [6] = { 0 } },
+    queue_result = "busy",
+})
+eq(watcher_failed_start, "resolved",
+   "failed watcher list start falls through to the reward")
+eq(#watcher_failed_pages, 2,
+   "failed list start shows accept and reward pages")
+eq(watcher_failed_funds, 240,
+   "failed watcher list start adds exactly 200 nuyen")
+eq(watcher_failed_writes, 1,
+   "failed watcher list start writes the reward exactly once")
+eq(table.concat(watcher_failed_random, ","), "bounded_6",
+   "failed list start follows the source zero-success Body result")
+eq(#watcher_failed_effects, 1,
+   "failed list start follows one attempted actor-list queue")
 end
 
 local haggard_result, haggard_pages, haggard_exit, haggard_funds,
@@ -741,6 +1028,16 @@ eq(failed_queue_funds, 125,
    "failed sequence queue does not award money")
 eq(#failed_queue_effects, 1,
    "failed sequence attempt makes one queue request")
+
+local missing_nuyen_result = run_haggard("help", nil, {
+    intelligence = 0,
+    missing_nuyen = true,
+    random_values = { [6] = {}, [100] = { 0 } },
+})
+eq(type(missing_nuyen_result), "table",
+   "missing haggard reward funds returns an explicit source boundary")
+eq(missing_nuyen_result.type, "source_boundary",
+   "missing haggard reward funds does not call an unresolved global")
 
 game.location.event_id = "different_event"
 eq(RandomEvents.present_haggard_man(), nil,

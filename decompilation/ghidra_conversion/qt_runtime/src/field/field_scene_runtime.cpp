@@ -14863,11 +14863,8 @@ void FieldSceneRuntime::advance_frame() {
             if (pending_field_encounter_outcome_.has_value() &&
                 pending_field_encounter_outcome_->kind ==
                     scripting::ScriptFieldEncounterOutcomeKind::dialogue_event &&
-                (pending_field_encounter_outcome_->event_id == "hidden_camera" ||
-                 pending_field_encounter_outcome_->event_id ==
-                     "haggard_man_collapse" ||
-                 pending_field_encounter_outcome_->event_id ==
-                     "faction_disturbance")) {
+                field_scene_detail::field_dialogue_task_for_event(
+                    pending_field_encounter_outcome_->event_id) != nullptr) {
                 const auto task_result =
                     field_dialogue_.take_gameplay_task_result();
                 if (task_result.has_value()) {

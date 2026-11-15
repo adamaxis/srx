@@ -431,6 +431,7 @@ public:
     std::size_t resolve_and_spawn_field_encounter_for_dump(
         std::uint8_t first_roll, std::uint8_t second_roll,
         std::uint16_t random_seed);
+    bool exercise_unhandled_field_dialogue_event_guard_for_dump();
     std::size_t default_actor_transition_started_count_for_dump() const noexcept;
     std::size_t default_actor_transition_complete_count_for_dump() const noexcept;
     std::optional<std::uint8_t> default_actor_direction_for_dump(

@@ -17,6 +17,33 @@
 
 namespace shadowrun::ghidra_conversion::qt_runtime::field_scene_detail {
 
+struct FieldDialogueEventTask {
+    std::string_view event_id;
+    std::string_view task_name;
+};
+
+inline constexpr std::array<FieldDialogueEventTask, 4U>
+    kFieldDialogueEventTasks{{
+        {"hidden_camera", "present_hidden_camera"},
+        // ROM 0x20FA2 opens the escaped-patient encounter; Lua owns its
+        // choices and the 0x23CF2 Help result.
+        {"haggard_man_collapse", "present_haggard_man"},
+        // ROM 0x20F42 opens the faction disturbance prompt.
+        {"faction_disturbance", "present_faction_disturbance"},
+        // ROM 0x20F2A opens record 0x120F00; Lua owns 0x23812's Body roll.
+        {"phantasmal_watcher", "present_phantasmal_watcher"},
+    }};
+
+inline const char* field_dialogue_task_for_event(
+    const std::string_view event_id) noexcept {
+    for (const auto& entry : kFieldDialogueEventTasks) {
+        if (entry.event_id == event_id) {
+            return entry.task_name.data();
+        }
+    }
+    return nullptr;
+}
+
 inline scripting::ScriptDialogueOpenRouteData dialogue_open_route_data(
     const FieldScriptRoute& route) {
     scripting::ScriptDialogueOpenRouteData data{};

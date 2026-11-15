@@ -226,6 +226,10 @@ E.WorldEffectSequence = {
     HAGGARD_GATOR_SHAMAN_AND_BODYGUARDS =
         "haggard_man_gator_shaman_and_bodyguards",
     HAGGARD_TWO_BODYGUARDS = "haggard_man_two_bodyguards",
+    PHANTASMAL_WATCHER_EYE_FIVERS_FOUR =
+        "phantasmal_watcher_eye_fivers_four",
+    PHANTASMAL_WATCHER_EYE_FIVERS_TWO =
+        "phantasmal_watcher_eye_fivers_two",
     FACTION_MAFIA_EYE_FIVERS = "faction_mafia_eye_fivers",
     FACTION_HALLOWEENERS = "faction_halloweeners",
     FIELD_ALARM_REINFORCEMENTS = "field_alarm_reinforcements", -- ROM list 0x1E20A [C]

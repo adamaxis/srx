@@ -505,23 +505,14 @@ bool FieldSceneRuntime::present_field_dialogue_event() {
         return false;
     }
     const auto event_id = pending_field_encounter_outcome_->event_id;
-    const char* task_name = nullptr;
-    if (event_id == "hidden_camera") {
-        task_name = "present_hidden_camera";
-    } else if (event_id == "haggard_man_collapse") {
-        // ROM 0x20FA2 opens the escaped-patient encounter; Lua owns the
-        // choices and its 0x23CF2 Help result.
-        task_name = "present_haggard_man";
-    } else if (event_id == "faction_disturbance") {
-        // ROM 0x20F42 opens the faction disturbance prompt. Lua handles its
-        // text-only branch and keeps the actor-list branches explicit.
-        task_name = "present_faction_disturbance";
-    }
+    const char* task_name =
+        field_scene_detail::field_dialogue_task_for_event(event_id);
     if (task_name == nullptr) {
         failure_ = "field event has no Lua behavior: " +
             event_id;
         source_boundary(
             "field.random_encounter.dialogue_handler_unimplemented");
+        pending_field_encounter_outcome_.reset();
         return false;
     }
 

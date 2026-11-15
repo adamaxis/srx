@@ -26561,10 +26561,108 @@ int run_field_region_map_pedestrians_qa(
         std::array<std::size_t, 3> frames_to_waypoint{};
         std::size_t frames = 0U;
         std::size_t peak_actor_count = field_scene.default_actor_count_for_dump();
+        enum class FieldRouteInputPhase : std::uint8_t {
+            idle,
+            watcher_release_choice,
+            watcher_await_refusal,
+            watcher_release_refusal,
+            haggard_release_opening,
+            haggard_await_choice,
+            haggard_release_choice,
+            haggard_await_result,
+            haggard_release_result,
+        };
+        auto route_input_phase = FieldRouteInputPhase::idle;
         for (; frames < kMaximumFieldFrames &&
                !std::all_of(waypoint_reached.begin(), waypoint_reached.end(),
                             [](const bool reached) { return reached; });
              ++frames) {
+            std::uint8_t controller_port = 0U;
+            const auto& dialogue_panel = field_scene.dialogue_panel();
+            const auto panel_contains = [&dialogue_panel](
+                                           const std::string_view needle) {
+                for (std::size_t index = 0U;
+                     index < dialogue_panel.text_segment_count; ++index) {
+                    if (dialogue_panel.text_segments[index].find(needle) !=
+                        std::string_view::npos) {
+                        return true;
+                    }
+                }
+                return false;
+            };
+            const auto panel_has_option = [&dialogue_panel](
+                                              const std::string_view needle) {
+                for (std::size_t index = 0U;
+                     index < dialogue_panel.option_count; ++index) {
+                    if (dialogue_panel.options[index].source_label.find(needle) !=
+                        std::string_view::npos) {
+                        return true;
+                    }
+                }
+                return false;
+            };
+            switch (route_input_phase) {
+            case FieldRouteInputPhase::idle:
+                if (field_scene.dialogue_open() &&
+                    !field_scene.dialogue_input_locked() &&
+                    panel_contains("shadowy image of a watcher")) {
+                    controller_port = 0x10U; // [C: 0x120F00] Choice two is the refusal.
+                    route_input_phase =
+                        FieldRouteInputPhase::watcher_release_choice;
+                } else if (field_scene.dialogue_open() &&
+                           !field_scene.dialogue_input_locked() &&
+                           panel_contains("A haggard man collapses at your feet.")) {
+                    controller_port = 0x40U; // [C: 0x20FA2] Advance the opening page.
+                    route_input_phase =
+                        FieldRouteInputPhase::haggard_release_opening;
+                }
+                break;
+            case FieldRouteInputPhase::watcher_release_choice:
+                route_input_phase = FieldRouteInputPhase::watcher_await_refusal;
+                break;
+            case FieldRouteInputPhase::watcher_await_refusal:
+                if (!field_scene.dialogue_input_locked() &&
+                    panel_contains("Where's your compassion?!")) {
+                    controller_port = 0x40U; // [C: 0x120F18] Dismiss the refusal page.
+                    route_input_phase =
+                        FieldRouteInputPhase::watcher_release_refusal;
+                }
+                break;
+            case FieldRouteInputPhase::watcher_release_refusal:
+                if (!field_scene.dialogue_open()) {
+                    route_input_phase = FieldRouteInputPhase::idle;
+                }
+                break;
+            case FieldRouteInputPhase::haggard_release_opening:
+                route_input_phase = FieldRouteInputPhase::haggard_await_choice;
+                break;
+            case FieldRouteInputPhase::haggard_await_choice:
+                if (!field_scene.dialogue_input_locked() &&
+                    panel_has_option("Help them.")) {
+                    controller_port = 0x20U; // [C: 0x23BB4] Choose help.
+                    route_input_phase =
+                        FieldRouteInputPhase::haggard_release_choice;
+                }
+                break;
+            case FieldRouteInputPhase::haggard_release_choice:
+                route_input_phase = FieldRouteInputPhase::haggard_await_result;
+                break;
+            case FieldRouteInputPhase::haggard_await_result:
+                if (!field_scene.dialogue_input_locked() &&
+                    (panel_contains("Here's fifty nuyen.") ||
+                     panel_contains("50$ for your help"))) {
+                    controller_port = 0x40U; // [C: 0x23CE0/0x23CF2] Dismiss help.
+                    route_input_phase =
+                        FieldRouteInputPhase::haggard_release_result;
+                }
+                break;
+            case FieldRouteInputPhase::haggard_release_result:
+                if (!field_scene.dialogue_open()) {
+                    route_input_phase = FieldRouteInputPhase::idle;
+                }
+                break;
+            }
+            field_scene.set_controller_port_byte(controller_port);
             field_scene.advance_frame();
             peak_actor_count = std::max(
                 peak_actor_count, field_scene.default_actor_count_for_dump());
@@ -26687,6 +26785,22 @@ int run_field_region_map_pedestrians_qa(
                   << frames << " peak_actors=" << peak_actor_count
                   << " actual=" << bitmap.string() << '\n';
     }
+
+    field_scene.set_field_world_frame_counter_for_dump(0x0200U);
+    const auto unhandled_counter_before =
+        field_scene.field_world_frame_counter_for_dump();
+    if (!field_scene.exercise_unhandled_field_dialogue_event_guard_for_dump()) {
+        std::cerr << "Region-map pedestrians QA: unhandled dialogue event "
+                     "stopped the field loop (counter "
+                  << unhandled_counter_before << " -> "
+                  << field_scene.field_world_frame_counter_for_dump()
+                  << ", failure=" << field_scene.failure() << ")\n";
+        return 3;
+    }
+    std::cout << "unhandled_field_dialogue_event_guard=passed counter="
+              << unhandled_counter_before << "->"
+              << field_scene.field_world_frame_counter_for_dump()
+              << " failure=" << field_scene.failure() << '\n';
 
     return 0;
 }

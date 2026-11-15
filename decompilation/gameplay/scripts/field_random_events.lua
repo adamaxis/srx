@@ -7,6 +7,10 @@ local E = require("enums")
 local StoryState = require("story_state")
 local Encounters = require("field_encounters")
 
+local function source_boundary(reason)
+    return { type = "source_boundary", reason = reason }
+end
+
 local ALARM_RESULT =
     "<As the alarm goes off, you realize you must have just walked in front " ..
     "of a hidden security camera.>"
@@ -92,6 +96,46 @@ local SECURITY_GUARD_BADGE_VERIFY_RESULT =
 -- no portrait.
 local HAGGARD_SPEAKER = "haggard_man_event"
 local HAGGARD_TEXT_PROFILE = "field.world_event"
+local WATCHER_BODY_TARGET = 6 -- ROM 0x2381A [C].
+local WATCHER_REWARD_NUYEN = 200 -- ROM 0x23834 [C].
+local WATCHER_ACCEPT_CHOICE = "accept_watcher_request"
+local WATCHER_INSULT_CHOICE = "insult"
+local WATCHER_REFUSAL_RESULT =
+    "This is horrible!  Where's your compassion?!||" ..
+    "<The watcher vanishes.>" -- ROM text 0x11D893 [C].
+local WATCHER_ACCEPT_RESULT =
+    "<The watcher leads you through some side streets.||" ..
+    "He points ahead, and you see an old man being brutally beaten " ..
+    "by a group of Eye-Fivers.>" -- ROM text 0x11D8D9 [C].
+local WATCHER_ZERO_SUCCESS_RESULT =
+    "<The mage looks up.||" ..
+    "The Eye-Fivers turn around, following his gaze.>||" ..
+    "Look, some new meat to tenderize!  Get him, boys!" -- ROM text 0x11D965 [C].
+local WATCHER_ONE_SUCCESS_RESULT =
+    "<The mage looks at you pleadingly.||" ..
+    "The Eye-Fivers turn and size you up.||" ..
+    "A couple of them run away, but the rest stay behind.>||" ..
+    "You want to play, too, do you?" -- ROM text 0x11D9DE [C].
+local WATCHER_WAVE_RESULT =
+    "<As the gangers come at you, you catch the mage giving you a wave " ..
+    "of thanks.||He then shimmers and fades to nothingness.>" -- ROM text 0x11DA7E [C].
+local WATCHER_REWARD_RESULT =
+    "<The Eye-Fivers see you and scatter immediately.||" ..
+    "The mage addresses you.>||Thank you for your help.||" ..
+    "This, I'm afraid, is all I can offer in return.||" ..
+    "<He hands you 200 nuyen.>" -- ROM text 0x11DAF8 [C].
+local WATCHER_ATTACK_OUTCOMES = {
+    [0] = {
+        sequence_id = E.WorldEffectSequence.PHANTASMAL_WATCHER_EYE_FIVERS_FOUR,
+        actors = 4,
+        result_text = WATCHER_ZERO_SUCCESS_RESULT,
+    },
+    [1] = {
+        sequence_id = E.WorldEffectSequence.PHANTASMAL_WATCHER_EYE_FIVERS_TWO,
+        actors = 2,
+        result_text = WATCHER_ONE_SUCCESS_RESULT,
+    },
+} -- ROM 0x23846 selects list 0x1D6DAE or 0x1D6DB6 [C].
 local HAGGARD_ATTACK_OUTCOMES = {
     [0] = {
         sequence_id =
@@ -136,6 +180,55 @@ local function event_opening(event_id)
         return nil
     end
     return opening
+end
+
+local function event_prompt_data(event_id)
+    local data = game.modules.world_content_data
+    local content = type(data) == "table" and
+        data.world_activity_event_content or nil
+    local choices = type(data) == "table" and
+        data.world_activity_event_choices or nil
+    if type(content) ~= "table" or type(choices) ~= "table" then
+        return nil, nil
+    end
+
+    local opening
+    for _, row in ipairs(content) do
+        if row.event_id == event_id then
+            opening = row.opening_text
+            break
+        end
+    end
+    local options = {}
+    for _, row in ipairs(choices) do
+        if row.event_id == event_id then
+            if type(row.choice_order) ~= "number" or
+               row.choice_order % 1 ~= 0 or
+               type(row.choice_id) ~= "string" or row.choice_id == "" or
+               type(row.label) ~= "string" or row.label == "" then
+                return nil, nil
+            end
+            options[#options + 1] = {
+                order = row.choice_order,
+                id = row.choice_id,
+                label = row.label,
+            }
+        end
+    end
+    table.sort(options, function(left, right)
+        return left.order < right.order
+    end)
+    if type(opening) ~= "string" or opening == "" or #options ~= 2 or
+       options[1].order ~= 1 or
+       options[1].id ~= WATCHER_ACCEPT_CHOICE or
+       options[2].order ~= 2 or
+       options[2].id ~= WATCHER_INSULT_CHOICE then
+        return nil, nil
+    end
+    return opening, {
+        { id = options[1].id, label = options[1].label },
+        { id = options[2].id, label = options[2].label },
+    }
 end
 
 local function party_check()
@@ -251,8 +344,79 @@ function RandomEvents.present_hidden_camera()
     return "resolved"
 end
 
-local function source_boundary(reason)
-    return { type = "source_boundary", reason = reason }
+local function watcher_reward()
+    local funds = type(game.nuyen) == "function" and game.nuyen() or nil
+    if type(funds) ~= "number" or funds % 1 ~= 0 or funds < 0 or
+       type(game.set_nuyen) ~= "function" then
+        return source_boundary("watcher reward needs the current nuyen value")
+    end
+    game.set_nuyen(funds + WATCHER_REWARD_NUYEN)
+    game.ui.say_text(WATCHER_REWARD_RESULT, false, HAGGARD_SPEAKER,
+                     HAGGARD_TEXT_PROFILE)
+    return "resolved"
+end
+
+function RandomEvents.present_phantasmal_watcher()
+    local location = game.location
+    if type(location) ~= "table" or location.type ~= "field_map" or
+       location.id ~= "random_field_event" or
+       location.event_id ~= "phantasmal_watcher" then
+        return nil
+    end
+
+    local opening, choices = event_prompt_data("phantasmal_watcher")
+    if opening == nil or choices == nil then
+        return source_boundary("watcher prompt data is unavailable")
+    end
+    local choice = game.ui.prompt_text(
+        "phantasmal_watcher", opening, choices, HAGGARD_SPEAKER,
+        HAGGARD_TEXT_PROFILE)
+    if choice == WATCHER_INSULT_CHOICE then
+        -- Record 0x120F18 ends after text 0x11D893 without changing state [C].
+        game.ui.say_text(WATCHER_REFUSAL_RESULT, false, HAGGARD_SPEAKER,
+                         HAGGARD_TEXT_PROFILE)
+        return "resolved"
+    end
+    if choice ~= WATCHER_ACCEPT_CHOICE then
+        return source_boundary("watcher choice is unavailable")
+    end
+
+    -- Record 0x120F20 has the shared MORE label at +4, then dispatches 0x9A.
+    game.ui.say_text(WATCHER_ACCEPT_RESULT, true, HAGGARD_SPEAKER,
+                     HAGGARD_TEXT_PROFILE)
+    local body = first_runner_attribute("body")
+    local modules = type(game.modules) == "table" and game.modules or nil
+    local combat = type(modules) == "table" and modules.combat or nil
+    if body == nil or type(combat) ~= "table" or
+       type(combat.roll_thresholded_successes) ~= "function" then
+        return source_boundary("watcher Body check needs its runner and dice service")
+    end
+    local successes = combat.roll_thresholded_successes(
+        body, WATCHER_BODY_TARGET, random_die)
+    if successes == nil then
+        return source_boundary("watcher Body roll is unavailable")
+    end
+    if successes >= 2 then
+        return watcher_reward()
+    end
+
+    local outcome = WATCHER_ATTACK_OUTCOMES[successes]
+    local scene = StoryState.scene()
+    if outcome == nil or scene == nil then
+        return source_boundary("watcher Eye-Fiver sequence is unavailable")
+    end
+    -- The source passes D0=1 to 0x1E1FC; the host resolves this map-derived
+    -- list after the dialogue returns, like the haggard-man sequence.
+    if not StoryState.queue_world_effect(scene, outcome) then
+        -- ROM 0x1E1FC returns zero when the selected list cannot start.
+        return watcher_reward()
+    end
+    game.ui.say_text(outcome.result_text, true, HAGGARD_SPEAKER,
+                     HAGGARD_TEXT_PROFILE)
+    -- Records 0x120F34/0x120F48 continue to 0x120F5C, the thanks-and-fade page.
+    game.ui.say_text(WATCHER_WAVE_RESULT, false, HAGGARD_SPEAKER,
+                     HAGGARD_TEXT_PROFILE)
+    return "resolved"
 end
 
 local function faction_actor_sequence_failed(reason)

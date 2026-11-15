@@ -1524,9 +1524,8 @@ std::size_t FieldSceneRuntime::resolve_and_spawn_field_encounter_for_dump(
     }
     if (outcome->kind ==
             scripting::ScriptFieldEncounterOutcomeKind::dialogue_event &&
-        (outcome->event_id == "hidden_camera" ||
-         outcome->event_id == "haggard_man_collapse" ||
-         outcome->event_id == "faction_disturbance")) {
+        field_scene_detail::field_dialogue_task_for_event(
+            outcome->event_id) != nullptr) {
         pending_field_encounter_outcome_ = std::move(*outcome);
         (void)present_field_dialogue_event();
         return 0U;
@@ -1546,6 +1545,29 @@ std::size_t FieldSceneRuntime::resolve_and_spawn_field_encounter_for_dump(
     spawn_field_world_effect_sequence();
     const auto count_after = default_actor_count_for_dump();
     return count_after >= count_before ? count_after - count_before : 0U;
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
+bool FieldSceneRuntime::exercise_unhandled_field_dialogue_event_guard_for_dump() {
+    if (!ready_) {
+        failure_ = "unhandled field dialogue QA requested before bootstrap";
+        return false;
+    }
+    scripting::ScriptFieldEncounterOutcome outcome{};
+    outcome.kind =
+        scripting::ScriptFieldEncounterOutcomeKind::dialogue_event;
+    outcome.event_id = "qa_unhandled_event";
+    pending_field_encounter_outcome_ = std::move(outcome);
+    (void)present_field_dialogue_event();
+
+    const std::string expected_failure =
+        "field event has no Lua behavior: qa_unhandled_event";
+    const bool discarded = !pending_field_encounter_outcome_.has_value();
+    const auto counter_before = field_world_frame_counter_;
+    advance_frame();
+    return discarded && field_world_frame_counter_ > counter_before &&
+           failure_ == expected_failure;
 }
 #endif // SHADOWRUN_QT_QA_DRIVER
 

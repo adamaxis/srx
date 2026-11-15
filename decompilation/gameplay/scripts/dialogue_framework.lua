@@ -152,6 +152,14 @@ local ROUTE_OVERRIDES = {
         input_lock = E.DialogueInputLock.WORLD_ACTIVITY_FFE11C,
         input_lock_frames = E.DialogueInputLockFrames.WORLD_ACTIVITY,
     }, -- Same-map return is visible at longplay frames 1224-1290 [C].
+    ["field_random_events.present_phantasmal_watcher"] = {
+        scene_outcome = E.FieldLocationSceneOutcome.SAME_SCENE,
+        exit_behavior = E.DialogueExitBehavior.STAY,
+        transition = E.DialogueTransition.FADE,
+        transition_frames = E.DialogueTransitionFrames.HAGGARD_BLACK_INTERVAL,
+        input_lock = E.DialogueInputLock.WORLD_ACTIVITY_FFE11C,
+        input_lock_frames = E.DialogueInputLockFrames.WORLD_ACTIVITY,
+    }, -- 0x20F2A returns to the same field after the watcher prompt [C].
     ["salish_spirit_eyes.present"] = {
         transition = E.DialogueTransition.FADE,
     }, -- Preserve the native modal close around the typed source-context result.

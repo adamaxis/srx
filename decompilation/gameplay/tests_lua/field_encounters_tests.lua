@@ -272,6 +272,21 @@ for order, profile_id in ipairs(E.StokerMotelArrival.AMBUSH_PROFILE_IDS) do
     actors[#actors + 1] = actor
 end
 
+for _, scene_id in ipairs({ 0, 3, 5 }) do
+    for _, template in ipairs({
+        { actor_name = "eye5r 2", profile_id = "eye5r_2_k07_item04" },
+        { actor_name = "eye5r 1", profile_id = "eye5r_1_k07_item01" },
+    }) do
+        local actor = actor_row(
+            0, "watcher_template_fixture",
+            "open screen-edge candidates based on the current viewport and terrain",
+            scene_id, "named_sequence", template.profile_id)
+        actor.actor_name = template.actor_name
+        local actors = game.modules.world_content_data.dynamic_world_activity_actors
+        actors[#actors + 1] = actor
+    end
+end
+
 eq(Encounters.trigger_attempt(context()), "sample_probability",
    "eligible cadence requests a probability draw")
 eq(Encounters.trigger_attempt(context({
@@ -470,6 +485,48 @@ for index, profile_id in ipairs(E.StokerMotelArrival.AMBUSH_PROFILE_IDS) do
     eq(stoker_ambush.actors[index].action_kind,
        index == 1 and "item" or "none",
        "Stoker actor keeps its ROM action template " .. index)
+end
+
+-- ROM lists 0x1D6DAE and 0x1D6DB6 pass D0=1 to map-derived placement.
+for _, scene_id in ipairs({ 0, 3, 5 }) do
+    local four_eye_fivers = Encounters.resolve_sequence(
+        scene_id, E.WorldEffectSequence.PHANTASMAL_WATCHER_EYE_FIVERS_FOUR)
+    eq(four_eye_fivers.kind, "dynamic_world_effect_sequence",
+       "watcher four-actor list resolves in scene " .. scene_id)
+    eq(four_eye_fivers.placement_policy,
+       E.WorldEffectPlacementPolicy.MAP_DERIVED_CANDIDATES,
+       "watcher four-actor list uses map-derived placement in scene " .. scene_id)
+    eq(#four_eye_fivers.actors, 4,
+       "watcher zero-success list has four actors in scene " .. scene_id)
+    for index, expected_profile in ipairs({
+        "eye5r_2_k07_item04", "eye5r_2_k07_item04",
+        "eye5r_1_k07_item01", "eye5r_1_k07_item01",
+    }) do
+        local actor = four_eye_fivers.actors[index]
+        eq(actor.sequence_order, index - 1,
+           "watcher list preserves source actor order " .. scene_id .. "/" .. index)
+        eq(actor.profile_id, expected_profile,
+           "watcher list resolves its ROM template profile " .. scene_id .. "/" .. index)
+        eq(actor.sequence_id,
+           E.WorldEffectSequence.PHANTASMAL_WATCHER_EYE_FIVERS_FOUR,
+           "watcher list keeps its semantic sequence id " .. scene_id .. "/" .. index)
+    end
+
+    local two_eye_fivers = Encounters.resolve_sequence(
+        scene_id, E.WorldEffectSequence.PHANTASMAL_WATCHER_EYE_FIVERS_TWO)
+    eq(two_eye_fivers.kind, "dynamic_world_effect_sequence",
+       "watcher two-actor list resolves in scene " .. scene_id)
+    eq(two_eye_fivers.placement_policy,
+       E.WorldEffectPlacementPolicy.MAP_DERIVED_CANDIDATES,
+       "watcher two-actor list uses map-derived placement in scene " .. scene_id)
+    eq(#two_eye_fivers.actors, 2,
+       "watcher one-success list has two actors in scene " .. scene_id)
+    for index, actor in ipairs(two_eye_fivers.actors) do
+        eq(actor.sequence_order, index - 1,
+           "watcher two-actor list preserves source order " .. scene_id .. "/" .. index)
+        eq(actor.profile_id, "eye5r_1_k07_item01",
+           "watcher one-success list resolves Eye Fiver 1 " .. scene_id .. "/" .. index)
+    end
 end
 
 -- Isolate the generic weighted resolver with a full-weight fixture row; the
