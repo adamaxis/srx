@@ -297,11 +297,12 @@ if (NOT SHADOWRUN_GHIDRA_QT_FRONTEND)
     endforeach()
 endif()
 
-# Optional build-time asset import. Normal builds consume the individually
-# named files under decompilation/assets/; import them explicitly with
-# shadowrun_graphics_extract --all-assets when source assets need refreshing.
+# Extract named runtime assets during normal builds so newly required,
+# gitignored assets are generated from the US ROM. Set
+# SRX_AUTO_EXTRACT_ASSETS=OFF to skip extraction. When the ROM is unavailable,
+# configuration warns and omits the extraction target.
 option(SRX_AUTO_EXTRACT_ASSETS
-       "Run shadowrun_graphics_extract --all-assets as part of the build" OFF)
+       "Run shadowrun_graphics_extract --all-assets as part of the build" ON)
 set(SHADOWRUN_US_ROM "${CMAKE_CURRENT_SOURCE_DIR}/../input/shadowrun_genesis_us.bin"
     CACHE FILEPATH "US Shadowrun Genesis ROM used for asset extraction")
 set(SHADOWRUN_ASSET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../assets"
@@ -322,6 +323,7 @@ if(SRX_AUTO_EXTRACT_ASSETS)
                 "-DGIT_EXECUTABLE=${GIT_EXECUTABLE}"
                 -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/srx_extract_assets.cmake"
             DEPENDS shadowrun_graphics_extract
+                    "$<TARGET_FILE:shadowrun_graphics_extract>"
                     "${SHADOWRUN_US_ROM}"
                     "${SHADOWRUN_ASSET_DIR}/resources.tsv"
                     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/srx_extract_assets.cmake"

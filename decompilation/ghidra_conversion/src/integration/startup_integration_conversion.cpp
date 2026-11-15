@@ -218,8 +218,10 @@ std::string describe_startup_integration_failure(
         text += "\n  ... and " + std::to_string(total - listed) + " more";
     }
     if (total != 0U) {
-        text += "\nRe-run the build with SRX_AUTO_EXTRACT_ASSETS=ON (default) "
-                "or shadowrun_graphics_extract <rom> <assets> --all-assets.";
+        text += "\nReconfigure and rebuild with "
+                "-DSRX_AUTO_EXTRACT_ASSETS=ON "
+                "-DSHADOWRUN_US_ROM=<rom-path>, or run "
+                "shadowrun_graphics_extract <rom> <assets> --all-assets.";
     }
     return text;
 }
