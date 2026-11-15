@@ -1868,6 +1868,14 @@ public:
     std::uint8_t field_entity_direction_for_dump() const noexcept {
         return field_entity_.direction;
     }
+    const QImage* field_entity_strike_image_for_dump(
+        const std::uint8_t direction, const std::size_t frame) const noexcept {
+        if (direction >= field_entity_strike_images_.size() ||
+            frame >= field_entity_strike_images_[direction].size()) {
+            return nullptr;
+        }
+        return &field_entity_strike_images_[direction][frame];
+    }
     bool field_entity_walking_for_dump() const noexcept {
         return field_entity_walking_;
     }

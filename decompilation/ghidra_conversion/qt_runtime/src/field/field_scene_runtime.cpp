@@ -758,6 +758,8 @@ constexpr std::string_view kFieldEntityAttackAliasPrefix =
     "field.entities.attack.";
 constexpr std::string_view kFieldEntityStrikeAliasPrefix =
     "field.entities.strike.";
+constexpr std::string_view kFieldEntityStrikeAlphaMaskAliasPrefix =
+    "field.entities.actors.actor.kind.3.palette.3.action.dir.";
 constexpr std::string_view kFieldEntityCastAliasPrefix =
     "field.entities.spell.";
 constexpr std::string_view kFieldEntityDownAliasPrefix =
@@ -12015,6 +12017,47 @@ bool FieldSceneRuntime::bootstrap(
                     field_entity_strike_origin_y_[direction][frame])) {
                 source_boundary("field.bootstrap.entity_assets_missing");
                 return false;
+            }
+            // ROM 0xB1DC selects these player C0A2 frames. Their legacy
+            // player-palette BMPs are RGB-only, while the matching kind-3
+            // C0A2 frames retain color-zero alpha (0x5FDC/0x600E). Reuse
+            // only that alpha mask so the player-specific palette stays.
+            const auto strike_mask_alias =
+                std::string(kFieldEntityStrikeAlphaMaskAliasPrefix) +
+                std::to_string(direction) + ".frame." +
+                std::to_string(frame);
+            QImage strike_alpha_mask{};
+            int strike_mask_origin_x = 0;
+            int strike_mask_origin_y = 0;
+            if (!load_sprite_image(
+                    startup_state.asset_catalog.catalog, strike_mask_alias,
+                    strike_alpha_mask, strike_mask_origin_x,
+                    strike_mask_origin_y)) {
+                source_boundary("field.bootstrap.entity_assets_missing");
+                return false;
+            }
+            if (strike_alpha_mask.size() != strike.size() ||
+                strike_mask_origin_x !=
+                    field_entity_strike_origin_x_[direction][frame] ||
+                strike_mask_origin_y !=
+                    field_entity_strike_origin_y_[direction][frame] ||
+                !strike_alpha_mask.hasAlphaChannel()) {
+                failure_ = "ROM C0A2 strike alpha mask does not match its player frame";
+                source_boundary("field.bootstrap.entity_strike_alpha_mask_mismatch");
+                return false;
+            }
+            strike = strike.convertToFormat(QImage::Format_ARGB32);
+            const auto mask =
+                strike_alpha_mask.convertToFormat(QImage::Format_ARGB32);
+            for (int y = 0; y < strike.height(); ++y) {
+                auto* strike_row = reinterpret_cast<QRgb*>(strike.scanLine(y));
+                const auto* mask_row = reinterpret_cast<const QRgb*>(
+                    mask.constScanLine(y));
+                for (int x = 0; x < strike.width(); ++x) {
+                    const auto pixel = strike_row[x];
+                    strike_row[x] = qRgba(qRed(pixel), qGreen(pixel),
+                                          qBlue(pixel), qAlpha(mask_row[x]));
+                }
             }
             if (horizontal_flip) {
                 strike = flipped_image(strike, Qt::Horizontal);

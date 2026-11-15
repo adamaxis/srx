@@ -22,6 +22,7 @@
 
 #include <QImage>
 #include <QJsonArray>
+#include <QPainter>
 #include <QSettings>
 #include <QTemporaryDir>
 
@@ -54520,6 +54521,50 @@ int main(int argc, char** argv) {
                         unarmed_melee_frame_path.wstring()))) {
                     std::cerr << "field player action dump: unarmed A input did not select the source C0A2 strike, preserve ammunition state, and request event 0x4C\n";
                     return 3;
+                }
+                constexpr auto kMeleeSpriteBackdrop = qRgb(0x2AU, 0x52U, 0x7AU);
+                for (std::uint8_t direction = 0U; direction < 8U;
+                     ++direction) {
+                    for (std::size_t frame = 0U; frame < 2U; ++frame) {
+                        const auto* strike_image =
+                            unarmed_melee_scene
+                                .field_entity_strike_image_for_dump(
+                                    direction, frame);
+                        if (strike_image == nullptr || strike_image->isNull()) {
+                            std::cerr << "field player action dump: missing C0A2 strike image for direction "
+                                      << static_cast<unsigned>(direction)
+                                      << " frame " << frame << '\n';
+                            return 3;
+                        }
+                        QImage composite(strike_image->size(),
+                                         QImage::Format_ARGB32);
+                        composite.fill(kMeleeSpriteBackdrop);
+                        {
+                            QPainter painter(&composite);
+                            painter.drawImage(0, 0, *strike_image);
+                        }
+                        std::size_t color_zero_pixels = 0U;
+                        bool outside_pixels_preserve_backdrop = true;
+                        for (int y = 0; y < strike_image->height(); ++y) {
+                            for (int x = 0; x < strike_image->width(); ++x) {
+                                if (qAlpha(strike_image->pixel(x, y)) != 0) {
+                                    continue;
+                                }
+                                ++color_zero_pixels;
+                                if (composite.pixel(x, y) !=
+                                    kMeleeSpriteBackdrop) {
+                                    outside_pixels_preserve_backdrop = false;
+                                }
+                            }
+                        }
+                        if (color_zero_pixels == 0U ||
+                            !outside_pixels_preserve_backdrop) {
+                            std::cerr << "field player action dump: C0A2 color-zero pixels are opaque instead of preserving the melee backdrop for direction "
+                                      << static_cast<unsigned>(direction)
+                                      << " frame " << frame << '\n';
+                            return 3;
+                        }
+                    }
                 }
                 unarmed_melee_scene.set_controller_port_byte(0U);
                 std::size_t unarmed_pose_updates = 0U;
