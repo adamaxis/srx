@@ -19,6 +19,10 @@ local projectile = {
         burst_followup_restarted = "burst_followup_restarted",
     },
     movement_probes_per_update = 4,
+    -- ROM 0x15B32 tests the projectile's +0x9F attack successes: zero takes
+    -- 0x15B62, which stops on the target with D1 cleared, so 0x14E5A plays
+    -- 0x3C and never reaches 0x55948. Only a successful attack roll can hit.
+    minimum_hit_attack_successes = 1,
     impact_sound_event = E.SoundId.PROJECTILE_IMPACT,   -- 0x3C
 }
 

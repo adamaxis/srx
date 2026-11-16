@@ -17,6 +17,7 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -9820,12 +9821,6 @@ int main() {
     source_weapon_hit_context.projectile_combat_targets.push_back(
         ScriptProjectileCombatTarget{
             "field_scene_2_encounter_1_actor_0", 3U, victim_facts});
-    source_weapon_hit_context.ai_random_bound =
-        [](const std::uint16_t bound)
-            -> std::optional<std::uint16_t> {
-        return bound == 0U ? std::nullopt
-                           : std::optional<std::uint16_t>{0U};
-    };
     source_weapon_hit_context.projectile_terrain_probe =
         [](const std::uint16_t, const std::uint16_t) {
             return ScriptProjectileTerrainSample{false, true, false};
@@ -9837,13 +9832,60 @@ int main() {
                 ScriptActorProjectileVector{45.0, 77.0},
                 std::string{"field_scene_2_encounter_1_actor_0"}};
         };
+
+    // ROM 0x15B32: a projectile whose 0x55640 attack roll scored zero
+    // successes (+0x9F == 0) stops on the target through 0x15B62 with D1
+    // cleared, so 0x14E5A only requests sound 0x3C; 0x55948 never runs and
+    // the target's meters are untouched.
+    constexpr std::uint16_t kDieFaceOne = 0U;
+    constexpr std::uint16_t kDieFaceFive = 4U;
+    auto zero_success_miss_context = source_weapon_hit_context;
+    zero_success_miss_context.instance_id =
+        "field_weapon_slot_zero_success_miss";
+    zero_success_miss_context.ai_random_bound =
+        [kDieFaceOne](const std::uint16_t bound)
+            -> std::optional<std::uint16_t> {
+        return bound == 0U ? std::nullopt
+                           : std::optional<std::uint16_t>{kDieFaceOne};
+    };
+    const auto zero_success_miss =
+        scripts.actor_heartbeat(zero_success_miss_context);
+    if (!expect(
+            zero_success_miss.has_value() &&
+                zero_success_miss->projectile_movement.has_value() &&
+                zero_success_miss->projectile_movement->outcome ==
+                    ScriptActorProjectileOutcome::hit_resolution_pending &&
+                zero_success_miss->projectile_movement->state.attack_successes ==
+                    0 &&
+                zero_success_miss->audio_event == 0x003CU &&
+                !zero_success_miss->combat_meter_update.has_value(),
+            "zero-success firearm attack damaged its target instead of missing like ROM 0x15B32/0x14E5A")) {
+        std::cerr << scripts.failure() << '\n';
+        return 24;
+    }
+
+    // Successful hits below roll exactly one attack success: the first
+    // attack die shows a five, and every later die (attack and defense)
+    // shows a one. Each projectile context gets its own sequence.
+    const auto one_attack_success_rng = [kDieFaceOne, kDieFaceFive]() {
+        auto calls = std::make_shared<std::uint32_t>(0U);
+        return [calls, kDieFaceOne, kDieFaceFive](const std::uint16_t bound)
+            -> std::optional<std::uint16_t> {
+            if (bound == 0U) {
+                return std::nullopt;
+            }
+            return std::optional<std::uint16_t>{
+                (*calls)++ == 0U ? kDieFaceFive : kDieFaceOne};
+        };
+    };
+    source_weapon_hit_context.ai_random_bound = one_attack_success_rng();
     const auto source_weapon_hit_step =
         scripts.actor_heartbeat(source_weapon_hit_context);
     if (!expect(
             source_weapon_hit_step.has_value() &&
                 source_weapon_hit_step->projectile_movement.has_value() &&
                 source_weapon_hit_step->projectile_movement->state.attack_successes ==
-                    0 &&
+                    1 &&
                 source_weapon_hit_step->combat_meter_update.has_value() &&
                 source_weapon_hit_step->combat_meter_update->target_id ==
                     "field_scene_2_encounter_1_actor_0" &&
@@ -9854,7 +9896,7 @@ int main() {
                 source_weapon_hit_step->combat_meter_update->physical &&
                 source_weapon_hit_step->combat_meter_update->changed &&
                 source_weapon_hit_step->combat_meter_update->physical_meter ==
-                    5U &&
+                    4U &&
                 source_weapon_hit_step->combat_meter_update->mental_meter ==
                     8U,
             "Lua firearm path did not seed the projectile and apply the source Warhawk hit to its live target")) {
@@ -10392,6 +10434,7 @@ int main() {
     const auto static_guard_spawn =
         scripts.actor_heartbeat(static_guard_context);
     auto static_guard_projectile = source_weapon_hit_context;
+    static_guard_projectile.ai_random_bound = one_attack_success_rng();
     static_guard_projectile.instance_id =
         "field_weapon_slot_static_default_guard_hit";
     static_guard_projectile.projectile_combat_targets = {
@@ -10414,6 +10457,7 @@ int main() {
     const auto static_pedestrian_spawn =
         scripts.actor_heartbeat(static_pedestrian_context);
     auto static_pedestrian_projectile = source_weapon_hit_context;
+    static_pedestrian_projectile.ai_random_bound = one_attack_success_rng();
     static_pedestrian_projectile.instance_id =
         "field_weapon_slot_static_default_pedestrian_lethal";
     static_pedestrian_projectile.projectile_combat_targets = {
@@ -10577,6 +10621,7 @@ int main() {
         return 24;
     }
     auto moving_weapon_hit_context = source_weapon_hit_context;
+    moving_weapon_hit_context.ai_random_bound = one_attack_success_rng();
     moving_weapon_hit_context.instance_id =
         "field_weapon_slot_combat_hit_moving_actor";
     moving_weapon_hit_context.projectile_combat_targets = {
@@ -10641,6 +10686,7 @@ int main() {
         return 24;
     }
     auto lethal_hit_context = source_weapon_hit_context;
+    lethal_hit_context.ai_random_bound = one_attack_success_rng();
     lethal_hit_context.instance_id = "field_weapon_slot_lethal_hit";
     auto exhausted_victim_facts = victim_facts;
     exhausted_victim_facts.record_type = 4U;
@@ -10669,6 +10715,7 @@ int main() {
     auto scene_55_live_victim_facts = exhausted_victim_facts;
     scene_55_live_victim_facts.record_type = 8U;
     auto scene_55_lethal_hit_context = source_weapon_hit_context;
+    scene_55_lethal_hit_context.ai_random_bound = one_attack_success_rng();
     scene_55_lethal_hit_context.instance_id =
         "field_weapon_slot_scene_55_lethal_hit";
     scene_55_lethal_hit_context.projectile_combat_targets = {

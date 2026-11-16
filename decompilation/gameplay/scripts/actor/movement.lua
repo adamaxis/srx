@@ -463,7 +463,11 @@ local function projectile_heartbeat(state, context)
                 break
             end
         end
-        if hit_target ~= nil and state.attack_seed_resolved then
+        -- A zero-success attack roll still stops on the target, but the
+        -- source treats it as a miss (no defense roll, no damage).
+        if hit_target ~= nil and state.attack_seed_resolved and
+           state.last_action_successes >=
+               projectile.minimum_hit_attack_successes then
             state.combat_meter_update = game.modules.combat.resolve_weapon_hit(
                 context,
                 { attack_successes = state.last_action_successes },
