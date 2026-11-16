@@ -1,6 +1,7 @@
 #include "shadowrun_ghidra/world/world_frame_logic_conversion.hpp"
 #include "enums.hpp"
 
+#include <cstdint>
 #include <vector>
 
 using namespace shadowrun::ghidra_conversion;
@@ -42,8 +43,9 @@ int main() {
         return 1;
     }
 
-    // The low-mode cleanup branch does not select a target; it decrements the
-    // cleanup timer and resets service records only after it crosses below 0.
+    // ROM 0x1DE2A/0x1DE30: the low-mode cleanup branch decrements FFDF86; only
+    // the underflow pass (0x1DE34 -> 0x1DBF0) resets records and skips the
+    // selected-record check.
     state = {};
     state.world_active = 1U;
     state.scene_state = 0U;
@@ -58,6 +60,30 @@ int main() {
     if (!state.service_records_reset || state.target_selection_requested ||
         order != std::vector<int>{4, 5, 8, 9}) {
         return 2;
+    }
+
+    // ROM 0x1DE30 bpl: a non-underflow countdown pass still falls through to
+    // the 0x1DE3E selected-record check, so a dead/missing target is replaced
+    // on the same frame (0x1DE74 -> 0x1DC4C).
+    constexpr std::int16_t kCountdownBeforeNonUnderflowPass = 5;
+    state = {};
+    state.world_active = 1U;
+    state.scene_state = 0U;
+    state.world_mode = 0U;
+    state.cleanup_countdown = kCountdownBeforeNonUnderflowPass;
+    state.current_target_present = true;
+    state.current_target_active = true;
+    state.current_target_effect_locked = true;
+    order.clear();
+    advance_world_frame_logic(
+        state,
+        { {}, {}, [&] { order.push_back(3); }, [&] { order.push_back(4); },
+          [&] { order.push_back(5); }, {}, {}, [&] { order.push_back(8); },
+          [&] { order.push_back(9); } });
+    if (state.service_records_reset || !state.target_selection_requested ||
+        state.cleanup_countdown != kCountdownBeforeNonUnderflowPass - 1 ||
+        order != std::vector<int>{3, 5, 8, 9}) {
+        return 4;
     }
 
     // A non-active world skips target/cleanup selection but still services the

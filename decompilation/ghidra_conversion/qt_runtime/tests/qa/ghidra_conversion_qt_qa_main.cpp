@@ -4757,9 +4757,38 @@ int run_field_random_encounter_spawn_qa(
         return 3;
     }
 
+    const auto down_hit_actor_id = live_zero_meter_hit_boundary.substr(
+        std::string("field.combat.weapon_hit_resolved:").size());
+    // The ROM C0B2 two-frame down sequence advances every eight field updates;
+    // its completion path at 0xA93E/0xAB6E sets the dead bit on update 16.
+    constexpr std::uint16_t kC0B2DeadFlagFrameAfterLethalHit = 16U;
+    const auto selected_at_lethal_hit =
+        field_scene.selected_default_actor_id_for_dump();
+    const bool hit_actor_was_selected = selected_at_lethal_hit ==
+        std::optional<std::string>{down_hit_actor_id};
+    std::uint16_t frames_after_lethal_hit = 0U;
+    std::optional<std::uint16_t> dead_frame_after_lethal_hit;
+    std::optional<std::uint16_t> clear_frame_after_lethal_hit;
+    const auto sample_dead_target_timing = [&] {
+        const auto lifecycle =
+            field_scene.default_actor_lifecycle_for_dump(0U);
+        if (lifecycle.has_value() && lifecycle->dead &&
+            !dead_frame_after_lethal_hit.has_value()) {
+            dead_frame_after_lethal_hit = frames_after_lethal_hit;
+        }
+        const auto selected = field_scene.selected_default_actor_id_for_dump();
+        if ((!selected.has_value() || *selected != down_hit_actor_id) &&
+            !clear_frame_after_lethal_hit.has_value()) {
+            clear_frame_after_lethal_hit = frames_after_lethal_hit;
+        }
+    };
+    sample_dead_target_timing();
+
     for (std::uint8_t frame = 0U; frame < 8U; ++frame) {
         field_scene.set_controller_port_byte(0U);
         field_scene.advance_frame();
+        ++frames_after_lethal_hit;
+        sample_dead_target_timing();
     }
     const auto down_animation_frame_one =
         field_scene.default_actor_animation_frame_for_dump(0U);
@@ -4769,6 +4798,8 @@ int run_field_random_encounter_spawn_qa(
     for (std::uint8_t frame = 0U; frame < 8U; ++frame) {
         field_scene.set_controller_port_byte(0U);
         field_scene.advance_frame();
+        ++frames_after_lethal_hit;
+        sample_dead_target_timing();
     }
     const auto down_animation_final =
         field_scene.default_actor_animation_frame_for_dump(0U);
@@ -4778,6 +4809,23 @@ int run_field_random_encounter_spawn_qa(
     const auto down_positions_held =
         field_scene.active_default_actor_positions_for_dump();
 
+    // ROM 0x1DE00 checks the selected record after actor behavior service on
+    // every non-underflow pass. Keep sampling until both the actor's 0xAB6E
+    // dead edge and the matching target-clear edge have been observed.
+    while ((!dead_frame_after_lethal_hit.has_value() ||
+            !clear_frame_after_lethal_hit.has_value()) &&
+           frames_after_lethal_hit < 200U) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        ++frames_after_lethal_hit;
+        sample_dead_target_timing();
+    }
+    const bool target_cleared_on_dead_frame = hit_actor_was_selected &&
+        dead_frame_after_lethal_hit == std::optional<std::uint16_t>{
+            kC0B2DeadFlagFrameAfterLethalHit} &&
+        clear_frame_after_lethal_hit == std::optional<std::uint16_t>{
+            kC0B2DeadFlagFrameAfterLethalHit};
+
     // B cycles through the ROM candidates. The exhausted actor is still an
     // active rendered record, but +0x10.4 reserves it from target selection.
     field_scene.set_controller_port_byte(0x10U);
@@ -4786,8 +4834,6 @@ int run_field_random_encounter_spawn_qa(
         field_scene.selected_default_actor_id_for_dump();
     field_scene.set_controller_port_byte(0U);
     field_scene.advance_frame();
-    const auto down_hit_actor_id = live_zero_meter_hit_boundary.substr(
-        std::string("field.combat.weapon_hit_resolved:").size());
     const auto down_final_actor_count =
         field_scene.default_actor_count_for_dump();
     const auto down_final_meter =
@@ -4822,6 +4868,7 @@ int run_field_random_encounter_spawn_qa(
         *selected_after_down_hit != down_hit_actor_id;
     if (down_animation_frame_one != std::optional<std::uint8_t>{1U} ||
         down_animation_final != std::optional<std::uint8_t>{1U} ||
+        !target_cleared_on_dead_frame ||
         !down_positions_stable ||
         down_final_actor_count != down_actor_spawned ||
         down_final_meter != std::optional<std::uint8_t>{0U} ||
@@ -4842,9 +4889,32 @@ int run_field_random_encounter_spawn_qa(
         !field_hud_chrome_survives(down_frame_one, asset_root) ||
         !field_hud_chrome_survives(down_frame_held, asset_root) ||
         !down_actor_skipped_by_target_scan) {
-        std::cerr << "field random-encounter QA: C0B2 did not advance at the ROM cadence, set the completed-death fact while keeping its corpse active/drawable at zero meter, or stay out of B target selection"
+        std::cerr << "field random-encounter QA: C0B2 cadence/death/target timing or B target selection did not match ROM"
                   << " hit_actor=" << down_hit_actor_id
-                  << " selected="
+                  << " selected_at_hit="
+                  << selected_at_lethal_hit.value_or("<none>")
+                  << " hit_to_dead=";
+        if (dead_frame_after_lethal_hit.has_value()) {
+            std::cerr << *dead_frame_after_lethal_hit;
+        } else {
+            std::cerr << "<none>";
+        }
+        std::cerr << " hit_to_clear=";
+        if (clear_frame_after_lethal_hit.has_value()) {
+            std::cerr << *clear_frame_after_lethal_hit;
+        } else {
+            std::cerr << "<none>";
+        }
+        std::cerr << " dead_to_clear=";
+        if (dead_frame_after_lethal_hit.has_value() &&
+            clear_frame_after_lethal_hit.has_value()) {
+            std::cerr << static_cast<int>(
+                *clear_frame_after_lethal_hit -
+                *dead_frame_after_lethal_hit);
+        } else {
+            std::cerr << "<none>";
+        }
+        std::cerr << " selected="
                   << selected_after_down_hit.value_or("<none>")
                   << " animation="
                   << down_final_animation.value_or("<none>")

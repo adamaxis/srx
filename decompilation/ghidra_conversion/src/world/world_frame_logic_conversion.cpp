@@ -41,14 +41,17 @@ void advance_world_frame_logic(WorldFrameLogicState& state,
     }
 
     if (state.world_active != 0U) {
+        bool target_check_due = true;
         if (state.scene_state == 0U && state.event_lock == 0U &&
             state.world_mode != 0x0014U) {
             --state.cleanup_countdown;
             if (state.cleanup_countdown < 0) {
                 state.service_records_reset = true;
                 call_once(callbacks.reset_entity_service_records);
+                target_check_due = false;
             }
-        } else {
+        }
+        if (target_check_due) {
             const bool target_missing = !state.current_target_present ||
                                         !state.current_target_active;
             const bool special_target_gate =
