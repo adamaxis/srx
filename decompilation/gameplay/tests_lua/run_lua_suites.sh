@@ -34,6 +34,8 @@ for t in menu_tests menu_b_policy_tests pocket_secretary_options_tests shop_rout
   run "$t" "decompilation/gameplay/tests_lua/$t.lua"
 done
 run "ilene_tests" "decompilation/gameplay/tests_lua/ilene_tests.lua"
+run "caleb_brightmore_tests" \
+  "decompilation/gameplay/tests_lua/caleb_brightmore_tests.lua"
 set -- decompilation/gameplay/world/entities/*/interactions.json
 run "hospital_cyberware_tests" \
   "decompilation/gameplay/tests_lua/hospital_cyberware_tests.lua"

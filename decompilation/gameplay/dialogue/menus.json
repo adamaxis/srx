@@ -1277,13 +1277,90 @@
       }
     },
     "icarus-descending.caleb_brightmore": {
-      "first_meeting": {
+      "contacts_choice": {
+        "choice_label_keys": {
+          "chillicut": "icarus-descending.caleb.option.chillicut",
+          "different_subject": "icarus-descending.caleb.option.different-subject",
+          "kipp_david": "icarus-descending.caleb.option.kipp-david"
+        },
+        "title_key": "icarus-descending.caleb.contacts.kipp"
+      },
+      "contacts_purchase_insufficient": {
         "choice_label_keys": {
           "information": "icarus-descending.caleb.option.information",
           "leave": "icarus-descending.caleb.option.leave",
           "work": "icarus-descending.caleb.option.work"
         },
+        "title_key": "icarus-descending.caleb.contacts.insufficient"
+      },
+      "contacts_purchase_success": {
+        "choice_label_keys": {
+          "information": "icarus-descending.caleb.option.information",
+          "leave": "icarus-descending.caleb.option.leave",
+          "work": "icarus-descending.caleb.option.work"
+        },
+        "title_key": "icarus-descending.caleb.contacts.success"
+      },
+      "first_meeting": {
+        "choice_label_keys": {
+          "information": "icarus-descending.caleb.option.information",
+          "leave": "icarus-descending.caleb.option.leave",
+          "michael_last_run": "icarus-descending.caleb.option.michael-last-run",
+          "work": "icarus-descending.caleb.option.work"
+        },
         "title_key": "icarus-descending.caleb.first-meeting.continuation"
+      },
+      "ilene_followup": {
+        "choice_label_keys": {
+          "another_question": "icarus-descending.caleb.option.another-question",
+          "different_subject": "icarus-descending.caleb.option.different-subject"
+        },
+        "title_key": "icarus-descending.caleb.information.ilene"
+      },
+      "information_offer": {
+        "choice_label_keys": {
+          "contacts": "icarus-descending.caleb.option.contacts",
+          "different_subject": "icarus-descending.caleb.option.different-subject",
+          "questions": "icarus-descending.caleb.option.questions"
+        },
+        "title_key": "icarus-descending.caleb.information.contacts-offer"
+      },
+      "information_questions": {
+        "choice_label_keys": {
+          "ilene": "icarus-descending.caleb.information.question.ilene",
+          "ito_ogami": "icarus-descending.caleb.information.question.ito-ogami",
+          "thon": "icarus-descending.caleb.information.question.thon"
+        },
+        "title_key": "icarus-descending.caleb.information.questions-updated"
+      },
+      "information_questions_empty": {
+        "choice_label_keys": {
+          "more": "icarus-descending.caleb.option.more"
+        },
+        "title_key": "icarus-descending.caleb.information.questions-empty"
+      },
+      "information_return": {
+        "choice_label_keys": {
+          "information": "icarus-descending.caleb.option.information",
+          "leave": "icarus-descending.caleb.option.leave",
+          "work": "icarus-descending.caleb.option.work"
+        },
+        "title_key": "icarus-descending.caleb.information.different-subject"
+      },
+      "ito_ogami_followup": {
+        "choice_label_keys": {
+          "another_question": "icarus-descending.caleb.option.another-question",
+          "different_subject": "icarus-descending.caleb.option.different-subject"
+        },
+        "title_key": "icarus-descending.caleb.information.ito-ogami"
+      },
+      "michael_wrapup": {
+        "choice_label_keys": {
+          "information": "icarus-descending.caleb.option.information",
+          "leave": "icarus-descending.caleb.option.leave",
+          "work": "icarus-descending.caleb.option.work"
+        },
+        "title_key": "icarus-descending.caleb.michael.wrapup"
       },
       "opening": {
         "choice_label_keys": {
@@ -1292,6 +1369,13 @@
           "work": "icarus-descending.caleb.option.work"
         },
         "title_key": "icarus-descending.caleb.opening"
+      },
+      "thon_followup": {
+        "choice_label_keys": {
+          "another_question": "icarus-descending.caleb.option.another-question",
+          "different_subject": "icarus-descending.caleb.option.different-subject"
+        },
+        "title_key": "icarus-descending.caleb.information.thon"
       },
       "post_run": {
         "choice_label_keys": {

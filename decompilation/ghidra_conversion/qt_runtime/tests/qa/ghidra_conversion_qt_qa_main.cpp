@@ -33574,20 +33574,23 @@ int run_field_icarus_entry_qa(
     if (field_scene.advance_stoker_dialogue_for_dump(0x4000U) !=
             FieldDialogueAdvanceResult::prompt_advanced ||
         !field_scene.dialogue_open() ||
-        field_scene.dialogue_panel().option_count != 3U ||
+        // Record 0x1056F8 has one label (0x103CFC -> command 0x1C).
+        field_scene.dialogue_panel().option_count != 1U ||
+        field_scene.dialogue_panel().options[0].source_label !=
+            "Tell me about Michael's last Shadowrun." ||
         field_scene.notebook_referral_flags_for_dump() !=
             std::optional<std::uint8_t>{0x90U} ||
         field_scene.party_karma_for_dump() !=
             std::optional<std::array<std::uint8_t, 3>>{{2U, 2U, 2U}} ||
         !save("johnson-root") || !save("actual")) {
         std::cerr << "Icarus Caleb QA: first-meeting conversation did not "
-                     "open its three-choice Lua root\n";
+                     "open record 0x1056F8's single command 0x1C choice\n";
         return 3;
     }
 
     std::cout << "field_icarus_caleb_entry_qa=passed scene=12 event=30 "
                  "movement=ordinary-up gate=story-flag-10 portrait=Caleb "
-                 "first-meeting=2-pages root-choices=3 frames="
+                 "first-meeting=2-pages root-choices=1 frames="
               << movement_ticks << " artifacts=" << output.string() << '\n';
     return 0;
 }

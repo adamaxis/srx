@@ -383,9 +383,12 @@ Dialogue.johnson_interaction_profiles = {
         first_visit_events = { "first_meeting", "first_meeting_continuation" },
         first_visit_karma_award = 2,
         first_visit_root = "first_meeting",
+        -- Record 0x1056F8's only label 0x103CFC targets command 0x1C.
+        first_visit_root_choices = { "michael_last_run" },
         run_return_root = "post_run",
         work_opening_event = "work_opening",
         leave_event = "leave",
+        information_flow = "caleb_brightmore",
     },
 }
 

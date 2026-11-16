@@ -322,6 +322,173 @@ local function present_mortimer_information()
     end
 end
 
+-- The ROM's FFFC30 longword is represented by two host aliases so field
+-- mode and Notebook readers stay in step, as in tarislar_city_inn.lua.
+local function write_caleb_fffc30(bit, value)
+    game.state["field_mode_flag_bit_" .. bit] = value
+    game.state["notebook_tip_flag_bit_" .. bit] = value
+end
+
+local function present_caleb_different_subject()
+    game.ui.say("information_different_subject")
+    return game.ui.menu("information_return",
+        { "information", "work", "leave" })
+end
+
+local function caleb_information_topic_choices()
+    local choices = {}
+    if StoryFacts.is_set(E.StoryFact.RED_BUFFALO_WOMAN) == true and
+       StoryFacts.is_set(E.StoryFact.ILENE_MET) == false then
+        choices[#choices + 1] = "ilene"
+    end
+    if StoryFacts.is_set(E.StoryFact.SHAMAN_TASKS_DONE) == true or
+       StoryFacts.is_set(E.StoryFact.MAKO_DEFEATED) == true then
+        choices[#choices + 1] = "thon"
+    end
+    if StoryFacts.is_set(E.StoryFact.RENRAKU_MAP_OVERLAY) == true or
+       StoryFacts.is_set(E.StoryFact.GILLIAN_INITIATION) == true or
+       StoryFacts.is_set(E.StoryFact.GARDEN_APTS_ENTERED) == true then
+        choices[#choices + 1] = "ito_ogami"
+    end
+    return choices
+end
+
+local function present_caleb_information_questions()
+    while true do
+        local choices = caleb_information_topic_choices()
+        if #choices == 0 then
+            -- ROM 0x2325C selects text 0x106229 and <MORE> to 0x1056DC
+            -- when no gates append a topic (`53 6F 72 72 79`; record bytes
+            -- at 0x1056DC: `00 10 88 53 ... 00 10 57 0C`).
+            game.ui.say("information_questions_empty")
+            game.ui.menu("information_questions_empty", { "more" })
+            return present_caleb_different_subject()
+        end
+
+        -- ROM 0x2327E/0x23286 adds Ilene from FFFC1E bits 18/19
+        -- (`08 01 00 12`, `08 01 00 13`); 0x232A8/0x232B0 adds Thon
+        -- from bits 9/11 (`08 01 00 09`, `08 01 00 0B`); and
+        -- 0x232D2/0x232DA/0x232E2 adds Ogami from bits 12/20/21
+        -- (`08 01 00 0C`, `08 01 00 14`, `08 01 00 15`).
+        local topic = game.ui.menu("information_questions", choices)
+        local followup_menu
+        if topic == "ilene" then
+            -- ROM command 0x91 at 0x23310 sets FFFC34 bit 0
+            -- (`08 C1 00 00`) and returns page 0x105850.
+            game.state["field_mode_effect_flag_bit_" ..
+                E.FieldModeEffectFlagBit.ILENE_INFORMATION_HEARD] = true
+            game.ui.say("ilene_information")
+            followup_menu = "ilene_followup"
+        elseif topic == "thon" then
+            -- The topic text at 0x104142 points to page 0x105868; its
+            -- record targets command 0x90 or page 0x1056DC.
+            game.ui.say("thon_information")
+            followup_menu = "thon_followup"
+        elseif topic == "ito_ogami" then
+            -- ROM command 0x92 at 0x23328 sets FFFC30 bit 25
+            -- (`08 C1 00 19`) and returns page 0x105838.
+            write_caleb_fffc30(
+                E.FieldModeFlagBit.RENRAKU_HEADHUNTER_TOLD, true)
+            game.ui.say("ito_ogami_information")
+            followup_menu = "ito_ogami_followup"
+        else
+            error("Caleb information menu returned an unknown topic")
+        end
+
+        local followup = game.ui.menu(followup_menu,
+            { "another_question", "different_subject" })
+        if followup ~= "another_question" then
+            return present_caleb_different_subject()
+        end
+    end
+end
+
+local function present_caleb_information_offer()
+    while true do
+        -- Record 0x10570C offers the 0x90 question menu, the contacts pages,
+        -- or page 0x1056DC (`00 10 88 F8 ... 00 00 00 90 ... 00 10 56 DC`).
+        game.ui.say("information_contacts_offer")
+        local choice = game.ui.menu("information_offer",
+            { "questions", "contacts", "different_subject" })
+        if choice == "questions" then
+            local result = present_caleb_information_questions()
+            if result ~= "information" then return result end
+        elseif choice == "contacts" then
+            -- 0x105808's <MORE> target is 0x10581C (`00 10 58 1C`);
+            -- the next record carries commands 0x51/0x52 and the 0x1056DC
+            -- return choice (`00 00 00 51`, `00 00 00 52`, `00 10 56 DC`).
+            game.ui.say("contacts_introduction")
+            game.ui.say("contacts_kipp")
+            local contact_choice = game.ui.menu("contacts_choice",
+                { "chillicut", "kipp_david", "different_subject" })
+            if contact_choice == "different_subject" then
+                local result = present_caleb_different_subject()
+                if result ~= "information" then return result end
+            else
+                local contact_index
+                if contact_choice == "chillicut" then
+                    contact_index = E.VidPhoneContact.CHILLICUT
+                elseif contact_choice == "kipp_david" then
+                    contact_index = E.VidPhoneContact.KIPP_DAVID
+                else
+                    error("Caleb contact menu returned an unknown contact")
+                end
+
+                local funds = type(game.nuyen) == "function" and
+                    game.nuyen() or nil
+                if type(funds) ~= "number" then
+                    return "wallet_unavailable"
+                end
+                local result_event
+                if funds < E.JohnsonContactFee.CALEB_INFORMATION then
+                    -- Both command handlers choose 0x1057EC on insufficient
+                    -- funds (`00 10 57 EC`) and do not write FFFC2C.
+                    result_event = "contacts_purchase_insufficient"
+                else
+                    -- Commands 0x51/0x52 load 2,000 (`00 00 07 D0` at
+                    -- 0x221E8/0x22214), subtract through 0x21A4E, then set
+                    -- FFFC2C bits 11/3 (`08 C1 00 0B`, `08 C1 00 03`).
+                    game.set_nuyen(
+                        funds - E.JohnsonContactFee.CALEB_INFORMATION)
+                    game.state["vid_phone_contact_" .. contact_index] = true
+                    result_event = "contacts_purchase_success"
+                end
+                game.ui.say(result_event)
+                local result = game.ui.menu(result_event,
+                    { "information", "work", "leave" })
+                if result ~= "information" then return result end
+            end
+        else
+            local result = present_caleb_different_subject()
+            if result ~= "information" then return result end
+        end
+    end
+end
+
+local function present_caleb_michael_mission()
+    -- Only the first-meeting choice record 0x1056F8 ("Tell me about
+    -- Michael's last Shadowrun.", `00 10 86 C6 00 10 3C FC 00 00 00 00
+    -- 00 00 00 00 00 00 00 1C`) reaches command 0x1C; the repeat roots
+    -- 0x1056C0/0x1056DC/0x1057D0 send information straight to 0x10570C.
+    -- ROM command 0x1C at 0x21940 clears FFFC30 bit 5 and sets bit 23
+    -- (`08 81 00 05`, `08 C1 00 17`), then selects 0x105780. The common
+    -- 0x2196C path sets FFFC1E bit 13 from selector 13 (`01 C1`).
+    write_caleb_fffc30(E.FieldModeFlagBit.BIT_5, false)
+    write_caleb_fffc30(E.FieldModeFlagBit.BIT_23, true)
+    StoryFacts.set(E.StoryFact.MICHAEL_MISSION_TOLD, true)
+    game.ui.say("michael_information_1")
+    game.ui.say("michael_information_2")
+    game.ui.say("michael_information_3")
+    game.ui.say("michael_information_4")
+    game.ui.say("michael_wrapup")
+    local choice = game.ui.menu("michael_wrapup",
+        { "information", "work", "leave" })
+    if choice == "information" then
+        return present_caleb_information_offer()
+    end
+    return choice
+end
+
 function Johnson.interaction()
     local profile = game.modules.dialogue.johnson_interaction_profiles[
         game.location.text_profile]
@@ -367,16 +534,20 @@ function Johnson.interaction()
         (first_visit and (profile.first_visit_root or "opening") or
         (entry_seen_before and (profile.repeat_root or "opening") or
          "opening"))
+    -- Caleb's first-meeting record 0x1056F8 offers only the command 0x1C
+    -- choice; every later root uses the shared information/work/leave set.
+    local root_choices = first_visit and profile ~= nil and
+        profile.first_visit_root_choices or { "information", "work", "leave" }
     while true do
-        local choice = game.ui.menu(root_menu,
-            { "information", "work", "leave" })
+        local choice = game.ui.menu(root_menu, root_choices)
+        root_choices = { "information", "work", "leave" }
 
         if choice == "leave" then
             if profile ~= nil and profile.leave_event ~= nil then
                 game.ui.say(profile.leave_event)
             end
             return choice
-        elseif choice == "information" then
+        elseif choice == "information" or choice == "michael_last_run" then
             if profile == nil then
                 return "information_unresolved"
             end
@@ -387,6 +558,12 @@ function Johnson.interaction()
                 information_result = present_julius_information()
             elseif profile.information_flow == "big_rhino" then
                 information_result = present_mortimer_information()
+            elseif profile.information_flow == "caleb_brightmore" then
+                if choice == "michael_last_run" then
+                    information_result = present_caleb_michael_mission()
+                else
+                    information_result = present_caleb_information_offer()
+                end
             else
                 return "information_unresolved"
             end
@@ -405,7 +582,8 @@ function Johnson.interaction()
             else
                 -- ROM main-dialogue descriptors 0x10545C and 0x10514C
                 -- resume the shared root after an information branch.
-                root_menu = "opening_after_information"
+                root_menu = profile.information_flow == "caleb_brightmore"
+                    and "opening" or "opening_after_information"
             end
         elseif choice == "work" then
             if present_work_offer() == "accepted" then

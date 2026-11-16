@@ -111,13 +111,65 @@
           "continuation_key": "",
           "title_key": "icarus-descending.caleb.first-meeting.continuation"
         },
+        "contacts_introduction": {
+          "continuation_key": "shared.more",
+          "title_key": "icarus-descending.caleb.contacts.introduction"
+        },
+        "contacts_kipp": {
+          "continuation_key": "",
+          "title_key": "icarus-descending.caleb.contacts.kipp"
+        },
+        "contacts_purchase_insufficient": {
+          "continuation_key": "",
+          "title_key": "icarus-descending.caleb.contacts.insufficient"
+        },
+        "contacts_purchase_success": {
+          "continuation_key": "",
+          "title_key": "icarus-descending.caleb.contacts.success"
+        },
         "information_contacts_offer": {
           "continuation_key": "",
           "title_key": "icarus-descending.caleb.information.contacts-offer"
         },
+        "information_different_subject": {
+          "continuation_key": "",
+          "title_key": "icarus-descending.caleb.information.different-subject"
+        },
+        "information_questions_empty": {
+          "continuation_key": "",
+          "title_key": "icarus-descending.caleb.information.questions-empty"
+        },
+        "ilene_information": {
+          "continuation_key": "",
+          "title_key": "icarus-descending.caleb.information.ilene"
+        },
+        "ito_ogami_information": {
+          "continuation_key": "",
+          "title_key": "icarus-descending.caleb.information.ito-ogami"
+        },
         "leave": {
           "continuation_key": "",
           "title_key": "icarus-descending.caleb.leave"
+        },
+        "michael_information_1": {
+          "continuation_key": "shared.more",
+          "title_key": "icarus-descending.caleb.michael.1"
+        },
+        "michael_information_2": {
+          "continuation_key": "shared.more",
+          "title_key": "icarus-descending.caleb.michael.2"
+        },
+        "michael_information_3": {
+          "continuation_key": "shared.more",
+          "title_key": "icarus-descending.caleb.michael.3"
+        },
+        "michael_information_4": {
+          "continuation_key": "shared.more",
+          "title_key": "icarus-descending.caleb.michael.4"
+        },
+        "michael_wrapup": {
+          "continuation_key": "",
+          "title_key": "icarus-descending.caleb.michael.wrapup"
         },
         "michael-package-credstick": {
           "continuation_key": "",
@@ -134,6 +186,10 @@
         "post_run_opening": {
           "continuation_key": "",
           "title_key": "icarus-descending.caleb.post-run-opening"
+        },
+        "thon_information": {
+          "continuation_key": "",
+          "title_key": "icarus-descending.caleb.information.thon"
         },
         "transaction": {
           "continuation_key": "",

@@ -4301,8 +4301,42 @@ int main() {
                     caleb_first_meeting.operation->menu.has_value() &&
                     caleb_first_meeting.operation->menu->id ==
                         "first_meeting" &&
+                    caleb_first_meeting.operation->menu->choices.size() == 1U &&
+                    caleb_first_meeting.operation->menu->choices[0].id ==
+                        "michael_last_run",
+                "Caleb first-meeting record 0x1056F8 did not offer only its command 0x1C choice")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    // Command 0x1C (0x2193A) selects 0x105780; the chain ends at 0x1057D0.
+    caleb_first_meeting =
+        scripts.complete_native_menu_choice("michael_last_run");
+    for (const char* page : {"michael_information_1", "michael_information_2",
+                             "michael_information_3", "michael_information_4",
+                             "michael_wrapup"}) {
+        if (!expect(caleb_first_meeting.status ==
+                            ScriptTaskStep::Status::awaiting_native_operation &&
+                        caleb_first_meeting.operation.has_value() &&
+                        caleb_first_meeting.operation->type ==
+                            ScriptNativeOperation::Type::ui_say &&
+                        caleb_first_meeting.operation->dialogue.has_value() &&
+                        caleb_first_meeting.operation->dialogue->event_id == page,
+                    "Caleb command 0x1C did not show its ROM Michael chain")) {
+            std::cerr << scripts.failure() << '\n';
+            return 13;
+        }
+        caleb_first_meeting = scripts.complete_native_operation(true);
+    }
+    if (!expect(caleb_first_meeting.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    caleb_first_meeting.operation.has_value() &&
+                    caleb_first_meeting.operation->type ==
+                        ScriptNativeOperation::Type::ui_menu &&
+                    caleb_first_meeting.operation->menu.has_value() &&
+                    caleb_first_meeting.operation->menu->id ==
+                        "michael_wrapup" &&
                     caleb_first_meeting.operation->menu->choices.size() == 3U,
-                "Caleb first-meeting page did not lead into the source root choices")) {
+                "Caleb record 0x1057D0 did not lead into the source root choices")) {
         std::cerr << scripts.failure() << '\n';
         return 13;
     }

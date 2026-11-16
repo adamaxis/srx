@@ -1062,10 +1062,12 @@ E.FieldModeFlagBit = {
   BIT_11 = 11,
   BIT_20 = 20,
   BIT_23 = 23,
+  RENRAKU_HEADHUNTER_TOLD = 25, -- command 0x92 at 0x23328 (`08 C1 00 19`) [C]
 }
 
 -- Command 0xE6 at 0x24992 sets FFFC34 bit 4 (`08 C1 00 04`).
 E.FieldModeEffectFlagBit = {
+  ILENE_INFORMATION_HEARD = 0, -- command 0x91 at 0x23310 (`08 C1 00 00`) [C]
   BIT_4 = 4,
   -- Seattle General 0x1F8B4/0x22664 clear bit 18 and 0x1F8B8/0x22668 set
   -- bit 19 when Stark is admitted; 0x1F918 clears bit 20 at the heart
@@ -1073,6 +1075,10 @@ E.FieldModeEffectFlagBit = {
   STARK_DYING_TIP = 18,
   STARK_HEART_FAILING_TIP = 19,
   CYBERHEART_CARRIED_TIP = 20,
+}
+
+E.JohnsonContactFee = {
+  CALEB_INFORMATION = 2000, -- commands 0x51/0x52 load `00 00 07 D0` at 0x221E8/0x22214 [C]
 }
 
 -- FFFC38 bits as Notebook tip flag indices (64 + bit). Seattle General's
