@@ -11,6 +11,24 @@ end
 
 local Inn = require("tarislar_city_inn")
 local E = require("enums")
+local FieldModeFlagBit = E.FieldModeFlagBit
+local FieldModeEffectFlagBit = E.FieldModeEffectFlagBit
+
+local TABATHA_MODE_FLAGS = {
+    { bit = FieldModeFlagBit.BIT_2, before = true, after = false },
+    { bit = FieldModeFlagBit.BIT_4, before = true, after = false },
+    { bit = FieldModeFlagBit.BIT_5, before = false, after = true },
+    { bit = FieldModeFlagBit.BIT_6, before = false, after = true },
+    { bit = FieldModeFlagBit.BIT_8, before = false, after = true },
+}
+
+local FROSTY_UNTOUCHED_MODE_FLAGS = {
+    { bit = FieldModeFlagBit.BIT_2, value = true },
+    { bit = FieldModeFlagBit.BIT_4, value = false },
+    { bit = FieldModeFlagBit.BIT_5, value = true },
+    { bit = FieldModeFlagBit.BIT_6, value = false },
+    { bit = FieldModeFlagBit.BIT_8, value = true },
+}
 
 local location_id = "puyallup_site_03_tarislar_city_inn"
 local choices = {}
@@ -137,11 +155,41 @@ end
 
 local function seed_tabatha_acceptance_flags()
     game.state.notebook_tip_flag_bit_0 = true -- Fresh New Game FFFC30 seed.
-    for _, bit in ipairs({ 2, 4, 5, 6, 8 }) do
-        game.state["notebook_tip_flag_bit_" .. bit] = false
+    for _, flag in ipairs(TABATHA_MODE_FLAGS) do
+        -- FFFC30 is one ROM word; the host still keeps a field-mode copy and a
+        -- Notebook-tip copy, so seed both with the same value.
+        game.state["field_mode_flag_bit_" .. flag.bit] = flag.before
+        game.state["notebook_tip_flag_bit_" .. flag.bit] = flag.before
     end
+    game.state.field_mode_effect_flag_bit_2 = false
+    game.state["field_mode_effect_flag_bit_" ..
+        FieldModeEffectFlagBit.BIT_4] = false
     game.state[E.JohnsonFact.MORTIMER_KNOWN] = false
     game.state[E.JohnsonFact.CALEB_KNOWN] = false
+end
+
+local function assert_tabatha_acceptance_unchanged(missing_key)
+    for _, flag in ipairs(TABATHA_MODE_FLAGS) do
+        for _, prefix in ipairs({ "field_mode_flag_bit_",
+                                  "notebook_tip_flag_bit_" }) do
+            local key = prefix .. flag.bit
+            local expected = flag.before
+            if missing_key == key then expected = nil end
+            assert(game.state[key] == expected,
+                "Tabatha changed guarded FFFC30 flag before Karma: " .. key)
+        end
+    end
+    assert(game.state.field_mode_effect_flag_bit_2 == false and
+           game.state["field_mode_effect_flag_bit_" ..
+               FieldModeEffectFlagBit.BIT_4] == false,
+           "Tabatha changed untouched FFFC34 bits")
+    local mortimer = false
+    local caleb = false
+    if missing_key == E.JohnsonFact.MORTIMER_KNOWN then mortimer = nil end
+    if missing_key == E.JohnsonFact.CALEB_KNOWN then caleb = nil end
+    assert(game.state[E.JohnsonFact.MORTIMER_KNOWN] == mortimer and
+           game.state[E.JohnsonFact.CALEB_KNOWN] == caleb,
+           "Tabatha changed a guarded FFFC27 fact before Karma")
 end
 
 local function location_task_result(expected, ...)
@@ -174,6 +222,14 @@ game.location.id = location_id
 
 -- The ordinary selector exposes Frosty only for FFFC1E bit 13 and a clear
 -- FFFC1E bit 30. It keeps the ROM's stay-here result.
+game.state.field_mode_flag_bit_23 = true
+game.state.notebook_tip_flag_bit_23 = true
+for _, flag in ipairs(FROSTY_UNTOUCHED_MODE_FLAGS) do
+    game.state["field_mode_flag_bit_" .. flag.bit] = flag.value
+end
+game.state.field_mode_effect_flag_bit_4 = false
+game.state.field_mode_effect_flag_bit_13 = false
+game.state.field_mode_effect_flag_bit_21 = false
 queue("more", "leave")
 assert(Inn.present_field_exit_prompt() == "field_return")
 assert(#prompts[2].choices == 2 and prompts[2].choices[2] == "leave")
@@ -181,10 +237,14 @@ game.state.michael_mission_told = true
 queue("more", "frosty")
 assert(Inn.present_field_exit_prompt() == "field_return")
 assert(prompts[2].choices[2] == "frosty")
-assert(game.state.notebook_tip_flag_bit_23 == true)
+assert(game.state.field_mode_flag_bit_23 == false)
+assert(game.state.notebook_tip_flag_bit_23 == false)
+for _, flag in ipairs(FROSTY_UNTOUCHED_MODE_FLAGS) do
+    assert(game.state["field_mode_flag_bit_" .. flag.bit] == flag.value)
+end
 assert(game.state.field_mode_effect_flag_bit_4 == true)
-assert(game.state.field_mode_effect_flag_bit_13 == true)
-assert(game.state.field_mode_effect_flag_bit_21 == true)
+assert(game.state.field_mode_effect_flag_bit_13 == false)
+assert(game.state.field_mode_effect_flag_bit_21 == false)
 game.state.michael_mission_told = false
 
 -- Scene 1's signed alternate result selects the two package text nodes.
@@ -256,13 +316,14 @@ local refusal_route = location_task_result("continue_in_place",
     "more", "shale", "more", "more", "more", "about_michael", "more",
     "caleb", "errascoe", "recruit", "more", "more", "more", "more")
 assert(game.state.tarislar_asked_shale == true)
-assert(game.state.notebook_tip_flag_bit_2 == true)
-assert(game.state.notebook_tip_flag_bit_4 == true)
-assert(game.state.notebook_tip_flag_bit_5 == true)
-assert(game.state.notebook_tip_flag_bit_6 == true)
-assert(game.state.notebook_tip_flag_bit_8 == true)
-assert(game.state.field_mode_effect_flag_bit_2 == true)
-assert(game.state.field_mode_effect_flag_bit_4 == true)
+for _, flag in ipairs(TABATHA_MODE_FLAGS) do
+    assert(game.state["field_mode_flag_bit_" .. flag.bit] == flag.after)
+    assert(game.state["notebook_tip_flag_bit_" .. flag.bit] == flag.after,
+        "Tabatha must update the Notebook copy of FFFC30 too")
+end
+assert(game.state.field_mode_effect_flag_bit_2 == false and
+       game.state["field_mode_effect_flag_bit_" ..
+           FieldModeEffectFlagBit.BIT_4] == false)
 assert(game.state[E.JohnsonFact.MORTIMER_KNOWN] == true)
 assert(game.state[E.JohnsonFact.CALEB_KNOWN] == true)
 assert(service_calls[1][1] == "party" and
@@ -333,21 +394,29 @@ assert(prompts[5].id == "shale_followup_after_errascoe" and
        #prompts[5].choices == 2 and prompts[5].choices[1] == "recruit" and
        prompts[5].choices[2] == "thanks")
 
--- A restored checkpoint with unresolved story stores must not partially
--- apply command 0x14 or call the Karma service before reporting its boundary.
-game.state.tarislar_asked_shale = false
-for _, bit in ipairs({ 2, 4, 5, 6, 8 }) do
-    game.state["notebook_tip_flag_bit_" .. bit] = nil
+-- Every command-0x14 target must be resolved before the party Karma call;
+-- losing any one field store leaves all other acceptance state untouched.
+local tabatha_guard_keys = {}
+for _, flag in ipairs(TABATHA_MODE_FLAGS) do
+    tabatha_guard_keys[#tabatha_guard_keys + 1] =
+        "field_mode_flag_bit_" .. flag.bit
+    tabatha_guard_keys[#tabatha_guard_keys + 1] =
+        "notebook_tip_flag_bit_" .. flag.bit
 end
-game.state[E.JohnsonFact.MORTIMER_KNOWN] = nil
-game.state[E.JohnsonFact.CALEB_KNOWN] = nil
-karma_award_result = "applied"
-local unresolved_story_state = location_task_result("source_boundary",
-    "more", "shale", "more", "more", "more")
-assert(unresolved_story_state.reason:find("0x21862", 1, true))
-assert(#service_calls == 0 and
-       game.state.notebook_tip_flag_bit_2 == nil and
-       game.state[E.JohnsonFact.MORTIMER_KNOWN] == nil)
+tabatha_guard_keys[#tabatha_guard_keys + 1] = E.JohnsonFact.MORTIMER_KNOWN
+tabatha_guard_keys[#tabatha_guard_keys + 1] = E.JohnsonFact.CALEB_KNOWN
+for _, missing_key in ipairs(tabatha_guard_keys) do
+    game.state.tarislar_asked_shale = false
+    seed_tabatha_acceptance_flags()
+    game.state[missing_key] = nil
+    karma_award_result = "applied"
+    local unresolved_story_state = location_task_result("source_boundary",
+        "more", "shale", "more", "more", "more")
+    assert(unresolved_story_state.reason:find("0x21862", 1, true))
+    assert(#service_calls == 0,
+        "Karma ran before every command-0x14 store was guarded")
+    assert_tabatha_acceptance_unchanged(missing_key)
+end
 
 -- A resolved story state with an unavailable runner service also leaves all
 -- acceptance flags untouched.
@@ -357,5 +426,7 @@ karma_award_result = "unavailable"
 local state_boundary = location_task_result("source_boundary",
     "more", "shale", "more", "more", "more")
 assert(state_boundary.reason:find("0x21862", 1, true))
+assert(#service_calls == 1 and service_calls[1][2] == "award_karma_1")
+assert_tabatha_acceptance_unchanged(nil)
 
 print("Tarislar City Inn tests passed: gates, payment, dialogue profiles, and Tabatha aftermath")

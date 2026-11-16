@@ -10,6 +10,34 @@ local Inn = {}
 
 local LOCATION_ID = "puyallup_site_03_tarislar_city_inn"
 
+local TABATHA_FIELD_MODE_FLAG_WRITES = {
+    { bit = E.FieldModeFlagBit.BIT_2, value = false },
+    { bit = E.FieldModeFlagBit.BIT_4, value = false },
+    { bit = E.FieldModeFlagBit.BIT_5, value = true },
+    { bit = E.FieldModeFlagBit.BIT_6, value = true },
+    { bit = E.FieldModeFlagBit.BIT_8, value = true },
+}
+
+-- The ROM has one FFFC30 longword. This checkout still keeps two host copies
+-- of it: `field_mode_flag_bit_N` (field mode word) and
+-- `notebook_tip_flag_bit_N` (Notebook tips 0-31, read by the pocket
+-- secretary and saved separately). Every FFFC30 write goes to both so the
+-- Notebook and field readers agree, as the motel payment path already does.
+local FFFC30_HOST_KEYS = { "field_mode_flag_bit_", "notebook_tip_flag_bit_" }
+
+local function fffc30_resolved(bit)
+    for _, prefix in ipairs(FFFC30_HOST_KEYS) do
+        if game.state[prefix .. bit] == nil then return false end
+    end
+    return true
+end
+
+local function write_fffc30(bit, value)
+    for _, prefix in ipairs(FFFC30_HOST_KEYS) do
+        game.state[prefix .. bit] = value
+    end
+end
+
 local function at_inn()
     return game.location.type == "building" and
            game.location.id == LOCATION_ID
@@ -29,12 +57,13 @@ local function leave()
 end
 
 local function frosty_information()
-    -- ROM command 0xE6 at 0x2497C sets FFFC30 bit 23, FFFC34 bits 4, 13,
-    -- and 21, then returns the 0x1180D2 Sinsearach-land response.
-    game.state.notebook_tip_flag_bit_23 = true
-    game.state.field_mode_effect_flag_bit_4 = true
-    game.state.field_mode_effect_flag_bit_13 = true
-    game.state.field_mode_effect_flag_bit_21 = true
+    -- [C] The inn branch selects record 0xF4990 at 0x1F70A; its command word
+    -- at 0xF49B8 is `00 00 00 E6`. Handler 0x24982 clears FFFC30 bit 23
+    -- (`08 81 00 17`); 0x24992 sets only FFFC34 bit 4 (`08 C1 00 04`), and
+    -- 0x2499C selects the existing 0x1180D2 Sinsearach-land response.
+    write_fffc30(E.FieldModeFlagBit.BIT_23, false)
+    game.state["field_mode_effect_flag_bit_" ..
+        E.FieldModeEffectFlagBit.BIT_4] = true
     say(table.concat({
         "I haven't seen her in a couple of days, but that's not too unusual.",
         "If you're in a hurry, you might try the Sinsearach lands south of the AmerIndian Village.",
@@ -44,15 +73,14 @@ local function frosty_information()
 end
 
 local function apply_tabatha_acceptance()
-    -- ROM command 0x14 at 0x21862 calls 0x59C34 to award each runner one
-    -- Karma at live-record +0x8D, then sets FFFC30 bits 2/4/5/6/8,
-    -- FFFC34 bits 2/4, and the Mortimer-known / Caleb-referral facts.
-    -- The host deliberately leaves saved Notebook/referral words unresolved
-    -- until their load path is modeled. Check every guarded story store before
-    -- the party service can award Karma, so acceptance never writes only part
-    -- of command 0x14's state.
-    for _, bit in ipairs({ 2, 4, 5, 6, 8 }) do
-        if game.state["notebook_tip_flag_bit_" .. bit] == nil then
+    -- [C] Command 0x14 at 0x21862 awards Karma; bytes at 0x21872..0x21886
+    -- (`08 81 00 02`, `08 81 00 04`, `08 C1 00 05/06/08`) clear FFFC30
+    -- bits 2/4 and set 5/6/8. Bytes at 0x21892..0x2189A
+    -- (`08 C1 00 04`, `08 C1 00 02`) set the Caleb/Mortimer facts in FFFC27.
+    -- This command has no FFFC34 write. Check every guarded store before the
+    -- party service awards Karma, so acceptance cannot apply partial state.
+    for _, write in ipairs(TABATHA_FIELD_MODE_FLAG_WRITES) do
+        if not fffc30_resolved(write.bit) then
             return "service_unavailable"
         end
     end
@@ -65,11 +93,9 @@ local function apply_tabatha_acceptance()
        "applied" then
         return "service_unavailable"
     end
-    for _, bit in ipairs({ 2, 4, 5, 6, 8 }) do
-        game.state["notebook_tip_flag_bit_" .. bit] = true
+    for _, write in ipairs(TABATHA_FIELD_MODE_FLAG_WRITES) do
+        write_fffc30(write.bit, write.value)
     end
-    game.state.field_mode_effect_flag_bit_2 = true
-    game.state.field_mode_effect_flag_bit_4 = true
     game.state[E.JohnsonFact.MORTIMER_KNOWN] = true
     game.state[E.JohnsonFact.CALEB_KNOWN] = true
     return "applied"

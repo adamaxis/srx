@@ -36577,9 +36577,9 @@ int run_field_tarislar_city_inn_qa(
         // records. This restored-position QA checkpoint otherwise omits that
         // mutable party byte state.
         field_scene.seed_party_karma_for_qa({0U, 0U, 0U});
-        // Fresh New Game leaves FFFC30 bit 0 set and the remaining Notebook
-        // tip bits clear, while FFFC27 starts clear. The restored-position
-        // checkpoint does not include either flag store.
+        // FFFC30 and the Notebook-tip flags remain separate host stores in
+        // this checkout; seed both for the restored-position checkpoint.
+        field_scene.seed_field_mode_flags_for_qa(1U);
         field_scene.seed_notebook_tip_flags_for_qa({{1U, 0U, 0U}});
         field_scene.seed_notebook_referral_flags_for_qa(0U);
     }

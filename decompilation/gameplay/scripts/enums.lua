@@ -1041,6 +1041,23 @@ E.FieldModeFact = {
   MAKO_RESULT_CALLBACK_APPLIED = "field.mako_result_callback_applied",
 }
 
+-- FFFC30 bit indices used by these Tarislar handlers. Command 0x14 at
+-- 0x21872..0x21886 encodes bits 2/4/5/6/8; command 0xE6 at 0x24982 encodes
+-- bit 23 (`08 81 00 17`). These are indices, not bit masks.
+E.FieldModeFlagBit = {
+  BIT_2 = 2,
+  BIT_4 = 4,
+  BIT_5 = 5,
+  BIT_6 = 6,
+  BIT_8 = 8,
+  BIT_23 = 23,
+}
+
+-- Command 0xE6 at 0x24992 sets FFFC34 bit 4 (`08 C1 00 04`).
+E.FieldModeEffectFlagBit = {
+  BIT_4 = 4,
+}
+
 -- Notebook entries are content identities. The host owns their save encoding.
 E.NotebookTip = {
   -- Entry 81 is Renraku's report locating the Feathered Serpent in the

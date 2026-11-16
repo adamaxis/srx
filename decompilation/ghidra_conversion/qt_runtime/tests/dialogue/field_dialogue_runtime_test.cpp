@@ -893,6 +893,13 @@ int main() {
         {"notebook_tip_flag_bit_5", false},
         {"notebook_tip_flag_bit_6", false},
         {"notebook_tip_flag_bit_8", false},
+        // FFFC30 field-mode copy of the same ROM word (command 0x14 guard).
+        {"field_mode_flag_bit_0", true},
+        {"field_mode_flag_bit_2", false},
+        {"field_mode_flag_bit_4", false},
+        {"field_mode_flag_bit_5", false},
+        {"field_mode_flag_bit_6", false},
+        {"field_mode_flag_bit_8", false},
         {"johnson.mortimer_known", false},
         {"johnson.caleb_known", false},
     });
