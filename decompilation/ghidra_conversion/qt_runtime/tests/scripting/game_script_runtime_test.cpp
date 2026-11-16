@@ -5147,7 +5147,14 @@ int main() {
                 other_map_route->area_event_destination_mode ==
                     WorldActivityMode::field &&
                 missing_table_route.has_value() &&
-                missing_table_route->kind == FieldScriptRouteKind::no_route &&
+                // Passport Lodge event 2 now has a same-map prompt task. If
+                // its source table result is absent, preserve the task
+                // boundary instead of silently dropping the interaction.
+                missing_table_route->kind ==
+                    FieldScriptRouteKind::source_boundary &&
+                missing_table_route->boundary_reason.find(
+                    "location.source_scene_destination_missing:council_passport_lodge.rom_event_02") !=
+                    std::string::npos &&
                 destination_ranges_match &&
                 renraku_office.has_value() &&
                 renraku_office->kind ==

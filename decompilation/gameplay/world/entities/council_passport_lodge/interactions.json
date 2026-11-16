@@ -14,8 +14,20 @@
         "priority": 0,
         "sourceRoutePolicy": "resume_source_route"
       },
+      "tasks": {
+        "fieldExitPrompt": {
+          "module": "council_passport_lodge",
+          "function": "present_field_exit_prompt"
+        }
+      },
+      "locationContext": {
+        "type": "building",
+        "id": "council_passport_lodge",
+        "textProfile": "council_medicine_lodge",
+        "speakerId": "council_passport_lodge_clerk"
+      },
       "provenance": {
-        "evidence": "ROM scene 4 record 90 at 0x15BDBA; after the conditional maglock path, event-table row 2 at 0x15B960 selects numeric field scene 13 (subject to the source scene gate). The separate event-31 cell remains unresolved. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
+        "evidence": "ROM 0x20054 bytes 0C 39 00 04 00 FF FB F8 match scene 4; 0x200A6 bytes 0C 39 00 02 00 FF FB F9 match event 2. 0x200B2 bytes 4B F9 00 12 1F 34 load portrait 0x121F34. 0x200B8 bytes 4A 39 00 FF F0 D5 test FFF0D5; 0x200C6 bytes 41 F9 00 11 0D 3E select delivery, 0x200D0 bytes 41 F9 00 11 0D 36 select pickup, and 0x200DA bytes 41 F9 00 11 0D 46 select the zero-result passport entry. Each branch returns via 0x1FED2. The typed fieldExitPrompt task intercepts this same-map site event; the generic event-table row 2 remains route data."
       }
     }
   ]
