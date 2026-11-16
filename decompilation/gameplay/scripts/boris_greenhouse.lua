@@ -44,7 +44,8 @@ local function action_registry()
         ["boris.prepare_david_information"] = function()
             -- The David choice in ROM record 0xF5338 selects command 0x3B,
             -- whose handler at 0x21EB0 clears bit 8 and sets bits 9 and 11.
-            -- The subsequent Brother? choice reaches unconverted command 0x2C.
+            -- The subsequent Brother? choice selects command 0x2C (ROM 0x21BE4),
+            -- converted as field.advance_strike_team_counter.
             game.state["field_mode_flag_bit_" .. E.FieldModeFlagBit.BIT_8] = false
             game.state["field_mode_flag_bit_" .. E.FieldModeFlagBit.BIT_9] = true
             game.state["field_mode_flag_bit_" .. E.FieldModeFlagBit.BIT_11] = true
