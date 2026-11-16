@@ -113,6 +113,19 @@ enum class RecruitedRunnerInformationTopic {
     stark_amerindian_heritage,
 };
 
+enum class RecruitedRunnerInformationFlag : std::uint16_t {
+    ricky = std::uint16_t{1U} << 0U,
+    winston_marrs = std::uint16_t{1U} << 1U,
+    trent = std::uint16_t{1U} << 2U,
+    petr_uvehr = std::uint16_t{1U} << 3U,
+    walking_bear = std::uint16_t{1U} << 4U,
+    phantom = std::uint16_t{1U} << 5U,
+    two_fists = std::uint16_t{1U} << 6U,
+    freya = std::uint16_t{1U} << 7U,
+    rianna = std::uint16_t{1U} << 8U,
+    stark = std::uint16_t{1U} << 9U,
+};
+
 // C++ owns the source stream/page count. Lua maps the stable content ID to
 // the ROM-imported text catalog key used by the shared dialogue presenter.
 struct RecruitedRunnerInformationTextStream {
@@ -123,8 +136,8 @@ struct RecruitedRunnerInformationTextStream {
 // The mode-command entries 0xBC..0xC5 are ten copies of the same source
 // operation with different bit numbers and text descriptors. The native
 // conversion keeps those as one table-driven behavior: selecting a runner's
-// information topic marks its knowledge bit and returns both complete source
-// text streams that the source exposes through its < MORE > continuation.
+// information topic marks its knowledge bit and returns its two required
+// background streams plus an optional third stream where the source has one.
 struct RecruitedRunnerInformationPromptResult {
     RecruitedRunnerInformationAction action =
         RecruitedRunnerInformationAction::runner_index_unavailable;
@@ -136,6 +149,7 @@ struct RecruitedRunnerInformationPromptResult {
     std::uint16_t changed_flag = 0;
     RecruitedRunnerInformationTextStream opening_text;
     RecruitedRunnerInformationTextStream continuation_text;
+    RecruitedRunnerInformationTextStream final_background_text;
     std::string_view more_content_id;
 };
 
@@ -148,6 +162,7 @@ enum class RickyInformationSubject {
 struct RickyInformationSubjectPrompt {
     std::string_view title_content_id;
     std::array<std::string_view, 3> option_content_ids{};
+    std::size_t option_count = 3U;
 };
 
 enum class RickyInformationResponseAction {
@@ -313,6 +328,7 @@ enum class WinstonInformationSubject {
 struct WinstonInformationSubjectPrompt {
     std::string_view title_content_id;
     std::array<std::string_view, 3> option_content_ids{};
+    std::size_t option_count = 3U;
 };
 
 enum class WinstonInformationResponseAction {
@@ -348,6 +364,7 @@ enum class TrentInformationSubject {
 struct TrentInformationSubjectPrompt {
     std::string_view title_content_id;
     std::array<std::string_view, 3> option_content_ids{};
+    std::size_t option_count = 3U;
 };
 
 enum class TrentInformationResponseAction {
@@ -379,6 +396,61 @@ TrentInformationSubjectPrompt trent_information_subject_prompt();
 TrentInformationResponse select_trent_information_response(
     TrentInformationSubject subject,
     RecruitedRunnerServiceState& state);
+
+enum class RecruitedRunnerInformationSubject {
+    petr_matrix,
+    petr_dwarf,
+    walking_bear_shaman_magic,
+    walking_bear_david_owlfeather,
+    walking_bear_ork,
+    phantom_matrix,
+    phantom_cyberdeck_equipment,
+    phantom_elf,
+    two_fists_thon,
+    two_fists_ellisia,
+    freya_vigore,
+    freya_local_johnsons,
+    rianna_matrix,
+    rianna_corporate_security,
+};
+
+struct RecruitedRunnerInformationSubjectPrompt {
+    RecruitedRunnerConversationRunner runner =
+        RecruitedRunnerConversationRunner::petr_uvehr;
+    std::string_view title_content_id;
+    std::array<std::string_view, 3> option_content_ids{};
+    std::array<RecruitedRunnerInformationSubject, 3> subjects{};
+    std::size_t option_count = 0U;
+};
+
+enum class RecruitedRunnerInformationSubjectResponseAction {
+    selected,
+    subject_unavailable,
+};
+
+struct RecruitedRunnerInformationSubjectResponse {
+    RecruitedRunnerInformationSubjectResponseAction action =
+        RecruitedRunnerInformationSubjectResponseAction::subject_unavailable;
+    RecruitedRunnerConversationRunner runner =
+        RecruitedRunnerConversationRunner::petr_uvehr;
+    RecruitedRunnerInformationSubject subject =
+        RecruitedRunnerInformationSubject::petr_matrix;
+    std::array<RecruitedRunnerInformationTextStream, 2> pages{};
+    std::array<bool, 2> more_after_page{};
+    std::size_t page_count = 0U;
+    bool returns_to_common_conversation = false;
+};
+
+// ROM subject prompts and answer chains for Petr through Rianna. The shared
+// result preserves each prompt's option count and each answer's page/MORE
+// cadence while mapping content IDs to ROM-imported text keys through Lua.
+RecruitedRunnerInformationSubjectPrompt
+recruited_runner_information_subject_prompt(
+    RecruitedRunnerConversationRunner runner);
+
+RecruitedRunnerInformationSubjectResponse
+select_recruited_runner_information_subject_response(
+    RecruitedRunnerInformationSubject subject);
 
 // ROM 0x21318/0x21326/0x21332 plus the common body at 0x2133C.  This converts
 // the recruited-runner dialog's short-term, permanent, and free-permanent

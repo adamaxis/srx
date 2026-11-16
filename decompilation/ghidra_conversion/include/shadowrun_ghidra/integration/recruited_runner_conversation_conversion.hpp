@@ -18,6 +18,7 @@ enum class RecruitedRunnerConversationScreen {
     ricky_subject_prompt,
     winston_subject_prompt,
     trent_subject_prompt,
+    information_subject_prompt,
     information_response,
     service_offer,
     service_result,
@@ -70,12 +71,14 @@ struct RecruitedRunnerConversationView {
     std::variant<std::monostate,
                  RickyInformationSubjectPrompt,
                  WinstonInformationSubjectPrompt,
-                 TrentInformationSubjectPrompt>
+                 TrentInformationSubjectPrompt,
+                 RecruitedRunnerInformationSubjectPrompt>
         subject_prompt;
     std::variant<std::monostate,
                  RickyInformationResponse,
                  WinstonInformationResponse,
-                 TrentInformationResponse>
+                 TrentInformationResponse,
+                 RecruitedRunnerInformationSubjectResponse>
         information_response;
     RecruitedRunnerServiceOfferPreparationResult service_offer{};
     RecruitedRunnerServiceResult service_result{};
@@ -100,12 +103,14 @@ struct RecruitedRunnerConversationState {
     std::variant<std::monostate,
                  RickyInformationSubjectPrompt,
                  WinstonInformationSubjectPrompt,
-                 TrentInformationSubjectPrompt>
+                 TrentInformationSubjectPrompt,
+                 RecruitedRunnerInformationSubjectPrompt>
         subject_prompt;
     std::variant<std::monostate,
                  RickyInformationResponse,
                  WinstonInformationResponse,
-                 TrentInformationResponse>
+                 TrentInformationResponse,
+                 RecruitedRunnerInformationSubjectResponse>
         information_response;
     RecruitedRunnerServiceOfferPreparationResult service_offer{};
     RecruitedRunnerServiceResult service_result{};
@@ -118,10 +123,10 @@ struct RecruitedRunnerConversationState {
 RecruitedRunnerConversationView begin_recruited_runner_conversation(
     RecruitedRunnerConversationState& state);
 
-// Routes one host input through the source-derived conversation graph. The
-// graph currently has source-complete Ricky, Winston, and Trent subject
-// trees; the other seven information branches return an explicit boundary so
-// a missing conversion cannot silently become invented gameplay.
+// Routes one host input through the source-derived conversation graph. Ricky,
+// Winston, Trent, Petr, Walking Bear, Phantom, Two Fists, Freya, and Rianna
+// have converted information subject trees; Stark retains an explicit story
+// boundary because his separate conversation root has not been traced.
 RecruitedRunnerConversationView dispatch_recruited_runner_conversation(
     RecruitedRunnerConversationState& state,
     RecruitedRunnerConversationCommand command);

@@ -46,7 +46,7 @@ bool expect(const bool condition) { return condition; }
 bool runner_text_catalog_is_complete(
     const scripting::GameScriptRuntime& scripts,
     const scripting::ScriptStringMap& runner_text_keys) {
-    constexpr std::array<std::pair<std::string_view, std::size_t>, 56>
+    constexpr std::array<std::pair<std::string_view, std::size_t>, 102>
         kRunnerText{{
             {"runner.ricky.information.opening", 3U},
             {"runner.ricky.information.continuation", 3U},
@@ -94,6 +94,52 @@ bool runner_text_catalog_is_complete(
             {"runner.trent.subject.mages.page_1", 1U},
             {"runner.trent.subject.contacts.page_0", 3U},
             {"runner.trent.subject.johnsons.page_0", 3U},
+            {"runner.petr_uvehr.subject.title", 1U},
+            {"runner.petr_uvehr.subject.option.matrix", 1U},
+            {"runner.petr_uvehr.subject.option.dwarf", 1U},
+            {"runner.petr_uvehr.subject.matrix.page_0", 3U},
+            {"runner.petr_uvehr.subject.matrix.page_1", 1U},
+            {"runner.petr_uvehr.subject.dwarf.page_0", 3U},
+            {"runner.petr_uvehr.subject.dwarf.page_1", 2U},
+            {"runner.walking_bear.information.final", 2U},
+            {"runner.walking_bear.subject.title", 1U},
+            {"runner.walking_bear.subject.option.shaman_magic", 1U},
+            {"runner.walking_bear.subject.option.david_owlfeather", 1U},
+            {"runner.walking_bear.subject.option.ork", 1U},
+            {"runner.walking_bear.subject.shaman_magic.page_0", 4U},
+            {"runner.walking_bear.subject.david_owlfeather.page_0", 2U},
+            {"runner.walking_bear.subject.ork.page_0", 4U},
+            {"runner.phantom.information.final", 4U},
+            {"runner.phantom.subject.title", 1U},
+            {"runner.phantom.subject.option.matrix", 1U},
+            {"runner.phantom.subject.option.cyberdeck_equipment", 1U},
+            {"runner.phantom.subject.option.elf", 1U},
+            {"runner.phantom.subject.matrix.page_0", 3U},
+            {"runner.phantom.subject.matrix.page_1", 3U},
+            {"runner.phantom.subject.cyberdeck_equipment.page_0", 3U},
+            {"runner.phantom.subject.elf.page_0", 3U},
+            {"runner.phantom.subject.elf.page_1", 3U},
+            {"runner.two_fists.information.final", 1U},
+            {"runner.two_fists.subject.title", 1U},
+            {"runner.two_fists.subject.option.thon", 1U},
+            {"runner.two_fists.subject.option.ellisia", 1U},
+            {"runner.two_fists.subject.thon.page_0", 1U},
+            {"runner.two_fists.subject.thon.page_1", 1U},
+            {"runner.two_fists.subject.ellisia.page_0", 2U},
+            {"runner.freya.information.final", 2U},
+            {"runner.freya.subject.title", 1U},
+            {"runner.freya.subject.option.vigore", 1U},
+            {"runner.freya.subject.option.local_johnsons", 1U},
+            {"runner.freya.subject.vigore.page_0", 3U},
+            {"runner.freya.subject.local_johnsons.page_0", 3U},
+            {"runner.rianna.information.final", 2U},
+            {"runner.rianna.subject.title", 1U},
+            {"runner.rianna.subject.option.matrix", 1U},
+            {"runner.rianna.subject.option.corporate_security", 1U},
+            {"runner.rianna.subject.matrix.page_0", 4U},
+            {"runner.rianna.subject.matrix.page_1", 3U},
+            {"runner.rianna.subject.corporate_security.page_0", 2U},
+            {"runner.rianna.subject.corporate_security.page_1", 3U},
             {"runner.ricky.name", 1U},
             {"runner.winston_marrs.name", 1U},
             {"runner.trent.name", 1U},
@@ -106,7 +152,7 @@ bool runner_text_catalog_is_complete(
             {"runner.stark.name", 1U},
         }};
 
-    if (runner_text_keys.size() != 57U ||
+    if (runner_text_keys.size() != 103U ||
         runner_text_keys.find("shared.more") == runner_text_keys.end() ||
         runner_text_keys.at("shared.more") != "stoker.motel.arrival.more") {
         std::cerr << "runner Lua content-key catalog is incomplete\n";
@@ -627,6 +673,33 @@ int main(const int argc, char** argv) {
         return 18;
     }
 
+    constexpr std::array<std::size_t, 6> kSubjectPromptContinueCounts{{
+        2U, 3U, 3U, 3U, 3U, 3U}};
+    for (std::size_t runner_offset = 0U;
+         runner_offset < kSubjectPromptContinueCounts.size();
+         ++runner_offset) {
+        auto runner_state = make_state(
+            static_cast<std::uint8_t>(runner_offset + 3U));
+        auto runner_view = begin_recruited_runner_conversation(runner_state);
+        runner_view = dispatch_recruited_runner_conversation(
+            runner_state,
+            RecruitedRunnerConversationCommand::ask_for_information);
+        for (std::size_t page = 0U;
+             page < kSubjectPromptContinueCounts[runner_offset]; ++page) {
+            runner_view = dispatch_recruited_runner_conversation(
+                runner_state,
+                RecruitedRunnerConversationCommand::continue_page);
+        }
+        if (runner_view.screen ==
+                RecruitedRunnerConversationScreen::source_boundary ||
+            std::holds_alternative<std::monostate>(
+                runner_view.subject_prompt)) {
+            std::cerr << "runner subject tree is missing for index "
+                      << runner_offset + 3U << '\n';
+            return 35;
+        }
+    }
+
     source_view = dispatch_recruited_runner_conversation(
         state, RecruitedRunnerConversationCommand::select_first_subject);
     panel = make_dialogue_panel_view(
@@ -646,9 +719,14 @@ int main(const int argc, char** argv) {
             RecruitedRunnerConversationCommand::select_first_subject,
             RecruitedRunnerConversationCommand::select_second_subject,
             RecruitedRunnerConversationCommand::select_third_subject}};
-    for (std::size_t runner_index = 0; runner_index < 3U; ++runner_index) {
+    constexpr std::array<std::size_t, 9> kInformationContinueCounts{{
+        2U, 2U, 2U, 2U, 3U, 3U, 3U, 3U, 3U}};
+    constexpr std::array<std::size_t, 9> kSubjectOptionCounts{{
+        3U, 3U, 3U, 2U, 3U, 3U, 2U, 2U, 2U}};
+    for (std::size_t runner_index = 0; runner_index < 9U; ++runner_index) {
         const auto speaker_id = kGenericRunnerIds[runner_index];
-        for (std::size_t subject_index = 0; subject_index < 3U;
+        for (std::size_t subject_index = 0;
+             subject_index < kSubjectOptionCounts[runner_index];
              ++subject_index) {
             auto topic_state = make_state(
                 static_cast<std::uint8_t>(runner_index));
@@ -656,19 +734,61 @@ int main(const int argc, char** argv) {
             topic_view = dispatch_recruited_runner_conversation(
                 topic_state,
                 RecruitedRunnerConversationCommand::ask_for_information);
-            topic_view = dispatch_recruited_runner_conversation(
-                topic_state, RecruitedRunnerConversationCommand::continue_page);
-            topic_view = dispatch_recruited_runner_conversation(
-                topic_state, RecruitedRunnerConversationCommand::continue_page);
-            auto topic_panel = make_dialogue_panel_view(
+
+            const auto information_page_count =
+                topic_state.information_prompt.final_background_text
+                        .content_id.empty()
+                    ? 2U
+                    : 3U;
+            if (information_page_count !=
+                kInformationContinueCounts[runner_index]) {
+                std::cerr << "runner information page count differs for "
+                          << speaker_id << '\n';
+                return 40;
+            }
+            DialoguePanelView topic_panel{};
+            for (std::size_t page = 0U; page < information_page_count; ++page) {
+                topic_panel = make_dialogue_panel_view(
+                    topic_view, resolve_text, resolve_runner_content_key);
+                const auto& prompt = topic_view.information_prompt;
+                const auto& stream = topic_view.page_index == 0U
+                    ? prompt.opening_text
+                    : topic_view.page_index == 1U
+                        ? prompt.continuation_text
+                        : prompt.final_background_text;
+                const auto binding = runner_text_keys->find(
+                    std::string(speaker_id) + "." +
+                    std::string(stream.content_id));
+                const auto* expected_text = binding == runner_text_keys->end()
+                    ? nullptr
+                    : scripts.dialogue_text(binding->second);
+                if (topic_panel.kind != DialoguePanelKind::information_page ||
+                    !topic_panel.source_complete || expected_text == nullptr ||
+                    !panel_matches_text(topic_panel, *expected_text) ||
+                    topic_panel.has_more !=
+                        (page + 1U < information_page_count) ||
+                    topic_panel.returns_to_conversation !=
+                        (page + 1U == information_page_count)) {
+                    std::cerr << "runner background page binding differs for "
+                              << speaker_id << " page " << page << '\n';
+                    return 41;
+                }
+                topic_view = dispatch_recruited_runner_conversation(
+                    topic_state,
+                    RecruitedRunnerConversationCommand::continue_page);
+            }
+
+            topic_panel = make_dialogue_panel_view(
                 topic_view, resolve_text, resolve_runner_content_key);
             if (topic_panel.kind != DialoguePanelKind::subject_choices ||
-                !topic_panel.source_complete || topic_panel.option_count != 3U) {
+                !topic_panel.source_complete ||
+                topic_panel.option_count != kSubjectOptionCounts[runner_index]) {
                 std::cerr << "Lua topic menu binding differs for " << speaker_id
                           << '\n';
                 return 24;
             }
-            for (std::size_t option_index = 0; option_index < 3U;
+            for (std::size_t option_index = 0;
+                 option_index < kSubjectOptionCounts[runner_index];
                  ++option_index) {
                 if (topic_panel.options[option_index].source_label.empty()) {
                     std::cerr << "Lua topic label is empty for " << speaker_id
@@ -739,20 +859,14 @@ int main(const int argc, char** argv) {
         }
     }
 
-    auto unresolved = make_state(3U);
+    auto unresolved = make_state(9U);
     source_view = begin_recruited_runner_conversation(unresolved);
-    source_view = dispatch_recruited_runner_conversation(
-        unresolved, RecruitedRunnerConversationCommand::ask_for_information);
-    source_view = dispatch_recruited_runner_conversation(
-        unresolved, RecruitedRunnerConversationCommand::continue_page);
-    source_view = dispatch_recruited_runner_conversation(
-        unresolved, RecruitedRunnerConversationCommand::continue_page);
     panel = make_dialogue_panel_view(
         source_view, resolve_text, resolve_runner_content_key);
     if (!expect(panel.open) ||
         !expect(panel.kind == DialoguePanelKind::source_boundary) ||
         !expect(!panel.source_complete) ||
-        !expect(panel.source_boundary_reason.find("not yet source-converted") !=
+        !expect(panel.source_boundary_reason.find("Stark's separate") !=
                 std::string_view::npos) ||
         !expect(panel.option_count == 0U)) {
         return 6;

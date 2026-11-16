@@ -293,4 +293,78 @@ assert(ricky_full == "presented" and
        full_actor.actor_facts.lifecycle.active == true,
        "Ricky's full-roster response did not return to the common choices")
 
+
+-- The subject trees and five third biography pages are byte-for-byte ROM text.
+local Json = require("json")
+local function load_runner_dialogue_catalog(name)
+    local file = assert(io.open("decompilation/gameplay/dialogue/" .. name .. ".json", "rb"))
+    local value = Json.decode(file:read("*a"))
+    file:close()
+    return value
+end
+game.content = {
+    speakers = load_runner_dialogue_catalog("speakers"),
+    contacts = load_runner_dialogue_catalog("contacts"),
+    menus = load_runner_dialogue_catalog("menus"),
+}
+local Dialogue = require("dialogue")
+local runner_content_keys = Dialogue.runner_text_keys()
+local text_file = assert(io.open("decompilation/assets/dialogue/script-text.json", "rb"))
+local script_text = Json.decode(text_file:read("*a")).texts
+text_file:close()
+local expected_runner_content = {
+    { content_id = "petr_uvehr.subject.title", text_key = "runner.petr_uvehr.subject.title", text = "Like what?" },
+    { content_id = "petr_uvehr.subject.option.matrix", text_key = "runner.petr_uvehr.subject.option.matrix", text = "Tell me about the Matrix." },
+    { content_id = "petr_uvehr.subject.option.dwarf", text_key = "runner.petr_uvehr.subject.option.dwarf", text = "How is it that you are a dwarf?" },
+    { content_id = "petr_uvehr.subject.matrix.page_0", text_key = "runner.petr_uvehr.subject.matrix.page_0", text = "The Matrix is an area in cyberspace that basically connects all computer systems together.|Any system that is hooked into the Matrix can be accessed.|Once inside a system, we can take datafiles and sell them to people called fixers." },
+    { content_id = "petr_uvehr.subject.matrix.page_1", text_key = "runner.petr_uvehr.subject.matrix.page_1", text = "Deckers like me would rather be in cyberspace than in this dreary world any day." },
+    { content_id = "petr_uvehr.subject.dwarf.page_0", text_key = "runner.petr_uvehr.subject.dwarf.page_0", text = "<He grimaces a bit, but starts to talk.>|We've been called a lot of things, from mutations to freaks.|We prefer metahumans. " },
+    { content_id = "petr_uvehr.subject.dwarf.page_1", text_key = "runner.petr_uvehr.subject.dwarf.page_1", text = "Dwarfs are one of the four metahuman groups, the others being elves, trolls, and orks.|As you can see, we are generally stouter and stronger than you, but those are about the major differences." },
+    { content_id = "walking_bear.information.final", text_key = "runner.walking_bear.information.final", text = "To help them, I needed credits quick.|I offered my services of healing, as well as my more forceful disciplines." },
+    { content_id = "walking_bear.subject.title", text_key = "runner.walking_bear.subject.title", text = "Like what?" },
+    { content_id = "walking_bear.subject.option.shaman_magic", text_key = "runner.walking_bear.subject.option.shaman_magic", text = "Tell me about shaman magic." },
+    { content_id = "walking_bear.subject.option.david_owlfeather", text_key = "runner.walking_bear.subject.option.david_owlfeather", text = "Do you know where I can find David Owlfeather?" },
+    { content_id = "walking_bear.subject.option.ork", text_key = "runner.walking_bear.subject.option.ork", text = "How is it that you are an ork?" },
+    { content_id = "walking_bear.subject.shaman_magic.page_0", text_key = "runner.walking_bear.subject.shaman_magic.page_0", text = "Bear is mighty.|He struggles against no one, and looks after his own.|Shaman who follow Bear must listen to all of the earth's creatures and aid them when possible.|Bear also will not allow injustice and will strike when necessary." },
+    { content_id = "walking_bear.subject.david_owlfeather.page_0", text_key = "runner.walking_bear.subject.david_owlfeather.page_0", text = "Owlfeather is a good man.|Have you searched the Salish-Shidhe?" },
+    { content_id = "walking_bear.subject.ork.page_0", text_key = "runner.walking_bear.subject.ork.page_0", text = "<She looks into your eyes.>|Many orks shame me, for they make us all seem savage.|Orks are naturally larger than humans, so you fear us, and we react.|But that is no excuse for their behavior." },
+    { content_id = "phantom.information.final", text_key = "runner.phantom.information.final", text = "Before I knew it, I was out.  No pension, no severence, just a pink slip.|But I showed them. I just took my share from their system accounts.|But I'm ready to do some serious damage to those high-minded breeders.|No offense, of course." },
+    { content_id = "phantom.subject.title", text_key = "runner.phantom.subject.title", text = "What do you want?" },
+    { content_id = "phantom.subject.option.matrix", text_key = "runner.phantom.subject.option.matrix", text = "Tell me about the Matrix." },
+    { content_id = "phantom.subject.option.cyberdeck_equipment", text_key = "runner.phantom.subject.option.cyberdeck_equipment", text = "Where can I get some cyberdeck equipment?" },
+    { content_id = "phantom.subject.option.elf", text_key = "runner.phantom.subject.option.elf", text = "How is it that you are an elf?" },
+    { content_id = "phantom.subject.matrix.page_0", text_key = "runner.phantom.subject.matrix.page_0", text = "Most people go after the datastores because that's where the quick nuyen is.|But the systems are much more than datastore dumps.|The systems have vast connections, great influence." },
+    { content_id = "phantom.subject.matrix.page_1", text_key = "runner.phantom.subject.matrix.page_1", text = "Security cameras, alerts, and elevators can be controlled inside the system.|If you wanna go somewhere restricted, go into the Matrix, jack into their system, and find the Slave Nodes.|Or better yet, crash the system CPU." },
+    { content_id = "phantom.subject.cyberdeck_equipment.page_0", text_key = "runner.phantom.subject.cyberdeck_equipment.page_0", text = "There are a few cyberdeck stores around.|There's one called Microtronics here in the Arcology.  They sell decent decks.|The other's in the Puyallup Barrens, inside the Crime Mall, but the stuff they sell is mostly hot and costs a bundle." },
+    { content_id = "phantom.subject.elf.page_0", text_key = "runner.phantom.subject.elf.page_0", text = "They called it the \"Goblinization.\"|It happened about thirty years ago when one in ten humans suddenly metamorphosed into two of the metahuman races, orks and trolls.|Elves and dwarves were born of human parents about forty years ago when the magic itself first returned." },
+    { content_id = "phantom.subject.elf.page_1", text_key = "runner.phantom.subject.elf.page_1", text = "The elves were one of the races that created their own nations, and grouped into tribes.|They created a tight-knit family, one that excluded many outsiders.|But most of that you can find in the history books." },
+    { content_id = "two_fists.information.final", text_key = "runner.two_fists.information.final", text = "I'll always be grateful to you for pulling me outta that hole, Joshua." },
+    { content_id = "two_fists.subject.title", text_key = "runner.two_fists.subject.title", text = "Regarding what?" },
+    { content_id = "two_fists.subject.option.thon", text_key = "runner.two_fists.subject.option.thon", text = "What do you know about someone named Thon?" },
+    { content_id = "two_fists.subject.option.ellisia", text_key = "runner.two_fists.subject.option.ellisia", text = "What can you tell me about Ellisia?" },
+    { content_id = "two_fists.subject.thon.page_0", text_key = "runner.two_fists.subject.thon.page_0", text = "Word inside was he's new to Seattle and he came here looking for something, but nobody knows what. He was rumored to be working with Renraku on something, maybe related." },
+    { content_id = "two_fists.subject.thon.page_1", text_key = "runner.two_fists.subject.thon.page_1", text = "I also heard one of Thon's lieutenants is named Vigore. He did some time in Hollywood, but I stayed out of his way.  " },
+    { content_id = "two_fists.subject.ellisia.page_0", text_key = "runner.two_fists.subject.ellisia.page_0", text = "He was a hero to my people. His deeds are legend, but they are best spoken of by someone more gifted than I in his lore. |The Elders believe his name still carries power, but most of the young doubt it." },
+    { content_id = "freya.information.final", text_key = "runner.freya.information.final", text = "But I grew tired of their control over me and escaped into the shadows.|Been running them ever since." },
+    { content_id = "freya.subject.title", text_key = "runner.freya.subject.title", text = "What's on your mind, chummer?" },
+    { content_id = "freya.subject.option.vigore", text_key = "runner.freya.subject.option.vigore", text = "What do you know about a Johnson named Vigore?" },
+    { content_id = "freya.subject.option.local_johnsons", text_key = "runner.freya.subject.option.local_johnsons", text = "Do you know of any Johnsons in the area?" },
+    { content_id = "freya.subject.vigore.page_0", text_key = "runner.freya.subject.vigore.page_0", text = "He's too slick for his own good.|The contracts are good and there is no doubt that the nuyen is good, but there's more going on with him than meets the eye.|Be careful of that one." },
+    { content_id = "freya.subject.local_johnsons.page_0", text_key = "runner.freya.subject.local_johnsons.page_0", text = "Well, there's Julius Strouther, who I like to do runs for.|He's got a booth reserved over at Matchsticks in Downtown Seattle.|He's as close to an honest dwarf as you'll find in this sprawl; fair with your contracts and your pay." },
+    { content_id = "rianna.information.final", text_key = "runner.rianna.information.final", text = "Without deckers like myself, the Corps would grow unchecked.|They would have even more power than they do now, which is saying a lot." },
+    { content_id = "rianna.subject.title", text_key = "runner.rianna.subject.title", text = "Like...?" },
+    { content_id = "rianna.subject.option.matrix", text_key = "runner.rianna.subject.option.matrix", text = "Tell me about the Matrix." },
+    { content_id = "rianna.subject.option.corporate_security", text_key = "runner.rianna.subject.option.corporate_security", text = "Tell me about Corporate security procedures." },
+    { content_id = "rianna.subject.matrix.page_0", text_key = "runner.rianna.subject.matrix.page_0", text = "The Matrix holds some keen realities.|I've heard stories some Corps are actually creating life in the Matrix.|Artificial Intelligences.|It's all possible in the Matrix." },
+    { content_id = "rianna.subject.matrix.page_1", text_key = "runner.rianna.subject.matrix.page_1", text = "Even so, my talents and skills will never be duplicated by some program.|If you want to crack a system, nothing can compare to raw elven talent.|If you want to run a Corp, I'm your woman." },
+    { content_id = "rianna.subject.corporate_security.page_0", text_key = "runner.rianna.subject.corporate_security.page_0", text = "Simple.  They are deadly.|If you don't have top level software in an awesome deck, not even my skills could get you in." },
+    { content_id = "rianna.subject.corporate_security.page_1", text_key = "runner.rianna.subject.corporate_security.page_1", text = "If you got the wares, the best way to run a Corp system is by jacking in from inside the Corp.|From there, you can enter the system via I/O ports, which are usually less protected then the SANs.|Much easier to get what you're after." },
+}
+for _, expected in ipairs(expected_runner_content) do
+    assert(runner_content_keys[expected.content_id] == expected.text_key,
+        "runner content ID did not resolve: " .. expected.content_id)
+    assert(script_text[expected.text_key] == expected.text,
+        "runner text differs from the ROM record: " .. expected.text_key)
+end
+
 print("world content tests passed")

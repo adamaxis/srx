@@ -1,6 +1,7 @@
 #include "shadowrun_ghidra/session/recruited_runner_service_conversion.hpp"
 #include "enums.hpp"  // srx::VidPhoneContact (generated from enums.lua)
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <optional>
@@ -75,10 +76,16 @@ std::optional<RecruitedRunnerConversationRunner> generic_conversation_runner(
 struct RecruitedRunnerInformationRecord {
     RecruitedRunnerConversationRunner runner;
     RecruitedRunnerInformationTopic topic;
-    std::uint16_t flag;
+    RecruitedRunnerInformationFlag flag;
     RecruitedRunnerInformationTextStream opening_text;
     RecruitedRunnerInformationTextStream continuation_text;
+    RecruitedRunnerInformationTextStream final_background_text{};
 };
+
+constexpr std::uint16_t information_flag_value(
+    const RecruitedRunnerInformationFlag flag) {
+    return static_cast<std::uint16_t>(flag);
+}
 
 // The source descriptors at 0xFE848..0xFF8F0 still choose these streams and
 // segment counts. ROM text is imported into dialogue/script-text.json so the
@@ -120,6 +127,16 @@ constexpr RecruitedRunnerInformationTextStream kRiannaInformationOpening{
     "information.opening", 4U};
 constexpr RecruitedRunnerInformationTextStream kRiannaInformationContinuation{
     "information.continuation", 3U};
+constexpr RecruitedRunnerInformationTextStream kWalkingBearInformationFinal{
+    "information.final", 2U};
+constexpr RecruitedRunnerInformationTextStream kPhantomInformationFinal{
+    "information.final", 4U};
+constexpr RecruitedRunnerInformationTextStream kTwoFistsInformationFinal{
+    "information.final", 1U};
+constexpr RecruitedRunnerInformationTextStream kFreyaInformationFinal{
+    "information.final", 2U};
+constexpr RecruitedRunnerInformationTextStream kRiannaInformationFinal{
+    "information.final", 2U};
 constexpr RecruitedRunnerInformationTextStream kStarkInformationOpening{
     "information.opening", 1U};
 constexpr RecruitedRunnerInformationTextStream kStarkInformationContinuation{
@@ -130,52 +147,57 @@ constexpr std::array<RecruitedRunnerInformationRecord,
     kRecruitedRunnerInformationRecords{{
         {RecruitedRunnerConversationRunner::ricky,
          RecruitedRunnerInformationTopic::ricky_glow_city_origin,
-         0x0001U,
+         RecruitedRunnerInformationFlag::ricky,
          kRickyInformationOpening,
          kRickyInformationContinuation},
         {RecruitedRunnerConversationRunner::winston_marrs,
          RecruitedRunnerInformationTopic::winston_marrs_identity,
-         0x0002U,
+         RecruitedRunnerInformationFlag::winston_marrs,
          kWinstonInformationOpening,
          kWinstonInformationContinuation},
         {RecruitedRunnerConversationRunner::trent,
          RecruitedRunnerInformationTopic::trent_identity,
-         0x0004U,
+         RecruitedRunnerInformationFlag::trent,
          kTrentInformationOpening,
          kTrentInformationContinuation},
         {RecruitedRunnerConversationRunner::petr_uvehr,
          RecruitedRunnerInformationTopic::petr_uvehr_cyberware_motivation,
-         0x0008U,
+         RecruitedRunnerInformationFlag::petr_uvehr,
          kPetrInformationOpening,
          kPetrInformationContinuation},
         {RecruitedRunnerConversationRunner::walking_bear,
          RecruitedRunnerInformationTopic::walking_bear_transformation,
-         0x0010U,
+         RecruitedRunnerInformationFlag::walking_bear,
          kWalkingBearInformationOpening,
-         kWalkingBearInformationContinuation},
+         kWalkingBearInformationContinuation,
+         kWalkingBearInformationFinal},
         {RecruitedRunnerConversationRunner::phantom,
          RecruitedRunnerInformationTopic::phantom_matrix_background,
-         0x0020U,
+         RecruitedRunnerInformationFlag::phantom,
          kPhantomInformationOpening,
-         kPhantomInformationContinuation},
+         kPhantomInformationContinuation,
+         kPhantomInformationFinal},
         {RecruitedRunnerConversationRunner::two_fists,
          RecruitedRunnerInformationTopic::two_fists_ares_run,
-         0x0040U,
+         RecruitedRunnerInformationFlag::two_fists,
          kTwoFistsInformationOpening,
-         kTwoFistsInformationContinuation},
+         kTwoFistsInformationContinuation,
+         kTwoFistsInformationFinal},
         {RecruitedRunnerConversationRunner::freya,
          RecruitedRunnerInformationTopic::freya_cascade_crow_background,
-         0x0080U,
+         RecruitedRunnerInformationFlag::freya,
          kFreyaInformationOpening,
-         kFreyaInformationContinuation},
+         kFreyaInformationContinuation,
+         kFreyaInformationFinal},
         {RecruitedRunnerConversationRunner::rianna,
          RecruitedRunnerInformationTopic::rianna_heartbane_identity,
-         0x0100U,
+         RecruitedRunnerInformationFlag::rianna,
          kRiannaInformationOpening,
-         kRiannaInformationContinuation},
+         kRiannaInformationContinuation,
+         kRiannaInformationFinal},
         {RecruitedRunnerConversationRunner::stark,
          RecruitedRunnerInformationTopic::stark_amerindian_heritage,
-         0x0200U,
+         RecruitedRunnerInformationFlag::stark,
          kStarkInformationOpening,
          kStarkInformationContinuation},
     }};
@@ -225,6 +247,145 @@ constexpr RecruitedRunnerInformationTextStream kTrentJeffersonContactPage{
     "subject.contacts.page_0", 3U};
 constexpr RecruitedRunnerInformationTextStream kTrentJohnsonPage{
     "subject.johnsons.page_0", 3U};
+
+struct RecruitedRunnerInformationSubjectPromptRecord {
+    RecruitedRunnerConversationRunner runner;
+    std::string_view title_content_id;
+    std::array<std::string_view, 3> option_content_ids;
+    std::array<RecruitedRunnerInformationSubject, 3> subjects;
+    std::size_t option_count;
+};
+
+constexpr std::array<RecruitedRunnerInformationSubjectPromptRecord, 6>
+    kRecruitedRunnerInformationSubjectPrompts{{
+        {RecruitedRunnerConversationRunner::petr_uvehr,
+         "subject.title",
+         {"subject.option.matrix", "subject.option.dwarf", {}},
+         {RecruitedRunnerInformationSubject::petr_matrix,
+          RecruitedRunnerInformationSubject::petr_dwarf, {}},
+         2U},
+        {RecruitedRunnerConversationRunner::walking_bear,
+         "subject.title",
+         {"subject.option.shaman_magic",
+          "subject.option.david_owlfeather", "subject.option.ork"},
+         {RecruitedRunnerInformationSubject::walking_bear_shaman_magic,
+          RecruitedRunnerInformationSubject::walking_bear_david_owlfeather,
+          RecruitedRunnerInformationSubject::walking_bear_ork},
+         3U},
+        {RecruitedRunnerConversationRunner::phantom,
+         "subject.title",
+         {"subject.option.matrix", "subject.option.cyberdeck_equipment",
+          "subject.option.elf"},
+         {RecruitedRunnerInformationSubject::phantom_matrix,
+          RecruitedRunnerInformationSubject::phantom_cyberdeck_equipment,
+          RecruitedRunnerInformationSubject::phantom_elf},
+         3U},
+        {RecruitedRunnerConversationRunner::two_fists,
+         "subject.title",
+         {"subject.option.thon", "subject.option.ellisia", {}},
+         {RecruitedRunnerInformationSubject::two_fists_thon,
+          RecruitedRunnerInformationSubject::two_fists_ellisia, {}},
+         2U},
+        {RecruitedRunnerConversationRunner::freya,
+         "subject.title",
+         {"subject.option.vigore", "subject.option.local_johnsons", {}},
+         {RecruitedRunnerInformationSubject::freya_vigore,
+          RecruitedRunnerInformationSubject::freya_local_johnsons, {}},
+         2U},
+        {RecruitedRunnerConversationRunner::rianna,
+         "subject.title",
+         {"subject.option.matrix", "subject.option.corporate_security", {}},
+         {RecruitedRunnerInformationSubject::rianna_matrix,
+          RecruitedRunnerInformationSubject::rianna_corporate_security, {}},
+         2U},
+    }};
+
+struct RecruitedRunnerInformationSubjectResponseRecord {
+    RecruitedRunnerConversationRunner runner;
+    RecruitedRunnerInformationSubject subject;
+    std::array<RecruitedRunnerInformationTextStream, 2> pages;
+    std::array<bool, 2> more_after_page;
+    std::size_t page_count;
+};
+
+constexpr RecruitedRunnerInformationSubjectResponseRecord
+make_subject_response(
+    const RecruitedRunnerConversationRunner runner,
+    const RecruitedRunnerInformationSubject subject,
+    const RecruitedRunnerInformationTextStream page_one,
+    const RecruitedRunnerInformationTextStream page_two,
+    const bool more_after_page_one,
+    const std::size_t page_count) {
+    return {runner, subject, {page_one, page_two},
+            {more_after_page_one, false}, page_count};
+}
+
+constexpr std::array<RecruitedRunnerInformationSubjectResponseRecord, 14>
+    kRecruitedRunnerInformationSubjectResponses{{
+        make_subject_response(
+            RecruitedRunnerConversationRunner::petr_uvehr,
+            RecruitedRunnerInformationSubject::petr_matrix,
+            {"subject.matrix.page_0", 3U}, {"subject.matrix.page_1", 1U},
+            true, 2U),
+        make_subject_response(
+            RecruitedRunnerConversationRunner::petr_uvehr,
+            RecruitedRunnerInformationSubject::petr_dwarf,
+            {"subject.dwarf.page_0", 3U}, {"subject.dwarf.page_1", 2U},
+            true, 2U),
+        make_subject_response(
+            RecruitedRunnerConversationRunner::walking_bear,
+            RecruitedRunnerInformationSubject::walking_bear_shaman_magic,
+            {"subject.shaman_magic.page_0", 4U}, {}, false, 1U),
+        make_subject_response(
+            RecruitedRunnerConversationRunner::walking_bear,
+            RecruitedRunnerInformationSubject::walking_bear_david_owlfeather,
+            {"subject.david_owlfeather.page_0", 2U}, {}, false, 1U),
+        make_subject_response(
+            RecruitedRunnerConversationRunner::walking_bear,
+            RecruitedRunnerInformationSubject::walking_bear_ork,
+            {"subject.ork.page_0", 4U}, {}, false, 1U),
+        make_subject_response(
+            RecruitedRunnerConversationRunner::phantom,
+            RecruitedRunnerInformationSubject::phantom_matrix,
+            {"subject.matrix.page_0", 3U}, {"subject.matrix.page_1", 3U},
+            true, 2U),
+        make_subject_response(
+            RecruitedRunnerConversationRunner::phantom,
+            RecruitedRunnerInformationSubject::phantom_cyberdeck_equipment,
+            {"subject.cyberdeck_equipment.page_0", 3U}, {}, false, 1U),
+        make_subject_response(
+            RecruitedRunnerConversationRunner::phantom,
+            RecruitedRunnerInformationSubject::phantom_elf,
+            {"subject.elf.page_0", 3U}, {"subject.elf.page_1", 3U}, true,
+            2U),
+        make_subject_response(
+            RecruitedRunnerConversationRunner::two_fists,
+            RecruitedRunnerInformationSubject::two_fists_thon,
+            {"subject.thon.page_0", 1U}, {"subject.thon.page_1", 1U}, true,
+            2U),
+        make_subject_response(
+            RecruitedRunnerConversationRunner::two_fists,
+            RecruitedRunnerInformationSubject::two_fists_ellisia,
+            {"subject.ellisia.page_0", 2U}, {}, false, 1U),
+        make_subject_response(
+            RecruitedRunnerConversationRunner::freya,
+            RecruitedRunnerInformationSubject::freya_vigore,
+            {"subject.vigore.page_0", 3U}, {}, false, 1U),
+        make_subject_response(
+            RecruitedRunnerConversationRunner::freya,
+            RecruitedRunnerInformationSubject::freya_local_johnsons,
+            {"subject.local_johnsons.page_0", 3U}, {}, false, 1U),
+        make_subject_response(
+            RecruitedRunnerConversationRunner::rianna,
+            RecruitedRunnerInformationSubject::rianna_matrix,
+            {"subject.matrix.page_0", 4U}, {"subject.matrix.page_1", 3U},
+            true, 2U),
+        make_subject_response(
+            RecruitedRunnerConversationRunner::rianna,
+            RecruitedRunnerInformationSubject::rianna_corporate_security,
+            {"subject.corporate_security.page_0", 2U},
+            {"subject.corporate_security.page_1", 3U}, true, 2U),
+    }};
 
 // FFFC2C is the Vid-Phone contact long, not the FFFC1E story-flag long:
 // bit n unlocks contact n (0xF5F4), and contact 12 is Prof. Jefferson.
@@ -428,14 +589,16 @@ select_recruited_runner_information_prompt(
     result.action = RecruitedRunnerInformationAction::selected;
     result.runner = record.runner;
     result.topic = record.topic;
+    const auto flag = information_flag_value(record.flag);
     result.changed_flag = static_cast<std::uint16_t>(
-        record.flag & static_cast<std::uint16_t>(
+        flag & static_cast<std::uint16_t>(
                           ~state.runner_information_flags));
     state.runner_information_flags = static_cast<std::uint16_t>(
-        state.runner_information_flags | record.flag);
+        state.runner_information_flags | flag);
     result.information_flags = state.runner_information_flags;
     result.opening_text = record.opening_text;
     result.continuation_text = record.continuation_text;
+    result.final_background_text = record.final_background_text;
     result.more_content_id = kMoreOptionContentId;
     return result;
 }
@@ -552,6 +715,47 @@ TrentInformationResponse select_trent_information_response(
         result.page_count = 1U;
         return result;
     }
+    return result;
+}
+
+RecruitedRunnerInformationSubjectPrompt
+recruited_runner_information_subject_prompt(
+    const RecruitedRunnerConversationRunner runner) {
+    RecruitedRunnerInformationSubjectPrompt result{};
+    result.runner = runner;
+    const auto found = std::find_if(
+        kRecruitedRunnerInformationSubjectPrompts.begin(),
+        kRecruitedRunnerInformationSubjectPrompts.end(),
+        [runner](const auto& record) { return record.runner == runner; });
+    if (found == kRecruitedRunnerInformationSubjectPrompts.end()) {
+        return result;
+    }
+    result.title_content_id = found->title_content_id;
+    result.option_content_ids = found->option_content_ids;
+    result.subjects = found->subjects;
+    result.option_count = found->option_count;
+    return result;
+}
+
+RecruitedRunnerInformationSubjectResponse
+select_recruited_runner_information_subject_response(
+    const RecruitedRunnerInformationSubject subject) {
+    RecruitedRunnerInformationSubjectResponse result{};
+    result.subject = subject;
+    const auto found = std::find_if(
+        kRecruitedRunnerInformationSubjectResponses.begin(),
+        kRecruitedRunnerInformationSubjectResponses.end(),
+        [subject](const auto& record) { return record.subject == subject; });
+    if (found == kRecruitedRunnerInformationSubjectResponses.end()) {
+        return result;
+    }
+    result.action =
+        RecruitedRunnerInformationSubjectResponseAction::selected;
+    result.runner = found->runner;
+    result.pages = found->pages;
+    result.more_after_page = found->more_after_page;
+    result.page_count = found->page_count;
+    result.returns_to_common_conversation = true;
     return result;
 }
 

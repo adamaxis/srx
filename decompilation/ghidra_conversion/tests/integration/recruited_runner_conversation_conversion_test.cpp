@@ -1,5 +1,6 @@
 #include "shadowrun_ghidra/integration/recruited_runner_conversation_conversion.hpp"
 
+#include <array>
 #include <cstdint>
 
 namespace {
@@ -134,19 +135,83 @@ int main() {
         return 10;
     }
 
-    auto unresolved = make_state(3U);
-    view = begin_recruited_runner_conversation(unresolved);
-    view = dispatch_recruited_runner_conversation(
-        unresolved, RecruitedRunnerConversationCommand::ask_for_information);
-    view = dispatch_recruited_runner_conversation(
-        unresolved, RecruitedRunnerConversationCommand::continue_page);
-    view = dispatch_recruited_runner_conversation(
-        unresolved, RecruitedRunnerConversationCommand::continue_page);
+    constexpr std::array<std::size_t, 6> kInformationContinueCounts{{
+        2U, 3U, 3U, 3U, 3U, 3U}};
+    constexpr std::array<std::size_t, 6> kSubjectOptionCounts{{
+        2U, 3U, 3U, 2U, 2U, 2U}};
+    constexpr std::array<std::size_t, 6> kFirstResponsePageCounts{{
+        2U, 1U, 2U, 2U, 1U, 2U}};
+    constexpr std::array<RecruitedRunnerConversationRunner, 6> kAddedRunners{{
+        RecruitedRunnerConversationRunner::petr_uvehr,
+        RecruitedRunnerConversationRunner::walking_bear,
+        RecruitedRunnerConversationRunner::phantom,
+        RecruitedRunnerConversationRunner::two_fists,
+        RecruitedRunnerConversationRunner::freya,
+        RecruitedRunnerConversationRunner::rianna,
+    }};
+    for (std::size_t runner = 0U; runner < kAddedRunners.size(); ++runner) {
+        auto runner_state = make_state(static_cast<std::uint8_t>(runner + 3U));
+        view = begin_recruited_runner_conversation(runner_state);
+        view = dispatch_recruited_runner_conversation(
+            runner_state,
+            RecruitedRunnerConversationCommand::ask_for_information);
+        const auto expected_background_pages =
+            kInformationContinueCounts[runner];
+        if (!expect(view.information_prompt.final_background_text.content_id.empty() ==
+                        (expected_background_pages == 2U))) {
+            return 11;
+        }
+        for (std::size_t page = 0U; page < expected_background_pages; ++page) {
+            view = dispatch_recruited_runner_conversation(
+                runner_state,
+                RecruitedRunnerConversationCommand::continue_page);
+        }
+        if (!expect(view.screen ==
+                        RecruitedRunnerConversationScreen::information_subject_prompt)) {
+            return 12;
+        }
+        const auto& subject_prompt =
+            std::get<RecruitedRunnerInformationSubjectPrompt>(
+                view.subject_prompt);
+        if (!expect(subject_prompt.runner == kAddedRunners[runner] &&
+                    subject_prompt.title_content_id == "subject.title" &&
+                    subject_prompt.option_count == kSubjectOptionCounts[runner])) {
+            return 13;
+        }
+        if (runner == 0U) {
+            const auto invalid_subject =
+                dispatch_recruited_runner_conversation(
+                    runner_state,
+                    RecruitedRunnerConversationCommand::select_third_subject);
+            if (!expect(invalid_subject.transition ==
+                            RecruitedRunnerConversationTransition::invalid_command &&
+                        invalid_subject.screen ==
+                            RecruitedRunnerConversationScreen::information_subject_prompt)) {
+                return 14;
+            }
+        }
+        view = dispatch_recruited_runner_conversation(
+            runner_state,
+            RecruitedRunnerConversationCommand::select_first_subject);
+        const auto& response = std::get<
+            RecruitedRunnerInformationSubjectResponse>(view.information_response);
+        if (!expect(view.screen ==
+                        RecruitedRunnerConversationScreen::information_response &&
+                    response.action ==
+                        RecruitedRunnerInformationSubjectResponseAction::selected &&
+                    response.runner == kAddedRunners[runner] &&
+                    response.page_count == kFirstResponsePageCounts[runner])) {
+            return 15;
+        }
+    }
+
+    auto story_runner = make_state(9U);
+    view = begin_recruited_runner_conversation(story_runner);
     if (!expect(view.screen ==
                     RecruitedRunnerConversationScreen::source_boundary &&
-                view.source_boundary_reason.find("not yet source-converted") !=
+                view.source_boundary_reason.find("Stark's separate") !=
                     std::string_view::npos)) {
-        return 11;
+        return 16;
     }
 
     auto hire = make_state(0U);
@@ -157,7 +222,7 @@ int main() {
                     RecruitedRunnerConversationScreen::service_offer &&
                 view.service_offer.action ==
                     RecruitedRunnerServiceOfferPreparationAction::prepared)) {
-        return 12;
+        return 17;
     }
     view = dispatch_recruited_runner_conversation(
         hire, RecruitedRunnerConversationCommand::pay_short_term_run);
@@ -165,7 +230,7 @@ int main() {
                     RecruitedRunnerConversationScreen::service_result &&
                 view.service_result.action ==
                     RecruitedRunnerServiceAction::completed)) {
-        return 13;
+        return 18;
     }
 
     return 0;

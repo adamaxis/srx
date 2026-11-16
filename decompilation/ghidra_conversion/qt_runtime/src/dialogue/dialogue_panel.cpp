@@ -219,7 +219,7 @@ void add_subject_options(DialoguePanelView& view,
         DialoguePanelCommand::runner_select_second_subject,
         DialoguePanelCommand::runner_select_third_subject};
     for (std::size_t index = 0;
-         index < subject_prompt.option_content_ids.size(); ++index) {
+         index < subject_prompt.option_count; ++index) {
         const auto content_id = subject_prompt.option_content_ids[index];
         const auto label_key = resolve_content_key
                                    ? resolve_content_key(speaker_id, content_id)
@@ -315,9 +315,12 @@ DialoguePanelView make_dialogue_panel_view(
         add_common_options(view);
         return view;
 
-    case RecruitedRunnerConversationScreen::information_page:
+    case RecruitedRunnerConversationScreen::information_page: {
         view.open = true;
         view.kind = DialoguePanelKind::information_page;
+        const auto final_text =
+            source_view.information_prompt.final_background_text;
+        const auto page_count = final_text.content_id.empty() ? 2U : 3U;
         if (source_view.page_index == 0U) {
             copy_text_stream(view, source_view.information_prompt.opening_text,
                              runner_id, resolve_content_key, resolve_text);
@@ -325,14 +328,18 @@ DialoguePanelView make_dialogue_panel_view(
             copy_text_stream(view,
                              source_view.information_prompt.continuation_text,
                              runner_id, resolve_content_key, resolve_text);
+        } else if (source_view.page_index == 2U &&
+                   !final_text.content_id.empty()) {
+            copy_text_stream(view, final_text, runner_id,
+                             resolve_content_key, resolve_text);
         } else {
             view.source_complete = false;
             view.source_boundary_reason =
-                "converted runner information page exceeded its two source streams";
+                "converted runner information page exceeded its source streams";
             return view;
         }
-        view.has_more = source_view.page_index == 0U;
-        view.returns_to_conversation = source_view.page_index == 1U;
+        view.has_more = source_view.page_index + 1U < page_count;
+        view.returns_to_conversation = source_view.page_index + 1U == page_count;
         if (view.has_more) {
             const auto more_key = resolve_content_key
                                       ? resolve_content_key(
@@ -347,10 +354,12 @@ DialoguePanelView make_dialogue_panel_view(
             }
         }
         return view;
+    }
 
     case RecruitedRunnerConversationScreen::ricky_subject_prompt:
     case RecruitedRunnerConversationScreen::winston_subject_prompt:
     case RecruitedRunnerConversationScreen::trent_subject_prompt:
+    case RecruitedRunnerConversationScreen::information_subject_prompt:
         view.open = true;
         view.kind = DialoguePanelKind::subject_choices;
         std::visit(

@@ -366,6 +366,196 @@ int main() {
         return 34;
     }
 
+    constexpr std::array<RecruitedRunnerConversationRunner, 6>
+        kAddedInformationRunners{{
+            RecruitedRunnerConversationRunner::petr_uvehr,
+            RecruitedRunnerConversationRunner::walking_bear,
+            RecruitedRunnerConversationRunner::phantom,
+            RecruitedRunnerConversationRunner::two_fists,
+            RecruitedRunnerConversationRunner::freya,
+            RecruitedRunnerConversationRunner::rianna,
+        }};
+    constexpr std::array<std::size_t, 6> kFinalBackgroundSegments{{
+        0U, 2U, 4U, 1U, 2U, 2U}};
+    auto information_state = offer_state;
+    information_state.runner_information_flags = 0U;
+    std::uint16_t expected_information_flags = 0U;
+    for (std::size_t index = 0U; index < kAddedInformationRunners.size();
+         ++index) {
+        information_state.selected_runner_template_index =
+            static_cast<std::uint8_t>(index + 3U);
+        const auto information =
+            select_recruited_runner_information_prompt(information_state);
+        const auto expected_flag = static_cast<std::uint16_t>(
+            std::uint16_t{1U} << static_cast<unsigned>(index + 3U));
+        expected_information_flags = static_cast<std::uint16_t>(
+            expected_information_flags | expected_flag);
+        if (!expect(information.action ==
+                        RecruitedRunnerInformationAction::selected &&
+                    information.runner == kAddedInformationRunners[index] &&
+                    information.changed_flag == expected_flag &&
+                    information.information_flags ==
+                        expected_information_flags &&
+                    information.opening_text.content_id ==
+                        "information.opening" &&
+                    information.continuation_text.content_id ==
+                        "information.continuation" &&
+                    information.final_background_text.segment_count ==
+                        kFinalBackgroundSegments[index] &&
+                    (kFinalBackgroundSegments[index] == 0U
+                         ? information.final_background_text.content_id.empty()
+                         : information.final_background_text.content_id ==
+                               "information.final"))) {
+            return 35;
+        }
+    }
+
+    struct SubjectPromptExpectation {
+        RecruitedRunnerConversationRunner runner;
+        std::array<std::string_view, 3> option_content_ids;
+        std::array<RecruitedRunnerInformationSubject, 3> subjects;
+        std::size_t option_count;
+    };
+    constexpr std::array<SubjectPromptExpectation, 6> kSubjectPrompts{{
+        {RecruitedRunnerConversationRunner::petr_uvehr,
+         {"subject.option.matrix", "subject.option.dwarf", {}},
+         {RecruitedRunnerInformationSubject::petr_matrix,
+          RecruitedRunnerInformationSubject::petr_dwarf, {}},
+         2U},
+        {RecruitedRunnerConversationRunner::walking_bear,
+         {"subject.option.shaman_magic",
+          "subject.option.david_owlfeather", "subject.option.ork"},
+         {RecruitedRunnerInformationSubject::walking_bear_shaman_magic,
+          RecruitedRunnerInformationSubject::walking_bear_david_owlfeather,
+          RecruitedRunnerInformationSubject::walking_bear_ork},
+         3U},
+        {RecruitedRunnerConversationRunner::phantom,
+         {"subject.option.matrix", "subject.option.cyberdeck_equipment",
+          "subject.option.elf"},
+         {RecruitedRunnerInformationSubject::phantom_matrix,
+          RecruitedRunnerInformationSubject::phantom_cyberdeck_equipment,
+          RecruitedRunnerInformationSubject::phantom_elf},
+         3U},
+        {RecruitedRunnerConversationRunner::two_fists,
+         {"subject.option.thon", "subject.option.ellisia", {}},
+         {RecruitedRunnerInformationSubject::two_fists_thon,
+          RecruitedRunnerInformationSubject::two_fists_ellisia, {}},
+         2U},
+        {RecruitedRunnerConversationRunner::freya,
+         {"subject.option.vigore", "subject.option.local_johnsons", {}},
+         {RecruitedRunnerInformationSubject::freya_vigore,
+          RecruitedRunnerInformationSubject::freya_local_johnsons, {}},
+         2U},
+        {RecruitedRunnerConversationRunner::rianna,
+         {"subject.option.matrix", "subject.option.corporate_security", {}},
+         {RecruitedRunnerInformationSubject::rianna_matrix,
+          RecruitedRunnerInformationSubject::rianna_corporate_security, {}},
+         2U},
+    }};
+    for (const auto& expected : kSubjectPrompts) {
+        const auto prompt =
+            recruited_runner_information_subject_prompt(expected.runner);
+        if (!expect(prompt.runner == expected.runner &&
+                    prompt.title_content_id == "subject.title" &&
+                    prompt.option_content_ids == expected.option_content_ids &&
+                    prompt.subjects == expected.subjects &&
+                    prompt.option_count == expected.option_count)) {
+            return 36;
+        }
+    }
+
+    struct SubjectResponseExpectation {
+        RecruitedRunnerConversationRunner runner;
+        RecruitedRunnerInformationSubject subject;
+        std::array<std::string_view, 2> page_content_ids;
+        std::array<std::size_t, 2> page_segments;
+        std::array<bool, 2> more_after_page;
+        std::size_t page_count;
+    };
+    constexpr std::array<SubjectResponseExpectation, 14> kSubjectResponses{{
+        {RecruitedRunnerConversationRunner::petr_uvehr,
+         RecruitedRunnerInformationSubject::petr_matrix,
+         {"subject.matrix.page_0", "subject.matrix.page_1"}, {3U, 1U},
+         {true, false}, 2U},
+        {RecruitedRunnerConversationRunner::petr_uvehr,
+         RecruitedRunnerInformationSubject::petr_dwarf,
+         {"subject.dwarf.page_0", "subject.dwarf.page_1"}, {3U, 2U},
+         {true, false}, 2U},
+        {RecruitedRunnerConversationRunner::walking_bear,
+         RecruitedRunnerInformationSubject::walking_bear_shaman_magic,
+         {"subject.shaman_magic.page_0", {}}, {4U, 0U}, {false, false}, 1U},
+        {RecruitedRunnerConversationRunner::walking_bear,
+         RecruitedRunnerInformationSubject::walking_bear_david_owlfeather,
+         {"subject.david_owlfeather.page_0", {}}, {2U, 0U},
+         {false, false}, 1U},
+        {RecruitedRunnerConversationRunner::walking_bear,
+         RecruitedRunnerInformationSubject::walking_bear_ork,
+         {"subject.ork.page_0", {}}, {4U, 0U}, {false, false}, 1U},
+        {RecruitedRunnerConversationRunner::phantom,
+         RecruitedRunnerInformationSubject::phantom_matrix,
+         {"subject.matrix.page_0", "subject.matrix.page_1"}, {3U, 3U},
+         {true, false}, 2U},
+        {RecruitedRunnerConversationRunner::phantom,
+         RecruitedRunnerInformationSubject::phantom_cyberdeck_equipment,
+         {"subject.cyberdeck_equipment.page_0", {}}, {3U, 0U},
+         {false, false}, 1U},
+        {RecruitedRunnerConversationRunner::phantom,
+         RecruitedRunnerInformationSubject::phantom_elf,
+         {"subject.elf.page_0", "subject.elf.page_1"}, {3U, 3U},
+         {true, false}, 2U},
+        {RecruitedRunnerConversationRunner::two_fists,
+         RecruitedRunnerInformationSubject::two_fists_thon,
+         {"subject.thon.page_0", "subject.thon.page_1"}, {1U, 1U},
+         {true, false}, 2U},
+        {RecruitedRunnerConversationRunner::two_fists,
+         RecruitedRunnerInformationSubject::two_fists_ellisia,
+         {"subject.ellisia.page_0", {}}, {2U, 0U}, {false, false}, 1U},
+        {RecruitedRunnerConversationRunner::freya,
+         RecruitedRunnerInformationSubject::freya_vigore,
+         {"subject.vigore.page_0", {}}, {3U, 0U}, {false, false}, 1U},
+        {RecruitedRunnerConversationRunner::freya,
+         RecruitedRunnerInformationSubject::freya_local_johnsons,
+         {"subject.local_johnsons.page_0", {}}, {3U, 0U},
+         {false, false}, 1U},
+        {RecruitedRunnerConversationRunner::rianna,
+         RecruitedRunnerInformationSubject::rianna_matrix,
+         {"subject.matrix.page_0", "subject.matrix.page_1"}, {4U, 3U},
+         {true, false}, 2U},
+        {RecruitedRunnerConversationRunner::rianna,
+         RecruitedRunnerInformationSubject::rianna_corporate_security,
+         {"subject.corporate_security.page_0",
+          "subject.corporate_security.page_1"},
+         {2U, 3U}, {true, false}, 2U},
+    }};
+    for (const auto& expected : kSubjectResponses) {
+        const auto response =
+            select_recruited_runner_information_subject_response(
+                expected.subject);
+        if (!expect(response.action ==
+                        RecruitedRunnerInformationSubjectResponseAction::selected &&
+                    response.runner == expected.runner &&
+                    response.subject == expected.subject &&
+                    response.page_count == expected.page_count &&
+                    response.more_after_page == expected.more_after_page &&
+                    response.returns_to_common_conversation)) {
+            return 37;
+        }
+        for (std::size_t page = 0U; page < expected.page_count; ++page) {
+            if (!expect(response.pages[page].content_id ==
+                            expected.page_content_ids[page] &&
+                        response.pages[page].segment_count ==
+                            expected.page_segments[page])) {
+                return 38;
+            }
+        }
+    }
+    if (!expect(select_recruited_runner_information_subject_response(
+                    static_cast<RecruitedRunnerInformationSubject>(14U))
+                    .action == RecruitedRunnerInformationSubjectResponseAction::
+                                   subject_unavailable)) {
+        return 39;
+    }
+
     auto state = make_state();
     std::vector<int> callback_order;
     const RecruitedRunnerServiceCallbacks callbacks{

@@ -9,7 +9,12 @@ namespace {
 constexpr std::string_view kStarkConversationBoundary =
     "Stark's separate story conversation root is not yet source-converted.";
 constexpr std::string_view kSubjectTreeBoundary =
-    "This runner's subject tree is not yet source-converted; return to the ROM trace before implementing it.";
+    "This runner has no converted information subject prompt.";
+
+std::size_t information_page_count(
+    const RecruitedRunnerInformationPromptResult& prompt) {
+    return prompt.final_background_text.content_id.empty() ? 2U : 3U;
+}
 
 RecruitedRunnerConversationView make_view(
     const RecruitedRunnerConversationState& state,
@@ -78,6 +83,17 @@ RecruitedRunnerConversationView open_subject_prompt(
         state.subject_prompt = trent_information_subject_prompt();
         state.screen = RecruitedRunnerConversationScreen::trent_subject_prompt;
         break;
+    case RecruitedRunnerConversationRunner::petr_uvehr:
+    case RecruitedRunnerConversationRunner::walking_bear:
+    case RecruitedRunnerConversationRunner::phantom:
+    case RecruitedRunnerConversationRunner::two_fists:
+    case RecruitedRunnerConversationRunner::freya:
+    case RecruitedRunnerConversationRunner::rianna:
+        state.subject_prompt = recruited_runner_information_subject_prompt(
+            state.runner);
+        state.screen =
+            RecruitedRunnerConversationScreen::information_subject_prompt;
+        break;
     default:
         state.screen = RecruitedRunnerConversationScreen::source_boundary;
         state.source_boundary_reason = kSubjectTreeBoundary;
@@ -119,22 +135,48 @@ std::optional<RecruitedRunnerServiceOffer> service_offer(
 RecruitedRunnerConversationView select_information_subject(
     RecruitedRunnerConversationState& state,
     const std::size_t index) {
-    if (index >= 3U) {
-        return set_invalid_command(state);
-    }
     switch (state.runner) {
     case RecruitedRunnerConversationRunner::ricky:
+        if (index >= 3U) {
+            return set_invalid_command(state);
+        }
         state.information_response = select_ricky_information_response(
             static_cast<RickyInformationSubject>(index));
         break;
     case RecruitedRunnerConversationRunner::winston_marrs:
+        if (index >= 3U) {
+            return set_invalid_command(state);
+        }
         state.information_response = select_winston_information_response(
             static_cast<WinstonInformationSubject>(index));
         break;
     case RecruitedRunnerConversationRunner::trent:
+        if (index >= 3U) {
+            return set_invalid_command(state);
+        }
         state.information_response = select_trent_information_response(
             static_cast<TrentInformationSubject>(index), state.service);
         break;
+    case RecruitedRunnerConversationRunner::petr_uvehr:
+    case RecruitedRunnerConversationRunner::walking_bear:
+    case RecruitedRunnerConversationRunner::phantom:
+    case RecruitedRunnerConversationRunner::two_fists:
+    case RecruitedRunnerConversationRunner::freya:
+    case RecruitedRunnerConversationRunner::rianna: {
+        const auto* prompt = std::get_if<
+            RecruitedRunnerInformationSubjectPrompt>(&state.subject_prompt);
+        if (prompt == nullptr || index >= prompt->option_count) {
+            return set_invalid_command(state);
+        }
+        auto response = select_recruited_runner_information_subject_response(
+            prompt->subjects[index]);
+        if (response.action !=
+            RecruitedRunnerInformationSubjectResponseAction::selected) {
+            return set_invalid_command(state);
+        }
+        state.information_response = response;
+        break;
+    }
     default:
         state.screen = RecruitedRunnerConversationScreen::source_boundary;
         state.source_boundary_reason = kSubjectTreeBoundary;
@@ -216,8 +258,9 @@ RecruitedRunnerConversationView dispatch_recruited_runner_conversation(
 
     case RecruitedRunnerConversationScreen::information_page:
         if (command == RecruitedRunnerConversationCommand::continue_page) {
-            if (state.page_index == 0U) {
-                state.page_index = 1U;
+            if (state.page_index + 1U <
+                information_page_count(state.information_prompt)) {
+                ++state.page_index;
                 return make_view(
                     state, RecruitedRunnerConversationTransition::information_opened);
             }
@@ -232,7 +275,8 @@ RecruitedRunnerConversationView dispatch_recruited_runner_conversation(
 
     case RecruitedRunnerConversationScreen::ricky_subject_prompt:
     case RecruitedRunnerConversationScreen::winston_subject_prompt:
-    case RecruitedRunnerConversationScreen::trent_subject_prompt: {
+    case RecruitedRunnerConversationScreen::trent_subject_prompt:
+    case RecruitedRunnerConversationScreen::information_subject_prompt: {
         const auto index = subject_index(command);
         if (!index.has_value()) {
             if (command ==

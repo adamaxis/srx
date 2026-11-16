@@ -209,12 +209,49 @@ local runner_dialogue = {
             opening = "runner.petr_uvehr.information.opening",
             continuation = "runner.petr_uvehr.information.continuation",
         },
+        subject = {
+            title_key = "runner.petr_uvehr.subject.title",
+            options = {
+                matrix = "runner.petr_uvehr.subject.option.matrix",
+                dwarf = "runner.petr_uvehr.subject.option.dwarf",
+            },
+            responses = {
+                matrix = {
+                    "runner.petr_uvehr.subject.matrix.page_0",
+                    "runner.petr_uvehr.subject.matrix.page_1",
+                },
+                dwarf = {
+                    "runner.petr_uvehr.subject.dwarf.page_0",
+                    "runner.petr_uvehr.subject.dwarf.page_1",
+                },
+            },
+        },
     },
     walking_bear = {
         name_key = "runner.walking_bear.name",
         information = {
             opening = "runner.walking_bear.information.opening",
             continuation = "runner.walking_bear.information.continuation",
+            final = "runner.walking_bear.information.final",
+        },
+        subject = {
+            title_key = "runner.walking_bear.subject.title",
+            options = {
+                shaman_magic = "runner.walking_bear.subject.option.shaman_magic",
+                david_owlfeather = "runner.walking_bear.subject.option.david_owlfeather",
+                ork = "runner.walking_bear.subject.option.ork",
+            },
+            responses = {
+                shaman_magic = {
+                    "runner.walking_bear.subject.shaman_magic.page_0",
+                },
+                david_owlfeather = {
+                    "runner.walking_bear.subject.david_owlfeather.page_0",
+                },
+                ork = {
+                    "runner.walking_bear.subject.ork.page_0",
+                },
+            },
         },
     },
     phantom = {
@@ -222,6 +259,28 @@ local runner_dialogue = {
         information = {
             opening = "runner.phantom.information.opening",
             continuation = "runner.phantom.information.continuation",
+            final = "runner.phantom.information.final",
+        },
+        subject = {
+            title_key = "runner.phantom.subject.title",
+            options = {
+                matrix = "runner.phantom.subject.option.matrix",
+                cyberdeck_equipment = "runner.phantom.subject.option.cyberdeck_equipment",
+                elf = "runner.phantom.subject.option.elf",
+            },
+            responses = {
+                matrix = {
+                    "runner.phantom.subject.matrix.page_0",
+                    "runner.phantom.subject.matrix.page_1",
+                },
+                cyberdeck_equipment = {
+                    "runner.phantom.subject.cyberdeck_equipment.page_0",
+                },
+                elf = {
+                    "runner.phantom.subject.elf.page_0",
+                    "runner.phantom.subject.elf.page_1",
+                },
+            },
         },
     },
     two_fists = {
@@ -229,6 +288,23 @@ local runner_dialogue = {
         information = {
             opening = "runner.two_fists.information.opening",
             continuation = "runner.two_fists.information.continuation",
+            final = "runner.two_fists.information.final",
+        },
+        subject = {
+            title_key = "runner.two_fists.subject.title",
+            options = {
+                thon = "runner.two_fists.subject.option.thon",
+                ellisia = "runner.two_fists.subject.option.ellisia",
+            },
+            responses = {
+                thon = {
+                    "runner.two_fists.subject.thon.page_0",
+                    "runner.two_fists.subject.thon.page_1",
+                },
+                ellisia = {
+                    "runner.two_fists.subject.ellisia.page_0",
+                },
+            },
         },
     },
     freya = {
@@ -236,6 +312,22 @@ local runner_dialogue = {
         information = {
             opening = "runner.freya.information.opening",
             continuation = "runner.freya.information.continuation",
+            final = "runner.freya.information.final",
+        },
+        subject = {
+            title_key = "runner.freya.subject.title",
+            options = {
+                vigore = "runner.freya.subject.option.vigore",
+                local_johnsons = "runner.freya.subject.option.local_johnsons",
+            },
+            responses = {
+                vigore = {
+                    "runner.freya.subject.vigore.page_0",
+                },
+                local_johnsons = {
+                    "runner.freya.subject.local_johnsons.page_0",
+                },
+            },
         },
     },
     rianna = {
@@ -243,6 +335,24 @@ local runner_dialogue = {
         information = {
             opening = "runner.rianna.information.opening",
             continuation = "runner.rianna.information.continuation",
+            final = "runner.rianna.information.final",
+        },
+        subject = {
+            title_key = "runner.rianna.subject.title",
+            options = {
+                matrix = "runner.rianna.subject.option.matrix",
+                corporate_security = "runner.rianna.subject.option.corporate_security",
+            },
+            responses = {
+                matrix = {
+                    "runner.rianna.subject.matrix.page_0",
+                    "runner.rianna.subject.matrix.page_1",
+                },
+                corporate_security = {
+                    "runner.rianna.subject.corporate_security.page_0",
+                    "runner.rianna.subject.corporate_security.page_1",
+                },
+            },
         },
     },
     stark = {
