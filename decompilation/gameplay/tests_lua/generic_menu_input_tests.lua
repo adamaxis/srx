@@ -78,6 +78,19 @@ do
           "empty Hospital Medical Attention preserves its B-only return")
 end
 
+-- A dialogue dead end (missing page or unmapped command) is a port-only
+-- recovery page: any face button or Start closes it; directions do not.
+do
+    for _, pad in ipairs({ P.A, P.B, P.C, P.START }) do
+        local input = routed(S.DIALOGUE_DEAD_END, pad)
+        check(input[2] == A.MENU_CANCEL,
+              "dialogue dead end closes on pad " .. pad)
+    end
+    local input = routed(S.DIALOGUE_DEAD_END, P.UP | P.DOWN)
+    check(input[1] == T.NONE and input[2] == A.IGNORE,
+          "dialogue dead end ignores directions")
+end
+
 -- Hotel's Lua handlers run through the same route dispatch. Options ignores B;
 -- the child confirmation uses B as a source confirm when No is selected.
 do
@@ -101,7 +114,7 @@ local always_screens = {
     S.HOSPITAL_OPTIONS, S.HOSPITAL_MEDICAL_ATTENTION,
     S.HOSPITAL_LEAVE_CONFIRMATION, S.DIALOGUE_BUTTON_CHOICES,
     S.DIALOGUE_CURSOR_CHOICES, S.DIALOGUE_VID_PHONE_CONTACTS,
-    S.DIALOGUE_HOSTED_CHOICES,
+    S.DIALOGUE_HOSTED_CHOICES, S.DIALOGUE_DEAD_END,
 }
 for _, screen in ipairs(always_screens) do
     local root = routed(screen, P.B, E.MenuBPolicyCode.ALWAYS_CANCEL, 1)

@@ -69,6 +69,8 @@ Route.register(E.MenuScreen.DIALOGUE_VID_PHONE_CONTACTS,
                external_input.dialogue_vid_phone_contacts)
 Route.register(E.MenuScreen.DIALOGUE_HOSTED_CHOICES,
                external_input.dialogue_hosted_choices)
+Route.register(E.MenuScreen.DIALOGUE_DEAD_END,
+               external_input.dialogue_dead_end)
 local save_load = require("menu.screens.save_load")
 Route.register(E.MenuScreen.SAVE_LOAD, save_load.SaveLoad)
 Route.register(E.MenuScreen.SAVE_SLOT, save_load.Slot)

@@ -140,6 +140,16 @@ local document = {
             cancelled = { type = "terminal",
                           outcome = { type = "return_to_caller" } },
         }),
+        -- Dead end: an A/B/C prompt whose cancel has no declared edge.
+        ["test.button_cancel_without_edge"] = graph("menu", {
+            menu = {
+                type = "choice", menuId = "test_menu_no_cancel",
+                inputContract = "buttons_abc",
+                choices = { { id = "first", next = "done" } },
+            },
+            done = { type = "terminal",
+                     outcome = { type = "continue_in_place" } },
+        }),
         ["test.inline_prompt"] = graph("prompt", {
             prompt = {
                 type = "choice", menuId = "test_inline_menu",
@@ -347,6 +357,48 @@ next_button_input = "menu_cancel"
 outcome = session:run("test.button_menu_cancel")
 assert(outcome.type == "return_to_caller")
 next_button_input = "second"
+
+-- Dialogue dead ends close the conversation with a typed source_boundary
+-- outcome (the host then closes the panel on the next press) instead of
+-- failing the task or waiting forever; each is listed once for porting.
+DialogueGraph.reset_dead_end_report()
+next_button_input = "menu_cancel"
+outcome = session:run("test.button_cancel_without_edge")
+assert(outcome.type == "source_boundary" and
+       outcome.reason == "dialogue_graph:test.button_cancel_without_edge:" ..
+           "menu:next_node_missing:nil", outcome.reason)
+outcome = session:run("test.button_cancel_without_edge")
+assert(outcome.type == "source_boundary")
+next_button_input = "second"
+outcome = session:run("test.no_such_graph")
+assert(outcome.type == "source_boundary" and
+       outcome.reason == "dialogue_graph:test.no_such_graph:catalog:" ..
+           "graph_missing", outcome.reason)
+local dead_end_report = DialogueGraph.dead_end_report()
+assert(#dead_end_report == 2 and dead_end_report[1].count == 2 and
+       dead_end_report[1].reason:find("next_node_missing", 1, true) and
+       dead_end_report[2].count == 1 and
+       dead_end_report[2].reason:find("graph_missing", 1, true))
+local failing_page_session = DialogueGraph.Session.new(catalog, evaluator,
+    actions, {
+        present_page = function() return false end,
+        present_choice = function() return "first" end,
+    })
+local page_graph_id
+for id, candidate in pairs(document.graphs) do
+    if candidate.nodes[candidate.entryNode].type == "page" then
+        page_graph_id = id
+        break
+    end
+end
+assert(page_graph_id ~= nil, "test document needs a page-entry graph")
+outcome = failing_page_session:run(page_graph_id)
+local entry_page = document.graphs[page_graph_id].nodes[
+    document.graphs[page_graph_id].entryNode]
+assert(outcome.type == "source_boundary" and
+       outcome.reason:find("page_presentation_failed:" ..
+           entry_page.eventId, 1, true), outcome.reason)
+DialogueGraph.reset_dead_end_report()
 
 outcome = session:run("test.cursor")
 assert(outcome.type == "enter_activity" and

@@ -816,7 +816,9 @@ E.MenuScreen = { COMMAND = 1, POSTURE = 2, ITEM_ACTION = 3, CLIPS = 4, ATTRIBUTE
                  DIALOGUE_BUTTON_CHOICES = 49, DIALOGUE_CURSOR_CHOICES = 50,
                  DIALOGUE_VID_PHONE_CONTACTS = 51,
                  DIALOGUE_HOSTED_CHOICES = 52,
-                 POCKET_SECRETARY_OPTIONS = 53 }
+                 POCKET_SECRETARY_OPTIONS = 53,
+                 -- Port-only fallback page for a dialogue dead end (no ROM screen)
+                 DIALOGUE_DEAD_END = 54 }
 -- Presenter regions (docs/09 section 10.1 coordinates) [C positions]
 E.MenuRegion = { ITEM_PICTURE = 0x0001, ITEM_HEADER = 0x0002, RATING = 0x0004, DAMAGE_POWER = 0x0008, COMBAT_BARS = 0x0010,
                  WEAPON_BARS = 0x0020, ARMOR = 0x0040, POSTURE_BLOCK = 0x0080, BUTTON_STRIP = 0x0100,

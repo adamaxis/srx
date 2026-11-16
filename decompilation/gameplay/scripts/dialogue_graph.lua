@@ -12,6 +12,8 @@ Session.__index = Session
 local MAX_GRAPH_NODES = 256
 local MAX_GRAPH_STEPS = 2048
 local MAX_CHOICES = 8
+-- Distinct dead ends kept for the debug report; repeats only bump a count.
+local MAX_DEAD_END_RECORDS = 64
 -- Runtime content is immutable for the lifetime of one game package. Cache
 -- its catalog by table identity and validate each graph on first use, so a
 -- single call does not revalidate every unrelated conversation in the game.
@@ -419,12 +421,48 @@ function Session:_condition(condition_id, context)
     return self.condition_evaluator:evaluate(definition.expression, context)
 end
 
-function Session:_boundary(graph_id, node_id, reason)
-    return {
+-- Debug list of graph dead ends reached this session. The host closes the
+-- dialogue on the next button press (E.MenuScreen.DIALOGUE_DEAD_END); this
+-- list only names what still needs porting. Evidence carries the ROM address
+-- text of the node when the content records one.
+local dead_ends = {}
+local dead_end_order = {}
+
+local function record_dead_end(reason, evidence)
+    local record = dead_ends[reason]
+    if record ~= nil then
+        record.count = record.count + 1
+        return
+    end
+    if #dead_end_order >= MAX_DEAD_END_RECORDS then return end
+    record = { reason = reason, evidence = evidence, count = 1 }
+    dead_ends[reason] = record
+    dead_end_order[#dead_end_order + 1] = record
+end
+
+function DialogueGraph.dead_end_report()
+    local report = {}
+    for index, record in ipairs(dead_end_order) do
+        report[index] = { reason = record.reason,
+                          evidence = record.evidence,
+                          count = record.count }
+    end
+    return report
+end
+
+function DialogueGraph.reset_dead_end_report()
+    dead_ends = {}
+    dead_end_order = {}
+end
+
+function Session:_boundary(graph_id, node_id, reason, evidence)
+    local outcome = {
         type = "source_boundary",
-        reason = "dialogue_graph:" .. graph_id .. ":" .. node_id .. ":" ..
-            reason,
+        reason = "dialogue_graph:" .. graph_id .. ":" .. tostring(node_id) ..
+            ":" .. reason,
     }
+    record_dead_end(outcome.reason, evidence)
+    return outcome
 end
 
 local function presentation_for(graph, node, context)
@@ -490,14 +528,25 @@ function Session:run(graph_id, context)
     end
 
     local node_id = graph.entryNode
+    local previous_node_id = "entry"
     for _ = 1, MAX_GRAPH_STEPS do
-        local node = graph.nodes[node_id]
+        local node = node_id ~= nil and graph.nodes[node_id] or nil
+        if node == nil then
+            -- A next/cancel edge that leads nowhere (for example a cancelled
+            -- A/B/C prompt without cancelNext) ends the dialogue instead of
+            -- failing the task on a nil node.
+            return self:_boundary(graph_id, previous_node_id,
+                                  "next_node_missing:" .. tostring(node_id))
+        end
+        previous_node_id = node_id
         if node.type == "page" then
             local speaker_id, text_profile = presentation_for(
                 graph, node, context)
             if self.host.present_page(node, speaker_id, text_profile) ~= true then
                 return self:_boundary(graph_id, node_id,
-                                      "page_presentation_failed")
+                                      "page_presentation_failed:" ..
+                                          tostring(node.eventId),
+                                      node.evidence)
             end
             node_id = node.next
         elseif node.type == "choice" then
@@ -637,11 +686,8 @@ function Session:run(graph_id, context)
             end
             return outcome
         elseif node.type == "source_boundary" then
-            return {
-                type = "source_boundary",
-                reason = "dialogue_graph:" .. graph_id .. ":" .. node_id ..
-                    ":" .. node.reason,
-            }
+            return self:_boundary(graph_id, node_id, node.reason,
+                                  node.evidence)
         else
             return self:_boundary(graph_id, node_id, "node_type_unresolved")
         end

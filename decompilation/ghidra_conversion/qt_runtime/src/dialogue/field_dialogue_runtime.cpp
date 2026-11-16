@@ -2,8 +2,10 @@
 
 #include <QPainter>
 
+#include <algorithm>
 #include <array>
 #include <charconv>
+#include <iostream>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -27,6 +29,7 @@ enum class RoutedMenuScreen : std::int64_t {
     dialogue_cursor_choices = 50,
     dialogue_vid_phone_contacts = 51,
     dialogue_hosted_choices = 52,
+    dialogue_dead_end = 54,
 };
 enum class RoutedMenuInputAction : std::int64_t {
     ignore = 0, up = 2, down = 3, confirm = 4, back = 5, page = 6,
@@ -392,6 +395,9 @@ bool FieldDialogueRuntime::start_script_task(
     delayed_script_operation_.reset();
     first_text_delay_frames_remaining_ = 0U;
     first_text_delay_started_ = false;
+    active_task_label_.assign(module);
+    active_task_label_.append(".");
+    active_task_label_.append(function);
     if (script_runtime_ == nullptr) {
         return open_source_boundary(
             "dialogue script has no gameplay script runtime");
@@ -932,6 +938,7 @@ bool FieldDialogueRuntime::open_source_boundary(std::string reason) {
     if (script_task_waiting_ && script_runtime_ != nullptr) {
         script_runtime_->cancel_task();
     }
+    report_dead_end(reason);
     boundary_reason_ = std::move(reason);
     input_lockout_frames_ = 0U;
     first_text_delay_frames_remaining_ = 0U;
@@ -959,6 +966,38 @@ bool FieldDialogueRuntime::open_source_boundary(std::string reason) {
         source_boundary_callback_(panel_.source_boundary_reason);
     }
     return false;
+}
+
+void FieldDialogueRuntime::report_dead_end(const std::string& reason) {
+    // Name what the dead end was presenting so the missing page or command
+    // can be found and ported. The panel itself closes on the next press.
+    std::string context = "task=";
+    context += active_task_label_.empty() ? std::string("host")
+                                          : active_task_label_;
+    if (active_script_operation_.has_value()) {
+        const auto& operation = *active_script_operation_;
+        if (operation.dialogue.has_value()) {
+            context += " speaker=" + operation.dialogue->speaker_id +
+                       " event=" + operation.dialogue->event_id;
+        }
+        if (operation.menu.has_value()) {
+            context += " menu=" + operation.menu->id;
+        }
+        if (operation.story_page.has_value()) {
+            context += " text=" + operation.story_page->text_key;
+        }
+    }
+    ++dead_end_count_;
+    const auto key = reason + " | " + context;
+    if (std::find(dead_end_reports_.begin(), dead_end_reports_.end(), key) !=
+        dead_end_reports_.end()) {
+        return;
+    }
+    if (dead_end_reports_.size() < kMaximumDeadEndReports) {
+        dead_end_reports_.push_back(key);
+    }
+    std::cerr << "warning: dialogue dead end (closes on next press): "
+              << reason << " [" << context << "]\n";
 }
 
 std::string_view FieldDialogueRuntime::resolve_text(
@@ -1031,7 +1070,7 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
         return FieldDialogueAdvanceResult::waiting_for_controller;
     }
     if (!panel_.source_complete) {
-        return FieldDialogueAdvanceResult::source_boundary;
+        return dismiss_dead_end(event_word);
     }
 
     std::int64_t menu_input_action =
@@ -1646,6 +1685,33 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
         return FieldDialogueAdvanceResult::source_boundary;
     }
     return FieldDialogueAdvanceResult::prompt_advanced;
+}
+
+FieldDialogueAdvanceResult FieldDialogueRuntime::dismiss_dead_end(
+    const std::uint16_t event_word) {
+    // A source boundary or incomplete page has nothing to advance to. Lua's
+    // E.MenuScreen.DIALOGUE_DEAD_END route decides which press closes it; if
+    // the route itself is unavailable the panel still closes so the player is
+    // never stranded. The result stays source_boundary for diagnostics; the
+    // field host sees the closed dialogue and resumes as for a field return.
+    bool close_requested = true;
+    if (script_runtime_ != nullptr) {
+        const auto routed = script_runtime_->call_integers(
+            "menu.route", "external_input_disposition",
+            {routed_value(RoutedMenuScreen::dialogue_dead_end),
+             static_cast<std::int64_t>(event_word),
+             menu_b_policy_ == "always_cancel" ? 1 : 0, 1, 0});
+        if (routed.has_value() && routed->size() == 2U) {
+            close_requested = routed->at(1U) ==
+                routed_value(RoutedMenuInputAction::menu_cancel);
+        }
+    }
+    if (close_requested) {
+        last_dismissed_dead_end_reason_ =
+            std::string(panel_.source_boundary_reason);
+        close();
+    }
+    return FieldDialogueAdvanceResult::source_boundary;
 }
 
 void FieldDialogueRuntime::close() noexcept {

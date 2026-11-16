@@ -67,5 +67,14 @@ External.dialogue_vid_phone_contacts = make({
 External.dialogue_hosted_choices = make({
     b = A.CONFIRM, c = A.CONFIRM, start = A.IGNORE,
 })
+-- Port-only recovery, not a ROM screen: a dialogue page the host could not
+-- present (missing page/text, unmapped command, or a script that stopped
+-- without an outcome) closes on any face button or Start, so the player is
+-- returned to the field instead of being stranded on an empty panel.
+External.dialogue_dead_end = make({
+    order = { "a", "b", "c", "start" }, directions = false,
+    a = A.MENU_CANCEL, b = A.MENU_CANCEL, c = A.MENU_CANCEL,
+    start = A.MENU_CANCEL,
+})
 
 return External

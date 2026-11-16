@@ -179,6 +179,76 @@ int main() {
             return std::nullopt;
         });
 
+    // Dialogue dead end: a handler with no ported page must not strand the
+    // player. The boundary panel ignores directions, closes on the next face
+    // button through the Lua DIALOGUE_DEAD_END route, and is counted once.
+    {
+        // FFDD22 controller event bits (high byte = buttons, 0x0100 = Up).
+        constexpr std::uint16_t kPadUp = 0x0100U;
+        constexpr std::uint16_t kPadA = 0x4000U;
+        constexpr std::uint16_t kPadB = 0x1000U;
+        constexpr std::uint16_t kPadStart = 0x8000U;
+        gameplay_scripts.set_location_context(
+            "building", "downtown_site_04_gates_undersound",
+            "gates.undersound", "gates_undersound_narrator");
+        const auto dead_ends_before = runtime.dead_end_count();
+        const bool missing_opened = runtime.open_gameplay_task(
+            scripting::ScriptDialogueSource::field_npc_contact,
+            "gates_undersound", "present_missing_dialogue_page_for_test");
+        if (!expect(!missing_opened) || !expect(runtime.open()) ||
+            !expect(runtime.panel().kind ==
+                    DialoguePanelKind::source_boundary) ||
+            !expect(runtime.dead_end_count() == dead_ends_before + 1U)) {
+            std::cerr << "Missing dialogue page did not open a dead end\n";
+            return 160;
+        }
+        const auto reports_after_first = runtime.dead_end_reports().size();
+        if (!expect(reports_after_first >= 1U) ||
+            !expect(runtime.dead_end_reports().back().find(
+                        "gates_undersound."
+                        "present_missing_dialogue_page_for_test") !=
+                    std::string::npos)) {
+            std::cerr << "Dead end report did not name the missing task\n";
+            return 161;
+        }
+        if (!expect(runtime.advance_controller_events(kPadUp) ==
+                    FieldDialogueAdvanceResult::waiting_for_controller) ||
+            !expect(runtime.open())) {
+            std::cerr << "Dead end closed on a direction press\n";
+            return 162;
+        }
+        if (!expect(runtime.advance_controller_events(kPadA) ==
+                    FieldDialogueAdvanceResult::source_boundary) ||
+            !expect(!runtime.open()) ||
+            !expect(!runtime.last_dismissed_dead_end_reason().empty())) {
+            std::cerr << "Dead end did not close on A\n";
+            return 163;
+        }
+        // A second hit of the same dead end is counted but warned only once;
+        // B and Start close it as well.
+        for (const std::uint16_t close_event : {kPadB, kPadStart}) {
+            (void)runtime.open_gameplay_task(
+                scripting::ScriptDialogueSource::field_npc_contact,
+                "gates_undersound",
+                "present_missing_dialogue_page_for_test");
+            if (!expect(runtime.open()) ||
+                !expect(runtime.advance_controller_events(close_event) ==
+                        FieldDialogueAdvanceResult::source_boundary) ||
+                !expect(!runtime.open())) {
+                std::cerr << "Dead end did not close on event 0x" << std::hex
+                          << close_event << std::dec << '\n';
+                return 164;
+            }
+        }
+        if (!expect(runtime.dead_end_count() == dead_ends_before + 3U) ||
+            !expect(runtime.dead_end_reports().size() ==
+                    reports_after_first)) {
+            std::cerr << "Dead end warning was not one-time\n";
+            return 165;
+        }
+        boundary = {};
+    }
+
     gameplay_scripts.set_story_state({
         {"mako_defeated", true},
         {"ogami_left", false},

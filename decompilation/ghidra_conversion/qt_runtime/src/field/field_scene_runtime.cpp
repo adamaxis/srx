@@ -14950,7 +14950,14 @@ void FieldSceneRuntime::advance_frame() {
             } else {
                 (void)dispatch_dialogue_outcome(*outcome);
             }
-        } else if (result == FieldDialogueAdvanceResult::returned_to_field) {
+        } else if (result == FieldDialogueAdvanceResult::returned_to_field ||
+                   (result == FieldDialogueAdvanceResult::source_boundary &&
+                    !field_dialogue_.open())) {
+            // A dismissed dialogue dead end (missing page, unmapped command)
+            // closes its panel and resumes the field like a normal return.
+            if (result == FieldDialogueAdvanceResult::source_boundary) {
+                source_boundary("field.dialogue.dead_end_dismissed");
+            }
             // A completed Johnson dialogue may accept or retire a run in Lua.
             // Refresh the collision-cell fact before field movement resumes;
             // ROM 0xEE10/0xEE86 applies this selector during field collision

@@ -17,6 +17,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 class QPainter;
 
@@ -149,6 +150,15 @@ public:
     const std::optional<scripting::ScriptDialogueOpenDescriptor>&
     opening_descriptor() const noexcept { return opening_descriptor_; }
     const std::string& failure() const noexcept { return failure_; }
+    // Debug view of dialogue dead ends: every boundary panel opened, and the
+    // distinct reason/context pairs already warned about once.
+    std::size_t dead_end_count() const noexcept { return dead_end_count_; }
+    const std::vector<std::string>& dead_end_reports() const noexcept {
+        return dead_end_reports_;
+    }
+    const std::string& last_dismissed_dead_end_reason() const noexcept {
+        return last_dismissed_dead_end_reason_;
+    }
 #ifdef SHADOWRUN_QT_QA_DRIVER
     std::string_view story_page_text_for_dump() const noexcept {
         return story_page_text_;
@@ -175,6 +185,8 @@ public:
 private:
     bool open_stoker_prompt(StokerMotelPromptId prompt);
     bool open_source_boundary(std::string reason);
+    void report_dead_end(const std::string& reason);
+    FieldDialogueAdvanceResult dismiss_dead_end(std::uint16_t event_word);
     bool start_script_task(scripting::ScriptDialogueSource source,
                            std::string_view module,
                            std::string_view function,
@@ -239,6 +251,11 @@ private:
         native_script_service_callback_;
     std::string failure_;
     std::string boundary_reason_;
+    static constexpr std::size_t kMaximumDeadEndReports = 64U;
+    std::string active_task_label_;
+    std::vector<std::string> dead_end_reports_;
+    std::string last_dismissed_dead_end_reason_;
+    std::size_t dead_end_count_ = 0U;
     bool assets_loaded_ = false;
     bool hotel_options_menu_follows_ = false;
 };
