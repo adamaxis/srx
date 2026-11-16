@@ -204,6 +204,21 @@ local function new_game(choices, flags, funds, package_run_status, inventory)
     return instance
 end
 
+local function mode_flag(state, bit)
+    return state["field_mode_flag_bit_" .. bit]
+end
+
+local function assert_david_information_mode_effect(state)
+    assert(mode_flag(state, E.FieldModeFlagBit.BIT_6) == true and
+           mode_flag(state, E.FieldModeFlagBit.BIT_7) == true and
+           mode_flag(state, E.FieldModeFlagBit.BIT_8) == false and
+           mode_flag(state, E.FieldModeFlagBit.BIT_9) == true and
+           mode_flag(state, E.FieldModeFlagBit.BIT_11) == true and
+           mode_flag(state, E.FieldModeFlagBit.BIT_20) == false and
+           state[E.FieldModeFact.BORIS_FOLLOWUP_PENDING] == false,
+           "Boris David information writes only its ROM FFFC30 bits")
+end
+
 local context = {
     scene_id = 2,
     building_interaction_mode = false,
@@ -462,6 +477,13 @@ state = new_game({ "more", "information", "david", "brother" }, {
     field_dialogue_flag_bit_2 = true,
     tarislar_asked_shale = true,
     aragorn_found = false,
+    field_mode_flag_bit_6 = true,
+    field_mode_flag_bit_7 = true,
+    field_mode_flag_bit_8 = true,
+    field_mode_flag_bit_9 = false,
+    field_mode_flag_bit_11 = false,
+    field_mode_flag_bit_20 = false,
+    [E.FieldModeFact.BORIS_FOLLOWUP_PENDING] = false,
 }, 1000)
 local unavailable_host = strike_team_host(nil)
 state.services.call = unavailable_host.call
@@ -469,31 +491,34 @@ outcome = Boris.present_indexed_title_service()
 assert(outcome.type == "source_boundary" and
        outcome.reason:find("saved Strike Team counter", 1, true) ~= nil and
        unavailable_host.sets == 0 and
-       state.state.field_mode_flag_bit_6 == false and
-       state.state.field_mode_flag_bit_7 == false and
-       state.state[E.FieldModeFact.BORIS_FOLLOWUP_PENDING] == true and
        state.seen_pages[2].text_key ==
            "boris.greenhouse.page.paid_information_repeat" and
        state.seen_pages[2].choice_ids[2] == "david" and
        state.seen_pages[3].text_key ==
            "boris.greenhouse.page.david_information")
+assert_david_information_mode_effect(state.state)
 
 state = new_game({ "more", "information", "david", "brother", "more" }, {
     field_dialogue_flag_bit_2 = true,
     tarislar_asked_shale = true,
     aragorn_found = false,
+    field_mode_flag_bit_6 = true,
+    field_mode_flag_bit_7 = true,
+    field_mode_flag_bit_8 = true,
+    field_mode_flag_bit_9 = false,
+    field_mode_flag_bit_11 = false,
+    field_mode_flag_bit_20 = false,
+    [E.FieldModeFact.BORIS_FOLLOWUP_PENDING] = false,
 }, 1000)
 local strike_host = strike_team_host(3)
 state.services.call = strike_host.call
 outcome = Boris.present_indexed_title_service()
 assert(outcome.type == "continue_in_place" and strike_host.sets == 1 and
        strike_host.queued == 1 and
-       state.state.field_mode_flag_bit_6 == false and
-       state.state.field_mode_flag_bit_7 == false and
-       state.state[E.FieldModeFact.BORIS_FOLLOWUP_PENDING] == true and
        state.seen_events[#state.seen_events].id == "david_brother" and
        state.seen_events[#state.seen_events].text_key ==
            "boris.greenhouse.page.david_brother")
+assert_david_information_mode_effect(state.state)
 
 state = new_game({ "more", "information", "ilene", "later" }, {
     field_dialogue_flag_bit_2 = true,
@@ -523,11 +548,19 @@ state = new_game({ "more", "information", "david", "brother" }, {
     red_buffalo_woman = true,
     ilene_met = false,
     ["group_item.gift_lady_gillian"] = false,
+    field_mode_flag_bit_6 = true,
+    field_mode_flag_bit_7 = true,
+    field_mode_flag_bit_8 = true,
+    field_mode_flag_bit_9 = false,
+    field_mode_flag_bit_11 = false,
+    field_mode_flag_bit_20 = false,
+    [E.FieldModeFact.BORIS_FOLLOWUP_PENDING] = false,
 }, 1000)
 outcome = Boris.present_indexed_title_service()
 assert(outcome.type == "source_boundary" and
        state.seen_pages[2].choice_ids[2] == "david" and
        state.seen_pages[2].choice_ids[3] ~= "ilene")
+assert_david_information_mode_effect(state.state)
 
 state = new_game({ "more", "information" }, { field_dialogue_flag_bit_2 = true })
 state.state["group_item.gift_lady_gillian"] = nil

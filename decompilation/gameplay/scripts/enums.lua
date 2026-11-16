@@ -1033,17 +1033,19 @@ E.StoryFact = {
 -- Transient field-mode state exposed through gameplay meaning. The host maps
 -- these IDs to saved fields; scripts do not name FFFC30 bit positions.
 E.FieldModeFact = {
-  -- Boris's information handlers set this at 0x21B82/0x21EB0; Mako's result
-  -- callback clears it at 0x54036. Its broader narrative role is [H].
+  -- Boris's Michael handler sets this at 0x21B82; Mako's result callback
+  -- clears it at 0x54036. Its broader narrative role is [H].
   BORIS_FOLLOWUP_PENDING = "field.boris_followup_pending",
   -- The Mako callback sets this immediately before returning its result page
   -- at 0x5403E/0x5405E [C].
   MAKO_RESULT_CALLBACK_APPLIED = "field.mako_result_callback_applied",
 }
 
--- FFFC30 bit indices used by these Tarislar handlers. Command 0x14 at
--- 0x21872..0x21886 encodes bits 2/4/5/6/8; command 0xE6 at 0x24982 encodes
--- bit 23 (`08 81 00 17`). These are indices, not bit masks.
+-- FFFC30 bit indices used by gameplay handlers. Tarislar command 0x14 at
+-- 0x21872..0x21886 encodes bits 2/4/5/6/8; Boris command 0x2B at 0x21B82
+-- sets bit 20, while command 0x3B at 0x21EB0 clears bit 8 and sets bits 9/11;
+-- command 0xE6 at 0x24982 encodes bit 23 (`08 81 00 17`). These are indices,
+-- not bit masks.
 E.FieldModeFlagBit = {
   -- ROM 0x1F878 tests this recognition flag; the Seattle holopix action at
   -- 0x21EF8 clears it after the player shows Ivanna the image.
@@ -1052,7 +1054,11 @@ E.FieldModeFlagBit = {
   BIT_4 = 4,
   BIT_5 = 5,
   BIT_6 = 6,
+  BIT_7 = 7,
   BIT_8 = 8,
+  BIT_9 = 9,
+  BIT_11 = 11,
+  BIT_20 = 20,
   BIT_23 = 23,
 }
 

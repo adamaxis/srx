@@ -36,17 +36,18 @@ local function action_registry()
             assert(game.services.call("party", "award_karma_1") == "applied",
                 "Boris Michael alias reward requires an available party")
             game.state.field_dialogue_flag_bit_1 = true
-            game.state.field_mode_flag_bit_6 = false
-            game.state.field_mode_flag_bit_7 = false
+            game.state["field_mode_flag_bit_" .. E.FieldModeFlagBit.BIT_6] = false
+            game.state["field_mode_flag_bit_" .. E.FieldModeFlagBit.BIT_7] = false
             game.state[E.FieldModeFact.BORIS_FOLLOWUP_PENDING] = true
             return true
         end,
         ["boris.prepare_david_information"] = function()
-            -- Command 0x3B at 0x21EB0 updates these FFFC30 mode bits. The
-            -- subsequent Brother? choice reaches unconverted command 0x2C.
-            game.state.field_mode_flag_bit_6 = false
-            game.state.field_mode_flag_bit_7 = false
-            game.state[E.FieldModeFact.BORIS_FOLLOWUP_PENDING] = true
+            -- The David choice in ROM record 0xF5338 selects command 0x3B,
+            -- whose handler at 0x21EB0 clears bit 8 and sets bits 9 and 11.
+            -- The subsequent Brother? choice reaches unconverted command 0x2C.
+            game.state["field_mode_flag_bit_" .. E.FieldModeFlagBit.BIT_8] = false
+            game.state["field_mode_flag_bit_" .. E.FieldModeFlagBit.BIT_9] = true
+            game.state["field_mode_flag_bit_" .. E.FieldModeFlagBit.BIT_11] = true
             return true
         end,
         ["boris.mark_ilene_information"] = function()
