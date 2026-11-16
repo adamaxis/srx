@@ -14,22 +14,22 @@
         "departure_page": {
           "type": "page",
           "eventId": "entry",
-          "next": "clear_effect_flag_26",
+          "next": "clear_mode_flag_26",
           "evidence": "The no-choice root at 0x1111DE displays its single page at 0x113D46."
         },
-        "clear_effect_flag_26": {
+        "clear_mode_flag_26": {
           "type": "action",
-          "actionId": "field.set_mode_effect_flag",
+          "actionId": "field.set_mode_flag",
           "arguments": { "flagBit": 26, "value": false },
-          "next": "set_effect_flag_27",
-          "evidence": "The service clears FFFC30 bit 26 after the page returns."
+          "next": "set_mode_flag_27",
+          "evidence": "ROM 0x5426C clears FFFC30 bit 26 after the page returns; 0x54274 writes the word."
         },
-        "set_effect_flag_27": {
+        "set_mode_flag_27": {
           "type": "action",
-          "actionId": "field.set_mode_effect_flag",
+          "actionId": "field.set_mode_flag",
           "arguments": { "flagBit": 27, "value": true },
           "next": "finish_trigger",
-          "evidence": "The service sets FFFC30 bit 27 after the page returns."
+          "evidence": "ROM 0x54270 sets FFFC30 bit 27 after the page returns; 0x54274 writes the word."
         },
         "finish_trigger": {
           "type": "action",

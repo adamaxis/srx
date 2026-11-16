@@ -1130,7 +1130,6 @@ FieldSceneRuntime::FieldSceneRuntime(
                 (payment_state.runner_feature_flags & 0x01U) != 0U;
         }
         notebook_tip_flags_[0] = payment_state.followup_state.story_flags;
-        field_mode_flags_ = payment_state.followup_state.story_flags;
         field_mode_flags_resolved_ = true;
         notebook_referral_flags_ =
             payment_state.followup_state.referral_flags;
@@ -1157,7 +1156,6 @@ FieldSceneRuntime::FieldSceneRuntime(
                 command, followup_state);
             if (command == StokerMotelFollowupCommand::debt_collection) {
                 notebook_tip_flags_[0] = followup_state.story_flags;
-                field_mode_flags_ = followup_state.story_flags;
                 field_mode_flags_resolved_ = true;
             } else {
                 notebook_referral_flags_ = followup_state.referral_flags;
@@ -11136,7 +11134,10 @@ bool FieldSceneRuntime::bootstrap(
     group_item_flags_ = restored_field_state == nullptr
                             ? std::optional<std::uint32_t>{0U}
                             : std::nullopt;
-    // ROM startup 0x084E seeds FFFC30 bit 0 for a fresh New Game.
+    // [C] New Game ROM bytes at 0x0842 clear FFFC34
+    // (42 B9 00 FF FC 34), 0x0848 clear FFFC38
+    // (42 B9 00 FF FC 38), and 0x084E seed FFFC30 to 1
+    // (23 FC 00 00 00 01 00 FF FC 30).
     notebook_tip_flags_ = {{1U, 0U, 0U}};
     notebook_tip_flags_resolved_ = restored_field_state == nullptr;
     // Startup routine 0x82A clears FFFC2C/27/2A. The only ROM reference to
@@ -11272,10 +11273,7 @@ bool FieldSceneRuntime::bootstrap(
     field_entity_behavior_flags_ = 0U;
     field_exit_alternate_result_ = 0;
     field_exit_world_flags_ = 0U;
-    // Startup routine 0x084E seeds FFFC30 bit 0 for a fresh New Game.
-    field_mode_flags_ = 1U;
     field_mode_flags_resolved_ = restored_field_state == nullptr;
-    field_mode_effect_flags_ = 0U;
     field_dialogue_flags_ = restored_field_state == nullptr
         ? std::optional<std::uint8_t>{0U}
         : std::optional<std::uint8_t>{
@@ -11421,12 +11419,12 @@ bool FieldSceneRuntime::bootstrap(
                 if (!field_mode_flags_resolved_) {
                     return std::nullopt;
                 }
-                return (field_mode_flags_ & (1U << *bit)) != 0U;
+                return (notebook_tip_flags_[0] & (1U << *bit)) != 0U;
             }
             if (const auto bit = story_fact_bit_index(
                     name, kFieldModeEffectFlagBitPrefix)) {
                 // Source FFFC34: world/dialogue effect flags.
-                return (field_mode_effect_flags_ & (1U << *bit)) != 0U;
+                return (notebook_tip_flags_[1] & (1U << *bit)) != 0U;
             }
             if (const auto bit = story_fact_bit_index(
                     name, kFieldDialogueFlagBitPrefix, 8U)) {
@@ -11493,11 +11491,11 @@ bool FieldSceneRuntime::bootstrap(
                     FieldWorldFactFlag::redmond_vigore_lead_available)) != 0U;
             }
             if (name == "vigore_search_pending") {
-                return (field_mode_effect_flags_ & field_flag_mask(
+                return (notebook_tip_flags_[1] & field_flag_mask(
                     FieldTitleServiceFlag::redmond_vigore_search_pending)) != 0U;
             }
             if (name == "vigore_search_consumed") {
-                return (field_mode_effect_flags_ & field_flag_mask(
+                return (notebook_tip_flags_[1] & field_flag_mask(
                     FieldTitleServiceFlag::redmond_vigore_search_consumed)) != 0U;
             }
             if (name == "vigore_search_completed") {
@@ -11606,17 +11604,17 @@ bool FieldSceneRuntime::bootstrap(
                     return false;
                 }
                 const auto mask = std::uint32_t{1U} << *bit;
-                field_mode_flags_ = value
-                    ? field_mode_flags_ | mask
-                    : field_mode_flags_ & ~mask;
+                notebook_tip_flags_[0] = value
+                    ? notebook_tip_flags_[0] | mask
+                    : notebook_tip_flags_[0] & ~mask;
                 return true;
             }
             if (const auto bit = story_fact_bit_index(
                     name, kFieldModeEffectFlagBitPrefix)) {
                 const auto mask = std::uint32_t{1U} << *bit;
-                field_mode_effect_flags_ = value
-                    ? field_mode_effect_flags_ | mask
-                    : field_mode_effect_flags_ & ~mask;
+                notebook_tip_flags_[1] = value
+                    ? notebook_tip_flags_[1] | mask
+                    : notebook_tip_flags_[1] & ~mask;
                 return true;
             }
             if (const auto bit = story_fact_bit_index(
@@ -11732,10 +11730,10 @@ bool FieldSceneRuntime::bootstrap(
                         FieldTitleServiceFlag::mode_command_e7_clear_15);
                     const auto clear_21 = field_flag_mask(
                         FieldTitleServiceFlag::mode_command_e7_clear_21);
-                    field_mode_effect_flags_ &= ~(clear_15 | clear_21);
-                    field_mode_effect_flags_ |= mask;
+                    notebook_tip_flags_[1] &= ~(clear_15 | clear_21);
+                    notebook_tip_flags_[1] |= mask;
                 } else {
-                    field_mode_effect_flags_ &= ~mask;
+                    notebook_tip_flags_[1] &= ~mask;
                 }
                 return true;
             }
@@ -11756,12 +11754,12 @@ bool FieldSceneRuntime::bootstrap(
                 }
                 const auto consumed = field_flag_mask(
                     FieldTitleServiceFlag::redmond_vigore_search_consumed);
-                if ((field_mode_effect_flags_ & consumed) != 0U) {
+                if ((notebook_tip_flags_[1] & consumed) != 0U) {
                     return true;
                 }
                 const auto pending = field_flag_mask(
                     FieldTitleServiceFlag::redmond_vigore_search_pending);
-                if ((field_mode_effect_flags_ & pending) == 0U ||
+                if ((notebook_tip_flags_[1] & pending) == 0U ||
                     !group_item_flags_.has_value()) {
                     return false;
                 }
@@ -11773,8 +11771,8 @@ bool FieldSceneRuntime::bootstrap(
                     pending |
                     field_flag_mask(
                         FieldTitleServiceFlag::redmond_search_cleanup_15);
-                field_mode_effect_flags_ =
-                    (field_mode_effect_flags_ & ~effect_cleanup) | consumed;
+                notebook_tip_flags_[1] =
+                    (notebook_tip_flags_[1] & ~effect_cleanup) | consumed;
                 const auto render_cleanup =
                     field_flag_mask(
                         FieldRenderEffectFlag::redmond_search_cleanup_09) |

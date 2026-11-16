@@ -18,7 +18,7 @@
         "select_ritual_stage": {
           "type": "branch",
           "cases": [
-            { "when": "salish.spirit_eyes.first_contact", "next": "first_clear_effect_14" },
+            { "when": "salish.spirit_eyes.first_contact", "next": "first_clear_mode_14" },
             { "when": "salish.spirit_eyes.horn_not_given", "next": "check_horn" },
             { "when": "salish.spirit_eyes.pelt_not_given", "next": "check_pelt" },
             { "when": "salish.spirit_eyes.tasks_not_done", "next": "check_scale" }
@@ -31,23 +31,26 @@
           "reason": "Spirit Eyes ritual graph requires the Scene-4 event-27 site context."
         },
 
-        "first_clear_effect_14": {
+        "first_clear_mode_14": {
           "type": "action",
-          "actionId": "field.set_mode_effect_flag",
+          "actionId": "field.set_mode_flag",
           "arguments": { "flagBit": 14, "value": false },
-          "next": "first_set_effect_15"
+          "next": "first_set_mode_15",
+          "evidence": "ROM 0x53D6E loads FFFC30; 0x53D74 clears bit 14 before the write at 0x53D80."
         },
-        "first_set_effect_15": {
+        "first_set_mode_15": {
           "type": "action",
-          "actionId": "field.set_mode_effect_flag",
+          "actionId": "field.set_mode_flag",
           "arguments": { "flagBit": 15, "value": true },
-          "next": "first_set_effect_16"
+          "next": "first_set_mode_16",
+          "evidence": "ROM 0x53D78 sets FFFC30 bit 15 before the write at 0x53D80."
         },
-        "first_set_effect_16": {
+        "first_set_mode_16": {
           "type": "action",
-          "actionId": "field.set_mode_effect_flag",
+          "actionId": "field.set_mode_flag",
           "arguments": { "flagBit": 16, "value": true },
-          "next": "first_set_auxiliary_0"
+          "next": "first_set_auxiliary_0",
+          "evidence": "ROM 0x53D7C sets FFFC30 bit 16 before the write at 0x53D80."
         },
         "first_set_auxiliary_0": {
           "type": "action",
@@ -131,25 +134,22 @@
           "type": "action",
           "actionId": "story.set_fact",
           "arguments": {"factId":"shaman_item4_given","value":true},
-          "next": "horn_clear_effect_14"
+          "next": "horn_clear_mode_16",
+          "evidence": "ROM 0x53DD0 sets FFFC1E bit 6 for shaman_item4_given; the next FFFC30 update begins at 0x53DDA."
         },
-        "horn_clear_effect_14": {
+        "horn_clear_mode_16": {
           "type": "action",
-          "actionId": "field.set_mode_effect_flag",
-          "arguments": { "flagBit": 14, "value": false },
-          "next": "horn_clear_effect_16"
-        },
-        "horn_clear_effect_16": {
-          "type": "action",
-          "actionId": "field.set_mode_effect_flag",
+          "actionId": "field.set_mode_flag",
           "arguments": { "flagBit": 16, "value": false },
-          "next": "horn_set_effect_17"
+          "next": "horn_set_mode_17",
+          "evidence": "ROM 0x53DDA loads FFFC30; 0x53DE0 clears bit 16 before the write at 0x53DE8."
         },
-        "horn_set_effect_17": {
+        "horn_set_mode_17": {
           "type": "action",
-          "actionId": "field.set_mode_effect_flag",
+          "actionId": "field.set_mode_flag",
           "arguments": { "flagBit": 17, "value": true },
-          "next": "horn_clear_auxiliary_0"
+          "next": "horn_clear_auxiliary_0",
+          "evidence": "ROM 0x53DE4 sets FFFC30 bit 17 before the write at 0x53DE8."
         },
         "horn_clear_auxiliary_0": {
           "type": "action",
@@ -193,19 +193,21 @@
           "type": "action",
           "actionId": "story.set_fact",
           "arguments": {"factId":"shaman_pelt_given","value":true},
-          "next": "pelt_clear_effect_17"
+          "next": "pelt_clear_mode_17"
         },
-        "pelt_clear_effect_17": {
+        "pelt_clear_mode_17": {
           "type": "action",
-          "actionId": "field.set_mode_effect_flag",
+          "actionId": "field.set_mode_flag",
           "arguments": { "flagBit": 17, "value": false },
-          "next": "pelt_set_effect_18"
+          "next": "pelt_set_mode_18",
+          "evidence": "ROM 0x53E42 loads FFFC30; 0x53E48 clears bit 17 before the write at 0x53E50."
         },
-        "pelt_set_effect_18": {
+        "pelt_set_mode_18": {
           "type": "action",
-          "actionId": "field.set_mode_effect_flag",
+          "actionId": "field.set_mode_flag",
           "arguments": { "flagBit": 18, "value": true },
-          "next": "pelt_clear_auxiliary_1"
+          "next": "pelt_clear_auxiliary_1",
+          "evidence": "ROM 0x53E4C sets FFFC30 bit 18 before the write at 0x53E50."
         },
         "pelt_clear_auxiliary_1": {
           "type": "action",
@@ -250,25 +252,28 @@
           "type": "action",
           "actionId": "story.set_fact",
           "arguments": {"factId":"shaman_tasks_done","value":true},
-          "next": "completion_clear_effect_15"
+          "next": "completion_clear_mode_15"
         },
-        "completion_clear_effect_15": {
+        "completion_clear_mode_15": {
           "type": "action",
-          "actionId": "field.set_mode_effect_flag",
+          "actionId": "field.set_mode_flag",
           "arguments": { "flagBit": 15, "value": false },
-          "next": "completion_clear_effect_18"
+          "next": "completion_clear_mode_18",
+          "evidence": "ROM 0x53EB2 loads FFFC30; 0x53EB8 clears bit 15 before the write at 0x53EC4."
         },
-        "completion_clear_effect_18": {
+        "completion_clear_mode_18": {
           "type": "action",
-          "actionId": "field.set_mode_effect_flag",
+          "actionId": "field.set_mode_flag",
           "arguments": { "flagBit": 18, "value": false },
-          "next": "completion_set_effect_19"
+          "next": "completion_set_mode_19",
+          "evidence": "ROM 0x53EBC clears FFFC30 bit 18 before the write at 0x53EC4."
         },
-        "completion_set_effect_19": {
+        "completion_set_mode_19": {
           "type": "action",
-          "actionId": "field.set_mode_effect_flag",
+          "actionId": "field.set_mode_flag",
           "arguments": { "flagBit": 19, "value": true },
-          "next": "completion_clear_auxiliary_2"
+          "next": "completion_clear_auxiliary_2",
+          "evidence": "ROM 0x53EC0 sets FFFC30 bit 19 before the write at 0x53EC4."
         },
         "completion_clear_auxiliary_2": {
           "type": "action",

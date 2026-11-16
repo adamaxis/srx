@@ -44,8 +44,8 @@ game = {
     state = {
         mako_defeated = true,
         ogami_left = false,
-        field_mode_effect_flag_bit_26 = true,
-        field_mode_effect_flag_bit_27 = false,
+        field_mode_flag_bit_26 = true,
+        field_mode_flag_bit_27 = false,
     },
     location = {
         type = "building",
@@ -121,8 +121,8 @@ assert(departure_outcome.type == "continue_in_place")
 assert(game.last_dialogue_event == "entry" and
        game.state.ogami_left == true and
        game.state.story_trigger_active_15 == nil and
-       game.state.field_mode_effect_flag_bit_26 == false and
-       game.state.field_mode_effect_flag_bit_27 == true)
+       game.state.field_mode_flag_bit_26 == false and
+       game.state.field_mode_flag_bit_27 == true)
 
 local event = Dialogue.event_text_keys(
     "gates_undersound_narrator", "gates.undersound", "entry")

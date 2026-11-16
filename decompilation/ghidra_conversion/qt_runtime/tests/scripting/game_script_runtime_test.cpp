@@ -2039,11 +2039,13 @@ bool verify_dialogue_graph_outcomes(
         "building", "downtown_site_04_gates_undersound",
         "gates.undersound", "gates_undersound_narrator");
     scripts.set_field_mode_context(ScriptFieldModeContext{0U, 3U, 0});
+    // [C] ROM 0x5426C clears FFFC30 bit 26 and 0x54270 sets bit 27;
+    // both changes are stored to FFFC30 at 0x54274.
     scripts.set_story_state({
         {"mako_defeated", true},
         {"ogami_left", false},
-        {"field_mode_effect_flag_bit_26", true},
-        {"field_mode_effect_flag_bit_27", false},
+        {"field_mode_flag_bit_26", true},
+        {"field_mode_flag_bit_27", false},
     });
     auto task = scripts.start_task(
         "gates_undersound", "present_ogami_departure");
@@ -2075,8 +2077,8 @@ bool verify_dialogue_graph_outcomes(
                     dialogue_outcome_type(*task.dialogue_outcome) ==
                         DialogueOutcomeType::continue_in_place && !has_story_fact(gates_state, "story_trigger_active_15") &&
                     gates_state.at("ogami_left") &&
-                    !gates_state.at("field_mode_effect_flag_bit_26") &&
-                    gates_state.at("field_mode_effect_flag_bit_27"),
+                    !gates_state.at("field_mode_flag_bit_26") &&
+                    gates_state.at("field_mode_flag_bit_27"),
                 "Gates graph lost its ordered effects or typed outcome")) {
         std::cerr << scripts.failure() << '\n';
         return false;
@@ -14863,6 +14865,7 @@ int main() {
                   << '\n';
         return 17;
     }
+    // [C] ROM 0x53D1C..0x53D36 clears FFFC30 bits 8/9/10/13 and sets bit 14.
     scripts.set_story_state({
         {"tarislar_asked_shale", false},
         {"owlfeather_asked", true},
@@ -15098,13 +15101,15 @@ int main() {
     scripts.set_location_context("building", kOwlfeatherLocation,
                                  "salish.owlfeather", "david_owlfeather");
     scripts.set_field_mode_context(ScriptFieldModeContext{6U, 0U, 0});
+    // [C] ROM 0x53BA0/0x53BA6/0x53BAA update FFFC30 bits 8/9;
+    // 0x21ED0 sets FFFC30 bit 10, and 0x53C68 clears bit 9.
     scripts.set_story_state({
         {"tarislar_asked_shale", true},
         {"owlfeather_asked", false},
         {"aragorn_found", false},
         {"aragorn_freed_told", false},
-        {"field_mode_effect_flag_bit_8", true},
-        {"field_mode_effect_flag_bit_9", true},
+        {"field_mode_flag_bit_8", true},
+        {"field_mode_flag_bit_9", true},
     });
     auto owlfeather_task =
         scripts.start_task("salish_owlfeather", "present_first_contact");
@@ -15144,8 +15149,8 @@ int main() {
                     owlfeather_task.operation->menu.has_value() &&
                     owlfeather_task.operation->menu->id == "brother_more" &&
                     scripts.story_state().at("owlfeather_asked") &&
-                    !scripts.story_state().at("field_mode_effect_flag_bit_8") &&
-                    !scripts.story_state().at("field_mode_effect_flag_bit_9"),
+                    !scripts.story_state().at("field_mode_flag_bit_8") &&
+                    !scripts.story_state().at("field_mode_flag_bit_9"),
                 "Owlfeather's brother option did not mark bit 2 and present the holopix response")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
@@ -15162,7 +15167,7 @@ int main() {
                     owlfeather_task.dialogue_outcome.has_value() &&
                     dialogue_outcome_type(*owlfeather_task.dialogue_outcome) ==
                         DialogueOutcomeType::continue_in_place &&
-                    scripts.story_state().at("field_mode_effect_flag_bit_10"),
+                    scripts.story_state().at("field_mode_flag_bit_10"),
                 "Owlfeather's JSON dialogue graph did not finish its task branch, farewell pages, and effect bit 10")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
@@ -15202,7 +15207,7 @@ int main() {
         {"owlfeather_asked", true},
         {"aragorn_found", false},
         {"aragorn_freed_told", false},
-        {"field_mode_effect_flag_bit_9", true},
+        {"field_mode_flag_bit_9", true},
     });
     owlfeather_task = scripts.start_task(
         "salish_owlfeather", "present_search_followup");
@@ -15211,7 +15216,7 @@ int main() {
                     owlfeather_task.operation->menu->id == "search_followup" &&
                     scripts.dialogue_text(
                         "salish.owlfeather.page.search_followup") != nullptr &&
-                    !scripts.story_state().at("field_mode_effect_flag_bit_9"),
+                    !scripts.story_state().at("field_mode_flag_bit_9"),
                 "Owlfeather's search follow-up did not select its ROM prompt and clear effect bit 9")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
@@ -15234,11 +15239,11 @@ int main() {
         {"owlfeather_asked", false},
         {"aragorn_found", true},
         {"aragorn_freed_told", false},
-        {"field_mode_effect_flag_bit_8", true},
-        {"field_mode_effect_flag_bit_9", true},
-        {"field_mode_effect_flag_bit_10", true},
-        {"field_mode_effect_flag_bit_13", true},
-        {"field_mode_effect_flag_bit_14", false},
+        {"field_mode_flag_bit_8", true},
+        {"field_mode_flag_bit_9", true},
+        {"field_mode_flag_bit_10", true},
+        {"field_mode_flag_bit_13", true},
+        {"field_mode_flag_bit_14", false},
     });
     owlfeather_task = scripts.start_task(
         "salish_owlfeather", "present_return_followup");
@@ -15255,11 +15260,11 @@ int main() {
     if (!expect(owlfeather_task.operation.has_value() &&
                     owlfeather_task.operation->menu.has_value() &&
                     owlfeather_task.operation->menu->id == "return_followup" &&
-                    !scripts.story_state().at("field_mode_effect_flag_bit_8") &&
-                    !scripts.story_state().at("field_mode_effect_flag_bit_9") &&
-                    !scripts.story_state().at("field_mode_effect_flag_bit_10") &&
-                    !scripts.story_state().at("field_mode_effect_flag_bit_13") &&
-                    scripts.story_state().at("field_mode_effect_flag_bit_14"),
+                    !scripts.story_state().at("field_mode_flag_bit_8") &&
+                    !scripts.story_state().at("field_mode_flag_bit_9") &&
+                    !scripts.story_state().at("field_mode_flag_bit_10") &&
+                    !scripts.story_state().at("field_mode_flag_bit_13") &&
+                    scripts.story_state().at("field_mode_flag_bit_14"),
                 "Owlfeather's return follow-up did not apply its ordered effect flag updates")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
@@ -16114,10 +16119,15 @@ int main() {
         return 17;
     }
 
+    // [C] Frosty's command 0x49 (0x220EA) sets FFFC34 bit 5 before the
+    // apartments visit; command 0x45 at 0x21FF2 clears bit 5 (0x21FF8) and
+    // sets bit 6 (0x21FFC). Seed bit 5 so the clear is observable.
     scripts.set_story_state({
         {"frosty_met", true},
         {"ito_fight_won", false},
         {"garden_apts_entered", false},
+        {"field_mode_effect_flag_bit_5", true},
+        {"field_mode_effect_flag_bit_6", false},
     });
     auto tarislar_dialogue = scripts.start_task(
         "tarislar_apartments", "present_first_entry");
@@ -16157,7 +16167,7 @@ int main() {
                     tarislar_dialogue.operation->dialogue.has_value() &&
                     tarislar_dialogue.operation->dialogue->event_id ==
                         "guarded_penthouse" &&
-                    scripts.story_state().at("field_mode_effect_flag_bit_5") &&
+                    !scripts.story_state().at("field_mode_effect_flag_bit_5") &&
                     scripts.story_state().at("field_mode_effect_flag_bit_6"),
                 "Tarislar command 0x45 effects did not precede the ROM penthouse page")) {
         std::cerr << scripts.failure() << '\n';
@@ -16647,9 +16657,10 @@ int main() {
     scripts.set_story_state({
         {"shaman_met", false},
         {"shaman_item4_given", false},
-        {"field_mode_effect_flag_bit_14", true},
-        {"field_mode_effect_flag_bit_15", false},
-        {"field_mode_effect_flag_bit_16", false},
+        // [C] ROM 0x53D6E clears FFFC30 bit 14 and sets bits 15/16.
+        {"field_mode_flag_bit_14", true},
+        {"field_mode_flag_bit_15", false},
+        {"field_mode_flag_bit_16", false},
         {"field_auxiliary_flag_bit_0", false},
         {"group_item.gargoyle_horn", false},
     });
@@ -16682,11 +16693,11 @@ int main() {
                         "salish.spirit_eyes.page.first_contact") != nullptr &&
                     !scripts.story_state().at("shaman_met") && !has_story_fact(scripts.story_state(), "story_trigger_active_5") &&
                     !scripts.story_state().at(
-                        "field_mode_effect_flag_bit_14") &&
+                        "field_mode_flag_bit_14") &&
                     scripts.story_state().at(
-                        "field_mode_effect_flag_bit_15") &&
+                        "field_mode_flag_bit_15") &&
                     scripts.story_state().at(
-                        "field_mode_effect_flag_bit_16") &&
+                        "field_mode_flag_bit_16") &&
                     scripts.story_state().at(
                         "field_auxiliary_flag_bit_0"),
                 "Spirit Eyes first-contact task lost its ROM text menu or FFFC40 state")) {
@@ -16814,9 +16825,11 @@ int main() {
     scripts.set_story_state({
         {"shaman_met", true}, {"shaman_item4_given", false},
         {"group_item.gargoyle_horn", true},
-        {"field_mode_effect_flag_bit_14", true},
-        {"field_mode_effect_flag_bit_16", true},
-        {"field_mode_effect_flag_bit_17", false},
+        // [C] ROM 0x53DD0 sets FFFC1E bit 6; 0x53DDA..0x53DE8
+        // update FFFC30 bit 16 to bit 17 and leave bit 14 untouched.
+        {"field_mode_flag_bit_14", true},
+        {"field_mode_flag_bit_16", true},
+        {"field_mode_flag_bit_17", false},
         {"field_auxiliary_flag_bit_0", true},
         {"field_auxiliary_flag_bit_1", false},
     });
@@ -16824,12 +16837,12 @@ int main() {
     if (!expect(spirit_page_is(spirit_eyes_task, "second_item") &&
                     !scripts.story_state().at("group_item.gargoyle_horn") &&
                     scripts.story_state().at("shaman_item4_given") &&
-                    !scripts.story_state().at(
-                        "field_mode_effect_flag_bit_14") &&
-                    !scripts.story_state().at(
-                        "field_mode_effect_flag_bit_16") &&
                     scripts.story_state().at(
-                        "field_mode_effect_flag_bit_17") &&
+                        "field_mode_flag_bit_14") &&
+                    !scripts.story_state().at(
+                        "field_mode_flag_bit_16") &&
+                    scripts.story_state().at(
+                        "field_mode_flag_bit_17") &&
                     !scripts.story_state().at("field_auxiliary_flag_bit_0") &&
                     scripts.story_state().at("field_auxiliary_flag_bit_1"),
                 "Spirit Eyes horn handoff lost its item, story, or ritual-marker effects")) {
@@ -16867,8 +16880,9 @@ int main() {
     scripts.set_story_state({
         {"shaman_met", true}, {"shaman_item4_given", true},
         {"shaman_pelt_given", false}, {"group_item.hell_hound_pelt", true},
-        {"field_mode_effect_flag_bit_17", true},
-        {"field_mode_effect_flag_bit_18", false},
+        // [C] ROM 0x53E42..0x53E50 updates FFFC30 bits 17 and 18.
+        {"field_mode_flag_bit_17", true},
+        {"field_mode_flag_bit_18", false},
         {"field_auxiliary_flag_bit_1", true},
         {"field_auxiliary_flag_bit_2", false},
     });
@@ -16877,9 +16891,9 @@ int main() {
                     !scripts.story_state().at("group_item.hell_hound_pelt") &&
                     scripts.story_state().at("shaman_pelt_given") &&
                     !scripts.story_state().at(
-                        "field_mode_effect_flag_bit_17") &&
+                        "field_mode_flag_bit_17") &&
                     scripts.story_state().at(
-                        "field_mode_effect_flag_bit_18") &&
+                        "field_mode_flag_bit_18") &&
                     !scripts.story_state().at("field_auxiliary_flag_bit_1") &&
                     scripts.story_state().at("field_auxiliary_flag_bit_2"),
                 "Spirit Eyes pelt handoff lost its item, story, or ritual-marker effects")) {
@@ -17225,9 +17239,10 @@ int main() {
         {"serpent_scale_taken", true},
         {"shaman_tasks_done", false},
         {"group_item.feathered_scale", true},
-        {"field_mode_effect_flag_bit_15", true},
-        {"field_mode_effect_flag_bit_18", true},
-        {"field_mode_effect_flag_bit_19", false},
+        // [C] ROM 0x53EB2..0x53EC4 updates FFFC30 bits 15, 18, and 19.
+        {"field_mode_flag_bit_15", true},
+        {"field_mode_flag_bit_18", true},
+        {"field_mode_flag_bit_19", false},
         {"field_auxiliary_flag_bit_2", true},
     });
     auto spirit_eyes_completion = scripts.start_task(
@@ -17244,11 +17259,11 @@ int main() {
                     !has_story_fact(scripts.story_state(), "story_trigger_active_9") &&
                     !scripts.story_state().at("group_item.feathered_scale") &&
                     !scripts.story_state().at(
-                        "field_mode_effect_flag_bit_15") &&
+                        "field_mode_flag_bit_15") &&
                     !scripts.story_state().at(
-                        "field_mode_effect_flag_bit_18") &&
+                        "field_mode_flag_bit_18") &&
                     scripts.story_state().at(
-                        "field_mode_effect_flag_bit_19") &&
+                        "field_mode_flag_bit_19") &&
                     !scripts.story_state().at("field_auxiliary_flag_bit_2"),
                 "Spirit Eyes did not consume the Licourtrix scale into bit 9")) {
         std::cerr << scripts.failure() << '\n';

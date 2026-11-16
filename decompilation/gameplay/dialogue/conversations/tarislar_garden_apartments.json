@@ -20,7 +20,7 @@
           "type": "action",
           "actionId": "tarislar_apartments.mark_first_entry_arrival_effects",
           "results": { "applied": "penthouse_entry" },
-          "evidence": "ROM command 0x45 at 0x21FF2 sets FFFC34 bits 5 and 6 before the penthouse page."
+          "evidence": "ROM command 0x45 at 0x21FF2 clears FFFC34 bit 5 (0x21FF8) and sets bit 6 (0x21FFC) before the penthouse page."
         },
         "penthouse_entry": {
           "type": "page",

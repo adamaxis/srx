@@ -1638,7 +1638,7 @@ public:
         return group_item_flags_;
     }
     void seed_vigore_search_for_dump() noexcept {
-        field_mode_effect_flags_ |=
+        notebook_tip_flags_[1] |=
             field_flag_mask(FieldTitleServiceFlag::redmond_vigore_search_pending);
     }
     bool set_story_flag_for_dump(std::uint8_t bit, bool value) noexcept {
@@ -1660,22 +1660,22 @@ public:
             primary_marker, secondary_marker);
     }
     std::uint32_t field_mode_effect_flags_for_dump() const noexcept {
-        return field_mode_effect_flags_;
+        return notebook_tip_flags_[1];
     }
     bool pending_world_effect_for_dump() const noexcept {
         return field_pending_world_effect_;
     }
     std::uint32_t field_mode_flags_for_dump() const noexcept {
-        return field_mode_flags_;
+        return notebook_tip_flags_[0];
     }
     // Physical-entry QA seeds the typed FFFC30 fact without relying on a
     // gameplay action to create the initial test condition.
     void seed_field_mode_flags_for_qa(std::uint32_t flags) noexcept {
-        field_mode_flags_ = flags;
+        notebook_tip_flags_[0] = flags;
         field_mode_flags_resolved_ = true;
     }
     void seed_field_mode_effect_flags_for_qa(std::uint32_t flags) noexcept {
-        field_mode_effect_flags_ = flags;
+        notebook_tip_flags_[1] = flags;
     }
     std::uint32_t field_auxiliary_flags_for_dump() const noexcept {
         return field_auxiliary_flags_;
@@ -3138,13 +3138,9 @@ private:
     std::uint8_t field_entity_behavior_flags_ = 0;
     std::int8_t field_exit_alternate_result_ = 0;
     std::uint32_t field_exit_world_flags_ = 0;
-    // Typed counterpart for source FFFC30, separate from FFFC1E and FFFC34.
-    std::uint32_t field_mode_flags_ = 1U;
+    // FFFC30 and FFFC34 are the first two words of the Notebook tip array.
     // Old host saves omit FFFC30; do not expose its New Game seed as saved data.
     bool field_mode_flags_resolved_ = true;
-    // Typed counterparts for the field story-service registers. These remain
-    // session state until the save adapter restores their source facts.
-    std::uint32_t field_mode_effect_flags_ = 0;
     // FFE182 selects the ROM's pending entity-list handoff. It is transient
     // field state and is not part of the persistent story/save flags.
     bool field_pending_world_effect_ = false;

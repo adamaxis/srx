@@ -476,12 +476,8 @@ std::optional<QJsonObject> FieldSceneRuntime::capture_game_save_snapshot(
     QJsonObject story;
     story.insert(QStringLiteral("exit_world_flags"),
                  static_cast<double>(field_exit_world_flags_));
-    story.insert(QStringLiteral("mode_flags"),
-                 field_mode_flags_resolved_
-                     ? QJsonValue(static_cast<double>(field_mode_flags_))
-                     : QJsonValue(QJsonValue::Null));
-    story.insert(QStringLiteral("mode_effect_flags"),
-                 static_cast<double>(field_mode_effect_flags_));
+    story.insert(QStringLiteral("mode_flags_resolved"),
+                 field_mode_flags_resolved_);
     story.insert(QStringLiteral("auxiliary_flags"),
                  static_cast<double>(field_auxiliary_flags_));
     story.insert(QStringLiteral("render_effect_flags"),
@@ -629,7 +625,8 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
         std::uint32_t funds = 0U;
         std::uint32_t exit_world_flags = 0U;
         std::optional<std::uint32_t> mode_flags;
-        std::uint32_t mode_effect_flags = 0U;
+        std::optional<std::uint32_t> mode_effect_flags;
+        std::optional<bool> mode_flags_resolved;
         std::uint32_t auxiliary_flags = 0U;
         std::uint32_t render_effect_flags = 0U;
         std::optional<std::uint8_t> dialogue_register;
@@ -820,9 +817,6 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
     if (!read_save_integer(story, "exit_world_flags", 0, 0xFFFFFFFFLL,
                            numeric, error)) return false;
     restored.exit_world_flags = static_cast<std::uint32_t>(numeric);
-    if (!read_save_integer(story, "mode_effect_flags", 0, 0xFFFFFFFFLL,
-                           numeric, error)) return false;
-    restored.mode_effect_flags = static_cast<std::uint32_t>(numeric);
     // Older local snapshots predate the typed FFFC40 fact word.
     if (story.contains(QStringLiteral("auxiliary_flags"))) {
         if (!read_save_integer(story, "auxiliary_flags", 0, 0xFFFFFFFFLL,
@@ -866,6 +860,8 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
                                 restored.dialogue_flags) ||
         !read_optional_unsigned("mode_flags", 0xFFFFFFFFLL,
                                 restored.mode_flags) ||
+        !read_optional_unsigned("mode_effect_flags", 0xFFFFFFFFLL,
+                                restored.mode_effect_flags) ||
         !read_optional_unsigned("group_item_flags", 0xFFFFFFFFLL,
                                 restored.group_item_flags) ||
         !read_optional_unsigned("matrix_passcode_flags", 0xFFFF,
@@ -955,24 +951,85 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
     }
     if (!read_save_boolean(story, "walk_fast", restored.walk_fast, error) ||
         !read_save_boolean(story, "notebook_current_run_available",
-                           restored.current_run_available, error) ||
-        !read_save_boolean(story, "notebook_tips_resolved",
-                           restored.tips_resolved, error)) {
+                           restored.current_run_available, error)) {
         return false;
     }
     const auto tip_flags = story.value(QStringLiteral("notebook_tip_flags"));
-    if (!tip_flags.isArray() || tip_flags.toArray().size() != 3) {
-        return fail(QStringLiteral("The save has invalid Notebook tip state."));
-    }
-    for (std::size_t index = 0; index < restored.tip_flags.size(); ++index) {
-        const auto value = tip_flags.toArray().at(static_cast<qsizetype>(index));
-        const auto parsed = value.toDouble(-1.0);
-        if (!value.isDouble() || !std::isfinite(parsed) ||
-            std::trunc(parsed) != parsed || parsed < 0.0 ||
-            parsed > 0xFFFFFFFFU) {
+    const bool tip_array_present = tip_flags.isArray();
+    if (tip_array_present) {
+        if (tip_flags.toArray().size() != 3) {
             return fail(QStringLiteral("The save has invalid Notebook tip state."));
         }
-        restored.tip_flags[index] = static_cast<std::uint32_t>(parsed);
+        for (std::size_t index = 0; index < restored.tip_flags.size(); ++index) {
+            const auto value =
+                tip_flags.toArray().at(static_cast<qsizetype>(index));
+            const auto parsed = value.toDouble(-1.0);
+            if (!value.isDouble() || !std::isfinite(parsed) ||
+                std::trunc(parsed) != parsed || parsed < 0.0 ||
+                parsed > 0xFFFFFFFFU) {
+                return fail(QStringLiteral(
+                    "The save has invalid Notebook tip state."));
+            }
+            restored.tip_flags[index] = static_cast<std::uint32_t>(parsed);
+        }
+    } else if (!tip_flags.isUndefined() && !tip_flags.isNull()) {
+        return fail(QStringLiteral("The save has invalid Notebook tip state."));
+    }
+    const auto tips_resolved_value =
+        story.value(QStringLiteral("notebook_tips_resolved"));
+    if (!tips_resolved_value.isUndefined() &&
+        !tips_resolved_value.isNull() && !tips_resolved_value.isBool()) {
+        return fail(QStringLiteral("The save has invalid Notebook tip state."));
+    }
+    restored.tips_resolved = tip_array_present &&
+        (tips_resolved_value.isUndefined() || tips_resolved_value.isNull() ||
+         tips_resolved_value.toBool());
+
+    // Current saves store FFFC30/FFFC34 only as Notebook words 0/1. Saves
+    // written before the shared-storage change also carry the host's private
+    // copies ("mode_flags"/"mode_effect_flags"): Lua field-mode writes went
+    // only to those copies, while Notebook tip commands went only to the
+    // array, so neither copy alone holds the source word. Merge them.
+    if (!tip_array_present) {
+        restored.tip_flags[0] = restored.mode_flags.value_or(1U);
+        restored.tip_flags[1] = restored.mode_effect_flags.value_or(0U);
+    } else {
+        // [C] The old private FFFC34 copy also held Gates Undersound bits
+        // 26/27, which ROM 0x5426C..0x54274 writes to FFFC30. No ROM routine
+        // writes FFFC34 bits 26/27, so those two bits can only be the
+        // misplaced Gates state and move to FFFC30. Other private bits stay
+        // in FFFC34 because real FFFC34 writers share them.
+        constexpr auto kLegacyGatesUndersoundBits =
+            (std::uint32_t{1U} << 26U) | (std::uint32_t{1U} << 27U);
+        const auto legacy_effects = restored.mode_effect_flags.value_or(0U);
+        const auto legacy_mode = restored.mode_flags.value_or(0U) |
+            (legacy_effects & kLegacyGatesUndersoundBits);
+        const auto legacy_fffc34 = legacy_effects & ~kLegacyGatesUndersoundBits;
+        if (restored.tips_resolved) {
+            restored.tip_flags[0] |= legacy_mode;
+            restored.tip_flags[1] |= legacy_fffc34;
+        } else {
+            if (restored.mode_flags.has_value()) {
+                restored.tip_flags[0] = legacy_mode;
+            }
+            if (restored.mode_effect_flags.has_value()) {
+                restored.tip_flags[1] = legacy_fffc34;
+            }
+        }
+    }
+    const auto mode_flags_resolved_value =
+        story.value(QStringLiteral("mode_flags_resolved"));
+    if (!mode_flags_resolved_value.isUndefined() &&
+        !mode_flags_resolved_value.isNull()) {
+        if (!mode_flags_resolved_value.isBool()) {
+            return fail(QStringLiteral(
+                "Save field 'mode_flags_resolved' is invalid."));
+        }
+        restored.mode_flags_resolved = mode_flags_resolved_value.toBool();
+    } else {
+        restored.mode_flags_resolved = tip_array_present
+            ? (restored.tips_resolved || restored.mode_flags.has_value())
+            : restored.mode_flags.has_value();
     }
     if (!read_save_integer(story, "world_frame_counter", 0, 0xFFFF,
                            numeric, error)) return false;
@@ -1035,9 +1092,9 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
                        ? std::optional<std::uint32_t>(restored.funds)
                        : std::nullopt;
     field_exit_world_flags_ = restored.exit_world_flags;
-    field_mode_flags_resolved_ = restored.mode_flags.has_value();
-    field_mode_flags_ = restored.mode_flags.value_or(1U);
-    field_mode_effect_flags_ = restored.mode_effect_flags;
+    field_mode_flags_resolved_ =
+        restored.mode_flags_resolved.value_or(
+            restored.mode_flags.has_value());
     field_auxiliary_flags_ = restored.auxiliary_flags;
     field_render_effect_flags_ = restored.render_effect_flags;
     field_dialogue_register_ = restored.dialogue_register;

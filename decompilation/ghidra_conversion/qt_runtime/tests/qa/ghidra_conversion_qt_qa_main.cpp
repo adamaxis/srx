@@ -12933,6 +12933,168 @@ int run_field_scene5_store_service_entry_qa(
     return 0;
 }
 
+int run_shared_flag_storage_qa(FieldSceneRuntime& field_scene) {
+    const auto new_game_words = field_scene.notebook_tip_flags_for_dump();
+    if (!new_game_words ||
+        *new_game_words != std::array<std::uint32_t, 3U>{{1U, 0U, 0U}}) {
+        std::cerr << "Shared story flag QA: New Game words were not {1,0,0}\n";
+        return 3;
+    }
+    QString error;
+    const auto original = field_scene.capture_game_save_snapshot_for_dump(
+        &error);
+    if (!original) {
+        std::cerr << "Shared story flag QA: could not capture baseline: "
+                  << error.toStdString() << '\n';
+        return 3;
+    }
+
+    constexpr auto kTipBit5 = std::uint8_t{5U};
+    constexpr auto kModeBit6 = std::uint32_t{1U} << 6U;
+    constexpr auto kEffectTipBit7 = std::size_t{32U} + 7U;
+    constexpr auto kEffectBit8 = std::uint32_t{1U} << 8U;
+    field_scene.seed_notebook_tip_flags_for_qa({{0U, 0U, 0U}});
+    if (!field_scene.set_notebook_tip_unlocked(kTipBit5, true) ||
+        (field_scene.field_mode_flags_for_dump() &
+         (std::uint32_t{1U} << kTipBit5)) == 0U) {
+        std::cerr << "Shared story flag QA: Notebook bit 5 did not update "
+                     "the FFFC30 view\n";
+        return 3;
+    }
+    field_scene.seed_field_mode_flags_for_qa(kModeBit6);
+    auto words = field_scene.notebook_tip_flags_for_dump();
+    if (!words || ((*words)[0U] & kModeBit6) == 0U) {
+        std::cerr << "Shared story flag QA: FFFC30 bit 6 did not update "
+                     "the Notebook view\n";
+        return 3;
+    }
+    field_scene.seed_notebook_tip_flags_for_qa({{0U, 0U, 0U}});
+    if (!field_scene.set_notebook_tip_unlocked(kEffectTipBit7, true) ||
+        (field_scene.field_mode_effect_flags_for_dump() &
+         (std::uint32_t{1U} << 7U)) == 0U) {
+        std::cerr << "Shared story flag QA: Notebook bit 39 did not update "
+                     "the FFFC34 view\n";
+        return 3;
+    }
+    field_scene.seed_field_mode_effect_flags_for_qa(kEffectBit8);
+    words = field_scene.notebook_tip_flags_for_dump();
+    if (!words || ((*words)[1U] & kEffectBit8) == 0U) {
+        std::cerr << "Shared story flag QA: FFFC34 bit 8 did not update "
+                     "the Notebook view\n";
+        return 3;
+    }
+
+    constexpr auto kRoundTripWord0 =
+        (std::uint32_t{1U} << 5U) | (std::uint32_t{1U} << 6U);
+    constexpr auto kRoundTripWord1 =
+        (std::uint32_t{1U} << 7U) | (std::uint32_t{1U} << 8U);
+    field_scene.seed_notebook_tip_flags_for_qa(
+        {{kRoundTripWord0, kRoundTripWord1, 0U}});
+    field_scene.seed_field_mode_flags_for_qa(kRoundTripWord0);
+    const auto saved = field_scene.capture_game_save_snapshot_for_dump(&error);
+    if (!saved) {
+        std::cerr << "Shared story flag QA: round-trip capture failed: "
+                  << error.toStdString() << '\n';
+        return 3;
+    }
+    const auto saved_story = saved->value(QStringLiteral("story")).toObject();
+    if (saved_story.contains(QStringLiteral("mode_flags")) ||
+        saved_story.contains(QStringLiteral("mode_effect_flags")) ||
+        !field_scene.restore_game_save_snapshot_for_dump(*saved, &error)) {
+        std::cerr << "Shared story flag QA: save did not keep one source: "
+                  << error.toStdString() << '\n';
+        return 3;
+    }
+    words = field_scene.notebook_tip_flags_for_dump();
+    if (!words || (*words)[0U] != field_scene.field_mode_flags_for_dump() ||
+        (*words)[1U] != field_scene.field_mode_effect_flags_for_dump()) {
+        std::cerr << "Shared story flag QA: save round-trip split shared words\n";
+        return 3;
+    }
+
+    auto conflicting_save = *saved;
+    auto conflicting_story = conflicting_save.value(
+        QStringLiteral("story")).toObject();
+    conflicting_story.insert(QStringLiteral("mode_flags"), 0.0);
+    conflicting_story.insert(QStringLiteral("mode_effect_flags"), 0.0);
+    conflicting_save.insert(QStringLiteral("story"), conflicting_story);
+    if (!field_scene.restore_game_save_snapshot_for_dump(
+            conflicting_save, &error)) {
+        std::cerr << "Shared story flag QA: conflicting legacy save failed: "
+                  << error.toStdString() << '\n';
+        return 3;
+    }
+    words = field_scene.notebook_tip_flags_for_dump();
+    if (!words || (*words)[0U] != kRoundTripWord0 ||
+        (*words)[1U] != kRoundTripWord1) {
+        std::cerr << "Shared story flag QA: Notebook array did not win over "
+                     "legacy mode words\n";
+        return 3;
+    }
+
+    // A save from before the shared-storage change carries the Notebook
+    // array plus the host's private copies. Lua mode writes lived only in
+    // those copies, so their bits must survive the load. Private FFFC34
+    // bits 26/27 are Gates Undersound state: ROM 0x5426C..0x54274 writes
+    // them to FFFC30 and no ROM routine writes FFFC34 bits 26/27.
+    constexpr auto kOldSaveModeBit30 = std::uint32_t{1U} << 30U;
+    constexpr auto kOldSaveEffectBit1 = std::uint32_t{1U} << 1U;
+    constexpr auto kOldSaveGatesBit27 = std::uint32_t{1U} << 27U;
+    auto old_format_save = *saved;
+    auto old_format_story =
+        old_format_save.value(QStringLiteral("story")).toObject();
+    old_format_story.remove(QStringLiteral("mode_flags_resolved"));
+    old_format_story.insert(QStringLiteral("mode_flags"),
+                            static_cast<double>(kOldSaveModeBit30));
+    old_format_story.insert(
+        QStringLiteral("mode_effect_flags"),
+        static_cast<double>(kOldSaveEffectBit1 | kOldSaveGatesBit27));
+    old_format_save.insert(QStringLiteral("story"), old_format_story);
+    if (!field_scene.restore_game_save_snapshot_for_dump(
+            old_format_save, &error)) {
+        std::cerr << "Shared story flag QA: old-format save failed: "
+                  << error.toStdString() << '\n';
+        return 3;
+    }
+    words = field_scene.notebook_tip_flags_for_dump();
+    if (!words ||
+        (*words)[0U] != (kRoundTripWord0 | kOldSaveModeBit30 |
+                         kOldSaveGatesBit27) ||
+        (*words)[1U] != (kRoundTripWord1 | kOldSaveEffectBit1) ||
+        field_scene.field_mode_flags_for_dump() != (*words)[0U] ||
+        field_scene.field_mode_effect_flags_for_dump() != (*words)[1U]) {
+        std::cerr << "Shared story flag QA: old-format save lost its private "
+                     "FFFC30/FFFC34 bits\n";
+        return 3;
+    }
+
+    auto legacy_save = *saved;
+    auto legacy_story = legacy_save.value(QStringLiteral("story")).toObject();
+    legacy_story.remove(QStringLiteral("notebook_tip_flags"));
+    legacy_story.remove(QStringLiteral("notebook_tips_resolved"));
+    legacy_story.remove(QStringLiteral("mode_flags_resolved"));
+    constexpr auto kLegacyWord0 = std::uint32_t{1U} << 11U;
+    constexpr auto kLegacyWord1 = std::uint32_t{1U} << 12U;
+    legacy_story.insert(QStringLiteral("mode_flags"),
+                        static_cast<double>(kLegacyWord0));
+    legacy_story.insert(QStringLiteral("mode_effect_flags"),
+                        static_cast<double>(kLegacyWord1));
+    legacy_save.insert(QStringLiteral("story"), legacy_story);
+    if (!field_scene.restore_game_save_snapshot_for_dump(legacy_save, &error) ||
+        field_scene.field_mode_flags_for_dump() != kLegacyWord0 ||
+        field_scene.field_mode_effect_flags_for_dump() != kLegacyWord1) {
+        std::cerr << "Shared story flag QA: legacy mode words were not used: "
+                  << error.toStdString() << '\n';
+        return 3;
+    }
+    if (!field_scene.restore_game_save_snapshot_for_dump(*original, &error)) {
+        std::cerr << "Shared story flag QA: failed to restore baseline: "
+                  << error.toStdString() << '\n';
+        return 3;
+    }
+    return 0;
+}
+
 enum class Scene20PhysicalEntryQaPath : std::uint8_t {
     ilene_prerequisite,
     c0_exit_lifetime,
@@ -12954,6 +13116,10 @@ int run_field_scene20_physical_entry_qa(
     const std::vector<std::string>& source_boundaries,
     const Scene20PhysicalEntryQaPath path =
         Scene20PhysicalEntryQaPath::walk_away) {
+    if (const auto result = run_shared_flag_storage_qa(field_scene);
+        result != 0) {
+        return result;
+    }
     // Stabilize random NPC/action timing across Debug and Release captures.
     field_scene.set_source_random_seed_for_dump(0U);
     std::error_code output_error;
@@ -30955,8 +31121,10 @@ int run_field_mitsuhama_after_hours_entry_qa(
 
     // Seed one of the source's three alternative leads: FFFC30 bit 12.
     // The Lua route matrix independently covers the two FFFC38 tip bits.
-    field_scene.seed_field_mode_flags_for_qa(1U << 12U);
-    field_scene.seed_notebook_tip_flags_for_qa({0U, 0U, 0U});
+    constexpr auto kAlternativeLeadBit = std::uint32_t{1U} << 12U;
+    field_scene.seed_field_mode_flags_for_qa(kAlternativeLeadBit);
+    field_scene.seed_notebook_tip_flags_for_qa(
+        {{kAlternativeLeadBit, 0U, 0U}});
     field_scene.set_field_exit_alternate_result_for_dump(0);
     field_scene.set_field_entity_world_position_for_dump(kStartX, kStartY);
     field_scene.set_field_camera_world_position_for_dump(
@@ -36260,6 +36428,15 @@ int run_field_tarislar_first_entry_qa(
                      "pre-trigger coordinates do not match\n";
         return 3;
     }
+    // [C] Frosty's command 0x49 (0x220EA) sets FFFC34 bit 5 before this
+    // visit. Command 0x45 at 0x21FF2 clears bit 5 (0x21FF8) and sets bit 6
+    // (0x21FFC); the no-Ito Harlequin path, command 0x40 at 0x21F40, sets
+    // bit 7.
+    constexpr auto kTarislarEffectBit5 = std::uint32_t{1U} << 5U;
+    constexpr auto kTarislarEffectMask = std::uint32_t{0x00E0U};
+    constexpr auto kTarislarEffectsAfterEntry =
+        (std::uint32_t{1U} << 6U) | (std::uint32_t{1U} << 7U);
+    field_scene.seed_field_mode_effect_flags_for_qa(kTarislarEffectBit5);
 
     const auto render = [&field_scene] { return render_qa_field(field_scene); };
     const auto save = [&](const std::string_view name,
@@ -36422,8 +36599,8 @@ int run_field_tarislar_first_entry_qa(
     if (!prompts_passed || !field_scene.dialogue_open() ||
         !closing.source_complete || closing.option_count != 0U ||
         !has_closing_response ||
-        (field_scene.field_mode_effect_flags_for_dump() & 0x00E0U) !=
-            0x00E0U ||
+        (field_scene.field_mode_effect_flags_for_dump() & kTarislarEffectMask) !=
+            kTarislarEffectsAfterEntry ||
         entry_opened != 1 || !party_reward_matches ||
         (field_scene.field_world_fact_flags_for_dump() & (1U << 21U)) == 0U ||
         !save("first-entry-final-response", false)) {
@@ -36511,7 +36688,7 @@ int run_field_tarislar_first_entry_qa(
     if (!trace) return 3;
     std::cout << "field_tarislar_first_entry_qa=passed record=67 event=7 "
                  "bit30-gate=yes bit21-set=yes party_karma_delta=2 "
-                 "dialogue_prompts=9 effect_bits=5,6,7 scene_transition=no "
+                 "dialogue_prompts=9 effect_bits=5-clear,6,7 scene_transition=no "
                  "field_redraw=yes audio_requests=0 "
                  "artifacts=" << output.string() << '\n';
     return 0;
@@ -37960,9 +38137,12 @@ int run_field_penumbra_mako_qa(
         notebook_flags[1U] |= (1U << 17U);
         notebook_flags[2U] |= (1U << 17U);
     }
+    constexpr auto kMakoModeLeadBit = std::uint32_t{1U} << 21U;
+    notebook_flags[0U] = 1U |
+        (mode_flag_lead ? kMakoModeLeadBit : 0U);
     field_scene.seed_notebook_tip_flags_for_qa(notebook_flags);
     field_scene.seed_field_mode_flags_for_qa(
-        mode_flag_lead ? (1U | (1U << 21U)) : 1U);
+        notebook_flags[0U]);
     if (!field_scene.set_story_flag_for_dump(10U, !story_gate_closed) ||
         !field_scene.set_story_flag_for_dump(11U, mako_defeated)) {
         std::cerr << "Club Penumbra Mako QA: source story gates could not "
@@ -38530,6 +38710,9 @@ int run_field_gates_undersound_qa(
     constexpr std::uint8_t kGatesEvent = 3U;
     constexpr std::uint16_t kStartX = 0x3A00U;
     constexpr std::uint16_t kStartY = 0x0A00U;
+    constexpr auto kFreshModeBit = std::uint32_t{1U};
+    constexpr auto kOgamiDepartureClearBit = std::uint32_t{1U} << 26U;
+    constexpr auto kOgamiDepartureSetBit = std::uint32_t{1U} << 27U;
     const auto& rectangles = field_scene.state()
                                  .field_scene_buffers.source_metadata
                                  .terrain_collision_rectangles;
@@ -38548,6 +38731,10 @@ int run_field_gates_undersound_qa(
                      "or service-15 story gate did not match\n";
         return 3;
     }
+    // [C] ROM 0x5426C clears FFFC30 bit 26 and 0x54270 sets bit 27;
+    // seed bit 26 so the physical service must perform the clear.
+    field_scene.seed_field_mode_flags_for_qa(
+        kFreshModeBit | kOgamiDepartureClearBit);
 
     const auto render = [&field_scene] { return render_qa_field(field_scene); };
     const auto save = [&](const std::string_view name,
@@ -38643,22 +38830,22 @@ int run_field_gates_undersound_qa(
     const bool dialogue_closed = !field_scene.dialogue_open();
     const auto scene_after = field_scene.field_scene_reference_for_dump();
     const auto story_flags = field_scene.field_world_fact_flags_for_dump();
-    const auto effect_flags = field_scene.field_mode_effect_flags_for_dump();
+    const auto mode_flags = field_scene.field_mode_flags_for_dump();
     const bool transition_finished =
         finish_field_modal_return_transition(field_scene);
     const bool field_frame_saved = save("field-return", true);
     if (!dialogue_closed || scene_after != 0U || return_frames != 59U ||
         ((story_flags >> 15U) & 1U) == 0U ||
-        ((effect_flags >> 26U) & 1U) != 0U ||
-        ((effect_flags >> 27U) & 1U) == 0U ||
+        (mode_flags & kOgamiDepartureClearBit) != 0U ||
+        (mode_flags & kOgamiDepartureSetBit) == 0U ||
         !transition_finished || !field_frame_saved) {
         std::cerr << "Gates Undersound QA: dismissing the source page did not "
                      "finish the same-map one-shot service (closed="
                   << dialogue_closed << ", scene=" << scene_after
                   << ", frames=" << static_cast<unsigned>(return_frames)
                   << ", story_bit_15=" << ((story_flags >> 15U) & 1U)
-                  << ", effect_bits_26_27=0x" << std::hex
-                  << ((effect_flags >> 26U) & 0x3U) << std::dec
+                  << ", mode_bits_26_27=0x" << std::hex
+                  << ((mode_flags >> 26U) & 0x3U) << std::dec
                   << ")\n";
         return 3;
     }
@@ -41088,6 +41275,10 @@ int run_field_spirit_eyes_physical_entry_qa(
     constexpr std::uint16_t kSpiritEyesCollision = 0x00DBU;
     constexpr std::uint16_t kStartX = 0x6D00U;
     constexpr std::uint16_t kStartY = 0x0B00U;
+    constexpr auto kFreshModeBit = std::uint32_t{1U};
+    constexpr auto kSpiritClearBit = std::uint32_t{1U} << 14U;
+    constexpr auto kSpiritSetBits = (std::uint32_t{1U} << 15U) |
+                                    (std::uint32_t{1U} << 16U);
     const auto& rectangles = field_scene.state()
                                  .field_scene_buffers.source_metadata
                                  .terrain_collision_rectangles;
@@ -41104,6 +41295,10 @@ int run_field_spirit_eyes_physical_entry_qa(
                      "does not match\n";
         return 3;
     }
+    // [C] ROM 0x53D6E loads FFFC30; 0x53D74 clears bit 14 and
+    // 0x53D78/0x53D7C set bits 15/16 before 0x53D80 writes FFFC30.
+    field_scene.seed_field_mode_flags_for_qa(
+        kFreshModeBit | kSpiritClearBit);
 
     const auto render = [&field_scene] { return render_qa_field(field_scene); };
     const auto save = [&](const std::string_view name,
@@ -41196,6 +41391,7 @@ int run_field_spirit_eyes_physical_entry_qa(
     const auto opened = std::count(
         source_boundaries.begin(), source_boundaries.end(),
         std::string("field.location.dialogue_task_opened"));
+    const auto spirit_mode_flags = field_scene.field_mode_flags_for_dump();
     if (!field_scene.dialogue_open() ||
         field_scene.field_scene_reference_for_dump() != 4U ||
         field_scene.field_runtime_state_for_dump().field_mode != 4U ||
@@ -41203,6 +41399,8 @@ int run_field_spirit_eyes_physical_entry_qa(
         introduction.option_count != 1U ||
         introduction.options[0U].source_label != "          < MORE >" ||
         !contains("ancient AmerIndian") ||
+        (spirit_mode_flags & (kSpiritClearBit | kSpiritSetBits)) !=
+            kSpiritSetBits ||
         field_scene.field_world_fact_flags_for_dump() != 0U ||
         field_scene.field_auxiliary_flags_for_dump() != 1U ||
         introduction.portrait_alias !=
@@ -41215,6 +41413,7 @@ int run_field_spirit_eyes_physical_entry_qa(
                   << ", text=" << contains("ancient AmerIndian")
                   << ", story=0x" << std::hex
                   << field_scene.field_world_fact_flags_for_dump()
+                  << ", mode=0x" << spirit_mode_flags
                   << ", auxiliary=0x"
                   << field_scene.field_auxiliary_flags_for_dump() << std::dec
                   << ")\n";
@@ -42887,6 +43086,17 @@ int run_field_owlfeather_physical_entry_qa(
     constexpr std::uint16_t kOwlfeatherCollision = 0x00C0U;
     constexpr std::uint16_t kStartX = 0x5500U;
     constexpr std::uint16_t kStartY = 0x5000U;
+    constexpr auto kFreshModeBit = std::uint32_t{1U};
+    constexpr auto kOwlfeatherModeBit8 = std::uint32_t{1U} << 8U;
+    constexpr auto kOwlfeatherModeBit9 = std::uint32_t{1U} << 9U;
+    constexpr auto kOwlfeatherModeBit10 = std::uint32_t{1U} << 10U;
+    constexpr auto kOwlfeatherModeBit13 = std::uint32_t{1U} << 13U;
+    constexpr auto kOwlfeatherModeBit14 = std::uint32_t{1U} << 14U;
+    constexpr auto kOwlfeatherFirstContactMask =
+        kOwlfeatherModeBit8 | kOwlfeatherModeBit9;
+    constexpr auto kOwlfeatherReturnClearMask =
+        kOwlfeatherModeBit8 | kOwlfeatherModeBit9 |
+        kOwlfeatherModeBit10 | kOwlfeatherModeBit13;
     const auto& rectangles = field_scene.state()
                                  .field_scene_buffers.source_metadata
                                  .terrain_collision_rectangles;
@@ -42909,6 +43119,18 @@ int run_field_owlfeather_physical_entry_qa(
                      "source title-service gate did not match\n";
         return 3;
     }
+    // [C] ROM 0x53BA0..0x53BAE updates FFFC30 bits 8/9; 0x53C68..0x53C72
+    // clears bit 9; 0x53D1C..0x53D36 clears bits 8/9/10/13 and sets bit 14.
+    // 0x21ED0 sets FFFC30 bit 10 after the brother-task choices.
+    auto initial_mode_flags = kFreshModeBit;
+    if (return_followup_qa) {
+        initial_mode_flags |= kOwlfeatherReturnClearMask;
+    } else if (search_followup_qa) {
+        initial_mode_flags |= kOwlfeatherModeBit9;
+    } else if (!closed_gate_qa && !ilene_gate_script_qa) {
+        initial_mode_flags |= kOwlfeatherFirstContactMask;
+    }
+    field_scene.seed_field_mode_flags_for_qa(initial_mode_flags);
     if (ilene_gate_script_qa &&
         (!field_scene.set_story_flag_for_dump(19U, true))) {
         std::cerr << "Owlfeather QA: could not seed FFFC1E bit 19\n";
@@ -43102,7 +43324,7 @@ int run_field_owlfeather_physical_entry_qa(
         source_boundaries.begin(), source_boundaries.end(),
         std::string("field.location.indexed_title_service_opened"));
     const auto flags = field_scene.field_world_fact_flags_for_dump();
-    const auto effects = field_scene.field_mode_effect_flags_for_dump();
+    const auto mode_flags = field_scene.field_mode_flags_for_dump();
     if (search_followup_qa) {
         const bool prompt_matches = contains("Still no luck") &&
             contains("keep searching") && contains("Aragorn is alive") &&
@@ -43112,13 +43334,13 @@ int run_field_owlfeather_physical_entry_qa(
             field_scene.field_scene_reference_for_dump() != 6U ||
             !prompt_matches || (flags & (1U << 2U)) == 0U ||
             (flags & (1U << 3U)) != 0U ||
-            (effects & (1U << 9U)) != 0U || opened != 1 ||
+            (mode_flags & kOwlfeatherModeBit9) != 0U || opened != 1 ||
             !save("actual", false)) {
             std::cerr << "Owlfeather search QA: Scene-6 event 0 did not open "
                          "service 3 under story bits 2=1, 3=0 (dialogue="
                       << field_scene.dialogue_open() << ", prompt="
                       << prompt_matches << ", flags=0x" << std::hex << flags
-                      << ", effects=0x" << effects << std::dec
+                      << ", mode=0x" << mode_flags << std::dec
                       << ", opened=" << opened << ")\n";
             return 3;
         }
@@ -43159,15 +43381,14 @@ int run_field_owlfeather_physical_entry_qa(
             field_scene.advance_frame();
         }
         const auto result_flags = field_scene.field_world_fact_flags_for_dump();
-        const auto result_effects =
-            field_scene.field_mode_effect_flags_for_dump();
+        const auto result_mode_flags = field_scene.field_mode_flags_for_dump();
         const auto return_frames =
             field_scene.field_modal_return_transition_frames_for_dump();
         const bool returned_cleanly = !field_scene.dialogue_open() &&
             field_scene.field_scene_reference_for_dump() == 6U &&
             (result_flags & (1U << 2U)) != 0U &&
             (result_flags & (1U << 3U)) == 0U &&
-            (result_effects & (1U << 9U)) == 0U;
+            (result_mode_flags & kOwlfeatherModeBit9) == 0U;
         if (!returned_cleanly ||
             (return_frames != 0U &&
              !finish_field_modal_return_transition(field_scene)) ||
@@ -43177,7 +43398,7 @@ int run_field_owlfeather_physical_entry_qa(
                       << !field_scene.dialogue_open() << ", scene="
                       << field_scene.field_scene_reference_for_dump()
                       << ", flags=0x" << std::hex << result_flags
-                      << ", effects=0x" << result_effects << std::dec
+                      << ", mode=0x" << result_mode_flags << std::dec
                       << ", return_frames="
                       << static_cast<unsigned>(return_frames) << ")\n";
             return 3;
@@ -43187,11 +43408,11 @@ int run_field_owlfeather_physical_entry_qa(
         if (!trace) return 3;
         trace << "record\tevent\tservice\tgate\tchoice\t"
                  "entry_story_flags\tresult_story_flags\t"
-                 "entry_mode_effect_flags\tresult_mode_effect_flags\t"
+                 "entry_mode_flags\tresult_mode_flags\t"
                  "destination\n"
               << "193\t0\t3\tbit_2=1,bit_3=0\tlater\t0x"
               << std::hex << flags << "\t0x" << result_flags << "\t0x"
-              << effects << "\t0x" << result_effects
+              << mode_flags << "\t0x" << result_mode_flags
               << "\tsame_scene_6\n";
         std::cout << "field_owlfeather_search_followup_qa=passed record=193 "
                      "event=0 service=3 later=completed "
@@ -43306,17 +43527,15 @@ int run_field_owlfeather_physical_entry_qa(
             field_scene.advance_frame();
         }
         const auto result_flags = field_scene.field_world_fact_flags_for_dump();
-        const auto result_effects =
-            field_scene.field_mode_effect_flags_for_dump();
+        const auto result_mode_flags = field_scene.field_mode_flags_for_dump();
         const auto return_frames =
             field_scene.field_modal_return_transition_frames_for_dump();
         const bool returned_cleanly = !field_scene.dialogue_open() &&
             field_scene.field_scene_reference_for_dump() == 6U &&
             (result_flags & (1U << 3U)) != 0U &&
             (result_flags & (1U << 4U)) != 0U &&
-            (result_effects & ((1U << 8U) | (1U << 9U) |
-                               (1U << 10U) | (1U << 13U))) == 0U &&
-            (result_effects & (1U << 14U)) != 0U;
+            (result_mode_flags & kOwlfeatherReturnClearMask) == 0U &&
+            (result_mode_flags & kOwlfeatherModeBit14) != 0U;
         if (!returned_cleanly ||
             (return_frames != 0U &&
              !finish_field_modal_return_transition(field_scene)) ||
@@ -43326,7 +43545,7 @@ int run_field_owlfeather_physical_entry_qa(
                       << !field_scene.dialogue_open() << ", scene="
                       << field_scene.field_scene_reference_for_dump()
                       << ", flags=0x" << std::hex << result_flags
-                      << ", effects=0x" << result_effects << std::dec
+                      << ", mode=0x" << result_mode_flags << std::dec
                       << ", return_frames="
                       << static_cast<unsigned>(return_frames) << ")\n";
             return 3;
@@ -43336,11 +43555,11 @@ int run_field_owlfeather_physical_entry_qa(
         if (!trace) return 3;
         trace << "record\tevent\tservice\tgate\tbranch\t"
                  "entry_story_flags\tresult_story_flags\t"
-                 "entry_mode_effect_flags\tresult_mode_effect_flags\t"
+                 "entry_mode_flags\tresult_mode_flags\t"
                  "destination\n"
               << "193\t0\t4\tbit_3=1,bit_4=0\treturned_brother\t0x"
               << std::hex << flags << "\t0x" << result_flags << "\t0x"
-              << effects << "\t0x" << result_effects
+              << mode_flags << "\t0x" << result_mode_flags
               << "\tsame_scene_6\n";
         std::cout << "field_owlfeather_return_followup_qa=passed record=193 "
                      "event=0 service=4 returned_brother=completed "
@@ -43362,7 +43581,7 @@ int run_field_owlfeather_physical_entry_qa(
         !opening_text ||
         panel.portrait_alias != "dialogue.portraits.david.owlfeather" ||
         (flags & (1U << 2U)) != 0U ||
-        (effects & ((1U << 8U) | (1U << 9U))) != 0U || opened != 1 ||
+        (mode_flags & kOwlfeatherFirstContactMask) != 0U || opened != 1 ||
         !opening_saved) {
         std::cerr << "Owlfeather QA: event 0 did not open the source-gated "
                      "Lua title-service dialogue (dialogue="
@@ -43376,8 +43595,8 @@ int run_field_owlfeather_physical_entry_qa(
                       "dialogue.portraits.david.owlfeather")
                   << ", choice_flag_unchanged="
                   << ((flags & (1U << 2U)) == 0U)
-                  << ", effects_cleared="
-                  << ((effects & ((1U << 8U) | (1U << 9U))) == 0U)
+                  << ", mode_flags_cleared="
+                  << ((mode_flags & kOwlfeatherFirstContactMask) == 0U)
                   << ", opened=" << opened << ")\n";
         return 3;
     }
@@ -43461,14 +43680,13 @@ int run_field_owlfeather_physical_entry_qa(
             field_scene.advance_frame();
         }
         const auto final_flags = field_scene.field_world_fact_flags_for_dump();
-        const auto final_effects =
-            field_scene.field_mode_effect_flags_for_dump();
+        const auto final_mode_flags = field_scene.field_mode_flags_for_dump();
         const auto return_frames =
             field_scene.field_modal_return_transition_frames_for_dump();
         if (field_scene.dialogue_open() ||
             field_scene.field_scene_reference_for_dump() != 6U ||
             (final_flags & (1U << 2U)) != 0U ||
-            (final_effects & ((1U << 8U) | (1U << 9U))) != 0U ||
+            (final_mode_flags & kOwlfeatherFirstContactMask) != 0U ||
             return_frames == 0U || return_frames > 60U ||
             !finish_field_modal_return_transition(field_scene) ||
             !save("same-map-return", true)) {
@@ -43477,7 +43695,7 @@ int run_field_owlfeather_physical_entry_qa(
                       << !field_scene.dialogue_open() << ", scene="
                       << field_scene.field_scene_reference_for_dump()
                       << ", story=0x" << std::hex << final_flags
-                      << ", effects=0x" << final_effects << std::dec
+                      << ", mode=0x" << final_mode_flags << std::dec
                       << ", fade_frames="
                       << static_cast<unsigned>(return_frames) << ")\n";
             return 3;
@@ -43485,10 +43703,10 @@ int run_field_owlfeather_physical_entry_qa(
         std::ofstream trace(output / "route.tsv", std::ios::trunc);
         if (!trace) return 3;
         trace << "record\tevent\tchoice\tresult_story_flags\t"
-                 "result_mode_effect_flags\tdestination\n"
+                 "result_mode_flags\tdestination\n"
               << "193\t0\t" << (land_choice ? "lands" : "council")
               << "_then_thanks\t0x" << std::hex << final_flags << "\t0x"
-              << final_effects << "\tsame_scene_6\n";
+              << final_mode_flags << "\tsame_scene_6\n";
         std::cout << "field_owlfeather_opening_"
                   << (land_choice ? "land" : "council")
                   << "_choice_qa=passed record=193 event=0 "
@@ -43512,8 +43730,8 @@ int run_field_owlfeather_physical_entry_qa(
     const bool brother_response_saved = save("brother-response", false);
     if (!field_scene.dialogue_open() || !brother_page ||
         (brother_flags & (1U << 2U)) == 0U ||
-        (field_scene.field_mode_effect_flags_for_dump() &
-         ((1U << 8U) | (1U << 9U))) != 0U ||
+        (field_scene.field_mode_flags_for_dump() &
+         kOwlfeatherFirstContactMask) != 0U ||
         !brother_response_saved) {
         std::cerr << "Owlfeather QA: choosing the brother topic did not apply "
                      "dialogue command 0x17 (dialogue="
@@ -43538,12 +43756,12 @@ int run_field_owlfeather_physical_entry_qa(
     std::ofstream trace(output / "route.tsv", std::ios::trunc);
     if (!trace) return 3;
     trace << "record\tevent\tservice\tgate\tmovement_ticks\t"
-             "destination\tentry_story_flags\tentry_mode_effect_flags\t"
-             "after_choice_story_flags\tafter_choice_mode_effect_flags\n"
+             "destination\tentry_story_flags\tentry_mode_flags\t"
+             "after_choice_story_flags\tafter_choice_mode_flags\n"
           << "193\t0\t2\tbit_1=1,bit_2=0_until_brother_choice\t"
           << movement_ticks << "\tfield_service_dialogue\t0x" << std::hex
-          << flags << "\t0x" << effects << "\t0x" << brother_flags
-          << "\t0x" << field_scene.field_mode_effect_flags_for_dump()
+          << flags << "\t0x" << mode_flags << "\t0x" << brother_flags
+          << "\t0x" << field_scene.field_mode_flags_for_dump()
           << '\n';
     std::cout << "field_owlfeather_physical_entry_qa=passed "
                  "record=193 event=0 service=2 gated_dialogue=opened "
@@ -43578,13 +43796,21 @@ int run_field_red_buffalo_physical_entry_qa(
     const auto& rectangles = field_scene.state()
                                  .field_scene_buffers.source_metadata
                                  .terrain_collision_rectangles;
-    // The positional checkpoint uses the New Game runner record, so restore
-    // the matching known New Game Notebook tip words for this service test.
-    field_scene.seed_notebook_tip_flags_for_qa({{1U, 0U, 0U}});
+    // FFFC30 and FFFC34 are Notebook words 0 and 1.
+    constexpr auto kNewGameModeBit = std::uint32_t{1U};
+    constexpr auto kRedBuffaloModeBit29 = std::uint32_t{1U} << 29U;
+    constexpr auto kRedBuffaloModeBit30 = std::uint32_t{1U} << 30U;
+    constexpr auto kRedBuffaloModeBits = kNewGameModeBit |
+                                         kRedBuffaloModeBit29;
+    constexpr auto kRedBuffaloModeBitsAfterGift =
+        (kRedBuffaloModeBits & ~kRedBuffaloModeBit29) |
+        kRedBuffaloModeBit30;
+    constexpr auto kRedBuffaloEffectBits = (std::uint32_t{1U} << 2U) |
+                                           (std::uint32_t{1U} << 29U);
+    field_scene.seed_notebook_tip_flags_for_qa(
+        {{kRedBuffaloModeBits, kRedBuffaloEffectBits, 0U}});
     field_scene.set_group_item_flags_for_dump(1U << 6U);
-    field_scene.seed_field_mode_flags_for_qa((1U << 0U) | (1U << 29U));
-    field_scene.seed_field_mode_effect_flags_for_qa(
-        (1U << 2U) | (1U << 29U));
+    field_scene.seed_field_mode_flags_for_qa(kRedBuffaloModeBits);
     if (field_scene.field_scene_reference_for_dump() != 6U ||
         field_scene.field_entity_world_position().x != kStartX ||
         field_scene.field_entity_world_position().y != kStartY ||
@@ -43879,22 +44105,28 @@ int run_field_red_buffalo_physical_entry_qa(
     }
     const auto result_flags = field_scene.field_world_fact_flags_for_dump();
     const auto notebook_flags = field_scene.notebook_story_flags_for_dump();
+    const auto notebook_words = field_scene.notebook_tip_flags_for_dump();
     const auto group_items = field_scene.group_item_flags_for_dump();
     const auto effects = field_scene.field_mode_effect_flags_for_dump();
     const auto mode_flags = field_scene.field_mode_flags_for_dump();
-    const bool notebook_unchanged = notebook_flags == 1U;
+    // [C] ROM 0x54376 loads FFFC30; 0x5437C clears bit 29 and 0x54380
+    // sets bit 30 before 0x54384 stores FFFC30. The gift path has no FFFC34
+    // write in 0x54322..0x543A0.
+    const bool notebook_words_exact =
+        notebook_flags == kRedBuffaloModeBitsAfterGift &&
+        notebook_words.has_value() &&
+        (*notebook_words)[0U] == kRedBuffaloModeBitsAfterGift &&
+        (*notebook_words)[1U] == kRedBuffaloEffectBits &&
+        (*notebook_words)[2U] == 0U;
     const bool item_result = group_items.has_value() &&
         ((*group_items & (1U << 6U)) == 0U) &&
         ((*group_items & (1U << 5U)) != 0U);
-    const bool mode_result = (mode_flags & (1U << 29U)) == 0U &&
-                             (mode_flags & (1U << 30U)) != 0U;
-    constexpr std::uint32_t kInitialModeEffectFlags =
-        (1U << 2U) | (1U << 29U);
-    const bool effects_unchanged = effects == kInitialModeEffectFlags;
+    const bool mode_result = mode_flags == kRedBuffaloModeBitsAfterGift;
+    const bool effects_unchanged = effects == kRedBuffaloEffectBits;
     if (field_scene.dialogue_open() ||
         field_scene.field_modal_return_transition_frames_for_dump() != 0U ||
         field_scene.field_scene_reference_for_dump() != 6U ||
-        (result_flags & (1U << 18U)) == 0U || !notebook_unchanged ||
+        (result_flags & (1U << 18U)) == 0U || !notebook_words_exact ||
         !item_result || !mode_result || !effects_unchanged ||
         !save("same-map-return", true)) {
         std::cerr << "Red Buffalo QA: completing the gift conversation did "
@@ -43904,7 +44136,8 @@ int run_field_red_buffalo_physical_entry_qa(
                   << field_scene.field_scene_reference_for_dump()
                   << ", trigger18="
                   << ((result_flags & (1U << 18U)) != 0U)
-                  << ", notebook_unchanged=" << notebook_unchanged
+                  << ", FFFC30_expected=0x" << std::hex
+                  << kRedBuffaloModeBitsAfterGift
                   << ", group_items=" << item_result
                   << ", FFFC30=" << mode_result
                   << ", FFFC34_unchanged=" << effects_unchanged

@@ -473,7 +473,16 @@ bool FieldSceneRuntime::open_spirit_eyes_ritual_for_dump() {
     field_exit_world_flags_ = (1U << 5U) | (1U << 6U) |
                               (1U << 7U) | (1U << 8U);
     group_item_flags_ = 1U << 2U;
-    field_mode_effect_flags_ = (1U << 15U) | (1U << 18U);
+    // [C] Scene-4 event 27 at 0x53D74 (08 83 00 0E) clears FFFC30
+    // bit 14, sets bits 15/16 at 0x53D78 (08 C3 00 0F) and 0x53D7C
+    // (08 C3 00 10), then stores the word at 0x53D80
+    // (23 C3 00 FF FC 30).
+    constexpr auto kSpiritEyesClearMask = std::uint32_t{1U} << 14U;
+    constexpr auto kSpiritEyesSetMask = (std::uint32_t{1U} << 15U) |
+                                        (std::uint32_t{1U} << 16U);
+    notebook_tip_flags_[0] =
+        (notebook_tip_flags_[0] & ~kSpiritEyesClearMask) |
+        kSpiritEyesSetMask;
     field_auxiliary_flags_ = 1U << 2U;
     game_scripts_.set_location_context(
         "site", "council_spirit_eyes_site", "salish.spirit_eyes",

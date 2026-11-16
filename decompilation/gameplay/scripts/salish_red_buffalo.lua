@@ -60,7 +60,10 @@ function RedBuffalo.present_indexed_title_service()
             return "field_return"
         end
 
-        -- Completing the gift exchange records the meeting [C: 0x5435C].
+        -- [C] Completing the gift exchange records the meeting at 0x5435C.
+        -- ROM 0x54376 loads FFFC30, 0x5437C clears bit 29, and 0x54380
+        -- sets bit 30 before 0x54384 writes FFFC30; this path does not write
+        -- FFFC34 (0x54322..0x543A0).
         StoryFacts.set(E.StoryFact.RED_BUFFALO_WOMAN)
         GroupItems.set(E.GroupItemId.GIFT_RED_BUFFALO_WOMAN, false)
         GroupItems.set(E.GroupItemId.GIFT_LADY_GILLIAN, true)

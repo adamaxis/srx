@@ -122,7 +122,7 @@ catalog's source policy explicitly authorizes a correction.
   graph and its two physical-input QA cases are in Debug and Release.
 - Authorized first entry: text group `0xF4DF4` starts at `0xFBE12`. The JSON
   graph imports that page from the ROM, then runs command `0x45` at `0x21FF2`
-  to set FFFC34 bits 5/6 before the `0xFBEEC` penthouse page and shared
+  to clear FFFC34 bit 5 and set bit 6 before the `0xFBEEC` penthouse page and shared
   Harlequin flow at `0xF58C0`. The tested path does not set `FFF0CC`, so it
   returns to the field route instead of loading scene 54.
 - First-visit return: this branch does not set `FFF0CC`. Its prompt chain

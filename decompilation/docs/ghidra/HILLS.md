@@ -505,7 +505,7 @@ story bit 16. The no-Ito path sets effect bit 7 before the closing update; the
 Ito path applies command `0x40`/bit 28, presents the Ito response, then returns
 to Lua to run the separate map-information graph. Button menus with source
 early-return behavior use explicit `noSelectionNext` edges. Lua applies bit 21
-and +2 Karma before the dialogue, then command `0x45`'s effect bits 5/6 after
+and +2 Karma before the dialogue, then command `0x45`'s FFFC34 bit-5 clear and bit-6 set after
 the arrival page. The route returns to scene 1; its Debug/Release
 physical-input QA captures all nine pages and a clean field `actual.bmp`. The
 six condition-selected event-7 route records now live in the entity's

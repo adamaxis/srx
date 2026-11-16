@@ -25,7 +25,7 @@ function TarislarApartments.present_first_entry()
 
     -- ROM 0x5456E records the first entry and awards +2 Karma to the active party,
     -- then starts prompt record 0xF4DF4. Dismissing its first page selects
-    -- command 0x45 (0x21FF2), which sets FFFC34 bits 5 and 6.
+    -- command 0x45 (0x21FF2), which clears FFFC34 bit 5 and sets bit 6.
     StoryFacts.set(E.StoryFact.GARDEN_APTS_ENTERED)
     if game.services.call("party", "award_karma_2") ~= "applied" then
         return "denied"
@@ -35,8 +35,10 @@ function TarislarApartments.present_first_entry()
         "tarislar_garden_apartments.first_authorized_entry", {
             ["tarislar_apartments.mark_first_entry_arrival_effects"] =
                 function()
-                    -- ROM command 0x45 at 0x21FF2 sets FFFC34 bits 5 and 6.
-                    game.state.field_mode_effect_flag_bit_5 = true
+                    -- [C] ROM command 0x45 at 0x21FF2 loads FFFC34,
+                    -- clears bit 5 at 0x21FF8 (08 81 00 05), sets bit 6 at
+                    -- 0x21FFC (08 C1 00 06) and stores it at 0x22000.
+                    game.state.field_mode_effect_flag_bit_5 = false
                     game.state.field_mode_effect_flag_bit_6 = true
                     return "applied"
                 end,
