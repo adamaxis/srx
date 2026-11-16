@@ -163,10 +163,20 @@ function Hospital.present_field_exit_prompt()
 
     local package_run_status = game.field.package_run_status
     if package_run_status == E.PackageRunStatus.HANDOFF_DUE then
-        game.ui.say("package_handoff")
+        if site.package_handoff_event ~= nil then
+            game.ui.say(site.package_handoff_event,
+                        site.package_result_speaker, TEXT_PROFILE)
+        else
+            game.ui.say("package_handoff")
+        end
         return "field_return"
     elseif package_run_status == E.PackageRunStatus.PAYMENT_DUE then
-        game.ui.say("package_payment")
+        if site.package_payment_event ~= nil then
+            game.ui.say(site.package_payment_event,
+                        site.package_result_speaker, TEXT_PROFILE)
+        else
+            game.ui.say("package_payment")
+        end
         return "field_return"
     end
 

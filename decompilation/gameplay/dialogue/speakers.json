@@ -1679,6 +1679,14 @@
         "michael-package-holopix-ivanna": {
           "continuation_key": "shared.more",
           "title_key": "stoker.motel.michael-package.holopix-ivanna.title"
+        },
+        "seattle_package_handoff": {
+          "continuation_key": "",
+          "title_key": "seattle_general_hospital.package_handoff"
+        },
+        "seattle_package_payment": {
+          "continuation_key": "",
+          "title_key": "seattle_general_hospital.package_payment"
         }
       },
       "name": "Ivanna Haversheen",
