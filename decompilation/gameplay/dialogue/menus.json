@@ -1796,6 +1796,45 @@
           "pay": "stoker.motel.option.pay"
         },
         "title_key": "stoker.motel.room.title"
+      },
+      "seattle_hospital_service_offer": {
+        "choice_label_keys": {
+          "leave": "seattle_general_hospital.option.leave",
+          "services": "seattle_general_hospital.option.services"
+        }
+      },
+      "seattle_hospital_closing_offer": {
+        "choice_label_keys": {
+          "later": "seattle_general_hospital.option.later",
+          "services": "seattle_general_hospital.option.services"
+        }
+      },
+      "seattle_hospital_stark_question": {
+        "choice_label_keys": {
+          "ask_stark": "seattle_general_hospital.option.ask_stark"
+        }
+      },
+      "seattle_hospital_stark_found": {
+        "choice_label_keys": {
+          "stark_found": "seattle_general_hospital.option.stark_found"
+        }
+      },
+      "seattle_hospital_stark_waiting_room": {
+        "choice_label_keys": {
+          "wait": "seattle_general_hospital.option.waiting_room"
+        }
+      },
+      "seattle_hospital_stark_whatever_it_takes": {
+        "choice_label_keys": {
+          "agree": "seattle_general_hospital.option.whatever_it_takes"
+        }
+      },
+      "seattle_hospital_holopix_offer": {
+        "choice_label_keys": {
+          "leave": "seattle_general_hospital.option.leave",
+          "services": "seattle_general_hospital.option.services",
+          "show_holopix": "seattle_general_hospital.option.holopix"
+        }
       }
     },
     "tarislar.city_inn": {

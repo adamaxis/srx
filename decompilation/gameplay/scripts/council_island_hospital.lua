@@ -5,7 +5,11 @@
 -- No site loads a hospital interior.
 local Sites = require("data.hospital_sites")
 local E = require("enums")
+local StoryFacts = require("story_facts")
+local GroupItems = require("group_items")
+local DialogueActions = require("dialogue_actions")
 local Hospital = {}
+local EFFECTS = DialogueActions.new_default_registry()
 
 -- The active site's narrator/profile; set by assert_hospital_field_context.
 local NARRATOR, TEXT_PROFILE
@@ -158,6 +162,203 @@ local function entry_text(site)
     return site.entry_text
 end
 
+local function apply_action(action_id, arguments)
+    local ok, result, failure = EFFECTS:execute(action_id, arguments)
+    assert(ok and result == nil,
+        failure or ("hospital script action failed: " .. action_id))
+end
+
+-- Seattle General Hospital (ROM handler 0x1F830). Every page of this handler
+-- uses Ivanna Haversheen's portrait (a5 = 0x121E68 at 0x1F848).
+local function seattle_say(site, event_id)
+    game.ui.say(event_id, site.entry_speaker, site.entry_text_profile)
+end
+
+local function seattle_prompt(site, menu_id, text_key, choices)
+    return game.ui.prompt_text_key(menu_id, text_key, choices,
+                                   site.entry_speaker,
+                                   site.entry_text_profile)
+end
+
+local function seattle_choice_result(site, choice)
+    if choice == "services" then
+        -- Command 0x3D at 0x21EE8 sets transient FFF0D5 = 1 and selects
+        -- page 0x111916 (text 0x11191E) before Hospital Options.
+        seattle_say(site, "seattle_hospital_services")
+        return "hospital-options"
+    elseif choice == "leave" or choice == "later" then
+        -- Both leave labels (0x105101, 0x104FEB) target page 0x110FE2
+        -- (text 0x112323).
+        seattle_say(site, "seattle_hospital_farewell")
+    end
+    return "field_return"
+end
+
+-- Pages 0x111042, 0x1110D2, 0x110A46 and 0x110FCA end on the same pair:
+-- 0x1044F2 -> command 0x3D, 0x104FEB -> page 0x110FE2.
+local function seattle_closing_offer(site, text_key)
+    return seattle_choice_result(site, seattle_prompt(
+        site, "seattle_hospital_closing_offer", text_key,
+        { "services", "later" }))
+end
+
+-- ROM 0x1F8AE..0x1F8CC and command 0x61 at 0x2265E..0x2267C apply the same
+-- writes: FFFC34 bit 18 clear and bit 19 set (Notebook tips "Stark is dying"
+-- -> "Stark's heart is failing"), then FFDD64 = 0x19 and 0x2196C set story
+-- bit 25.
+local function record_stark_admitted()
+    apply_action("field.set_mode_effect_flag", {
+        flagBit = E.FieldModeEffectFlagBit.STARK_DYING_TIP,
+        value = false,
+    })
+    apply_action("field.set_mode_effect_flag", {
+        flagBit = E.FieldModeEffectFlagBit.STARK_HEART_FAILING_TIP,
+        value = true,
+    })
+    apply_action("story.set_fact", {
+        factId = E.StoryFact.HOSPITAL_VISITED,
+        value = true,
+    })
+end
+
+-- Pages 0x11106E..0x1110D2, reached through the "I've found Stark" label
+-- 0x10417A. None of these records carries a command.
+local function seattle_stark_rescue(site)
+    seattle_say(site, "seattle_hospital_stark_alive")        -- 0x11106E
+    if seattle_prompt(site, "seattle_hospital_stark_waiting_room",
+                      "seattle_general_hospital.stark.rescued",
+                      { "wait" }) ~= "wait" then      -- 0x111082
+        return "field_return"
+    end
+    seattle_say(site, "seattle_hospital_stark_examined")     -- 0x111096
+    if seattle_prompt(site, "seattle_hospital_stark_whatever_it_takes",
+                      "seattle_general_hospital.stark.hope",
+                      { "agree" }) ~= "agree" then    -- 0x1110AA
+        return "field_return"
+    end
+    seattle_say(site, "seattle_hospital_stark_request")      -- 0x1110BE
+    return seattle_closing_offer(site,
+        "seattle_general_hospital.stark.cyberheart")         -- 0x1110D2
+end
+
+local function seattle_stark_found_offer(site, text_key)
+    if seattle_prompt(site, "seattle_hospital_stark_found", text_key,
+                      { "stark_found" }) ~= "stark_found" then
+        return "field_return"
+    end
+    return seattle_stark_rescue(site)
+end
+
+-- Command 0x3E at 0x21EF8 and the pages it selects.
+local function seattle_show_holopix(site)
+    -- 0x21EF8..0x21F12: FFFC1E bit 23 set, FFFC30 bit 3 clear.
+    apply_action("story.set_fact", {
+        factId = E.StoryFact.HOLOPIX_SHOWN,
+        value = true,
+    })
+    apply_action("field.set_mode_flag", {
+        flagBit = E.FieldModeFlagBit.SEATTLE_HOLOPIX_RECOGNITION,
+        value = false,
+    })
+    seattle_say(site, "seattle_hospital_holopix_shown")      -- 0x111006
+    -- Page 0x11101A: text 0x111D21 with the single label 0x104545, whose
+    -- target is command 0x61.
+    if seattle_prompt(site, "seattle_hospital_stark_question",
+                      "seattle_general_hospital.michael.remembrance",
+                      { "ask_stark" }) ~= "ask_stark" then
+        return "field_return"
+    end
+    -- Command 0x61 at 0x22648 tests FFFC1E bit 24.
+    if StoryFacts.is_set(E.StoryFact.MEDICINE_LODGE_TURNED_AWAY) ~= true then
+        return seattle_closing_offer(site,
+            "seattle_general_hospital.stark.best_friend")    -- 0x111042
+    end
+    record_stark_admitted()
+    return seattle_stark_found_offer(site,
+        "seattle_general_hospital.stark.best_friend")        -- 0x11102E
+end
+
+-- ROM 0x1F8EA..0x1F954: the prototype cyber-heart turn-in.
+local function seattle_heart_turn_in(site)
+    if GroupItems.has(E.GroupItemId.PROTOTYPE_CYBERHEART) ~= true then
+        return seattle_closing_offer(site,
+            "seattle_general_hospital.heart.missing")        -- 0x110A46
+    end
+    -- 0x1F8F8: FFFC22 bit 0 clear (the heart is handed over).
+    apply_action("item.set_group_item", {
+        itemId = E.GroupItemId.PROTOTYPE_CYBERHEART,
+        value = false,
+    })
+    -- 0x1F908: FFFC2A bit 9 set (Notebook shadowrunner record 9, Stark).
+    game.state["runner_information_bit_" ..
+        E.NotebookShadowrunnerBit.STARK] = true
+    -- 0x1F918: FFFC34 bit 20 clear ("You have the prototype cyber-heart").
+    apply_action("field.set_mode_effect_flag", {
+        flagBit = E.FieldModeEffectFlagBit.CYBERHEART_CARRIED_TIP,
+        value = false,
+    })
+    -- 0x1F928..0x1F930: FFFC38 bits 2, 3 and 11 clear (the Fuchi
+    -- cyber-heart memos).
+    for _, flag_bit in ipairs({
+        E.NotebookTipFlagBit.FUCHI_HEART_TRANSPORT_MEMO,
+        E.NotebookTipFlagBit.FUCHI_HEART_STORAGE_MEMO,
+        E.NotebookTipFlagBit.FUCHI_HEART_ESCORT_MEMO,
+    }) do
+        apply_action("field.set_notebook_tip_flag", {
+            flagBit = flag_bit,
+            value = false,
+        })
+    end
+    -- 0x1F940: FFFC1E bit 29 set.
+    apply_action("story.set_fact", {
+        factId = E.StoryFact.HEART_DELIVERED,
+        value = true,
+    })
+    seattle_say(site, "seattle_hospital_heart_received")     -- 0x110A5E
+    seattle_say(site, "seattle_hospital_stark_recovered")    -- 0x110FA2
+    seattle_say(site, "seattle_hospital_stark_walked_out")   -- 0x110FB6
+    return seattle_closing_offer(site,
+        "seattle_general_hospital.heart.underground_93")     -- 0x110FCA
+end
+
+-- ROM 0x1F878..0x1F8E0 selects the Seattle page once FFF0D5 is zero.
+local function present_seattle_entry(site)
+    if game.state["field_mode_flag_bit_" ..
+            E.FieldModeFlagBit.SEATTLE_HOLOPIX_RECOGNITION] == true then
+        -- 0x1F886: page 0x110A72 (text 0x111A7B) -> 0x110FEA.
+        seattle_say(site, "seattle_hospital_entry_michael_holopix")
+        local choice = seattle_prompt(site, "seattle_hospital_holopix_offer",
+            "seattle_general_hospital.prompt.help",
+            { "show_holopix", "services", "leave" })
+        if choice == "show_holopix" then
+            return seattle_show_holopix(site)
+        end
+        return seattle_choice_result(site, choice)
+    end
+
+    local holopix_shown = StoryFacts.is_set(E.StoryFact.HOLOPIX_SHOWN) == true
+    local stark_found =
+        StoryFacts.is_set(E.StoryFact.MEDICINE_LODGE_TURNED_AWAY) == true
+    local stark_admitted =
+        StoryFacts.is_set(E.StoryFact.HOSPITAL_VISITED) == true
+    if holopix_shown and stark_found then
+        if not stark_admitted then
+            -- 0x1F8AE..0x1F8D0: page 0x11105A (text 0x11199C).
+            record_stark_admitted()
+            return seattle_stark_found_offer(site,
+                "seattle_general_hospital.entry.default")
+        elseif StoryFacts.is_set(E.StoryFact.HEART_DELIVERED) ~= true then
+            return seattle_heart_turn_in(site)              -- 0x1F8E4
+        end
+    end
+
+    -- 0x1F8DA: page 0x110A32 (text 0x11199C) -> 0x110F8A.
+    seattle_say(site, "seattle_hospital_entry_default")
+    return seattle_choice_result(site, seattle_prompt(
+        site, "seattle_hospital_service_offer",
+        "seattle_general_hospital.prompt.help", { "services", "leave" }))
+end
+
 function Hospital.present_field_exit_prompt()
     local site = assert_hospital_field_context()
 
@@ -178,6 +379,10 @@ function Hospital.present_field_exit_prompt()
             game.ui.say("package_payment")
         end
         return "field_return"
+    end
+
+    if site.entry_speaker ~= nil then
+        return present_seattle_entry(site)
     end
 
     local choice = game.ui.prompt_text_key(

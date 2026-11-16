@@ -12,19 +12,16 @@ return {
         narrator = "council_island_hospital_narrator",
         text_profile = "council_island_hospital",
         entry_text = "seattle_general_hospital.entry.default",
+        -- ROM 0x1F830 loads Ivanna's portrait at 0x121E68 for every Seattle
+        -- page; council_island_hospital.lua runs the 0x1F878 page selector.
+        entry_speaker = "ivanna_haversheen",
+        entry_text_profile = "stoker.motel",
         -- ROM 0x1F86E/0x1F864 selects Ivanna's Seattle-specific package pages.
         package_result_speaker = "ivanna_haversheen",
         package_handoff_event = "seattle_package_handoff",
         package_payment_event = "seattle_package_payment",
         -- ROM 0x1F84E: FFF0B6 = 0x0B ("Seattle General Hospital").
         cyberware_catalog = "seattle_general_hospital_cyberware",
-        -- ROM 0x1F878 checks FFFC30 bit 3 and selects text at 0x111A7B.
-        entry_text_variants = {
-            {
-                fact = "field_mode_flag_bit_3",
-                text = "seattle_general_hospital.entry.michael_holopix",
-            },
-        },
     },
     council_island_hospital = {
         narrator = "council_island_hospital_narrator",

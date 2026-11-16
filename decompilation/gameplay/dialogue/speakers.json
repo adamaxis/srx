@@ -1687,6 +1687,50 @@
         "seattle_package_payment": {
           "continuation_key": "",
           "title_key": "seattle_general_hospital.package_payment"
+        },
+        "seattle_hospital_entry_default": {
+          "continuation_key": "shared.more",
+          "title_key": "seattle_general_hospital.entry.default"
+        },
+        "seattle_hospital_entry_michael_holopix": {
+          "continuation_key": "shared.more",
+          "title_key": "seattle_general_hospital.entry.michael_holopix"
+        },
+        "seattle_hospital_holopix_shown": {
+          "continuation_key": "shared.more",
+          "title_key": "seattle_general_hospital.holopix.shown"
+        },
+        "seattle_hospital_stark_alive": {
+          "continuation_key": "shared.more",
+          "title_key": "seattle_general_hospital.stark.alive"
+        },
+        "seattle_hospital_stark_examined": {
+          "continuation_key": "shared.more",
+          "title_key": "seattle_general_hospital.stark.examined"
+        },
+        "seattle_hospital_stark_request": {
+          "continuation_key": "shared.more",
+          "title_key": "seattle_general_hospital.stark.request"
+        },
+        "seattle_hospital_heart_received": {
+          "continuation_key": "shared.more",
+          "title_key": "seattle_general_hospital.heart.received"
+        },
+        "seattle_hospital_stark_recovered": {
+          "continuation_key": "shared.more",
+          "title_key": "seattle_general_hospital.heart.recovered"
+        },
+        "seattle_hospital_stark_walked_out": {
+          "continuation_key": "shared.more",
+          "title_key": "seattle_general_hospital.heart.walked_out"
+        },
+        "seattle_hospital_services": {
+          "continuation_key": "",
+          "title_key": "seattle_general_hospital.services"
+        },
+        "seattle_hospital_farewell": {
+          "continuation_key": "",
+          "title_key": "seattle_general_hospital.farewell"
         }
       },
       "name": "Ivanna Haversheen",

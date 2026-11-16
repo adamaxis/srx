@@ -1020,9 +1020,9 @@ E.StoryFact = {
   GILLIAN_INITIATION = "gillian_initiation",           -- cmd37 selector 0x14 sets bit20 via 0x2196C [C site][H name]
   GARDEN_APTS_ENTERED = "garden_apts_entered",         -- service at 0x5456E [C]
   LANDMARK_MAP_TAKEN = "landmark_map_taken",           -- service at 0x5463C [C]
-  HOLOPIX_SHOWN = "holopix_shown",                     -- handler at 0x111006 [C]
-  MEDICINE_LODGE_TURNED_AWAY = "medicine_lodge_turned_away", -- service at 0x1FDEA [C site][H name]
-  HOSPITAL_VISITED = "hospital_visited",               -- service at 0x1F8C2 [C site][H name]
+  HOLOPIX_SHOWN = "holopix_shown",                     -- command handler at 0x21EF8, before page 0x111006 [C]
+  MEDICINE_LODGE_TURNED_AWAY = "medicine_lodge_turned_away", -- service at 0x1FDEA; Seattle General 0x1F89E/0x2264E gate the "I've found Stark" pages on it [C site][H name]
+  HOSPITAL_VISITED = "hospital_visited",               -- Seattle General 0x1F8C2/0x2267C set it when Stark is admitted [C site][H name]
   RENRAKU_MAP_SHOWN = "renraku_map_shown",             -- dialogue at 0x2203E [C]
   BOTH_MAPS_SHOWN = "both_maps_shown",                 -- dialogue at 0x2205C [C]
   POST_ITO_BRIEFED = "post_ito_briefed",               -- dialogue at 0x21F58 [C site][H name]
@@ -1045,6 +1045,9 @@ E.FieldModeFact = {
 -- 0x21872..0x21886 encodes bits 2/4/5/6/8; command 0xE6 at 0x24982 encodes
 -- bit 23 (`08 81 00 17`). These are indices, not bit masks.
 E.FieldModeFlagBit = {
+  -- ROM 0x1F878 tests this recognition flag; the Seattle holopix action at
+  -- 0x21EF8 clears it after the player shows Ivanna the image.
+  SEATTLE_HOLOPIX_RECOGNITION = 3,
   BIT_2 = 2,
   BIT_4 = 4,
   BIT_5 = 5,
@@ -1056,6 +1059,26 @@ E.FieldModeFlagBit = {
 -- Command 0xE6 at 0x24992 sets FFFC34 bit 4 (`08 C1 00 04`).
 E.FieldModeEffectFlagBit = {
   BIT_4 = 4,
+  -- Seattle General 0x1F8B4/0x22664 clear bit 18 and 0x1F8B8/0x22668 set
+  -- bit 19 when Stark is admitted; 0x1F918 clears bit 20 at the heart
+  -- turn-in. They gate Notebook tips 51/52/53.
+  STARK_DYING_TIP = 18,
+  STARK_HEART_FAILING_TIP = 19,
+  CYBERHEART_CARRIED_TIP = 20,
+}
+
+-- FFFC38 bits as Notebook tip flag indices (64 + bit). Seattle General's
+-- heart turn-in clears bits 2/3/11 at 0x1F928..0x1F930 (tips 67/68/76).
+E.NotebookTipFlagBit = {
+  FUCHI_HEART_TRANSPORT_MEMO = 66,
+  FUCHI_HEART_STORAGE_MEMO = 67,
+  FUCHI_HEART_ESCORT_MEMO = 75,
+}
+
+-- FFFC2A Notebook shadowrunner record bits. Seattle General 0x1F908 sets
+-- bit 9 (record 9, Stark) at the heart turn-in.
+E.NotebookShadowrunnerBit = {
+  STARK = 9,
 }
 
 -- Notebook entries are content identities. The host owns their save encoding.
