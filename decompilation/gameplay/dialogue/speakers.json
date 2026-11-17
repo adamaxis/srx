@@ -358,6 +358,46 @@
           "continuation_key": "",
           "title_key": "field.cyberspace.no_mpcp"
         },
+        "hollywood_gate_entrance": {
+          "continuation_key": "shared.more",
+          "title_key": "hollywood.gate.entrance"
+        },
+        "hollywood_gate_package_handoff": {
+          "continuation_key": "",
+          "title_key": "hollywood.gate.package_handoff"
+        },
+        "hollywood_gate_package_payment": {
+          "continuation_key": "",
+          "title_key": "hollywood.gate.package_payment"
+        },
+        "hollywood_gate_sarge_pass": {
+          "continuation_key": "",
+          "title_key": "hollywood.gate.sarge_pass"
+        },
+        "hollywood_gate_false_name_pass": {
+          "continuation_key": "",
+          "title_key": "hollywood.gate.false_name_pass"
+        },
+        "hollywood_gate_story_first": {
+          "continuation_key": "shared.more",
+          "title_key": "hollywood.gate.story.first"
+        },
+        "hollywood_gate_farewell": {
+          "continuation_key": "",
+          "title_key": "hollywood.gate.farewell"
+        },
+        "hollywood_gate_attack_missed": {
+          "continuation_key": "",
+          "title_key": "hollywood.gate.attack_missed"
+        },
+        "hollywood_gate_attack_success": {
+          "continuation_key": "",
+          "title_key": "hollywood.gate.attack_success"
+        },
+        "hollywood_gate_attack_ambush": {
+          "continuation_key": "",
+          "title_key": "hollywood.gate.attack_ambush"
+        },
         "party_wipe_docwagon": {
           "continuation_key": "",
           "title_key": "party_wipe.docwagon"

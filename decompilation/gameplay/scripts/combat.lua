@@ -36,7 +36,10 @@ local SpellDeath = {
 }
 
 local function inventory_items(record)
-    return type(record.inventory) == "table" and record.inventory or {}
+    if type(record.inventory) == "table" then
+        return record.inventory
+    end
+    return type(record.equipment) == "table" and record.equipment or {}
 end
 
 local function combat_cyberware(record)
@@ -1149,6 +1152,58 @@ local function weapon_action_skill_value(attacker, skill_group,
     local selected = math.max(skills.firearms, skills[skill_group])
     local posture_contribution = math.min(selected, posture_component)
     return math.max(selected + posture_contribution, 1)
+end
+
+-- Hollywood cmd 0x65 uses the active runner's average +0x78/+0x7B/+0x7C,
+-- adds the +0x6E bonus for inventory code 0x28 (ROM 0x55ED6: bytes
+-- 12 28 00 78 / D2 28 00 7B / D2 28 00 7C; 0C 2A 00 28; D2 2A 00 6E),
+-- then adds the smaller of the selected firearm skill and its posture share
+-- (ROM 0x55F20 and 0x12C74). Party records expose `equipment` and `posture`;
+-- combat actors expose `inventory` and the already-derived percentage.
+function Combat.roll_equipped_weapon_skill_successes(
+    attacker, difficulty, random_bound)
+    if type(attacker) ~= "table" or
+       type(attacker.attributes) ~= "table" or
+       type(attacker.attributes.quickness) ~= "number" or
+       type(attacker.attributes.intelligence) ~= "number" or
+       type(attacker.attributes.willpower) ~= "number" or
+       type(attacker.equipped_action_code) ~= "number" or
+       attacker.equipped_action_code % 1 ~= 0 then
+        return nil
+    end
+
+    local posture_percent = attacker.posture_reduction_percent
+    if posture_percent == nil then
+        if type(attacker.posture) ~= "number" or
+           attacker.posture % 1 ~= 0 or attacker.posture < E.Posture.FULL_DEFENSE or
+           attacker.posture > E.Posture.FULL_OFFENSE then
+            return nil
+        end
+        posture_percent = attacker.posture *
+            E.CombatTuning.POSTURE_STEP_PERCENT
+    end
+    if type(posture_percent) ~= "number" or posture_percent % 1 ~= 0 or
+       posture_percent < 0 then
+        return nil
+    end
+
+    local weapon_code = attacker.equipped_action_code
+    local skill_group
+    if weapon_code < E.ItemId.AK97 then
+        skill_group = "pistols"
+    elseif weapon_code < E.ItemId.ALLEGIANCE then
+        skill_group = "smgs"
+    else
+        skill_group = "shotguns"
+    end
+    local average = command_average(attacker)
+    local posture_component = posture_reduction(
+        average, posture_percent)
+    local roll_count = weapon_action_skill_value(
+        attacker, skill_group, posture_component)
+    if roll_count == nil then return nil end
+    return Combat.roll_thresholded_successes(
+        roll_count, difficulty, random_bound)
 end
 
 local function weapon_action_eligibility(difficulty, attacker, policy)

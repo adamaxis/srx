@@ -13187,6 +13187,22 @@ int run_field_scene20_physical_entry_qa(
             contact_flags.value_or(0U) | kSceneTwentyEntryFlag);
     }
 
+    // Scene-2/event-0 now requires a sourced access route before the Scene-20
+    // scenarios below can exercise their downstream behavior. Seed the ROM
+    // clearance flag; the Lua gate must consume it and the QA dismisses both
+    // the entrance <MORE> page and the clearance page with ordinary A input.
+    constexpr std::uint32_t kHollywoodClearanceFlag =
+        std::uint32_t{1U} << 28U;
+    const auto entry_contact_flags =
+        field_scene.notebook_contact_flags_for_dump();
+    if (!entry_contact_flags.has_value()) {
+        std::cerr << "Scene-20 physical-entry QA: contact flags unavailable "
+                     "for the sourced clearance fixture\n";
+        return 3;
+    }
+    field_scene.seed_notebook_contact_flags_for_qa(
+        *entry_contact_flags | kHollywoodClearanceFlag);
+
     std::optional<std::size_t> seeded_passkey_slot;
     constexpr std::uint8_t kPasskeyItemCode = 0x14U;
     constexpr std::uint8_t kPasskeyQuality = 2U;
@@ -13444,6 +13460,44 @@ int run_field_scene20_physical_entry_qa(
         field_scene.advance_frame();
         ++frame;
     }
+    for (std::uint8_t page = 0U;
+         page < 3U && field_scene.field_scene_reference_for_dump() == 2U;
+         ++page) {
+        std::uint16_t wait = 0U;
+        while (wait < 120U && !field_scene.dialogue_open() &&
+               field_scene.field_scene_reference_for_dump() == 2U) {
+            field_scene.advance_frame();
+            ++frame;
+            ++wait;
+        }
+        if (!field_scene.dialogue_open()) {
+            break;
+        }
+        wait = 0U;
+        while (wait < 120U && field_scene.dialogue_input_locked()) {
+            field_scene.advance_frame();
+            ++frame;
+            ++wait;
+        }
+        if (field_scene.dialogue_input_locked()) {
+            std::cerr << "Scene-20 physical-entry QA: entrance page did not "
+                         "unlock for ordinary A input\n";
+            return 3;
+        }
+        field_scene.set_controller_port_byte(0x40U); // ordinary A
+        field_scene.advance_frame();
+        ++frame;
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        ++frame;
+    }
+    for (std::uint16_t settle = 0U;
+         settle < 120U && field_scene.field_scene_reference_for_dump() == 0x14U &&
+         field_scene.field_modal_return_transition_frames_for_dump() != 0U;
+         ++settle) {
+        field_scene.advance_frame();
+        ++frame;
+    }
     const auto scene20_position = field_scene.field_entity_world_position();
     const auto& scene20_metadata =
         field_scene.state().field_scene_buffers.source_metadata;
@@ -13467,6 +13521,9 @@ int run_field_scene20_physical_entry_qa(
         return 3;
     }
     const auto scene20_image = render();
+    const auto scene20_hud_chrome_survives =
+        field_hud_chrome_survives(scene20_image, asset_root);
+    const auto scene20_lit_pixels = count_playfield_lit(scene20_image);
     if (field_scene.field_scene_reference_for_dump() != 0x14U ||
         scene20_metadata.terrain_collision_rectangles.size() != 132U ||
         scene20_position.x != expected_scene20_position.x ||
@@ -13477,15 +13534,35 @@ int run_field_scene20_physical_entry_qa(
         field_scene.field_transition_pending_for_dump() ||
         field_scene.field_interaction_transition_active_for_dump() ||
         scene20_image.size() != QSize(kSceneWidth, kSceneHeight) ||
-        !field_hud_chrome_survives(scene20_image, asset_root) ||
-        count_playfield_lit(scene20_image) < 100U ||
+        !scene20_hud_chrome_survives || scene20_lit_pixels < 100U ||
         !save("scene20-entry") || !save("actual")) {
         std::cerr << "Scene-20 physical-entry QA: event-table destination "
                      "did not replace the complete field scene (scene="
                   << field_scene.field_scene_reference_for_dump() << ", x="
                   << scene20_position.x << ", y=" << scene20_position.y
                   << ", source-x=" << expected_scene20_position.x
-                  << ", source-y=" << expected_scene20_position.y << ")\n";
+                  << ", source-y=" << expected_scene20_position.y
+                  << ", rectangles="
+                  << scene20_metadata.terrain_collision_rectangles.size()
+                  << ", dialogue=" << field_scene.dialogue_open()
+                  << ", interaction=" << field_scene.field_interaction_open()
+                  << ", mode-text="
+                  << field_scene.field_mode_text_open_for_dump()
+                  << ", shop=" << field_scene.shop_menu_open()
+                  << ", pending-transition="
+                  << field_scene.field_transition_pending_for_dump()
+                  << ", interaction-transition="
+                  << field_scene.field_interaction_transition_active_for_dump()
+                  << ", modal-return="
+                  << static_cast<unsigned>(
+                         field_scene.field_modal_return_transition_frames_for_dump())
+                  << ", palette-steps="
+                  << static_cast<unsigned>(
+                         field_scene.field_palette_fade_steps_for_dump())
+                  << ", image=" << scene20_image.width() << 'x'
+                  << scene20_image.height() << ", hud="
+                  << scene20_hud_chrome_survives << ", lit="
+                  << scene20_lit_pixels << ")\n";
         return 3;
     }
     write_state("scene20-entry");

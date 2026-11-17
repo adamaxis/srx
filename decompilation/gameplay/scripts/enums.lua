@@ -11,6 +11,14 @@ E.PackageRunStatus = {
     PAYMENT_DUE = "payment_due",
 }
 
+-- ROM 0x227D0 bytes 08 C1 00 1A set bit 26; 0x22728 bytes
+-- 08 81 00 1B clear bit 27; 0x226F6 bytes 08 81 00 1C clear bit 28.
+E.FieldRouteFlagBit = {
+    SCENE_20_ENTRY = 26,
+    HOLLYWOOD_FALSE_NAME = 27,
+    HOLLYWOOD_CLEARANCE_BADGE = 28,
+}
+
 E.FieldModePrompt = {
     NONE = "none",
     LITTLE_CHIBA_STORE = "little_chiba_store",
@@ -338,6 +346,12 @@ E.CombatTuning = {
     ACTION_VALUE_MAX = 10, -- 0x559F0 clamp [C]
     MINIMUM_ACTION_DIFFICULTY = 2, -- 0x55CAA/0x55D12 clamp [C]
     MELEE_BASE_DAMAGE = 3, -- 0x55CBE adds three before armor [C]
+    POSTURE_STEP_PERCENT = 25, -- ROM 0x55F2A bytes C6 FC 00 19 [C]
+}
+E.HollywoodGateAttack = {
+    ROLL_DIFFICULTY = 6, -- ROM 0x22764 bytes 38 3C 00 06 [C]
+    MINIMUM_ENTRY_SUCCESSES = 3, -- ROM 0x2276E bytes 0C 39 00 03 00 FF F0 DD [C]
+    EASY_AMBUSH_SUCCESSES = 5, -- ROM 0x227B8 bytes 0C 39 00 05 00 FF F0 DD [C]
 }
 E.CyberwareMask = {
     CYBEREYES = 0x0002, -- raw 0x0002: cyberware word bit 1 [C]

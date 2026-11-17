@@ -385,6 +385,12 @@ constexpr std::array<std::string_view, 31U> kStoryFlagFactIds{{
 // Source FFFC30: field-mode story flags. This is distinct from the FFFC1E
 // world story flags and the FFFC34 mode-effect flags below.
 constexpr std::string_view kFieldModeFlagBitPrefix = "field_mode_flag_bit_";
+constexpr std::string_view kFieldRouteFlagBitPrefix =
+    "field_route_flag_bit_";
+// ROM 0x227D0 bytes 08 C1 00 1A sets bit 26; 0x22728 bytes 08 81 00 1B
+// clears bit 27; 0x226F6 bytes 08 81 00 1C clears bit 28.
+constexpr std::uint8_t kFieldRouteFlagFirstBit = 26U;
+constexpr std::uint8_t kFieldRouteFlagLastBit = 28U;
 constexpr std::string_view kFieldModeEffectFlagBitPrefix =
     "field_mode_effect_flag_bit_";
 // ROM FFFC26: dialogue and indexed-title-service branch state. Keep this
@@ -11369,6 +11375,19 @@ bool FieldSceneRuntime::bootstrap(
                 // Both Hollywood access offers share source FFFC38 bit 27.
                 return (*notebook_contacts_flags_ & (1U << 27U)) != 0U;
             }
+            if (const auto bit = story_fact_bit_index(
+                    name, kFieldRouteFlagBitPrefix, 32U)) {
+                if (*bit < kFieldRouteFlagFirstBit ||
+                    *bit > kFieldRouteFlagLastBit ||
+                    !notebook_contacts_flags_.has_value()) {
+                    return std::nullopt;
+                }
+                // These facts expose only the FFFC2C gate bits: ROM 0x226F6
+                // (08 81 00 1C), 0x22728 (08 81 00 1B), and 0x227D0
+                // (08 C1 00 1A). Keep the other notebook bits intact.
+                return (*notebook_contacts_flags_ &
+                        (std::uint32_t{1U} << *bit)) != 0U;
+            }
             if (name == "lone_star_criminal_record_active") {
                 return field_heat_level_.has_value()
                            ? std::optional<bool>{
@@ -11578,6 +11597,19 @@ bool FieldSceneRuntime::bootstrap(
                     return false;
                 }
                 const auto mask = std::uint32_t{1U} << 27U;
+                *notebook_contacts_flags_ = value
+                    ? *notebook_contacts_flags_ | mask
+                    : *notebook_contacts_flags_ & ~mask;
+                return true;
+            }
+            if (const auto bit = story_fact_bit_index(
+                    name, kFieldRouteFlagBitPrefix, 32U)) {
+                if (*bit < kFieldRouteFlagFirstBit ||
+                    *bit > kFieldRouteFlagLastBit ||
+                    !notebook_contacts_flags_.has_value()) {
+                    return false;
+                }
+                const auto mask = std::uint32_t{1U} << *bit;
                 *notebook_contacts_flags_ = value
                     ? *notebook_contacts_flags_ | mask
                     : *notebook_contacts_flags_ & ~mask;

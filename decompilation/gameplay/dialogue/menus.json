@@ -263,6 +263,24 @@
         "title_key": "field.activity.main_menu.title"
       }
     },
+    "field.world_event": {
+      "hollywood_gate_guard_choices": {
+        "choice_label_keys": {
+          "attack": "hollywood.gate.choice.attack",
+          "leave": "hollywood.gate.choice.leave",
+          "story": "hollywood.gate.choice.story"
+        },
+        "title_key": "hollywood.gate.guard.opening"
+      },
+      "hollywood_gate_story_choices": {
+        "choice_label_keys": {
+          "attack": "hollywood.gate.choice.attack",
+          "leave": "hollywood.gate.choice.leave",
+          "story": "hollywood.gate.choice.story"
+        },
+        "title_key": "hollywood.gate.story.second"
+      }
+    },
     "field.main_menu": {
       "cyberspace": {
         "choice_label_keys": {
