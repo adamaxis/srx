@@ -19,6 +19,7 @@
 #include "shadowrun_ghidra/world/post_intro_mode_conversion.hpp"
 #include "numeric_visual_renderer.hpp"
 #include "map_coverage_qa.hpp"
+#include "walkthrough_qa.hpp"
 
 #include <QImage>
 #include <QJsonArray>
@@ -46030,6 +46031,9 @@ int run_field_edge_exit_qa(
 int main(int argc, char** argv) {
     try {
         bool field_smoke = false;
+        std::optional<std::string> walkthrough_segment;
+        std::optional<std::filesystem::path> walkthrough_output_directory;
+        bool walkthrough_reach = false;
         bool field_smoke_move_right = false;
         bool field_command_reopen_smoke = false;
         bool field_cyberware_empty_qa = false;
@@ -46405,6 +46409,18 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             building_exit_timing_results_path;
         for (int index = 1; index < argc; ++index) {
+            if (std::string(argv[index]) == "--walkthrough" &&
+                index + 2 < argc) {
+                field_smoke = true;
+                walkthrough_segment = std::string(argv[++index]);
+                walkthrough_output_directory =
+                    std::filesystem::path(argv[++index]);
+                if (index + 1 < argc &&
+                    std::string(argv[index + 1]) == "--reach") {
+                    walkthrough_reach = true;
+                    ++index;
+                }
+            }
             if (std::string(argv[index]) == "--map-coverage" &&
                 index + 2 < argc) {
                 field_smoke = true;
@@ -48072,6 +48088,22 @@ int main(int argc, char** argv) {
                                    smoke_state_error)) {
                 std::cerr << smoke_state_error << '\n';
                 return 3;
+            }
+            if (walkthrough_segment.has_value() &&
+                walkthrough_output_directory.has_value()) {
+                if (*walkthrough_segment != "seg1") {
+                    std::cerr << "walkthrough: unsupported segment '"
+                              << *walkthrough_segment << "'\n";
+                    std::cout << "walkthrough reach: "
+                              << *walkthrough_segment
+                              << "/none (milestone 0 of 33)\n";
+                    return walkthrough_reach ? 0 : 3;
+                }
+                return shadowrun::ghidra_conversion::qt_runtime::qa::
+                    run_walkthrough_qa(
+                        std::move(smoke_state), asset_root,
+                        *walkthrough_segment,
+                        *walkthrough_output_directory, walkthrough_reach);
             }
             if (map_coverage_rows_path.has_value() &&
                 map_coverage_results_path.has_value()) {

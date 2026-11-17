@@ -579,6 +579,21 @@ function(add_shadowrun_qt_qa_case test_name)
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy")
 endfunction()
 
+add_test(NAME shadowrun_walkthrough_seg1
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough seg1
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-seg1-gate")
+add_test(NAME shadowrun_walkthrough_reach
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough seg1
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-seg1-reach"
+        --reach)
+set_tests_properties(shadowrun_walkthrough_seg1 shadowrun_walkthrough_reach
+    PROPERTIES LABELS "walkthrough" TIMEOUT 300
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+
 # Scene 21's ROM rectangles exercise the real field-tick alarm bridge [C].
 # The test writes an actual.bmp checkpoint as a headless QA artifact [H].
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_alarm_qa

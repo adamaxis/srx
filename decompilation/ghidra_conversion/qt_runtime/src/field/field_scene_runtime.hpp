@@ -750,6 +750,9 @@ public:
     bool command_overview_open() const noexcept {
         return command_overview_.open();
     }
+    bool taxi_selector_open_for_dump() const noexcept {
+        return field_taxi_route_active_ && command_overview_.open();
+    }
     std::uint8_t command_overview_primary_page() const noexcept {
         return command_overview_.view().source_state.primary_page;
     }
@@ -1214,6 +1217,9 @@ public:
     // separate $500 purchase route.
     void seed_field_dialogue_flags_for_qa(std::uint8_t flags) noexcept {
         field_dialogue_flags_ = flags;
+    }
+    std::optional<std::uint8_t> field_dialogue_flags_for_dump() const noexcept {
+        return field_dialogue_flags_;
     }
     std::optional<QJsonObject> capture_game_save_snapshot_for_dump(
         QString* error) {

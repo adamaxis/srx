@@ -188,6 +188,14 @@ E.Scene = {
     LAST_ID = 55,
 } -- 0x3232 scene table; resource placements 0x15..0x2B; 0x37 is last ROM scene [C]
 E.Scene.FRIENDSHIP_RESTAURANT = 10 -- Scene-4 record 91 at 0x15BDC4 selects Scene 10 [C]
+E.Scene.PUYALLUP_BARRENS = 1 -- Scene 1 owns Tarislar City Inn record 68 [C]
+
+E.FieldDialogueRegisterFlagBit = {
+  BIT_0 = 0, BIT_1 = 1, BIT_2 = 2, BIT_3 = 3,
+} -- FFFC26 bit indices; Boris command 0x2B sets bit 1 [C]
+E.RunnerFeatureFlagBit = {
+  CYBERDECK_PRESENT = 0,
+} -- FF018F bit 0 is the deck-present gate; Stoker payment sets it [C]
 
 E.FieldActorContactHandler = {
     ORDINARY = "ordinary",
@@ -1063,10 +1071,13 @@ E.FieldModeFact = {
 -- command 0xE6 at 0x24982 encodes bit 23 (`08 81 00 17`). These are indices,
 -- not bit masks.
 E.FieldModeFlagBit = {
+  BIT_0 = 0,
+  BIT_1 = 1,
   -- ROM 0x1F878 tests this recognition flag; the Seattle holopix action at
   -- 0x21EF8 clears it after the player shows Ivanna the image.
   SEATTLE_HOLOPIX_RECOGNITION = 3,
   BIT_2 = 2,
+  BIT_3 = 3,
   BIT_4 = 4,
   BIT_5 = 5,
   BIT_6 = 6,
