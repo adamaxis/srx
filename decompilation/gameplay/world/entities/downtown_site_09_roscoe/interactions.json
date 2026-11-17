@@ -14,8 +14,20 @@
         "priority": 0,
         "sourceRoutePolicy": "resume_source_route"
       },
+      "tasks": {
+        "fieldExitPrompt": {
+          "module": "roscoe_fixer",
+          "function": "present_field_exit_prompt"
+        }
+      },
+      "locationContext": {
+        "type": "building",
+        "id": "downtown_site_09_roscoe",
+        "textProfile": "downtown.roscoe",
+        "speakerId": "roscoe_the_fixer"
+      },
       "provenance": {
-        "evidence": "ROM scene 0 record 49 at 0X0D57C8; event-table row 7 at 0xD54B9 selects numeric resource activity scene 21. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
+        "evidence": "ROM scene-0 collision record 49 at 0x0D57C8 points to event-table row 7 at 0x0D54B9 (byte 0x15), but scene handler 0x1FE86 clears FFF0D6 before the FFFBF8==0 check at 0x1FE8C. Event 7 at 0x1FFE6 loads Roscoe profile 0x121F70 and branches on signed FFF0D5 to 0x110EFA, 0x110EF2, or 0x111934; all reach 0x1FED2, whose nonnegative FFF0D6 path returns D6=-1 and cancels scene 21. Cmd 0xAF/0xB0/0xAE are table entries at 0x12CF70/0x12CF74/0x12CF6C and handlers 0x23D32/0x23D4E/0x23D04. The full record, text, and branch trace is in out/DIAG.md."
       }
     }
   ]

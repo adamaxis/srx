@@ -1807,6 +1807,53 @@
       "portrait_alias": "none",
       "text_profile": "penumbra.lone_star"
     },
+    "roscoe_the_fixer": {
+      "events": {
+        "opening": {
+          "continuation_key": "",
+          "title_key": "downtown.roscoe.opening"
+        },
+        "connect_deck": {
+          "continuation_key": "shared.more",
+          "title_key": "downtown.roscoe.connect_deck"
+        },
+        "farewell": {
+          "continuation_key": "",
+          "title_key": "downtown.roscoe.farewell"
+        },
+        "no_deck": {
+          "continuation_key": "shared.more",
+          "title_key": "downtown.roscoe.no_deck"
+        },
+        "encrypted": {
+          "continuation_key": "shared.more",
+          "title_key": "downtown.roscoe.encrypted"
+        },
+        "useless": {
+          "continuation_key": "shared.more",
+          "title_key": "downtown.roscoe.useless"
+        },
+        "offer": {
+          "continuation_key": "",
+          "title_key": "downtown.roscoe.offer"
+        },
+        "end_of_file": {
+          "continuation_key": "",
+          "title_key": "downtown.roscoe.end_of_file"
+        },
+        "package_handoff": {
+          "continuation_key": "",
+          "title_key": "downtown.roscoe.package_handoff"
+        },
+        "package_payment": {
+          "continuation_key": "",
+          "title_key": "downtown.roscoe.package_payment"
+        }
+      },
+      "name": "Roscoe",
+      "portrait_alias": "none",
+      "text_profile": "downtown.roscoe"
+    },
     "ivanna_haversheen": {
       "events": {
         "michael-package-holopix-ivanna": {
