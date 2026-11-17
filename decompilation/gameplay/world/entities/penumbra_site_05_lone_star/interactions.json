@@ -14,8 +14,20 @@
         "priority": 0,
         "sourceRoutePolicy": "resume_source_route"
       },
+      "tasks": {
+        "fieldExitPrompt": {
+          "module": "lone_star_station",
+          "function": "present_field_exit_prompt"
+        }
+      },
+      "locationContext": {
+        "type": "building",
+        "id": "penumbra_site_05_lone_star",
+        "textProfile": "penumbra.lone_star",
+        "speakerId": "lone_star_station_narrator"
+      },
       "provenance": {
-        "evidence": "ROM scene 3 record 96 at 0X18AB96; event-table row 6 at 0x18A702 selects numeric resource activity scene 41. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
+        "evidence": "Scene-3 record 96 at 0x18AB96 has bytes 07 00 07 1F 00 40 00 5F 00 C6 00 80 00 9F 01 40; scene-3 event-table row 6 at 0x18A702 is byte 29 (scene 41). Handler dispatch 0x1F64C is 4E B9 00 01 FD 80. The scene-3/event-6 check at 0x2026C is 0C 39 00 06 00 FF FB F9 66 00 00 34; it selects profile 0x122084 with 4B F9 00 12 20 84 at 0x20278 and tests signed FFF0D5 with 4A 39 00 FF F0 D5 67 00 00 1A at 0x2027E. The zero path selects page 0x110F66 (0x202A0: 41 F9 00 11 0F 66) and branches to 0x1FED2 (0x202A6: 60 00 FC 2A); the negative path selects 0x110F7A (0x20296: 41 F9 00 11 0F 7A; 0x2029C: 60 00 FC 34); the positive path selects 0x110F82 (0x2028C: 41 F9 00 11 0F 82; 0x20292: 60 00 FC 3E). For scene 3, 0x1FE20 compares scene 9 and 0x1FE86 clears FFF0D6 (42 39 00 FF F0 D6). Each event-6 path reaches the common return at 0x1FED2, which calls 0x1F246, clears FFF0D5, and sets D6=-1 while FFF0D6 remains nonnegative; the generic row-6 destination is therefore cancelled. Command 0x66 at 0x227DC compares FFFBFA with 3 using 0C 39 00 03 00 FF FB FA and returns page 0x1118F2 or 0x1118FA. Command 0x67 at 0x227F8 multiplies heat by 0x09C4 (2500), clears heat, and updates the wallet. If heat*2500 is no greater than the wallet, it subtracts and displays that full amount. If the wallet is positive but short, 0x22814 loads the wallet into D1 (22 39 00 FF FB FE), 0x22826 clears it (42 B9 00 FF FB FE), then 0x2282C branches to 0x22836 and the renderer at 0xC216 (4E B9 00 00 C2 16); the short wallet amount is displayed. Exact page records, text bytes, and branch bytes are in out/DIAG.md."
       }
     }
   ]

@@ -39527,6 +39527,11 @@ int run_field_penumbra_lone_star_entry_qa(
     const std::filesystem::path& asset_root,
     const std::filesystem::path& output) {
     field_scene.set_source_random_seed_for_dump(0U);
+    if (!field_scene.seed_field_heat_level_for_qa(0U)) {
+        std::cerr << "Penumbra Lone Star entry QA: could not seed its "
+                     "controlled heat input\n";
+        return 3;
+    }
     std::error_code output_error;
     std::filesystem::remove_all(output, output_error);
     if (output_error) {
@@ -39541,9 +39546,11 @@ int run_field_penumbra_lone_star_entry_qa(
         return 3;
     }
 
+    // ROM record 96 at 0x18AB96 is 07 00 07 1F 00 40 00 5F 00 C6 00 80
+    // 00 9F 01 40; row 6 at 0x18A702 is 29 (generic scene-41 destination).
     constexpr std::size_t kRecord = 96U;
     constexpr std::uint8_t kEvent = 6U;
-    constexpr std::uint16_t kDestination = 41U;
+    constexpr std::uint16_t kTableDestination = 41U;
     const auto& metadata =
         field_scene.state().field_scene_buffers.source_metadata;
     const auto& rectangles = metadata.terrain_collision_rectangles;
@@ -39557,7 +39564,7 @@ int run_field_penumbra_lone_star_entry_qa(
         rectangles[kRecord].bottom != 0x005FU ||
         rectangles[kRecord].value != 0x00C6U ||
         !metadata.event_table_available ||
-        metadata.event_mode_table[kEvent] != kDestination) {
+        metadata.event_mode_table[kEvent] != kTableDestination) {
         std::cerr << "Penumbra Lone Star entry QA: Scene-3 checkpoint, "
                      "ROM record 96, or event-table row 6 does not match\n";
         return 3;
@@ -39608,50 +39615,102 @@ int run_field_penumbra_lone_star_entry_qa(
         return 3;
     }
 
+    // ROM 0x2026C bytes 0C 39 00 06 00 FF FB F9 66 00 00 34 dispatch event 6.
+    // Its FFF0D5 paths select 0x110F66/0x110F7A/0x110F82 and branch to 0x1FED2
+    // (0x202A6 bytes 60 00 FC 2A); 0x1FE86 bytes 42 39 00 FF F0 D6 clear
+    // FFF0D6, while 0x1FED2 bytes 4E B9 00 01 F2 46 42 39 00 FF F0 D5 4A 39
+    // 00 FF F0 D6 6B 00 00 06 3C 3C FF FF return D6=-1. The generic event
+    // table still names 41, but this handler cancels that transition.
     std::uint16_t settle_frames = 0U;
-    for (; settle_frames < 240U; ++settle_frames) {
-        if (field_scene.field_scene_reference_for_dump() == kDestination &&
-            !field_scene.field_transition_pending_for_dump() &&
-            !field_scene.field_interaction_transition_active_for_dump()) {
-            break;
-        }
+    for (; settle_frames < 240U && !field_scene.dialogue_open() &&
+           field_scene.field_scene_reference_for_dump() == 3U;
+         ++settle_frames) {
+        field_scene.set_controller_port_byte(0U);
         field_scene.advance_frame();
     }
-    if (!finish_field_building_scene_transition(field_scene)) {
-        std::cerr << "Penumbra Lone Star entry QA: the building transition "
-                     "did not finish at its ROM-sized cadence\n";
+    const auto contains_page_text = [&field_scene](
+                                        const std::string_view text) {
+        const auto& panel = field_scene.dialogue_panel();
+        for (std::size_t index = 0U; index < panel.text_segment_count; ++index) {
+            if (panel.text_segments[index].find(text) != std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto& entry_page = field_scene.dialogue_panel();
+    const auto entry_frame = render();
+    if (!field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 3U ||
+        field_scene.field_transition_pending_for_dump() ||
+        !entry_page.source_complete || !entry_page.has_more ||
+        !contains_page_text("Lone Star, dedicated to keeping the peace") ||
+        !contains_page_text("This is the last place any shadowrunner wants to be!") ||
+        entry_frame.size() != QSize(kSceneWidth, kSceneHeight) ||
+        !save("site-handler-entry")) {
+        std::cerr << "Penumbra Lone Star entry QA: event 6 did not show the "
+                     "0x110F66 site page and retain Scene 3 (scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", dialogue=" << field_scene.dialogue_open()
+                  << ", complete=" << entry_page.source_complete
+                  << ", more=" << entry_page.has_more << ", text="
+                  << contains_page_text("Lone Star, dedicated to keeping the peace")
+                  << '/' << contains_page_text(
+                         "This is the last place any shadowrunner wants to be!")
+                  << ", speaker=" << entry_page.actor_name
+                  << ", portrait=" << entry_page.portrait_alias
+                  << ", segments=" << entry_page.text_segment_count
+                  << ", boundary=" << entry_page.source_boundary_reason
+                  << ", settle_frames=" << settle_frames
+                  << ", failure=" << field_scene.failure() << ")\n";
         return 3;
     }
-    const auto& activity = field_scene.world_activity_state_for_dump();
-    const auto actual = render();
-    if (field_scene.field_scene_reference_for_dump() != kDestination ||
-        activity.scene_id != kDestination ||
-        activity.mode != WorldActivityMode::resource_activity ||
-        field_scene.dialogue_open() || field_scene.field_interaction_open() ||
-        field_scene.field_mode_text_open_for_dump() ||
-        field_scene.shop_menu_open() ||
+
+    tap_qa_controller_button(field_scene, 0x40U); // MORE to command 0x66.
+    const auto& citizen_page = field_scene.dialogue_panel();
+    const auto citizen_frame = render();
+    if (!field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 3U ||
+        !citizen_page.source_complete || citizen_page.has_more ||
+        !contains_page_text("Got a problem, citizen?") ||
+        !contains_page_text("draw anymore unwanted suspicion.") ||
+        citizen_frame.size() != QSize(kSceneWidth, kSceneHeight) ||
+        !save("site-handler-citizen-reply")) {
+        std::cerr << "Penumbra Lone Star entry QA: command 0x66 did not show "
+                     "page 0x1118F2 on Scene 3\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U);
+    if (!finish_field_modal_return_transition(field_scene) ||
+        field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 3U ||
+        field_scene.world_activity_state_for_dump().scene_id != 0U ||
         field_scene.field_transition_pending_for_dump() ||
         field_scene.field_interaction_transition_active_for_dump() ||
-        actual.size() != QSize(kSceneWidth, kSceneHeight) ||
-        count_playfield_lit(actual) < 100U || !save("actual")) {
-        std::cerr << "Penumbra Lone Star entry QA: source event 6 did not "
-                     "settle in resource activity scene 41 (scene="
+        field_scene.field_mode_text_open_for_dump() ||
+        field_scene.shop_menu_open() ||
+        !save("source-field-return")) {
+        std::cerr << "Penumbra Lone Star entry QA: closing its site handler "
+                     "did not remain in Scene 3 (scene="
                   << field_scene.field_scene_reference_for_dump()
-                  << ", activity_scene=" << activity.scene_id
-                  << ", activity_mode=" << static_cast<unsigned>(activity.mode)
-                  << ", settle_frames=" << settle_frames << ")\n";
+                  << ", dialogue=" << field_scene.dialogue_open()
+                  << ", pending=" << field_scene.field_transition_pending_for_dump()
+                  << ", active="
+                  << field_scene.field_interaction_transition_active_for_dump()
+                  << ", failure=" << field_scene.failure() << ")\n";
         return 3;
     }
 
     std::ofstream trace(output / "route.tsv", std::ios::trunc);
     if (!trace) return 3;
-    trace << "rom_record\tevent\trom_destination\tmode\tmovement_ticks"
-             "\tsettle_frames\n"
+    trace << "rom_record\tevent\tevent_table_destination\tactual_scene"
+             "\tmovement_ticks\tsettle_frames\n"
           << kRecord << '\t' << static_cast<unsigned>(kEvent) << '\t'
-          << kDestination << "\tresource_activity\t" << movement_ticks
+          << kTableDestination << "\t3\t" << movement_ticks
           << '\t' << settle_frames << '\n';
     std::cout << "field_penumbra_lone_star_entry_qa=passed record=96 "
-                 "event=6 destination=resource_activity_41 artifacts="
+                 "event=6 page=110F66/1118F2 destination_cancelled=41 "
+                 "actual_scene=3 artifacts="
               << output.string() << '\n';
     return 0;
 }

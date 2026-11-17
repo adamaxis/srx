@@ -1776,6 +1776,37 @@
       "portrait_alias": "none",
       "text_profile": "council_island_inn"
     },
+    "lone_star_station_narrator": {
+      "events": {
+        "entry": {
+          "continuation_key": "shared.more",
+          "title_key": "penumbra.lone_star.entry"
+        },
+        "package_handoff": {
+          "continuation_key": "",
+          "title_key": "penumbra.lone_star.package_handoff"
+        },
+        "package_payment": {
+          "continuation_key": "",
+          "title_key": "penumbra.lone_star.package_payment"
+        },
+        "citizen_reply": {
+          "continuation_key": "",
+          "title_key": "penumbra.lone_star.citizen_reply"
+        },
+        "camera_arrest": {
+          "continuation_key": "shared.more",
+          "title_key": "penumbra.lone_star.camera_arrest"
+        },
+        "release": {
+          "continuation_key": "",
+          "title_key": "penumbra.lone_star.release"
+        }
+      },
+      "name": "Narration",
+      "portrait_alias": "none",
+      "text_profile": "penumbra.lone_star"
+    },
     "ivanna_haversheen": {
       "events": {
         "michael-package-holopix-ivanna": {

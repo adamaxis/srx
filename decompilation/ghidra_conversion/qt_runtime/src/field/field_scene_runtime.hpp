@@ -784,6 +784,13 @@ public:
     void seed_runner_feature_flags_for_qa(std::uint8_t flags) noexcept {
         field_runner_feature_flags_ = flags;
     }
+    // The Lone Star QA checkpoint restores map position without campaign
+    // story state, so seed a controlled heat input before its interaction.
+    bool seed_field_heat_level_for_qa(std::uint8_t level) noexcept {
+        if (level > 8U) return false;
+        field_heat_level_ = level;
+        return true;
+    }
 #endif
     bool hotel_menu_open() const noexcept { return hotel_menu_.open(); }
     bool hotel_karma_screen_loading() const noexcept {

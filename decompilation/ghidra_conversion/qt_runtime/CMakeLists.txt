@@ -1330,8 +1330,8 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_resource_matrix_en
                  --field-scene26-event31-matrix-entry-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-resource-matrix-entry-qa")
 
-# Enter the source-confirmed Penumbra Lone Star frontage through its ordinary
-# event-6 route and verify the numeric resource-activity destination 41.
+# Contact Penumbra Lone Star through ordinary event 6, verify its desk pages,
+# then confirm the site handler cancels the generic scene-41 destination.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_penumbra_lone_star_entry_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-penumbra-lone-star-qa
