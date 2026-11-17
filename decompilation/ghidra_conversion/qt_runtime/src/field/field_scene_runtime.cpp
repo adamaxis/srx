@@ -134,6 +134,14 @@ namespace {
 // Port-side scan limit for extracted per-direction actor art frames; the
 // longest 0x62AC list has 10 frames (0x75E8) [C], so 16 is headroom [H].
 constexpr std::uint8_t kActorArtFrameScanLimit = 16U;
+constexpr std::string_view kHollywoodLone12ProfileId =
+    "lone12_k05_item07";
+constexpr std::uint32_t kHollywoodLone12TemplateOffset = 0x1D640AU;
+constexpr std::uint16_t kHollywoodLone12EntityKind = 5U;
+constexpr std::uint8_t kHollywoodLone12ActionCode = 7U;
+constexpr std::uint8_t kHollywoodLone12ActionSlot = 0U;
+constexpr std::uint16_t kHollywoodLone12Ammunition = 28U;
+constexpr std::uint16_t kHollywoodLone12ActionCount = 0U;
 
 void draw_meter_variant(QPainter& painter, const int x, const int y,
                         const QImage& inactive, const QImage& selected,
@@ -1581,6 +1589,110 @@ FieldSceneRuntime::FieldSceneRuntime(
                                pending_field_encounter_outcome_.has_value()
                            ? "busy"
                            : "idle";
+            }
+            // story.queue_world_effect_<scene>_<actors>_<sequence id>
+            constexpr std::string_view kPlaceWorldEffectPrefix =
+                "story.place_world_effect_";
+            if (service_id.rfind(kPlaceWorldEffectPrefix, 0U) == 0U) {
+                auto rest = service_id.substr(kPlaceWorldEffectPrefix.size());
+                const auto scene_split = rest.find('_');
+                if (scene_split == std::string_view::npos) {
+                    return std::nullopt;
+                }
+                const auto scene_text = rest.substr(0U, scene_split);
+                std::uint32_t scene_id = 0U;
+                const auto parsed_scene = std::from_chars(
+                    scene_text.data(), scene_text.data() + scene_text.size(),
+                    scene_id);
+                rest = rest.substr(scene_split + 1U);
+                const auto actor_count_split = rest.find('_');
+                if (actor_count_split == std::string_view::npos) {
+                    return std::nullopt;
+                }
+                const auto actor_count_text = rest.substr(
+                    0U, actor_count_split);
+                std::uint32_t actor_count = 0U;
+                const auto parsed_actor_count = std::from_chars(
+                    actor_count_text.data(),
+                    actor_count_text.data() + actor_count_text.size(),
+                    actor_count);
+                const auto sequence_id = rest.substr(actor_count_split + 1U);
+                const bool valid_sequence_id = !sequence_id.empty() &&
+                    std::all_of(sequence_id.begin(), sequence_id.end(),
+                                [](const char character) {
+                                    return (character >= 'a' && character <= 'z') ||
+                                           (character >= 'A' && character <= 'Z') ||
+                                           (character >= '0' && character <= '9') ||
+                                           character == '_' || character == '-' ||
+                                           character == '.' || character == ':';
+                                });
+                const bool active_dialogue_event =
+                    pending_field_encounter_outcome_.has_value() &&
+                    pending_field_encounter_outcome_->kind == scripting::
+                        ScriptFieldEncounterOutcomeKind::dialogue_event &&
+                    field_dialogue_.open();
+                if (scene_text.empty() ||
+                    parsed_scene.ec != std::errc{} ||
+                    parsed_scene.ptr != scene_text.data() + scene_text.size() ||
+                    actor_count_text.empty() ||
+                    parsed_actor_count.ec != std::errc{} ||
+                    parsed_actor_count.ptr !=
+                        actor_count_text.data() + actor_count_text.size() ||
+                    !valid_sequence_id || actor_count == 0U ||
+                    actor_count > 0xFFU ||
+                    scene_id != state_.field_scene_buffers.scene_reference ||
+                    field_pending_story_world_effect_.has_value() ||
+                    (pending_field_encounter_outcome_.has_value() &&
+                     !active_dialogue_event)) {
+                    return std::nullopt;
+                }
+                auto outcome = game_scripts_.resolve_field_actor_sequence(
+                    static_cast<std::uint16_t>(scene_id), sequence_id);
+                if (!outcome.has_value() ||
+                    outcome->kind != scripting::
+                        ScriptFieldEncounterOutcomeKind::
+                            dynamic_world_effect_sequence ||
+                    outcome->scene_id != scene_id ||
+                    outcome->sequence_id != sequence_id ||
+                    outcome->placement_policy != scripting::
+                        ScriptFieldEncounterPlacementPolicy::
+                            map_derived_candidates ||
+                    outcome->actors.size() != actor_count ||
+                    std::any_of(
+                        outcome->actors.begin(), outcome->actors.end(),
+                        [sequence_id](const auto& actor) {
+                            return actor.sequence_id != sequence_id;
+                        })) {
+                    failure_ = game_scripts_.failure().empty()
+                        ? "Story world-effect sequence did not resolve its map-placed actors"
+                        : game_scripts_.failure();
+                    this->source_boundary(
+                        "field.world_activity.place_sequence_unresolved");
+                    return std::nullopt;
+                }
+                for (const auto& actor : outcome->actors) {
+                    if (field_dynamic_actor_artwork_.find(actor.sprite_stem) ==
+                            field_dynamic_actor_artwork_.end() ||
+                        !source_profile_facts_for_actor(
+                             actor.profile_id, actor.entity_kind,
+                             actor.action_kind, actor.action_code)
+                             .has_value()) {
+                        failure_ = "Story world-effect actor has no extracted native art or profile";
+                        this->source_boundary(
+                            "field.world_activity.place_actor_unresolved");
+                        return std::nullopt;
+                    }
+                }
+
+                auto active_outcome = std::move(
+                    pending_field_encounter_outcome_);
+                pending_field_encounter_outcome_ = std::move(*outcome);
+                const auto spawned = spawn_field_world_effect_sequence();
+                pending_field_encounter_outcome_ = std::move(active_outcome);
+                if (!spawned.has_value()) {
+                    return std::nullopt;
+                }
+                return *spawned == 0U ? "no_placement" : "spawned";
             }
             // story.queue_world_effect_<scene>_<actors>_<sequence id>
             constexpr std::string_view kQueueWorldEffectPrefix =
@@ -4598,7 +4710,31 @@ FieldSceneRuntime::source_profile_facts_for_actor(
         }
         consider_profile(facts);
     }
-    return conflicting_profiles ? std::nullopt : match;
+    if (conflicting_profiles) {
+        return std::nullopt;
+    }
+    if (match.has_value()) {
+        return match;
+    }
+    // The Hollywood miss list at ROM 0x1D6FEC is not part of the imported
+    // weighted actor table. Retain only Lone12's source action sidecar here;
+    // its kind art and gameplay policy use the shared native actor systems.
+    if (profile_id == kHollywoodLone12ProfileId &&
+        entity_kind == kHollywoodLone12EntityKind &&
+        action_kind == scripting::ScriptActorActionKind::item &&
+        action_code == kHollywoodLone12ActionCode) {
+        DynamicActorSourceProfileFacts facts{};
+        facts.profile_id = std::string(kHollywoodLone12ProfileId);
+        facts.template_offset = kHollywoodLone12TemplateOffset;
+        facts.entity_kind = kHollywoodLone12EntityKind;
+        facts.action_kind = scripting::ScriptActorActionKind::item;
+        facts.action_code = kHollywoodLone12ActionCode;
+        facts.equipped_action_slot = kHollywoodLone12ActionSlot;
+        facts.ammunition_remaining = kHollywoodLone12Ammunition;
+        facts.action_count = kHollywoodLone12ActionCount;
+        return facts;
+    }
+    return std::nullopt;
 }
 
 std::optional<FieldSceneRuntime::DynamicActorSourceProfileFacts>
@@ -7210,14 +7346,15 @@ bool FieldSceneRuntime::apply_scripted_field_entity_target_selection(
 
 
 
-void FieldSceneRuntime::spawn_field_world_effect_sequence() {
+std::optional<std::size_t>
+FieldSceneRuntime::spawn_field_world_effect_sequence() {
     if (!pending_field_encounter_outcome_.has_value() ||
         pending_field_encounter_outcome_->kind !=
             scripting::ScriptFieldEncounterOutcomeKind::
                 dynamic_world_effect_sequence) {
         source_boundary("field.random_encounter.dynamic_sequence_missing");
         pending_field_encounter_outcome_.reset();
-        return;
+        return std::nullopt;
     }
 
     const auto& outcome = *pending_field_encounter_outcome_;
@@ -7238,7 +7375,7 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
         failure_ = "ROM actor list has incomplete source placement records";
         source_boundary("field.random_encounter.actor_position_unresolved");
         pending_field_encounter_outcome_.reset();
-        return;
+        return std::nullopt;
     }
     if (source_positions_complete !=
         (outcome.placement_policy == scripting::
@@ -7246,7 +7383,7 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
         failure_ = "encounter placement policy does not match its actor positions";
         source_boundary("field.random_encounter.placement_policy_unresolved");
         pending_field_encounter_outcome_.reset();
-        return;
+        return std::nullopt;
     }
 
     std::vector<std::pair<std::uint16_t, std::uint16_t>> placement_candidates;
@@ -7298,7 +7435,7 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
             source_boundary(
                 "field.random_encounter.placement_policy_unresolved");
             pending_field_encounter_outcome_.reset();
-            return;
+            return std::nullopt;
         }
     }
 
@@ -7309,7 +7446,7 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
                 ? "field.random_encounter.no_open_map_candidates"
                 : "field.random_encounter.no_open_edge_candidates");
         pending_field_encounter_outcome_.reset();
-        return;
+        return 0U;
     }
 
     // Validate the complete ordered sequence before publishing any record.
@@ -7323,7 +7460,7 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
             failure_ = "ROM encounter actor has no extracted dynamic artwork";
             source_boundary("field.random_encounter.actor_art_unresolved");
             pending_field_encounter_outcome_.reset();
-            return;
+            return std::nullopt;
         }
         if (!source_profile_facts_for_actor(
                  source_actor.profile_id, source_actor.entity_kind,
@@ -7332,7 +7469,7 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
             failure_ = "ROM encounter actor has no unique native profile";
             source_boundary("field.random_encounter.profile_unresolved");
             pending_field_encounter_outcome_.reset();
-            return;
+            return std::nullopt;
         }
     }
 
@@ -7382,7 +7519,7 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
             failure_ = "ROM encounter actor native profile changed during spawn";
             source_boundary("field.random_encounter.profile_unresolved");
             pending_field_encounter_outcome_.reset();
-            return;
+            return std::nullopt;
         }
         DefaultFieldActorPresentation actor{};
         actor.active = true;
@@ -7564,6 +7701,7 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
             field_runtime_state_.display_dirty_flags | 0x0EU);
     }
     pending_field_encounter_outcome_.reset();
+    return spawned;
 }
 
 void FieldSceneRuntime::reset_field_entity_service_records() {

@@ -63,7 +63,9 @@ E.DialogueSource = {
 } -- Source identity for the common Lua dialogue opening framework.
 E.DialogueSpeaker = {
     FIELD_NARRATOR = "field_narrator",
-} -- Field system narration uses the shared catalog narrator.
+    HOLLYWOOD_CORRECTIONAL_GUARD = "hollywood_correctional_guard",
+    HOLLYWOOD_CORRECTIONAL_SARGE = "hollywood_correctional_sarge",
+} -- Field dialogue identities resolve through the shared speaker catalog.
 E.DialogueTextProfile = {
     FIELD_MAIN_MENU = "field.main_menu",
     FIELD_WORLD_EVENT = "field.world_event",
@@ -171,6 +173,7 @@ E.MovementBearingDegrees = {
 } -- degrees clockwise from north; native boundary converts to field angles [C]
 E.Scene = {
     STOKER_MOTEL = 2, -- Scene 2 trigger record 91 at 0x173138; prompt 0x1F65A [C]
+    HOLLYWOOD_CORRECTIONAL = 2, -- Entry gate is in scene 2; cmd 0x65 at 0x2274A [C]
     JUMP_HOUSE = 13, WANDERER = 14, -- 0x1B3C06 / 0x1D5B52 scene profiles [C]
     RESOURCE_ACTIVITY_FIRST = 21, RESOURCE_ACTIVITY_LAST = 43,
     RESOURCE_ACTIVITY_21 = 21, RESOURCE_ACTIVITY_22 = 22,
@@ -250,7 +253,12 @@ E.WorldEffectSequence = {
     FACTION_HALLOWEENERS = "faction_halloweeners",
     FIELD_ALARM_REINFORCEMENTS = "field_alarm_reinforcements", -- ROM list 0x1E20A [C]
     SECURITY_GUARD_STOP_ATTACK = "security_guard_stop_attack", -- 0x24402 forwards one 0x1D6A1C template from list 0x1D705C [C]
+    HOLLYWOOD_CORRECTIONAL_FAILED_SHOT_GUARDS =
+        "hollywood_correctional_failed_shot_guards", -- 0x2277A loads list 0x1D6FEC with D0=1 [C]
 } -- ROM lists 0x1D6E2A, 0x1D7010, 0x1D7038, 0x1D704C, 0x1D7050, 0x1D705C, and 0x1E20A [C]
+E.WorldEffectSequenceActorCount = {
+    HOLLYWOOD_CORRECTIONAL_FAILED_SHOT_GUARDS = 3, -- valid templates at 0x1D6FEC, 0x1D6FF0, 0x1D6FF4 [C]
+}
 E.WorldEffectPlacementPolicy = {
     SCREEN_EDGE_CANDIDATES = "screen_edge_candidates",
     MAP_DERIVED_CANDIDATES = "map_derived_candidates",

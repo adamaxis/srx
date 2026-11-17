@@ -443,6 +443,60 @@
       "portrait_alias": "none",
       "text_profile": "field.world_event"
     },
+    "hollywood_correctional_guard": {
+      "events": {
+        "hollywood_gate_entrance": {
+          "continuation_key": "shared.more",
+          "title_key": "hollywood.gate.entrance"
+        },
+        "hollywood_gate_package_handoff": {
+          "continuation_key": "",
+          "title_key": "hollywood.gate.package_handoff"
+        },
+        "hollywood_gate_package_payment": {
+          "continuation_key": "",
+          "title_key": "hollywood.gate.package_payment"
+        },
+        "hollywood_gate_false_name_pass": {
+          "continuation_key": "",
+          "title_key": "hollywood.gate.false_name_pass"
+        },
+        "hollywood_gate_story_first": {
+          "continuation_key": "shared.more",
+          "title_key": "hollywood.gate.story.first"
+        },
+        "hollywood_gate_farewell": {
+          "continuation_key": "",
+          "title_key": "hollywood.gate.farewell"
+        },
+        "hollywood_gate_attack_missed": {
+          "continuation_key": "",
+          "title_key": "hollywood.gate.attack_missed"
+        },
+        "hollywood_gate_attack_success": {
+          "continuation_key": "",
+          "title_key": "hollywood.gate.attack_success"
+        },
+        "hollywood_gate_attack_ambush": {
+          "continuation_key": "",
+          "title_key": "hollywood.gate.attack_ambush"
+        }
+      },
+      "name": "Hollywood Correctional guard",
+      "portrait_alias": "dialogue.portraits.hollywood.correctional.guard",
+      "text_profile": "field.world_event"
+    },
+    "hollywood_correctional_sarge": {
+      "events": {
+        "hollywood_gate_sarge_pass": {
+          "continuation_key": "",
+          "title_key": "hollywood.gate.sarge_pass"
+        }
+      },
+      "name": "Sarge",
+      "portrait_alias": "dialogue.portraits.vid.phone.macklemann",
+      "text_profile": "field.world_event"
+    },
     "haggard_man_event": {
       "events": {},
       "name": "Haggard-man encounter",

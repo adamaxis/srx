@@ -2111,7 +2111,7 @@ private:
         std::uint16_t scene_reference);
     bool process_pending_story_world_effect_sequence();
     std::int16_t select_field_world_effect_sequence();
-    void spawn_field_world_effect_sequence();
+    std::optional<std::size_t> spawn_field_world_effect_sequence();
     void reset_field_entity_service_records();
     void refresh_world_entity_service_targets();
     bool probe_action_line_clear(const SpawnEntityParentState& parent,

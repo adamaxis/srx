@@ -2,6 +2,7 @@
 local E = require("enums")
 local Sites = require("data.hollywood_sites")
 local Combat = require("combat")
+local StoryState = require("story_state")
 
 local Gate = {}
 
@@ -14,8 +15,15 @@ local function site_context()
     return site
 end
 
+local function speaker_for(site, event_id)
+    if event_id == site.events.sarge_pass then
+        return site.sarge_speaker
+    end
+    return site.speaker
+end
+
 local function say(site, event_id)
-    game.ui.say(event_id, site.narrator, site.text_profile)
+    game.ui.say(event_id, speaker_for(site, event_id), site.text_profile)
 end
 
 local function access_flag(bit)
@@ -25,7 +33,7 @@ end
 local function present_choices(site, menu_id, prompt_key)
     return game.ui.prompt_text_key(
         menu_id, prompt_key,
-        { "attack", "story", "leave" }, site.narrator, site.text_profile)
+        { "attack", "story", "leave" }, site.speaker, site.text_profile)
 end
 
 local function random_die(bound)
@@ -51,10 +59,25 @@ local function attack_guard_post(site)
 
     if successes == nil or
        successes < E.HollywoodGateAttack.MINIMUM_ENTRY_SUCCESSES then
-        -- ROM 0x2277A..0x227A6 enters the actor list before selecting this
-        -- fail page. That list has no named port sequence yet; keep its
-        -- production route closed and preserve the sourced failure text.
-        say(site, site.events.attack_missed)
+        -- ROM 0x2277A calls 0x1E1FC with D0=1 for list 0x1D6FEC. A zero
+        -- placement result falls through to 0x227A8 and the entry page.
+        local placement = StoryState.place_world_effect(
+            E.Scene.HOLLYWOOD_CORRECTIONAL, {
+                actors = E.WorldEffectSequenceActorCount
+                    .HOLLYWOOD_CORRECTIONAL_FAILED_SHOT_GUARDS,
+                sequence_id = E.WorldEffectSequence
+                    .HOLLYWOOD_CORRECTIONAL_FAILED_SHOT_GUARDS,
+            })
+        if placement == "no_placement" then
+            game.state[access_flag(E.FieldRouteFlagBit.SCENE_20_ENTRY)] = true
+            say(site, site.events.attack_success)
+            return "enter_scene_20"
+        elseif placement == "spawned" then
+            -- The typed FFE182 owner is Ilene's pending world-effect fact.
+            game.state.pending_world_effect = false
+            say(site, site.events.attack_missed)
+            return "left"
+        end
         return "left"
     end
 

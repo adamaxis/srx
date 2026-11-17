@@ -519,6 +519,7 @@ dialogue/portraits/spirit-eyes.bmp	sprite	0	0	56	72	0x53D5A/0x121EF8/0xF4BD8	ext
 dialogue/portraits/licourtrix.bmp	sprite	0	0	56	72	0x53F3E/0x121EA4/0xF4C44	extracted
 dialogue/portraits/renraku-offices-entry.bmp	sprite	0	0	56	72	0x540B8/0x121E2C/0x110A2A	extracted
 dialogue/portraits/fuchi-offices-entry.bmp	sprite	0	0	56	72	0x5419A/0x122090/0x11B7F4	extracted
+dialogue/portraits/hollywood-correctional-guard.bmp	sprite	0	0	56	72	0x2041E/0x1FED2/0x1F292/0x122030	extracted
 dialogue/portraits/gates-undersound-entry.bmp	sprite	0	0	56	72	0x5425A/0x121FC4/0x1111DE	extracted
 dialogue/portraits/boris-greenhouse.bmp	sprite	0	0	56	72	0x53F8C/0x121F58/0x1F246	extracted
 dialogue/portraits/taxi-cabbie.bmp	sprite	0	0	56	72	0x20714/0x121F10/0x1F246	extracted

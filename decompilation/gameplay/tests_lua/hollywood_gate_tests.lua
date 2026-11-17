@@ -12,6 +12,11 @@ local FIELD_ROUTE_FLAG_BIT = E.FieldRouteFlagBit or {
 }
 
 local LOCATION_ID = "hollywood_correctional_facility"
+local GATE_SPEAKER_ID = "hollywood_correctional_guard"
+local SARGE_SPEAKER_ID = "hollywood_correctional_sarge"
+local GATE_PORTRAIT_ALIAS =
+    "dialogue.portraits.hollywood.correctional.guard"
+local SARGE_PORTRAIT_ALIAS = "dialogue.portraits.vid.phone.macklemann"
 local function read_json(path)
     local file = assert(io.open(path, "rb"), "cannot read " .. path)
     local decoded = Json.decode(file:read("*a"))
@@ -64,11 +69,20 @@ local function fresh_game(options)
         active_slot = function() return 0 end,
         services = {
             call = function(domain, action)
-                expect(domain == "random" and action == "bounded_6",
-                    "Hollywood gate requested an unexpected service")
-                random_index = random_index + 1
-                capture.random_calls = random_index
-                return "roll_" .. (random[random_index] or 0)
+                if domain == "random" and action == "bounded_6" then
+                    random_index = random_index + 1
+                    capture.random_calls = random_index
+                    return "roll_" .. (random[random_index] or 0)
+                elseif domain == "field" and action == "scene_reference" then
+                    return "scene_2"
+                elseif domain == "story" and
+                       action:match("^place_world_effect_") then
+                    capture.world_effect_request = action
+                    capture.world_effect_result =
+                        options.world_effect_result or "spawned"
+                    return capture.world_effect_result
+                end
+                expect(false, "Hollywood gate requested an unexpected service")
             end,
         },
         ui = {
@@ -97,6 +111,33 @@ local function fresh_game(options)
         capture.choices[#capture.choices + 1] = choice
     end
     return state, capture
+end
+
+local function expect_page_speaker(capture, event_id, speaker_id,
+                                   portrait_alias)
+    for _, event in ipairs(capture.events) do
+        if event.event_id == event_id then
+            expect(event.speaker_id == speaker_id,
+                event_id .. " must use speaker " .. speaker_id)
+            local profile = speaker_catalog.profiles[speaker_id]
+            expect(profile ~= nil and
+                   profile.portrait_alias == portrait_alias,
+                event_id .. " must resolve portrait " .. portrait_alias)
+            return
+        end
+    end
+    expect(false, "missing dialogue page " .. event_id)
+end
+
+local function arm_ilene_pending_effect()
+    game.state[E.StoryFact.RED_BUFFALO_WOMAN] = true
+    game.state[E.StoryFact.ILENE_MET] = false
+    game.state.field_mode_effect_flag_bit_0 = true
+    game.state.notebook_tip_flag_bit_76 = false
+    local Ilene = require("ilene")
+    expect(Ilene.prepare_scene_20_entry() == "continue" and
+           game.state.pending_world_effect == true,
+        "service 19 must arm FFE182 through its typed owner")
 end
 
 local function route_for_gate()
@@ -158,6 +199,11 @@ test("route requires the entry dialogue while retaining Ilene service 19", funct
     expect(route.route_preparation.module == "ilene" and
            route.route_preparation.function_name == "prepare_scene_20_entry",
         "ROM service 19 must remain earlier in the route chain")
+    expect(interaction_document.interactions[1].entryDialogue.locationContext.speakerId ==
+               GATE_SPEAKER_ID and
+           interaction_document.interactions[1].locationContext.speakerId ==
+               GATE_SPEAKER_ID,
+        "Hollywood entry contexts must select the guard speaker profile")
 end)
 
 test("Hollywood access bits use the named ROM positions", function()
@@ -171,6 +217,54 @@ test("Hollywood access bits use the named ROM positions", function()
         "Hollywood attack roll thresholds must match cmd 0x65")
 end)
 
+test("failed-shot sequence resolves the source actor templates in order", function()
+    fresh_game({})
+    game.modules.world_content_data = {
+        dynamic_world_activity_actors = {
+            {
+                scene_id = 1, actor_name = "lone11",
+                profile_id = "lone11_k05_item03",
+                sequence_order = 0,
+                actor_facts = { interaction = {} },
+                action_kind = "item", action_id = "american_l36",
+                palette_line = 1, sprite_stem = "actor-kind-5-palette-1",
+                placement_rule = "map-derived candidates around camera-relative map anchors",
+            },
+            {
+                scene_id = 41, actor_name = "lone13",
+                profile_id = "lone13_k05_item0a",
+                sequence_order = 0,
+                actor_facts = { interaction = {} },
+                action_kind = "item", action_id = "mach_22",
+                palette_line = 1, sprite_stem = "actor-kind-5-palette-1",
+                placement_rule = "map-derived candidates around camera-relative map anchors",
+            },
+            {
+                scene_id = 41, actor_name = "lonemage",
+                profile_id = "lonemage_k0a_spell01",
+                sequence_order = 1,
+                actor_facts = { interaction = {} },
+                action_kind = "spell", action_id = "mana_zap",
+                palette_line = 2, sprite_stem = "actor-kind-10-palette-2",
+                placement_rule = "map-derived candidates around camera-relative map anchors",
+            },
+        },
+    }
+    local sequence = require("field_encounters").resolve_sequence(
+        E.Scene.HOLLYWOOD_CORRECTIONAL,
+        E.WorldEffectSequence.HOLLYWOOD_CORRECTIONAL_FAILED_SHOT_GUARDS)
+    expect(sequence ~= nil and #sequence.actors == 3 and
+           sequence.placement_policy ==
+               E.WorldEffectPlacementPolicy.MAP_DERIVED_CANDIDATES,
+        "source list must use the shared map-derived sequence path")
+    expect(sequence.actors[1].actor_name == "lone11" and
+           sequence.actors[2].actor_name == "lone12" and
+           sequence.actors[2].profile_id == "lone12_k05_item07" and
+           sequence.actors[2].action_id == "predator" and
+           sequence.actors[3].actor_name == "lonemage",
+        "source templates must resolve as lone11, lone12, and lonemage")
+end)
+
 test("no access flags shows entrance and guard choices, then leave stays", function()
     local state, capture = fresh_game({ choices = { "leave" } })
     local gate = expect_gate()
@@ -181,6 +275,10 @@ test("no access flags shows entrance and guard choices, then leave stays", funct
            capture.prompts[1].text_key == "hollywood.gate.guard.opening" and
            capture.events[2].event_id == "hollywood_gate_farewell",
         "no-flag path must show page 0x1113D2, choices 0x1113E6, and leave page 0x11144A")
+    expect_page_speaker(capture, "hollywood_gate_entrance",
+                        GATE_SPEAKER_ID, GATE_PORTRAIT_ALIAS)
+    expect_page_speaker(capture, "hollywood_gate_farewell",
+                        GATE_SPEAKER_ID, GATE_PORTRAIT_ALIAS)
     expect(state[flag_fact(FIELD_ROUTE_FLAG_BIT.SCENE_20_ENTRY)] == nil and
            state[flag_fact(FIELD_ROUTE_FLAG_BIT.HOLLYWOOD_FALSE_NAME)] == nil and
            state[flag_fact(FIELD_ROUTE_FLAG_BIT.HOLLYWOOD_CLEARANCE_BADGE)] == nil,
@@ -198,6 +296,8 @@ test("badge bit has priority, clears only itself, and opens scene 20", function(
         "badge access must continue to scene 20")
     expect(capture.events[2].event_id == "hollywood_gate_sarge_pass",
         "bit 28 path must show the Sarge badge page")
+    expect_page_speaker(capture, "hollywood_gate_sarge_pass",
+                        SARGE_SPEAKER_ID, SARGE_PORTRAIT_ALIAS)
     expect(state[flag_fact(FIELD_ROUTE_FLAG_BIT.SCENE_20_ENTRY)] == true and
            state[flag_fact(FIELD_ROUTE_FLAG_BIT.HOLLYWOOD_FALSE_NAME)] == true and
            state[flag_fact(FIELD_ROUTE_FLAG_BIT.HOLLYWOOD_CLEARANCE_BADGE)] == false,
@@ -215,6 +315,8 @@ test("false-name bit clears only itself and opens scene 20", function()
         "false-name access must continue to scene 20")
     expect(capture.events[2].event_id == "hollywood_gate_false_name_pass",
         "bit 27 path must show the false-name page")
+    expect_page_speaker(capture, "hollywood_gate_false_name_pass",
+                        GATE_SPEAKER_ID, GATE_PORTRAIT_ALIAS)
     expect(state[flag_fact(FIELD_ROUTE_FLAG_BIT.SCENE_20_ENTRY)] == true and
            state[flag_fact(FIELD_ROUTE_FLAG_BIT.HOLLYWOOD_FALSE_NAME)] == false and
            state[flag_fact(FIELD_ROUTE_FLAG_BIT.HOLLYWOOD_CLEARANCE_BADGE)] == false,
@@ -248,6 +350,8 @@ test("story choice advances from 0x11141A to the repeated choices at 0x11142E", 
            capture.prompts[2].choices[2] == "story" and
            capture.prompts[2].choices[3] == "leave",
         "story route must show page 0x11141A, then choices at 0x11142E")
+    expect_page_speaker(capture, "hollywood_gate_story_first",
+                        GATE_SPEAKER_ID, GATE_PORTRAIT_ALIAS)
 end)
 
 test("cmd 0x65 with 3-4 successes enters and sets only bit 26", function()
@@ -270,6 +374,8 @@ test("cmd 0x65 with 3-4 successes enters and sets only bit 26", function()
            state[flag_fact(FIELD_ROUTE_FLAG_BIT.HOLLYWOOD_FALSE_NAME)] == false and
            state[flag_fact(FIELD_ROUTE_FLAG_BIT.HOLLYWOOD_CLEARANCE_BADGE)] == false,
         "3-4 success must set bit 26 only and preserve bits 27/28")
+    expect_page_speaker(capture, "hollywood_gate_attack_success",
+                        GATE_SPEAKER_ID, GATE_PORTRAIT_ALIAS)
 end)
 
 test("cmd 0x65 with at least 5 successes shows ambush page and opens", function()
@@ -292,27 +398,65 @@ test("cmd 0x65 with at least 5 successes shows ambush page and opens", function(
            state[flag_fact(FIELD_ROUTE_FLAG_BIT.HOLLYWOOD_FALSE_NAME)] == false and
            state[flag_fact(FIELD_ROUTE_FLAG_BIT.HOLLYWOOD_CLEARANCE_BADGE)] == false,
         "5+ success must set bit 26 only and preserve bits 27/28")
+    expect_page_speaker(capture, "hollywood_gate_attack_ambush",
+                        GATE_SPEAKER_ID, GATE_PORTRAIT_ALIAS)
 end)
 
-test("cmd 0x65 miss displays failure and cancels entry", function()
+test("cmd 0x65 miss places the guard list and clears FFE182", function()
     local state, capture = fresh_game({
         choices = { "attack" },
         flags = {
-            [FIELD_ROUTE_FLAG_BIT.SCENE_20_ENTRY] = true,
+            [FIELD_ROUTE_FLAG_BIT.SCENE_20_ENTRY] = false,
             [FIELD_ROUTE_FLAG_BIT.HOLLYWOOD_FALSE_NAME] = false,
             [FIELD_ROUTE_FLAG_BIT.HOLLYWOOD_CLEARANCE_BADGE] = false,
         },
         party = { [0] = attack_runner },
         random_values = success_roll_values(0),
+        world_effect_result = "spawned",
     })
+    arm_ilene_pending_effect()
     local gate = expect_gate()
     expect(gate.present_entry() == "left" and
            capture.events[#capture.events].event_id == "hollywood_gate_attack_missed",
         "under-3 path must show page 0x111402 and remain in scene 2")
-    expect(state[flag_fact(FIELD_ROUTE_FLAG_BIT.SCENE_20_ENTRY)] == true and
+    expect(capture.world_effect_request ==
+           "place_world_effect_2_3_hollywood_correctional_failed_shot_guards",
+        "miss path must place the three-template Hollywood list through the typed sequence service; got " ..
+            tostring(capture.world_effect_request))
+    expect(state.pending_world_effect == false and
+           state[flag_fact(FIELD_ROUTE_FLAG_BIT.SCENE_20_ENTRY)] == false and
            state[flag_fact(FIELD_ROUTE_FLAG_BIT.HOLLYWOOD_FALSE_NAME)] == false and
            state[flag_fact(FIELD_ROUTE_FLAG_BIT.HOLLYWOOD_CLEARANCE_BADGE)] == false,
-        "miss path must leave all FFFC2C access bits unchanged")
+        "placed miss must clear only FFE182 and leave bit 26 clear")
+    expect_page_speaker(capture, "hollywood_gate_attack_missed",
+                        GATE_SPEAKER_ID, GATE_PORTRAIT_ALIAS)
+end)
+
+test("cmd 0x65 zero placement falls through to the success page and entry", function()
+    local state, capture = fresh_game({
+        choices = { "attack" },
+        flags = {
+            [FIELD_ROUTE_FLAG_BIT.SCENE_20_ENTRY] = false,
+            [FIELD_ROUTE_FLAG_BIT.HOLLYWOOD_FALSE_NAME] = false,
+            [FIELD_ROUTE_FLAG_BIT.HOLLYWOOD_CLEARANCE_BADGE] = false,
+        },
+        party = { [0] = attack_runner },
+        random_values = success_roll_values(0),
+        world_effect_result = "no_placement",
+    })
+    arm_ilene_pending_effect()
+    local gate = expect_gate()
+    expect(gate.present_entry() == "enter_scene_20" and
+           capture.events[#capture.events].event_id == "hollywood_gate_attack_success",
+        "zero actor placements must fall through to ROM page 0x11140A and enter")
+    expect(capture.world_effect_request ==
+           "place_world_effect_2_3_hollywood_correctional_failed_shot_guards" and
+           state[flag_fact(FIELD_ROUTE_FLAG_BIT.SCENE_20_ENTRY)] == true and
+           state.pending_world_effect == true,
+        "zero-placement fallthrough must set bit 26 and preserve the unconsumed FFE182 owner; got " ..
+            tostring(capture.world_effect_request))
+    expect_page_speaker(capture, "hollywood_gate_attack_success",
+                        GATE_SPEAKER_ID, GATE_PORTRAIT_ALIAS)
 end)
 
 test("package pages stay text-only and do not consume access flags", function()
@@ -333,6 +477,8 @@ test("package pages stay text-only and do not consume access flags", function()
         expect(gate.present_entry() == "left" and
                capture.events[2].event_id == scenario.event,
             "package status must show its matching Hollywood page only")
+        expect_page_speaker(capture, scenario.event,
+                            GATE_SPEAKER_ID, GATE_PORTRAIT_ALIAS)
         expect(state[flag_fact(FIELD_ROUTE_FLAG_BIT.HOLLYWOOD_FALSE_NAME)] == true and
                state[flag_fact(FIELD_ROUTE_FLAG_BIT.HOLLYWOOD_CLEARANCE_BADGE)] == true,
             "package page must leave access flags unchanged")
@@ -391,11 +537,12 @@ test("dialogue texts and choice labels match the ROM-backed catalog", function()
         expect(text_catalog.texts[text_key] == expected,
             "dialogue text must match its ROM-backed source string: " .. text_key)
     end
-    expect(speaker_catalog.profiles.field_narrator ~= nil and
+    expect(speaker_catalog.profiles[GATE_SPEAKER_ID] ~= nil and
+           speaker_catalog.profiles[SARGE_SPEAKER_ID] ~= nil and
            menu_catalog.profiles["field.world_event"] ~= nil and
            menu_catalog.profiles["field.world_event"].hollywood_gate_guard_choices ~= nil and
            menu_catalog.profiles["field.world_event"].hollywood_gate_story_choices ~= nil,
-        "Hollywood dialogue must use the existing field narrator and menu profile")
+        "Hollywood dialogue must use the ROM-backed guard/Sarge speakers and menu profile")
 end)
 
 if #failures > 0 then

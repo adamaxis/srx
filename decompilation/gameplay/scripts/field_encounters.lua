@@ -28,7 +28,19 @@ local template_sequences = {
             "map-derived candidates around camera-relative map anchors",
     },
 }
-local watcher_template_sequences = {
+local multi_template_sequences = {
+    [E.WorldEffectSequence.HOLLYWOOD_CORRECTIONAL_FAILED_SHOT_GUARDS] = {
+        { actor_name = "lone11", profile_id = "lone11_k05_item03" },
+        {
+            actor_name = "lone12",
+            profile_id = "lone12_k05_item07",
+            fallback_actor_name = "lone13",
+            fallback_profile_id = "lone13_k05_item0a",
+            action_kind = "item",
+            action_id = "predator",
+        },
+        { actor_name = "lonemage", profile_id = "lonemage_k0a_spell01" },
+    }, -- ROM list 0x1D6FEC: lone11, lone12, and lonemage [C]
     [E.WorldEffectSequence.PHANTASMAL_WATCHER_EYE_FIVERS_FOUR] = {
         { actor_name = "eye5r 2", profile_id = "eye5r_2_k07_item04" },
         { actor_name = "eye5r 2", profile_id = "eye5r_2_k07_item04" },
@@ -233,22 +245,36 @@ local function resolve_template_sequence(scene_id, sequence_id, descriptor,
     }
 end
 
-local function resolve_watcher_template_sequence(
+local function resolve_multi_template_sequence(
     scene_id, sequence_id, descriptors, data)
     local actors = {}
     for order, descriptor in ipairs(descriptors) do
         local selected
         for _, row in ipairs(data.dynamic_world_activity_actors or {}) do
-            if row.scene_id == scene_id and
-               row.profile_id == descriptor.profile_id and
-               row.actor_name == descriptor.actor_name then
+            if row.profile_id == descriptor.profile_id and
+               row.actor_name == descriptor.actor_name and
+               (selected == nil or row.scene_id == scene_id) then
                 selected = row
-                break
+                if row.scene_id == scene_id then break end
+            end
+        end
+        if selected == nil and descriptor.fallback_profile_id ~= nil then
+            for _, row in ipairs(data.dynamic_world_activity_actors or {}) do
+                if row.profile_id == descriptor.fallback_profile_id and
+                   row.actor_name == descriptor.fallback_actor_name and
+                   (selected == nil or row.scene_id == scene_id) then
+                    selected = row
+                    if row.scene_id == scene_id then break end
+                end
             end
         end
         if selected == nil then return nil end
 
         local actor = actor_from_row(selected)
+        actor.actor_name = descriptor.actor_name
+        actor.profile_id = descriptor.profile_id
+        actor.action_kind = descriptor.action_kind or actor.action_kind
+        actor.action_id = descriptor.action_id or actor.action_id
         actor.sequence_order = order - 1
         actor.sequence_id = sequence_id
         actor.placement_rule =
@@ -442,10 +468,10 @@ function Encounters.resolve_sequence(scene_id, sequence_id)
         return resolve_template_sequence(
             scene_id, sequence_id, template_sequence, data)
     end
-    local watcher_sequence = watcher_template_sequences[sequence_id]
-    if watcher_sequence ~= nil then
-        return resolve_watcher_template_sequence(
-            scene_id, sequence_id, watcher_sequence, data)
+    local multi_sequence = multi_template_sequences[sequence_id]
+    if multi_sequence ~= nil then
+        return resolve_multi_template_sequence(
+            scene_id, sequence_id, multi_sequence, data)
     end
     local actors = ordered_actor_rows(data, function(row)
         return row.scene_id == scene_id and

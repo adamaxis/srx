@@ -8143,6 +8143,15 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                                          little_chiba_mode_sprite.height,
                                          little_chiba_mode_sprite.pixels},
           "sprite", "0x1F830/0x1F246/0x1F292/0x12200C", true);
+    const auto hollywood_guard_profile_sprite =
+        shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
+            rom, 0x122030U);
+    write("dialogue/portraits/hollywood-correctional-guard.bmp",
+          shadowrun::native::NativeImage{
+              hollywood_guard_profile_sprite.width,
+              hollywood_guard_profile_sprite.height,
+              hollywood_guard_profile_sprite.pixels},
+          "sprite", "0x2041E/0x1FED2/0x1F292/0x122030", true);
     // Party recovery selects profile 0x1220B4 for the DocWagon branch at
     // 0xC778..0xC79C. The shared 0x1F246/0x1F292 path displays this sprite
     // beside the recovery text, so keep it as an individually named asset.

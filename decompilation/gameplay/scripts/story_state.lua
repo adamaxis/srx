@@ -73,6 +73,16 @@ function StoryState.queue_world_effect(scene, effect)
         scene, effect.actors, effect.sequence_id)) == "queued"
 end
 
+function StoryState.place_world_effect(scene, effect)
+    local result = game.services.call("story", string.format(
+        "place_world_effect_%d_%d_%s",
+        scene, effect.actors, effect.sequence_id))
+    if result == "spawned" or result == "no_placement" then
+        return result
+    end
+    return nil
+end
+
 -- ROM 0x1F1E0: advance Strike Team escalation (maximum stage 8) and queue
 -- the scene's follow-up list when this activity is in Scene 2.
 -- Returns "applied" or nil when the host state cannot take the step.

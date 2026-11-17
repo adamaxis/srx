@@ -2,7 +2,8 @@ local E = require("enums")
 
 return {
     hollywood_correctional_facility = {
-        narrator = E.DialogueSpeaker.FIELD_NARRATOR,
+        speaker = E.DialogueSpeaker.HOLLYWOOD_CORRECTIONAL_GUARD,
+        sarge_speaker = E.DialogueSpeaker.HOLLYWOOD_CORRECTIONAL_SARGE,
         text_profile = E.DialogueTextProfile.FIELD_WORLD_EVENT,
         events = {
             entrance = "hollywood_gate_entrance",
