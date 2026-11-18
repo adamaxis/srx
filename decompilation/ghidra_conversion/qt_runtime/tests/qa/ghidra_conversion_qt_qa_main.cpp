@@ -1697,6 +1697,89 @@ int run_field_pistol_attack_seed_qa(
                   << " failure=" << field_scene.failure() << '\n';
         return 3;
     }
+
+    // Keep the death result from real combat, then place the controlled
+    // runner just north of the corpse so raw world-Y sorting puts the corpse
+    // first; ROM's dead-flag depth override still puts that corpse behind the
+    // player. Build isolated render masks by
+    // moving only the already-dead actor and player through the QA position
+    // seam; neither lifecycle flags nor combat results are injected.
+    constexpr std::uint16_t kRenderProbeOffscreen = 0xF000U;
+    constexpr std::uint16_t kPlayerBehindDepthOffset = 0x0100U;
+    const auto overlap_x = corpse_position.x;
+    const auto overlap_y = static_cast<std::uint16_t>(
+        corpse_position.y - kPlayerBehindDepthOffset);
+    const auto capture_sort_probe = [&](const char* name) {
+        return save_pose(name, render_qa_field(field_scene));
+    };
+    if (!field_scene.set_default_actor_world_position_for_dump(
+            0U, kRenderProbeOffscreen, kRenderProbeOffscreen)) {
+        std::cerr << "pistol sprite-order QA: could not isolate the real corpse\n";
+        return 3;
+    }
+    field_scene.set_field_entity_world_position_for_dump(
+        kRenderProbeOffscreen, kRenderProbeOffscreen);
+    if (!capture_sort_probe("sprite-order-map-only.bmp")) {
+        std::cerr << "pistol sprite-order QA: map-only frame capture failed\n";
+        return 3;
+    }
+    const auto map_only = render_qa_field(field_scene);
+    field_scene.set_field_entity_world_position_for_dump(overlap_x, overlap_y);
+    const auto player_only = render_qa_field(field_scene);
+    if (!save_pose("sprite-order-player-only.bmp", player_only)) {
+        std::cerr << "pistol sprite-order QA: player-only frame capture failed\n";
+        return 3;
+    }
+    field_scene.set_field_entity_world_position_for_dump(
+        kRenderProbeOffscreen, kRenderProbeOffscreen);
+    if (!field_scene.set_default_actor_world_position_for_dump(
+            0U, corpse_position.x, corpse_position.y)) {
+        std::cerr << "pistol sprite-order QA: could not restore the real corpse\n";
+        return 3;
+    }
+    const auto corpse_only = render_qa_field(field_scene);
+    if (!save_pose("sprite-order-corpse-only.bmp", corpse_only)) {
+        std::cerr << "pistol sprite-order QA: corpse-only frame capture failed\n";
+        return 3;
+    }
+    field_scene.set_field_entity_world_position_for_dump(overlap_x, overlap_y);
+    const auto player_corpse_overlap = render_qa_field(field_scene);
+    if (!save_pose("player-front-over-corpse.bmp", player_corpse_overlap)) {
+        std::cerr << "pistol sprite-order QA: overlapping frame capture failed\n";
+        return 3;
+    }
+    std::size_t overlap_samples = 0U;
+    std::size_t player_wins = 0U;
+    std::size_t corpse_wins = 0U;
+    for (int y = 0; y < player_only.height(); ++y) {
+        for (int x = 0; x < player_only.width(); ++x) {
+            const auto background_pixel = map_only.pixel(x, y);
+            const auto player_pixel = player_only.pixel(x, y);
+            const auto corpse_pixel = corpse_only.pixel(x, y);
+            if (player_pixel == background_pixel ||
+                corpse_pixel == background_pixel ||
+                player_pixel == corpse_pixel) {
+                continue;
+            }
+            ++overlap_samples;
+            const auto overlap_pixel = player_corpse_overlap.pixel(x, y);
+            if (overlap_pixel == player_pixel) {
+                ++player_wins;
+            } else if (overlap_pixel == corpse_pixel) {
+                ++corpse_wins;
+            }
+        }
+    }
+    if ((dead_source_flag() & 0x40) == 0 || overlap_samples == 0U ||
+        player_wins == 0U || corpse_wins != 0U) {
+        std::cerr << "pistol sprite-order QA: ROM front player did not fully "
+                     "cover the naturally killed corpse"
+                  << " dead_flags=" << dead_source_flag()
+                  << " overlap_samples=" << overlap_samples
+                  << " player_wins=" << player_wins
+                  << " corpse_wins=" << corpse_wins << '\n';
+        return 3;
+    }
     std::cout << "field_pistol_attack_seed_qa=passed profile="
               << expected->name << " item="
               << static_cast<unsigned>(expected->item_code)
@@ -1712,6 +1795,8 @@ int run_field_pistol_attack_seed_qa(
               << " death_completion_pass=" << death_completion_pass
               << " pose=down-final-frame="
               << static_cast<unsigned>(*final_death_frame)
+              << " sprite_order_overlap_pixels=" << overlap_samples
+              << " player_wins=" << player_wins
               << " corpse_held=8 actual=" << (output / "actual.bmp").string()
               << '\n';
     return 0;
@@ -45970,6 +46055,14 @@ int run_field_edge_exit_qa(
     const auto destination_scene =
         field_scene.field_scene_reference_for_dump();
     const auto final_position = field_scene.field_entity_world_position();
+    for (std::uint8_t settle = 0U; settle < 36U; ++settle) {
+        field_scene.advance_frame();
+    }
+    const auto arrival_mode = field_scene.field_interaction_mode_for_dump();
+    const auto arrival_fade_steps =
+        field_scene.field_palette_fade_steps_for_dump();
+    const auto arrival_image = render_qa_field(field_scene);
+    const auto arrival_lit_pixels = count_playfield_lit(arrival_image);
     const auto has_boundary = [&source_boundaries](
                                   const std::string_view boundary) {
         return std::find(source_boundaries.begin(), source_boundaries.end(),
@@ -45979,25 +46072,33 @@ int run_field_edge_exit_qa(
         has_boundary("field.runtime.field_transition_requested");
     const bool variant_selected =
         has_boundary("field.runtime.scene_variant_selected");
-    // 0x03174..0x031EA writes FFDDC4/FFE114 only; FFDF40 stays zero.
-    const auto arrival_mode = field_scene.field_interaction_mode_for_dump();
+    const auto expected_arrival_mode =
+        select_scene_interaction_mode(route.destination_scene);
     const bool passed = initial_event != 0x10U && event16_published &&
                         transition_requested && variant_selected &&
                         moved_in_exit_direction &&
                         destination_scene == route.destination_scene &&
-                        arrival_mode == 0U;
+                        expected_arrival_mode.has_value() &&
+                        arrival_mode == *expected_arrival_mode &&
+                        arrival_fade_steps == 0U &&
+                        arrival_lit_pixels >= 100;
     std::ofstream trace(output / "edge-routes.tsv", std::ios::trunc);
     if (!trace) return 3;
     trace << "route\tinitial_event\tevent16_published\tmoved_x\t"
              "source_scene\tdestination_scene\texpected_scene\tcamera_x\t"
-             "world_x\tworld_y\trequest_boundary\tvariant_selected\n";
+             "world_x\tworld_y\trequest_boundary\tvariant_selected\t"
+             "arrival_mode\texpected_mode\tfade_steps\tlit_pixels\n";
     trace << route.name << '\t' << static_cast<unsigned>(initial_event)
           << '\t' << event16_published << '\t'
           << moved_in_exit_direction << '\t' << route.source_scene << '\t'
           << destination_scene << '\t' << route.destination_scene << '\t'
           << field_scene.field_camera_follow_for_dump().camera_x << '\t'
           << final_position.x << '\t' << final_position.y << '\t'
-          << transition_requested << '\t' << variant_selected << '\n';
+          << transition_requested << '\t' << variant_selected << '\t'
+          << arrival_mode << '\t'
+          << expected_arrival_mode.value_or(0xFFFFU) << '\t'
+          << static_cast<unsigned>(arrival_fade_steps) << '\t'
+          << arrival_lit_pixels << '\n';
     trace.close();
     if (!trace || !passed) {
         std::cerr << "field edge exit QA: " << route.name
@@ -46016,12 +46117,22 @@ int run_field_edge_exit_qa(
                   << field_scene.field_transition_pending_for_dump()
                   << " transition_requested_boundary=" << transition_requested
                   << " variant_selected_boundary=" << variant_selected
+                  << " arrival_mode=" << arrival_mode
+                  << " expected_mode="
+                  << expected_arrival_mode.value_or(0xFFFFU)
+                  << " fade_steps="
+                  << static_cast<unsigned>(arrival_fade_steps)
+                  << " lit_pixels=" << arrival_lit_pixels
                   << " failure=" << field_scene.failure() << '\n';
         return 3;
     }
     std::cout << "field_edge_exit_qa=passed route=" << route.name
               << " event=16 direction="
               << (route.input == 0x08U ? "east" : "west")
+              << " arrival_mode=" << arrival_mode
+              << " fade_steps="
+              << static_cast<unsigned>(arrival_fade_steps)
+              << " lit_pixels=" << arrival_lit_pixels
               << " trace=" << (output / "edge-routes.tsv").string() << '\n';
     return 0;
 }

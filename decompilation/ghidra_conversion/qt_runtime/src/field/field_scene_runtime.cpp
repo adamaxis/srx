@@ -672,6 +672,15 @@ constexpr bool actor_flag_is_set(const std::uint8_t flags,
     return (flags & actor_flag_mask(flag)) != 0U;
 }
 
+constexpr bool actor_sprite_depth_is_forced_to_zero(
+    const std::uint8_t source_record_flags) {
+    // ROM 0x5B1E clears the +0x04 depth for source-record +0x10 bits 4/6.
+    return actor_flag_is_set(source_record_flags,
+                             ActorServiceFlag::action_candidate_reserved) ||
+           actor_flag_is_set(source_record_flags,
+                             ActorServiceFlag::effect_locked);
+}
+
 // ROM 0x5C82..0x5CBA, leader record FFFC04: +0x56 < 0 (spell) with +0x57
 // == 5, or +0x56 >= 0 with +0x57 == 0 (unarmed) and +0x91 bits 3/2 (hand
 // cyberware) clear, makes the target marker tier +0x9C instead of +0x4C.
@@ -8788,7 +8797,13 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         variant.pending_profile = field_pending_scene_profile_;
         const auto carry = toggle_field_scene_variant(variant);
         runtime.scene_id = variant.scene_id;
-        state_.field_scene_buffers.scene_reference = variant.scene_id;
+        if (carry) {
+            // Keep FFDDC4's selected destination pending until the shared
+            // 0x2BD2 scene loader commits it. Updating the live buffer here
+            // makes the loader misclassify this as a same-scene refresh,
+            // preserving the old FFDF40 and black fade overlay.
+            field_pending_mode_transition_scene_ = variant.scene_id;
+        }
         field_pending_scene_profile_ = variant.pending_profile;
         if (carry) {
             source_boundary("field.runtime.scene_variant_selected");
@@ -16955,8 +16970,13 @@ void FieldSceneRuntime::paint_field_scene_entities(
         // overlap priority; this painter composites later sprites on top, so
         // add the body first and marker corners after it to preserve that
         // source priority without letting the actor cover its own selector.
+        const auto depth = actor_sprite_depth_is_forced_to_zero(
+                               actor.source_record_flags)
+                               ? std::int16_t{0}
+                               : static_cast<std::int16_t>(
+                                     actor.world_position.y);
         SceneSprite actor_sprite{
-            static_cast<std::int16_t>(actor.world_position.y),
+            depth,
             static_cast<std::uint16_t>(actor.source_order + 1U),
             static_cast<int>(projection.screen_x) - kGenesisSpriteOrigin +
                 sprite.origin_x,

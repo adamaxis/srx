@@ -2,6 +2,9 @@
 
 #include "../../src/field/field_scene_runtime.hpp"
 
+#include <QImage>
+#include <QPainter>
+
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -64,6 +67,8 @@ struct MapCoverageAttempt {
     bool lead_captured{};
     std::uint16_t observed_mode{};
     std::uint8_t observed_event{};
+    std::uint8_t observed_fade_steps{};
+    std::uint32_t playfield_lit_pixels{};
     std::string approach_side;
     std::uint32_t prompt_inputs{};
     std::string note;
@@ -117,6 +122,21 @@ inline std::optional<std::uint32_t> map_coverage_number(
         return std::nullopt;
     }
     return static_cast<std::uint32_t>(number);
+}
+
+inline std::uint32_t map_coverage_playfield_lit_pixels(const QImage& image) {
+    std::uint32_t lit = 0U;
+    const auto width = std::min(image.width(), 272);
+    const auto height = std::min(image.height(), 224);
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            const auto pixel = image.pixel(x, y);
+            if (qRed(pixel) != 0 || qGreen(pixel) != 0 || qBlue(pixel) != 0) {
+                ++lit;
+            }
+        }
+    }
+    return lit;
 }
 
 inline std::optional<MapCoverageRect> map_coverage_rect(
@@ -707,7 +727,9 @@ inline MapCoverageAttempt map_coverage_drive_rect(
         }
     }
     runtime.set_controller_port_byte(0U);
-    for (std::uint32_t tail = 0U; tail < 60U && frames_used < frame_budget; ++tail) {
+    const auto tail_limit = row_category == "edge" ? 36U : 60U;
+    for (std::uint32_t tail = 0U;
+         tail < tail_limit && frames_used < frame_budget; ++tail) {
         if (frame_clock != nullptr) {
             ++*frame_clock;
         }
@@ -733,7 +755,7 @@ inline MapCoverageAttempt map_coverage_drive_rect(
         result.transition_fired = result.transition_fired ||
             scene != starting_scene ||
             (transition_pending && !script_stays_on_scene);
-        if (scene != starting_scene) {
+        if (scene != starting_scene && row_category != "edge") {
             break;
         }
     }
@@ -743,6 +765,18 @@ inline MapCoverageAttempt map_coverage_drive_rect(
     result.observed_x = position.x;
     result.observed_y = position.y;
     result.observed_mode = runtime.field_interaction_mode_for_dump();
+    if (row_category == "edge" && result.transition_fired &&
+        result.observed_scene != starting_scene) {
+        result.observed_fade_steps =
+            runtime.field_palette_fade_steps_for_dump();
+        QImage image(320, 224, QImage::Format_ARGB32_Premultiplied);
+        image.fill(Qt::black);
+        QPainter painter(&image);
+        runtime.paint(painter);
+        painter.end();
+        result.playfield_lit_pixels =
+            map_coverage_playfield_lit_pixels(image);
+    }
     if (approach_side.empty() &&
         (row_category == "edge" || row_category == "door" ||
          row_category == "bexit")) {
@@ -1563,6 +1597,19 @@ inline int run_map_coverage_qa(
                             diff += "mode expected=" + std::to_string(*expected_mode) +
                                     " observed=" + std::to_string(attempt.observed_mode) + ";";
                         }
+                        if (row.category == "edge" &&
+                            attempt.observed_fade_steps != 0U) {
+                            matches = false;
+                            diff += "fade overlay remained at " +
+                                    std::to_string(attempt.observed_fade_steps) +
+                                    " steps;";
+                        }
+                        if (row.category == "edge" &&
+                            attempt.playfield_lit_pixels < 100U) {
+                            matches = false;
+                            diff += "playfield remained black;lit_pixels=" +
+                                    std::to_string(attempt.playfield_lit_pixels) + ";";
+                        }
                         const auto expected_xy = map_coverage_xy(row.arrival_xy);
                         if (expected_xy &&
                             (attempt.observed_x != (*expected_xy)[0] ||
@@ -1596,6 +1643,12 @@ inline int run_map_coverage_qa(
                         if (matches) {
                             status = "PASS";
                             diff = "observed route matches all resolved ROM outputs";
+                            if (row.category == "edge") {
+                                diff += ";fade_steps=" + std::to_string(
+                                    attempt.observed_fade_steps) +
+                                    ";lit_pixels=" + std::to_string(
+                                        attempt.playfield_lit_pixels);
+                            }
                         } else {
                             status = "WRONG";
                         }

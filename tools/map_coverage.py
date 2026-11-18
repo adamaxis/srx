@@ -293,7 +293,7 @@ def build_rows(rom_path: Path) -> list[dict[str, str]]:
                 f"edge-s{scene:02x}-r{address:06x}-{branch_id}", scene, "edge",
                 f"0x{address:06X};arrival=0x{arrival:06X};consume=0x0B7B8>0x1651E>0x1F5CA>0x03168",
                 f"rect:x={x0}..{x1},y={y0}..{y1};event=0x10;{branch};return_side={return_sides.get(address, 'unknown')}",
-                "FFDF40=0", destination, lead, 0,
+                "FFDF40=0", destination, lead, scene_mode(destination),
                 record_ref(address, links_code_path, edge_fn),
             ))
 
