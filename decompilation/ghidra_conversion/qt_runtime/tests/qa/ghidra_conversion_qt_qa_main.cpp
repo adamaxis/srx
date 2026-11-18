@@ -5513,6 +5513,204 @@ int run_field_random_encounter_spawn_qa(
     return 0;
 }
 
+int run_abandoned_building_encounter_qa(
+    FieldSceneRuntime& field_scene,
+    const StartupIntegrationState& startup_state,
+    const std::filesystem::path& output,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code error;
+    std::filesystem::create_directories(output, error);
+    if (error) {
+        std::cerr << "abandoned-building encounter QA: cannot create output: "
+                  << error.message() << '\n';
+        return 3;
+    }
+
+    // Puyallup's record 66 (ROM 0x17D998, event 8) is the physical entrance
+    // to scene 50. Walk into that source collision record first so the scene
+    // 50 encounter check observes the same state as an ordinary door entry.
+    if (!field_scene.bootstrap_for_scene_dump(startup_state, 1U)) {
+        std::cerr << "abandoned-building encounter QA: could not load the "
+                     "Puyallup source map: " << field_scene.failure() << '\n';
+        return 3;
+    }
+    field_scene.set_field_entity_world_position_for_dump(0x0B00U, 0x0D00U);
+    std::uint16_t entrance_ticks = 0U;
+    for (; entrance_ticks < 100U; ++entrance_ticks) {
+        field_scene.set_controller_nibble(0x01U); // ordinary Up into record 66
+        field_scene.advance_frame();
+        if (field_scene.field_scene_reference_for_dump() != 1U) {
+            ++entrance_ticks;
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    for (std::uint16_t settle = 0U;
+         settle < 180U &&
+         (field_scene.field_scene_reference_for_dump() != 50U ||
+          field_scene.field_transition_pending_for_dump() ||
+          field_scene.field_interaction_transition_active_for_dump());
+         ++settle) {
+        field_scene.advance_frame();
+    }
+    if (entrance_ticks == 0U || entrance_ticks >= 100U ||
+        field_scene.field_scene_reference_for_dump() != 50U ||
+        field_scene.field_transition_pending_for_dump() ||
+        field_scene.field_interaction_transition_active_for_dump()) {
+        const auto position = field_scene.field_entity_world_position();
+        std::cerr << "abandoned-building encounter QA: physical record-66 "
+                     "entry did not reach scene 50 (ticks=" << entrance_ticks
+                  << ", scene=" << field_scene.field_scene_reference_for_dump()
+                  << ", position=" << position.x << ',' << position.y
+                  << ", collision=0x" << std::hex
+                  << field_scene.field_terrain_collision_code_for_dump()
+                  << ", projected=0x"
+                  << field_scene.field_projected_code_for_dump() << std::dec
+                  << ", event=" << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << ")\n";
+        return 3;
+    }
+    std::cout << "abandoned_building_entry=passed source_scene=1 "
+                 "record=66 event=8 destination=50 movement_ticks="
+              << entrance_ticks << '\n';
+
+    constexpr std::uint16_t kEncounterPhase = 10U;
+    constexpr std::uint16_t kEncounterPeriod = 1024U;
+    constexpr std::uint16_t kAbandonedBuildingThreshold = 0xC000U;
+    for (const auto [scene, selector_sum] : {
+             std::pair{50U, 3U}, std::pair{51U, 2U},
+             std::pair{52U, 2U}, std::pair{53U, 2U}}) {
+        if (scene != 50U &&
+            !field_scene.bootstrap_for_scene_dump(startup_state, scene)) {
+            std::cerr << "abandoned-building encounter QA: could not load scene "
+                      << scene << " failure=" << field_scene.failure() << '\n';
+            return 3;
+        }
+        const auto profile_index = field_scene_profile_word_index(
+            FieldSceneProfileWord::random_event_probability_threshold);
+        const auto& profile = field_scene.state().field_scene_buffers.profile;
+        if (profile.size() <= profile_index ||
+            profile[profile_index] != kAbandonedBuildingThreshold) {
+            std::cerr << "abandoned-building encounter QA: scene " << scene
+                      << " threshold word is "
+                      << (profile.size() <= profile_index
+                              ? std::string{"<missing>"}
+                              : "0x" + [&profile, profile_index] {
+                                    std::ostringstream text;
+                                    text << std::hex << profile[profile_index];
+                                    return text.str();
+                                }())
+                      << " expected 0xC000\n";
+            return 3;
+        }
+
+        // Select a controlled seed that takes the real 75% chance path and
+        // an actor-bearing ROM list (scene 50 sum 3 is a Bandersnatch pack;
+        // scenes 51-53 sum 2 is a ghoul1 pack). Only the PRNG state is
+        // seeded; the runtime consumes the chance, selector, and actor-delay
+        // draws through its normal production path.
+        std::optional<std::uint16_t> live_seed;
+        std::uint16_t probability_roll = 0U;
+        std::uint8_t first_selector_roll = 0U;
+        std::uint8_t second_selector_roll = 0U;
+        for (std::uint32_t initial = 0U;
+             initial <= std::numeric_limits<std::uint16_t>::max(); ++initial) {
+            auto candidate = static_cast<std::uint16_t>(initial);
+            const auto sample = advance_source_random_seed(candidate);
+            if (sample >= kAbandonedBuildingThreshold) {
+                continue;
+            }
+            const auto first = sample_source_random_bound(candidate, 5U);
+            const auto second = sample_source_random_bound(candidate, 5U);
+            if (first < 0 || second < 0 ||
+                first + second != static_cast<int>(selector_sum)) {
+                continue;
+            }
+            live_seed = static_cast<std::uint16_t>(initial);
+            probability_roll = sample;
+            first_selector_roll = static_cast<std::uint8_t>(first);
+            second_selector_roll = static_cast<std::uint8_t>(second);
+            break;
+        }
+        if (!live_seed.has_value()) {
+            std::cerr << "abandoned-building encounter QA: no controlled seed for scene "
+                      << scene << '\n';
+            return 3;
+        }
+
+        // Set only the test clock's starting count, then use two ordinary
+        // field frames: counter 9 advances to 10 without a check; counter 10
+        // executes the live 0x1E166 gate and spawn path.
+        field_scene.set_field_world_frame_counter_for_dump(9U);
+        field_scene.set_source_random_seed_for_dump(0x4000U);
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        if (field_scene.field_world_frame_counter_for_dump() != 10U) {
+            std::cerr << "abandoned-building encounter QA: scene " << scene
+                      << " did not reach cadence phase 10\n";
+            return 3;
+        }
+
+        const auto actors_before = field_scene.default_actor_count_for_dump();
+        const auto boundary_start = source_boundaries.size();
+        field_scene.set_source_random_seed_for_dump(*live_seed);
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        const auto actors_after = field_scene.default_actor_count_for_dump();
+        const auto spawn_count = static_cast<std::size_t>(std::count(
+            source_boundaries.begin() + static_cast<std::ptrdiff_t>(boundary_start),
+            source_boundaries.end(),
+            "field.random_encounter.actor_spawned_from_rom_list"));
+        const std::string_view expected_profile = scene == 50U
+            ? "bandersnatch_k04_none00"
+            : "ghoul1_k07_none00";
+        bool source_actor_profiles_match = spawn_count != 0U;
+        for (std::size_t order = 0U; order < spawn_count; ++order) {
+            const auto profile_id = field_scene
+                .default_actor_script_profile_for_dump(
+                    static_cast<std::uint16_t>(order));
+            source_actor_profiles_match = source_actor_profiles_match &&
+                profile_id == std::optional<std::string>{expected_profile};
+        }
+        if (field_scene.field_world_frame_counter_for_dump() != 11U ||
+            actors_after <= actors_before || spawn_count == 0U ||
+            !source_actor_profiles_match) {
+            std::cerr << "abandoned-building encounter QA: production encounter did not spawn"
+                      << " scene=" << scene << " actors=" << actors_before
+                      << "->" << actors_after << " spawn_records=" << spawn_count
+                      << " expected_profile=" << expected_profile
+                      << " profile_match=" << source_actor_profiles_match
+                      << " phase=10 threshold=0xC000 seed=0x" << std::hex
+                      << *live_seed << " chance=0x" << probability_roll
+                      << std::dec << " selector="
+                      << static_cast<unsigned>(first_selector_roll) << '+'
+                      << static_cast<unsigned>(second_selector_roll);
+            for (auto index = boundary_start;
+                 index < source_boundaries.size(); ++index) {
+                std::cerr << " boundary=" << source_boundaries[index];
+            }
+            if (!field_scene.failure().empty()) {
+                std::cerr << " failure=" << field_scene.failure();
+            }
+            std::cerr << '\n';
+            return 3;
+        }
+        std::cout << "abandoned_building_scene=" << scene
+                  << " production_tick=10 threshold=0xC000 seed=0x"
+                  << std::hex << *live_seed << " chance=0x" << probability_roll
+                  << std::dec << " selector="
+                  << static_cast<unsigned>(first_selector_roll) << '+'
+                  << static_cast<unsigned>(second_selector_roll)
+                  << " actors=" << actors_before << "->" << actors_after
+                  << " profile=" << expected_profile
+                  << " spawn_records=" << spawn_count << '\n';
+    }
+    std::cout << "abandoned_building_encounter_qa=passed scenes=50,51,52,53 "
+                 "period=1024 phase=10 probability=75% sums=3,2,2,2\n";
+    return 0;
+}
+
 int run_field_hidden_camera_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& output,
@@ -5996,19 +6194,26 @@ int run_field_hidden_camera_qa(
     const auto haggard_choices_image = render_qa_field(field_scene);
     const bool haggard_choices_portrait =
         haggard_choices.portrait_alias == kHaggardPortraitAlias;
+    const bool haggard_choice_labels_match =
+        haggard_choices.option_count == 3U &&
+        haggard_choices.options[0U].source_label == "Attack!!" &&
+        haggard_choices.options[1U].source_label ==
+            "Leave him alone or you'll be sorry!" &&
+        haggard_choices.options[2U].source_label == "Help them.";
     const bool haggard_choices_saved =
         save_qa_image(haggard_output, "choices.bmp", haggard_choices_image);
     if (!haggard_choices.open || haggard_choices.cursor_selection ||
         haggard_choices.option_count != 3U || !haggard_choices_portrait ||
-        !haggard_choices_saved) {
+        !haggard_choice_labels_match || !haggard_choices_saved) {
         std::cerr << "field hidden-camera QA: doctor choice page did not "
-                     "expose its three source A/B/C choices (open="
+                     "expose its three ROM-labeled A/B/C choices (open="
                   << haggard_choices.open << " cursor="
                   << haggard_choices.cursor_selection << " options="
                   << static_cast<unsigned>(haggard_choices.option_count)
                   << " kind=" << static_cast<unsigned>(haggard_choices.kind)
                   << " more=" << haggard_choices.has_more
                   << " selected=" << haggard_choices.selected_option
+                  << " labels=" << haggard_choice_labels_match
                   << " portrait=" << haggard_choices.portrait_alias
                   << " image_saved=" << haggard_choices_saved
                   << " complete=" << haggard_choices.source_complete
@@ -46196,6 +46401,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_random_encounter_spawn_qa_path;
         std::optional<std::filesystem::path>
+            abandoned_building_encounter_qa_path;
+        std::optional<std::filesystem::path>
             field_hidden_camera_qa_path;
         std::optional<std::string> field_faction_route_name;
         std::optional<std::string> field_faction_scene_name;
@@ -46710,6 +46917,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_random_encounter_spawn_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--abandoned-building-encounter-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                abandoned_building_encounter_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -53667,6 +53881,12 @@ int main(int argc, char** argv) {
                     field_scene, smoke_state, asset_root,
                     *field_random_encounter_spawn_qa_path,
                     field_audio_events, field_source_boundaries);
+            }
+            if (abandoned_building_encounter_qa_path.has_value()) {
+                return run_abandoned_building_encounter_qa(
+                    field_scene, smoke_state,
+                    *abandoned_building_encounter_qa_path,
+                    field_source_boundaries);
             }
             if (field_hidden_camera_qa_path.has_value()) {
                 return run_field_hidden_camera_qa(

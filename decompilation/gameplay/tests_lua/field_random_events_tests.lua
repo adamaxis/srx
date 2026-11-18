@@ -464,6 +464,13 @@ local function run_haggard(choice, event_id, configuration)
                 eq(options[1].id, "attack", "first source choice")
                 eq(options[2].id, "threaten", "second source choice")
                 eq(options[3].id, "help", "Help is the third source choice")
+                eq(options[1].label, "Attack!!",
+                   "ROM 0x103A9A doctor Attack label")
+                eq(options[2].label,
+                   "Leave him alone or you'll be sorry!",
+                   "ROM 0x103BFE doctor Threaten label")
+                eq(options[3].label, "Help them.",
+                   "ROM 0x103ADE doctor Help label")
                 return choice
             end,
         },

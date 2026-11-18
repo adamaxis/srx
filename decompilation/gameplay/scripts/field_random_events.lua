@@ -62,9 +62,9 @@ local HAGGARD_INTRO_MALIGNANT =
     "<The well-dressed man has a malignant air about him.||" ..
     "The ragged victim seems terrified.>"
 local HAGGARD_CHOICES = {
-    { id = "attack", label = "Attack!" },
-    { id = "threaten", label = "Threaten to leave the patient alone." },
-    { id = "help", label = "Help them." },
+    { id = "attack", label = "Attack!!" }, -- ROM text 0x103A9A.
+    { id = "threaten", label = "Leave him alone or you'll be sorry!" }, -- 0x103BFE.
+    { id = "help", label = "Help them." }, -- ROM text 0x103ADE.
 } -- Longplay section 11, frame 930; source dispatch 0x23BB4 [C].
 local SECURITY_GUARD_NO_ID_CHOICES = {
     { id = "attack", label = "<Attack!!>" }, -- 0x121278 / command 0xD2.
