@@ -68,6 +68,7 @@
 #include <filesystem>
 #include <limits>
 #include <map>
+#include <optional>
 #include <set>
 #include <sstream>
 #include <stdexcept>
@@ -142,6 +143,43 @@ constexpr std::uint8_t kHollywoodLone12ActionCode = 7U;
 constexpr std::uint8_t kHollywoodLone12ActionSlot = 0U;
 constexpr std::uint16_t kHollywoodLone12Ammunition = 28U;
 constexpr std::uint16_t kHollywoodLone12ActionCount = 0U;
+
+struct RunnerFieldContactRoute {
+    std::uint8_t scene_id;
+    std::string_view activity_id;
+    RecruitedRunnerConversationRunner runner;
+};
+
+constexpr std::array<RunnerFieldContactRoute, 7> kRunnerFieldContactRoutes{{
+    {19U, "scene_19_script", RecruitedRunnerConversationRunner::ricky},
+    {10U, "scene_10_default_script",
+     RecruitedRunnerConversationRunner::walking_bear},
+    {13U, "scene_13_ilene_gate_script",
+     RecruitedRunnerConversationRunner::two_fists},
+    {14U, "scene_14_script",
+     RecruitedRunnerConversationRunner::petr_uvehr},
+    {16U, "scene_16_script",
+     RecruitedRunnerConversationRunner::phantom},
+    {17U, "scene_17_script", RecruitedRunnerConversationRunner::freya},
+    {18U, "scene_18_script", RecruitedRunnerConversationRunner::rianna},
+}};
+
+constexpr std::array<std::string_view, 10> kRunnerSpeakerIds{{
+    "ricky", "winston_marrs", "trent", "petr_uvehr", "walking_bear",
+    "phantom", "two_fists", "freya", "rianna", "stark"}};
+
+std::optional<RecruitedRunnerConversationRunner> recruited_runner_for_contact(
+    const std::uint8_t scene_id, const std::string_view activity_id) {
+    const auto route = std::find_if(
+        kRunnerFieldContactRoutes.begin(), kRunnerFieldContactRoutes.end(),
+        [scene_id, activity_id](const RunnerFieldContactRoute& candidate) {
+            return candidate.scene_id == scene_id &&
+                   candidate.activity_id == activity_id;
+        });
+    return route == kRunnerFieldContactRoutes.end()
+        ? std::nullopt
+        : std::optional<RecruitedRunnerConversationRunner>{route->runner};
+}
 
 void draw_meter_variant(QPainter& painter, const int x, const int y,
                         const QImage& inactive, const QImage& selected,
@@ -6570,24 +6608,29 @@ void FieldSceneRuntime::resolve_default_actor_proximity(
                       }
                       world_frame_logic_state_.resource_countdown =
                           field_world_activity_state_.timeout;
-                      const bool ricky_contact =
-                          scene_reference == 19U &&
-                          contact_actor.world_activity_id ==
-                              "scene_19_script";
-                      if (ricky_contact &&
-                          (!field_runner_progress_counters_available_ ||
-                           field_runner_refresh_state_.effect_counters.empty())) {
-                          source_boundary(
-                              "field.world_activity.ricky_progress_unavailable");
-                          return;
-                      }
-                      field_ricky_contact_actor_id_ = ricky_contact
+                      const auto runner_contact =
+                          recruited_runner_for_contact(
+                              static_cast<std::uint8_t>(scene_reference),
+                              contact_actor.world_activity_id);
+                      field_recruited_runner_contact_actor_id_ =
+                          runner_contact.has_value()
                           ? contact_actor.actor_instance_id
                           : std::string{};
+                      field_recruited_runner_contact_scene_id_ =
+                          runner_contact.has_value()
+                              ? static_cast<std::uint8_t>(scene_reference)
+                              : 0U;
+                      field_recruited_runner_contact_ = runner_contact;
                       std::optional<std::int16_t> signed_selector;
-                      if (ricky_contact) {
+                      if (runner_contact.has_value() &&
+                          field_runner_progress_counters_available_ &&
+                          field_runner_refresh_state_.effect_counters.size() ==
+                              kRunnerSpeakerIds.size()) {
+                          const auto runner_index = static_cast<std::size_t>(
+                              *runner_contact);
                           signed_selector = static_cast<std::int8_t>(
-                              field_runner_refresh_state_.effect_counters[0U]);
+                              field_runner_refresh_state_.effect_counters[
+                                  runner_index]);
                       }
                       const auto response_id =
                           game_scripts_.generic_field_contact_dialogue(
@@ -6605,9 +6648,15 @@ void FieldSceneRuntime::resolve_default_actor_proximity(
                       game_scripts_.set_location_context(
                           "field_map",
                           std::string_view("generic_field_contact"),
-                          ricky_contact ? "runner.ricky"
-                                        : "field.world_event",
-                          ricky_contact ? "ricky" : "field_narrator",
+                          runner_contact.has_value()
+                              ? "runner." + std::string(kRunnerSpeakerIds[
+                                    static_cast<std::size_t>(
+                                        *runner_contact)])
+                              : "field.world_event",
+                          runner_contact.has_value()
+                              ? kRunnerSpeakerIds[static_cast<std::size_t>(
+                                    *runner_contact)]
+                              : "field_narrator",
                           *response_id,
                           static_cast<std::uint8_t>(scene_reference),
                           contact_actor.actor_instance_id);

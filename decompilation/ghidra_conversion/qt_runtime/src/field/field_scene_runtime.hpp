@@ -2230,9 +2230,9 @@ private:
     void initialize_field_party_roster(
         const integration::StartupIntegrationState& startup_state);
     std::optional<RecruitedRunnerServiceState>
-    make_ricky_service_state() const;
+    make_recruited_runner_service_state() const;
     RecruitedRunnerServiceCostModifiers
-    ricky_service_cost_modifiers() const;
+    recruited_runner_service_cost_modifiers() const;
     std::optional<std::string> recruited_runner_service_call(
         std::string_view action);
     void advance_command_overview_inventory_action(
@@ -3006,7 +3006,10 @@ private:
     std::optional<std::uint16_t> field_runner_information_flags_;
     std::vector<RunnerRosterTemplate> recruited_runner_templates_;
     std::vector<CompactRunnerRecord> field_compact_runner_records_;
-    std::string field_ricky_contact_actor_id_;
+    std::string field_recruited_runner_contact_actor_id_;
+    std::uint8_t field_recruited_runner_contact_scene_id_ = 0U;
+    std::optional<RecruitedRunnerConversationRunner>
+        field_recruited_runner_contact_;
     FieldModeExitTransitionState field_mode_exit_transition_state_{};
     std::array<std::uint16_t, 10> field_entity_table_occupancy_{};
     std::array<AuxiliaryWorldEntity, 10> field_entity_table_{};

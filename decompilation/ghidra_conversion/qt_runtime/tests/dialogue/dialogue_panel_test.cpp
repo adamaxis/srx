@@ -408,6 +408,45 @@ int main(const int argc, char** argv) {
         const auto* value = scripts.dialogue_text(key);
         return value == nullptr ? std::string_view{} : std::string_view(*value);
     };
+    struct RunnerPortraitCase {
+        std::string_view id;
+        std::string_view portrait_alias;
+    };
+    constexpr std::array<RunnerPortraitCase, 6> kRunnerPortraitCases{{
+        {"petr_uvehr", "field.hud.party.face.6.palette.2"},
+        {"walking_bear", "field.hud.party.face.7.palette.2"},
+        {"phantom", "field.hud.party.face.8.palette.0"},
+        {"two_fists", "field.hud.party.face.9.palette.0"},
+        {"freya", "field.hud.party.face.10.palette.1"},
+        {"rianna", "field.hud.party.face.11.palette.0"},
+    }};
+    for (const auto& runner : kRunnerPortraitCases) {
+        const auto profile = scripts.speaker_profile(runner.id);
+        const auto page = profile.has_value()
+            ? scripts.dialogue_event_text_keys(
+                  runner.id, profile->text_profile, "information.opening")
+            : std::nullopt;
+        if (!profile.has_value() || !page.has_value() ||
+            profile->text_profile != "runner." + std::string(runner.id) ||
+            profile->portrait_alias != runner.portrait_alias) {
+            std::cerr << "runner speaker portrait binding is missing for "
+                      << runner.id << '\n';
+            return 31;
+        }
+        const DialogueSpeakerPresentation speaker{
+            profile->id, profile->name, profile->text_profile,
+            profile->portrait_alias};
+        const auto* page_text = scripts.dialogue_text(page->title_key);
+        const auto panel = make_script_dialogue_panel_view(
+            speaker, page->title_key, page->continuation_key, resolve_text);
+        if (page_text == nullptr || !panel.has_value() || !panel->source_complete ||
+            panel->portrait_alias != runner.portrait_alias ||
+            !panel_matches_text(*panel, *page_text)) {
+            std::cerr << "runner dialogue panel omitted its ROM portrait/text for "
+                      << runner.id << '\n';
+            return 32;
+        }
+    }
     const DialogueContentKeyResolver resolve_runner_content_key =
         [&runner_text_keys](const std::string_view speaker_id,
                            const std::string_view content_id) {

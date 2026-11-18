@@ -1970,6 +1970,272 @@
       "name": "Ivanna Haversheen",
       "portrait_alias": "dialogue.portraits.ivanna.haversheen",
       "text_profile": "stoker.motel"
+    },
+    "petr_uvehr": {
+      "events": {
+        "information.opening": {
+          "continuation_key": "shared.more",
+          "title_key": "runner.petr_uvehr.information.opening"
+        },
+        "information.continuation": {
+          "continuation_key": "",
+          "title_key": "runner.petr_uvehr.information.continuation"
+        },
+        "subject.matrix.page_0": {
+          "continuation_key": "shared.more",
+          "title_key": "runner.petr_uvehr.subject.matrix.page_0"
+        },
+        "subject.matrix.page_1": {
+          "continuation_key": "",
+          "title_key": "runner.petr_uvehr.subject.matrix.page_1"
+        },
+        "subject.dwarf.page_0": {
+          "continuation_key": "shared.more",
+          "title_key": "runner.petr_uvehr.subject.dwarf.page_0"
+        },
+        "subject.dwarf.page_1": {
+          "continuation_key": "",
+          "title_key": "runner.petr_uvehr.subject.dwarf.page_1"
+        },
+        "hire.insufficient": {
+          "continuation_key": "",
+          "title_key": "runner.ricky.hire.insufficient_funds"
+        },
+        "hire.success": {
+          "continuation_key": "",
+          "title_key": "runner.ricky.hire.success"
+        },
+        "hire.roster_full": {
+          "continuation_key": "",
+          "title_key": "runner.ricky.hire.roster_full"
+        }
+      },
+      "name": "Petr Uvehr",
+      "portrait_alias": "field.hud.party.face.6.palette.2",
+      "text_profile": "runner.petr_uvehr"
+    },
+    "walking_bear": {
+      "events": {
+        "information.opening": {
+          "continuation_key": "shared.more",
+          "title_key": "runner.walking_bear.information.opening"
+        },
+        "information.continuation": {
+          "continuation_key": "shared.more",
+          "title_key": "runner.walking_bear.information.continuation"
+        },
+        "information.final": {
+          "continuation_key": "",
+          "title_key": "runner.walking_bear.information.final"
+        },
+        "subject.shaman_magic.page_0": {
+          "continuation_key": "",
+          "title_key": "runner.walking_bear.subject.shaman_magic.page_0"
+        },
+        "subject.david_owlfeather.page_0": {
+          "continuation_key": "",
+          "title_key": "runner.walking_bear.subject.david_owlfeather.page_0"
+        },
+        "subject.ork.page_0": {
+          "continuation_key": "",
+          "title_key": "runner.walking_bear.subject.ork.page_0"
+        },
+        "hire.insufficient": {
+          "continuation_key": "",
+          "title_key": "runner.ricky.hire.insufficient_funds"
+        },
+        "hire.success": {
+          "continuation_key": "",
+          "title_key": "runner.ricky.hire.success"
+        },
+        "hire.roster_full": {
+          "continuation_key": "",
+          "title_key": "runner.ricky.hire.roster_full"
+        }
+      },
+      "name": "Walking Bear",
+      "portrait_alias": "field.hud.party.face.7.palette.2",
+      "text_profile": "runner.walking_bear"
+    },
+    "phantom": {
+      "events": {
+        "information.opening": {
+          "continuation_key": "shared.more",
+          "title_key": "runner.phantom.information.opening"
+        },
+        "information.continuation": {
+          "continuation_key": "shared.more",
+          "title_key": "runner.phantom.information.continuation"
+        },
+        "information.final": {
+          "continuation_key": "",
+          "title_key": "runner.phantom.information.final"
+        },
+        "subject.matrix.page_0": {
+          "continuation_key": "shared.more",
+          "title_key": "runner.phantom.subject.matrix.page_0"
+        },
+        "subject.matrix.page_1": {
+          "continuation_key": "",
+          "title_key": "runner.phantom.subject.matrix.page_1"
+        },
+        "subject.cyberdeck_equipment.page_0": {
+          "continuation_key": "",
+          "title_key": "runner.phantom.subject.cyberdeck_equipment.page_0"
+        },
+        "subject.elf.page_0": {
+          "continuation_key": "shared.more",
+          "title_key": "runner.phantom.subject.elf.page_0"
+        },
+        "subject.elf.page_1": {
+          "continuation_key": "",
+          "title_key": "runner.phantom.subject.elf.page_1"
+        },
+        "hire.insufficient": {
+          "continuation_key": "",
+          "title_key": "runner.ricky.hire.insufficient_funds"
+        },
+        "hire.success": {
+          "continuation_key": "",
+          "title_key": "runner.ricky.hire.success"
+        },
+        "hire.roster_full": {
+          "continuation_key": "",
+          "title_key": "runner.ricky.hire.roster_full"
+        }
+      },
+      "name": "Phantom",
+      "portrait_alias": "field.hud.party.face.8.palette.0",
+      "text_profile": "runner.phantom"
+    },
+    "two_fists": {
+      "events": {
+        "information.opening": {
+          "continuation_key": "shared.more",
+          "title_key": "runner.two_fists.information.opening"
+        },
+        "information.continuation": {
+          "continuation_key": "shared.more",
+          "title_key": "runner.two_fists.information.continuation"
+        },
+        "information.final": {
+          "continuation_key": "",
+          "title_key": "runner.two_fists.information.final"
+        },
+        "subject.thon.page_0": {
+          "continuation_key": "shared.more",
+          "title_key": "runner.two_fists.subject.thon.page_0"
+        },
+        "subject.thon.page_1": {
+          "continuation_key": "",
+          "title_key": "runner.two_fists.subject.thon.page_1"
+        },
+        "subject.ellisia.page_0": {
+          "continuation_key": "",
+          "title_key": "runner.two_fists.subject.ellisia.page_0"
+        },
+        "hire.insufficient": {
+          "continuation_key": "",
+          "title_key": "runner.ricky.hire.insufficient_funds"
+        },
+        "hire.success": {
+          "continuation_key": "",
+          "title_key": "runner.ricky.hire.success"
+        },
+        "hire.roster_full": {
+          "continuation_key": "",
+          "title_key": "runner.ricky.hire.roster_full"
+        }
+      },
+      "name": "Two Fists",
+      "portrait_alias": "field.hud.party.face.9.palette.0",
+      "text_profile": "runner.two_fists"
+    },
+    "freya": {
+      "events": {
+        "information.opening": {
+          "continuation_key": "shared.more",
+          "title_key": "runner.freya.information.opening"
+        },
+        "information.continuation": {
+          "continuation_key": "shared.more",
+          "title_key": "runner.freya.information.continuation"
+        },
+        "information.final": {
+          "continuation_key": "",
+          "title_key": "runner.freya.information.final"
+        },
+        "subject.vigore.page_0": {
+          "continuation_key": "",
+          "title_key": "runner.freya.subject.vigore.page_0"
+        },
+        "subject.local_johnsons.page_0": {
+          "continuation_key": "",
+          "title_key": "runner.freya.subject.local_johnsons.page_0"
+        },
+        "hire.insufficient": {
+          "continuation_key": "",
+          "title_key": "runner.ricky.hire.insufficient_funds"
+        },
+        "hire.success": {
+          "continuation_key": "",
+          "title_key": "runner.ricky.hire.success"
+        },
+        "hire.roster_full": {
+          "continuation_key": "",
+          "title_key": "runner.ricky.hire.roster_full"
+        }
+      },
+      "name": "Freya",
+      "portrait_alias": "field.hud.party.face.10.palette.1",
+      "text_profile": "runner.freya"
+    },
+    "rianna": {
+      "events": {
+        "information.opening": {
+          "continuation_key": "shared.more",
+          "title_key": "runner.rianna.information.opening"
+        },
+        "information.continuation": {
+          "continuation_key": "shared.more",
+          "title_key": "runner.rianna.information.continuation"
+        },
+        "information.final": {
+          "continuation_key": "",
+          "title_key": "runner.rianna.information.final"
+        },
+        "subject.matrix.page_0": {
+          "continuation_key": "shared.more",
+          "title_key": "runner.rianna.subject.matrix.page_0"
+        },
+        "subject.matrix.page_1": {
+          "continuation_key": "",
+          "title_key": "runner.rianna.subject.matrix.page_1"
+        },
+        "subject.corporate_security.page_0": {
+          "continuation_key": "shared.more",
+          "title_key": "runner.rianna.subject.corporate_security.page_0"
+        },
+        "subject.corporate_security.page_1": {
+          "continuation_key": "",
+          "title_key": "runner.rianna.subject.corporate_security.page_1"
+        },
+        "hire.insufficient": {
+          "continuation_key": "",
+          "title_key": "runner.ricky.hire.insufficient_funds"
+        },
+        "hire.success": {
+          "continuation_key": "",
+          "title_key": "runner.ricky.hire.success"
+        },
+        "hire.roster_full": {
+          "continuation_key": "",
+          "title_key": "runner.ricky.hire.roster_full"
+        }
+      },
+      "name": "Rianna",
+      "portrait_alias": "field.hud.party.face.11.palette.0",
+      "text_profile": "runner.rianna"
     }
   },
   "schemaVersion": 1

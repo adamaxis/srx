@@ -56,6 +56,7 @@
 #include <QJsonValue>
 
 #include <algorithm>
+#include <array>
 #include <charconv>
 #include <cmath>
 #include <fstream>
@@ -77,6 +78,10 @@ using field_scene_detail::kFieldModalReturnTransitionFrames;
 using field_scene_detail::magic_action_record_from_runner;
 
 namespace {
+
+constexpr std::array<std::string_view, 10> kRecruitedRunnerSpeakerIds{{
+    "ricky", "winston_marrs", "trent", "petr_uvehr", "walking_bear",
+    "phantom", "two_fists", "freya", "rianna", "stark"}};
 
 std::optional<menus::CommandSection> command_section_for_legacy_page(
     const int page) {
@@ -1115,21 +1120,23 @@ void FieldSceneRuntime::initialize_field_party_roster(
 }
 
 std::optional<RecruitedRunnerServiceState>
-FieldSceneRuntime::make_ricky_service_state() const {
+FieldSceneRuntime::make_recruited_runner_service_state() const {
     if (!field_funds_.has_value() || !field_party_roster_.available() ||
         !field_runner_progress_counters_available_ ||
         field_runner_refresh_state_.effect_counters.size() != 10U ||
         recruited_runner_templates_.size() != 10U ||
         field_compact_runner_records_.size() < 11U ||
-        field_ricky_contact_actor_id_.empty()) {
+        field_recruited_runner_contact_actor_id_.empty() ||
+        !field_recruited_runner_contact_.has_value()) {
         return std::nullopt;
     }
     const auto actor = std::find_if(
         field_default_actors_.begin(), field_default_actors_.end(),
         [this](const auto& candidate) {
-            return candidate.active && candidate.scene_reference == 19U &&
+            return candidate.active && candidate.scene_reference ==
+                       field_recruited_runner_contact_scene_id_ &&
                    candidate.actor_instance_id ==
-                       field_ricky_contact_actor_id_;
+                       field_recruited_runner_contact_actor_id_;
         });
     if (actor == field_default_actors_.end()) {
         return std::nullopt;
@@ -1137,7 +1144,8 @@ FieldSceneRuntime::make_ricky_service_state() const {
 
     RecruitedRunnerServiceState service{};
     service.funds = *field_funds_;
-    service.selected_runner_template_index = 0U;
+    service.selected_runner_template_index = static_cast<std::uint8_t>(
+        *field_recruited_runner_contact_);
     service.service_progress_counters =
         field_runner_refresh_state_.effect_counters;
     service.templates = recruited_runner_templates_;
@@ -1170,7 +1178,7 @@ FieldSceneRuntime::make_ricky_service_state() const {
 }
 
 RecruitedRunnerServiceCostModifiers
-FieldSceneRuntime::ricky_service_cost_modifiers() const {
+FieldSceneRuntime::recruited_runner_service_cost_modifiers() const {
     if (!field_party_roster_.available()) {
         return {};
     }
@@ -1181,12 +1189,16 @@ FieldSceneRuntime::ricky_service_cost_modifiers() const {
 
 std::optional<std::string> FieldSceneRuntime::recruited_runner_service_call(
     const std::string_view action) {
-    if (action == "mark_ricky_information") {
+    if (action == "mark_recruited_runner_information") {
         if (!field_runner_information_flags_.has_value()) {
             return "unavailable";
         }
         RecruitedRunnerServiceState state{};
-        state.selected_runner_template_index = 0U;
+        if (!field_recruited_runner_contact_.has_value()) {
+            return "unavailable";
+        }
+        state.selected_runner_template_index = static_cast<std::uint8_t>(
+            *field_recruited_runner_contact_);
         state.runner_information_flags = *field_runner_information_flags_;
         const auto information =
             select_recruited_runner_information_prompt(state);
@@ -1198,12 +1210,12 @@ std::optional<std::string> FieldSceneRuntime::recruited_runner_service_call(
         return "applied";
     }
 
-    auto state = make_ricky_service_state();
+    auto state = make_recruited_runner_service_state();
     if (!state.has_value()) {
         return "unavailable";
     }
     const auto preparation = prepare_recruited_runner_service_offer(
-        *state, ricky_service_cost_modifiers());
+        *state, recruited_runner_service_cost_modifiers());
     if (preparation.action ==
         RecruitedRunnerServiceOfferPreparationAction::roster_full) {
         return "roster_full";
@@ -1215,7 +1227,7 @@ std::optional<std::string> FieldSceneRuntime::recruited_runner_service_call(
     state->short_term_fee = preparation.short_term_fee;
     state->permanent_fee = preparation.permanent_fee;
 
-    if (action == "prepare_ricky_offer") {
+    if (action == "prepare_recruited_runner_offer") {
         // Gameplay service results pass through the runtime's identifier
         // validator, so keep the dynamic pair in its accepted underscore
         // form while preserving both calculated prices.
@@ -1224,9 +1236,9 @@ std::optional<std::string> FieldSceneRuntime::recruited_runner_service_call(
     }
 
     RecruitedRunnerServiceOffer offer{};
-    if (action == "hire_ricky_short_term") {
+    if (action == "hire_recruited_runner_short_term") {
         offer = RecruitedRunnerServiceOffer::short_term_run;
-    } else if (action == "hire_ricky_permanent") {
+    } else if (action == "hire_recruited_runner_permanent") {
         offer = RecruitedRunnerServiceOffer::permanent_hire;
     } else {
         return std::nullopt;
@@ -1244,9 +1256,10 @@ std::optional<std::string> FieldSceneRuntime::recruited_runner_service_call(
     const auto contact = std::find_if(
         field_default_actors_.begin(), field_default_actors_.end(),
         [this](const auto& candidate) {
-            return candidate.active && candidate.scene_reference == 19U &&
+            return candidate.active && candidate.scene_reference ==
+                       field_recruited_runner_contact_scene_id_ &&
                    candidate.actor_instance_id ==
-                       field_ricky_contact_actor_id_;
+                       field_recruited_runner_contact_actor_id_;
         });
     if (contact == field_default_actors_.end()) {
         return "unavailable";
@@ -1267,8 +1280,16 @@ std::optional<std::string> FieldSceneRuntime::recruited_runner_service_call(
                                    : state->roster.secondary_marker;
     const auto& source_record = slot == 1U ? state->roster.primary_record
                                            : state->roster.secondary_record;
-    const auto* runner_name =
-        game_scripts_.dialogue_text("runner.ricky.name");
+    const auto selected_runner_index = static_cast<std::size_t>(
+        state->selected_runner_template_index);
+    if (selected_runner_index >= kRecruitedRunnerSpeakerIds.size()) {
+        return "unavailable";
+    }
+    const std::string runner_name_key =
+        "runner." + std::string(kRecruitedRunnerSpeakerIds[
+                        selected_runner_index]) +
+        ".name";
+    const auto* runner_name = game_scripts_.dialogue_text(runner_name_key);
     if (runner_name == nullptr || runner_name->empty() || marker == 0xFFU) {
         return "unavailable";
     }
@@ -1305,7 +1326,11 @@ std::optional<std::string> FieldSceneRuntime::recruited_runner_service_call(
     field_runner_refresh_state_.runners[refresh_index].animation_gate =
         typed_record.behavior_meter;
     refresh_field_hud_runner_slot();
-    source_boundary("field.ricky.hire.completed");
+    source_boundary(
+        selected_runner_index == static_cast<std::size_t>(
+                                     RecruitedRunnerConversationRunner::ricky)
+            ? "field.ricky.hire.completed"
+            : "field.runner.hire.completed");
     return "hired";
 }
 

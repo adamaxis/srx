@@ -19465,6 +19465,8 @@ int run_scene10_default_generic_contact_qa(
     if (!field_scene.dialogue_open() ||
         dialogue_update != expected_dialogue_update ||
         !dialogue.source_complete ||
+        dialogue.actor_name != "Walking Bear" ||
+        dialogue.portrait_alias != "field.hud.party.face.7.palette.2" ||
         !has_first_line || !has_question || generic_open_count != 1 ||
         timeout != 59U ||
         resource_countdown != 59U || !actual_saved) {
@@ -19472,6 +19474,8 @@ int run_scene10_default_generic_contact_qa(
                      "appear 22 updates after first overlap; "
                   << "dialogue=" << field_scene.dialogue_open()
                   << " complete=" << dialogue.source_complete
+                  << " actor=" << dialogue.actor_name
+                  << " portrait=" << dialogue.portrait_alias
                   << " line=" << has_first_line
                   << " question=" << has_question
                   << " generic_open_count=" << generic_open_count

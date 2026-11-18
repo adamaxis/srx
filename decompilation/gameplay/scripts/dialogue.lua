@@ -128,6 +128,7 @@ local runner_dialogue = {
         },
         subject = {
             title_key = "runner.ricky.subject.title",
+            option_order = { "shaman_magic", "local_area", "johnson" },
             options = {
                 shaman_magic = "runner.ricky.subject.option.shaman_magic",
                 local_area = "runner.ricky.subject.option.local_area",
@@ -211,6 +212,7 @@ local runner_dialogue = {
         },
         subject = {
             title_key = "runner.petr_uvehr.subject.title",
+            option_order = { "matrix", "dwarf" },
             options = {
                 matrix = "runner.petr_uvehr.subject.option.matrix",
                 dwarf = "runner.petr_uvehr.subject.option.dwarf",
@@ -236,6 +238,7 @@ local runner_dialogue = {
         },
         subject = {
             title_key = "runner.walking_bear.subject.title",
+            option_order = { "shaman_magic", "david_owlfeather", "ork" },
             options = {
                 shaman_magic = "runner.walking_bear.subject.option.shaman_magic",
                 david_owlfeather = "runner.walking_bear.subject.option.david_owlfeather",
@@ -263,6 +266,7 @@ local runner_dialogue = {
         },
         subject = {
             title_key = "runner.phantom.subject.title",
+            option_order = { "matrix", "cyberdeck_equipment", "elf" },
             options = {
                 matrix = "runner.phantom.subject.option.matrix",
                 cyberdeck_equipment = "runner.phantom.subject.option.cyberdeck_equipment",
@@ -292,6 +296,7 @@ local runner_dialogue = {
         },
         subject = {
             title_key = "runner.two_fists.subject.title",
+            option_order = { "thon", "ellisia" },
             options = {
                 thon = "runner.two_fists.subject.option.thon",
                 ellisia = "runner.two_fists.subject.option.ellisia",
@@ -316,6 +321,7 @@ local runner_dialogue = {
         },
         subject = {
             title_key = "runner.freya.subject.title",
+            option_order = { "vigore", "local_johnsons" },
             options = {
                 vigore = "runner.freya.subject.option.vigore",
                 local_johnsons = "runner.freya.subject.option.local_johnsons",
@@ -339,6 +345,7 @@ local runner_dialogue = {
         },
         subject = {
             title_key = "runner.rianna.subject.title",
+            option_order = { "matrix", "corporate_security" },
             options = {
                 matrix = "runner.rianna.subject.option.matrix",
                 corporate_security = "runner.rianna.subject.option.corporate_security",
@@ -391,6 +398,10 @@ end
 
 function Dialogue.speaker_profile(speaker_id)
     return speakers[speaker_id]
+end
+
+function Dialogue.runner_conversation(speaker_id)
+    return runner_dialogue[speaker_id]
 end
 
 function Dialogue.event_text_keys(speaker_id, text_profile, event_id)

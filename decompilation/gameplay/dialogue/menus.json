@@ -2182,6 +2182,182 @@
           "permanent": "runner.ricky.hire.option.permanent"
         }
       }
+    },
+    "runner.petr_uvehr": {
+      "opening": {
+        "choice_label_keys": {
+          "information": "runner.ricky.option.information",
+          "hire": "runner.ricky.option.hire",
+          "leave": "runner.ricky.option.leave"
+        }
+      },
+      "subjects": {
+        "choice_label_keys": {
+          "matrix": "runner.petr_uvehr.subject.option.matrix",
+          "dwarf": "runner.petr_uvehr.subject.option.dwarf"
+        },
+        "title_key": "runner.petr_uvehr.subject.title"
+      },
+      "hire_offer": {
+        "choice_label_keys": {
+          "short_term": "runner.ricky.hire.option.short_term",
+          "permanent": "runner.ricky.hire.option.permanent"
+        }
+      },
+      "story_followup": {
+        "choice_label_keys": {
+          "story": "boris.greenhouse.option.story",
+          "questions": "gunderson.information.option.questions",
+          "different_subject": "gunderson.information.option.back"
+        }
+      }
+    },
+    "runner.walking_bear": {
+      "opening": {
+        "choice_label_keys": {
+          "information": "runner.ricky.option.information",
+          "hire": "runner.ricky.option.hire",
+          "leave": "runner.ricky.option.leave"
+        }
+      },
+      "subjects": {
+        "choice_label_keys": {
+          "shaman_magic": "runner.walking_bear.subject.option.shaman_magic",
+          "david_owlfeather": "runner.walking_bear.subject.option.david_owlfeather",
+          "ork": "runner.walking_bear.subject.option.ork"
+        },
+        "title_key": "runner.walking_bear.subject.title"
+      },
+      "hire_offer": {
+        "choice_label_keys": {
+          "short_term": "runner.ricky.hire.option.short_term",
+          "permanent": "runner.ricky.hire.option.permanent"
+        }
+      },
+      "story_followup": {
+        "choice_label_keys": {
+          "story": "boris.greenhouse.option.story",
+          "questions": "gunderson.information.option.questions",
+          "different_subject": "gunderson.information.option.back"
+        }
+      }
+    },
+    "runner.phantom": {
+      "opening": {
+        "choice_label_keys": {
+          "information": "runner.ricky.option.information",
+          "hire": "runner.ricky.option.hire",
+          "leave": "runner.ricky.option.leave"
+        }
+      },
+      "subjects": {
+        "choice_label_keys": {
+          "matrix": "runner.phantom.subject.option.matrix",
+          "cyberdeck_equipment": "runner.phantom.subject.option.cyberdeck_equipment",
+          "elf": "runner.phantom.subject.option.elf"
+        },
+        "title_key": "runner.phantom.subject.title"
+      },
+      "hire_offer": {
+        "choice_label_keys": {
+          "short_term": "runner.ricky.hire.option.short_term",
+          "permanent": "runner.ricky.hire.option.permanent"
+        }
+      },
+      "story_followup": {
+        "choice_label_keys": {
+          "story": "boris.greenhouse.option.story",
+          "questions": "gunderson.information.option.questions",
+          "different_subject": "gunderson.information.option.back"
+        }
+      }
+    },
+    "runner.two_fists": {
+      "opening": {
+        "choice_label_keys": {
+          "information": "runner.ricky.option.information",
+          "hire": "runner.ricky.option.hire",
+          "leave": "runner.ricky.option.leave"
+        }
+      },
+      "subjects": {
+        "choice_label_keys": {
+          "thon": "runner.two_fists.subject.option.thon",
+          "ellisia": "runner.two_fists.subject.option.ellisia"
+        },
+        "title_key": "runner.two_fists.subject.title"
+      },
+      "hire_offer": {
+        "choice_label_keys": {
+          "short_term": "runner.ricky.hire.option.short_term",
+          "permanent": "runner.ricky.hire.option.permanent"
+        }
+      },
+      "story_followup": {
+        "choice_label_keys": {
+          "story": "boris.greenhouse.option.story",
+          "questions": "gunderson.information.option.questions",
+          "different_subject": "gunderson.information.option.back"
+        }
+      }
+    },
+    "runner.freya": {
+      "opening": {
+        "choice_label_keys": {
+          "information": "runner.ricky.option.information",
+          "hire": "runner.ricky.option.hire",
+          "leave": "runner.ricky.option.leave"
+        }
+      },
+      "subjects": {
+        "choice_label_keys": {
+          "vigore": "runner.freya.subject.option.vigore",
+          "local_johnsons": "runner.freya.subject.option.local_johnsons"
+        },
+        "title_key": "runner.freya.subject.title"
+      },
+      "hire_offer": {
+        "choice_label_keys": {
+          "short_term": "runner.ricky.hire.option.short_term",
+          "permanent": "runner.ricky.hire.option.permanent"
+        }
+      },
+      "story_followup": {
+        "choice_label_keys": {
+          "story": "boris.greenhouse.option.story",
+          "questions": "gunderson.information.option.questions",
+          "different_subject": "gunderson.information.option.back"
+        }
+      }
+    },
+    "runner.rianna": {
+      "opening": {
+        "choice_label_keys": {
+          "information": "runner.ricky.option.information",
+          "hire": "runner.ricky.option.hire",
+          "leave": "runner.ricky.option.leave"
+        }
+      },
+      "subjects": {
+        "choice_label_keys": {
+          "matrix": "runner.rianna.subject.option.matrix",
+          "corporate_security": "runner.rianna.subject.option.corporate_security"
+        },
+        "title_key": "runner.rianna.subject.title"
+      },
+      "hire_offer": {
+        "choice_label_keys": {
+          "short_term": "runner.ricky.hire.option.short_term",
+          "permanent": "runner.ricky.hire.option.permanent"
+        }
+      },
+      "story_followup": {
+        "choice_label_keys": {
+          "story": "boris.greenhouse.option.story",
+          "questions": "gunderson.information.option.questions",
+          "different_subject": "gunderson.information.option.back"
+        }
+      }
     }
   },
   "schemaVersion": 1

@@ -178,6 +178,7 @@ assert(World.generic_field_contact_dialogue(
                E.FieldActorContactAction.START_ACTIVITY,
        "generic dialogue escaped its source-confirmed actor/row/handler")
 local generic_text = require("data.field_contact_dialogue_text")
+
 assert(generic_text[E.GenericFieldContactResponse.SCENE_10_DEFAULT_NEUTRAL] ==
            "<A huge female ork dressed in AmerIndian garb is here." ..
                "||She seems occupied with some fetishes.>",
@@ -195,14 +196,76 @@ game.ui = {
     end,
 }
 local GenericFieldContacts = require("field_generic_contacts")
+local imported_contact_rows = require("data.field_contact_dialogue_rows")
 assert(GenericFieldContacts.present() == "presented" and
        presented_contact_text == generic_text[
            E.GenericFieldContactResponse.SCENE_10_DEFAULT_NEUTRAL] and
        presented_continuation == false,
        "generic contact presentation did not open the selected Lua row")
 
+local Json = require("json")
+local function load_runner_dialogue_catalog(name)
+    local file = assert(io.open("decompilation/gameplay/dialogue/" .. name .. ".json", "rb"))
+    local value = Json.decode(file:read("*a"))
+    file:close()
+    return value
+end
+game.content = {
+    speakers = load_runner_dialogue_catalog("speakers"),
+    contacts = load_runner_dialogue_catalog("contacts"),
+    menus = load_runner_dialogue_catalog("menus"),
+}
+local Dialogue = require("dialogue")
+
+-- The production field contact task must enter the same speaker/menu flow for
+-- each hireable runner, not reduce non-Ricky contacts to narrator text.
+local petr_prompt_count = 0
+local petr_inline_text
+local petr_speaker
+game.location = {
+    type = "field_map",
+    id = E.GenericFieldContact.LOCATION_ID,
+    event_id = "scene_14_group_3_default",
+    speaker_id = "petr_uvehr",
+    scene_id = 14,
+    actor_instance_id = "petr_contact",
+}
+game.actors = {
+    petr_contact = {
+        scene_id = 14,
+        actor_facts = { lifecycle = { active = true } },
+    },
+}
+game.ui = {
+    prompt_text = function(menu_id, text, choices, speaker_id, text_profile)
+        petr_prompt_count = petr_prompt_count + 1
+        petr_inline_text = text
+        assert(menu_id == "opening" and #choices == 3 and
+               choices[1] == "information" and choices[2] == "hire" and
+               choices[3] == "leave",
+               "Petr did not receive the ROM common conversation choices")
+        petr_speaker = Dialogue.menu_text_keys(
+            game.location.speaker_id, "runner.petr_uvehr", menu_id,
+            choices, true)
+        return "leave"
+    end,
+    say_text = function(text, continuation, speaker_id, text_profile)
+        petr_inline_text = text
+        petr_speaker = { speaker_id, text_profile }
+    end,
+}
+assert(GenericFieldContacts.present() == "presented" and
+       petr_prompt_count == 1 and
+       petr_inline_text == imported_contact_rows.responses[
+           "scene_14_group_3_default"].opening_text and
+       petr_speaker ~= nil and
+       Dialogue.speaker_profile("petr_uvehr").portrait_alias ==
+           "field.hud.party.face.6.palette.2",
+       "Petr field contact did not use its profiled common conversation")
+
 local function run_ricky_flow(choices, subject, hire_result)
     local choice_index = 0
+    local followup_count = 0
     local events = {}
     local offer_text
     local service_calls = {}
@@ -223,13 +286,13 @@ local function run_ricky_flow(choices, subject, hire_result)
         call = function(domain, action)
             assert(domain == "recruited_runner")
             service_calls[#service_calls + 1] = action
-            if action == "mark_ricky_information" then return "applied" end
-            if action == "prepare_ricky_offer" then
+            if action == "mark_recruited_runner_information" then return "applied" end
+            if action == "prepare_recruited_runner_offer" then
                 return hire_result == "roster_full"
                     and "roster_full" or "fees_100_900"
             end
-            if action == "hire_ricky_short_term" or
-               action == "hire_ricky_permanent" then
+            if action == "hire_recruited_runner_short_term" or
+               action == "hire_recruited_runner_permanent" then
                 return hire_result
             end
             error("unexpected Ricky service action: " .. action)
@@ -237,6 +300,10 @@ local function run_ricky_flow(choices, subject, hire_result)
     }
     game.ui = {
         prompt_text = function(menu_id, text, menu_choices)
+            if menu_id == "opening" then
+                choice_index = choice_index + 1
+                return choices[choice_index]
+            end
             if menu_id == "hire_offer" then
                 offer_text = text
                 assert(#menu_choices == 2 and
@@ -245,6 +312,16 @@ local function run_ricky_flow(choices, subject, hire_result)
             end
             choice_index = choice_index + 1
             return choices[choice_index]
+        end,
+        prompt_text_key = function(menu_id, text_key, menu_choices,
+                                   speaker_id, text_profile)
+            assert(menu_id == "story_followup" and speaker_id == "ricky" and
+                   text_profile == "runner.ricky" and
+                   menu_choices[1] == "story")
+            followup_count = followup_count + 1
+            events[#events + 1] = text_key:sub(#"runner.ricky." + 1)
+            return followup_count == 1 and "questions" or
+                "different_subject"
         end,
         menu = function(menu_id, menu_choices)
             assert(menu_id == "subjects" and #menu_choices == 3)
@@ -273,9 +350,9 @@ assert(ricky_hired == "presented" and
        ricky_offer:find("$100", 1, true) and
        ricky_offer:find("$900", 1, true) and
        ricky_actor.actor_facts.lifecycle.active == false and
-       ricky_services[1] == "mark_ricky_information" and
-       ricky_services[2] == "prepare_ricky_offer" and
-       ricky_services[3] == "hire_ricky_short_term",
+       ricky_services[1] == "mark_recruited_runner_information" and
+       ricky_services[2] == "prepare_recruited_runner_offer" and
+       ricky_services[3] == "hire_recruited_runner_short_term",
        "Ricky information, live pricing, or short-term hire flow failed")
 
 local ricky_insufficient, insufficient_events, _, _, insufficient_actor =
@@ -294,24 +371,150 @@ assert(ricky_full == "presented" and
        "Ricky's full-roster response did not return to the common choices")
 
 
--- The subject trees and five third biography pages are byte-for-byte ROM text.
-local Json = require("json")
-local function load_runner_dialogue_catalog(name)
-    local file = assert(io.open("decompilation/gameplay/dialogue/" .. name .. ".json", "rb"))
-    local value = Json.decode(file:read("*a"))
-    file:close()
-    return value
-end
-game.content = {
-    speakers = load_runner_dialogue_catalog("speakers"),
-    contacts = load_runner_dialogue_catalog("contacts"),
-    menus = load_runner_dialogue_catalog("menus"),
-}
-local Dialogue = require("dialogue")
+
 local runner_content_keys = Dialogue.runner_text_keys()
 local text_file = assert(io.open("decompilation/assets/dialogue/script-text.json", "rb"))
 local script_text = Json.decode(text_file:read("*a")).texts
 text_file:close()
+
+local hireable_runner_routes = {
+    { id = "petr_uvehr", scene = 14, response = "scene_14_group_3_default",
+      portrait = "field.hud.party.face.6.palette.2" },
+    { id = "walking_bear", scene = 10, response = "scene_10_default_neutral",
+      portrait = "field.hud.party.face.7.palette.2" },
+    { id = "phantom", scene = 16, response = "scene_16_group_5_default",
+      portrait = "field.hud.party.face.8.palette.0" },
+    { id = "two_fists", scene = 13, response = "scene_13_group_6_default",
+      portrait = "field.hud.party.face.9.palette.0" },
+    { id = "freya", scene = 17, response = "scene_17_group_7_default",
+      portrait = "field.hud.party.face.10.palette.1" },
+    { id = "rianna", scene = 18, response = "scene_18_group_8_default",
+      portrait = "field.hud.party.face.11.palette.0" },
+}
+for _, route in ipairs(hireable_runner_routes) do
+    local speaker = Dialogue.speaker_profile(route.id)
+    local text_profile = "runner." .. route.id
+    local runner = Dialogue.runner_conversation(route.id)
+    local event_log = {}
+    local service_log = {}
+    local actor_id = route.id .. "_contact"
+    local root_count = 0
+    local followup_count = 0
+    local offer_text
+    game.location = {
+        type = "field_map",
+        id = E.GenericFieldContact.LOCATION_ID,
+        event_id = route.response,
+        speaker_id = route.id,
+        scene_id = route.scene,
+        actor_instance_id = actor_id,
+    }
+    game.actors = { [actor_id] = {
+        scene_id = route.scene,
+        actor_facts = { lifecycle = { active = true } },
+    } }
+    game.services = {
+        call = function(domain, action)
+            assert(domain == "recruited_runner")
+            service_log[#service_log + 1] = action
+            if action == "mark_recruited_runner_information" then
+                return "applied"
+            elseif action == "prepare_recruited_runner_offer" then
+                return "fees_1234_5678"
+            elseif action == "hire_recruited_runner_short_term" then
+                return "insufficient_funds"
+            end
+            error("unexpected runner service action: " .. action)
+        end,
+    }
+    game.ui = {
+        prompt_text = function(menu_id, text, choices)
+            local menu = Dialogue.menu_text_keys(
+                route.id, text_profile, menu_id, choices, true)
+            assert(menu ~= nil, "runner menu profile missing: " .. route.id .. "." .. menu_id)
+            if menu_id == "opening" then
+                root_count = root_count + 1
+                return root_count == 1 and "information" or
+                    root_count == 2 and "hire" or "leave"
+            elseif menu_id == "hire_offer" then
+                offer_text = text
+                return "short_term"
+            end
+            error("unexpected runner prompt: " .. menu_id)
+        end,
+        prompt_text_key = function(menu_id, text_key, choices,
+                                   speaker_id, profile_id)
+            local menu = Dialogue.menu_text_keys(
+                speaker_id, profile_id, menu_id, choices, true)
+            assert(menu ~= nil and menu_id == "story_followup" and
+                   speaker_id == route.id and profile_id == text_profile and
+                   menu.choice_label_keys[1] == "boris.greenhouse.option.story" and
+                   script_text[menu.choice_label_keys[1]] ==
+                       "What's your story, chummer?",
+                   "runner story choice differs from its ROM menu text")
+            local content_prefix = "runner." .. route.id .. "."
+            assert(text_key:sub(1, #content_prefix) == content_prefix and
+                   script_text[text_key] ~= nil,
+                   "runner follow-up must stay on its final ROM text page")
+            local event_id = text_key:sub(#content_prefix + 1)
+            local event = Dialogue.event_text_keys(
+                speaker_id, profile_id, event_id)
+            assert(event ~= nil and event.title_key == text_key)
+            event_log[#event_log + 1] = event_id
+            followup_count = followup_count + 1
+            return ({ "story", "questions", "different_subject" })[
+                followup_count]
+        end,
+        menu = function(menu_id, choices)
+            local menu = Dialogue.menu_text_keys(
+                route.id, text_profile, menu_id, choices, false)
+            assert(menu ~= nil, "runner subject menu profile missing: " .. route.id)
+            return choices[1]
+        end,
+        say = function(event_id, speaker_id, profile_id)
+            assert(speaker_id == route.id and profile_id == text_profile)
+            local event = Dialogue.event_text_keys(speaker_id, profile_id, event_id)
+            assert(event ~= nil and script_text[event.title_key] ~= nil,
+                   "runner dialogue page missing its exact text profile: " ..
+                       route.id .. "." .. event_id)
+            event_log[#event_log + 1] = event_id
+        end,
+        say_text = function() error("runner contact fell back to narrator text") end,
+    }
+    assert(speaker ~= nil and speaker.portrait_alias == route.portrait and
+           GenericFieldContacts.present() == "presented",
+           "hireable runner did not complete its profiled field conversation: " .. route.id)
+    local biography = {}
+    for _, page_id in ipairs({ "opening", "continuation", "final" }) do
+        if runner.information[page_id] ~= nil then
+            biography[#biography + 1] = "information." .. page_id
+        end
+    end
+    local topic = runner.subject.option_order[1]
+    local response_pages = runner.subject.responses[topic]
+    local prefix = "runner." .. route.id .. "."
+    local expected_events = {}
+    for _, page in ipairs(biography) do expected_events[#expected_events + 1] = page end
+    for _, page in ipairs(biography) do expected_events[#expected_events + 1] = page end
+    for _, page in ipairs(response_pages) do
+        expected_events[#expected_events + 1] = page:sub(#prefix + 1)
+    end
+    expected_events[#expected_events + 1] = "hire.insufficient"
+    assert(#event_log == #expected_events,
+           "runner dialogue page count differs from ROM route: " .. route.id)
+    for index, event_id in ipairs(expected_events) do
+        assert(event_log[index] == event_id,
+               "runner dialogue page order differs from ROM route: " .. route.id)
+    end
+    assert(offer_text:find("$1234", 1, true) and
+           offer_text:find("$5678", 1, true) and
+           service_log[1] == "mark_recruited_runner_information" and
+           service_log[2] == "prepare_recruited_runner_offer" and
+           service_log[3] == "hire_recruited_runner_short_term" and
+           followup_count == 3,
+           "runner hire pricing, refusal, or story re-offer failed: " .. route.id)
+end
+
 local expected_runner_content = {
     { content_id = "petr_uvehr.subject.title", text_key = "runner.petr_uvehr.subject.title", text = "Like what?" },
     { content_id = "petr_uvehr.subject.option.matrix", text_key = "runner.petr_uvehr.subject.option.matrix", text = "Tell me about the Matrix." },
@@ -366,5 +569,36 @@ for _, expected in ipairs(expected_runner_content) do
     assert(script_text[expected.text_key] == expected.text,
         "runner text differs from the ROM record: " .. expected.text_key)
 end
+
+local expected_runner_biographies = {
+    ["runner.petr_uvehr.information.opening"] = "I came up here to drown my sorrows.  But I guess you want to talk.|I'm called Petr.  I worked in the tech division of the Stuffer Shack where I learned my way around a cyberdeck.",
+    ["runner.petr_uvehr.information.continuation"] = "I was jealous of those cyber-cowboys, with their guns and chrome.|The Matrix got them all they wanted, so I stole me a deck, plugged in, and I've never looked back!",
+    ["runner.walking_bear.information.opening"] = "I am Walking Bear.  I was born in the city and was happy until I changed into the form you see now.|Then no one would talk to me and many made fun of me.|I ran into the wilderness and never wanted to return.",
+    ["runner.walking_bear.information.continuation"] = "There I met some AmerIndian tribes.  They were nice and taught me the way of the shaman.|Bear reached out to me because he knew I needed his calm words, and he knew I could take care of my AmerIndian brothers.",
+    ["runner.walking_bear.information.final"] = "To help them, I needed credits quick.|I offered my services of healing, as well as my more forceful disciplines.",
+    ["runner.phantom.information.opening"] = "I've been shooting the Matrix for a bit.|My handle is Phantom.|Heard of me?",
+    ["runner.phantom.information.continuation"] = "I've been making a name for myself in the Matrix.|I worked for a company who trained me in cyberspace.|Then one of those anti-metahuman groups showed up, screaming about purity and them losing jobs and garbage like that.",
+    ["runner.phantom.information.final"] = "Before I knew it, I was out.  No pension, no severence, just a pink slip.|But I showed them. I just took my share from their system accounts.|But I'm ready to do some serious damage to those high-minded breeders.|No offense, of course.",
+    ["runner.two_fists.information.opening"] = "I went to the Barrens to find some action. At the time I thought my life needed some adventure.|Anyway, I get involved with these joyboys who tell me they know how to get their hands on some serious nuyen.",
+    ["runner.two_fists.information.continuation"] = "So I hook up with them on this run against Ares, and what do you know?  My buddies set off the alarm while I was checking ahead. Before I knew what hit me, Corp Strike Teams were swarming all over and I end up in Hollywood Pen.",
+    ["runner.two_fists.information.final"] = "I'll always be grateful to you for pulling me outta that hole, Joshua.",
+    ["runner.freya.information.opening"] = "I hear you're the new golden child.  Number one with a bullet, and all that jazz.  So, I guess I can trust you.  I'm Freya.|When I was young, I discovered I had latent magical skills.",
+    ["runner.freya.information.continuation"] = "My tribe, the Cascade Crow, viewed hermetic mages as blasphemous, so I ran away and fell in with a radical political group.|They trained me to become an assassin, using magic as my weapon, with Corporate officials as my targets.|I did my job, no sweat.",
+    ["runner.freya.information.final"] = "But I grew tired of their control over me and escaped into the shadows.|Been running them ever since.",
+    ["runner.rianna.information.opening"] = "Heartbane was an ancient elven leader.|She prophesied the Matrix, \"a place where everything and nothing exists.|A place where wars are fought and blood is shed without weapons\".|She knew it was going to be big!",
+    ["runner.rianna.information.continuation"] = "So I use Heartbane as my street name, coupled with my true name, Rianna.|I've been running the Corps since the inception of the Matrix.|I've seen just about every type of IC and flatlined my share of decker cowboys.",
+    ["runner.rianna.information.final"] = "Without deckers like myself, the Corps would grow unchecked.|They would have even more power than they do now, which is saying a lot.",
+}
+for text_key, expected in pairs(expected_runner_biographies) do
+    assert(script_text[text_key] == expected,
+           "runner biography differs from the ROM record: " .. text_key)
+end
+assert(script_text["runner.ricky.hire.insufficient_funds"] ==
+           "You don't seem to have the right stuff, chum.||Nuyen, that is.||Come see me when that credstick starts to burn a hole in your armor." and
+       script_text["runner.ricky.hire.success"] ==
+           "You got me, pal.||No regrets, you'll see." and
+       script_text["runner.ricky.hire.roster_full"] ==
+           "Looks like you already got your hands full, pal.||Come on back when you can free up a spot for my talents.",
+       "runner hire/refusal pages differ from the shared ROM records")
 
 print("world content tests passed")
