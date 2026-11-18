@@ -24306,9 +24306,10 @@ int run_field_stoker_collision_to_dialogue_qa(
     // QA fixture for the paid source branch; this does not claim an in-game
     // funds-acquisition route.
     field_scene.set_field_funds_for_dump(250U);
-    // 0x213FA..0x21456 has no item add/remove and writes no deck record:
-    // 0x21428 only sets FF018F bit 0. MPCP (FFFBBE) stays 0 and programs
-    // stay unset, so the deck menu later rejects with 0xC2202.
+    // 0x213FA..0x21456 has no item add/remove and writes no FFFBBE bytes:
+    // 0x21428 only sets FF018F bit 0. The host publishes the known zero RAM
+    // bytes as a typed deck record for shops; MPCP remains 0, so jack-in still
+    // rejects with 0xC2202 until repaired.
     const auto collect_item_state = [&]() {
         std::map<std::string, QJsonValue> found;
         std::function<void(const QJsonValue&, const std::string&, bool)> walk =
@@ -24541,11 +24542,15 @@ int run_field_stoker_collision_to_dialogue_qa(
         return deck.has_value() ? deck->program_ratings
                                 : std::optional<std::array<std::uint8_t, 12>>{};
     };
-    if (mpcp_of(deck_after_payment) != 0U ||
+    const auto programs_before_payment = programs_of(deck_before_payment);
+    const auto programs_after_payment = programs_of(deck_after_payment);
+    if (!deck_after_payment.has_value() ||
+        mpcp_of(deck_after_payment) != 0U ||
         mpcp_of(deck_before_payment) != 0U ||
-        programs_of(deck_after_payment) != programs_of(deck_before_payment) ||
-        (programs_of(deck_after_payment).has_value() &&
-         *programs_of(deck_after_payment) != std::array<std::uint8_t, 12>{})) {
+        !programs_after_payment.has_value() ||
+        *programs_after_payment != std::array<std::uint8_t, 12>{} ||
+        (programs_before_payment.has_value() &&
+         *programs_before_payment != std::array<std::uint8_t, 12>{})) {
         std::cerr << "Stoker collision QA: Michael's package wrote MPCP or "
                      "program ratings; ROM 0x213FA..0x21456 writes neither\n";
         return 3;
@@ -50843,13 +50848,19 @@ int main(int argc, char** argv) {
                         return 3;
                     }
                 }
+                const auto package_deck =
+                    package_scene.field_matrix_deck_record_for_dump();
                 if (package_scene.field_funds_for_dump() != 500U ||
                     package_scene.cyberdeck_available_for_dump() !=
                         std::optional<bool>{true} ||
-                    package_scene.field_matrix_deck_record_for_dump()
-                        .has_value()) {
+                    !package_deck.has_value() ||
+                    package_deck->mpcp != 0U ||
+                    package_deck->hardening != 0U ||
+                    package_deck->memory_megapulses != 0U ||
+                    package_deck->storage_megapulses != 0U ||
+                    package_deck->model_index != 0) {
                     std::cerr << "Cyberdeck gate QA: Stoker payment did not "
-                                 "leave 500 nuyen and the cleared ROM deck "
+                                 "leave 500 nuyen and the zeroed ROM deck "
                                  "record\n";
                     return 3;
                 }
@@ -50882,27 +50893,297 @@ int main(int argc, char** argv) {
                     return 3;
                 }
 
-                FieldSceneRuntime datajack_scene(
+                FieldSceneRuntime purchase_scene(
                     [](const std::string_view) {},
                     [](const std::uint16_t) {});
-                if (!datajack_scene.bootstrap(smoke_state) ||
-                    !datajack_scene.seed_cyberspace_access_for_dump()) {
-                    std::cerr << "Cyberdeck gate QA: ROM Test Deck setup "
-                                 "failed\n";
+                if (!purchase_scene.bootstrap(smoke_state)) {
+                    std::cerr << "Cyberdeck gate QA: purchase New Game "
+                                 "bootstrap failed: "
+                              << purchase_scene.failure() << '\n';
                     return 3;
                 }
-                // ROM 0x59B7E provides a functioning debug Test Deck. Clear
-                // only the runner's +0x90 Datajack bit for the final gate.
-                datajack_scene.active_runner_record().cyberware_flags &=
-                    static_cast<std::uint16_t>(~0x0001U);
-                if (!enter_denial(datajack_scene, "datajack",
-                                  "no-datajack.bmp")) {
-                    std::cerr << "Cyberdeck gate QA: ROM 0xC2252 did not "
-                                 "follow the deck and MPCP checks\n";
+                constexpr auto kDatajackFlag = std::uint16_t{1U};
+                if ((purchase_scene.active_runner_record().cyberware_flags &
+                     kDatajackFlag) != 0U) {
+                    std::cerr << "Cyberdeck gate QA: the default Samurai "
+                                 "New Game template unexpectedly has a "
+                                 "Datajack\n";
+                    return 3;
+                }
+
+                // Repeat the actual Stoker ownership grant in a clean New
+                // Game, then buy through the controller-driven MicroTronics
+                // menu. Do not seed the deck, MPCP, or runner cyberware facts.
+                purchase_scene.set_field_funds_for_dump(250U);
+                if (!purchase_scene.open_stoker_dialogue_for_dump(
+                        StokerMotelPromptId::manager_greeting_with_package)) {
+                    std::cerr << "Cyberdeck gate QA: purchase-route Stoker "
+                                 "package menu did not open through Lua\n";
+                    return 3;
+                }
+                for (const auto input : kPackageChoices) {
+                    if (purchase_scene.advance_stoker_dialogue_for_dump(input) !=
+                        FieldDialogueAdvanceResult::prompt_advanced) {
+                        std::cerr << "Cyberdeck gate QA: purchase-route "
+                                     "Stoker debt choice did not advance\n";
+                        return 3;
+                    }
+                }
+                if (purchase_scene.field_funds_for_dump() != 500U ||
+                    purchase_scene.cyberdeck_available_for_dump() !=
+                        std::optional<bool>{true}) {
+                    std::cerr << "Cyberdeck gate QA: purchase-route Stoker "
+                                 "grant did not produce its ROM ownership "
+                                 "state\n";
+                    return 3;
+                }
+                for (std::size_t page = 0U; page < 8U &&
+                                              purchase_scene.dialogue_open();
+                     ++page) {
+                    if (purchase_scene.advance_stoker_dialogue_for_dump(
+                            0x4000U) ==
+                        FieldDialogueAdvanceResult::source_boundary) {
+                        std::cerr << "Cyberdeck gate QA: purchase-route "
+                                     "Michael handoff reached a source "
+                                     "boundary\n";
+                        return 3;
+                    }
+                }
+                if (purchase_scene.dialogue_open()) {
+                    std::cerr << "Cyberdeck gate QA: purchase-route Michael "
+                                 "handoff did not close\n";
+                    return 3;
+                }
+                for (std::size_t frame = 0U; frame < 60U; ++frame) {
+                    purchase_scene.advance_frame();
+                }
+                purchase_scene.set_field_funds_for_dump(40000U);
+                if (!purchase_scene.begin_field_mode_service_event_for_dump(
+                        5U, 5U, 4U, 0) ||
+                    !purchase_scene.field_mode_text_open_for_dump()) {
+                    std::cerr << "Cyberdeck gate QA: MicroTronics event did "
+                                 "not open after Stoker's deck grant\n";
+                    return 3;
+                }
+                purchase_scene.set_controller_port_byte(0U);
+                for (int frame = 0; frame < 30; ++frame) {
+                    purchase_scene.advance_frame();
+                }
+                tap_qa_controller_button(purchase_scene, 0x40U);
+                if (!purchase_scene.shop_menu_open() ||
+                    purchase_scene.shop_menu_mode() != 6U ||
+                    purchase_scene.shop_menu_result() != 2) {
+                    std::cerr << "Cyberdeck gate QA: MicroTronics did not "
+                                 "open its mode-6 deck shop after the "
+                                 "production grant\n";
+                    return 3;
+                }
+
+                // The zeroed ROM deck record at FFFBBE gives model index 0 a
+                // four-point MPCP ceiling: 4^3 * 25 = 1,600 nuyen. Exercise
+                // both declining and accepting the source confirmation.
+                for (int step = 0; step < 5; ++step) {
+                    tap_qa_controller_button(purchase_scene, 0x08U);
+                }
+                tap_qa_controller_button(purchase_scene, 0x02U);
+                if (purchase_scene.shop_menu_group() !=
+                        ShopActionGroup::cyberdeck_upgrades_second ||
+                    !purchase_scene.shop_menu_offers_active() ||
+                    purchase_scene.shop_menu_cursor() != 0U) {
+                    std::cerr << "Cyberdeck gate QA: MPCP repair offer was "
+                                 "not reachable from the paid New Game deck\n";
+                    return 3;
+                }
+                tap_qa_controller_button(purchase_scene, 0x40U);
+                if (!purchase_scene.shop_transaction_confirmation_open() ||
+                    purchase_scene.shop_transaction_amount() != 1600U) {
+                    std::cerr << "Cyberdeck gate QA: ROM MPCP repair did "
+                                 "not reach its $1,600 confirmation after the "
+                                 "Stoker grant (deck_record="
+                              << purchase_scene.field_matrix_deck_record_for_dump()
+                                     .has_value()
+                              << ", confirmation="
+                              << purchase_scene.shop_transaction_confirmation_open()
+                              << ", amount="
+                              << purchase_scene.shop_transaction_amount()
+                              << ")\n";
+                    return 3;
+                }
+                tap_qa_controller_button(purchase_scene, 0x40U);
+                auto purchased_deck =
+                    purchase_scene.field_matrix_deck_record_for_dump();
+                if (purchase_scene.shop_transaction_confirmation_open() ||
+                    !purchased_deck.has_value() ||
+                    purchased_deck->mpcp != 0U ||
+                    purchase_scene.field_funds_for_dump() != 40000U) {
+                    std::cerr << "Cyberdeck gate QA: declining MPCP repair "
+                                 "changed the zero MPCP or wallet\n";
+                    return 3;
+                }
+                tap_qa_controller_button(purchase_scene, 0x40U);
+                if (!purchase_scene.shop_transaction_confirmation_open() ||
+                    purchase_scene.shop_transaction_amount() != 1600U) {
+                    std::cerr << "Cyberdeck gate QA: MPCP repair could not "
+                                 "be quoted again after declining\n";
+                    return 3;
+                }
+                tap_qa_controller_button(purchase_scene, 0x01U);
+                tap_qa_controller_button(purchase_scene, 0x40U);
+                purchased_deck =
+                    purchase_scene.field_matrix_deck_record_for_dump();
+                if (purchase_scene.shop_transaction_confirmation_open() ||
+                    !purchased_deck.has_value() ||
+                    purchased_deck->mpcp != 4U ||
+                    purchase_scene.field_funds_for_dump() != 38400U) {
+                    std::cerr << "Cyberdeck gate QA: confirmed MPCP repair "
+                                 "did not set rating 4 and debit $1,600\n";
+                    return 3;
+                }
+
+                // With the repaired MPCP but zero ROM storage, an Attack
+                // program must be rejected before confirmation. Buying the
+                // next deck model supplies storage through the same shop.
+                tap_qa_controller_button(purchase_scene, 0x01U);
+                for (int step = 0; step < 4; ++step) {
+                    tap_qa_controller_button(purchase_scene, 0x04U);
+                }
+                tap_qa_controller_button(purchase_scene, 0x02U);
+                if (purchase_scene.shop_menu_group() !=
+                        ShopActionGroup::microtronics_combat_utilities ||
+                    !purchase_scene.shop_menu_offers_active()) {
+                    std::cerr << "Cyberdeck gate QA: Attack offer did not "
+                                 "open from the paid New Game deck\n";
+                    return 3;
+                }
+                tap_qa_controller_button(purchase_scene, 0x40U);
+                purchased_deck =
+                    purchase_scene.field_matrix_deck_record_for_dump();
+                if (purchase_scene.shop_transaction_confirmation_open() ||
+                    purchase_scene.shop_transaction_message() !=
+                        ShopTransactionMessage::
+                            cyberdeck_program_insufficient_storage ||
+                    !purchased_deck.has_value() ||
+                    !purchased_deck->program_ratings.has_value() ||
+                    (*purchased_deck->program_ratings)[0U] != 0U ||
+                    purchase_scene.field_funds_for_dump() != 38400U) {
+                    std::cerr << "Cyberdeck gate QA: zero ROM storage did "
+                                 "not block Attack before confirmation\n";
+                    return 3;
+                }
+                tap_qa_controller_button(purchase_scene, 0x40U);
+                tap_qa_controller_button(purchase_scene, 0x01U);
+                for (int step = 0; step < 3; ++step) {
+                    tap_qa_controller_button(purchase_scene, 0x08U);
+                }
+                tap_qa_controller_button(purchase_scene, 0x02U);
+                if (purchase_scene.shop_menu_group() !=
+                        ShopActionGroup::cyberdecks ||
+                    !purchase_scene.shop_menu_offers_active()) {
+                    std::cerr << "Cyberdeck gate QA: deck model offers did "
+                                 "not reopen after the storage rejection "
+                              << "(group=" << static_cast<int>(
+                                     purchase_scene.shop_menu_group())
+                              << ", offers="
+                              << purchase_scene.shop_menu_offers_active()
+                              << ")\n";
+                    return 3;
+                }
+                tap_qa_controller_button(purchase_scene, 0x08U);
+                tap_qa_controller_button(purchase_scene, 0x40U);
+                if (!purchase_scene.shop_transaction_confirmation_open() ||
+                    purchase_scene.shop_transaction_amount() != 25000U) {
+                    std::cerr << "Cyberdeck gate QA: model 2 did not show "
+                                 "its ROM $25,000 confirmation\n";
+                    return 3;
+                }
+                tap_qa_controller_button(purchase_scene, 0x40U);
+                purchased_deck =
+                    purchase_scene.field_matrix_deck_record_for_dump();
+                if (purchase_scene.shop_transaction_confirmation_open() ||
+                    !purchased_deck.has_value() ||
+                    purchased_deck->model_index != 0 ||
+                    purchase_scene.field_funds_for_dump() != 38400U) {
+                    std::cerr << "Cyberdeck gate QA: declining model 2 "
+                                 "changed the deck or wallet\n";
+                    return 3;
+                }
+                tap_qa_controller_button(purchase_scene, 0x40U);
+                tap_qa_controller_button(purchase_scene, 0x01U);
+                tap_qa_controller_button(purchase_scene, 0x40U);
+                purchased_deck =
+                    purchase_scene.field_matrix_deck_record_for_dump();
+                if (!purchased_deck.has_value() ||
+                    purchased_deck->model_index != 1 ||
+                    purchased_deck->storage_megapulses != 500U ||
+                    purchase_scene.field_funds_for_dump() != 13400U) {
+                    std::cerr << "Cyberdeck gate QA: confirmed model 2 did "
+                                 "not install its source stats and debit\n";
+                    return 3;
+                }
+
+                tap_qa_controller_button(purchase_scene, 0x01U);
+                for (int step = 0; step < 3; ++step) {
+                    tap_qa_controller_button(purchase_scene, 0x04U);
+                }
+                tap_qa_controller_button(purchase_scene, 0x02U);
+                if (purchase_scene.shop_menu_group() !=
+                        ShopActionGroup::microtronics_combat_utilities ||
+                    !purchase_scene.shop_menu_offers_active()) {
+                    std::cerr << "Cyberdeck gate QA: Attack offer did not "
+                                 "reopen with the purchased model storage\n";
+                    return 3;
+                }
+                tap_qa_controller_button(purchase_scene, 0x40U);
+                if (!purchase_scene.shop_transaction_confirmation_open() ||
+                    purchase_scene.shop_transaction_amount() == 0U) {
+                    std::cerr << "Cyberdeck gate QA: Attack did not reach a "
+                                 "priced confirmation with available storage\n";
+                    return 3;
+                }
+                const auto attack_price =
+                    purchase_scene.shop_transaction_amount();
+                tap_qa_controller_button(purchase_scene, 0x40U);
+                purchased_deck =
+                    purchase_scene.field_matrix_deck_record_for_dump();
+                if (purchase_scene.shop_transaction_confirmation_open() ||
+                    !purchased_deck.has_value() ||
+                    !purchased_deck->program_ratings.has_value() ||
+                    (*purchased_deck->program_ratings)[0U] != 0U ||
+                    purchase_scene.field_funds_for_dump() != 13400U) {
+                    std::cerr << "Cyberdeck gate QA: declining Attack changed "
+                                 "the program or wallet\n";
+                    return 3;
+                }
+                tap_qa_controller_button(purchase_scene, 0x40U);
+                tap_qa_controller_button(purchase_scene, 0x01U);
+                tap_qa_controller_button(purchase_scene, 0x40U);
+                purchased_deck =
+                    purchase_scene.field_matrix_deck_record_for_dump();
+                if (!purchased_deck.has_value() ||
+                    !purchased_deck->program_ratings.has_value() ||
+                    (*purchased_deck->program_ratings)[0U] != 1U ||
+                    purchase_scene.field_funds_for_dump() !=
+                        13400U - attack_price) {
+                    std::cerr << "Cyberdeck gate QA: confirmed Attack did "
+                                 "not install rating 1 and debit its quote\n";
+                    return 3;
+                }
+
+                tap_qa_controller_button(purchase_scene, 0x80U);
+                if (purchase_scene.shop_menu_open() ||
+                    !enter_denial(purchase_scene, "datajack",
+                                  "no-datajack-after-purchase.bmp") ||
+                    (purchase_scene.active_runner_record().cyberware_flags &
+                     kDatajackFlag) != 0U) {
+                    std::cerr << "Cyberdeck gate QA: ordinary field input "
+                                 "did not deny Matrix access for the natural "
+                                 "no-Datajack New Game runner\n";
                     return 3;
                 }
                 std::cout << "field_cyberdeck_gate_qa=passed pages="
-                             "0xC21B2,0xC2202,0xC2252\n";
+                             "0xC21B2,0xC2202,0xC2252 "
+                             "shop=model2,mpcp4,attack1 "
+                             "natural_datajack_gate=verified\n";
                 return 0;
             }
 

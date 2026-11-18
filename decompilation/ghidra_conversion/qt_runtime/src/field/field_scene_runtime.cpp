@@ -1158,6 +1158,27 @@ FieldSceneRuntime::FieldSceneRuntime(
             }
             cyberdeck_available_ =
                 (payment_state.runner_feature_flags & 0x01U) != 0U;
+            if (!field_matrix_deck_record_.has_value()) {
+                // [C] ROM 0x213FA..0x21456 grants deck ownership without
+                // writing FFFBBE. On this fresh New Game path that RAM record
+                // remains zero; publish those known bytes to shop services.
+                CyberdeckRecord deck{};
+                deck.mpcp = std::uint8_t{0U};
+                deck.hardening = std::uint8_t{0U};
+                deck.memory_megapulses = std::uint16_t{0U};
+                deck.storage_megapulses = std::uint16_t{0U};
+                deck.load_io_speed = std::uint8_t{0U};
+                deck.response = std::uint8_t{0U};
+                deck.persona = std::array<std::uint8_t, 4U>{};
+                deck.persona_condition = std::uint8_t{0U};
+                deck.model_index = std::int8_t{0};
+                deck.program_ratings = std::array<std::uint8_t, 12U>{};
+                deck.active_programs = std::array<std::int8_t, 5U>{};
+                std::array<CyberdeckDataFile, 5U> data_files{};
+                data_files.fill(CyberdeckDataFile{0, 0U, 0});
+                deck.data_files = data_files;
+                field_matrix_deck_record_ = std::move(deck);
+            }
         }
         notebook_tip_flags_[0] = payment_state.followup_state.story_flags;
         field_mode_flags_resolved_ = true;
