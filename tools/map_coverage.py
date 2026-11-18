@@ -421,6 +421,11 @@ def build_rows(rom_path: Path) -> list[dict[str, str]]:
             xy_address = 0x2D92 + arrival_row * 16 + arrival_slot * 4
             x, y = be16(rom, xy_address), be16(rom, xy_address + 2)
             event = 8 + direction_index
+            # Rooms 0x00..0x03 are the opening cave network. ROM 0x136DE
+            # clears FFDF40 on the natural Scene-6 entry, and 0x2CE0 writes
+            # FFDDC4/FFE10A/FFE10C without changing FFDF40. Keep the mode
+            # reached through that route instead of the former fixed 3.
+            arrival_mode = 0 if room <= 3 else 3
             matches = [
                 trigger for trigger in by_scene[source_scene]
                 if trigger["event"] is not None and int(trigger["event"]) == event
@@ -457,7 +462,7 @@ def build_rows(rom_path: Path) -> list[dict[str, str]]:
                     "consume=0x02CE0",
                     trigger_text,
                     f"FFFC10={room};FFFC0E!=0;FFFBF9=0x{event:02X}",
-                    destination, f"0x{x:04X},0x{y:04X}", 3,
+                    destination, f"0x{x:04X},0x{y:04X}", arrival_mode,
                     f"{ref(cave_data_path, cave_data_fn)};{ref(links_code_path, cave_fn)}",
                 ))
 
@@ -780,7 +785,7 @@ def write_report(rows_path: Path, results_path: Path, report_path: Path) -> None
     lines = [
         "# ROM-to-runtime map coverage",
         "",
-        "Results come from `baseline_results.tsv`. Categories 7–9 are static presence checks only. Most MISSING/WRONG rows are known harness gaps (approach side, elevator selector, cave room seeding, taxi region mapping, exit-offset expectation), not confirmed port bugs; see the mapharness briefs.",
+        "Results come from `baseline_results.tsv`. Categories 7–9 are static presence checks only. MISSING rows may still reflect harness gaps (approach side, elevator selector, cave room seeding, taxi region mapping, exit-offset expectation); confirmed WRONG runtime rows have ROM-versus-port evidence in [out/REAL_FAILURES.md](../../../../../out/REAL_FAILURES.md).",
         "",
         "## Totals by category and status",
         "",
@@ -936,7 +941,8 @@ def run_qa(args: argparse.Namespace, rows: list[dict[str, str]]) -> int:
     env.setdefault("SDL_AUDIODRIVER", "dummy")
     env.setdefault("ALSOFT_DRIVERS", "null")
     command = [str(args.run_qa), "--assets", str(args.assets),
-               "--map-coverage", str(rows_path), str(results_path)]
+               "--map-coverage", str(rows_path), str(results_path),
+               "--map-coverage-route-rows", str(args.rows)]
     print(f"map coverage: running {len(selected)} rows", flush=True)
     completed = subprocess.run(command, env=env, check=False)
     if completed.returncode != 0:

@@ -447,6 +447,8 @@ inline MapCoverageAttempt map_coverage_drive_rect(
     MapCoverageAttempt result;
     result.setup = true;
     const auto starting_scene = runtime.field_scene_reference_for_dump();
+    const auto starting_route_flags =
+        runtime.field_movement_route_flags_for_dump();
     std::uint32_t frames_used = 0U;
     bool elevator_cooldown_ready = true;
     if (row_category == "elevator") {
@@ -510,7 +512,7 @@ inline MapCoverageAttempt map_coverage_drive_rect(
         const auto before_event = runtime.field_mode_event_code_for_dump();
         const auto port = row_category == "elevator"
             ? (selector_driven ? 0U : direction)
-            : !result.trigger_seen && near_rect &&
+            : row_category != "cave" && !result.trigger_seen && near_rect &&
                                   (near_rect_frames % 8U == 1U)
                 ? 0x40U
                 : (result.trigger_seen ? 0U : direction);
@@ -808,6 +810,34 @@ inline MapCoverageAttempt map_coverage_drive_rect(
                 runtime.elevator_scene_transition_phase_for_dump())) +
             ";pending=" + std::to_string(
                 runtime.field_transition_pending_for_dump());
+    } else if (result.note.empty() && row_category == "cave" &&
+               !result.trigger_seen) {
+        const auto movement = runtime.last_field_movement_transition_for_dump();
+        const auto& signs = runtime.field_directional_probe_signs_for_dump();
+        result.note = "controller input did not produce the ROM event;position=" +
+            map_coverage_hex(position.x) + "," + map_coverage_hex(position.y) +
+            ";mode=" + std::to_string(result.observed_mode) +
+            ";mode_event=" + map_coverage_hex(
+                runtime.field_mode_event_code_for_dump()) +
+            ";collision=" + map_coverage_hex(
+                runtime.field_terrain_collision_code_for_dump()) +
+            ";movement_event=" + map_coverage_hex(
+                static_cast<std::uint8_t>(movement.event_code)) +
+            ";movement_kind=" + std::to_string(
+                static_cast<unsigned>(movement.kind)) +
+            ";route_flags=" + map_coverage_hex(
+                runtime.field_movement_route_flags_for_dump()) +
+            ";entry_route_flags=" + map_coverage_hex(starting_route_flags) +
+            ";interaction_transition=" + std::to_string(
+                runtime.field_interaction_transition_active_for_dump()) +
+            ";field_pending=" + std::to_string(
+                runtime.field_transition_pending_for_dump()) +
+            ";activity_timeout=" + std::to_string(
+                runtime.world_activity_request_timeout_for_dump()) +
+            ";negative_probes=" + std::to_string(movement.negative_probe_count) +
+            ";probe_signs=" + std::to_string(signs[0]) + "," +
+                std::to_string(signs[1]) + "," + std::to_string(signs[2]) +
+                "," + std::to_string(signs[3]);
     } else if (result.note.empty() && !result.trigger_seen) {
         result.note = "controller input did not produce the ROM event";
     } else if (result.note.empty() && selector.has_value() && !selector_done) {
@@ -834,6 +864,213 @@ inline void map_coverage_set_mode(
     } else if (category == "travel" && scene <= 6U) {
         runtime.set_field_interaction_mode_for_dump(0U);
     }
+}
+
+struct MapCoverageCaveRouteStep {
+    std::string_view row_id;
+    std::uint16_t source_room;
+    std::uint16_t destination_room;
+};
+
+template <typename StartupState>
+inline MapCoverageAttempt map_coverage_drive_cave_exit(
+    FieldSceneRuntime& runtime, const StartupState& startup_state,
+    const std::uint16_t source_scene, const MapCoverageRow& row,
+    const MapCoverageRect& rect,
+    const std::optional<std::uint32_t> expected_event) {
+    // ROM 0xA12 dispatches FFFBF9=0x08..0x0B while FFFC0E is set. Try each
+    // geometrically possible approach with directional input; room context
+    // remains the value produced by the production scene/exit route.
+    constexpr std::uint32_t kCaveExitFrameBudget = 600U;
+    MapCoverageAttempt last_attempt;
+    const auto sides = map_coverage_approach_sides(row.trigger);
+    const auto per_side_budget = std::max<std::uint32_t>(
+        1U, kCaveExitFrameBudget /
+                static_cast<std::uint32_t>(sides.size()));
+    for (const auto& side : sides) {
+        if (!map_coverage_side_possible(rect, side)) {
+            continue;
+        }
+        last_attempt = map_coverage_drive_rect(
+            runtime, startup_state, source_scene, rect, expected_event,
+            per_side_budget, "cave", row.trigger, side, row.script);
+        if (last_attempt.trigger_seen || last_attempt.transition_fired) {
+            return last_attempt;
+        }
+    }
+    return last_attempt;
+}
+
+inline std::optional<std::uint16_t> map_coverage_cave_target_room(
+    const MapCoverageRow& row) {
+    if (row.category != "cave") {
+        return std::nullopt;
+    }
+    constexpr std::string_view kRoomMarker = "FFFC10=";
+    const auto marker = row.gate.find(kRoomMarker);
+    if (marker == std::string::npos) {
+        return std::nullopt;
+    }
+    const auto start = marker + kRoomMarker.size();
+    const auto end = row.gate.find(';', start);
+    const auto room = map_coverage_number(std::string_view(row.gate).substr(
+        start, end == std::string::npos ? end : end - start));
+    if (!room || *room > 3U) {
+        return std::nullopt;
+    }
+    return static_cast<std::uint16_t>(*room);
+}
+
+inline std::vector<MapCoverageCaveRouteStep> map_coverage_cave_shortest_route(
+    const std::uint16_t target_room) {
+    // These are shortest directed paths in the ROM-backed cave exit graph.
+    // The row IDs resolve each step to its real event-8..0x0B rectangle.
+    switch (target_room) {
+    case 0U:
+        return {};
+    case 1U:
+        return {{"cave-room00-south-r14c0fe", 0U, 7U},
+                {"cave-room07-south-r1d4e5e", 7U, 1U}};
+    case 2U:
+        return {{"cave-room00-north-r14c0ea", 0U, 5U},
+                {"cave-room05-south-r1d4e5e", 5U, 2U}};
+    case 3U:
+        return {{"cave-room00-south-r14c0fe", 0U, 7U},
+                {"cave-room07-south-r1d4e5e", 7U, 1U},
+                {"cave-room01-east-r1b45a6", 1U, 11U},
+                {"cave-room0b-south-r1d4e5e", 11U, 12U},
+                {"cave-room0c-east-r1d57a2", 12U, 13U},
+                {"cave-room0d-east-r1d4b94", 13U, 3U}};
+    default:
+        return {};
+    }
+}
+
+template <typename StartupState>
+inline bool map_coverage_drive_cave_route_step(
+    FieldSceneRuntime& runtime, const StartupState& startup_state,
+    const std::vector<MapCoverageRow>& rows,
+    const MapCoverageCaveRouteStep& step, std::string& evidence) {
+    const auto row = std::find_if(rows.begin(), rows.end(), [&](const auto& candidate) {
+        return candidate.row_id == step.row_id;
+    });
+    if (row == rows.end()) {
+        evidence = "route row missing: " + std::string(step.row_id);
+        return false;
+    }
+    const auto source_scene = map_coverage_scene(row->scene);
+    const auto rect = map_coverage_rect(row->trigger);
+    const auto expected_event = map_coverage_event(row->trigger);
+    const auto expected_destination = map_coverage_scene(row->dest_scene);
+    const auto expected_xy = map_coverage_xy(row->arrival_xy);
+    // Cave handler 0x2CE0 selects the destination room/scene and spawn but
+    // leaves FFDF40 untouched. Compare its output mode with the naturally
+    // reached source mode; the table's legacy fixed mode 3 is not an input.
+    const auto expected_mode = runtime.field_interaction_mode_for_dump();
+    if (!source_scene || !rect || !expected_event || !expected_destination ||
+        !expected_xy ||
+        runtime.field_scene_reference_for_dump() != *source_scene ||
+        runtime.field_transition_context_for_dump() != step.source_room) {
+        evidence = "route source mismatch at " + std::string(step.row_id) +
+            ";scene=" + std::to_string(
+                runtime.field_scene_reference_for_dump()) +
+            ";room=" + std::to_string(
+                runtime.field_transition_context_for_dump());
+        return false;
+    }
+
+    const auto attempt = map_coverage_drive_cave_exit(
+        runtime, startup_state, *source_scene, *row, *rect, expected_event);
+    const auto position = runtime.field_entity_world_position();
+    if (!attempt.trigger_seen || !attempt.transition_fired ||
+        runtime.field_scene_reference_for_dump() != *expected_destination ||
+        runtime.field_transition_context_for_dump() != step.destination_room ||
+        runtime.field_interaction_mode_for_dump() != expected_mode ||
+        position.x != (*expected_xy)[0] || position.y != (*expected_xy)[1]) {
+        evidence = "route step failed at " + std::string(step.row_id) +
+            ";event=" + map_coverage_hex(attempt.observed_event) +
+            ";transition_fired=" +
+                (attempt.transition_fired ? "1" : "0") +
+            ";scene=" + std::to_string(
+                runtime.field_scene_reference_for_dump()) +
+            ";expected_scene=" + std::to_string(*expected_destination) +
+            ";room=" + std::to_string(
+                runtime.field_transition_context_for_dump()) +
+            ";expected_room=" + std::to_string(step.destination_room) +
+            ";xy=" + map_coverage_hex(position.x) + "," +
+                map_coverage_hex(position.y) +
+            ";expected_xy=" + map_coverage_hex((*expected_xy)[0]) + "," +
+                map_coverage_hex((*expected_xy)[1]) +
+            ";mode=" + std::to_string(
+                runtime.field_interaction_mode_for_dump()) +
+            ";expected_mode=" + std::to_string(expected_mode) +
+            ";probe=" + attempt.note;
+        return false;
+    }
+    if (!evidence.empty()) {
+        evidence.push_back(',');
+    }
+    evidence.append(step.row_id);
+    evidence += "[mode=" + std::to_string(
+        runtime.field_interaction_mode_for_dump()) +
+        "/source=" + std::to_string(expected_mode) + "]";
+    if (runtime.field_interaction_mode_for_dump() != expected_mode) {
+        evidence += "(mode_mismatch)";
+    }
+    return true;
+}
+
+template <typename StartupState>
+inline bool map_coverage_prepare_cave_target_room(
+    FieldSceneRuntime& runtime, const StartupState& startup_state,
+    const std::vector<MapCoverageRow>& rows, const std::uint16_t target_room,
+    const std::vector<std::string>& source_boundaries,
+    std::string& evidence) {
+    constexpr std::uint16_t kCaveEntryScene = 6U;
+    constexpr std::uint16_t kCaveEntryRoom = 0U;
+    constexpr std::uint16_t kCaveEntryFieldMode = 0U;
+    constexpr std::string_view kNaturalEntryBoundary =
+        "field.dialogue.scene_entry.entry_room_seeded";
+    if (runtime.field_scene_reference_for_dump() != kCaveEntryScene ||
+        runtime.field_transition_context_for_dump() != kCaveEntryRoom ||
+        runtime.field_interaction_mode_for_dump() != kCaveEntryFieldMode ||
+        std::find(source_boundaries.begin(), source_boundaries.end(),
+                  kNaturalEntryBoundary) == source_boundaries.end()) {
+        evidence = "Scene 6 production entry did not seed room 0 and field mode 0";
+        return false;
+    }
+
+    // ROM 0x136DE clears FFDF40 at scene entry. Keep that natural source mode
+    // and the entry-seeded room context; the test never writes either value.
+    evidence = "entry=Scene9-production-dialogue-transition->Scene6;room-route=0x00->";
+    for (const auto& step : map_coverage_cave_shortest_route(target_room)) {
+        if (!map_coverage_drive_cave_route_step(
+                runtime, startup_state, rows, step, evidence)) {
+            return false;
+        }
+        evidence += "->0x";
+        std::ostringstream room;
+        room << std::hex << std::uppercase << step.destination_room;
+        evidence += room.str();
+    }
+    const auto row_scene = std::find_if(rows.begin(), rows.end(),
+        [target_room](const MapCoverageRow& candidate) {
+            return candidate.category == "cave" &&
+                   map_coverage_cave_target_room(candidate) == target_room;
+        });
+    const auto expected_scene = row_scene == rows.end()
+        ? std::nullopt : map_coverage_scene(row_scene->scene);
+    if (!expected_scene ||
+        runtime.field_scene_reference_for_dump() != *expected_scene ||
+        runtime.field_transition_context_for_dump() != target_room) {
+        evidence += ";target room was not reached";
+        return false;
+    }
+    evidence += ";target=0x";
+    std::ostringstream room;
+    room << std::hex << std::uppercase << target_room;
+    evidence += room.str();
+    return true;
 }
 
 template <typename StartupState>
@@ -1217,8 +1454,11 @@ inline bool map_coverage_bootstrap_scene(
 template <typename StartupState, typename BootstrapRow>
 inline int run_map_coverage_qa(
     const StartupState& startup_state, const std::filesystem::path& rows_path,
-    const std::filesystem::path& results_path, BootstrapRow&& bootstrap_row) {
+    const std::filesystem::path& results_path,
+    const std::filesystem::path& route_rows_path,
+    BootstrapRow&& bootstrap_row) {
     const auto rows = map_coverage_read_rows(rows_path);
+    const auto route_rows = map_coverage_read_rows(route_rows_path);
     if (rows.empty()) {
         std::cerr << "map coverage: row input is empty or malformed\n";
         return 4;
@@ -1286,7 +1526,10 @@ inline int run_map_coverage_qa(
                 diff = attempt.note;
             } else {
                 std::optional<MapCoverageRow> paired_entry;
-                auto bootstrap_scene = *source_scene;
+                const auto cave_target_room =
+                    map_coverage_cave_target_room(row);
+                auto bootstrap_scene = cave_target_room.has_value()
+                    ? std::uint16_t{9U} : *source_scene;
                 const auto bexit_entry = row.category == "bexit"
                     ? row.rom_addr.find("entry=0x")
                     : std::string::npos;
@@ -1395,6 +1638,7 @@ inline int run_map_coverage_qa(
                         source_boundaries)) {
                     attempt.setup = true;
                     bool source_ready = true;
+                    std::string cave_route_evidence;
                     if (bexit_entry != std::string::npos) {
                         if (!bexit_entrance_passed) {
                             source_ready = false;
@@ -1430,6 +1674,15 @@ inline int run_map_coverage_qa(
                                     }
                                 }
                             }
+                        }
+                    } else if (cave_target_room.has_value()) {
+                        source_ready = map_coverage_prepare_cave_target_room(
+                            runtime, startup_state,
+                            route_rows.empty() ? rows : route_rows,
+                            *cave_target_room,
+                            source_boundaries, cave_route_evidence);
+                        if (!source_ready) {
+                            attempt.note = cave_route_evidence;
                         }
                     } else {
                         map_coverage_set_mode(
@@ -1512,10 +1765,15 @@ inline int run_map_coverage_qa(
                             ? (attempt.frames_used < frame_budget
                                   ? frame_budget - attempt.frames_used : 0U)
                             : frame_budget;
-                        const auto driven = map_coverage_drive_rect(
-                            runtime, startup_state, *source_scene, *rect,
-                            expected_event, remaining_frames, row.category,
-                            physical_trigger, selected_approach_side, row.script);
+                        const auto driven = row.category == "cave"
+                            ? map_coverage_drive_cave_exit(
+                                  runtime, startup_state, *source_scene, row,
+                                  *rect, expected_event)
+                            : map_coverage_drive_rect(
+                                  runtime, startup_state, *source_scene, *rect,
+                                  expected_event, remaining_frames, row.category,
+                                  physical_trigger, selected_approach_side,
+                                  row.script);
                         auto combined = driven;
                         combined.setup = true;
                         combined.frames_used += attempt.frames_used;
@@ -1532,9 +1790,14 @@ inline int run_map_coverage_qa(
                         }
                         attempt = std::move(combined);
                         if (row.category == "cave" &&
-                            row.gate.find("FFFC10=") != std::string::npos) {
+                            row.gate.find("FFFC10=") != std::string::npos &&
+                            !cave_target_room.has_value()) {
                             attempt.note = "cave room gate not established by a natural incoming route";
                             attempt.trigger_seen = false;
+                        }
+                        if (row.category == "cave" &&
+                            !attempt.approach_side.empty()) {
+                            selected_approach_side = attempt.approach_side;
                         }
                     }
                     const bool death_wake_row = row.category == "travel" &&
@@ -1642,7 +1905,10 @@ inline int run_map_coverage_qa(
                         }
                         if (matches) {
                             status = "PASS";
-                            diff = "observed route matches all resolved ROM outputs";
+                            diff = cave_route_evidence.empty()
+                                ? "observed route matches all resolved ROM outputs"
+                                : cave_route_evidence +
+                                    ";observed route matches all resolved ROM outputs";
                             if (row.category == "edge") {
                                 diff += ";fade_steps=" + std::to_string(
                                     attempt.observed_fade_steps) +
@@ -1651,6 +1917,9 @@ inline int run_map_coverage_qa(
                             }
                         } else {
                             status = "WRONG";
+                            if (!cave_route_evidence.empty()) {
+                                diff = cave_route_evidence + ";" + diff;
+                            }
                         }
                     }
                 } else {

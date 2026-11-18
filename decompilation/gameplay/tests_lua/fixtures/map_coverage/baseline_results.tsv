@@ -326,19 +326,19 @@ elevator-s2b-r1decd2-floor0	elevator	1	PASS	-	1	41	0x500,0x2300	2	observed route
 elevator-s2b-r1decd2-floor1	elevator	1	PASS	-	1	42	0x500,0x2300	2	observed route matches all resolved ROM outputs
 elevator-s2b-r1decdc-floor0	elevator	1	PASS	-	1	41	0x500,0x2300	2	observed route matches all resolved ROM outputs
 elevator-s2b-r1decdc-floor1	elevator	1	PASS	-	1	42	0x500,0x2300	2	observed route matches all resolved ROM outputs
-cave-room00-east-r14c0f4	cave	1	MISSING	0x9	0	6	0x7580,0x8D7	3	cave room gate not established by a natural incoming route
-cave-room00-north-r14c0ea	cave	1	MISSING	-	0	6	0xFF,0x5380	3	cave room gate not established by a natural incoming route
-cave-room00-south-r14c0fe	cave	1	MISSING	-	0	6	0x76FF,0x6F80	3	cave room gate not established by a natural incoming route
-cave-room01-east-r1b45a6	cave	1	MISSING	-	0	7	0xFF,0x5380	3	cave room gate not established by a natural incoming route
-cave-room01-north-r1b459c	cave	1	MISSING	0x8	0	7	0xAFF,0x66F	3	cave room gate not established by a natural incoming route
-cave-room01-south-r1b45b0	cave	1	MISSING	0xA	0	7	0x7580,0x4AD7	3	cave room gate not established by a natural incoming route
-cave-room02-east-r1b4dfa	cave	1	MISSING	-	0	8	0x6380,0x8FF	3	cave room gate not established by a natural incoming route
-cave-room02-north-r1b4df0	cave	1	MISSING	0x8	0	8	0xEFF,0x66F	3	cave room gate not established by a natural incoming route
-cave-room02-south-r1b4e04	cave	1	MISSING	-	0	8	0xFF,0x7180	3	cave room gate not established by a natural incoming route
-cave-room02-west-r1b4e0e	cave	1	MISSING	0xB	0	8	0x7580,0x70D7	3	cave room gate not established by a natural incoming route
-cave-room03-east-r1b57a2	cave	1	MISSING	-	0	9	0x6180,0x8FF	3	cave room gate not established by a natural incoming route
-cave-room03-north-r1b5798	cave	1	MISSING	-	0	9	0xFF,0x6580	3	cave room gate not established by a natural incoming route
-cave-room03-south-r1b57ac	cave	1	MISSING	0xA	0	9	0x7580,0x6AD7	3	cave room gate not established by a natural incoming route
+cave-room00-east-r14c0f4	cave	1	PASS	0x9	1	46	0x600,0x2800	0	entry=Scene9-production-dialogue-transition->Scene6;room-route=0x00->;target=0x0;observed route matches all resolved ROM outputs;approach_side=west
+cave-room00-north-r14c0ea	cave	1	PASS	0x8	1	45	0x5E00,0x2280	0	entry=Scene9-production-dialogue-transition->Scene6;room-route=0x00->;target=0x0;observed route matches all resolved ROM outputs;approach_side=east
+cave-room00-south-r14c0fe	cave	1	PASS	0xA	1	45	0x600,0x2800	0	entry=Scene9-production-dialogue-transition->Scene6;room-route=0x00->;target=0x0;observed route matches all resolved ROM outputs;approach_side=west
+cave-room01-east-r1b45a6	cave	1	MISSING	-	0	0	0x0,0x0	0	route step failed at cave-room07-south-r1d4e5e;event=0xA;transition_fired=0;scene=45;expected_scene=7;room=7;expected_room=1;xy=0x2CFF,0x3958;expected_xy=0xB00,0x780;mode=0;expected_mode=0;probe=
+cave-room01-north-r1b459c	cave	1	MISSING	-	0	0	0x0,0x0	0	route step failed at cave-room07-south-r1d4e5e;event=0xA;transition_fired=0;scene=45;expected_scene=7;room=7;expected_room=1;xy=0x2CFF,0x3958;expected_xy=0xB00,0x780;mode=0;expected_mode=0;probe=
+cave-room01-south-r1b45b0	cave	1	MISSING	-	0	0	0x0,0x0	0	route step failed at cave-room07-south-r1d4e5e;event=0xA;transition_fired=0;scene=45;expected_scene=7;room=7;expected_room=1;xy=0x2CFF,0x3958;expected_xy=0xB00,0x780;mode=0;expected_mode=0;probe=
+cave-room02-east-r1b4dfa	cave	1	MISSING	-	0	0	0x0,0x0	0	route step failed at cave-room05-south-r1d4e5e;event=0x8;transition_fired=0;scene=45;expected_scene=8;room=5;expected_room=2;xy=0x3CBA,0x3A2D;expected_xy=0x6480,0xB80;mode=0;expected_mode=0;probe=controller input did not produce the ROM event;position=0x3CBA,0x3A2D;mode=0;mode_event=0x8;collision=0x0;movement_event=0x8;movement_kind=13;route_flags=0x0;entry_route_flags=0x0;interaction_transition=0;field_pending=0;activity_timeout=0;negative_probes=2;probe_signs=-88,0,-88,0
+cave-room02-north-r1b4df0	cave	1	MISSING	-	0	0	0x0,0x0	0	route step failed at cave-room05-south-r1d4e5e;event=0x8;transition_fired=0;scene=45;expected_scene=8;room=5;expected_room=2;xy=0x3CBA,0x3A2D;expected_xy=0x6480,0xB80;mode=0;expected_mode=0;probe=controller input did not produce the ROM event;position=0x3CBA,0x3A2D;mode=0;mode_event=0x8;collision=0x0;movement_event=0x8;movement_kind=13;route_flags=0x0;entry_route_flags=0x0;interaction_transition=0;field_pending=0;activity_timeout=0;negative_probes=2;probe_signs=-88,0,-88,0
+cave-room02-south-r1b4e04	cave	1	MISSING	-	0	0	0x0,0x0	0	route step failed at cave-room05-south-r1d4e5e;event=0x8;transition_fired=0;scene=45;expected_scene=8;room=5;expected_room=2;xy=0x3CBA,0x3A2D;expected_xy=0x6480,0xB80;mode=0;expected_mode=0;probe=controller input did not produce the ROM event;position=0x3CBA,0x3A2D;mode=0;mode_event=0x8;collision=0x0;movement_event=0x8;movement_kind=13;route_flags=0x0;entry_route_flags=0x0;interaction_transition=0;field_pending=0;activity_timeout=0;negative_probes=2;probe_signs=-88,0,-88,0
+cave-room02-west-r1b4e0e	cave	1	MISSING	-	0	0	0x0,0x0	0	route step failed at cave-room05-south-r1d4e5e;event=0x8;transition_fired=0;scene=45;expected_scene=8;room=5;expected_room=2;xy=0x3CBA,0x3A2D;expected_xy=0x6480,0xB80;mode=0;expected_mode=0;probe=controller input did not produce the ROM event;position=0x3CBA,0x3A2D;mode=0;mode_event=0x8;collision=0x0;movement_event=0x8;movement_kind=13;route_flags=0x0;entry_route_flags=0x0;interaction_transition=0;field_pending=0;activity_timeout=0;negative_probes=2;probe_signs=-88,0,-88,0
+cave-room03-east-r1b57a2	cave	1	MISSING	-	0	0	0x0,0x0	0	route step failed at cave-room07-south-r1d4e5e;event=0xA;transition_fired=0;scene=45;expected_scene=7;room=7;expected_room=1;xy=0x2CFF,0x3958;expected_xy=0xB00,0x780;mode=0;expected_mode=0;probe=
+cave-room03-north-r1b5798	cave	1	MISSING	-	0	0	0x0,0x0	0	route step failed at cave-room07-south-r1d4e5e;event=0xA;transition_fired=0;scene=45;expected_scene=7;room=7;expected_room=1;xy=0x2CFF,0x3958;expected_xy=0xB00,0x780;mode=0;expected_mode=0;probe=
+cave-room03-south-r1b57ac	cave	1	MISSING	-	0	0	0x0,0x0	0	route step failed at cave-room07-south-r1d4e5e;event=0xA;transition_fired=0;scene=45;expected_scene=7;room=7;expected_room=1;xy=0x2CFF,0x3958;expected_xy=0xB00,0x780;mode=0;expected_mode=0;probe=
 cave-room04-east-r1d4b94	cave	1	MISSING	0x9	0	44	0x2CD7,0x3BE8	3	cave room gate not established by a natural incoming route
 cave-room04-north-r1d4b8a	cave	1	MISSING	0x8	0	44	0x6180,0x22D7	3	cave room gate not established by a natural incoming route
 cave-room0d-east-r1d4b94	cave	1	MISSING	0x9	0	44	0x2CD7,0x3BE8	3	cave room gate not established by a natural incoming route
@@ -348,7 +348,7 @@ cave-room05-north-r1d4e4a	cave	1	MISSING	-	0	45	0xFF,0x2580	3	cave room gate not
 cave-room05-south-r1d4e5e	cave	1	MISSING	0xA	0	45	0x2CD7,0x3BE8	3	cave room gate not established by a natural incoming route
 cave-room07-east-r1d4e54	cave	1	MISSING	0x9	0	45	0x6180,0x22D7	3	cave room gate not established by a natural incoming route
 cave-room07-north-r1d4e4a	cave	1	MISSING	-	0	45	0xFF,0x2580	3	cave room gate not established by a natural incoming route
-cave-room07-south-r1d4e5e	cave	1	MISSING	0xA	0	45	0x2CD7,0x3BE8	3	cave room gate not established by a natural incoming route
+cave-room07-south-r1d4e5e	cave	1	WRONG	0xA	0	45	0x2CFF,0x3958	0	shortest-route support step driven;ROM expects scene=7,room=1,arrival_xy=0x0B00,0x0780;observed event=0xA but transition_fired=0,scene=45,room=7,xy=0x2CFF,0x3958,mode=0
 cave-room0b-east-r1d4e54	cave	1	MISSING	0x9	0	45	0x6180,0x22D7	3	cave room gate not established by a natural incoming route
 cave-room0b-north-r1d4e4a	cave	1	MISSING	-	0	45	0xFF,0x2580	3	cave room gate not established by a natural incoming route
 cave-room0b-south-r1d4e5e	cave	1	MISSING	0xA	0	45	0x2CD7,0x3BE8	3	cave room gate not established by a natural incoming route

@@ -1,21 +1,21 @@
 # ROM-to-runtime map coverage
 
-Results come from `baseline_results.tsv`. Categories 7–9 are static presence checks only. Most MISSING/WRONG rows are known harness gaps (approach side, elevator selector, cave room seeding, taxi region mapping, exit-offset expectation), not confirmed port bugs; see the mapharness briefs.
+Results come from `baseline_results.tsv`. Categories 7–9 are static presence checks only. MISSING rows may still reflect harness gaps (approach side, elevator selector, cave room seeding, taxi region mapping, exit-offset expectation); confirmed WRONG runtime rows have ROM-versus-port evidence in [out/REAL_FAILURES.md](../../../../../out/REAL_FAILURES.md).
 
 ## Totals by category and status
 
 | Category | PASS | WRONG | MISSING | PRESENT-UNTESTED | Total |
 |---|---:|---:|---:|---:|---:|
 | edge | 14 | 0 | 0 | 0 | 14 |
-| door | 39 | 0 | 0 | 0 | 39 |
-| bexit | 68 | 0 | 20 | 10 | 98 |
+| door | 38 | 0 | 0 | 1 | 39 |
+| bexit | 66 | 0 | 20 | 12 | 98 |
 | elevator | 176 | 0 | 0 | 0 | 176 |
-| cave | 0 | 0 | 48 | 0 | 48 |
+| cave | 3 | 1 | 44 | 0 | 48 |
 | travel | 134 | 0 | 54 | 0 | 188 |
 | spawn | 0 | 0 | 0 | 1112 | 1112 |
 | revent | 0 | 0 | 0 | 504 | 504 |
 | trigger | 0 | 0 | 0 | 868 | 868 |
-| **Total** | **431** | **0** | **122** | **2494** | **3047** |
+| **Total** | **431** | **1** | **118** | **2497** | **3047** |
 
 ## Per-scene status
 
@@ -25,16 +25,16 @@ Results come from `baseline_results.tsv`. Categories 7–9 are static presence c
 | 01 | Scene 01 | 16 | 0 | 7 | 36 |
 | 02 | Scene 02 | 14 | 0 | 8 | 43 |
 | 03 | Scene 03 | 22 | 0 | 7 | 26 |
-| 04 | Scene 04 | 5 | 0 | 7 | 29 |
+| 04 | Scene 04 | 4 | 0 | 7 | 30 |
 | 05 | Scene 05 | 12 | 0 | 7 | 33 |
-| 06 | Scene 06 | 3 | 0 | 10 | 28 |
+| 06 | Scene 06 | 6 | 0 | 7 | 28 |
 | 07 | Scene 07 | 0 | 0 | 3 | 27 |
 | 08 | Scene 08 | 0 | 0 | 4 | 27 |
 | 09 | Scene 09 | 0 | 0 | 3 | 27 |
 | 0A | Scene 0A | 4 | 0 | 0 | 44 |
 | 0B | Scene 0B | 2 | 0 | 0 | 44 |
 | 0C | Scene 0C | 2 | 0 | 0 | 42 |
-| 0D | Scene 0D | 10 | 0 | 0 | 50 |
+| 0D | Scene 0D | 8 | 0 | 0 | 52 |
 | 0E | Scene 0E | 0 | 0 | 0 | 43 |
 | 0F | Scene 0F | 2 | 0 | 0 | 43 |
 | 10 | Scene 10 | 2 | 0 | 0 | 43 |
@@ -66,7 +66,7 @@ Results come from `baseline_results.tsv`. Categories 7–9 are static presence c
 | 2A | Scene 2A | 10 | 0 | 0 | 62 |
 | 2B | Scene 2B | 10 | 0 | 0 | 60 |
 | 2C | Scene 2C | 0 | 0 | 4 | 33 |
-| 2D | Scene 2D | 0 | 0 | 15 | 34 |
+| 2D | Scene 2D | 0 | 1 | 14 | 34 |
 | 2E | Scene 2E | 0 | 0 | 3 | 32 |
 | 2F | Scene 2F | 0 | 0 | 4 | 46 |
 | 30 | Scene 30 | 0 | 0 | 6 | 33 |
@@ -98,12 +98,12 @@ Results come from `baseline_results.tsv`. Categories 7–9 are static presence c
 | `travel-taxi-r2-cursor4` | 2 | travel | MISSING | dest=2, xy=0x74D7,0xA7F, mode=0 | no map transition within 600 input frames;approach_sides_tried=south;approach_side=south |
 | `travel-taxi-r2-cursor5` | 2 | travel | MISSING | dest=2, xy=0x74D7,0xA7F, mode=0 | no map transition within 600 input frames;approach_sides_tried=south;approach_side=south |
 | `travel-taxi-r2-cursor6` | 2 | travel | MISSING | dest=2, xy=0x74D7,0xA7F, mode=0 | no map transition within 600 input frames;approach_sides_tried=south;approach_side=south |
-| `cave-room01-east-r1b45a6` | 7 | cave | MISSING | dest=7, xy=0xFF,0x5380, mode=3 | cave room gate not established by a natural incoming route |
-| `cave-room01-north-r1b459c` | 7 | cave | MISSING | event=0x8, dest=7, xy=0xAFF,0x66F, mode=3 | cave room gate not established by a natural incoming route |
-| `cave-room01-south-r1b45b0` | 7 | cave | MISSING | event=0xA, dest=7, xy=0x7580,0x4AD7, mode=3 | cave room gate not established by a natural incoming route |
-| `cave-room02-east-r1b4dfa` | 8 | cave | MISSING | dest=8, xy=0x6380,0x8FF, mode=3 | cave room gate not established by a natural incoming route |
-| `cave-room02-north-r1b4df0` | 8 | cave | MISSING | event=0x8, dest=8, xy=0xEFF,0x66F, mode=3 | cave room gate not established by a natural incoming route |
-| `cave-room02-south-r1b4e04` | 8 | cave | MISSING | dest=8, xy=0xFF,0x7180, mode=3 | cave room gate not established by a natural incoming route |
-| `cave-room02-west-r1b4e0e` | 8 | cave | MISSING | event=0xB, dest=8, xy=0x7580,0x70D7, mode=3 | cave room gate not established by a natural incoming route |
-| `cave-room03-east-r1b57a2` | 9 | cave | MISSING | dest=9, xy=0x6180,0x8FF, mode=3 | cave room gate not established by a natural incoming route |
-| `cave-room03-north-r1b5798` | 9 | cave | MISSING | dest=9, xy=0xFF,0x6580, mode=3 | cave room gate not established by a natural incoming route |
+| `cave-room01-east-r1b45a6` | 7 | cave | MISSING | dest=0, xy=0x0,0x0, mode=0 | route step failed at cave-room07-south-r1d4e5e;event=0xA;transition_fired=0;scene=45;expected_scene=7;room=7;expected_room=1;xy=0x2CFF,0x3958;expected_xy=0xB00,0x780;mode=0;expected_mode=0;probe= |
+| `cave-room01-north-r1b459c` | 7 | cave | MISSING | dest=0, xy=0x0,0x0, mode=0 | route step failed at cave-room07-south-r1d4e5e;event=0xA;transition_fired=0;scene=45;expected_scene=7;room=7;expected_room=1;xy=0x2CFF,0x3958;expected_xy=0xB00,0x780;mode=0;expected_mode=0;probe= |
+| `cave-room01-south-r1b45b0` | 7 | cave | MISSING | dest=0, xy=0x0,0x0, mode=0 | route step failed at cave-room07-south-r1d4e5e;event=0xA;transition_fired=0;scene=45;expected_scene=7;room=7;expected_room=1;xy=0x2CFF,0x3958;expected_xy=0xB00,0x780;mode=0;expected_mode=0;probe= |
+| `cave-room02-east-r1b4dfa` | 8 | cave | MISSING | dest=0, xy=0x0,0x0, mode=0 | route step failed at cave-room05-south-r1d4e5e;event=0x8;transition_fired=0;scene=45;expected_scene=8;room=5;expected_room=2;xy=0x3CBA,0x3A2D;expected_xy=0x6480,0xB80;mode=0;expected_mode=0;probe=controller input did not produce the ROM event;position=0x3CBA,0x3A2D;mode=0;mode_event=0x8;collision=0x0;movement_event=0x8;movement_kind=13;route_flags=0x0;entry_route_flags=0x0;interaction_transition=0;field_pending=0;activity_timeout=0;negative_probes=2;probe_signs=-88,0,-88,0 |
+| `cave-room02-north-r1b4df0` | 8 | cave | MISSING | dest=0, xy=0x0,0x0, mode=0 | route step failed at cave-room05-south-r1d4e5e;event=0x8;transition_fired=0;scene=45;expected_scene=8;room=5;expected_room=2;xy=0x3CBA,0x3A2D;expected_xy=0x6480,0xB80;mode=0;expected_mode=0;probe=controller input did not produce the ROM event;position=0x3CBA,0x3A2D;mode=0;mode_event=0x8;collision=0x0;movement_event=0x8;movement_kind=13;route_flags=0x0;entry_route_flags=0x0;interaction_transition=0;field_pending=0;activity_timeout=0;negative_probes=2;probe_signs=-88,0,-88,0 |
+| `cave-room02-south-r1b4e04` | 8 | cave | MISSING | dest=0, xy=0x0,0x0, mode=0 | route step failed at cave-room05-south-r1d4e5e;event=0x8;transition_fired=0;scene=45;expected_scene=8;room=5;expected_room=2;xy=0x3CBA,0x3A2D;expected_xy=0x6480,0xB80;mode=0;expected_mode=0;probe=controller input did not produce the ROM event;position=0x3CBA,0x3A2D;mode=0;mode_event=0x8;collision=0x0;movement_event=0x8;movement_kind=13;route_flags=0x0;entry_route_flags=0x0;interaction_transition=0;field_pending=0;activity_timeout=0;negative_probes=2;probe_signs=-88,0,-88,0 |
+| `cave-room02-west-r1b4e0e` | 8 | cave | MISSING | dest=0, xy=0x0,0x0, mode=0 | route step failed at cave-room05-south-r1d4e5e;event=0x8;transition_fired=0;scene=45;expected_scene=8;room=5;expected_room=2;xy=0x3CBA,0x3A2D;expected_xy=0x6480,0xB80;mode=0;expected_mode=0;probe=controller input did not produce the ROM event;position=0x3CBA,0x3A2D;mode=0;mode_event=0x8;collision=0x0;movement_event=0x8;movement_kind=13;route_flags=0x0;entry_route_flags=0x0;interaction_transition=0;field_pending=0;activity_timeout=0;negative_probes=2;probe_signs=-88,0,-88,0 |
+| `cave-room03-east-r1b57a2` | 9 | cave | MISSING | dest=0, xy=0x0,0x0, mode=0 | route step failed at cave-room07-south-r1d4e5e;event=0xA;transition_fired=0;scene=45;expected_scene=7;room=7;expected_room=1;xy=0x2CFF,0x3958;expected_xy=0xB00,0x780;mode=0;expected_mode=0;probe= |
+| `cave-room03-north-r1b5798` | 9 | cave | MISSING | dest=0, xy=0x0,0x0, mode=0 | route step failed at cave-room07-south-r1d4e5e;event=0xA;transition_fired=0;scene=45;expected_scene=7;room=7;expected_room=1;xy=0x2CFF,0x3958;expected_xy=0xB00,0x780;mode=0;expected_mode=0;probe= |

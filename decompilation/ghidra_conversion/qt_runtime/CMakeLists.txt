@@ -207,16 +207,64 @@ add_test(NAME shadowrun_map_coverage_rows_drift
         --rom "${CMAKE_CURRENT_SOURCE_DIR}/../../input/shadowrun_genesis_us.bin"
         --rows "${SRX_MAP_COVERAGE_FIXTURES}/rows.tsv"
         --self-test --check-drift)
-# The baseline-PASS rerun is split into two shards so each fits the default
-# ctest timeout and they run in parallel under -j; together they still rerun
-# every baseline PASS row.
-foreach(_srx_mc_shard IN ITEMS core elevator)
-    if(_srx_mc_shard STREQUAL "core")
-        set(_srx_mc_name shadowrun_ghidra_conversion_qt_map_coverage_pass_qa)
-        set(_srx_mc_categories "edge,door,bexit,cave,travel")
-    else()
-        set(_srx_mc_name shadowrun_ghidra_conversion_qt_map_coverage_pass_elevator_qa)
+# Keep each map-coverage shard below five minutes. Each building-exit group
+# includes its paired door rows, and the long travel/elevator groups are split.
+foreach(_srx_mc_shard IN ITEMS field bexit_early bexit_middle bexit_core
+                               bexit_late travel_terminal_early
+                               travel_terminal_middle travel_terminal_late
+                               travel_vidphone_early travel_vidphone_middle
+                               travel_vidphone_late elevator_early
+                               elevator_middle elevator_late elevator_final)
+    if(_srx_mc_shard STREQUAL "field")
+        set(_srx_mc_categories "edge")
+        set(_srx_mc_match "")
+    elseif(_srx_mc_shard STREQUAL "bexit_early")
+        set(_srx_mc_categories "door,bexit")
+        set(_srx_mc_match "^(door-|bexit-s(0a|0b|0c|0d|0f|10|12|13)-)")
+    elseif(_srx_mc_shard STREQUAL "bexit_middle")
+        set(_srx_mc_categories "door,bexit")
+        set(_srx_mc_match "^(door-|bexit-s(15|1e)-)")
+    elseif(_srx_mc_shard STREQUAL "bexit_core")
+        set(_srx_mc_categories "door,bexit")
+        set(_srx_mc_match "^(door-|bexit-s1a-)")
+    elseif(_srx_mc_shard STREQUAL "bexit_late")
+        set(_srx_mc_categories "door,bexit")
+        set(_srx_mc_match "^(door-|bexit-s(23|29)-)")
+    elseif(_srx_mc_shard STREQUAL "travel_terminal_early")
+        set(_srx_mc_categories "travel")
+        set(_srx_mc_match "^travel-terminal-s(00|01|02|03|04|05|06)-")
+    elseif(_srx_mc_shard STREQUAL "travel_terminal_middle")
+        set(_srx_mc_categories "travel")
+        set(_srx_mc_match "^travel-terminal-s(15|16|17|18|19|1a|1c|1d|1e|1f)-")
+    elseif(_srx_mc_shard STREQUAL "travel_terminal_late")
+        set(_srx_mc_categories "travel")
+        set(_srx_mc_match "^travel-terminal-s(20|21|22|24|25|26|27|28|29|2a|2b)-")
+    elseif(_srx_mc_shard STREQUAL "travel_vidphone_early")
+        set(_srx_mc_categories "travel")
+        set(_srx_mc_match "^travel-vidphone-s(00|01|02|03|04|05|06)-")
+    elseif(_srx_mc_shard STREQUAL "travel_vidphone_middle")
+        set(_srx_mc_categories "travel")
+        set(_srx_mc_match "^travel-vidphone-s(15|16|17|18|19|1a|1c|1d|1e|1f)-")
+    elseif(_srx_mc_shard STREQUAL "travel_vidphone_late")
+        set(_srx_mc_categories "travel")
+        set(_srx_mc_match "^travel-vidphone-s(20|21|22|24|25|26|27|28|29|2a|2b)-")
+    elseif(_srx_mc_shard STREQUAL "elevator_early")
         set(_srx_mc_categories "elevator")
+        set(_srx_mc_match "^elevator-s(15|16|17|18|19)-")
+    elseif(_srx_mc_shard STREQUAL "elevator_middle")
+        set(_srx_mc_categories "elevator")
+        set(_srx_mc_match "^elevator-s(1a|1b|1c|1d|1e|1f)-")
+    elseif(_srx_mc_shard STREQUAL "elevator_late")
+        set(_srx_mc_categories "elevator")
+        set(_srx_mc_match "^elevator-s(20|21|22|23|24|25)-")
+    else()
+        set(_srx_mc_categories "elevator")
+        set(_srx_mc_match "^elevator-s(26|27|28|29|2a|2b)-")
+    endif()
+    set(_srx_mc_name shadowrun_ghidra_conversion_qt_map_coverage_pass_${_srx_mc_shard}_qa)
+    set(_srx_mc_filter_args)
+    if(_srx_mc_match)
+        list(APPEND _srx_mc_filter_args --match "${_srx_mc_match}")
     endif()
     add_test(NAME ${_srx_mc_name}
         COMMAND "${Python3_EXECUTABLE}" "${SRX_MAP_COVERAGE_TOOL}"
@@ -227,11 +275,30 @@ foreach(_srx_mc_shard IN ITEMS core elevator)
             --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
             --out-dir "${CMAKE_CURRENT_BINARY_DIR}/map-coverage-pass-qa-${_srx_mc_shard}"
             --categories "${_srx_mc_categories}"
+            ${_srx_mc_filter_args}
             --only-baseline-pass)
     set_tests_properties(${_srx_mc_name}
         PROPERTIES LABELS "map_coverage"
-                   ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy")
+                   TIMEOUT 300
+                   ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 endforeach()
+
+# The first cave-room seed routes exercise the production Scene-9-to-Scene-6
+# destination entry, then drive shortest cave-exit paths to rooms 0x00..0x03.
+add_test(NAME shadowrun_ghidra_conversion_qt_map_coverage_cave_seed_qa
+    COMMAND "${Python3_EXECUTABLE}" "${SRX_MAP_COVERAGE_TOOL}"
+        --rom "${CMAKE_CURRENT_SOURCE_DIR}/../../input/shadowrun_genesis_us.bin"
+        --rows "${SRX_MAP_COVERAGE_FIXTURES}/rows.tsv"
+        --baseline "${SRX_MAP_COVERAGE_FIXTURES}/baseline_results.tsv"
+        --run-qa "$<TARGET_FILE:shadowrun_ghidra_conversion_qt_qa>"
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --out-dir "${CMAKE_CURRENT_BINARY_DIR}/map-coverage-cave-seed-qa"
+        --categories cave
+        --match "^cave-room0[0-3]-")
+set_tests_properties(shadowrun_ghidra_conversion_qt_map_coverage_cave_seed_qa
+    PROPERTIES LABELS "map_coverage"
+               TIMEOUT 300
+               ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 # The full matrix takes ~18 minutes, so it is opt-in:
 #   cmake -DSRX_MAP_COVERAGE_FULL=ON . && ctest -L map_coverage_full
 # Narrow a run with: tools/map_coverage.py --run-qa <qa exe> --match <regex>.

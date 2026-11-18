@@ -46518,6 +46518,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> map_coverage_rows_path;
         std::optional<std::filesystem::path> map_coverage_results_path;
         std::optional<std::filesystem::path>
+            map_coverage_route_rows_path;
+        std::optional<std::filesystem::path>
             building_exit_timing_rows_path;
         std::optional<std::filesystem::path>
             building_exit_timing_results_path;
@@ -46539,6 +46541,11 @@ int main(int argc, char** argv) {
                 field_smoke = true;
                 map_coverage_rows_path = std::filesystem::path(argv[++index]);
                 map_coverage_results_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--map-coverage-route-rows" &&
+                index + 1 < argc) {
+                map_coverage_route_rows_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -48227,6 +48234,8 @@ int main(int argc, char** argv) {
                     run_map_coverage_qa(
                         smoke_state, *map_coverage_rows_path,
                         *map_coverage_results_path,
+                        map_coverage_route_rows_path.value_or(
+                            *map_coverage_rows_path),
                         [&](const auto& row_startup_state,
                             const std::uint16_t scene,
                             const std::string_view category,
@@ -48234,6 +48243,60 @@ int main(int argc, char** argv) {
                             const std::filesystem::path& output_root,
                             std::vector<std::uint16_t>& audio_events,
                             std::vector<std::string>& boundaries) {
+                            if (category == "cave" && scene == 9U) {
+                                if (!row_startup_state.field_session_source_assets.has_value() ||
+                                    !row_startup_state.joshua_selection.has_value()) {
+                                    return false;
+                                }
+                                const auto scene9 = integration::make_field_scene_input(
+                                    *row_startup_state.field_session_source_assets,
+                                    9U);
+                                if (!scene9.has_value()) {
+                                    return false;
+                                }
+
+                                auto cave_entry_state = row_startup_state;
+                                shadowrun::ghidra_conversion::SaveFieldRestoreState
+                                    checkpoint{};
+                                checkpoint.world_mode = 9U;
+                                checkpoint.camera_x = 0x0D00U;
+                                checkpoint.camera_y = 0x0C00U;
+                                for (std::size_t slot = 0U;
+                                     slot < checkpoint.runner_positions.size();
+                                     ++slot) {
+                                    const auto& spawn = scene9->source_metadata
+                                        .initial_field_records[slot];
+                                    checkpoint.runner_positions[slot] =
+                                        shadowrun::ghidra_conversion::
+                                            RestoredRunnerPosition{
+                                                spawn.x, spawn.y};
+                                }
+                                checkpoint.runner_positions[0U] =
+                                    shadowrun::ghidra_conversion::
+                                        RestoredRunnerPosition{0x0D00U, 0x0C00U};
+                                checkpoint.roster.default_record.bytes =
+                                    row_startup_state.joshua_selection
+                                        ->live_joshua_record;
+                                checkpoint.active_runner_slot = 0U;
+                                cave_entry_state.restored_field_state =
+                                    std::move(checkpoint);
+                                if (!runtime.bootstrap_for_scene_dump(
+                                        cave_entry_state, 9U) ||
+                                    !runtime.enter_field_destination_for_dump(
+                                        6U, "dialogue_scene_entry")) {
+                                    return false;
+                                }
+                                return runtime.field_scene_reference_for_dump() ==
+                                        6U &&
+                                    runtime.field_transition_context_for_dump() ==
+                                        0U &&
+                                    runtime.field_interaction_mode_for_dump() ==
+                                        0U &&
+                                    std::find(
+                                        boundaries.begin(), boundaries.end(),
+                                        "field.dialogue.scene_entry.entry_room_seeded") !=
+                                        boundaries.end();
+                            }
                             if (category == "elevator" && scene == 26U) {
                                 if (!runtime.bootstrap_for_scene_dump(
                                         row_startup_state, 2U)) {
