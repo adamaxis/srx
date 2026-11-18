@@ -14,6 +14,9 @@ game.modules.items = require("items")
 game.modules.magic = require("magic")
 
 local pass, total = 0, 0
+local DEATH_DROP_TEST_ACTOR_X = 8192
+local DEATH_DROP_TEST_ACTOR_Y = 9216
+local DEATH_DROP_TEST_TILE_OFFSET = 128
 local function check(condition, message)
     total = total + 1
     if condition then pass = pass + 1 else print("FAIL: " .. message) end
@@ -117,7 +120,28 @@ local function context_for(actor_id, visual_profile_id)
     context.ai_target_candidates = {}
     context.world_target_selection_candidates = {}
     context.combat_meter_service_blocked = false
-    context.ai_random_bound = function() return 0 end
+    context.death_drop = {
+        field_mode = "ordinary",
+        region_index = 0,
+        actor_kind = "weenr",
+        record_gate = 0,
+        pending_scene_record = false,
+        pickup_slot_available = true,
+        equipped_drop_item_id = "model_101t",
+        special_drop_flags = {
+            gargoyle_horn = false,
+            hell_hound_pelt = false,
+        },
+    }
+    context.world_position = {
+        x = DEATH_DROP_TEST_ACTOR_X,
+        y = DEATH_DROP_TEST_ACTOR_Y,
+    }
+    context.drop_random_calls = 0
+    context.ai_random_bound = function(bound)
+        context.drop_random_calls = context.drop_random_calls + 1
+        return 0
+    end
     return context
 end
 
@@ -190,6 +214,16 @@ state = game.actors[actor_id]
 check(finished ~= nil and state.damage_reaction_animation_complete and
       state.actor_facts.lifecycle.dead,
       "Weenr2 two-frame death list completes in 16 render updates [C: 0x8FC4]")
+check(finished ~= nil and
+      type(finished.death_drop_request) == "table" and
+      finished.death_drop_request.kind == "item" and
+      finished.death_drop_request.item_id == "model_101t" and
+      finished.death_drop_request.world_x ==
+          DEATH_DROP_TEST_ACTOR_X + DEATH_DROP_TEST_TILE_OFFSET and
+      finished.death_drop_request.world_y ==
+          DEATH_DROP_TEST_ACTOR_Y + DEATH_DROP_TEST_TILE_OFFSET and
+      context.drop_random_calls == 1,
+      "ordinary lethal down-list completion rolls once and requests the selected source pickup")
 
 local retired_on_pass
 for i = 1, 21 do
@@ -213,6 +247,8 @@ state = game.actors[actor_id]
 check(reentry ~= nil and state.actor_facts.lifecycle.active and
       state.actor_facts.lifecycle.dead and state.animation_id == "down",
       "re-entry leaves the ordinary active corpse down [C: 0xAB02]")
+check(reentry.death_drop_request == nil,
+      "ordinary corpse re-entry does not emit a duplicate pickup request")
 
 local function copy_facts(source)
     local result = {}

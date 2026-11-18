@@ -607,6 +607,13 @@ constexpr std::array<FieldWorldActorSlot, 7> kFieldWorldActorSlots{{
     FieldWorldActorSlot::slot_9,
 }};
 
+constexpr std::uint16_t kActorKindDefaultDropTable = 7U;
+constexpr std::uint16_t kActorKindHellHoundDrop = 12U;
+constexpr std::uint16_t kActorKindGargoyleDrop = 13U;
+constexpr std::uint16_t kActorKindNoOrdinaryDrop = 14U;
+constexpr std::uint32_t kGargoyleHornSpawnFlag = 1U << 0U;
+constexpr std::uint32_t kHellHoundPeltSpawnFlag = 1U << 1U;
+
 enum class ActorServiceFlag : std::uint8_t {
     active = 1U << 0U,
     unresolved_service_bit_2 = 1U << 2U,
@@ -5373,6 +5380,75 @@ void FieldSceneRuntime::advance_default_field_actors(
                 context.source_actor_slot = source_slot;
                 context.live_field_actor = true;
             }
+            if (source_slot >= static_cast<std::uint8_t>(
+                                   FieldWorldActorSlot::slot_3) &&
+                source_slot <= static_cast<std::uint8_t>(
+                                   FieldWorldActorSlot::slot_9) &&
+                actor.combatant.record_type >= 3U) {
+                scripting::ScriptActorDeathDropFacts drop_facts{};
+                switch (field_movement_transition_state_.world_mode) {
+                case 0U:
+                    drop_facts.field_mode =
+                        scripting::ScriptActorDeathDropMode::ordinary;
+                    break;
+                case 2U:
+                    drop_facts.field_mode =
+                        scripting::ScriptActorDeathDropMode::resource_scene;
+                    break;
+                default:
+                    drop_facts.field_mode =
+                        scripting::ScriptActorDeathDropMode::unsupported;
+                    break;
+                }
+                switch (actor.entity_kind) {
+                case kActorKindDefaultDropTable:
+                    drop_facts.actor_kind =
+                        scripting::ScriptActorDeathDropKind::default_actor;
+                    break;
+                case kActorKindHellHoundDrop:
+                    drop_facts.actor_kind =
+                        scripting::ScriptActorDeathDropKind::hell_hound;
+                    break;
+                case kActorKindGargoyleDrop:
+                    drop_facts.actor_kind =
+                        scripting::ScriptActorDeathDropKind::gargoyle;
+                    break;
+                case kActorKindNoOrdinaryDrop:
+                    drop_facts.actor_kind =
+                        scripting::ScriptActorDeathDropKind::wendigo;
+                    break;
+                default:
+                    drop_facts.actor_kind =
+                        scripting::ScriptActorDeathDropKind::other;
+                    break;
+                }
+                // 0x44BC copies the actor's source template word at +0x2C;
+                // the current field adapter does not retain that word. Its
+                // value only selects kind-7's default versus region table.
+                if (actor.entity_kind != kActorKindDefaultDropTable) {
+                    drop_facts.record_gate_nonzero = false;
+                }
+                const auto source_region =
+                    state_.field_scene_buffers.field_resource_mode;
+                if (source_region <= 9U) {
+                    drop_facts.region_index = static_cast<std::uint8_t>(
+                        source_region);
+                }
+                drop_facts.pending_scene_record =
+                    scene_uses_alternate_profile(
+                        static_cast<std::int16_t>(current_scene));
+                drop_facts.pickup_slot_available = std::any_of(
+                    field_world_pickups_.begin(), field_world_pickups_.end(),
+                    [](const auto& pickup) { return !pickup.active; });
+                drop_facts.gargoyle_horn_enabled =
+                    (field_auxiliary_flags_ & kGargoyleHornSpawnFlag) != 0U;
+                drop_facts.hell_hound_pelt_enabled =
+                    (field_auxiliary_flags_ & kHellHoundPeltSpawnFlag) != 0U;
+                // The source substitutes +0x57 only after checking both
+                // template bytes +0x56/+0x57; this adapter does not yet retain
+                // those bytes, so leave the conditional result unresolved.
+                context.death_drop_facts = drop_facts;
+            }
             context.world_position = scripting::ScriptWorldPosition{
                 actor.world_position.x, actor.world_position.y};
             context.actor_facts = actor_facts_from_field_record(
@@ -5954,6 +6030,20 @@ void FieldSceneRuntime::advance_default_field_actors(
                          actor.actor_instance_id.c_str(), failure_.c_str());
             actor.active = false;
             continue;
+        }
+        if (decision->death_drop_request.has_value()) {
+            const auto pickup = std::find_if(
+                field_world_pickups_.begin(), field_world_pickups_.end(),
+                [](const auto& candidate) { return !candidate.active; });
+            if (pickup == field_world_pickups_.end()) {
+                failure_ = "Lua requested a death pickup with all source slots occupied";
+                source_boundary("field.actor.death_drop_slot_invalid");
+            } else {
+                pickup->active = true;
+                pickup->scene_reference = current_scene;
+                pickup->request = *decision->death_drop_request;
+                source_boundary("field.actor.death_drop_spawned");
+            }
         }
         if (decision->think_token_claimed) {
             field_think_token_claimed_ = true;
@@ -10263,8 +10353,267 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         trigger_field_world_effect_sequence();
     };
     world_frame_logic_callbacks_.resolve_nearby_effects = [this] {
+        resolve_nearby_world_pickups();
         source_boundary("field.world_logic.resolve_nearby_effects");
     };
+}
+
+void FieldSceneRuntime::resolve_nearby_world_pickups() {
+    constexpr std::uint16_t kWorldPickupRadius = 256U;
+    constexpr std::uint16_t kPickupPhaseRandomBound = 5U;
+    constexpr std::uint16_t kPickupSound = 36U;
+    const auto current_scene = state_.field_scene_buffers.scene_reference;
+    auto player_position = field_entity_.world_position;
+    if (!field_entity_.active) {
+        player_position = state_.field_scene_buffers.source_metadata
+                              .initial_field_records[
+                                  field_party_roster_.active_slot()];
+    }
+    const auto in_source_pickup_range = [kWorldPickupRadius](
+        const std::uint16_t player, const std::uint16_t pickup) {
+        const auto lower = static_cast<std::uint16_t>(
+            pickup - kWorldPickupRadius);
+        const auto upper = static_cast<std::uint16_t>(
+            pickup + kWorldPickupRadius);
+        return lower < player && player <= upper;
+    };
+    using PersistentValue = scripting::ScriptPersistentValue;
+    const auto integer_value = [](const std::uint32_t value) {
+        PersistentValue result;
+        result.value = static_cast<std::int64_t>(value);
+        return result;
+    };
+    const auto string_value = [](const std::string& value) {
+        PersistentValue result;
+        result.value = value;
+        return result;
+    };
+    const auto pickup_object = [&string_value, &integer_value](
+        const scripting::ScriptWorldPickupRequest& request) {
+        std::string kind;
+        switch (request.kind) {
+        case scripting::ScriptWorldPickupKind::item: kind = "item"; break;
+        case scripting::ScriptWorldPickupKind::nuyen: kind = "nuyen"; break;
+        case scripting::ScriptWorldPickupKind::clips: kind = "clips"; break;
+        case scripting::ScriptWorldPickupKind::gargoyle_horn:
+            kind = "gargoyle_horn";
+            break;
+        case scripting::ScriptWorldPickupKind::hell_hound_pelt:
+            kind = "hell_hound_pelt";
+            break;
+        }
+        PersistentValue::Object object{
+            {"kind", string_value(kind)},
+            {"amount", integer_value(request.amount)},
+            {"item_id", string_value(request.item_id)},
+            {"linked_actor_id", string_value(request.linked_actor_id)},
+        };
+        PersistentValue result;
+        result.value = std::move(object);
+        return result;
+    };
+    const auto inventory_value = [this, &integer_value] {
+        PersistentValue::Array inventory;
+        inventory.reserve(active_runner_record().inventory_item_codes.size());
+        for (const auto code : active_runner_record().inventory_item_codes) {
+            inventory.push_back(integer_value(code));
+        }
+        PersistentValue result;
+        result.value = std::move(inventory);
+        return result;
+    };
+    const auto read_field = [](const PersistentValue::Object& object,
+                               const char* name)
+        -> const PersistentValue* {
+        const auto found = object.find(name);
+        return found == object.end() ? nullptr : &found->second;
+    };
+    const auto read_integer = [&read_field](
+        const PersistentValue::Object& object, const char* name)
+        -> std::optional<std::int64_t> {
+        const auto* field = read_field(object, name);
+        if (field == nullptr) return std::nullopt;
+        const auto* value = std::get_if<std::int64_t>(&field->value);
+        return value == nullptr ? std::nullopt
+                                : std::optional<std::int64_t>{*value};
+    };
+    for (std::size_t index = 0U; index < field_world_pickups_.size(); ++index) {
+        auto& pickup = field_world_pickups_[index];
+        if (!pickup.active || pickup.scene_reference != current_scene ||
+            !in_source_pickup_range(player_position.x,
+                                    pickup.request.world_x) ||
+            !in_source_pickup_range(player_position.y,
+                                    pickup.request.world_y)) {
+            continue;
+        }
+
+        auto inventory = inventory_value();
+        auto packed_pickup = pickup_object(pickup.request);
+        const auto phase_policy = game_scripts_.call_value(
+            "actor.death_drops", "needs_pickup_phase_roll",
+            {packed_pickup, inventory});
+        const auto* needs_phase = phase_policy.has_value()
+            ? std::get_if<bool>(&phase_policy->value)
+            : nullptr;
+        if (needs_phase == nullptr) {
+            failure_ = game_scripts_.failure();
+            source_boundary("field.pickup.phase_policy_failed");
+            return;
+        }
+        std::optional<std::uint16_t> phase_roll;
+        if (*needs_phase) {
+            const auto sample = sample_source_random_bound(
+                field_random_seed_, kPickupPhaseRandomBound);
+            if (sample < 0 || sample >= kPickupPhaseRandomBound) {
+                source_boundary("field.pickup.phase_roll_unresolved");
+                return;
+            }
+            phase_roll = static_cast<std::uint16_t>(sample);
+        }
+        PersistentValue::Object runner_fields{
+            {"inventory_item_codes", std::move(inventory)},
+            {"clips", integer_value(active_runner_record().ammo_clips)},
+            {"nuyen", integer_value(field_funds_.value_or(0U))},
+        };
+        PersistentValue runner;
+        runner.value = std::move(runner_fields);
+        std::vector<PersistentValue> arguments{
+            std::move(packed_pickup), std::move(runner)};
+        if (phase_roll.has_value()) {
+            arguments.push_back(integer_value(*phase_roll));
+        } else {
+            arguments.push_back(PersistentValue{});
+        }
+        const auto collection = game_scripts_.call_value(
+            "actor.death_drops", "collect_pickup", arguments);
+        const auto* result = collection.has_value()
+            ? std::get_if<PersistentValue::Object>(&collection->value)
+            : nullptr;
+        if (result == nullptr) {
+            failure_ = game_scripts_.failure();
+            source_boundary("field.pickup.collection_policy_failed");
+            return;
+        }
+        const auto* collected_field = read_field(*result, "collected");
+        const auto* collected = collected_field == nullptr
+            ? nullptr : std::get_if<bool>(&collected_field->value);
+        if (collected == nullptr) {
+            source_boundary("field.pickup.collection_result_invalid");
+            return;
+        }
+        if (!*collected) {
+            // ROM 0x1DF86 leaves a full-inventory item record active and keeps
+            // scanning the remaining pool entries.
+            continue;
+        }
+        switch (pickup.request.kind) {
+        case scripting::ScriptWorldPickupKind::item: {
+            const auto slot_value = read_integer(*result, "inventory_slot");
+            const auto* item_field = read_field(*result, "item_id");
+            const auto* item_id = item_field == nullptr
+                ? nullptr : std::get_if<std::string>(&item_field->value);
+            const auto phase_value = read_integer(*result, "phase");
+            const auto item_code = item_id == nullptr
+                ? std::nullopt
+                : scripting::script_item_source_code_from_id(*item_id);
+            if (!slot_value.has_value() || *slot_value < 1 || *slot_value > 8 ||
+                !item_code.has_value() || !phase_value.has_value() ||
+                *phase_value < 0 || *phase_value > 6) {
+                source_boundary("field.pickup.item_result_invalid");
+                return;
+            }
+            const auto slot = static_cast<std::size_t>(*slot_value - 1);
+            auto& runner_record = active_runner_record();
+            if (runner_record.inventory_item_codes[slot] != 0U) {
+                source_boundary("field.pickup.item_slot_no_longer_empty");
+                return;
+            }
+            runner_record.inventory_item_codes[slot] = *item_code;
+            runner_record.inventory_phase_bytes[slot] =
+                static_cast<std::uint8_t>(*phase_value);
+            refresh_field_hud_runner_slot();
+            break;
+        }
+        case scripting::ScriptWorldPickupKind::clips: {
+            const auto value = read_integer(*result, "value");
+            if (!value.has_value() || *value < 0 || *value > 20) {
+                source_boundary("field.pickup.clip_result_invalid");
+                return;
+            }
+            active_runner_record().ammo_clips =
+                static_cast<std::uint8_t>(*value);
+            refresh_field_hud_runner_slot();
+            break;
+        }
+        case scripting::ScriptWorldPickupKind::nuyen: {
+            const auto value = read_integer(*result, "value");
+            if (!value.has_value() || *value < 0 ||
+                static_cast<std::uint64_t>(*value) >
+                    std::numeric_limits<std::uint32_t>::max()) {
+                source_boundary("field.pickup.nuyen_result_invalid");
+                return;
+            }
+            field_funds_ = static_cast<std::uint32_t>(*value);
+            break;
+        }
+        case scripting::ScriptWorldPickupKind::gargoyle_horn:
+        case scripting::ScriptWorldPickupKind::hell_hound_pelt: {
+            if (!group_item_flags_.has_value()) {
+                source_boundary("field.pickup.group_item_flags_unresolved");
+                return;
+            }
+            const auto flag = pickup.request.kind ==
+                    scripting::ScriptWorldPickupKind::gargoyle_horn
+                ? GroupItemFlag::gargoyle_horn
+                : GroupItemFlag::hell_hound_pelt;
+            *group_item_flags_ |= group_item_flag_mask(flag);
+            if (pickup.request.kind ==
+                    scripting::ScriptWorldPickupKind::hell_hound_pelt) {
+                const auto linked_actor = std::find_if(
+                    field_default_actors_.begin(), field_default_actors_.end(),
+                    [&pickup, current_scene](const auto& actor) {
+                        return actor.scene_reference == current_scene &&
+                               actor.actor_instance_id ==
+                                   pickup.request.linked_actor_id;
+                    });
+                if (linked_actor != field_default_actors_.end()) {
+                    const auto previous_flags =
+                        linked_actor->source_record_flags;
+                    linked_actor->source_record_flags &=
+                        static_cast<std::uint8_t>(~actor_flag_mask(
+                            ActorServiceFlag::active));
+                    linked_actor->source_record_flags &=
+                        static_cast<std::uint8_t>(~actor_flag_mask(
+                            ActorServiceFlag::escort));
+                    linked_actor->combatant.source_flags =
+                        linked_actor->source_record_flags;
+                    const auto slot = linked_actor->source_record_slot;
+                    const auto world_combat_record = slot.has_value() &&
+                        static_cast<std::uint8_t>(*slot) >=
+                            static_cast<std::uint8_t>(FieldWorldActorSlot::slot_3) &&
+                        static_cast<std::uint8_t>(*slot) <=
+                            static_cast<std::uint8_t>(FieldWorldActorSlot::slot_9) &&
+                        linked_actor->combatant.record_type ==
+                            static_cast<std::uint8_t>(*slot);
+                    const auto dynamic_behavior =
+                        linked_actor->temporary_world_encounter ||
+                        linked_actor->world_activity_script_actor ||
+                        linked_actor->source_default_dynamic_profile;
+                    (void)retire_default_actor_presentation_if_inactive(
+                        *linked_actor, previous_flags, world_combat_record,
+                        dynamic_behavior);
+                }
+            }
+            break;
+        }
+        }
+        pickup.active = false;
+        if (source_audio_event_callback_) {
+            source_audio_event_callback_(kPickupSound);
+        }
+        source_boundary("field.pickup.collected");
+        return;
+    }
 }
 
 
@@ -16785,6 +17134,25 @@ void FieldSceneRuntime::paint_field_scene_entities(
     QPainter& painter, const QRect& clip_rect,
     const std::optional<scripting::ScriptFieldSpritePriority>
         priority_filter) const {
+    static const std::array<QImage, 4U> pickup_markers = [] {
+        std::array<QImage, 4U> images{};
+        constexpr std::array<const char*, 4U> labels{{"N", "C", "H", "P"}};
+        constexpr std::array<QColor, 4U> colors{{
+            QColor(224, 188, 76), QColor(204, 204, 204),
+            QColor(180, 160, 224), QColor(160, 116, 84)}};
+        for (std::size_t index = 0U; index < images.size(); ++index) {
+            images[index] = QImage(12, 12, QImage::Format_ARGB32_Premultiplied);
+            images[index].fill(Qt::transparent);
+            QPainter icon(&images[index]);
+            icon.setPen(QPen(colors[index], 1));
+            icon.setBrush(QBrush(QColor(32, 28, 24)));
+            icon.drawEllipse(1, 1, 10, 10);
+            icon.setPen(colors[index]);
+            icon.drawText(QRect(1, 1, 10, 10), Qt::AlignCenter,
+                          QString::fromLatin1(labels[index]));
+        }
+        return images;
+    }();
     struct SceneSprite {
         std::int16_t depth = 0;
         std::uint16_t source_order = 0;
@@ -17150,6 +17518,51 @@ void FieldSceneRuntime::paint_field_scene_entities(
                             spawn.primary_active, spawn.primary_slot);
         append_spawn_record(spawn.source_record, spawn.animation.frame,
                             spawn.secondary_active, spawn.secondary_slot);
+    }
+
+    for (std::size_t index = 0U; index < field_world_pickups_.size(); ++index) {
+        const auto& pickup = field_world_pickups_[index];
+        if (!pickup.active || pickup.scene_reference != current_scene) {
+            continue;
+        }
+        EntityProjectionState projection{};
+        projection.world_x = pickup.request.world_x;
+        projection.world_y = pickup.request.world_y;
+        if (!project_entity_screen_position_standard(
+                projection, camera_x, camera_y).visible) {
+            continue;
+        }
+        const QImage* image = nullptr;
+        if (pickup.request.kind ==
+            scripting::ScriptWorldPickupKind::item) {
+            const auto item_code = scripting::script_item_source_code_from_id(
+                pickup.request.item_id);
+            if (item_code.has_value() && *item_code > 0U &&
+                static_cast<std::size_t>(*item_code) <=
+                    field_hud_party_items_.size()) {
+                image = &field_hud_party_items_[*item_code - 1U][0U];
+            }
+        } else {
+            const auto marker_index = pickup.request.kind ==
+                    scripting::ScriptWorldPickupKind::nuyen
+                ? 0U
+                : pickup.request.kind ==
+                      scripting::ScriptWorldPickupKind::clips
+                    ? 1U
+                    : pickup.request.kind ==
+                          scripting::ScriptWorldPickupKind::gargoyle_horn
+                        ? 2U : 3U;
+            image = &pickup_markers[marker_index];
+        }
+        if (image == nullptr || image->isNull()) {
+            continue;
+        }
+        sprites.push_back(SceneSprite{
+            static_cast<std::int16_t>(pickup.request.world_y),
+            static_cast<std::uint16_t>(20U + index),
+            static_cast<int>(projection.screen_x) - kGenesisSpriteOrigin,
+            static_cast<int>(projection.screen_y) - kGenesisSpriteOrigin,
+            image});
     }
 
     for (const auto& spark : field_hit_sparks_) {

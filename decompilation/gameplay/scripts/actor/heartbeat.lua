@@ -9,6 +9,7 @@ local SoundId, SceneId, EntryDelayMax, AiTuning =
 local VisualProfile = E.ActorVisualProfile
 local ActorLifecycleEvent = E.ActorLifecycleEvent
 local ActionMovementLockoutKind = E.ActionMovementLockoutKind
+local DeathDrops = require("actor.death_drops")
 
 -- ROM 0x1E514 clears the escort relationship and deactivates the actor. The
 -- host clears its typed template marker and retires the live record slot.
@@ -206,6 +207,7 @@ function ActorAI.heartbeat(context)
         if state.damage_reaction_active and
            state.animation_id == "down" then
             local death_transition_completed = false
+            local death_drop_request
             if context.phase == "behavior" then
                 state.think_token_claimed = false
                 state.ai_deactivate_requested = false
@@ -221,6 +223,7 @@ function ActorAI.heartbeat(context)
             elseif state.damage_reaction_animation_complete and
                    not state.actor_facts.lifecycle.dead then
                 death_transition_completed = true
+                death_drop_request = DeathDrops.resolve(context)
                 -- ROM 0xA93E: the finished C0B2 list sets pose bit 15, so the
                 -- next 0xA8EA service enters 0xAB02 once: drops, FFE177--,
                 -- and bset #6,+0x10 (DEAD, 0x40). The body stays drawn.
@@ -250,7 +253,9 @@ function ActorAI.heartbeat(context)
                     deactivate_record(state)
                 end
             end
-            return R.snapshot(state, "hold", reaction_audio_event)
+            local snapshot = R.snapshot(state, "hold", reaction_audio_event)
+            snapshot.death_drop_request = death_drop_request
+            return snapshot
         end
         if state.damage_reaction_active then
             if context.phase == "render" and

@@ -144,6 +144,8 @@ enum class FieldRenderEffectFlag : std::uint8_t {
 };
 
 enum class GroupItemFlag : std::uint8_t {
+    hell_hound_pelt = 3,
+    gargoyle_horn = 4,
     landmark_map = 7,
     run_objective_active = 9, // FFFC22 bit 9, ROM 0x1EF2C/0x1F000 [C]
 };
@@ -2074,6 +2076,7 @@ private:
         const ConversionAssetCatalog& catalog);
     void initialize_default_field_actors(std::uint16_t scene_reference);
     void advance_default_field_actors(bool source_target_list_service);
+    void resolve_nearby_world_pickups();
     bool retire_default_actor_presentation_if_inactive(
         DefaultFieldActorPresentation& actor,
         std::uint8_t previous_record_flags,
@@ -2334,6 +2337,12 @@ private:
         std::string actor_instance_id;
         FieldFramePresentationState animation{};
         bool script_initialized = false;
+    };
+
+    struct FieldWorldPickupPresentation {
+        bool active = false;
+        std::uint16_t scene_reference = 0U;
+        scripting::ScriptWorldPickupRequest request{};
     };
 
     struct DefaultFieldActorPresentation {
@@ -2913,6 +2922,7 @@ private:
     std::vector<std::array<SpellEffectArtwork, 5>>
         field_spell_effect_images_by_scene_;
     std::vector<DefaultFieldActorPresentation> field_default_actors_;
+    std::array<FieldWorldPickupPresentation, 10U> field_world_pickups_{};
     // Cold boot publishes the first default list in the source scene refresh.
     bool field_default_actor_population_pending_ = false;
     // The ROM lists hold record pointers and refresh on separate FFDF88

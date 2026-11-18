@@ -2520,6 +2520,50 @@ struct ScriptActorActionTiming {
     std::uint8_t action_delay_modifier = 0;
 };
 
+enum class ScriptActorDeathDropMode : std::uint8_t {
+    ordinary,
+    resource_scene,
+    unsupported,
+};
+
+enum class ScriptActorDeathDropKind : std::uint8_t {
+    default_actor,
+    gargoyle,
+    hell_hound,
+    wendigo,
+    other,
+};
+
+struct ScriptActorDeathDropFacts {
+    ScriptActorDeathDropMode field_mode =
+        ScriptActorDeathDropMode::unsupported;
+    ScriptActorDeathDropKind actor_kind = ScriptActorDeathDropKind::other;
+    std::optional<bool> record_gate_nonzero;
+    std::optional<std::uint8_t> region_index;
+    bool pending_scene_record = false;
+    bool pickup_slot_available = false;
+    bool gargoyle_horn_enabled = false;
+    bool hell_hound_pelt_enabled = false;
+    std::optional<std::string_view> equipped_drop_item_id;
+};
+
+enum class ScriptWorldPickupKind : std::uint8_t {
+    item,
+    nuyen,
+    clips,
+    gargoyle_horn,
+    hell_hound_pelt,
+};
+
+struct ScriptWorldPickupRequest {
+    ScriptWorldPickupKind kind = ScriptWorldPickupKind::item;
+    std::string item_id;
+    std::uint16_t amount = 0;
+    std::uint16_t world_x = 0;
+    std::uint16_t world_y = 0;
+    std::string linked_actor_id;
+};
+
 // Source-derived identity and spawn facts passed to an actor's Lua heartbeat.
 // Lua owns per-instance behavior state; the host retains world facts and
 // consumes the returned presentation/action snapshot.
@@ -2619,6 +2663,9 @@ struct ScriptActorBehaviorContext {
     // Current position in the field world. Source-record decoding stays in
     // the native adapter; Lua receives one named position value.
     std::optional<ScriptWorldPosition> world_position;
+    // ROM 0x16B98's typed death-drop gates; Lua selects the result and uses
+    // ai_random_bound only after the host reports an available scene record.
+    std::optional<ScriptActorDeathDropFacts> death_drop_facts;
     ScriptActorFacts actor_facts;
     // One field-frame token suppresses later due actor thoughts [C].
     std::optional<bool> source_think_suppressed;
@@ -2795,6 +2842,9 @@ struct ScriptActorBehaviorDecision {
     std::uint8_t target_marker_radius = 0;
     bool target_selection_processed = false;
     std::optional<std::string> selected_world_actor_id;
+    // Emitted only on the one behavior pass that finishes an ordinary down
+    // list. The field host stores this as one of the ten source pickup records.
+    std::optional<ScriptWorldPickupRequest> death_drop_request;
     std::optional<ScriptActorMovementStep> movement_step;
     std::optional<ScriptActorProjectileMovementDecision>
         projectile_movement;

@@ -12960,6 +12960,81 @@ GameScriptRuntime::actor_heartbeat(
         lua_pushnil(state);
     }
     lua_setfield(state, -2, "world_position");
+    if (context.death_drop_facts.has_value()) {
+        const auto& facts = *context.death_drop_facts;
+        lua_createtable(state, 0, 9);
+        const auto drop_facts_index = lua_absindex(state, -1);
+        std::string_view field_mode;
+        switch (facts.field_mode) {
+        case ScriptActorDeathDropMode::ordinary:
+            field_mode = "ordinary";
+            break;
+        case ScriptActorDeathDropMode::resource_scene:
+            field_mode = "resource_scene";
+            break;
+        case ScriptActorDeathDropMode::unsupported:
+            field_mode = "unsupported";
+            break;
+        default:
+            return fail("actor death-drop field mode is invalid");
+        }
+        std::string_view actor_kind;
+        switch (facts.actor_kind) {
+        case ScriptActorDeathDropKind::default_actor:
+            actor_kind = "default_actor";
+            break;
+        case ScriptActorDeathDropKind::gargoyle:
+            actor_kind = "gargoyle";
+            break;
+        case ScriptActorDeathDropKind::hell_hound:
+            actor_kind = "hell_hound";
+            break;
+        case ScriptActorDeathDropKind::wendigo:
+            actor_kind = "wendigo";
+            break;
+        case ScriptActorDeathDropKind::other:
+            actor_kind = "other";
+            break;
+        default:
+            return fail("actor death-drop kind is invalid");
+        }
+        lua_pushlstring(state, field_mode.data(), field_mode.size());
+        lua_setfield(state, drop_facts_index, "field_mode");
+        lua_pushlstring(state, actor_kind.data(), actor_kind.size());
+        lua_setfield(state, drop_facts_index, "actor_kind");
+        if (facts.record_gate_nonzero.has_value()) {
+            lua_pushboolean(state, *facts.record_gate_nonzero);
+        } else {
+            lua_pushnil(state);
+        }
+        lua_setfield(state, drop_facts_index, "record_gate_nonzero");
+        if (facts.region_index.has_value()) {
+            lua_pushinteger(state, *facts.region_index);
+        } else {
+            lua_pushnil(state);
+        }
+        lua_setfield(state, drop_facts_index, "region_index");
+        lua_pushboolean(state, facts.pending_scene_record);
+        lua_setfield(state, drop_facts_index, "pending_scene_record");
+        lua_pushboolean(state, facts.pickup_slot_available);
+        lua_setfield(state, drop_facts_index, "pickup_slot_available");
+        lua_createtable(state, 0, 2);
+        lua_pushboolean(state, facts.gargoyle_horn_enabled);
+        lua_setfield(state, -2, "gargoyle_horn");
+        lua_pushboolean(state, facts.hell_hound_pelt_enabled);
+        lua_setfield(state, -2, "hell_hound_pelt");
+        lua_setfield(state, drop_facts_index, "special_drop_flags");
+        if (facts.equipped_drop_item_id.has_value()) {
+            lua_pushlstring(state, facts.equipped_drop_item_id->data(),
+                            facts.equipped_drop_item_id->size());
+        } else {
+            lua_pushnil(state);
+        }
+        lua_setfield(state, drop_facts_index, "equipped_drop_item_id");
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "death_drop");
     push_actor_facts(state, context.actor_facts);
     lua_setfield(state, -2, "actor_facts");
     if (context.physical_condition.has_value()) {
@@ -13651,6 +13726,85 @@ GameScriptRuntime::actor_heartbeat(
         return fail("actor_ai.heartbeat returned invalid named actor facts");
     }
     decision.actor_facts = returned_actor_facts;
+    lua_getfield(state, decision_table, "death_drop_request");
+    if (lua_type(state, -1) != LUA_TNIL) {
+        const auto pickup_index = lua_absindex(state, -1);
+        std::string pickup_kind;
+        std::uint32_t pickup_x = 0U;
+        std::uint32_t pickup_y = 0U;
+        if (!lua_istable(state, pickup_index) ||
+            !read_field_string(state, pickup_index, "kind", pickup_kind) ||
+            !read_field_integer(
+                state, pickup_index, "world_x",
+                std::numeric_limits<std::uint16_t>::max(),
+                                pickup_x) ||
+            !read_field_integer(
+                state, pickup_index, "world_y",
+                std::numeric_limits<std::uint16_t>::max(),
+                                pickup_y) ||
+            context.phase != ScriptActorHeartbeatPhase::behavior ||
+            !context.death_drop_facts.has_value() ||
+            !context.death_drop_facts->pickup_slot_available ||
+            !context.world_position.has_value() ||
+            context.actor_facts.lifecycle.dead ||
+            !decision.actor_facts.lifecycle.dead) {
+            return fail(
+                "actor_ai.heartbeat returned a death pickup outside a completed death transition");
+        }
+        const auto expected_x = static_cast<std::uint16_t>(
+            static_cast<std::uint32_t>(context.world_position->x) + 128U);
+        const auto expected_y = static_cast<std::uint16_t>(
+            static_cast<std::uint32_t>(context.world_position->y) + 128U);
+        if (pickup_x != expected_x || pickup_y != expected_y) {
+            return fail("actor_ai.heartbeat returned an invalid death pickup position");
+        }
+        ScriptWorldPickupRequest request{};
+        request.world_x = static_cast<std::uint16_t>(pickup_x);
+        request.world_y = static_cast<std::uint16_t>(pickup_y);
+        if (pickup_kind == "item") {
+            request.kind = ScriptWorldPickupKind::item;
+            if (!read_field_string(state, pickup_index, "item_id",
+                                   request.item_id) ||
+                !script_item_source_code_from_id(request.item_id).has_value()) {
+                return fail("actor_ai.heartbeat returned an unknown death-drop item");
+            }
+        } else if (pickup_kind == "clips") {
+            request.kind = ScriptWorldPickupKind::clips;
+            if (!read_field_integer(state, pickup_index, "amount", 3U,
+                                    pickup_x) || pickup_x == 0U) {
+                return fail("actor_ai.heartbeat returned an invalid clip pickup");
+            }
+            request.amount = static_cast<std::uint16_t>(pickup_x);
+        } else if (pickup_kind == "nuyen") {
+            request.kind = ScriptWorldPickupKind::nuyen;
+            if (!read_field_integer(state, pickup_index, "amount", 50U,
+                                    pickup_x) || pickup_x == 0U) {
+                return fail("actor_ai.heartbeat returned an invalid nuyen pickup");
+            }
+            request.amount = static_cast<std::uint16_t>(pickup_x);
+        } else if (pickup_kind == "gargoyle_horn") {
+            if (context.death_drop_facts->actor_kind !=
+                    ScriptActorDeathDropKind::gargoyle ||
+                !context.death_drop_facts->gargoyle_horn_enabled) {
+                return fail("actor_ai.heartbeat returned a gated Gargoyle Horn pickup");
+            }
+            request.kind = ScriptWorldPickupKind::gargoyle_horn;
+        } else if (pickup_kind == "hell_hound_pelt") {
+            if (context.death_drop_facts->actor_kind !=
+                    ScriptActorDeathDropKind::hell_hound ||
+                !context.death_drop_facts->hell_hound_pelt_enabled ||
+                !read_field_string(state, pickup_index, "linked_actor_id",
+                                   request.linked_actor_id) ||
+                request.linked_actor_id != actor_id) {
+                return fail("actor_ai.heartbeat returned an invalid Hound Pelt link");
+            }
+            request.kind = ScriptWorldPickupKind::hell_hound_pelt;
+        } else {
+            return fail("actor_ai.heartbeat returned an unknown death pickup kind");
+        }
+        decision.death_drop_request = std::move(request);
+    }
+    lua_pop(state, 1);
     if (!read_field_boolean(state, decision_table,
                             "combat_engagement_started",
                             decision.combat_engagement_started)) {
