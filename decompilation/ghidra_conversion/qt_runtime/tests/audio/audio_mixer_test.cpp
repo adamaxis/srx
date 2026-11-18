@@ -78,6 +78,9 @@ constexpr std::uint16_t kSelect = 0x24U;   // MenuSound.SELECT / audio.menu.comm
 constexpr std::uint16_t kMove = 0x25U;
 constexpr std::uint16_t kEnding = 0x13U;   // MusicId.ENDING, has loop points
 constexpr std::uint16_t kMatrix = 0x03U;   // MusicId.MATRIX
+constexpr std::uint16_t kSilentIntroPageMusicId = 17U;
+constexpr std::uint16_t kTimerADacMusicId = 44U;
+constexpr std::size_t kPlayableTableIds = 93U;
 
 // One scripted session; returns the captured PCM.
 std::vector<std::int16_t> scripted_session(AudioResourceBank& bank,
@@ -104,16 +107,19 @@ std::vector<std::int16_t> scripted_session(AudioResourceBank& bank,
 int main() {
     auto bank = make_bank();
     check(bank.error().empty(), "manifest loads: " + bank.error());
-    check(bank.rows().size() == 94U, "all 94 table ids render");
+    check(bank.rows().size() == kPlayableTableIds,
+          "all playable table ids render");
     for (const auto& [id, row] : bank.rows()) {
         check(bank.frame_count(id).has_value(),
               "id " + std::to_string(id) + " resolves to a 44.1 kHz FLAC (" + row.alias + ")");
         check(!row.enum_name.empty() && row.enum_name != "-",
               "id " + std::to_string(id) + " has an enum name");
     }
-    // 0x11 and 0x2C wait on YM Timer A; the timer-aware extractor renders them.
-    check(bank.row(0x11U) != nullptr && bank.row(0x2CU) != nullptr,
-          "Timer-A slots 0x11/0x2C are mapped");
+    // The paired intro request has no source chip note data; the Timer-A DAC
+    // slot remains available through its resource mapping.
+    check(bank.row(kSilentIntroPageMusicId) == nullptr &&
+              bank.row(kTimerADacMusicId) != nullptr,
+          "silent intro page stays unmapped while the Timer-A DAC is mapped");
 
     // Determinism and the 735-sample frame.
     std::vector<AudioEvent> events_a, events_b;

@@ -46504,6 +46504,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> opening_tail_rotor_qa_path;
         std::optional<std::filesystem::path> opening_landing_qa_path;
         std::optional<std::filesystem::path> opening_start_skip_qa_path;
+        std::optional<std::uint32_t> opening_start_skip_qa_frames;
+        std::optional<std::string> opening_start_skip_qa_stage;
         std::optional<std::filesystem::path> opening_wilderness_pan_qa_path;
         std::optional<std::filesystem::path> opening_ambush_flash_qa_path;
         std::optional<std::filesystem::path> opening_orc_timeline_qa_path;
@@ -48065,9 +48067,12 @@ int main(int argc, char** argv) {
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--opening-start-skip-qa" &&
-                index + 1 < argc) {
+                index + 3 < argc) {
                 opening_start_skip_qa_path =
                     std::filesystem::path(argv[++index]);
+                opening_start_skip_qa_frames = static_cast<std::uint32_t>(
+                    std::stoul(argv[++index]));
+                opening_start_skip_qa_stage = std::string(argv[++index]);
             }
             if (std::string(argv[index]) == "--opening-wilderness-pan-qa" &&
                 index + 1 < argc) {
@@ -77319,7 +77324,9 @@ int main(int argc, char** argv) {
         }
         if (opening_start_skip_qa_path.has_value()) {
             return window.run_opening_start_skip_qa(
-                *opening_start_skip_qa_path);
+                *opening_start_skip_qa_path,
+                *opening_start_skip_qa_frames,
+                *opening_start_skip_qa_stage);
         }
         if (opening_wilderness_pan_qa_path.has_value()) {
             return window.run_opening_wilderness_pan_qa(

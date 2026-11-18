@@ -664,7 +664,26 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_opening_landing_qa
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_opening_start_skip_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --opening-start-skip-qa
-                 "${CMAKE_CURRENT_BINARY_DIR}/opening-start-skip-qa")
+                 "${CMAKE_CURRENT_BINARY_DIR}/opening-start-skip-qa"
+                 60 schedule)
+
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_opening_start_skip_middle_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --opening-start-skip-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/opening-start-skip-middle-qa"
+                 900 stage2_first_loop)
+
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_opening_start_skip_late_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --opening-start-skip-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/opening-start-skip-late-qa"
+                 1600 orchestrator_loop)
+
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_opening_start_skip_chopper_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --opening-start-skip-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/opening-start-skip-chopper-qa"
+                 2400 stage_loop)
 
 # During 0x59D7C the wilderness body layers pan with FFDD08/FFDD0A while the
 # Indian's head SAT advances with DD46/DD48. Verify their relative placement

@@ -17,7 +17,6 @@ id	enum_name	kind	alias	loop_start	loop_end	persistent
 0x0E	MusicId.FIELD_0E	music	audio.music.resource.014	-	-	1
 0x0F	MusicId.FIELD_0F	music	audio.music.resource.015	-	-	1
 0x10	MusicId.INTRO_PAGE_1	music	audio.intro.title.stage-1	-	-	0
-0x11	MusicId.INTRO_PAGE_2	music	audio.intro.title.stage-2	-	-	0
 0x12	MusicId.INTRO_PAGE_3	music	audio.intro.title.stage-3	-	-	0
 0x13	MusicId.ENDING	music	audio.music.resource.019	345561	688046	0
 0x14	SoundId.MATRIX_NODE_14	sfx	audio.effects.resource.020	-	-	0

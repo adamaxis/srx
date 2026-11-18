@@ -36,6 +36,7 @@ void check(const bool condition, const std::string& what) {
 } // namespace
 
 int main(int argc, char** argv) {
+    constexpr std::uint16_t kSilentIntroPageMusicId = 17U;
     QCoreApplication application(argc, argv);
     const auto loaded = load_conversion_asset_catalog(
         std::filesystem::path(SHADOWRUN_GHIDRA_ASSET_ROOT));
@@ -101,6 +102,25 @@ int main(int argc, char** argv) {
         check(playback.playback_status_for_event(id).source_ready,
               "newly mapped id " + std::to_string(id));
     }
+
+    const auto silent_intro_page =
+        playback.playback_status_for_event(kSilentIntroPageMusicId);
+    check(!silent_intro_page.mapped &&
+              playback.alias_for_event(kSilentIntroPageMusicId).empty(),
+          "the source-silent intro page has no playable asset");
+    const auto before_silent_intro = playback.events().size();
+    playback.play_music(kSilentIntroPageMusicId);
+    const auto& silent_intro_events = playback.events();
+    check(silent_intro_events.size() == before_silent_intro + 2U &&
+              silent_intro_events[before_silent_intro].op == AudioOp::stop &&
+              silent_intro_events[before_silent_intro + 1U].op ==
+                  AudioOp::start &&
+              silent_intro_events[before_silent_intro + 1U].id ==
+                  kSilentIntroPageMusicId &&
+              !playback.mixer().music_id().has_value() &&
+              playback.playing_channel_count_for_event(
+                  kSilentIntroPageMusicId) == 0U,
+          "the ROM request is logged without starting a silent intro track");
 
     // Intro music and effects have different ROM gates. The opening's SFX
     // requests 0x2E/0x46/0x2F use 0x530DE (FFFC0A); stage music uses 0x530EA

@@ -1260,7 +1260,8 @@
     // Deterministic visual-audit entry point. The phase transitions and
     // opening frames are still driven by the converted source contracts;
     // this only exposes their existing Qt presentation as an image dump.
-    int prepare_opening_dump(const std::uint32_t selection) {
+    int prepare_opening_dump(const std::uint32_t selection,
+                             const bool use_source_timed_handoff = false) {
         host_frame_timer_.stop();
         opening_presentation_holds_enabled_ = false;
         if (selection > 2U) {
@@ -1312,7 +1313,15 @@
             advance_menu_input(kStartupMenuDown);
         }
         advance_menu_input(kStartupMenuA);
-        qa_finish_archetype_exit_fade();
+        if (use_source_timed_handoff) {
+            opening_presentation_holds_enabled_ = true;
+            while (state_.phase ==
+                   StartupIntegrationPhase::joshua_archetype_exit_fade) {
+                advance_one_source_frame();
+            }
+        } else {
+            qa_finish_archetype_exit_fade();
+        }
         if (state_.phase != StartupIntegrationPhase::opening_intro) {
             std::cerr << "startup dump: archetype did not start opening\n";
             return 3;
@@ -3883,19 +3892,34 @@
     }
 
     int run_opening_start_skip_qa(
-        const std::filesystem::path& output_directory) {
+        const std::filesystem::path& output_directory,
+        const std::uint32_t frames_before_a,
+        const std::string& expected_start_stage) {
+        constexpr std::uint16_t kFieldProfileSongId = 15U;
+        constexpr std::uint16_t kSilentIntroPageMusicId = 17U;
+        constexpr std::uint16_t kFirstSoundEffectId = 20U;
+        constexpr std::uint32_t kMaxChopperHandoffFrames = 5000U;
+        constexpr std::uint32_t kNormalSkipHandoffFrames = 35U;
+        constexpr std::uint32_t kStage2FirstLoopExtraFrame = 1U;
         host_frame_timer_.stop();
         std::filesystem::create_directories(output_directory);
         const auto audio_wav_path =
             output_directory / "opening-start-skip-audio.wav";
         set_audio_wav_output(audio_wav_path);
-        if (prepare_opening_dump(0U) != 0) {
+        if (prepare_opening_dump(0U, true) != 0) {
+            return 3;
+        }
+        if (audio_playback_->playback_status_for_event(
+                kSilentIntroPageMusicId).mapped) {
+            std::cerr << "opening Start-skip QA: the source-silent intro "
+                         "page has a playable host asset\n";
             return 3;
         }
 
-        // Let the opening advance before checking the input route. The ROM
-        // only latches Start as the skip edge; A must not leave this scene.
-        for (std::uint32_t frame = 0U; frame < 60U; ++frame) {
+        // Restore source-timed presentation holds before selecting an input
+        // frame. This advances the actual intro stages and blocking calls.
+        opening_presentation_holds_enabled_ = true;
+        for (std::uint32_t frame = 0U; frame < frames_before_a; ++frame) {
             advance_one_source_frame();
         }
         QKeyEvent a_press(QEvent::KeyPress, Qt::Key_Z, Qt::NoModifier);
@@ -3907,29 +3931,68 @@
             return 3;
         }
 
-        // prepare_opening_dump disables presentation holds for fixture setup.
-        // Restore the production blocking timeline before the Start edge.
-        opening_presentation_holds_enabled_ = true;
+        // The ROM only latches Start as the skip edge; A must not leave this
+        // scene. The trace position below is the input's sampled stage.
+        const auto start_input_stage =
+            opening_intro_stage_name(state_.opening_intro.stage);
+        if (start_input_stage != expected_start_stage) {
+            std::cerr << "opening Start-skip QA: input at frame "
+                      << frames_before_a + 1U << " reached stage "
+                      << start_input_stage << "; expected "
+                      << expected_start_stage << '\n';
+            return 3;
+        }
         const auto start_audio_event = audio_playback_->events().size();
         const auto start_mixer_frame = audio_playback_->mixer().frame();
         QKeyEvent start_press(QEvent::KeyPress, Qt::Key_Space,
                               Qt::NoModifier);
         const auto boundary_start = presentation_boundaries_.size();
         keyPressEvent(&start_press);
-        // 0x59CFE's 0x131C fades the scene for 34 VBlanks before the field.
         std::uint32_t skip_frames = 0U;
-        do {
-            advance_one_source_frame();
-            ++skip_frames;
-        } while (state_.phase == StartupIntegrationPhase::opening_intro &&
-                 skip_frames < 64U);
-        if (skip_frames != 35U) {
-            std::cerr << "opening Start-skip QA: 0x131C exit fade took "
-                      << skip_frames << " frames\n";
-            return 3;
+        const bool start_during_chopper =
+            expected_start_stage == "stage_loop";
+        const bool start_during_stage2_first_loop =
+            expected_start_stage == "stage2_first_loop";
+        if (start_during_chopper) {
+            // The airport loop clears the Start marker before its cab mode;
+            // the ROM continues into New Game instead of taking 0x59CFE yet.
+            while (state_.phase == StartupIntegrationPhase::opening_intro &&
+                   skip_frames < kMaxChopperHandoffFrames) {
+                advance_one_source_frame();
+                ++skip_frames;
+            }
+            if (state_.phase != StartupIntegrationPhase::field_ready ||
+                state_.opening_intro.stage == OpeningIntroStage::interrupted ||
+                skip_frames < 64U) {
+                std::cerr << "opening Start-skip QA: chopper Start did not "
+                             "continue through the ROM cab handoff; phase="
+                          << startup_integration_phase_name(state_.phase)
+                          << " stage="
+                          << opening_intro_stage_name(state_.opening_intro.stage)
+                          << " frames=" << skip_frames << '\n';
+                return 3;
+            }
+        } else {
+            // 0x59CFE's 0x131C fades the scene for 34 VBlanks before the field.
+            const auto expected_handoff_frames =
+                kNormalSkipHandoffFrames +
+                (start_during_stage2_first_loop
+                     ? kStage2FirstLoopExtraFrame
+                     : 0U);
+            do {
+                advance_one_source_frame();
+                ++skip_frames;
+            } while (state_.phase == StartupIntegrationPhase::opening_intro &&
+                     skip_frames < 64U);
+            if (skip_frames != expected_handoff_frames) {
+                std::cerr << "opening Start-skip QA: palette exit fade took "
+                          << skip_frames << " frames\n";
+                return 3;
+            }
         }
         if (state_.phase != StartupIntegrationPhase::field_ready ||
-            state_.opening_intro.stage != OpeningIntroStage::interrupted ||
+            (!start_during_chopper &&
+             state_.opening_intro.stage != OpeningIntroStage::interrupted) ||
             !state_.new_game_opening_completed ||
             !field_scene_runtime_.ready() ||
             !field_scene_runtime_.opening_auto_walk_active_for_dump()) {
@@ -4022,11 +4085,6 @@
         }
         const auto arrival_frames = *arrival_frame;
 
-        // Song ids: 0x59C72/0x59C92/0x59CB8 request the three intro songs;
-        // the New Game field profile word at 0x172CC0 selects the field song.
-        constexpr std::uint16_t kIntroSongFirst = 0x10U;
-        constexpr std::uint16_t kIntroSongLast = 0x12U;
-        constexpr std::uint16_t kFieldSong = 0x0FU;
         // 0x07F0 setup between its 0x53126 and the 0x2900 song request
         // (emulator: fade end 3554, song 3562).
         constexpr std::uint64_t kFieldSongSetupFrames = 8U;
@@ -4042,29 +4100,58 @@
             kFieldSongSetupFrames;
         constexpr std::uint64_t kStartToFieldVisibleFrames = 444U - 300U;
         static_assert(kStartToFieldSongFrames == 378U - 300U);
+        const auto expected_start_to_field_song_frames =
+            kStartToFieldSongFrames +
+            (start_during_stage2_first_loop
+                 ? kStage2FirstLoopExtraFrame
+                 : 0U);
+        const auto expected_start_to_field_visible_frames =
+            kStartToFieldVisibleFrames +
+            (start_during_stage2_first_loop
+                 ? kStage2FirstLoopExtraFrame
+                 : 0U);
 
         const auto& audio_events = audio_playback_->events();
         const auto audio_begin = audio_events.begin() +
             static_cast<std::ptrdiff_t>(start_audio_event);
-        const auto intro_start = std::find_if(
-            audio_begin, audio_events.end(), [](const AudioEvent& event) {
-                return event.op == AudioOp::start &&
-                       event.id >= kIntroSongFirst &&
-                       event.id <= kIntroSongLast;
-            });
-        if (intro_start != audio_events.end()) {
-            std::cerr << "opening Start-skip QA: intro music id 0x" << std::hex
-                      << intro_start->id << std::dec
-                      << " started after the Start edge\n";
-            return 3;
-        }
         const auto field_music = std::find_if(
             audio_begin, audio_events.end(), [](const AudioEvent& event) {
-                return event.op == AudioOp::start && event.id == kFieldSong;
+                return event.op == AudioOp::start &&
+                       event.id == kFieldProfileSongId;
             });
         if (field_music == audio_events.end()) {
-            std::cerr << "opening Start-skip QA: field music 0x0F did not "
+            std::cerr << "opening Start-skip QA: field profile song did not "
                          "start\n";
+            return 3;
+        }
+        std::vector<const AudioEvent*> music_starts;
+        for (auto event = audio_begin; event != audio_events.end(); ++event) {
+            if (event->op == AudioOp::start &&
+                event->id < kFirstSoundEffectId) {
+                music_starts.push_back(&*event);
+                if (event->id != kFieldProfileSongId) {
+                    std::cerr << "opening Start-skip QA: unexpected music "
+                                 "id " << event->id
+                              << " started after the Start edge\n";
+                    return 3;
+                }
+            }
+        }
+        if (music_starts.size() != 1U || music_starts.front() != &*field_music) {
+            std::cerr << "opening Start-skip QA: expected one post-Start song "
+                         "start for the field profile, got "
+                      << music_starts.size() << '\n';
+            return 3;
+        }
+        const auto field_song_stop = std::find_if(
+            audio_begin, field_music, [](const AudioEvent& event) {
+                return event.op == AudioOp::stop &&
+                       event.id == kFieldProfileSongId;
+            });
+        if (field_song_stop == field_music ||
+            field_song_stop->frame != field_music->frame) {
+            std::cerr << "opening Start-skip QA: field profile did not issue "
+                         "same-frame stop then start\n";
             return 3;
         }
         std::vector<std::uint64_t> fade_end_frames;
@@ -4075,35 +4162,41 @@
         }
         if (fade_end_frames.size() != 2U) {
             std::cerr << "opening Start-skip QA: expected exactly two "
-                         "op-0x16 fades before 0x0F, got "
+                         "source fades before the field song, got "
                       << fade_end_frames.size() << '\n';
             return 3;
         }
         if (field_music->frame !=
             fade_end_frames.back() + kFieldSongSetupFrames) {
-            std::cerr << "opening Start-skip QA: 0x0F started "
+            std::cerr << "opening Start-skip QA: field song started "
                       << (field_music->frame - fade_end_frames.back())
                       << " frames after the second fade; expected "
                       << kFieldSongSetupFrames << '\n';
             return 3;
         }
-        if (field_music->frame - start_mixer_frame != kStartToFieldSongFrames) {
-            std::cerr << "opening Start-skip QA: 0x0F started "
+        if (!start_during_chopper &&
+            field_music->frame - start_mixer_frame !=
+                expected_start_to_field_song_frames) {
+            std::cerr << "opening Start-skip QA: field song started "
                       << (field_music->frame - start_mixer_frame)
-                      << " frames after Start; emulator "
-                      << kStartToFieldSongFrames << '\n';
+                      << " frames after Start; ROM route expects "
+                      << expected_start_to_field_song_frames << '\n';
             return 3;
         }
         if (!field_visible_frame.has_value() ||
-            *field_visible_frame - start_mixer_frame !=
-                kStartToFieldVisibleFrames) {
+            (!start_during_chopper &&
+             *field_visible_frame - start_mixer_frame !=
+                 expected_start_to_field_visible_frames) ||
+            (start_during_chopper &&
+             *field_visible_frame - field_music->frame !=
+                 kStartToFieldVisibleFrames - kStartToFieldSongFrames)) {
             std::cerr << "opening Start-skip QA: field became visible "
                       << (field_visible_frame.has_value()
                               ? static_cast<std::int64_t>(
                                     *field_visible_frame - start_mixer_frame)
                               : -1)
-                      << " frames after Start; emulator "
-                      << kStartToFieldVisibleFrames << '\n';
+                      << " frames after Start; source route expects "
+                      << expected_start_to_field_visible_frames << '\n';
             return 3;
         }
 
@@ -4131,7 +4224,8 @@
         }
         std::vector<std::uint64_t> fade_start_frames;
         for (auto event = audio_begin; event != audio_events.end(); ++event) {
-            if (event->op == AudioOp::attenuate && event->id == kGemsFadeStep) {
+            if (event->op == AudioOp::attenuate &&
+                event->id == kGemsFadeStep) {
                 fade_start_frames.push_back(event->frame);
             }
         }
@@ -4243,12 +4337,14 @@
             std::cerr << "opening Start-skip QA: could not write trace\n";
             return 3;
         }
-        trace << "result\topening_stage\topening_frame\tfield_scene\t"
+        trace << "result\topening_stage\topening_frame\tinput_frame\t"
+                 "input_stage\tfield_scene\t"
                  "arrival_frames\tstart_x\tstart_y\tarrival_x\tarrival_y\t"
                  "arrival_speaker\timage\tarrival_image\n"
               << "start_skipped\t"
               << opening_intro_stage_name(state_.opening_intro.stage) << '\t'
               << state_.opening_intro.source_frame << '\t'
+              << frames_before_a + 1U << '\t' << start_input_stage << '\t'
               << field_scene_runtime_.state().field_scene_buffers
                      .scene_reference
               << '\t' << arrival_frames << '\t' << field_start_position.x
@@ -4262,10 +4358,50 @@
             std::cerr << "opening Start-skip QA: trace write failed\n";
             return 3;
         }
+        std::ofstream audio_trace(output_directory / "audio-events.tsv");
+        if (!audio_trace) {
+            std::cerr << "opening Start-skip QA: could not write audio trace\n";
+            return 3;
+        }
+        audio_trace << "mixer_frame\trelative_to_start\tcommand\tkind\tid\n";
+        for (const auto& event : audio_events) {
+            const auto relative = static_cast<std::int64_t>(event.frame) -
+                                  static_cast<std::int64_t>(start_mixer_frame);
+            const char* command = "unknown";
+            const char* kind = "resource";
+            switch (event.op) {
+            case AudioOp::start:
+                command = "start";
+                kind = event.id < kFirstSoundEffectId ? "music" : "effect";
+                break;
+            case AudioOp::stop:
+                command = "stop";
+                kind = event.id < kFirstSoundEffectId ? "music" : "effect";
+                break;
+            case AudioOp::stop_all:
+                command = "stop_all";
+                kind = "all";
+                break;
+            case AudioOp::attenuate:
+                command = "fade";
+                kind = "level";
+                break;
+            }
+            audio_trace << event.frame << '\t' << relative << '\t' << command
+                        << '\t' << kind << '\t' << event.id << '\n';
+        }
+        audio_trace.close();
+        if (!audio_trace) {
+            std::cerr << "opening Start-skip QA: audio trace write failed\n";
+            return 3;
+        }
         std::cout << "opening_start_skip_qa=passed opening_frame="
                   << state_.opening_intro.source_frame << " scene="
                   << field_scene_runtime_.state().field_scene_buffers
                          .scene_reference
+                  << " input_frame=" << frames_before_a + 1U
+                  << " input_stage=" << start_input_stage
+                  << " handoff_frames=" << skip_frames
                   << " arrival_frames=" << arrival_frames
                   << " music_frame=" << field_music->frame
                   << " motel_fade_frame=" << motel_fade

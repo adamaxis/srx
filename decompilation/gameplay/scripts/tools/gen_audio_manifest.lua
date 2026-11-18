@@ -35,8 +35,10 @@ for _, row in ipairs(read_tsv(root .. "/audio/loop-points.tsv")) do loops[row.al
 -- known were extracted under a semantic alias; 0x5C/0x5D play source-cadenced
 -- composites of all ROM starts (assets/audio/README.md).
 local semantic = {
-    [0x10] = "audio.intro.title.stage-1", [0x11] = "audio.intro.title.stage-2",
-    [0x12] = "audio.intro.title.stage-3",
+    [E.MusicId.INTRO_PAGE_1] = "audio.intro.title.stage-1",
+    -- INTRO_PAGE_2 is requested in the ROM, but its exact paired driver
+    -- sequence has no chip key-on or PSG tone; keep it out of the asset table.
+    [E.MusicId.INTRO_PAGE_3] = "audio.intro.title.stage-3",
     [0x16] = "audio.field.effect-016", [0x24] = "audio.menu.command-024",
     [0x29] = "audio.menu.command-029", [0x30] = "audio.field.world-effect-030",
     [0x5C] = "audio.intro.sega-logo-shock-sequence",
