@@ -1,0 +1,9 @@
+# walkthrough_5: segment 4 Seattle/Stark: b13, b23, b24, b25, b29, b14
+Worktree <WT>, build <BUILD>, tip <TIP>. Do NOT fetch (.git is read-only). Headless only.
+Design: /workspace/review/walkthrough_DESIGN.md (read sections 3-4 first). Spine table is in section 3.
+ROM (verify): cmd 0x1C 0x2193A sets b13 (FFDD64=0x0D), FFFC30 b5 clr / b23 set, page 0x105780. Cmd 0x3E 0x21EF8 sets b23 (holopix). 0x1FDEA sets b24 (Medicine Lodge turned away; 0x1FDDC tests !b24). 0x1F890 needs b23 && b24 && !b25, then 0x1F8C2 / cmd 0x61 0x22672 set b25 (FFDD64=0x19). 0x1F940 sets b29 at the heart turn-in (FFFC34 b20 clr, FFFC2A b9). Trigger 14 0x54152 needs b25 && !b14, loc 3/2, root 0x11B7F4, and 0x541D8 sets b14.
+The Seattle General chain was ported in 86e9b933. Reuse its tests as references, but drive it via real input here.
+Rebuild (`cmake --build <BUILD> -j8`), then run the full suite: `. /workspace/tcenv.sh; cd <BUILD>; QT_QPA_PLATFORM=offscreen SRX_HEADLESS=1 SDL_AUDIODRIVER=dummy ALSOFT_DRIVERS=null ctest -j8 --timeout 900`, and save the output to out/ctest_full.log. The baseline is 5 failures: gameplay_lua_suites (equiv_units), rom_coverage, rom_coverage_baseline_semantics, rom_byte_reachability, b3_outside_range_triage_check.
+Rules: headless only. Real pad input through the runtime; never poke the flag a step is proving. Named enums/constants (E.StoryFact etc.), raw hex only in comments. A step whose output shows "warning: dialogue dead end" fails; port the missing page from the ROM instead (separate small commit) or stop the segment there and record it. Never weaken tests.
+Don't commit. Write out/STATUS.md (what's green, reach line, first broken step with ROM evidence) and end it with "DONE".
+Budget: about 3 hours. Ship the smallest ROM-correct slice; leave the rest in out/DIAG.md.

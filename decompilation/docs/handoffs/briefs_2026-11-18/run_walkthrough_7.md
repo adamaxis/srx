@@ -1,0 +1,9 @@
+# walkthrough_7: segment 6 Renraku: b11 Mako, b15, b16 Ito, b12, b26-b28
+Worktree <WT>, build <BUILD>, tip <TIP>. Do NOT fetch (.git is read-only). Headless only.
+Design: /workspace/review/walkthrough_DESIGN.md (read sections 3-4 first). Spine table is in section 3.
+ROM (verify): Mako callback 0x53FFC: FFFBFA += 2 (cap 8), item d0=2, sets b11 at 0x54026, FFFC30 b20/b21 clr / b24 set, FFFC38 b17 clr, 0x1F1E0. Trigger 15 0x54222 (loc 0/3, b11 && !b15) tail 0x5427A. Ito 0x5428C (FFFBFA == 9) -> 0x542AA sets b16. 0x540D6 needs b16 && !b12 && FFFBF8 == 0x28 and sets b12 (0x5D0DE / 0x1E04A); confirm whether 0x28 is a matrix location. Cmds 0x46/0x47 (0x22018 / 0x22072) set b26 / b27 (FFDD64 0x1A / 0x1B). Cmd 0x40 0x21F58 sets b28.
+Fights: real combat with a fixed seed and party. Assert the defeat callback fired, not roll values. Matrix: real headless matrix session; test-deck seeding is party setup only.
+Rebuild (`cmake --build <BUILD> -j8`), then run the full suite: `. /workspace/tcenv.sh; cd <BUILD>; QT_QPA_PLATFORM=offscreen SRX_HEADLESS=1 SDL_AUDIODRIVER=dummy ALSOFT_DRIVERS=null ctest -j8 --timeout 900`, and save the output to out/ctest_full.log. The baseline is 5 failures: gameplay_lua_suites (equiv_units), rom_coverage, rom_coverage_baseline_semantics, rom_byte_reachability, b3_outside_range_triage_check.
+Rules: headless only. Real pad input through the runtime; never poke the flag a step is proving. Named enums/constants (E.StoryFact etc.), raw hex only in comments. A step whose output shows "warning: dialogue dead end" fails; port the missing page from the ROM instead (separate small commit) or stop the segment there and record it. Never weaken tests.
+Don't commit. Write out/STATUS.md (what's green, reach line, first broken step with ROM evidence) and end it with "DONE".
+Budget: about 3 hours. Ship the smallest ROM-correct slice; leave the rest in out/DIAG.md.

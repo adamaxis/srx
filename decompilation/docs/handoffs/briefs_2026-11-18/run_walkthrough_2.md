@@ -1,0 +1,10 @@
+# walkthrough_2: save round-trip of every story word + checkpoint fixtures
+Worktree <WT>, build <BUILD>, tip <TIP>. Do NOT fetch (.git is read-only). Headless only.
+Design: /workspace/review/walkthrough_DESIGN.md (read sections 3-4 first). Spine table is in section 3.
+1. In the walkthrough driver, after segment 1, capture_game_save_snapshot -> restore into a fresh runtime -> compare every word the driver snapshots (FFFC1E/22/26/27/2A/2C/30/34/38/40, FFFBEC run state, party, inventory, nuyen, karma, scene/position). field_scene_runtime_save.cpp lines ~477-509 write a `story` object. Check each field's restore path too.
+2. Any word that doesn't survive is a real save bug: fix it in the save adapter (C++ persistence only), with a regression test that fails on the parent. Correct the stale header comments in field_scene_runtime.hpp (~2805-2820) only if your test proves they are wrong.
+3. Add `--from-fixture` to the driver. Write tests_lua/fixtures/walkthrough/seg1_end.json (driver-generated, header with commit). Add a determinism test: regenerate seg1_end from New Game and diff it byte-exact against the checked-in fixture.
+Rebuild (`cmake --build <BUILD> -j8`), then run the full suite: `. /workspace/tcenv.sh; cd <BUILD>; QT_QPA_PLATFORM=offscreen SRX_HEADLESS=1 SDL_AUDIODRIVER=dummy ALSOFT_DRIVERS=null ctest -j8 --timeout 900`, and save the output to out/ctest_full.log. The baseline is 5 failures: gameplay_lua_suites (equiv_units), rom_coverage, rom_coverage_baseline_semantics, rom_byte_reachability, b3_outside_range_triage_check.
+Rules: headless only. Real pad input through the runtime; never poke the flag a step is proving. Named enums/constants (E.StoryFact etc.), raw hex only in comments. A step whose output shows "warning: dialogue dead end" fails; port the missing page from the ROM instead (separate small commit) or stop the segment there and record it. Never weaken tests.
+Don't commit. Write out/STATUS.md (what's green, reach line, first broken step with ROM evidence) and end it with "DONE".
+Budget: about 3 hours. Ship the smallest ROM-correct slice; leave the rest in out/DIAG.md.
