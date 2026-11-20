@@ -111,6 +111,13 @@ struct FieldFramePresentationState {
     bool redraw_requested = false;
 };
 
+struct FieldWeaponProjectileSnapshotForDump {
+    std::string shooter_id;
+    SceneRunnerPosition position{};
+    std::uint16_t heading = 0U;
+    std::int16_t attack_successes = 0;
+};
+
 struct FieldEffectMarkerContext {
     bool force_index_five_marker_zero = false; // FFE184
     bool force_index_two_marker_three = false; // FFE187
@@ -499,6 +506,14 @@ public:
         std::uint16_t source_order) const;
     std::optional<FieldWorldActorSlot> default_actor_record_slot_for_dump(
         std::uint16_t source_order) const noexcept;
+    std::optional<std::string> default_actor_instance_id_for_dump(
+        std::uint16_t source_order) const;
+    std::optional<SceneRunnerPosition> default_actor_world_position_for_dump(
+        std::uint16_t source_order) const noexcept;
+    std::optional<std::int16_t> default_actor_action_delay_for_dump(
+        std::uint16_t source_order) const noexcept;
+    std::optional<std::string> default_actor_source_action_dispatch_for_dump(
+        std::uint16_t source_order) const;
     std::optional<std::string> default_actor_script_profile_for_dump(
         std::uint16_t source_order) const;
     std::optional<std::string> default_actor_ai_package_for_dump(
@@ -1973,6 +1988,8 @@ public:
     field_weapon_primary_heading_offsets_for_dump() const noexcept;
     std::optional<std::uint16_t>
     field_weapon_primary_heading_for_dump() const noexcept;
+    std::vector<FieldWeaponProjectileSnapshotForDump>
+    field_weapon_primary_snapshots_for_dump() const;
     std::optional<std::uint32_t>
     field_weapon_primary_remaining_clear_steps_for_dump() const noexcept;
     // Signed +0x9F written by the projectile behavior service. ROM 0x55640
@@ -2442,6 +2459,7 @@ private:
         bool source_default_item_action_profile = false;
         std::optional<scripting::ScriptActorItemSpawnResult>
             source_item_spawn_result;
+        std::optional<std::string> last_source_action_dispatch;
         // The static list is rebuilt from its ROM template on scene entry;
         // combatant holds the live, damageable copy for this visit.
         scripting::ScriptCombatantFacts initial_combatant{};

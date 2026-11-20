@@ -602,6 +602,29 @@ FieldSceneRuntime::field_weapon_primary_heading_for_dump() const noexcept {
 
 
 #ifdef SHADOWRUN_QT_QA_DRIVER
+std::vector<FieldWeaponProjectileSnapshotForDump>
+FieldSceneRuntime::field_weapon_primary_snapshots_for_dump() const {
+    std::vector<FieldWeaponProjectileSnapshotForDump> result;
+    for (const auto& spawn : field_weapon_projectiles_) {
+        if (!spawn.primary_active) {
+            continue;
+        }
+        const auto shooter_id = spawn.shooter_party_slot.has_value()
+            ? "party.runner." + std::to_string(*spawn.shooter_party_slot)
+            : spawn.shooter_actor_id;
+        result.push_back(FieldWeaponProjectileSnapshotForDump{
+            shooter_id,
+            SceneRunnerPosition{spawn.primary_record.position_x,
+                                spawn.primary_record.position_y},
+            spawn.primary_record.heading,
+            static_cast<std::int16_t>(spawn.primary_record.action_result)});
+    }
+    return result;
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
+
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<EntityHeadingOffsets>
 FieldSceneRuntime::field_weapon_primary_heading_offsets_for_dump() const
     noexcept {
@@ -1733,6 +1756,87 @@ FieldSceneRuntime::default_actor_record_slot_for_dump(
     return actor == field_default_actors_.end()
                ? std::nullopt
                : actor->source_record_slot;
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
+
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
+std::optional<std::string>
+FieldSceneRuntime::default_actor_instance_id_for_dump(
+    const std::uint16_t source_order) const {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    const auto actor = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference, source_order](
+            const DefaultFieldActorPresentation& candidate) {
+            return candidate.scene_reference == scene_reference &&
+                   candidate.active &&
+                   candidate.source_order == source_order;
+        });
+    return actor == field_default_actors_.end() ||
+                   actor->actor_instance_id.empty()
+               ? std::nullopt
+               : std::optional<std::string>{actor->actor_instance_id};
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
+
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
+std::optional<std::string>
+FieldSceneRuntime::default_actor_source_action_dispatch_for_dump(
+    const std::uint16_t source_order) const {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    const auto actor = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference, source_order](
+            const DefaultFieldActorPresentation& candidate) {
+            return candidate.scene_reference == scene_reference &&
+                   candidate.active &&
+                   candidate.source_order == source_order;
+        });
+    return actor == field_default_actors_.end()
+               ? std::nullopt
+               : actor->last_source_action_dispatch;
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
+
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
+std::optional<std::int16_t>
+FieldSceneRuntime::default_actor_action_delay_for_dump(
+    const std::uint16_t source_order) const noexcept {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    const auto actor = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference, source_order](
+            const DefaultFieldActorPresentation& candidate) {
+            return candidate.scene_reference == scene_reference &&
+                   candidate.active &&
+                   candidate.source_order == source_order;
+        });
+    return actor == field_default_actors_.end()
+               ? std::nullopt
+               : std::optional<std::int16_t>{actor->action_delay};
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
+
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
+std::optional<SceneRunnerPosition>
+FieldSceneRuntime::default_actor_world_position_for_dump(
+    const std::uint16_t source_order) const noexcept {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    const auto actor = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference, source_order](
+            const DefaultFieldActorPresentation& candidate) {
+            return candidate.scene_reference == scene_reference &&
+                   candidate.active &&
+                   candidate.source_order == source_order;
+        });
+    return actor == field_default_actors_.end()
+               ? std::nullopt
+               : std::optional<SceneRunnerPosition>{actor->world_position};
 }
 #endif // SHADOWRUN_QT_QA_DRIVER
 

@@ -1688,6 +1688,15 @@ add_shadowrun_qt_qa_case(
     --field-gang-contract-target-entry-qa
     "${CMAKE_CURRENT_BINARY_DIR}/field-gang-contract-target-entry-qa")
 
+# Enter the same ROM-listed Eye-Fivers contract party, preserve the Human
+# Samurai starter record, and exercise repeated player/NPC firearm services.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_eye_fivers_fight_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-archetype samurai
+    --field-eye-fivers-fight-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-eye-fivers-fight-qa")
+
 # Continue the ordinary-input event-table route into scene 26, cross its ROM
 # event-29 elevator trigger, animate the two independently tracked floor
 # labels at the 17x8 cadence, then load the selected child scene through its

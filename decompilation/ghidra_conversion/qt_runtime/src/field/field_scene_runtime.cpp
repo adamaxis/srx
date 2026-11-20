@@ -5963,6 +5963,10 @@ void FieldSceneRuntime::advance_default_field_actors(
         actor.ai_target_heading = decision->ai_target_heading.value_or(0U);
         actor.ai_target_distance = decision->ai_target_distance.value_or(0U);
         actor.action_delay = decision->action_delay;
+        if (decision->source_action_dispatch.has_value()) {
+            actor.last_source_action_dispatch =
+                decision->source_action_dispatch;
+        }
         if (decision->spell_action_resolution.has_value()) {
             const auto& resolution = *decision->spell_action_resolution;
             actor.combatant.last_action_successes = resolution.roll_attempted
@@ -14232,7 +14236,10 @@ void FieldSceneRuntime::advance_field_weapon_projectiles(
         candidate.world_y = actor.world_position.y;
         candidate.flags = actor.source_record_flags;
         candidate.interaction_flags = actor.source_interaction_flags;
-        candidate.behavior_flags = actor.source_behavior_flags;
+        // ROM 0x15B58-0x15B9C checks candidate +0x9E bit 4 when
+        // the projectile's +0x10 bit 3 selects compatibility filtering.
+        // +0x9E is the actor's spawn-state flags, not its Lua movement state.
+        candidate.behavior_flags = actor.source_spawn_state_flags;
         candidate.collision_enabled = actor.physical_meter != 0U;
         live_collision_target_ids[slot] = actor.actor_instance_id;
     }
@@ -14712,8 +14719,19 @@ void FieldSceneRuntime::advance_field_weapon_projectiles(
             if (target_id.empty()) {
                 source_boundary("field.combat.weapon_hit_target_id_missing");
             } else if (decision->combat_meter_update.has_value()) {
+                const auto& update = *decision->combat_meter_update;
+                const auto shooter_id = spawn.shooter_party_slot.has_value()
+                    ? "party.runner." + std::to_string(
+                          *spawn.shooter_party_slot)
+                    : spawn.shooter_actor_id;
+                source_boundary(
+                    "field.combat.weapon_hit_attribution:" + shooter_id +
+                    ":" + update.target_id + ":changed=" +
+                    (update.changed ? "1" : "0") + ":physical=" +
+                    (update.physical ? "1" : "0") + ":successes=" +
+                    std::to_string(movement.attack_successes));
                 if (apply_script_combat_meter_update(
-                        *decision->combat_meter_update)) {
+                        update)) {
                     source_boundary("field.combat.weapon_hit_resolved:" +
                                     target_id);
                 }

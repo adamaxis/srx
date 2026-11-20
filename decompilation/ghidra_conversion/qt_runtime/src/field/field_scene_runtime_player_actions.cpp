@@ -1276,7 +1276,9 @@ bool FieldSceneRuntime::probe_action_line_clear(
         candidate.flags = target.source_record_flags;
         candidate.interaction_flags =
             target.source_interaction_flags;
-        candidate.behavior_flags = target.source_behavior_flags;
+        // ROM 0x14D8E enters 0x15ABA, whose compatibility check reads the
+        // candidate's +0x9E spawn-state flags.
+        candidate.behavior_flags = target.source_spawn_state_flags;
         candidate.collision_enabled =
             target.physical_meter != 0U;
     }

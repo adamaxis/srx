@@ -20870,7 +20870,8 @@ int run_scene1_ilene_gated_entry_qa(
 int run_gang_contract_target_entry_qa(
     const StartupIntegrationState& startup_state,
     const std::filesystem::path& asset_root,
-    const std::filesystem::path& output) {
+    const std::filesystem::path& output,
+    const bool fight_only = false) {
     struct RouteCase {
         std::string_view name;
         std::uint8_t scene_id;
@@ -20920,6 +20921,10 @@ int run_gang_contract_target_entry_qa(
     if (output_error) return 3;
 
     for (const auto& test_case : kCases) {
+        if (fight_only &&
+            test_case.name != "active-eye-fivers-contract") {
+            continue;
+        }
         const auto case_output = output / test_case.name;
         std::filesystem::create_directories(case_output, output_error);
         if (output_error) return 3;
@@ -21177,13 +21182,588 @@ int run_gang_contract_target_entry_qa(
               << (test_case.expect_entry_dialogue ? "rom_passage" : "none")
               << "\tdestination=" << test_case.expected_scene << '\n';
         if (!trace) return 3;
+
+        if (fight_only) {
+            // ROM 0x1D6D72 links these four ordered profile records. Preserve
+            // each template's own attributes, item action, ammo, and live
+            // meters so this route exercises the real Scene-15 contract fight.
+            constexpr std::array<std::string_view, 4U> kEyeFiverProfiles{{
+                "mafia_eye5r_k07_item0c", "eye5r_2_k07_item04",
+                "eye5r_1_k07_item01", "eye5r_1_k07_item01"}};
+            constexpr std::array<std::uint8_t, 4U> kEyeFiverItems{{
+                12U, 4U, 1U, 1U}};
+            for (std::uint16_t actor = 0U;
+                 actor < kEyeFiverProfiles.size(); ++actor) {
+                if (field_scene.default_actor_script_profile_for_dump(actor) !=
+                        std::optional<std::string>{
+                            std::string{kEyeFiverProfiles[actor]} } ||
+                    field_scene.default_actor_weapon_item_for_dump(actor) !=
+                        std::optional<std::uint8_t>{kEyeFiverItems[actor]} ||
+                    !field_scene.default_actor_ammunition_remaining_for_dump(
+                        actor).has_value() ||
+                    field_scene.default_actor_ammunition_remaining_for_dump(
+                        actor).value_or(0U) == 0U ||
+                    field_scene.default_actor_physical_meter_for_dump(actor) !=
+                        std::optional<std::uint8_t>{10U}) {
+                    std::cerr << "Eye-Fivers fight QA: ROM list member did not "
+                                 "load its profile, item, ammo, and meter"
+                              << " source_order=" << actor << " profile="
+                              << field_scene.default_actor_script_profile_for_dump(
+                                     actor).value_or("<none>")
+                              << " item="
+                              << static_cast<unsigned>(
+                                     field_scene.default_actor_weapon_item_for_dump(
+                                         actor).value_or(0U))
+                              << " ammo="
+                              << field_scene.default_actor_ammunition_remaining_for_dump(
+                                     actor).value_or(0U)
+                              << " physical="
+                              << static_cast<unsigned>(
+                                     field_scene.default_actor_physical_meter_for_dump(
+                                         actor).value_or(0U)) << '\n';
+                    return 3;
+                }
+            }
+
+            auto& runner = field_scene.active_runner_record();
+            constexpr std::array<std::uint8_t, 6U> kSamuraiAttributes{{
+                4U, 3U, 4U, 1U, 2U, 4U}};
+            if (runner.species_index != 0U || runner.archetype_index != 2U ||
+                !std::equal(kSamuraiAttributes.begin(),
+                            kSamuraiAttributes.end(),
+                            runner.attributes.begin()) ||
+                runner.skills[1U] != 4U || runner.equipped_item_code != 2U ||
+                runner.ammo_rounds == 0U) {
+                std::cerr << "Eye-Fivers fight QA: player is not the ROM "
+                             "Human Samurai starter from 0x7291A"
+                          << " race=" << static_cast<unsigned>(runner.species_index)
+                          << " class=" << static_cast<unsigned>(runner.archetype_index)
+                          << " item=" << static_cast<unsigned>(runner.equipped_item_code)
+                          << " ammo=" << static_cast<unsigned>(runner.ammo_rounds)
+                          << '\n';
+                return 3;
+            }
+
+            std::ofstream fight_trace(case_output / "fight.tsv",
+                                     std::ios::trunc);
+            std::ofstream boundary_trace(case_output / "fight-boundaries.tsv",
+                                        std::ios::trunc);
+            std::ofstream projectile_trace(
+                case_output / "player-projectiles.tsv", std::ios::trunc);
+            if (!fight_trace || !boundary_trace || !projectile_trace) return 3;
+            fight_trace << "frame\tinput\tplayer_x\tplayer_y\tplayer_physical"
+                           "\tplayer_mental\tplayer_ammo\tselected\t"
+                           "eye0_physical\teye0_ammo\teye0_actions\teye0_target"
+                           "\teye0_distance\teye1_physical\teye1_ammo"
+                           "\teye1_actions\teye1_target\teye1_distance"
+                           "\teye2_physical\teye2_ammo\teye2_actions"
+                           "\teye2_target\teye2_distance\teye3_physical"
+                           "\teye3_ammo\teye3_actions\teye3_target"
+                           "\teye3_distance\teye0_x\teye0_y\teye0_delay"
+                           "\teye0_dispatch\teye1_x\teye1_y\teye1_delay"
+                           "\teye1_dispatch\teye2_x\teye2_y\teye2_delay"
+                           "\teye2_dispatch\teye3_x\teye3_y\teye3_delay"
+                           "\teye3_dispatch\teye0_animation"
+                           "\teye1_animation\teye2_animation"
+                           "\teye3_animation\tplayer_shots"
+                           "\tnpc_shots\thits\n";
+            boundary_trace << "frame\tboundary\n";
+            projectile_trace << "frame\tshooter\tprojectile_x"
+                                "\tprojectile_y\theading\tattack_successes"
+                                "\tplayer_x\tplayer_y\ttarget_x\ttarget_y\n";
+
+            std::array<std::string, 4U> eye_fiver_ids{};
+            for (std::uint16_t actor = 0U; actor < 4U; ++actor) {
+                eye_fiver_ids[actor] =
+                    field_scene.default_actor_instance_id_for_dump(actor)
+                        .value_or("");
+            }
+            if (std::any_of(eye_fiver_ids.begin(), eye_fiver_ids.end(),
+                            [](const auto& id) { return id.empty(); })) {
+                std::cerr << "Eye-Fivers fight QA: could not map all four ROM "
+                             "source orders to live actor IDs\n";
+                return 3;
+            }
+
+            std::array<std::uint8_t, 4U> initial_eye_meters{};
+            std::array<std::uint16_t, 4U> eye_shots{};
+            for (std::size_t actor = 0U; actor < initial_eye_meters.size();
+                 ++actor) {
+                initial_eye_meters[actor] =
+                    field_scene.default_actor_physical_meter_for_dump(
+                        static_cast<std::uint16_t>(actor)).value_or(0U);
+            }
+            const auto initial_player_meter = runner.delay_meter;
+            const auto initial_player_ammo = runner.ammo_rounds;
+            std::size_t player_shots = 0U;
+            std::size_t npc_shots = 0U;
+            std::size_t resolved_hits = 0U;
+            std::size_t player_physical_hits = 0U;
+            std::size_t npc_physical_hits = 0U;
+            std::size_t npc_player_attack_resolutions = 0U;
+            std::size_t npc_eye_fiver_physical_hits = 0U;
+            const auto active_runner_id = "party.runner." + std::to_string(
+                field_scene.field_active_party_slot_for_dump());
+            std::size_t boundary_cursor = boundaries.size();
+            const auto capture_boundaries = [&] {
+                bool added = false;
+                while (boundary_cursor < boundaries.size()) {
+                    const auto& boundary = boundaries[boundary_cursor++];
+                    boundary_trace << frame << '\t' << boundary << '\n';
+                    added = true;
+                    if (boundary == "field.combat.player_weapon_spawned") {
+                        ++player_shots;
+                    } else if (boundary.rfind(
+                                   "field.actor.weapon_projectile_spawned:",
+                                   0U) == 0U) {
+                        ++npc_shots;
+                        for (std::size_t actor = 0U;
+                             actor < eye_fiver_ids.size(); ++actor) {
+                            const auto& actor_id = eye_fiver_ids[actor];
+                            if (boundary.size() >= actor_id.size() &&
+                                boundary.compare(
+                                    boundary.size() - actor_id.size(),
+                                    actor_id.size(), actor_id) == 0) {
+                                ++eye_shots[actor];
+                            }
+                        }
+                    } else if (boundary.rfind(
+                                   "field.combat.weapon_hit_resolved:",
+                                   0U) == 0U) {
+                        ++resolved_hits;
+                    } else if (boundary.rfind(
+                                   "field.combat.weapon_hit_attribution:",
+                                   0U) == 0U) {
+                        const std::string_view prefix =
+                            "field.combat.weapon_hit_attribution:";
+                        const auto shooter_start = prefix.size();
+                        const auto target_start = boundary.find(':',
+                                                                  shooter_start);
+                        const auto target_end = boundary.find(':',
+                                                               target_start + 1U);
+                        if (target_start != std::string::npos &&
+                            target_end != std::string::npos) {
+                            const auto shooter = boundary.substr(
+                                shooter_start, target_start - shooter_start);
+                            const auto target_id = boundary.substr(
+                                target_start + 1U,
+                                target_end - target_start - 1U);
+                            const bool physical_hit =
+                                boundary.find(":changed=1:physical=1:") !=
+                                std::string::npos;
+                            if (shooter == active_runner_id &&
+                                std::find(eye_fiver_ids.begin(),
+                                          eye_fiver_ids.end(), target_id) !=
+                                    eye_fiver_ids.end() && physical_hit) {
+                                ++player_physical_hits;
+                            } else if (shooter != active_runner_id &&
+                                       std::find(eye_fiver_ids.begin(),
+                                                 eye_fiver_ids.end(), shooter) !=
+                                           eye_fiver_ids.end()) {
+                                if (target_id == active_runner_id) {
+                                    ++npc_player_attack_resolutions;
+                                    if (physical_hit) {
+                                        ++npc_physical_hits;
+                                    }
+                                } else if (physical_hit &&
+                                           std::find(eye_fiver_ids.begin(),
+                                                     eye_fiver_ids.end(),
+                                                     target_id) !=
+                                               eye_fiver_ids.end()) {
+                                    ++npc_eye_fiver_physical_hits;
+                                }
+                            }
+                        }
+                    }
+                }
+                boundary_trace.flush();
+                return added;
+            };
+            const auto optional_number = [](const auto& value) {
+                return value.has_value() ? std::to_string(*value)
+                                         : std::string("none");
+            };
+            const auto write_player_projectiles = [&] {
+                const auto player_position =
+                    field_scene.field_entity_world_position();
+                std::optional<SceneRunnerPosition> target_position;
+                const auto selected_id =
+                    field_scene.selected_default_actor_id_for_dump();
+                for (std::uint16_t actor = 0U; actor < 4U; ++actor) {
+                    if (selected_id ==
+                        field_scene.default_actor_instance_id_for_dump(actor)) {
+                        target_position =
+                            field_scene.default_actor_world_position_for_dump(
+                                actor);
+                        break;
+                    }
+                }
+                for (const auto& projectile :
+                     field_scene.field_weapon_primary_snapshots_for_dump()) {
+                    if (projectile.shooter_id != active_runner_id) continue;
+                    projectile_trace << frame << '\t'
+                                     << projectile.shooter_id << '\t'
+                                     << projectile.position.x << '\t'
+                                     << projectile.position.y << '\t'
+                                     << projectile.heading << '\t'
+                                     << projectile.attack_successes << '\t'
+                                     << player_position.x << '\t'
+                                     << player_position.y << '\t'
+                                     << (target_position.has_value()
+                                             ? std::to_string(target_position->x)
+                                             : std::string("none"))
+                                     << '\t'
+                                     << (target_position.has_value()
+                                             ? std::to_string(target_position->y)
+                                             : std::string("none"))
+                                     << '\n';
+                }
+                projectile_trace.flush();
+                return static_cast<bool>(projectile_trace);
+            };
+            const auto write_fight_state = [&](const std::uint8_t input) {
+                const auto position = field_scene.field_entity_world_position();
+                fight_trace << frame << '\t'
+                            << static_cast<unsigned>(input) << '\t'
+                            << position.x << '\t' << position.y << '\t'
+                            << static_cast<unsigned>(runner.delay_meter) << '\t'
+                            << static_cast<unsigned>(runner.behavior_meter) << '\t'
+                            << static_cast<unsigned>(runner.ammo_rounds) << '\t'
+                            << field_scene.selected_default_actor_id_for_dump()
+                                   .value_or("<none>");
+                for (std::uint16_t actor = 0U; actor < 4U; ++actor) {
+                    fight_trace << '\t'
+                                << optional_number(
+                                       field_scene.default_actor_physical_meter_for_dump(
+                                           actor))
+                                << '\t'
+                                << optional_number(
+                                       field_scene.default_actor_ammunition_remaining_for_dump(
+                                           actor))
+                                << '\t'
+                                << optional_number(
+                                       field_scene.default_actor_action_count_for_dump(
+                                           actor))
+                                << '\t'
+                                << field_scene.default_actor_ai_target_id_for_dump(
+                                       actor).value_or("<none>")
+                                << '\t'
+                                << optional_number(
+                                       field_scene.default_actor_ai_target_distance_for_dump(
+                                           actor));
+                }
+                for (std::uint16_t actor = 0U; actor < 4U; ++actor) {
+                    const auto actor_position =
+                        field_scene.default_actor_world_position_for_dump(
+                            actor);
+                    fight_trace << '\t'
+                                << (actor_position.has_value()
+                                        ? std::to_string(actor_position->x)
+                                        : std::string("none"))
+                                << '\t'
+                                << (actor_position.has_value()
+                                        ? std::to_string(actor_position->y)
+                                        : std::string("none"))
+                                << '\t'
+                                << optional_number(
+                                       field_scene.default_actor_action_delay_for_dump(
+                                           actor))
+                                << '\t'
+                                << field_scene.default_actor_source_action_dispatch_for_dump(
+                                       actor).value_or("<none>");
+                }
+                for (std::uint16_t actor = 0U; actor < 4U; ++actor) {
+                    fight_trace << '\t'
+                                << field_scene.default_actor_animation_id_for_dump(
+                                       actor).value_or("<none>");
+                }
+                fight_trace << '\t' << player_shots << '\t' << npc_shots
+                            << '\t' << resolved_hits << '\n';
+                fight_trace.flush();
+                return static_cast<bool>(fight_trace);
+            };
+            const auto eye_fiver_damaged = [&] {
+                for (std::uint16_t actor = 0U; actor < 4U; ++actor) {
+                    const auto current =
+                        field_scene.default_actor_physical_meter_for_dump(
+                            actor);
+                    if (current.has_value() &&
+                        *current < initial_eye_meters[actor]) {
+                        return true;
+                    }
+                }
+                return false;
+            };
+            bool eye_fiver_was_damaged = false;
+
+            const auto actors_ready = [&] {
+                for (std::uint16_t actor = 0U; actor < 4U; ++actor) {
+                    if (field_scene.default_actor_transition_complete_for_dump(
+                            actor) != std::optional<bool>{true}) {
+                        return false;
+                    }
+                }
+                return true;
+            };
+            for (std::uint16_t tick = 0U;
+                 tick < 240U &&
+                 (!actors_ready() ||
+                  field_scene.field_palette_fade_steps_for_dump() != 0U);
+                 ++tick) {
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                ++frame;
+                const auto boundary_added = capture_boundaries();
+                eye_fiver_was_damaged =
+                    eye_fiver_was_damaged || eye_fiver_damaged();
+                if ((tick % 8U) == 0U || boundary_added) {
+                    if (!write_fight_state(0U)) return 3;
+                }
+            }
+
+            const auto before_fight = render_qa_field(field_scene);
+            if (!before_fight.save(QString::fromStdWString(
+                    (case_output / "before-fight.bmp").wstring()))) {
+                return 3;
+            }
+            for (std::uint8_t attempt = 0U;
+                 attempt < 16U &&
+                 !field_scene.selected_default_actor_id_for_dump().has_value();
+                 ++attempt) {
+                field_scene.set_controller_port_byte(0x10U); // B target edge.
+                field_scene.advance_frame();
+                ++frame;
+                capture_boundaries();
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                ++frame;
+                capture_boundaries();
+                eye_fiver_was_damaged =
+                    eye_fiver_was_damaged || eye_fiver_damaged();
+            }
+            auto selected_target =
+                field_scene.selected_default_actor_id_for_dump();
+            const bool selected_eye_fiver = selected_target.has_value() &&
+                std::find(eye_fiver_ids.begin(), eye_fiver_ids.end(),
+                          *selected_target) != eye_fiver_ids.end();
+            if (!selected_eye_fiver ||
+                !write_fight_state(0U)) {
+                std::cerr << "Eye-Fivers fight QA: ordinary B input did not "
+                             "select a live contract target (selected="
+                          << selected_target.value_or("<none>")
+                          << ", visible="
+                          << field_scene.visible_default_actor_count_for_dump()
+                          << ", fade=" << static_cast<unsigned>(
+                                 field_scene.field_palette_fade_steps_for_dump())
+                          << ", transition=" << actors_ready() << ")\n";
+                return 3;
+            }
+
+            std::uint16_t selected_order = static_cast<std::uint16_t>(
+                std::distance(eye_fiver_ids.begin(),
+                    std::find(eye_fiver_ids.begin(), eye_fiver_ids.end(),
+                              *selected_target)));
+            const auto at_least_one_fire_lane_clear = [&] {
+                for (std::uint16_t actor = 0U; actor < 4U; ++actor) {
+                    if (field_scene.player_action_line_clear_to_default_actor_for_dump(
+                            actor)) {
+                        return true;
+                    }
+                }
+                return false;
+            };
+            const auto ready_to_fire = [&] {
+                return field_scene.player_action_line_clear_to_default_actor_for_dump(
+                    selected_order);
+            };
+            bool prefer_horizontal = false;
+            std::uint8_t stalled_steps = 0U;
+            for (std::uint16_t tick = 0U;
+                 tick < 640U && !ready_to_fire(); ++tick) {
+                const auto player_position =
+                    field_scene.field_entity_world_position();
+                const auto target_position =
+                    field_scene.default_actor_world_position_for_dump(
+                        selected_order);
+                if (!target_position.has_value()) break;
+                const auto delta_x = static_cast<std::int32_t>(
+                    target_position->x) - player_position.x;
+                const auto delta_y = static_cast<std::int32_t>(
+                    target_position->y) - player_position.y;
+                const auto abs_x = std::abs(delta_x);
+                const auto abs_y = std::abs(delta_y);
+                const bool horizontal = abs_x == abs_y
+                    ? prefer_horizontal
+                    : (abs_x > abs_y) != prefer_horizontal;
+                const std::uint8_t input = horizontal
+                    ? (delta_x >= 0 ? 0x08U : 0x04U)
+                    : (delta_y >= 0 ? 0x02U : 0x01U);
+                field_scene.set_controller_port_byte(input);
+                field_scene.advance_frame();
+                ++frame;
+                const auto after_move =
+                    field_scene.field_entity_world_position();
+                if (after_move.x == player_position.x &&
+                    after_move.y == player_position.y) {
+                    ++stalled_steps;
+                    if (stalled_steps >= 4U) {
+                        prefer_horizontal = !prefer_horizontal;
+                        stalled_steps = 0U;
+                    }
+                } else {
+                    stalled_steps = 0U;
+                }
+                const auto boundary_added = capture_boundaries();
+                eye_fiver_was_damaged =
+                    eye_fiver_was_damaged || eye_fiver_damaged();
+                if ((tick % 8U) == 0U || boundary_added) {
+                    if (!write_fight_state(input)) return 3;
+                }
+            }
+            field_scene.set_controller_port_byte(0U);
+            field_scene.advance_frame();
+            ++frame;
+            capture_boundaries();
+            if (!ready_to_fire()) {
+                const auto position = field_scene.field_entity_world_position();
+                std::cerr << "Eye-Fivers fight QA: ordinary directional input "
+                             "did not establish the selected actor's source "
+                             "0x14D8E firing line after 640 field passes"
+                          << " player=" << position.x << ',' << position.y
+                          << " target_order=" << selected_order
+                          << " target=" << *selected_target
+                          << " any_lane_clear="
+                          << at_least_one_fire_lane_clear() << '\n';
+                return 3;
+            }
+            // First move into the enemy group's firing area using the nearest
+            // member, then use ordinary B edges to aim at the third ordered
+            // ROM entry. Player firearms use the selected +0xA2 aim at 0x14FF8;
+            // the 0x14D8E line gate belongs to NPC item actions.
+            const auto ranged_target_id = eye_fiver_ids[2U];
+            for (std::uint8_t attempt = 0U;
+                 attempt < 8U && selected_target !=
+                     std::optional<std::string>{ranged_target_id};
+                 ++attempt) {
+                field_scene.set_controller_port_byte(0x10U);
+                field_scene.advance_frame();
+                ++frame;
+                capture_boundaries();
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                ++frame;
+                capture_boundaries();
+                selected_target =
+                    field_scene.selected_default_actor_id_for_dump();
+            }
+            selected_order = 2U;
+            if (selected_target !=
+                    std::optional<std::string>{ranged_target_id} ||
+                !write_fight_state(0U)) {
+                std::cerr << "Eye-Fivers fight QA: ordinary B input did not "
+                             "select the second roster member (selected="
+                          << selected_target.value_or("<none>")
+                          << ")\n";
+                return 3;
+            }
+            const auto ready_image = render_qa_field(field_scene);
+            if (!ready_image.save(QString::fromStdWString(
+                    (case_output / "ready-to-fire.bmp").wstring()))) {
+                return 3;
+            }
+
+            const auto fight_start = frame;
+            field_scene.set_controller_port_byte(0x40U); // Hold A to fire.
+            constexpr std::uint32_t kMaximumFightFrames = 1800U;
+            for (std::uint32_t tick = 0U; tick < kMaximumFightFrames; ++tick) {
+                field_scene.advance_frame();
+                ++frame;
+                if (!write_player_projectiles()) return 3;
+                const auto boundary_added = capture_boundaries();
+                eye_fiver_was_damaged =
+                    eye_fiver_was_damaged || eye_fiver_damaged();
+                if ((tick % 8U) == 0U || boundary_added) {
+                    if (!write_fight_state(0x40U)) return 3;
+                }
+                if (player_shots >= 2U && npc_shots >= 2U &&
+                    runner.delay_meter < initial_player_meter &&
+                    eye_fiver_was_damaged) {
+                    break;
+                }
+            }
+            field_scene.set_controller_port_byte(0U);
+            ++frame;
+            capture_boundaries();
+            const auto after_fight = render_qa_field(field_scene);
+            const bool saved_after_fight = after_fight.save(
+                QString::fromStdWString(
+                    (case_output / "actual.bmp").wstring()));
+            const auto distinct_eye_firers = static_cast<std::size_t>(
+                std::count_if(eye_shots.begin(), eye_shots.end(),
+                    [](const auto shots) { return shots > 0U; }));
+            // ROM 0x55948-0x55A90 resolves a separate defense/damage branch
+            // before changing +0x4C; an incoming Samurai attack may resolve
+            // without changing the meter. Require that NPC attacks reach the
+            // runner's resolver and that the live NPC side also changes an
+            // encounter member's physical meter, rather than demanding a
+            // wound against this one seeded Human Samurai setup.
+            if (!saved_after_fight || player_shots < 2U || npc_shots < 2U ||
+                distinct_eye_firers < 2U || player_physical_hits == 0U ||
+                npc_player_attack_resolutions == 0U ||
+                npc_eye_fiver_physical_hits == 0U ||
+                !eye_fiver_was_damaged || resolved_hits < 2U) {
+                std::cerr << "Eye-Fivers fight QA: two-sided sustained combat "
+                             "did not produce shots and meter-changing hits"
+                          << " frames=" << (frame - fight_start)
+                          << " player_shots=" << player_shots
+                          << " npc_shots=" << npc_shots
+                          << " eye_shots=" << eye_shots[0] << ','
+                          << eye_shots[1] << ',' << eye_shots[2] << ','
+                          << eye_shots[3] << " distinct_eye_firers="
+                          << distinct_eye_firers
+                          << " player_physical="
+                          << static_cast<unsigned>(initial_player_meter) << "->"
+                          << static_cast<unsigned>(runner.delay_meter)
+                          << " eye_hit=" << eye_fiver_was_damaged
+                          << " resolved_hits=" << resolved_hits
+                          << " attributed_physical_hits="
+                          << player_physical_hits << ',' << npc_physical_hits
+                          << " npc_player_resolutions="
+                          << npc_player_attack_resolutions
+                          << " npc_eye_fiver_physical_hits="
+                          << npc_eye_fiver_physical_hits
+                          << " selected="
+                          << field_scene.selected_default_actor_id_for_dump()
+                                 .value_or("<none>") << '\n';
+                return 3;
+            }
+            std::cout << "field_eye_fivers_fight_qa=passed frames="
+                      << (frame - fight_start)
+                      << " player_shots=" << player_shots
+                      << " npc_shots=" << npc_shots
+                      << " resolved_hits=" << resolved_hits
+                      << " player_hits=" << player_physical_hits
+                      << " npc_player_resolutions="
+                      << npc_player_attack_resolutions
+                      << " npc_eye_fiver_physical_hits="
+                      << npc_eye_fiver_physical_hits
+                      << " player_physical="
+                      << static_cast<unsigned>(initial_player_meter) << "->"
+                      << static_cast<unsigned>(runner.delay_meter)
+                      << " player_ammo="
+                      << static_cast<unsigned>(initial_player_ammo) << "->"
+                      << static_cast<unsigned>(runner.ammo_rounds)
+                      << " artifacts=" << case_output.string() << '\n';
+        }
     }
 
-    std::cout << "field_gang_contract_target_entry_qa=passed "
+    if (!fight_only) {
+        std::cout << "field_gang_contract_target_entry_qa=passed "
                  "all_three_rom_target_pairs=covered "
                  "active_matches=dialogue_then_scene15_four_actors "
                  "wrong_target_and_no_run=scene13 artifacts="
-              << output.string() << '\n';
+                  << output.string() << '\n';
+    }
     return 0;
 }
 
@@ -46529,6 +47109,8 @@ int main(int argc, char** argv) {
             field_dr_bobs_clinic_entry_qa_path;
         std::optional<std::filesystem::path>
             field_gang_contract_target_entry_qa_path;
+        std::optional<std::filesystem::path>
+            field_eye_fivers_fight_qa_path;
         std::optional<std::filesystem::path> field_transition_qa_path;
         std::optional<std::filesystem::path> field_edge_exit_qa_path;
         std::optional<std::string> field_edge_exit_qa_route;
@@ -46992,6 +47574,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_gang_contract_target_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-eye-fivers-fight-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_eye_fivers_fight_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-transition-qa" &&
@@ -49340,6 +49929,11 @@ int main(int argc, char** argv) {
                 return run_gang_contract_target_entry_qa(
                     smoke_state, asset_root,
                     *field_gang_contract_target_entry_qa_path);
+            }
+            if (field_eye_fivers_fight_qa_path.has_value()) {
+                return run_gang_contract_target_entry_qa(
+                    smoke_state, asset_root,
+                    *field_eye_fivers_fight_qa_path, true);
             }
             if (field_scene17_unidentified_contact_qa_path.has_value()) {
                 return run_scene17_unidentified_contact_qa(
