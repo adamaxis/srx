@@ -132,6 +132,38 @@ using field_scene_detail::right_aligned_text_x;
 using field_scene_detail::make_field_shop_progression_input;
 namespace {
 
+CyberdeckRecord make_michael_package_allegiance_alpha_record() {
+    CyberdeckRecord deck;
+
+    // [C] ROM 0x1AB100 names signed model -1 "Allegiance Alpha"; the model
+    // capacity bytes at 0x1AB190 begin 3, 4, 6, 8, 10, 12, making its MPCP 3.
+    // [H] The package-specific Hardening, Storage, Load/IO, Response, and
+    // persona values still need a first-acquisition Deck Stats capture. The
+    // reference frame below independently confirms the live memory amount.
+    deck.mpcp = 3U;
+    deck.hardening = 0U;
+    deck.memory_megapulses = 15U;
+    deck.storage_megapulses = 100U;
+    deck.load_io_speed = 10U;
+    deck.response = 0U;
+    deck.persona = std::array<std::uint8_t, 4U>{};
+    deck.persona_condition = 0U;
+    deck.model_index = std::int8_t{-1};
+
+    // [C] Independent Cyberdeck frame 004220 shows Attack 3, Medic 1,
+    // Deception 1, Analyze 1, with Deception and Analyze loaded. Their 2+3 Mp
+    // ROM footprints at 0xE2DF2 and the displayed 10 Mp free at frame 004220
+    // establish a 15 Mp live record (free-memory calculation at 0x1957E).
+    // [H] The recording does not expose the exact acquisition moment; retain
+    // the observed starter-command profile pending that capture.
+    deck.program_ratings = std::array<std::uint8_t, 12U>{
+        3U, 0U, 0U, 0U, 1U, 0U, 0U, 0U, 0U, 1U, 0U, 1U};
+    deck.active_programs =
+        std::array<std::int8_t, 5U>{9, 11, -1, -1, -1};
+    deck.data_files = std::array<CyberdeckDataFile, 5U>{};
+    return deck;
+}
+
 // Port-side scan limit for extracted per-direction actor art frames; the
 // longest 0x62AC list has 10 frames (0x75E8) [C], so 16 is headroom [H].
 constexpr std::uint8_t kActorArtFrameScanLimit = 16U;
@@ -1199,25 +1231,12 @@ FieldSceneRuntime::FieldSceneRuntime(
             cyberdeck_available_ =
                 (payment_state.runner_feature_flags & 0x01U) != 0U;
             if (!field_matrix_deck_record_.has_value()) {
-                // [C] ROM 0x213FA..0x21456 grants deck ownership without
-                // writing FFFBBE. On this fresh New Game path that RAM record
-                // remains zero; publish those known bytes to shop services.
-                CyberdeckRecord deck{};
-                deck.mpcp = std::uint8_t{0U};
-                deck.hardening = std::uint8_t{0U};
-                deck.memory_megapulses = std::uint16_t{0U};
-                deck.storage_megapulses = std::uint16_t{0U};
-                deck.load_io_speed = std::uint8_t{0U};
-                deck.response = std::uint8_t{0U};
-                deck.persona = std::array<std::uint8_t, 4U>{};
-                deck.persona_condition = std::uint8_t{0U};
-                deck.model_index = std::int8_t{0};
-                deck.program_ratings = std::array<std::uint8_t, 12U>{};
-                deck.active_programs = std::array<std::int8_t, 5U>{};
-                std::array<CyberdeckDataFile, 5U> data_files{};
-                data_files.fill(CyberdeckDataFile{0, 0U, 0});
-                deck.data_files = data_files;
-                field_matrix_deck_record_ = std::move(deck);
+                // The transaction at 0x213FA changes deck ownership, while
+                // the package handoff names the included Allegiance Alpha.
+                // Do not treat the untouched RAM record as a PCD-500 filled
+                // with repeated program and data-file ID zero values.
+                field_matrix_deck_record_ =
+                    make_michael_package_allegiance_alpha_record();
             }
         }
         notebook_tip_flags_[0] = payment_state.followup_state.story_flags;

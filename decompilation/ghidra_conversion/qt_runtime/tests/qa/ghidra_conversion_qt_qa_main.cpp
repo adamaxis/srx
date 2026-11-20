@@ -51811,22 +51811,45 @@ int main(int argc, char** argv) {
                         return 3;
                     }
                 }
+                constexpr std::array<std::uint8_t, 12U>
+                    kExpectedPackageProgramRatings{{
+                        3U, 0U, 0U, 0U, 1U, 0U, 0U, 0U, 0U, 1U, 0U, 1U}};
+                constexpr std::array<std::int8_t, 5U>
+                    kExpectedPackageActivePrograms{{9, 11, -1, -1, -1}};
                 const auto package_deck =
                     package_scene.field_matrix_deck_record_for_dump();
                 if (package_scene.field_funds_for_dump() != 500U ||
                     package_scene.cyberdeck_available_for_dump() !=
                         std::optional<bool>{true} ||
                     !package_deck.has_value() ||
-                    package_deck->mpcp != 0U ||
+                    package_deck->mpcp != 3U ||
                     package_deck->hardening != 0U ||
-                    package_deck->memory_megapulses != 0U ||
-                    package_deck->storage_megapulses != 0U ||
-                    package_deck->model_index != 0) {
+                    package_deck->memory_megapulses != 15U ||
+                    package_deck->storage_megapulses != 100U ||
+                    package_deck->load_io_speed != 10U ||
+                    package_deck->response != 0U ||
+                    package_deck->model_index != -1 ||
+                    !package_deck->program_ratings.has_value() ||
+                    *package_deck->program_ratings !=
+                        kExpectedPackageProgramRatings ||
+                    !package_deck->active_programs.has_value() ||
+                    *package_deck->active_programs !=
+                        kExpectedPackageActivePrograms ||
+                    !package_deck->data_files.has_value()) {
                     std::cerr << "Cyberdeck gate QA: Stoker payment did not "
-                                 "leave 500 nuyen and the zeroed ROM deck "
-                                 "record\n";
+                                 "install Michael's Allegiance Alpha record "
+                                 "\n";
                     return 3;
                 }
+                for (const auto& data_file : *package_deck->data_files) {
+                    if (data_file.id != -1 || data_file.size != 0U ||
+                        data_file.value != 0) {
+                        std::cerr << "Cyberdeck gate QA: a new Allegiance "
+                                     "Alpha contains an unexpected data file\n";
+                        return 3;
+                    }
+                }
+                bool package_named_allegiance_alpha = false;
                 for (std::size_t page = 0U; page < 8U &&
                                               package_scene.dialogue_open();
                      ++page) {
@@ -51837,10 +51860,15 @@ int main(int argc, char** argv) {
                                      "handoff reached a source boundary\n";
                         return 3;
                     }
+                    package_named_allegiance_alpha =
+                        package_named_allegiance_alpha ||
+                        panel_contains(package_scene, "Allegiance Alpha");
                 }
-                if (package_scene.dialogue_open()) {
+                if (package_scene.dialogue_open() ||
+                    !package_named_allegiance_alpha) {
                     std::cerr << "Cyberdeck gate QA: Michael package handoff "
-                                 "did not close\n";
+                                 "did not identify the Allegiance Alpha and "
+                                 "close\n";
                     return 3;
                 }
                 for (std::size_t frame = 0U; frame < 60U; ++frame) {
@@ -51848,11 +51876,114 @@ int main(int argc, char** argv) {
                 }
                 if (package_scene.dialogue_open() ||
                     !enter_denial(package_scene,
-                                  "MPCP chips are fried",
-                                  "no-mpcp-after-package.bmp")) {
+                                  "datajack",
+                                  "no-datajack-after-package.bmp")) {
                     std::cerr << "Cyberdeck gate QA: after Michael's package "
-                                 "did not show ROM 0xC2202 with deck access "
-                                 "set and MPCP zero\n";
+                                 "did not advance the New Game Samurai to its "
+                                 "Datajack gate with the Alpha installed\n";
+                    return 3;
+                }
+
+                FieldSceneRuntime first_deck_scene(
+                    [](const std::string_view) {},
+                    [](const std::uint16_t) {});
+                if (!first_deck_scene.bootstrap(smoke_state)) {
+                    std::cerr << "Cyberdeck gate QA: first-deck field "
+                                 "bootstrap failed: "
+                              << first_deck_scene.failure() << '\n';
+                    return 3;
+                }
+                first_deck_scene.set_field_funds_for_dump(250U);
+                if (!first_deck_scene.open_stoker_dialogue_for_dump(
+                        StokerMotelPromptId::manager_greeting_with_package)) {
+                    std::cerr << "Cyberdeck gate QA: first-deck Stoker "
+                                 "package menu did not open through Lua\n";
+                    return 3;
+                }
+                for (const auto input : kPackageChoices) {
+                    if (first_deck_scene.advance_stoker_dialogue_for_dump(input) !=
+                        FieldDialogueAdvanceResult::prompt_advanced) {
+                        std::cerr << "Cyberdeck gate QA: first-deck Stoker "
+                                     "debt choice did not advance\n";
+                        return 3;
+                    }
+                }
+                bool first_deck_package_page_seen = false;
+                for (std::size_t page = 0U; page < 8U &&
+                                              first_deck_scene.dialogue_open();
+                     ++page) {
+                    if (first_deck_scene.advance_stoker_dialogue_for_dump(
+                            0x4000U) ==
+                        FieldDialogueAdvanceResult::source_boundary) {
+                        std::cerr << "Cyberdeck gate QA: first-deck package "
+                                     "handoff reached a source boundary\n";
+                        return 3;
+                    }
+                    first_deck_package_page_seen =
+                        first_deck_package_page_seen ||
+                        panel_contains(first_deck_scene, "Allegiance Alpha");
+                }
+                for (std::size_t frame = 0U; frame < 60U; ++frame) {
+                    first_deck_scene.advance_frame();
+                }
+                if (first_deck_scene.dialogue_open() ||
+                    !first_deck_package_page_seen ||
+                    !first_deck_scene.open_command_overview_for_dump() ||
+                    !first_deck_scene.seek_command_overview_page(6U)) {
+                    std::cerr << "Cyberdeck gate QA: first-deck handoff did "
+                                 "not return to the Pocket Secretary entry\n";
+                    return 3;
+                }
+                tap_qa_controller_button(first_deck_scene, 0x40U);
+                for (std::size_t step = 0U;
+                     first_deck_scene.pocket_secretary_selection() != 2U &&
+                     step < 5U;
+                     ++step) {
+                    tap_qa_controller_button(first_deck_scene, 0x02U);
+                }
+                if (!first_deck_scene.pocket_secretary_open() ||
+                    first_deck_scene.pocket_secretary_selection() != 2U) {
+                    std::cerr << "Cyberdeck gate QA: first deck was not "
+                                 "listed in Pocket Secretary\n";
+                    return 3;
+                }
+                tap_qa_controller_button(first_deck_scene, 0x40U);
+                if (first_deck_scene.field_menu_route_screen_for_dump() !=
+                        static_cast<std::uint16_t>(
+                            srx::MenuScreen::CYBERDECK) ||
+                    !first_deck_scene.pocket_secretary_open()) {
+                    std::cerr << "Cyberdeck gate QA: first deck did not "
+                                 "open the Cyberdeck screen\n";
+                    return 3;
+                }
+                const auto first_deck_image = render_qa_field(first_deck_scene);
+                const auto first_deck_view =
+                    first_deck_scene.field_menu_route_snapshot_for_dump();
+                const std::array<std::string, 3>
+                    kExpectedPackageAttackDetails{{"18", "10", "2"}};
+                const auto first_deck_output = output / "first-deck";
+                std::filesystem::create_directories(first_deck_output);
+                if (first_deck_image.size() !=
+                        QSize(kSceneWidth, kSceneHeight) ||
+                    !first_deck_view
+                         .top_matrix_deck_program_detail_values_present ||
+                    first_deck_view.top_matrix_deck_program_detail_values !=
+                        kExpectedPackageAttackDetails ||
+                    !first_deck_view
+                         .top_matrix_deck_active_programs_present ||
+                    first_deck_view.top_matrix_deck_active_programs !=
+                        kExpectedPackageActivePrograms ||
+                    !first_deck_view.top_column.has_value() ||
+                    *first_deck_view.top_column != 0 ||
+                    !first_deck_view.top_row.has_value() ||
+                    *first_deck_view.top_row != 0 ||
+                    !image_has_green_ink(first_deck_image, 176, 24, 136, 56) ||
+                    !save_qa_image(first_deck_output, "actual.bmp",
+                                   first_deck_image)) {
+                    std::cerr << "Cyberdeck gate QA: acquired Alpha did not "
+                                 "present the initial Attack selection, "
+                                 "18/10/2 detail, loaded programs, and full "
+                                 "screen\n";
                     return 3;
                 }
 
@@ -51875,8 +52006,8 @@ int main(int argc, char** argv) {
                 }
 
                 // Repeat the actual Stoker ownership grant in a clean New
-                // Game, then buy through the controller-driven MicroTronics
-                // menu. Do not seed the deck, MPCP, or runner cyberware facts.
+                // Game. The working package record is verified before an
+                // explicit damaged-deck fixture is used for shop branches.
                 purchase_scene.set_field_funds_for_dump(250U);
                 if (!purchase_scene.open_stoker_dialogue_for_dump(
                         StokerMotelPromptId::manager_greeting_with_package)) {
@@ -51900,6 +52031,18 @@ int main(int argc, char** argv) {
                                  "state\n";
                     return 3;
                 }
+                const auto purchase_package_deck =
+                    purchase_scene.field_matrix_deck_record_for_dump();
+                if (!purchase_package_deck.has_value() ||
+                    purchase_package_deck->model_index != -1 ||
+                    purchase_package_deck->mpcp != 3U ||
+                    !purchase_package_deck->active_programs.has_value() ||
+                    *purchase_package_deck->active_programs !=
+                        kExpectedPackageActivePrograms) {
+                    std::cerr << "Cyberdeck gate QA: purchase route did not "
+                                 "retain Michael's populated Allegiance Alpha\n";
+                    return 3;
+                }
                 for (std::size_t page = 0U; page < 8U &&
                                               purchase_scene.dialogue_open();
                      ++page) {
@@ -51919,6 +52062,14 @@ int main(int argc, char** argv) {
                 }
                 for (std::size_t frame = 0U; frame < 60U; ++frame) {
                     purchase_scene.advance_frame();
+                }
+                // Shop arithmetic uses a separate damaged PCD-500 QA record;
+                // Michael's paid package above is the working Allegiance
+                // Alpha and must never double as a zeroed transaction setup.
+                if (!purchase_scene.seed_microtronics_damaged_deck_for_dump()) {
+                    std::cerr << "Cyberdeck gate QA: damaged-deck shop "
+                                 "fixture could not be installed\n";
+                    return 3;
                 }
                 purchase_scene.set_field_funds_for_dump(40000U);
                 if (!purchase_scene.begin_field_mode_service_event_for_dump(
@@ -51942,8 +52093,8 @@ int main(int argc, char** argv) {
                     return 3;
                 }
 
-                // The zeroed ROM deck record at FFFBBE gives model index 0 a
-                // four-point MPCP ceiling: 4^3 * 25 = 1,600 nuyen. Exercise
+                // The explicit damaged model-0 fixture has MPCP zero, so
+                // 0x58394 offers its 4^3 * 25 = 1,600 nuyen repair. Exercise
                 // both declining and accepting the source confirmation.
                 for (int step = 0; step < 5; ++step) {
                     tap_qa_controller_button(purchase_scene, 0x08U);
@@ -51980,7 +52131,7 @@ int main(int argc, char** argv) {
                     purchased_deck->mpcp != 0U ||
                     purchase_scene.field_funds_for_dump() != 40000U) {
                     std::cerr << "Cyberdeck gate QA: declining MPCP repair "
-                                 "changed the zero MPCP or wallet\n";
+                                 "changed the damaged MPCP or wallet\n";
                     return 3;
                 }
                 tap_qa_controller_button(purchase_scene, 0x40U);
@@ -52003,7 +52154,7 @@ int main(int argc, char** argv) {
                     return 3;
                 }
 
-                // With the repaired MPCP but zero ROM storage, an Attack
+                // With the repaired MPCP but zero fixture storage, an Attack
                 // program must be rejected before confirmation. Buying the
                 // next deck model supplies storage through the same shop.
                 tap_qa_controller_button(purchase_scene, 0x01U);
@@ -52029,7 +52180,7 @@ int main(int argc, char** argv) {
                     !purchased_deck->program_ratings.has_value() ||
                     (*purchased_deck->program_ratings)[0U] != 0U ||
                     purchase_scene.field_funds_for_dump() != 38400U) {
-                    std::cerr << "Cyberdeck gate QA: zero ROM storage did "
+                    std::cerr << "Cyberdeck gate QA: zero fixture storage did "
                                  "not block Attack before confirmation\n";
                     return 3;
                 }

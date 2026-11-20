@@ -557,3 +557,36 @@ establish independent pixel fidelity for that active branch.
 - Pull Plug's source-positioned prompt and retained deck chrome were checked
   against independent Section 15 `frame_005400.png`; the complete Matrix traversal viewport
   remains partial.
+
+## Stoker package deck record correction (2026-11-20)
+
+`[C]` The paid Stoker branch at ROM `0x213FA` sets deck ownership but does not
+populate the typed `FFFBBE` record. The previous Qt callback treated that
+missing host record as a purchased PCD-500, zeroed all program ratings, filled
+all five active slots with program ID 0 (Attack), and represented empty data
+files as ID 0 (Back-up Files). This produced the reported repeated Attack and
+Back-up Files entries.
+
+The callback now installs a named Allegiance Alpha record for Michael's
+package. `[C]` ROM `0x1AB100` identifies signed model `-1` as Allegiance Alpha,
+and `0x1AB190` gives that row MPCP capacity 3. Independent longplay Section 15
+frame `004220` shows Attack 3, Medic 1, Deception 1, and Analyze 1; Deception
+and Analyze are loaded. Its selected Attack detail shows size 18 Mp, 10 Mp
+free, and load time 2. ROM `0xE2DF2` gives the installed Deception 1 and
+Analyze 1 programs footprints of 2 and 3 Mp, while `0x1957E` subtracts loaded
+program sizes from memory; this observed state therefore has 15 Mp total
+memory. The model name, MPCP, installed ratings, loaded program IDs, and empty
+file sentinels now reach the Cyberdeck view. The `Attack` selection remains at
+row 0/column 0 and its detail state is asserted as `(18, 10, 2)`.
+
+The longplay frame does not show the exact first-acquisition transition or the
+Deck Stats page. Hardening, Storage, Load/IO, Response, and the four persona
+values remain `[H]` where the independent frame does not expose them; the
+secondary reference guide is not treated as ROM evidence. The purchase-route
+shop QA now uses a separately named damaged PCD-500 fixture instead of
+overwriting the story deck. Debug/Release `shadowrun_ghidra_conversion_qt_field_cyberdeck_gate_qa`
+checks the typed record, empty file slots, Attack selection and displayed
+detail, and writes the route capture to
+`qt_runtime/field-cyberdeck-gate-qa/first-deck/actual.bmp`. The broader
+Cyberdeck hill remains partial pending a source trace of all deck initializers,
+first-acquisition Deck Stats evidence, and loaded-save behavior.

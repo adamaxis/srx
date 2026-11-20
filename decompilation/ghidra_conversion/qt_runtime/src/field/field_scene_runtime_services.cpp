@@ -542,6 +542,34 @@ bool FieldSceneRuntime::seed_microtronics_deck_upgrade_for_dump(
            ((*field_runner_feature_flags_ & 0x01U) != 0U);
 }
 
+bool FieldSceneRuntime::seed_microtronics_damaged_deck_for_dump() {
+    if (!ready_ || !cyberdeck_available_) {
+        return false;
+    }
+
+    // Shop QA uses a damaged PCD-500 to exercise ROM 0x58394's MPCP repair
+    // quote and 0x19558's no-storage rejection. This fixture is separate from
+    // Michael's package, which grants a working Allegiance Alpha.
+    CyberdeckRecord deck;
+    deck.mpcp = 0U;
+    deck.hardening = 0U;
+    deck.memory_megapulses = 0U;
+    deck.storage_megapulses = 0U;
+    deck.load_io_speed = 0U;
+    deck.response = 0U;
+    deck.persona = std::array<std::uint8_t, 4U>{};
+    deck.persona_condition = 0U;
+    deck.model_index = 0;
+    deck.program_ratings = std::array<std::uint8_t, 12U>{};
+    deck.active_programs =
+        std::array<std::int8_t, 5U>{-1, -1, -1, -1, -1};
+    deck.data_files = std::array<CyberdeckDataFile, 5U>{};
+    field_matrix_deck_record_ = std::move(deck);
+    field_matrix_program_slots_.fill(
+        scripting::ScriptCyberdeckProgramSlot{});
+    return true;
+}
+
 bool FieldSceneRuntime::set_microtronics_program_upgrade_inputs_for_dump(
     const std::uint16_t storage_megapulses,
     const std::uint8_t attack_rating) {
