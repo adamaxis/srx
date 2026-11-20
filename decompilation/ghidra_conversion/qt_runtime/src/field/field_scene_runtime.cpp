@@ -142,7 +142,7 @@ CyberdeckRecord make_michael_package_allegiance_alpha_record() {
     // reference frame below independently confirms the live memory amount.
     deck.mpcp = 3U;
     deck.hardening = 0U;
-    deck.memory_megapulses = 15U;
+    deck.memory_megapulses = 24U;
     deck.storage_megapulses = 100U;
     deck.load_io_speed = 10U;
     deck.response = 0U;
@@ -150,14 +150,14 @@ CyberdeckRecord make_michael_package_allegiance_alpha_record() {
     deck.persona_condition = 0U;
     deck.model_index = std::int8_t{-1};
 
-    // [C] Independent Cyberdeck frame 004220 shows Attack 3, Medic 1,
-    // Deception 1, Analyze 1, with Deception and Analyze loaded. Their 2+3 Mp
-    // ROM footprints at 0xE2DF2 and the displayed 10 Mp free at frame 004220
-    // establish a 15 Mp live record (free-memory calculation at 0x1957E).
-    // [H] The recording does not expose the exact acquisition moment; retain
-    // the observed starter-command profile pending that capture.
+    // [C] Independent longplay frame 004180 shows Analyze 2 (12 Mp), and
+    // frame 004220 shows Attack 3 (18 Mp); both display 10 Mp free. The loaded
+    // Deception 1 and Analyze 2 programs occupy 2 + 12 Mp by the ROM footprint
+    // table at 0xE2DF2 and size formula at 0x1952C. Adding that 14 Mp to the
+    // displayed 10 Mp free gives 24 Mp total under 0x1957E. The captures show
+    // the in-play deck state, not the exact first-acquisition transition.
     deck.program_ratings = std::array<std::uint8_t, 12U>{
-        3U, 0U, 0U, 0U, 1U, 0U, 0U, 0U, 0U, 1U, 0U, 1U};
+        3U, 0U, 0U, 0U, 1U, 0U, 0U, 0U, 0U, 1U, 0U, 2U};
     deck.active_programs =
         std::array<std::int8_t, 5U>{9, 11, -1, -1, -1};
     deck.data_files = std::array<CyberdeckDataFile, 5U>{};

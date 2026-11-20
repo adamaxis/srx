@@ -51811,9 +51811,13 @@ int main(int argc, char** argv) {
                         return 3;
                     }
                 }
+                // Independent Section 15 frames 004180/004220 show Analyze 2
+                // and Attack 3. ROM 0xE2DF2/0x1952C make the two loaded
+                // programs 14 Mp total; the 10 Mp free display at 004220
+                // yields 24 Mp capacity via 0x1957E.
                 constexpr std::array<std::uint8_t, 12U>
                     kExpectedPackageProgramRatings{{
-                        3U, 0U, 0U, 0U, 1U, 0U, 0U, 0U, 0U, 1U, 0U, 1U}};
+                        3U, 0U, 0U, 0U, 1U, 0U, 0U, 0U, 0U, 1U, 0U, 2U}};
                 constexpr std::array<std::int8_t, 5U>
                     kExpectedPackageActivePrograms{{9, 11, -1, -1, -1}};
                 const auto package_deck =
@@ -51824,7 +51828,7 @@ int main(int argc, char** argv) {
                     !package_deck.has_value() ||
                     package_deck->mpcp != 3U ||
                     package_deck->hardening != 0U ||
-                    package_deck->memory_megapulses != 15U ||
+                    package_deck->memory_megapulses != 24U ||
                     package_deck->storage_megapulses != 100U ||
                     package_deck->load_io_speed != 10U ||
                     package_deck->response != 0U ||
@@ -51973,6 +51977,10 @@ int main(int argc, char** argv) {
                          .top_matrix_deck_active_programs_present ||
                     first_deck_view.top_matrix_deck_active_programs !=
                         kExpectedPackageActivePrograms ||
+                    !first_deck_view
+                         .top_matrix_deck_program_ratings_present ||
+                    first_deck_view.top_matrix_deck_program_ratings !=
+                        kExpectedPackageProgramRatings ||
                     !first_deck_view.top_column.has_value() ||
                     *first_deck_view.top_column != 0 ||
                     !first_deck_view.top_row.has_value() ||
@@ -51984,6 +51992,77 @@ int main(int argc, char** argv) {
                                  "present the initial Attack selection, "
                                  "18/10/2 detail, loaded programs, and full "
                                  "screen\n";
+                    return 3;
+                }
+
+                // Exercise a different installed command through ordinary
+                // cursor input. The real longplay's Analyze 2 pane at frame
+                // 004180 reports 12 Mp, 10 Mp free, and a two-step load.
+                tap_qa_controller_button(first_deck_scene, 0x02U);
+                tap_qa_controller_button(first_deck_scene, 0x02U);
+                for (int column = 0; column < 3; ++column) {
+                    tap_qa_controller_button(first_deck_scene, 0x08U);
+                }
+                const auto analyze_view =
+                    first_deck_scene.field_menu_route_snapshot_for_dump();
+                const auto analyze_image = render_qa_field(first_deck_scene);
+                const std::array<std::string, 3>
+                    kExpectedPackageAnalyzeDetails{{"12", "10", "2"}};
+                const auto analyze_output = output / "first-deck-analyze";
+                std::filesystem::create_directories(analyze_output);
+                if (first_deck_scene.field_menu_route_screen_for_dump() !=
+                        static_cast<std::uint16_t>(srx::MenuScreen::CYBERDECK) ||
+                    analyze_view.top_column != 3 || analyze_view.top_row != 2 ||
+                    !analyze_view
+                         .top_matrix_deck_program_detail_values_present ||
+                    analyze_view.top_matrix_deck_program_detail_values !=
+                        kExpectedPackageAnalyzeDetails ||
+                    analyze_view.top_matrix_deck_program_ratings !=
+                        kExpectedPackageProgramRatings ||
+                    !image_has_green_ink(analyze_image, 176, 24, 136, 56) ||
+                    !save_qa_image(analyze_output, "actual.bmp",
+                                   analyze_image)) {
+                    std::cerr << "Cyberdeck gate QA: acquired Alpha did not "
+                                 "present Analyze 2 with the ROM-derived "
+                                 "12/10/2 detail\n";
+                    return 3;
+                }
+
+                // Storage must carry five empty file sentinels all the way
+                // through the View action; zero-valued IDs render as the
+                // ROM's Back-up Files label, so assert the visible empty state.
+                tap_qa_controller_button(first_deck_scene, 0x02U);
+                tap_qa_controller_button(first_deck_scene, 0x04U);
+                tap_qa_controller_button(first_deck_scene, 0x04U);
+                tap_qa_controller_button(first_deck_scene, 0x40U);
+                const auto storage_menu =
+                    first_deck_scene.field_menu_route_snapshot_for_dump();
+                if (first_deck_scene.field_menu_route_screen_for_dump() !=
+                        static_cast<std::uint16_t>(srx::MenuScreen::DECK_STORAGE) ||
+                    storage_menu.top_title != "Storage" ||
+                    storage_menu.top_matrix_storage_phase != "menu" ||
+                    !storage_menu.top_matrix_storage_file_names.empty()) {
+                    std::cerr << "Cyberdeck gate QA: the acquired Alpha "
+                                 "opened Storage with a phantom data file\n";
+                    return 3;
+                }
+                tap_qa_controller_button(first_deck_scene, 0x40U);
+                const auto empty_storage_view =
+                    first_deck_scene.field_menu_route_snapshot_for_dump();
+                const auto empty_storage_image =
+                    render_qa_field(first_deck_scene);
+                const auto empty_storage_output =
+                    output / "first-deck-storage-empty";
+                std::filesystem::create_directories(empty_storage_output);
+                if (first_deck_scene.field_menu_route_screen_for_dump() !=
+                        static_cast<std::uint16_t>(srx::MenuScreen::CYBERDECK) ||
+                    empty_storage_view.top_matrix_storage_empty_message_lines !=
+                        std::vector<std::string>{"No datafiles", " in storage"} ||
+                    !empty_storage_view.top_matrix_storage_file_names.empty() ||
+                    !save_qa_image(empty_storage_output, "actual.bmp",
+                                   empty_storage_image)) {
+                    std::cerr << "Cyberdeck gate QA: an empty acquired deck "
+                                 "did not show the source empty-storage message\n";
                     return 3;
                 }
 
