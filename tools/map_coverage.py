@@ -257,8 +257,10 @@ def build_rows(rom_path: Path) -> list[dict[str, str]]:
         ) or "MISSING"
 
     # Collision rectangles whose ROM event is 0x10 are the physical edges.
-    # 0x3168 runs only in outdoor mode (FFDF40=0, 0x0992). Scene 0 picks
-    # scene 3 or 5 by FFDDC6 against 0x1400; any other scene returns to 0.
+    # 0x3168 runs only in outdoor mode (FFDF40=0, 0x0992). It changes the
+    # scene and arrival profile but never writes FFDF40, so every edge row
+    # retains the incoming outdoor mode 0. Scene 0 picks scene 3 or 5 by
+    # FFDDC6 against 0x1400; any other scene returns to 0.
     # Each branch also loads an arrival block (camera pair, then three party
     # points) into FFE114: 0x3212 (to 5), 0x3222 (to 3), 0x31F2 (from 5),
     # 0x3202 (from any other scene). Only event-0x10 records in scenes 0, 3
@@ -293,7 +295,7 @@ def build_rows(rom_path: Path) -> list[dict[str, str]]:
                 f"edge-s{scene:02x}-r{address:06x}-{branch_id}", scene, "edge",
                 f"0x{address:06X};arrival=0x{arrival:06X};consume=0x0B7B8>0x1651E>0x1F5CA>0x03168",
                 f"rect:x={x0}..{x1},y={y0}..{y1};event=0x10;{branch};return_side={return_sides.get(address, 'unknown')}",
-                "FFDF40=0", destination, lead, scene_mode(destination),
+                "FFDF40=0", destination, lead, 0,
                 record_ref(address, links_code_path, edge_fn),
             ))
 
@@ -712,6 +714,8 @@ def self_test(rows: list[dict[str, str]]) -> None:
     edge = by_id["edge-s00-r0d582c-camXgteq0x1400"]
     assert edge["scene"] == "0" and edge["dest_scene"] == "5"
     assert edge["arrival_xy"] == "0x0600,0x3A00", edge
+    assert all(row["arrival_mode"] == "0" for row in rows
+               if row["category"] == "edge")
     assert "edge-s00-r0d5804-camXgteq0x1400" not in by_id
     assert by_id["edge-s00-r0d5804-camXlt0x1400"]["arrival_xy"] == "0x7880,0x2B00"
     assert not any(row_id.startswith("edge-rule-") for row_id in by_id)

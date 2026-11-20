@@ -102,3 +102,43 @@ Headless validation passed in both configurations:
 
 The captures are internal Qt output, not an independent Genesis comparison.
 Other random-event handlers remain outside this fix.
+
+## Walkthrough 3 boundary: Salish travel rows are missing
+
+The walkthrough 3 brief requires the actual cab/travel route from Redmond to
+Salish before testing Owlfeather's `b2` trigger. The current ROM-to-runtime
+coverage rows identify that route as `travel-taxi-r2-cursor0`: current cab-map
+cursor 2, destination cursor 0, ROM selector inputs `0x0D4456+2` and
+`0x0D445D+0`, then `0x020912 > 0x0136B6 > 0x0136DE`. Cursor 0 resolves to
+Salish-Shidhe in `taxi_destinations.lua`.
+
+That row and the six alternate destination rows for current cursor 2 are all
+`MISSING`. The harness starts at `(0x74D7, 0x0A7F)` and reports no map
+transition within 600 input frames after trying the south approach; the ROM
+scene-entry position is unresolved in the row. The focused taxi QA passing
+does not establish this real route. Walkthrough 3 therefore stops before
+setting or asserting any of `FFFC1E` bits 2–4. No story state was injected.
+
+## Edge-map mode expectation: street mode is preserved
+
+The rebuilt full Release suite reported 14 edge rows as `PASS -> WRONG`, all
+with correct event `0x10`, destination scene, and arrival position; the only
+mismatch was expected mode 1 versus observed mode 0. The fixture's source gate
+is already `FFDF40=0`.
+
+**[C]** ROM bytes at `0x03168..0x031F0` compare `FFFBF9` with `0x10`, choose
+the destination scene from `FFDDC4` and the camera split at `0x1400`, then
+write the selected scene to `FFDDC4` and its scene-entry profile to `FFE114`.
+The routine does not write `FFDF40`; with the documented street-mode input of
+0, all 14 edge rows must retain mode 0. This is a test-data correction, not a
+runtime transition change.
+
+```text
+0C 39 00 10 00 FF FB F9 66 00 00 7A
+0C 79 00 00 00 FF DD C4 66 00 00 3A
+0C 79 14 00 00 FF DD C6 65 00 00 1A
+33 FC 00 05 00 FF DD C4 23 FC 00 00 32 12 00 FF E1 14
+33 FC 00 03 00 FF DD C4 23 FC 00 00 32 22 00 FF E1 14
+```
+
+The active validation is `shadowrun_ghidra_conversion_qt_map_coverage_pass_field_qa`.
