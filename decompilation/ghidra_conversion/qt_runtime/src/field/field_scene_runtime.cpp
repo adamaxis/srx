@@ -8049,8 +8049,9 @@ bool FieldSceneRuntime::load_command_overview_assets(
         const auto cursor_alias =
             "cyberspace.matrix.cyberdeck.cursor" + suffix;
         auto& cursor = matrix_cyberdeck_cursors_[phase];
+        // ROM 0xE31E8 gives sprite size 0x0E: four tiles wide by three high.
         if (!load_image(catalog, cursor_alias, cursor) ||
-            cursor.size() != QSize(8, 8)) {
+            cursor.size() != QSize(32, 24)) {
             failure_ = "Matrix deck palette cursor is unavailable: " +
                        cursor_alias;
             return false;

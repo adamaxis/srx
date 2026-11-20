@@ -3974,28 +3974,52 @@ shadowrun::graphics::RgbaImage compose_matrix_cyberdeck_cursor(
     if (pattern_atlas.width != 128U || pattern_atlas.height != 104U) {
         throw std::runtime_error("Matrix deck cursor atlas is invalid");
     }
-    const auto word = read_big_endian_word(rom, kSpriteRecord + 6U);
-    const auto pattern = static_cast<std::size_t>(word & 0x07FFU);
-    if (pattern < kPatternBase || pattern - kPatternBase >= kPatternCount) {
+    const auto size = static_cast<std::size_t>(
+        read_big_endian_word(rom, kSpriteRecord + 4U) & 0x00FFU);
+    const auto width_tiles = ((size >> 2U) & 0x03U) + 1U;
+    const auto height_tiles = (size & 0x03U) + 1U;
+    const auto pattern_attributes =
+        read_big_endian_word(rom, kSpriteRecord + 6U);
+    const auto pattern =
+        static_cast<std::size_t>(pattern_attributes & 0x07FFU);
+    const auto pattern_index = pattern >= kPatternBase
+        ? pattern - kPatternBase
+        : kPatternCount;
+    const auto tile_count = width_tiles * height_tiles;
+    if (pattern_index >= kPatternCount ||
+        tile_count > kPatternCount - pattern_index) {
         throw std::runtime_error("Matrix deck cursor pattern is unavailable");
     }
-    const auto pattern_index = pattern - kPatternBase;
-    const auto source_x = (pattern_index % 16U) * 8U;
-    const auto source_y = (pattern_index / 16U) * 8U;
+    const auto width = width_tiles * 8U;
+    const auto height = height_tiles * 8U;
     shadowrun::graphics::RgbaImage image{
-        8U, 8U,
+        static_cast<std::uint16_t>(width),
+        static_cast<std::uint16_t>(height),
         std::vector<shadowrun::native::Rgba8>(
-            8U * 8U, shadowrun::native::Rgba8{0U, 0U, 0U, 0U}),
+            width * height, shadowrun::native::Rgba8{0U, 0U, 0U, 0U}),
     };
-    const bool flip_x = (word & 0x0800U) != 0U;
-    const bool flip_y = (word & 0x1000U) != 0U;
-    for (std::size_t y = 0U; y < 8U; ++y) {
-        for (std::size_t x = 0U; x < 8U; ++x) {
-            const auto from_x = source_x + (flip_x ? 7U - x : x);
-            const auto from_y = source_y + (flip_y ? 7U - y : y);
-            image.pixels[y * 8U + x] = pattern_atlas.pixels[
-                from_y * static_cast<std::size_t>(pattern_atlas.width) +
-                from_x];
+
+    // ROM 0xE31E8 supplies the sprite descriptor used by 0x182C0. Its size
+    // byte 0x0E encodes four horizontal tiles and three vertical tiles. The
+    // Genesis sprite pattern order is column-major: tile (x,y) is
+    // pattern_index + x*height_tiles + y (Sega Genesis Software Manual, p.60).
+    const bool flip_x = (pattern_attributes & 0x0800U) != 0U;
+    const bool flip_y = (pattern_attributes & 0x1000U) != 0U;
+    for (std::size_t y = 0U; y < height; ++y) {
+        for (std::size_t x = 0U; x < width; ++x) {
+            const auto source_x = flip_x ? width - 1U - x : x;
+            const auto source_y = flip_y ? height - 1U - y : y;
+            const auto tile_x = source_x / 8U;
+            const auto tile_y = source_y / 8U;
+            const auto source_pattern =
+                pattern_index + tile_x * height_tiles + tile_y;
+            const auto atlas_x = (source_pattern % 16U) * 8U +
+                                 source_x % 8U;
+            const auto atlas_y = (source_pattern / 16U) * 8U +
+                                 source_y % 8U;
+            image.pixels[y * width + x] = pattern_atlas.pixels[
+                atlas_y * static_cast<std::size_t>(pattern_atlas.width) +
+                atlas_x];
         }
     }
     return image;
@@ -12593,6 +12617,56 @@ int main(int argc, char** argv) {
         }
     }
     if (argc == 4 &&
+        std::string(argv[3]) == "--matrix-cyberdeck-cursors") {
+        try {
+            const auto rom = read_file(argv[1]);
+            MatrixGraphicsUploadHistory history{};
+            const auto field_menu = decode_matrix_graphics_upload(
+                rom, 0xD86E0U, history);
+            const auto menu = decode_matrix_graphics_upload(
+                rom, 0xD78AAU, history);
+            const auto matrix_ui = decode_matrix_graphics_upload(
+                rom, 0xD9376U, history);
+            if (field_menu.size() != 139U * 32U ||
+                menu.size() != 147U * 32U ||
+                matrix_ui.size() != 199U * 32U) {
+                throw std::runtime_error(
+                    "Matrix Cyberdeck cursor source graphics changed size");
+            }
+            const auto root = std::filesystem::path(argv[2]) /
+                              "cyberspace" / "matrix";
+            std::filesystem::create_directories(root);
+            const auto base_palette = shadowrun::graphics::read_genesis_palette(
+                rom, 0x0E2EBAU);
+            const auto base_patterns = shadowrun::graphics::decode_tile_atlas(
+                matrix_ui, 0U, 199U, base_palette, 16U, 0U);
+            shadowrun::graphics::write_bmp32(
+                (root / "cyberdeck-cursor.bmp").string(),
+                compose_matrix_cyberdeck_cursor(rom, base_patterns));
+            for (std::size_t phase = 1U; phase < 4U; ++phase) {
+                auto phase_palette = base_palette;
+                std::rotate(
+                    phase_palette.begin() + 8,
+                    phase_palette.begin() + 8 +
+                        static_cast<std::ptrdiff_t>(phase),
+                    phase_palette.begin() + 12);
+                const auto phase_patterns =
+                    shadowrun::graphics::decode_tile_atlas(
+                        matrix_ui, 0U, 199U, phase_palette, 16U, 0U);
+                shadowrun::graphics::write_bmp32(
+                    (root / ("cyberdeck-cursor-phase-" +
+                             std::to_string(phase) + ".bmp")).string(),
+                    compose_matrix_cyberdeck_cursor(rom, phase_patterns));
+            }
+            std::cout << "four Matrix Cyberdeck cursor assets written to "
+                      << root.string() << " using live ROM palette line 1\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
+    if (argc == 4 &&
         std::string(argv[3]) == "--field-player-hit-spark-assets") {
         try {
             const auto rom = read_file(argv[1]);
@@ -14406,6 +14480,8 @@ int main(int argc, char** argv) {
                       "--field-barrier-assets\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <asset-dir> "
                      "--matrix-cyberdeck-selectors\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <asset-dir> "
+                     "--matrix-cyberdeck-cursors\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out-dir> "
                      "--matrix-field-atlases\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out-dir> "

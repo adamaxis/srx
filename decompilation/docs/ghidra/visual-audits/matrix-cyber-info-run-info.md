@@ -286,6 +286,16 @@ in Debug and Release. All sixteen cell BMPs match across configurations. This
 extends the source-backed selection and detail checks; the complete Matrix
 hill remains partial.
 
+The selected-program frame comes from the sprite at `0xE31E8`, built by
+`0x182C0` and positioned from `($0C,$14)` in the Cyberdeck loop. Its size byte
+`0x0E` encodes a 4-by-3-tile sprite; its tile pattern starts at `0x04C6` in the
+stream uploaded from `0xD9376`. The extractor previously emitted only the
+first 8-by-8 tile, leaving a blue corner over the selected program instead of
+the full 32-by-24 frame. It now composes all twelve tiles in Genesis
+column-major sprite order. The first-deck dump and all sixteen traversed cells
+use the full frame; independent Section 15 frame `004220` shows the same
+selected Attack cell outline.
+
 ## Pull Plug placement
 
 The row-3/column-3 branch at `0x18450` keeps the selected Command grid while it
