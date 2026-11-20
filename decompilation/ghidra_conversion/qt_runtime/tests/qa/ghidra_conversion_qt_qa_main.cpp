@@ -5711,6 +5711,240 @@ int run_abandoned_building_encounter_qa(
     return 0;
 }
 
+int run_field_company_man_toothpick_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code error;
+    std::filesystem::create_directories(output, error);
+    if (error) {
+        std::cerr << "Company Man QA: cannot create output: "
+                  << error.message() << '\n';
+        return 3;
+    }
+    clear_qa_bitmap_artifacts(output, error);
+    if (error) {
+        std::cerr << "Company Man QA: cannot clear old captures: "
+                  << error.message() << '\n';
+        return 3;
+    }
+
+    // Resource activity code 2 selects scene 26 and the source-selected
+    // resource variant 2 for seed 0x1234. The random encounter itself uses
+    // the scene's sum-1 selector cell (0+1), whose ROM handler is 0x210B4.
+    if (field_scene.field_scene_reference_for_dump() != 2U ||
+        !field_scene.initialize_world_activity_for_dump(2U, 0x1234U)) {
+        std::cerr << "Company Man QA: could not enter the source resource "
+                     "scene: " << field_scene.failure() << '\n';
+        return 3;
+    }
+    field_scene.advance_frame();
+    if (!finish_field_building_scene_transition(field_scene) ||
+        field_scene.field_scene_reference_for_dump() != 26U ||
+        field_scene.selected_effect_index_for_dump() !=
+            std::optional<std::uint16_t>{2U}) {
+        std::cerr << "Company Man QA: resource scene did not retain its "
+                     "selected variant; scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << " variant="
+                  << (field_scene.selected_effect_index_for_dump().has_value()
+                          ? std::to_string(
+                                *field_scene.selected_effect_index_for_dump())
+                          : std::string("none"))
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    // Seed a valid typed Charisma value in this disposable QA runtime so the
+    // ROM's >1 branch is reachable. This is a branch fixture, not a claim
+    // about Michael's starting profile; Lua tests cover the full pool range.
+    auto& first_runner = field_scene.active_runner_record();
+    const auto original_charisma = first_runner.attributes[3U];
+    first_runner.attributes[3U] = 3U;
+    const auto charisma = first_runner.attributes[3U];
+    // Choose a deterministic seed for the shared 0x11CD92 result and the
+    // native resource-variant service.
+    std::optional<std::uint16_t> clue_seed;
+    for (std::uint32_t candidate = 0U;
+         candidate <= std::numeric_limits<std::uint16_t>::max(); ++candidate) {
+        auto simulated_seed = static_cast<std::uint16_t>(candidate);
+        const auto successes =
+            shadowrun::ghidra_conversion::count_thresholded_random_rolls(
+                charisma, 7U,
+                [&simulated_seed](const std::uint16_t bound) {
+                    return shadowrun::ghidra_conversion::
+                        sample_source_random_bound(simulated_seed, bound);
+                });
+        if (successes > 1U) {
+            clue_seed = static_cast<std::uint16_t>(candidate);
+            break;
+        }
+    }
+    if (!clue_seed.has_value()) {
+        std::cerr << "Company Man QA: no source seed found for the "
+                     "first-runner Charisma pool "
+                  << static_cast<unsigned>(charisma) << '\n';
+        return 3;
+    }
+
+    const auto spawned = field_scene.resolve_and_spawn_field_encounter_for_dump(
+        0U, 1U, *clue_seed);
+    const auto& prompt = field_scene.dialogue_panel();
+    const auto prompt_image = render_qa_field(field_scene);
+    const auto prompt_has_company_man_text = std::any_of(
+        prompt.text_segments.begin(),
+        prompt.text_segments.begin() +
+            static_cast<std::ptrdiff_t>(prompt.text_segment_count),
+        [](const std::string_view segment) {
+            return segment.find("A Company Man walks up and flicks a ") !=
+                   std::string_view::npos;
+        });
+    std::size_t portrait_color_pixels = 0U;
+    if (!prompt_image.isNull() &&
+        prompt_image.size() == QSize(kSceneWidth, kSceneHeight)) {
+        for (int y = 40; y < 108; ++y) {
+            for (int x = 16; x < 74; ++x) {
+                const auto color = prompt_image.pixelColor(x, y);
+                const auto brightest =
+                    std::max({color.red(), color.green(), color.blue()});
+                const auto darkest =
+                    std::min({color.red(), color.green(), color.blue()});
+                portrait_color_pixels += brightest - darkest > 20 ? 1U : 0U;
+            }
+        }
+    }
+    const bool opening_pixels_visible =
+        image_has_green_ink(prompt_image, 88, 16, 216, 120);
+    const bool choice_pixels_visible =
+        image_has_green_ink(prompt_image, 16, 144, 288, 76);
+    const bool prompt_saved =
+        save_qa_image(output, "opening.bmp", prompt_image);
+    if (spawned != 0U || !prompt.open || prompt.option_count != 3U ||
+        prompt.selected_option != 0U || prompt.actor_name != "Company Man" ||
+        prompt.portrait_alias !=
+            "dialogue.portraits.renraku.offices.entry" ||
+        !prompt_has_company_man_text || prompt_image.isNull() ||
+        prompt_image.size() != QSize(kSceneWidth, kSceneHeight) ||
+        portrait_color_pixels < 500U || !opening_pixels_visible ||
+        !choice_pixels_visible ||
+        !prompt_saved) {
+        std::cerr << "Company Man QA: source selector did not open its "
+                     "three-choice portrait prompt; spawned=" << spawned
+                  << " dialogue=" << prompt.open
+                  << " options=" << prompt.option_count
+                  << " actor=" << prompt.actor_name
+                  << " portrait=" << prompt.portrait_alias
+                  << " text_match=" << prompt_has_company_man_text
+                  << " portrait_color_pixels=" << portrait_color_pixels
+                  << " opening_pixels=" << opening_pixels_visible
+                  << " choice_pixels=" << choice_pixels_visible
+                  << " image_saved=" << prompt_saved
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    // ROM record 0x1214F4 maps Attack/Insult/Walk away to A/B/C. Select the
+    // reported Insult with B, as the source prompt does, rather than moving a
+    // host cursor that the original screen does not have.
+    const auto source_scene = field_scene.field_scene_reference_for_dump();
+    const auto source_camera = std::pair{
+        field_scene.state().field_scene_buffers.camera_x,
+        field_scene.state().field_scene_buffers.camera_y};
+    const auto source_music = field_scene.field_music_requests();
+    tap_qa_controller_button(field_scene, 0x10U);
+    const auto& result = field_scene.dialogue_panel();
+    const auto result_image = render_qa_field(field_scene);
+    const auto result_has_stare_down = std::any_of(
+        result.text_segments.begin(),
+        result.text_segments.begin() +
+            static_cast<std::ptrdiff_t>(result.text_segment_count),
+        [](const std::string_view segment) {
+            return segment.find("He stops and stares you down.") !=
+                   std::string_view::npos;
+        });
+    const auto result_has_selected_variant = std::any_of(
+        result.text_segments.begin(),
+        result.text_segments.begin() +
+            static_cast<std::ptrdiff_t>(result.text_segment_count),
+        [](const std::string_view segment) {
+            return segment.find("third floor") != std::string_view::npos;
+        });
+    const bool result_pixels_visible =
+        image_has_green_ink(result_image, 88, 16, 216, 120);
+    const bool result_saved =
+        save_qa_image(output, "actual.bmp", result_image);
+    if (!result.open || result.has_more || !result.source_complete ||
+        !result_has_stare_down || !result_has_selected_variant ||
+        field_scene.selected_effect_index_for_dump() !=
+            std::optional<std::uint16_t>{2U} ||
+        field_scene.field_alarm_active_for_dump() || !result_saved ||
+        !result_pixels_visible ||
+        result_image.isNull() ||
+        result_image.size() != QSize(kSceneWidth, kSceneHeight)) {
+        std::cerr << "Company Man QA: Insult did not display the terminal "
+                     "source-selected resource clue; dialogue=" << result.open
+                  << " terminal=" << !result.has_more
+                  << " complete=" << result.source_complete
+                  << " stare_down=" << result_has_stare_down
+                  << " selected_variant=" << result_has_selected_variant
+                  << " result_pixels=" << result_pixels_visible
+                  << " alarm=" << field_scene.field_alarm_active_for_dump()
+                  << " image_saved=" << result_saved
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    tap_qa_controller_button(field_scene, 0x40U);
+    const bool transition_finished =
+        finish_field_modal_return_transition(field_scene);
+    const auto returned_camera = std::pair{
+        field_scene.state().field_scene_buffers.camera_x,
+        field_scene.state().field_scene_buffers.camera_y};
+    const bool dialogue_closed = !field_scene.dialogue_open();
+    const bool scene_restored =
+        field_scene.field_scene_reference_for_dump() == source_scene;
+    const bool camera_restored = returned_camera == source_camera;
+    const bool music_restored =
+        field_scene.field_music_requests() == source_music;
+    const bool resolution_recorded =
+        std::find(source_boundaries.begin(), source_boundaries.end(),
+                  "field.random_encounter.company_man_toothpick.resolved") !=
+        source_boundaries.end();
+    if (!transition_finished || !dialogue_closed || !scene_restored ||
+        !camera_restored || !music_restored || !resolution_recorded) {
+        std::cerr << "Company Man QA: closing the result did not restore the "
+                     "saved resource field context; transition="
+                  << transition_finished << " dialogue_closed="
+                  << dialogue_closed << " scene_restored=" << scene_restored
+                  << " camera_restored=" << camera_restored << " camera="
+                  << returned_camera.first << ',' << returned_camera.second
+                  << " expected_camera=" << source_camera.first << ','
+                  << source_camera.second << " music_restored="
+                  << music_restored << " expected_music_count="
+                  << source_music.size() << " actual_music_count="
+                  << field_scene.field_music_requests().size()
+                  << " resolution_recorded=" << resolution_recorded
+                  << " scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << " dialogue=" << field_scene.dialogue_open()
+                  << " transition_frames="
+                  << static_cast<unsigned>(
+                         field_scene.field_modal_return_transition_frames_for_dump())
+                  << " palette_steps="
+                  << static_cast<unsigned>(
+                         field_scene.field_palette_fade_steps_for_dump())
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+    first_runner.attributes[3U] = original_charisma;
+    std::cout << "field_company_man_toothpick_qa=passed scene="
+              << source_scene << " resource_variant=third charisma="
+              << static_cast<unsigned>(charisma)
+              << " opening=" << (output / "opening.bmp").string()
+              << " actual=" << (output / "actual.bmp").string() << '\n';
+    return 0;
+}
+
 int run_field_hidden_camera_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& output,
@@ -47217,6 +47451,8 @@ int main(int argc, char** argv) {
             abandoned_building_encounter_qa_path;
         std::optional<std::filesystem::path>
             field_hidden_camera_qa_path;
+        std::optional<std::filesystem::path>
+            field_company_man_toothpick_qa_path;
         std::optional<std::string> field_faction_route_name;
         std::optional<std::string> field_faction_scene_name;
         std::optional<std::filesystem::path>
@@ -47752,6 +47988,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_hidden_camera_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-company-man-toothpick-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_company_man_toothpick_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-faction-route" &&
@@ -54984,6 +55227,11 @@ int main(int argc, char** argv) {
                     field_source_boundaries,
                     field_faction_route_name.value_or(std::string{}),
                     field_faction_scene_name.value_or(std::string("0")));
+            }
+            if (field_company_man_toothpick_qa_path.has_value()) {
+                return run_field_company_man_toothpick_qa(
+                    field_scene, *field_company_man_toothpick_qa_path,
+                    field_source_boundaries);
             }
             if (field_npc_item_action_qa_path.has_value()) {
                 return run_field_npc_item_action_qa(

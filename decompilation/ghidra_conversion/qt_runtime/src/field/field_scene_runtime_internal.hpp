@@ -22,7 +22,7 @@ struct FieldDialogueEventTask {
     std::string_view task_name;
 };
 
-inline constexpr std::array<FieldDialogueEventTask, 4U>
+inline constexpr std::array<FieldDialogueEventTask, 5U>
     kFieldDialogueEventTasks{{
         {"hidden_camera", "present_hidden_camera"},
         // ROM 0x20FA2 opens the escaped-patient encounter; Lua owns its
@@ -32,6 +32,8 @@ inline constexpr std::array<FieldDialogueEventTask, 4U>
         {"faction_disturbance", "present_faction_disturbance"},
         // ROM 0x20F2A opens record 0x120F00; Lua owns 0x23812's Body roll.
         {"phantasmal_watcher", "present_phantasmal_watcher"},
+        // ROM 0x210B4 opens the Company Man's three-choice resource event.
+        {"company_man_toothpick", "present_company_man_toothpick"},
     }};
 
 inline const char* field_dialogue_task_for_event(

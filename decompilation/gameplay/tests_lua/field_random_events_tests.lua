@@ -14,10 +14,13 @@ local function eq(actual, expected, label)
     checks = checks + 1
 end
 
-local function member(active, quickness)
+eq(type(RandomEvents.present_company_man_toothpick), "function",
+   "Company Man toothpick random event has a Lua response handler")
+
+local function member(active, quickness, charisma)
     return {
         runner_facts = { lifecycle = { active = active } },
-        attributes = { quickness = quickness },
+        attributes = { quickness = quickness, charisma = charisma },
     }
 end
 
@@ -628,6 +631,303 @@ local function run_watcher(choice, configuration)
         nuyen_writes
 end
 
+local function run_company_man_toothpick(choice, configuration)
+    configuration = configuration or {}
+    local pages = {}
+    local exit_calls = {}
+    local random_calls = {}
+    local prompt_titles = {}
+    local prompt_options = {}
+    local prompt_speakers = {}
+    local random_values = configuration.random_values or { [6] = {} }
+    local random_indices = {}
+    local party = configuration.party or {
+        [0] = member(true, 2, 3),
+        [1] = member(true, 4, 9),
+        [2] = member(false, 255, 255),
+    }
+    local alarm_calls = 0
+    local karma_calls = 0
+    local resource_variant_calls = 0
+    game = {
+        location = {
+            type = "field_map",
+            id = "random_field_event",
+            event_id = "company_man_toothpick",
+            scene_id = 26,
+        },
+        modules = {
+            combat = Combat,
+            world_content_data = {
+                world_activity_event_content = {
+                    {
+                        event_id = "company_man_toothpick",
+                        opening_text =
+                            "<A Company Man walks up and flicks a " ..
+                            "toothpick at you.>",
+                    },
+                },
+                world_activity_event_choices = {
+                    { event_id = "company_man_toothpick", choice_order = 1,
+                      choice_id = "attack", label = "<Attack!!>" },
+                    { event_id = "company_man_toothpick", choice_order = 2,
+                      choice_id = "insult",
+                      label = "Slot off, frag-face!!!" },
+                    { event_id = "company_man_toothpick", choice_order = 3,
+                      choice_id = "leave", label = "<Walk away.>" },
+                },
+            },
+        },
+        party = function() return party end,
+        ui = {
+            say_text = function(text, continuation, speaker_id, text_profile)
+                pages[#pages + 1] = {
+                    text = text,
+                    continuation = continuation,
+                    speaker_id = speaker_id,
+                    text_profile = text_profile,
+                }
+            end,
+            prompt_text = function(menu_id, prompt, options,
+                                   speaker_id, text_profile)
+                eq(menu_id, "company_man_toothpick",
+                   "Company Man menu id")
+                prompt_titles[#prompt_titles + 1] = prompt
+                prompt_options[#prompt_options + 1] = options
+                prompt_speakers[#prompt_speakers + 1] = {
+                    speaker_id = speaker_id,
+                    text_profile = text_profile,
+                }
+                return choice
+            end,
+        },
+        services = {
+            call = function(domain, action)
+                if domain == "random" then
+                    random_calls[#random_calls + 1] = action
+                    eq(action, "bounded_6", "Company Man source die")
+                    random_indices[6] = (random_indices[6] or 0) + 1
+                    local value = random_values[6] and
+                        random_values[6][random_indices[6]] or nil
+                    return value ~= nil and ("roll_" .. value) or nil
+                end
+                if domain == "field" and action == "raise_alarm" then
+                    alarm_calls = alarm_calls + 1
+                    return "applied"
+                end
+                if domain == "party" and action == "award_karma_1" then
+                    karma_calls = karma_calls + 1
+                    return "applied"
+                end
+                if domain == "field" and action == "resource_variant" then
+                    resource_variant_calls = resource_variant_calls + 1
+                    if configuration.resource_variant_unavailable then
+                        return nil
+                    end
+                    return configuration.resource_variant or "third"
+                end
+                eq(domain, "dialogue_exit",
+                   "Company Man exit uses the common executor service")
+                exit_calls[#exit_calls + 1] = action
+                return "applied"
+            end,
+        },
+    }
+    local result = DialogueFramework.open(
+        E.DialogueSource.RANDOM_ENCOUNTER,
+        "field_random_events", "present_company_man_toothpick")
+    return result, pages, exit_calls, alarm_calls, karma_calls,
+        random_calls, prompt_titles, prompt_options, prompt_speakers,
+        resource_variant_calls
+end
+
+-- ROM 0x210B4's prompt and each visible response have their own source path.
+do
+local company_route = DialogueFramework.describe(
+    E.DialogueSource.RANDOM_ENCOUNTER,
+    "field_random_events.present_company_man_toothpick")
+eq(company_route.scene_outcome, E.FieldLocationSceneOutcome.SAME_SCENE,
+   "Company Man returns to the source field scene")
+eq(company_route.exit_behavior, E.DialogueExitBehavior.STAY,
+   "Company Man uses the shared stay exit")
+eq(company_route.transition, E.DialogueTransition.FADE,
+   "Company Man returns through the shared fade")
+eq(company_route.transition_frames,
+   E.DialogueTransitionFrames.HAGGARD_BLACK_INTERVAL,
+   "Company Man uses the measured field-event fade interval")
+eq(company_route.input_lock,
+   E.DialogueInputLock.WORLD_ACTIVITY_FFE11C,
+   "Company Man preserves the resource-event input lock")
+eq(company_route.input_lock_frames,
+   E.DialogueInputLockFrames.WORLD_ACTIVITY,
+   "Company Man preserves the resource-event lock duration")
+
+local attack_zero, attack_zero_pages, attack_zero_exit,
+      attack_zero_alarms, attack_zero_karma, attack_zero_random,
+      attack_zero_titles, attack_zero_options, attack_zero_speakers =
+    run_company_man_toothpick("attack", {
+        -- Average Quickness is 3. Each face is 5, so fixed target 7 fails;
+        -- the source target must not inherit Hidden Camera's party target.
+        random_values = { [6] = { 4, 4, 4 } },
+    })
+eq(attack_zero, "resolved", "Company Man Attack zero-success result")
+eq(attack_zero_titles[1],
+   "<A Company Man walks up and flicks a toothpick at you.>",
+   "Company Man prompt uses extracted opening")
+eq(#attack_zero_options[1], 3, "Company Man prompt has three choices")
+eq(attack_zero_options[1][1].id, "attack",
+   "Company Man first choice is Attack")
+eq(attack_zero_options[1][1].label, "<Attack!!>",
+   "Company Man Attack label matches the source row")
+eq(attack_zero_options[1][2].id, "insult",
+   "Company Man second choice is Insult")
+eq(attack_zero_options[1][2].label, "Slot off, frag-face!!!",
+   "Company Man Insult label matches the source row")
+eq(attack_zero_options[1][3].id, "leave",
+   "Company Man third choice is Walk away")
+eq(attack_zero_options[1][3].label, "<Walk away.>",
+   "Company Man Walk away label matches the source row")
+eq(attack_zero_speakers[1].speaker_id, "company_man_random_event",
+   "Company Man prompt uses its source portrait binding")
+eq(attack_zero_speakers[1].text_profile, "field.world_event",
+   "Company Man prompt uses the field event text profile")
+eq(#attack_zero_pages, 1, "failed Attack has one result page")
+eq(attack_zero_pages[1].text,
+   "<As you pull your guns, the Company Man flees and raises the alarm.>",
+   "zero-success Attack result text")
+eq(attack_zero_pages[1].continuation, false,
+   "zero-success Attack result is terminal")
+eq(attack_zero_pages[1].speaker_id, "company_man_random_event",
+   "Attack result keeps the Company Man portrait binding")
+eq(attack_zero_alarms, 1, "zero-success Attack raises the alarm")
+eq(attack_zero_karma, 0, "zero-success Attack awards no Karma")
+eq(#attack_zero_random, 3,
+   "Attack averages active Quickness and excludes the inactive slot")
+eq(table.concat(attack_zero_exit, ","), "restore_field_context_stay",
+   "Company Man returns through the shared same-map dialogue exit")
+
+local attack_one, attack_one_pages, _, attack_one_alarms, attack_one_karma,
+      attack_one_random = run_company_man_toothpick("attack", {
+    random_values = { [6] = { 5, 0, 4, 4 } },
+})
+eq(attack_one, "resolved", "Company Man Attack one-success result")
+eq(attack_one_pages[1].text,
+   "<You wound him as he escapes down the hall.  " ..
+   "The alarm soon comes to life..>", "one-success Attack result text")
+eq(attack_one_alarms, 1, "one-success Attack raises the alarm")
+eq(attack_one_karma, 0, "one-success Attack awards no Karma")
+eq(#attack_one_random, 4,
+   "one-success Attack uses a fixed target of seven")
+
+local attack_kill, attack_kill_pages, _, attack_kill_alarms,
+      attack_kill_karma, attack_kill_random =
+    run_company_man_toothpick("attack", {
+        random_values = { [6] = { 5, 0, 5, 0, 4 } },
+    })
+eq(attack_kill, "resolved", "Company Man Attack kill result")
+eq(attack_kill_pages[1].text,
+   "<He does the staccato death-dance to the beat of your gun.||" ..
+   "He'll not mock you again!>", "two-success Attack result text")
+eq(attack_kill_alarms, 0, "successful Attack does not raise the alarm")
+eq(attack_kill_karma, 1,
+   "successful Attack awards one Karma to the full party")
+eq(#attack_kill_random, 5, "successful Attack rolls the active average pool")
+
+local insult_zero, insult_zero_pages, _, insult_zero_alarms,
+      insult_zero_karma, insult_zero_random, _, _, insult_zero_speakers =
+    run_company_man_toothpick("insult", {
+        party = { [0] = member(true, 2, 2),
+                 [1] = member(true, 4, 9) },
+        random_values = { [6] = { 4, 4 } },
+    })
+eq(insult_zero, "resolved", "Company Man Insult zero-success result")
+eq(insult_zero_pages[1].text,
+   "<He stops and looks you over carefully.  " ..
+   "He then calls security.>", "zero-success Insult result text")
+eq(insult_zero_alarms, 1, "zero-success Insult raises the alarm")
+eq(insult_zero_karma, 0, "zero-success Insult awards no Karma")
+eq(#insult_zero_random, 2,
+   "zero-success Insult uses slot 0 Charisma only")
+eq(insult_zero_speakers[1].speaker_id, "company_man_random_event",
+   "Insult uses the Company Man portrait binding")
+
+local insult_one, insult_one_pages, _, insult_one_alarms,
+      insult_one_karma, insult_one_random =
+    run_company_man_toothpick("insult", {
+        -- Slot 0 has one die; the active partner's six Charisma dice do not
+        -- enter the ROM 0x2489A check.
+        party = { [0] = member(true, 2, 1),
+                 [1] = member(true, 4, 6) },
+        random_values = { [6] = { 5, 0 } },
+    })
+eq(insult_one, "resolved", "Company Man Insult one-success result")
+eq(insult_one_pages[1].text, "<He laughs as he walks away.>",
+   "one-success Insult result text")
+eq(insult_one_alarms, 0, "one-success Insult does not raise the alarm")
+eq(insult_one_karma, 0, "one-success Insult awards no Karma")
+eq(#insult_one_random, 2, "one-success Insult rolls first-runner Charisma")
+
+local floor_clues = {
+    { "first", "first" }, { "second", "second" },
+    { "third", "third" }, { "fourth", "fourth" },
+    { "fifth", "fifth" }, { "sixth", "sixth" },
+}
+for _, variant in ipairs(floor_clues) do
+    local insult_many, insult_many_pages, insult_many_exit,
+          insult_many_alarms, insult_many_karma, insult_many_random,
+          _, _, _, insult_many_variant_calls =
+        run_company_man_toothpick("insult", {
+            party = { [0] = member(true, 2, 3) },
+            random_values = { [6] = { 5, 0, 5, 0, 4 } },
+            resource_variant = variant[1],
+        })
+    eq(insult_many, "resolved",
+       "multi-success Insult resolves for resource variant " .. variant[1])
+    eq(insult_many_pages[1].text,
+       "<He stops and stares you down. He then smiles.>||" ..
+       "He says to check the " .. variant[2] .. " floor.>",
+       "Insult clue follows the selected resource variant " .. variant[1])
+    eq(insult_many_pages[1].continuation, false,
+       "shared 0x11CD92 result is terminal")
+    eq(insult_many_pages[1].speaker_id, "company_man_random_event",
+       "floor clue keeps the Company Man portrait binding")
+    eq(insult_many_alarms, 0, "multi-success Insult does not raise alarm")
+    eq(insult_many_karma, 0, "multi-success Insult awards no Karma")
+    eq(#insult_many_random, 5,
+       "multi-success Insult rolls first-runner Charisma")
+    eq(insult_many_variant_calls, 1,
+       "multi-success Insult reads one named resource variant")
+    eq(table.concat(insult_many_exit, ","),
+       "restore_field_context_stay",
+       "multi-success Insult uses shared field-context restoration")
+end
+
+local insult_missing_variant, insult_missing_pages =
+    run_company_man_toothpick("insult", {
+        party = { [0] = member(true, 2, 3) },
+        random_values = { [6] = { 5, 0, 5, 0, 4 } },
+        resource_variant_unavailable = true,
+    })
+eq(type(insult_missing_variant), "table",
+   "missing Company Man resource variant remains a source boundary")
+eq(insult_missing_variant.type, "source_boundary",
+   "missing resource variant is not silently clamped")
+eq(#insult_missing_pages, 0,
+   "missing resource variant does not invent a floor clue")
+
+local company_leave, company_leave_pages, company_leave_exit,
+      company_leave_alarms, company_leave_karma, company_leave_random =
+    run_company_man_toothpick("leave")
+eq(company_leave, "resolved", "Company Man Walk away result")
+eq(company_leave_pages[1].text, "<He saunters away.>",
+   "Walk away result matches ROM record 0x121538")
+eq(company_leave_alarms, 0, "Walk away does not raise the alarm")
+eq(company_leave_karma, 0, "Walk away awards no Karma")
+eq(#company_leave_random, 0, "Walk away does not roll dice")
+eq(table.concat(company_leave_exit, ","), "restore_field_context_stay",
+   "Walk away restores the original field context")
+end
+
 -- ROM prompt 0x120F00's rows and the following text records are exercised in
 -- source order; the MORE-bearing pages continue before their next record.
 do
@@ -669,7 +969,7 @@ eq(watcher_insult_funds, 125, "Insult does not award nuyen")
 eq(watcher_insult_writes, 0, "Insult does not write nuyen")
 eq(#watcher_insult_random, 0, "Insult does not roll Body")
 eq(#watcher_insult_effects, 0, "Insult queues no actor list")
-eq(table.concat(watcher_insult_exit, ","), "stay,fade_83,lock_60",
+eq(table.concat(watcher_insult_exit, ","), "restore_field_context_stay",
    "watcher returns through the haggard same-map dialogue exit")
 
 local watcher_zero, watcher_zero_pages, _, watcher_zero_funds,
@@ -817,7 +1117,7 @@ eq(haggard_pages[2].text,
 eq(haggard_pages[2].continuation, false,
    "doctor Help result is the terminal page")
 eq(haggard_funds, 175, "ROM 0x23CF2 Help reward adds 50 nuyen")
-eq(table.concat(haggard_exit, ","), "stay,fade_83,lock_60",
+eq(table.concat(haggard_exit, ","), "restore_field_context_stay",
    "measured doctor exit requests stay, its 83-frame black interval, and lock 60")
 eq(haggard_titles[1], "<The man looks like a typical doctor to you.>",
    "ROM 0x23BB4 zero-success alternate introduction")
@@ -901,7 +1201,7 @@ for _, roll in ipairs({ 0, 49 }) do
     eq(table.concat(threaten_random, ","),
        "bounded_6,bounded_100,bounded_100",
        "Threaten follows the Intelligence and prompt rolls with its 0-99 roll")
-    eq(table.concat(threaten_exit, ","), "stay,fade_83,lock_60",
+    eq(table.concat(threaten_exit, ","), "restore_field_context_stay",
        "Threaten success uses the source same-map exit")
 end
 
@@ -960,7 +1260,7 @@ eq(attack_reward_pages[2].text:find("about dry", 1, true) ~= nil, true,
 eq(table.concat(attack_reward_random, ","),
    "bounded_6,bounded_100,bounded_6,bounded_6,bounded_6,bounded_6",
    "Attack uses first-runner Intelligence and Body dice pools in source order")
-eq(table.concat(attack_reward_exit, ","), "stay,fade_83,lock_60",
+eq(table.concat(attack_reward_exit, ","), "restore_field_context_stay",
    "no-combat Attack result returns through the same-map exit")
 
 local zero_success_attack, zero_success_pages, zero_success_exit,
@@ -986,7 +1286,7 @@ eq(#zero_success_effects, 1,
    "zero-success Attack queues exactly one actor sequence")
 eq(zero_success_funds, 125,
    "zero-success Attack does not award the no-combat nuyen")
-eq(table.concat(zero_success_exit, ","), "stay,fade_83,lock_60",
+eq(table.concat(zero_success_exit, ","), "restore_field_context_stay",
    "zero-success Attack returns through the common same-map exit")
 
 local one_success_attack, one_success_pages, one_success_exit,
@@ -1002,7 +1302,7 @@ eq(one_success_attack, "resolved",
    "ROM 0x23C52 one-success Attack starts the source actor sequence")
 eq(one_success_funds, 125,
    "one-success Attack cannot take the no-combat payout")
-eq(table.concat(one_success_exit, ","), "stay,fade_83,lock_60",
+eq(table.concat(one_success_exit, ","), "restore_field_context_stay",
    "one-success Attack returns through the common same-map exit")
 eq(one_success_pages[2].text,
    "<The doctor looks about nervously, then addresses his henchmen.>||" ..

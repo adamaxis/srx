@@ -1230,15 +1230,49 @@ and animation decisions. Dynamic actor entry art is extracted by entity kind
 and direction, while the host exposes entry timing as typed values. Lua links
 targets using semantic actor facts. The B-button target selector is connected
 to live actor records; its selected state remains separate from the action
-candidate reservation. Enabled dialogue handlers remain a dispatch boundary.
+candidate reservation. The Company Man toothpick route is now implemented;
+other enabled dialogue handlers remain a dispatch boundary.
 
 The creature entry branch also returns the `0xB05E` cue selected by entity
 kind. For the encounter kinds, those requests select table-2 slots 46, 47, 86,
 88, and 90. The audio manifest omits these verified silent/no-op slots, so the
 source request is preserved without inventing an audible effect or duration.
 
-This does not complete random-event gameplay. Enabled dialogue handlers,
+**Company Man toothpick event (2026-11-20).** ROM entry `0x210B4` selects
+prompt `0x1214F4` and resource/portrait profile `0x121E2C`. The prompt maps
+Attack, Insult, and Walk away to the three source button commands. Lua now
+implements Attack's active-party average Quickness check against target 7
+(`0x23750`, `0x24846`), including alarm branches and the all-three-runner
+Karma award; Insult uses runner slot 0's Charisma against target 7 (`0x2489A`),
+including its alarm, laugh, and resource-clue branches; Walk away returns the
+source saunter text without a roll. The native adapter maps the retained
+resource variant to a named first-through-sixth value for Lua. These are
+resource labels from `FFE12C`, not asserted physical floors.
+
+The Insult multi-success branch assembles its stare-down text with the selected
+resource clue and presents the shared node `0x11CD92` as one terminal page.
+That record's first option is the `0xFFFFFFFF` sentinel; the `0x1F3C4`
+consumer follows its no-options wait path at `0x1F592` and does not expose a
+follow-up menu. The Qt QA selects the Company Man through Scene 26's sum-1
+selector cell, presses B for Insult as required by prompt `0x1214F4`, verifies
+the returned third-variant clue and same-scene context restore, and writes
+`opening.bmp` plus `actual.bmp`. It checks rendered green text and colored
+portrait pixels as well as typed dialogue state. Debug and Release CTests
+`shadowrun_gameplay_field_random_events_qa` and
+`shadowrun_ghidra_conversion_qt_field_company_man_toothpick_qa` pass; both
+builds produce byte-identical captures under
+`build/conversion/qt/{debug,release}/qt_runtime/field-company-man-toothpick-qa/`.
+The Lua suite covers all choice branches, all six resource variants,
+alarm/Karma effects, slot-0 Charisma, and missing resource-variant handling.
+ROM entry `0x210B4` is recorded as defended in
+`decompiled-function-status.tsv`. These are internal Qt captures, not an
+independent Genesis comparison; the Company Man fade cadence uses the existing
+random-event presentation contract [H].
+
+This does not complete random-event gameplay. Other enabled dialogue handlers,
 creature item/spell actions, attack effects, hit/damage/death, removal and
 queued activity continuations remain open. Ordered template overrides are
 retained; only the `+0x11` render/selection byte is currently projected into
-typed runtime state. The separate Hidden Camera route has Debug/Release Scene-26 QA and opening/result BMPs; this broader encounter slice remains partial.
+typed runtime state. The separate Hidden Camera route has Debug/Release
+Scene-26 QA and opening/result BMPs; this broader encounter slice remains
+partial.

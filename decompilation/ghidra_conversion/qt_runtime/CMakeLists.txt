@@ -1066,6 +1066,13 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_hidden_camera_qa
                  --field-hidden-camera-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-hidden-camera-qa")
 
+# Scene 26's sum-1 selector opens the Company Man event. Confirm the Insult
+# reply displays the resource-variant clue and returns through the saved scene.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_company_man_toothpick_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-company-man-toothpick-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-company-man-toothpick-qa")
+
 # Run each mutually exclusive faction list in a fresh runtime so the first
 # encounter's active actors do not consume slots in the second source branch.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_faction_mafia_qa

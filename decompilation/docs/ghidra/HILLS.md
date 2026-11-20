@@ -2072,4 +2072,31 @@ open.
 
 The live Scene-2 encounter QA now carries a kind-8 Weenr through the same
 completion boundary. Its ROM C0B2 list at `0x8FC4` is two frames at rate
-`0x0200`; after a live lethal pistol hit, Debug and Release require Lua's+typed lifecycle facts to report active, downed, and dead, retain its position,+and preserve the final pose in `zero-meter-down/down-complete.bmp` (`0xA93E`,+`0xAB02`, ordinary-corpse path `0xA91C`). The existing GPGX held-fire sample+records target flags `0x35` at frame 10263 and `0x75` at 10280, consistent with+the ROM death completion. This ordinary Weenr route does not reproduce the+reported disappearance; other enemy kinds, offscreen reinforcement retirement,+and the user's missing repro remain open.
+`0x0200`; after a live lethal pistol hit, Debug and Release require Lua's
+typed lifecycle facts to report active, downed, and dead, retain its position,
+and preserve the final pose in `zero-meter-down/down-complete.bmp` (`0xA93E`,
+`0xAB02`, ordinary-corpse path `0xA91C`). The existing GPGX held-fire sample
+records target flags `0x35` at frame 10263 and `0x75` at 10280, consistent with
+the ROM death completion. This ordinary Weenr route does not reproduce the
+reported disappearance; other enemy kinds, offscreen reinforcement retirement,
+and the user's missing repro remain open.
+
+### Company Man toothpick dialogue (defended, 2026-11-20)
+
+The random-event entry at ROM `0x210B4` selects prompt `0x1214F4`, its
+resource/portrait profile at `0x121E2C`, and one of Attack, Insult, or Walk
+away. Lua now covers the source result branches, and the typed field adapter
+passes the selected resource variant by name for the Insult clue. The shared
+result node `0x11CD92` is terminal: its first option is `0xFFFFFFFF`, and the
+consumer at `0x1F3C4` follows its no-options wait path at `0x1F592`.
+
+Debug and Release CTests validate every Lua outcome, the Scene-26 sum-1 event
+selector, the B-button Insult command, rendered prompt text and portrait
+pixels, the third-variant result pixels, and return to the saved scene,
+camera, and music state. Both builds write matching `opening.bmp` and
+`actual.bmp` captures under
+`build/conversion/qt/{debug,release}/qt_runtime/field-company-man-toothpick-qa/`.
+This defended hill is the Company Man dialogue path; other random-event
+handlers and the broader creature encounter system remain partial. Captures
+are internal Qt output without an independent Genesis comparison, and the
+Company Man fade cadence remains a presentation-contract hypothesis [H].

@@ -173,16 +173,19 @@ bool finish_field_modal_return_transition(FieldSceneRuntime& field_scene) {
     }
     auto remaining =
         field_scene.field_modal_return_transition_frames_for_dump();
-    if (remaining > 60U) {
-        return false;
-    }
-    while (remaining != 0U) {
+    // Route descriptors may request more than the common 60-frame return.
+    // Keep the loop bounded by the descriptor's one-byte duration field.
+    std::uint16_t advanced = 0U;
+    while (remaining != 0U &&
+           advanced < std::numeric_limits<std::uint8_t>::max()) {
         field_scene.set_controller_port_byte(0U);
         field_scene.advance_frame();
+        ++advanced;
         remaining =
             field_scene.field_modal_return_transition_frames_for_dump();
     }
-    return field_scene.field_palette_fade_steps_for_dump() == 0U;
+    return remaining == 0U &&
+           field_scene.field_palette_fade_steps_for_dump() == 0U;
 }
 
 bool controller_event_contains_a(const std::uint16_t events) noexcept {

@@ -96,6 +96,8 @@ local SECURITY_GUARD_BADGE_VERIFY_RESULT =
 -- no portrait.
 local HAGGARD_SPEAKER = "haggard_man_event"
 local HAGGARD_TEXT_PROFILE = "field.world_event"
+local COMPANY_MAN_SPEAKER = "company_man_random_event"
+local COMPANY_MAN_TEXT_PROFILE = "field.world_event"
 local WATCHER_BODY_TARGET = 6 -- ROM 0x2381A [C].
 local WATCHER_REWARD_NUYEN = 200 -- ROM 0x23834 [C].
 local WATCHER_ACCEPT_CHOICE = "accept_watcher_request"
@@ -124,6 +126,35 @@ local WATCHER_REWARD_RESULT =
     "The mage addresses you.>||Thank you for your help.||" ..
     "This, I'm afraid, is all I can offer in return.||" ..
     "<He hands you 200 nuyen.>" -- ROM text 0x11DAF8 [C].
+local COMPANY_MAN_TARGET = 7 -- ROM 0x24846 and 0x2489A [C].
+local COMPANY_MAN_ATTACK_FLEE_RESULT =
+    "<As you pull your guns, the Company Man flees and raises the alarm.>"
+    -- ROM record 0x121510 -> text 0x11FE92 [C].
+local COMPANY_MAN_ATTACK_WOUND_RESULT =
+    "<You wound him as he escapes down the hall.  " ..
+    "The alarm soon comes to life..>"
+    -- ROM record 0x121518 -> text 0x11FED7 [C].
+local COMPANY_MAN_ATTACK_DEATH_RESULT =
+    "<He does the staccato death-dance to the beat of your gun.||" ..
+    "He'll not mock you again!>" -- ROM record 0x121520 -> 0x11FF24 [C].
+local COMPANY_MAN_INSULT_SECURITY_RESULT =
+    "<He stops and looks you over carefully.  " ..
+    "He then calls security.>" -- ROM record 0x121528 -> 0x11FF7B [C].
+local COMPANY_MAN_INSULT_LAUGH_RESULT =
+    "<He laughs as he walks away.>" -- ROM record 0x121530 -> 0x11FFBD [C].
+local COMPANY_MAN_STARE_DOWN_RESULT =
+    "<He stops and stares you down. He then smiles.>" -- ROM 0x11FFDB [C].
+local COMPANY_MAN_RESOURCE_CLUES = {
+    first = "He says to check the first floor.>",
+    second = "He says to check the second floor.>",
+    third = "He says to check the third floor.>",
+    fourth = "He says to check the fourth floor.>",
+    fifth = "He says to check the fifth floor.>",
+    sixth = "He says to check the sixth floor.>",
+} -- ROM pointer table 0x121540 indexed by FFE12C [C].
+local COMPANY_MAN_LEAVE_RESULT =
+    "<He saunters away.>" -- ROM record 0x121538 -> text 0x12013E [C].
+local COMPANY_MAN_RESOURCE_VARIANT_SERVICE = "resource_variant"
 local WATCHER_ATTACK_OUTCOMES = {
     [0] = {
         sequence_id = E.WorldEffectSequence.PHANTASMAL_WATCHER_EYE_FIVERS_FOUR,
@@ -182,7 +213,7 @@ local function event_opening(event_id)
     return opening
 end
 
-local function event_prompt_data(event_id)
+local function event_prompt_data(event_id, expected_choice_ids)
     local data = game.modules.world_content_data
     local content = type(data) == "table" and
         data.world_activity_event_content or nil
@@ -218,17 +249,23 @@ local function event_prompt_data(event_id)
     table.sort(options, function(left, right)
         return left.order < right.order
     end)
-    if type(opening) ~= "string" or opening == "" or #options ~= 2 or
-       options[1].order ~= 1 or
-       options[1].id ~= WATCHER_ACCEPT_CHOICE or
-       options[2].order ~= 2 or
-       options[2].id ~= WATCHER_INSULT_CHOICE then
+    if type(opening) ~= "string" or opening == "" or
+       type(expected_choice_ids) ~= "table" or
+       #options ~= #expected_choice_ids then
         return nil, nil
     end
-    return opening, {
-        { id = options[1].id, label = options[1].label },
-        { id = options[2].id, label = options[2].label },
-    }
+    local prompt_options = {}
+    for index, expected_id in ipairs(expected_choice_ids) do
+        if options[index].order ~= index or
+           options[index].id ~= expected_id then
+            return nil, nil
+        end
+        prompt_options[index] = {
+            id = options[index].id,
+            label = options[index].label,
+        }
+    end
+    return opening, prompt_options
 end
 
 local function party_check()
@@ -364,7 +401,9 @@ function RandomEvents.present_phantasmal_watcher()
         return nil
     end
 
-    local opening, choices = event_prompt_data("phantasmal_watcher")
+    local opening, choices = event_prompt_data(
+        "phantasmal_watcher",
+        { WATCHER_ACCEPT_CHOICE, WATCHER_INSULT_CHOICE })
     if opening == nil or choices == nil then
         return source_boundary("watcher prompt data is unavailable")
     end
@@ -417,6 +456,121 @@ function RandomEvents.present_phantasmal_watcher()
     game.ui.say_text(WATCHER_WAVE_RESULT, false, HAGGARD_SPEAKER,
                      HAGGARD_TEXT_PROFILE)
     return "resolved"
+end
+
+local function company_man_roll(dice_pool, boundary_reason)
+    local modules = type(game.modules) == "table" and game.modules or nil
+    local combat = type(modules) == "table" and modules.combat or nil
+    if type(combat) ~= "table" or
+       type(combat.roll_thresholded_successes) ~= "function" then
+        return nil, source_boundary(boundary_reason ..
+                                   " needs the shared threshold-roll service")
+    end
+    local successes = combat.roll_thresholded_successes(
+        dice_pool, COMPANY_MAN_TARGET, random_die)
+    if successes == nil then
+        return nil, source_boundary(boundary_reason ..
+                                   " threshold roll is unavailable")
+    end
+    return successes
+end
+
+function RandomEvents.present_company_man_toothpick()
+    local location = game.location
+    if type(location) ~= "table" or location.type ~= "field_map" or
+       location.id ~= "random_field_event" or
+       location.event_id ~= "company_man_toothpick" then
+        return nil
+    end
+
+    local opening, choices = event_prompt_data(
+        "company_man_toothpick", { "attack", "insult", "leave" })
+    if opening == nil or choices == nil then
+        return source_boundary("Company Man prompt data is unavailable")
+    end
+    local choice = game.ui.prompt_text(
+        "company_man_toothpick", opening, choices, COMPANY_MAN_SPEAKER,
+        COMPANY_MAN_TEXT_PROFILE)
+    if choice == "leave" then
+        game.ui.say_text(COMPANY_MAN_LEAVE_RESULT, false,
+                         COMPANY_MAN_SPEAKER, COMPANY_MAN_TEXT_PROFILE)
+        return "resolved"
+    end
+
+    if choice == "attack" then
+        -- ROM 0x23750 averages +0x78 across active party records; this is the
+        -- same typed average Quickness fact used by the hidden-camera check.
+        local dice_pool = party_check()
+        if dice_pool == nil then
+            return source_boundary("Company Man attack needs an active party")
+        end
+        local successes, failure = company_man_roll(
+            dice_pool, "Company Man Attack")
+        if successes == nil then return failure end
+        if successes > 1 then
+            if game.services.call("party", "award_karma_1") ~= "applied" then
+                return source_boundary(
+                    "Company Man death result needs the party Karma service")
+            end
+            game.ui.say_text(COMPANY_MAN_ATTACK_DEATH_RESULT, false,
+                             COMPANY_MAN_SPEAKER,
+                             COMPANY_MAN_TEXT_PROFILE)
+            return "resolved"
+        end
+        if game.services.call("field", "raise_alarm") ~= "applied" then
+            return source_boundary(
+                "Company Man escape result needs the field alarm service")
+        end
+        game.ui.say_text(
+            successes == 0 and COMPANY_MAN_ATTACK_FLEE_RESULT or
+                COMPANY_MAN_ATTACK_WOUND_RESULT,
+            false, COMPANY_MAN_SPEAKER, COMPANY_MAN_TEXT_PROFILE)
+        return "resolved"
+    end
+
+    if choice == "insult" then
+        -- ROM 0x2489A reads slot 0's +0x7A value directly; no party average.
+        local dice_pool = first_runner_attribute("charisma")
+        if dice_pool == nil then
+            return source_boundary(
+                "Company Man insult needs the first runner's Charisma")
+        end
+        local successes, failure = company_man_roll(
+            dice_pool, "Company Man Insult")
+        if successes == nil then return failure end
+        if successes == 0 then
+            if game.services.call("field", "raise_alarm") ~= "applied" then
+                return source_boundary(
+                    "Company Man Insult result needs the field alarm service")
+            end
+            game.ui.say_text(COMPANY_MAN_INSULT_SECURITY_RESULT, false,
+                             COMPANY_MAN_SPEAKER,
+                             COMPANY_MAN_TEXT_PROFILE)
+            return "resolved"
+        end
+        if successes == 1 then
+            game.ui.say_text(COMPANY_MAN_INSULT_LAUGH_RESULT, false,
+                             COMPANY_MAN_SPEAKER,
+                             COMPANY_MAN_TEXT_PROFILE)
+            return "resolved"
+        end
+
+        local resource_variant = game.services.call(
+            "field", COMPANY_MAN_RESOURCE_VARIANT_SERVICE)
+        local clue = COMPANY_MAN_RESOURCE_CLUES[resource_variant]
+        if clue == nil then
+            return source_boundary(
+                "Company Man floor clue needs the selected resource variant")
+        end
+        -- The source-selected label is a resource variant, not proof of the
+        -- runner's physical floor. The shared 0x11CD92 page is terminal.
+        game.ui.say_text(COMPANY_MAN_STARE_DOWN_RESULT .. "||" .. clue,
+                         false, COMPANY_MAN_SPEAKER,
+                         COMPANY_MAN_TEXT_PROFILE)
+        return "resolved"
+    end
+
+    return source_boundary("Company Man choice is unavailable")
 end
 
 local function faction_actor_sequence_failed(reason)

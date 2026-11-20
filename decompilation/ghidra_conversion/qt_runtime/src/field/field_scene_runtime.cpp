@@ -1410,6 +1410,22 @@ FieldSceneRuntime::FieldSceneRuntime(
                 return "scene_" + std::to_string(
                     state_.field_scene_buffers.scene_reference);
             }
+            if (service_id == "field.resource_variant") {
+                // FFE12C is source-selected state for the resource scene.
+                // Expose only its semantic table entry to Lua; the six
+                // Company Man labels are not a physical-floor calculation.
+                static constexpr std::array<std::string_view, 6U>
+                    kResourceVariantNames{{
+                        "first", "second", "third", "fourth", "fifth",
+                        "sixth"}};
+                if (!field_selected_effect_index_.has_value() ||
+                    *field_selected_effect_index_ >=
+                        kResourceVariantNames.size()) {
+                    return std::nullopt;
+                }
+                return std::string(kResourceVariantNames[
+                    *field_selected_effect_index_]);
+            }
             // Lua sees named campaign progress. ROM work-RAM addresses stay
             // at this host boundary as provenance, not as gameplay API.
             if (service_id == "story.get_heat_level") {
