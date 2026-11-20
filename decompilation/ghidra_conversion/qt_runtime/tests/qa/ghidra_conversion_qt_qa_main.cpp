@@ -5575,13 +5575,148 @@ int run_abandoned_building_encounter_qa(
                  "record=66 event=8 destination=50 movement_ticks="
               << entrance_ticks << '\n';
 
-    constexpr std::uint16_t kEncounterPhase = 10U;
+    // Puyallup has two more physically entered abandoned-building routes:
+    // record 75 at 0x17D9F2 enters scene 51 and record 78 at 0x17DA10 enters
+    // scene 52. Exercise the ordinary Up/input path for both; bootstrapping
+    // these rooms directly would skip the entry state being audited.
+    const auto enter_puyallup_abandoned_building =
+        [&](const std::uint16_t start_x, const std::uint16_t start_y,
+            const std::uint16_t record, const std::uint8_t event,
+            const std::uint8_t destination) {
+            if (!field_scene.bootstrap_for_scene_dump(startup_state, 1U)) {
+                std::cerr << "abandoned-building encounter QA: could not "
+                             "reload Puyallup before record "
+                          << record << ": " << field_scene.failure() << '\n';
+                return false;
+            }
+            field_scene.set_field_entity_world_position_for_dump(
+                start_x, start_y);
+            std::uint16_t movement_ticks = 0U;
+            for (; movement_ticks < 100U; ++movement_ticks) {
+                field_scene.set_controller_nibble(0x01U); // ordinary Up
+                field_scene.advance_frame();
+                if (field_scene.field_scene_reference_for_dump() != 1U) {
+                    ++movement_ticks;
+                    break;
+                }
+            }
+            field_scene.set_controller_nibble(0U);
+            for (std::uint16_t settle = 0U;
+                 settle < 180U &&
+                 (field_scene.field_scene_reference_for_dump() != destination ||
+                  field_scene.field_transition_pending_for_dump() ||
+                  field_scene.field_interaction_transition_active_for_dump());
+                 ++settle) {
+                field_scene.advance_frame();
+            }
+            if (movement_ticks == 0U || movement_ticks >= 100U ||
+                field_scene.field_scene_reference_for_dump() != destination ||
+                field_scene.field_transition_pending_for_dump() ||
+                field_scene.field_interaction_transition_active_for_dump()) {
+                std::cerr << "abandoned-building encounter QA: physical "
+                             "entry failed record="
+                          << record << " event=" << static_cast<unsigned>(event)
+                          << " destination=" << static_cast<unsigned>(destination)
+                          << " movement_ticks=" << movement_ticks
+                          << " scene="
+                          << field_scene.field_scene_reference_for_dump()
+                          << " failure=" << field_scene.failure() << '\n';
+                return false;
+            }
+            std::cout << "abandoned_building_entry=passed source_scene=1 "
+                         "record="
+                      << record << " event=" << static_cast<unsigned>(event)
+                      << " destination=" << static_cast<unsigned>(destination)
+                      << " movement_ticks=" << movement_ticks << '\n';
+            return true;
+        };
+
+    if (!enter_puyallup_abandoned_building(
+            0x0700U, 0x5300U, 75U, 10U, 51U) ||
+        !enter_puyallup_abandoned_building(
+            0x5100U, 0x5300U, 78U, 11U, 52U)) {
+        return 3;
+    }
+
+    // Do not force the field clock to the encounter phase here. Let the
+    // physically entered scene run until FFDF88's low ten bits naturally
+    // reach ten, as required by ROM 0x1E1A8..0x1E1B6. Set a reproducible source
+    // seed just before that due tick; the production update still performs
+    // the field services, encounter gates, chance, selector, and spawn.
     constexpr std::uint16_t kEncounterPeriod = 1024U;
+    constexpr std::uint16_t kEncounterPhase = 10U;
     constexpr std::uint16_t kAbandonedBuildingThreshold = 0xC000U;
+    std::uint16_t cadence_frames = 0U;
+    while (field_scene.field_world_frame_counter_for_dump() %
+               kEncounterPeriod != kEncounterPhase &&
+           cadence_frames < kEncounterPeriod) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        ++cadence_frames;
+    }
+    if (field_scene.field_world_frame_counter_for_dump() %
+            kEncounterPeriod != kEncounterPhase) {
+        std::cerr << "abandoned-building encounter QA: natural field clock "
+                     "did not reach phase 10 in scene 52 (counter="
+                  << field_scene.field_world_frame_counter_for_dump()
+                  << ")\n";
+        return 3;
+    }
+    const auto natural_profile_index = field_scene_profile_word_index(
+        FieldSceneProfileWord::random_event_probability_threshold);
+    const auto& natural_profile =
+        field_scene.state().field_scene_buffers.profile;
+    if (natural_profile.size() <= natural_profile_index ||
+        natural_profile[natural_profile_index] !=
+            kAbandonedBuildingThreshold) {
+        std::cerr << "abandoned-building encounter QA: scene 52 natural "
+                     "entry has an unexpected encounter threshold\n";
+        return 3;
+    }
+    const auto natural_counter = field_scene.field_world_frame_counter_for_dump();
+    const auto natural_actors_before = field_scene.default_actor_count_for_dump();
+    const auto natural_boundary_start = source_boundaries.size();
+    field_scene.set_source_random_seed_for_dump(5U);
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    const auto natural_actors_after = field_scene.default_actor_count_for_dump();
+    const auto natural_spawn_count = static_cast<std::size_t>(std::count(
+        source_boundaries.begin() +
+            static_cast<std::ptrdiff_t>(natural_boundary_start),
+        source_boundaries.end(),
+        "field.random_encounter.actor_spawned_from_rom_list"));
+    if (field_scene.field_world_frame_counter_for_dump() !=
+            static_cast<std::uint16_t>(natural_counter + 1U) ||
+        natural_actors_after <= natural_actors_before ||
+        natural_spawn_count == 0U) {
+        std::cerr << "abandoned-building encounter QA: scene 52 natural "
+                     "cadence tick did not spawn (counter="
+                  << natural_counter << "->"
+                  << field_scene.field_world_frame_counter_for_dump()
+                  << " actors=" << natural_actors_before << "->"
+                  << natural_actors_after << " spawn_records="
+                  << natural_spawn_count;
+        for (auto index = natural_boundary_start;
+             index < source_boundaries.size(); ++index) {
+            std::cerr << " boundary=" << source_boundaries[index];
+        }
+        if (!field_scene.failure().empty()) {
+            std::cerr << " failure=" << field_scene.failure();
+        }
+        std::cerr << '\n';
+        return 3;
+    }
+    std::cout << "abandoned_building_natural_cadence=passed scene=52 "
+                 "counter="
+              << natural_counter << " wait_frames=" << cadence_frames
+              << " actors=" << natural_actors_before << "->"
+              << natural_actors_after << " spawn_records="
+              << natural_spawn_count << '\n';
+
     for (const auto [scene, selector_sum] : {
              std::pair{50U, 3U}, std::pair{51U, 2U},
              std::pair{52U, 2U}, std::pair{53U, 2U}}) {
-        if (scene != 50U &&
+        if (field_scene.field_scene_reference_for_dump() != scene &&
             !field_scene.bootstrap_for_scene_dump(startup_state, scene)) {
             std::cerr << "abandoned-building encounter QA: could not load scene "
                       << scene << " failure=" << field_scene.failure() << '\n';
@@ -5706,7 +5841,8 @@ int run_abandoned_building_encounter_qa(
                   << " profile=" << expected_profile
                   << " spawn_records=" << spawn_count << '\n';
     }
-    std::cout << "abandoned_building_encounter_qa=passed scenes=50,51,52,53 "
+    std::cout << "abandoned_building_encounter_qa=passed "
+                 "physical_scenes=50,51,52 tested_scenes=50,51,52,53 "
                  "period=1024 phase=10 probability=75% sums=3,2,2,2\n";
     return 0;
 }
