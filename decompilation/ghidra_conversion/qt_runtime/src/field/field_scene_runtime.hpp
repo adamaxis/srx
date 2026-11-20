@@ -190,6 +190,27 @@ struct FieldActorAnimationSnapshotForDump {
     bool horizontal_flip = false;
 };
 
+struct FieldDoorReturnSnapshotForDump {
+    bool valid = false;
+    std::uint16_t scene_id = 0U;
+    SceneRunnerPosition lead{};
+    std::uint16_t camera_x = 0U;
+    std::uint16_t camera_y = 0U;
+};
+
+struct FieldModalContextSnapshotForDump {
+    bool valid = false;
+    std::uint16_t scene_id = 0U;
+    SceneRunnerPosition lead{};
+    std::uint16_t camera_x = 0U;
+    std::uint16_t camera_y = 0U;
+    std::optional<std::uint16_t> music_id;
+    std::uint8_t attenuation = 0U;
+    std::uint8_t activity_timeout = 0U;
+    std::uint16_t resource_countdown = 0U;
+    std::uint16_t activity_countdown = 0U;
+};
+
 struct FieldBarrierCollisionCell {
     std::uint16_t cell_index = 0U;
     std::uint8_t code = 0U;
@@ -406,6 +427,13 @@ public:
     }
     std::size_t field_fade_requests() const noexcept {
         return field_fade_requests_;
+    }
+    std::optional<std::uint16_t> field_current_music_id_for_dump()
+        const noexcept {
+        return field_current_music_id_;
+    }
+    std::uint8_t field_audio_attenuation_for_dump() const noexcept {
+        return field_audio_attenuation_level_;
     }
     void set_controller_port_byte(std::uint8_t port_byte) noexcept;
     void set_actor_heartbeat_observer(
@@ -737,6 +765,33 @@ public:
     void set_inventory_action_overlay_probe_for_dump(bool active) noexcept;
     CollisionProbeState field_collision_probe_state_for_dump() const noexcept {
         return field_collision_probe_state_;
+    }
+    FieldDoorReturnSnapshotForDump
+    field_door_return_snapshot_for_dump() const noexcept {
+        return FieldDoorReturnSnapshotForDump{
+            field_door_return_point_.valid,
+            field_door_return_point_.scene_id,
+            field_door_return_point_.lead,
+            field_door_return_point_.camera_x,
+            field_door_return_point_.camera_y};
+    }
+    FieldModalContextSnapshotForDump
+    field_modal_context_snapshot_for_dump() const noexcept {
+        if (!field_modal_context_snapshot_.has_value()) {
+            return {};
+        }
+        const auto& snapshot = *field_modal_context_snapshot_;
+        return FieldModalContextSnapshotForDump{
+            true,
+            snapshot.scene_id,
+            snapshot.lead,
+            snapshot.camera_x,
+            snapshot.camera_y,
+            snapshot.music_id,
+            snapshot.attenuation,
+            snapshot.activity_state.timeout,
+            snapshot.world_frame_logic.resource_countdown,
+            snapshot.world_frame_logic.activity_countdown};
     }
     void seed_field_door_contact_for_dump(
         std::array<std::uint8_t, 3> collision_samples);
@@ -2009,6 +2064,10 @@ private:
     bool recover_blocked_field_movement(
         const MovementProbeResult& initial_probe);
     void advance_field_scene_transition_after_modal();
+    void capture_field_modal_context();
+    void restore_field_modal_context();
+    bool execute_dialogue_field_context_return(
+        std::string_view return_behavior);
     void snapshot_world_activity_source_scene();
     bool restore_world_activity_source_scene(
         integration::FieldRuntimeCoordinatorState& runtime_state);
@@ -2535,6 +2594,28 @@ private:
             FieldLocationReturnFacing::preserve_entry_heading;
     };
 
+    struct FieldModalContextSnapshot {
+        std::uint16_t scene_id = 0U;
+        SceneRunnerPosition lead{};
+        std::array<SceneRunnerPosition, 3> party{};
+        FieldCameraFollowState camera_follow{};
+        bool camera_alignment_ready = false;
+        std::uint16_t camera_x = 0U;
+        std::uint16_t camera_y = 0U;
+        std::int16_t camera_transition_x = 0;
+        std::int16_t camera_transition_y = 0;
+        integration::FieldRuntimeCoordinatorState runtime_state{};
+        WorldFrameLogicState world_frame_logic{};
+        WorldActivityState activity_state{};
+        WorldActivityTimeoutState activity_timeout{};
+        std::optional<std::uint16_t> music_id;
+        std::uint8_t attenuation = 0U;
+        std::uint8_t post_return_input_lock_frames = 0U;
+        bool start_menu_duck_active = false;
+        bool scene_music_latch = false;
+    };
+    std::optional<FieldModalContextSnapshot> field_modal_context_snapshot_;
+
     struct DefaultActorSpriteView {
         const QImage* image = nullptr;
         int origin_x = 0;
@@ -2548,6 +2629,9 @@ private:
     std::function<void(std::uint16_t)> source_music_callback_;
     std::function<void(std::uint8_t)> source_attenuation_callback_;
     std::function<void()> source_fade_callback_;
+    std::optional<std::uint16_t> field_current_music_id_;
+    std::optional<std::uint16_t> field_last_music_scene_id_;
+    std::uint8_t field_audio_attenuation_level_ = 0U;
     std::vector<std::uint16_t> field_music_requests_;
     std::vector<std::uint8_t> field_attenuation_requests_;
     std::size_t field_fade_requests_ = 0U;
@@ -3095,6 +3179,8 @@ private:
             FieldLocationMusicReturnPolicy::none;
         std::uint16_t camera_x = 0U;
         std::uint16_t camera_y = 0U;
+        FieldCameraFollowState camera_follow{};
+        bool camera_alignment_ready = false;
     };
     FieldDoorReturnPoint field_door_return_point_{};
     SceneRunnerPosition field_frame_start_player_position_{};

@@ -515,46 +515,40 @@ function DialogueFramework.execute_exit(descriptor, task_result)
        task_result ~= descriptor.exit_result_id then
         return
     end
-    if descriptor.exit_behavior == E.DialogueExitBehavior.STAY then
-        run_exit_primitive("stay")
-    elseif descriptor.exit_behavior ==
-           E.DialogueExitBehavior.SOURCE_DOOR_RETURN then
-        run_exit_primitive("source_door_return_" ..
-            descriptor.return_anchor .. "_" .. descriptor.return_facing)
-    elseif descriptor.exit_behavior == E.DialogueExitBehavior.SCENE_CHANGE then
-        if execute_scene_change then
-            run_exit_primitive("scene_change")
-        end
-    elseif descriptor.exit_behavior ==
+    if descriptor.exit_behavior ~= E.DialogueExitBehavior.NONE and
+       descriptor.exit_behavior ~= E.DialogueExitBehavior.STAY and
+       descriptor.exit_behavior ~= E.DialogueExitBehavior.SOURCE_DOOR_RETURN and
+       descriptor.exit_behavior ~= E.DialogueExitBehavior.SCENE_CHANGE and
+       descriptor.exit_behavior ~=
            E.DialogueExitBehavior.RETURN_TO_ACTIVITY_SOURCE then
-        run_exit_primitive("return_to_activity_source")
-    elseif descriptor.exit_behavior ~= E.DialogueExitBehavior.NONE then
         error("dialogue exit executor received an invalid behavior")
     end
-
-    if descriptor.transition == E.DialogueTransition.FADE then
-        local frames = descriptor.transition_frames
-        local action = frames == E.DialogueTransitionFrames.MODAL_RETURN
-            and "fade" or ("fade_" .. frames)
-        run_exit_primitive(action)
-    elseif descriptor.transition ~= E.DialogueTransition.NONE then
+    if descriptor.transition ~= E.DialogueTransition.FADE and
+       descriptor.transition ~= E.DialogueTransition.NONE then
         error("dialogue exit executor received an invalid transition")
     end
-
-    if descriptor.music_return_policy ==
-       E.FieldLocationMusicReturnPolicy.RESUME_SCENE_PROFILE then
-        run_exit_primitive("resume_scene_profile")
-    elseif descriptor.music_return_policy ~=
+    if descriptor.music_return_policy ~=
+           E.FieldLocationMusicReturnPolicy.RESUME_SCENE_PROFILE and
+       descriptor.music_return_policy ~=
            E.FieldLocationMusicReturnPolicy.NONE then
         error("dialogue exit executor received an invalid music policy")
     end
-
-    if descriptor.input_lock ==
-       E.DialogueInputLock.WORLD_ACTIVITY_FFE11C then
-        run_exit_primitive("lock_" .. descriptor.input_lock_frames)
-    elseif descriptor.input_lock ~= E.DialogueInputLock.NONE then
+    if descriptor.input_lock ~= E.DialogueInputLock.WORLD_ACTIVITY_FFE11C and
+       descriptor.input_lock ~= E.DialogueInputLock.NONE then
         error("dialogue exit executor received an invalid input lock")
     end
+
+    -- The field remains underneath modal dialogue. Pass the resolved return
+    -- behavior once; the native adapter restores its saved context, then
+    -- applies the descriptor's transition, music and input timing together.
+    -- A typed caller handoff can skip a pending scene change while still
+    -- returning through the same field-context operation.
+    local return_behavior = descriptor.exit_behavior
+    if return_behavior == E.DialogueExitBehavior.SCENE_CHANGE and
+       not execute_scene_change then
+        return_behavior = E.DialogueExitBehavior.NONE
+    end
+    run_exit_primitive("restore_field_context_" .. return_behavior)
 end
 
 function DialogueFramework.open(source, module_name, function_name,

@@ -2217,6 +2217,13 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_hotel_qa
                  --field-hotel-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-hotel-qa")
 
+# Reproduce the Stoker room-choice cancellation through ordinary field and
+# dialogue input, then check that the same Scene-2 field context resumes.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_motel_cancel_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-motel-cancel-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-motel-cancel-qa")
+
 # Exercise the Hotel Karma child against every ROM-backed Joshua and recruit
 # profile, including the race ceiling table and each visible upgrade preview.
 # The base Hotel route continues after this audit with its ordinary checkout

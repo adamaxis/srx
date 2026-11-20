@@ -87,6 +87,7 @@ public:
             StokerMotelFollowupCommand)> callback);
     void set_native_script_service_callback(
         std::function<std::optional<std::string>(std::string_view)> callback);
+    void set_field_context_push_callback(std::function<void()> callback);
     void set_script_runtime(scripting::GameScriptRuntime* runtime) noexcept;
     void set_menu_b_policy(std::string policy) {
         menu_b_policy_ = policy == "always_cancel" ? "always_cancel" : "rom";
@@ -249,6 +250,7 @@ private:
         StokerMotelFollowupCommand)> followup_command_callback_;
     std::function<std::optional<std::string>(std::string_view)>
         native_script_service_callback_;
+    std::function<void()> field_context_push_callback_;
     std::string failure_;
     std::string boundary_reason_;
     static constexpr std::size_t kMaximumDeadEndReports = 64U;

@@ -46752,6 +46752,7 @@ int main(int argc, char** argv) {
             field_scene2_motel_street_collision_qa_path;
         std::optional<std::filesystem::path> field_hud_qa_path;
         std::optional<std::filesystem::path> field_hotel_qa_path;
+        std::optional<std::filesystem::path> field_motel_cancel_qa_path;
         std::optional<std::filesystem::path>
             field_hotel_profile_permutation_qa_path;
         std::optional<std::filesystem::path> field_command_dump_path;
@@ -48134,6 +48135,12 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_hotel_qa_path = std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-motel-cancel-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_motel_cancel_qa_path =
+                    std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
                     "--field-hotel-profile-permutation-qa" &&
@@ -58996,6 +59003,391 @@ int main(int argc, char** argv) {
                 std::cout << "field_dialogue_dump=written prompt="
                           << *field_dialogue_dump_prompt << " path="
                           << field_dialogue_dump_path->string() << "\n";
+                return 0;
+            }
+            if (field_motel_cancel_qa_path.has_value()) {
+                const auto output = *field_motel_cancel_qa_path;
+                std::filesystem::create_directories(output);
+                std::uint32_t frame = 0U;
+                std::ofstream route(output / "state-route.tsv",
+                                    std::ios::trunc);
+                if (!route) {
+                    std::cerr << "field motel cancel QA: could not create state-route.tsv\n";
+                    return 3;
+                }
+                route << "stage\tframe\tscene\tx\ty\tcamera_x\tcamera_y\tdialogue\tmodal_frames\tmusic_requests\tcurrent_music\tfades\tattenuation\n";
+                const auto mark_state = [&field_scene, &route, &frame](
+                                             const std::string_view stage) {
+                    const auto position =
+                        field_scene.field_entity_world_position();
+                    const auto& camera =
+                        field_scene.field_camera_follow_for_dump();
+                    route << stage << '\t' << frame << '\t'
+                          << field_scene.field_scene_reference_for_dump()
+                          << '\t' << position.x << '\t' << position.y
+                          << '\t' << camera.camera_x << '\t'
+                          << camera.camera_y << '\t'
+                          << (field_scene.dialogue_open() ? 1 : 0) << '\t'
+                          << static_cast<unsigned>(field_scene
+                                   .field_modal_return_transition_frames_for_dump())
+                          << '\t' << field_scene.field_music_requests().size()
+                          << '\t'
+                          << (field_scene.field_current_music_id_for_dump()
+                                  ? static_cast<int>(*field_scene.field_current_music_id_for_dump())
+                                  : -1)
+                          << '\t' << field_scene.field_fade_requests()
+                          << '\t' << static_cast<unsigned>(
+                                 field_scene.field_audio_attenuation_for_dump())
+                          << '\n';
+                    route.flush();
+                };
+                const auto capture = [&field_scene](
+                                         const std::filesystem::path& path) {
+                    QImage image(kSceneWidth, kSceneHeight,
+                                 QImage::Format_RGB32);
+                    image.fill(Qt::magenta);
+                    QPainter painter(&image);
+                    field_scene.paint(painter);
+                    painter.end();
+                    if (path.has_parent_path()) {
+                        std::filesystem::create_directories(
+                            path.parent_path());
+                    }
+                    if (!image.save(QString::fromStdWString(
+                            path.wstring()))) {
+                        return QImage{};
+                    }
+                    return image;
+                };
+                bool capture_failed = false;
+                const auto advance = [&field_scene, &capture, &output,
+                                      &frame, &capture_failed]() {
+                    field_scene.advance_frame();
+                    ++frame;
+                    auto name = std::to_string(frame);
+                    if (name.size() < 4U) {
+                        name.insert(0U, 4U - name.size(), '0');
+                    }
+                    capture_failed = capture_failed ||
+                        capture(output / "sequence" /
+                                ("frame-" + name + ".bmp")).isNull();
+                };
+                const auto press = [&field_scene, &advance](
+                                       const std::uint8_t buttons) {
+                    settle_qa_dialogue_input(field_scene);
+                    field_scene.set_controller_port_byte(buttons);
+                    advance();
+                    field_scene.set_controller_port_byte(0U);
+                    advance();
+                };
+                if (field_scene.field_scene_reference_for_dump() != 2U ||
+                    field_scene.field_funds_for_dump() != 20U ||
+                    capture(output / "spawn" / "actual.bmp").isNull()) {
+                    std::cerr << "field motel cancel QA: New Game spawn or initial capture is invalid\n";
+                    return 3;
+                }
+                mark_state("spawn");
+
+                // Walk to the source Stoker doorway with ordinary Up input.
+                field_scene.set_controller_nibble(0x01U);
+                bool doorway_contact = false;
+                for (std::uint32_t step = 0U; step < 256U; ++step) {
+                    advance();
+                    if (field_scene.field_interaction_transition_active_for_dump() ||
+                        field_scene.field_transition_pending_for_dump() ||
+                        field_scene.dialogue_open()) {
+                        doorway_contact = true;
+                        break;
+                    }
+                }
+                field_scene.set_controller_nibble(0U);
+                if (!doorway_contact ||
+                    field_scene.field_scene_reference_for_dump() != 2U ||
+                    field_scene.field_terrain_collision_code_for_dump() !=
+                        0xFFC2U ||
+                    field_scene.field_mode_event_code_for_dump() != 2U) {
+                    std::cerr << "field motel cancel QA: ordinary input missed Scene 2 Stoker collision record 91\n";
+                    return 3;
+                }
+                for (std::uint32_t step = 0U;
+                     step < 90U && !field_scene.dialogue_open(); ++step) {
+                    advance();
+                }
+                if (!field_scene.dialogue_open() ||
+                    field_scene.dialogue_panel().actor_name != "Stoker") {
+                    std::cerr << "field motel cancel QA: Stoker arrival dialogue did not open\n";
+                    return 3;
+                }
+                const auto pre_check_in_scene =
+                    field_scene.field_scene_reference_for_dump();
+                const auto pre_check_in_dialogue_position =
+                    field_scene.field_entity_world_position();
+                const auto pre_check_in_return_snapshot =
+                    field_scene.field_door_return_snapshot_for_dump();
+                const auto pre_check_in_music_requests =
+                    field_scene.field_music_requests();
+                const auto pre_check_in_funds =
+                    field_scene.field_funds_for_dump();
+                mark_state("arrival");
+                if (!pre_check_in_return_snapshot.valid ||
+                    pre_check_in_return_snapshot.scene_id !=
+                        pre_check_in_scene ||
+                    pre_check_in_music_requests.empty() ||
+                    pre_check_in_return_snapshot.scene_id !=
+                        pre_check_in_scene) {
+                    std::cerr << "field motel cancel QA: source return probe or music profile is unavailable\n";
+                    return 3;
+                }
+                if (capture(output / "arrival" / "actual.bmp").isNull()) {
+                    std::cerr << "field motel cancel QA: could not capture Stoker arrival\n";
+                    return 3;
+                }
+                press(0x40U); // A: open the first-visit manager choices.
+                mark_state("manager");
+                const auto pre_check_in_modal_context =
+                    field_scene.field_modal_context_snapshot_for_dump();
+                const auto pre_check_in_current_music =
+                    field_scene.field_current_music_id_for_dump();
+                if (!field_scene.dialogue_open() ||
+                    field_scene.dialogue_panel().option_count != 3U ||
+                    !pre_check_in_modal_context.valid ||
+                    pre_check_in_modal_context.scene_id !=
+                        pre_check_in_scene ||
+                    pre_check_in_modal_context.lead.x !=
+                        pre_check_in_return_snapshot.lead.x ||
+                    pre_check_in_modal_context.lead.y !=
+                        pre_check_in_return_snapshot.lead.y ||
+                    pre_check_in_modal_context.camera_x !=
+                        pre_check_in_return_snapshot.camera_x ||
+                    pre_check_in_modal_context.camera_y !=
+                        pre_check_in_return_snapshot.camera_y ||
+                    pre_check_in_modal_context.music_id !=
+                        std::optional<std::uint16_t>{
+                            pre_check_in_music_requests.back()}) {
+                    std::cerr << "field motel cancel QA: manager menu did not push the source field context"
+                              << " valid=" << pre_check_in_modal_context.valid
+                              << " scene=" << pre_check_in_modal_context.scene_id
+                              << '/' << pre_check_in_scene
+                              << " lead=" << pre_check_in_modal_context.lead.x
+                              << ',' << pre_check_in_modal_context.lead.y
+                              << '/' << pre_check_in_return_snapshot.lead.x
+                              << ',' << pre_check_in_return_snapshot.lead.y
+                              << " camera=" << pre_check_in_modal_context.camera_x
+                              << ',' << pre_check_in_modal_context.camera_y
+                              << '/' << pre_check_in_return_snapshot.camera_x
+                              << ',' << pre_check_in_return_snapshot.camera_y
+                              << " music="
+                              << (pre_check_in_modal_context.music_id.has_value()
+                                      ? static_cast<int>(*pre_check_in_modal_context.music_id)
+                                      : -1)
+                              << '/' << pre_check_in_music_requests.back()
+                              << " playing="
+                              << (field_scene.field_current_music_id_for_dump()
+                                      ? static_cast<int>(*field_scene.field_current_music_id_for_dump())
+                                      : -1)
+                              << " fades=" << field_scene.field_fade_requests()
+                              << " attenuation="
+                              << static_cast<unsigned>(
+                                     field_scene.field_audio_attenuation_for_dump())
+                              << '\n';
+                    return 3;
+                }
+                if (capture(output / "manager" / "actual.bmp").isNull()) {
+                    std::cerr << "field motel cancel QA: could not capture manager choices\n";
+                    return 3;
+                }
+                press(0x40U); // A: check in / request a room.
+                mark_state("room-choice");
+                if (!field_scene.dialogue_open() ||
+                    field_scene.dialogue_panel().option_count != 2U ||
+                    field_scene.dialogue_panel().text_segment_count == 0U ||
+                    field_scene.dialogue_panel().text_segments[0].find("20$") ==
+                        std::string_view::npos) {
+                    std::cerr << "field motel cancel QA: check-in did not open the source 20-nuyen room menu\n";
+                    return 3;
+                }
+                if (capture(output / "room-choice" / "actual.bmp").isNull()) {
+                    std::cerr << "field motel cancel QA: could not capture the room choice\n";
+                    return 3;
+                }
+                const auto& room_offer = field_scene.dialogue_panel();
+                bool never_mind_label_found = false;
+                for (std::size_t option = 0U;
+                     option < room_offer.option_count; ++option) {
+                    never_mind_label_found = never_mind_label_found ||
+                        room_offer.options[option].source_label.find(
+                            "talk to you later") != std::string_view::npos;
+                }
+                if (!never_mind_label_found) {
+                    std::cerr << "field motel cancel QA: room menu is missing its source never-mind choice\n";
+                    return 3;
+                }
+                press(0x10U); // B: leave without checking in.
+                mark_state("farewell");
+                if (!field_scene.dialogue_open() ||
+                    field_scene.dialogue_panel().actor_name != "Stoker" ||
+                    field_scene.dialogue_panel().text_segment_count == 0U ||
+                    capture(output / "farewell" / "actual.bmp").isNull()) {
+                    std::cerr << "field motel cancel QA: cancellation did not open Stoker's farewell page\n";
+                    return 3;
+                }
+                press(0x40U); // A: dismiss farewell and restore the field.
+                mark_state("farewell-dismissed");
+                for (std::uint32_t step = 0U;
+                     step < 90U &&
+                     (field_scene.dialogue_open() ||
+                      field_scene.field_modal_return_transition_frames_for_dump() !=
+                          0U); ++step) {
+                    advance();
+                }
+                mark_state("field-return-settled");
+                const auto returned_position =
+                    field_scene.field_entity_world_position();
+                const auto returned_camera =
+                    field_scene.field_camera_follow_for_dump();
+                const auto returned_music_requests =
+                    field_scene.field_music_requests();
+                const auto returned_current_music =
+                    field_scene.field_current_music_id_for_dump();
+                // ROM 0x2900 requests profile music only when the field
+                // music latch is set. The modal pop replays the saved track
+                // once if the doorway fade stopped it, and does not duplicate
+                // a request when the same track is still active.
+                const auto expected_music_request_count =
+                    pre_check_in_music_requests.size() +
+                    (pre_check_in_current_music ==
+                             pre_check_in_modal_context.music_id
+                         ? 0U : 1U);
+                const auto returned_image =
+                    capture(output / "returned" / "actual.bmp");
+                if (capture_failed || field_scene.dialogue_open() ||
+                    field_scene.field_scene_reference_for_dump() !=
+                        pre_check_in_scene ||
+                    returned_position.x !=
+                        pre_check_in_return_snapshot.lead.x ||
+                    returned_position.y !=
+                        pre_check_in_return_snapshot.lead.y ||
+                    returned_camera.camera_x !=
+                        pre_check_in_return_snapshot.camera_x ||
+                    returned_camera.camera_y !=
+                        pre_check_in_return_snapshot.camera_y ||
+                    returned_music_requests.empty() ||
+                    returned_music_requests.back() !=
+                        pre_check_in_music_requests.back() ||
+                    returned_music_requests.size() !=
+                        expected_music_request_count ||
+                    returned_current_music !=
+                        pre_check_in_modal_context.music_id ||
+                    field_scene.field_funds_for_dump() != pre_check_in_funds ||
+                    field_scene.field_transition_pending_for_dump() ||
+                    field_scene.field_interaction_transition_active_for_dump() ||
+                    field_scene.field_modal_return_transition_frames_for_dump() !=
+                        0U ||
+                    returned_image.isNull()) {
+                    std::cerr << "field motel cancel QA: return snapshot mismatch"
+                              << " capture_failed=" << capture_failed
+                              << " dialogue=" << field_scene.dialogue_open()
+                              << " scene=" << field_scene.field_scene_reference_for_dump()
+                              << "/" << pre_check_in_scene
+                              << " position=" << returned_position.x << ','
+                              << returned_position.y << "/"
+                              << pre_check_in_dialogue_position.x << ','
+                              << pre_check_in_dialogue_position.y
+                              << " camera=" << returned_camera.camera_x << ','
+                              << returned_camera.camera_y << "/"
+                              << pre_check_in_return_snapshot.camera_x << ','
+                              << pre_check_in_return_snapshot.camera_y
+                              << " return_position="
+                              << pre_check_in_return_snapshot.lead.x << ','
+                              << pre_check_in_return_snapshot.lead.y
+                              << " music="
+                              << (returned_music_requests.empty()
+                                      ? -1
+                                      : static_cast<int>(returned_music_requests.back()))
+                              << "/"
+                              << static_cast<int>(pre_check_in_music_requests.back())
+                              << " music_count=" << returned_music_requests.size()
+                              << "/" << expected_music_request_count
+                              << " current_music="
+                              << (returned_current_music.has_value()
+                                      ? static_cast<int>(*returned_current_music)
+                                      : -1)
+                              << " funds="
+                              << field_scene.field_funds_for_dump().value_or(
+                                     std::numeric_limits<std::uint32_t>::max())
+                              << "/" << pre_check_in_funds.value_or(
+                                     std::numeric_limits<std::uint32_t>::max())
+                              << " pending="
+                              << field_scene.field_transition_pending_for_dump()
+                              << " interaction="
+                              << field_scene.field_interaction_transition_active_for_dump()
+                              << " modal_frames="
+                              << static_cast<unsigned>(field_scene.field_modal_return_transition_frames_for_dump())
+                              << '\n';
+                    return 3;
+                }
+                if (!field_scene.failure().empty()) {
+                    std::cerr << "field motel cancel QA: dialogue failed: "
+                              << field_scene.failure() << '\n';
+                    return 3;
+                }
+                // A fresh field input must reach the movement service after
+                // the modal closes; the cancellation press cannot own it.
+                const auto before_retreat =
+                    field_scene.field_entity_world_position();
+                field_scene.set_controller_nibble(0x02U);
+                for (int step = 0; step < 16; ++step) {
+                    advance();
+                }
+                field_scene.set_controller_nibble(0U);
+                const auto after_retreat =
+                    field_scene.field_entity_world_position();
+                if (after_retreat.y == before_retreat.y ||
+                    field_scene.field_scene_reference_for_dump() != 2U ||
+                    capture(output / "after-retreat" / "actual.bmp").isNull()) {
+                    std::cerr << "field motel cancel QA: field input did not resume after cancellation\n";
+                    return 3;
+                }
+                field_scene.set_controller_port_byte(0x80U); // Start: open the field command menu.
+                advance();
+                field_scene.set_controller_port_byte(0U);
+                advance();
+                if (!field_scene.command_overview_open() ||
+                    capture(output / "field-menu" / "actual.bmp").isNull()) {
+                    std::cerr << "field motel cancel QA: Start did not open the field command menu after returning\n";
+                    return 3;
+                }
+                for (std::uint8_t frame = 0U;
+                     frame < 90U &&
+                     field_scene.menu_display_blank_active_for_dump();
+                     ++frame) {
+                    advance();
+                }
+                if (field_scene.menu_display_blank_active_for_dump()) {
+                    std::cerr << "field motel cancel QA: field command menu reveal did not settle before the return input\n";
+                    return 3;
+                }
+                field_scene.set_controller_port_byte(0x80U); // Start: return to field.
+                advance();
+                field_scene.set_controller_port_byte(0U);
+                advance();
+                if (field_scene.command_overview_open() ||
+                    field_scene.field_scene_reference_for_dump() != 2U) {
+                    const auto& runtime =
+                        field_scene.field_runtime_state_for_dump();
+                    std::cerr << "field motel cancel QA: field command menu did not return to the field"
+                              << " open=" << field_scene.command_overview_open()
+                              << " blank=" << field_scene.menu_display_blank_active_for_dump()
+                              << " start_latch=" << runtime.start_latch
+                              << " display=" << runtime.display_service_word
+                              << " activity_lock=" << runtime.field_activity_lock
+                              << " countdown=" << runtime.world_activity_countdown
+                              << " scene=" << field_scene.field_scene_reference_for_dump()
+                              << '\n';
+                    return 3;
+                }
+                std::cout << "field_motel_cancel_qa=passed path="
+                          << output.string() << "\n";
                 return 0;
             }
             if (field_hotel_qa_path.has_value()) {

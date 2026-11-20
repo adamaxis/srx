@@ -239,7 +239,7 @@ equal(game.dialogue.last_opening.source,
     E.DialogueSource.RANDOM_ENCOUNTER,
     "framework records the completed opening")
 equal(#exit_calls, 1, "a completed task executes its exit descriptor")
-equal(exit_calls[1], "stay",
+equal(exit_calls[1], "restore_field_context_stay",
     "the route's stay behavior is executed after its task")
 
 local function open_exit_fixture(route_data, task_result)
@@ -272,8 +272,8 @@ local changed_exit = open_exit_fixture({
     input_lock_frames = 17,
 })
 equal(table.concat(changed_exit, ","),
-    "stay,fade_17,resume_scene_profile,lock_17",
-    "descriptor values control stay, fade, music, and lock frame effects")
+    "restore_field_context_stay",
+    "one native context restore applies the descriptor's stay, fade, music, and lock effects")
 
 local changed_return = open_exit_fixture({
     exit_behavior = E.DialogueExitBehavior.SOURCE_DOOR_RETURN,
@@ -285,23 +285,25 @@ local changed_return = open_exit_fixture({
     input_lock_frames = 9,
 })
 equal(table.concat(changed_return, ","),
-    "source_door_return_collision_probe_lead_face_away_from_entry,lock_9",
-    "descriptor can select source-door placement without fade or music")
+    "restore_field_context_source_door_return",
+    "one native context restore applies source-door placement and the descriptor lock")
 
 local accepted_scene_change = open_exit_fixture({
     exit_behavior = E.DialogueExitBehavior.SCENE_CHANGE,
     transition = E.DialogueTransition.FADE,
     scene_change_result_id = "accepted",
 }, "accepted")
-equal(table.concat(accepted_scene_change, ","), "scene_change,fade",
-    "descriptor can select a source route and fade")
+equal(table.concat(accepted_scene_change, ","),
+    "restore_field_context_scene_change",
+    "one native context restore resumes the selected source route and fade")
 
 local declined_scene_change = open_exit_fixture({
     exit_behavior = E.DialogueExitBehavior.SCENE_CHANGE,
     transition = E.DialogueTransition.FADE,
     scene_change_result_id = "accepted",
 }, "declined")
-equal(table.concat(declined_scene_change, ","), "fade",
+equal(table.concat(declined_scene_change, ","),
+    "restore_field_context_none",
     "an unselected source-route result skips its scene change but keeps the descriptor fade")
 
 local boundary_exit = open_exit_fixture({
@@ -318,7 +320,7 @@ local caller_return_exit = open_exit_fixture({
     exit_behavior = E.DialogueExitBehavior.STAY,
     transition = E.DialogueTransition.FADE,
 }, { type = "return_to_caller" })
-equal(table.concat(caller_return_exit, ","), "stay,fade",
+equal(table.concat(caller_return_exit, ","), "restore_field_context_stay",
     "a completed dialogue applies its descriptor before returning to its caller")
 local cinematic_return_exit = open_exit_fixture({
     exit_behavior = E.DialogueExitBehavior.STAY,
@@ -328,7 +330,7 @@ local cinematic_return_exit = open_exit_fixture({
     cinematicId = "fixture.cinematic",
     returnPolicy = "source_context",
 })
-equal(table.concat(cinematic_return_exit, ","), "stay,fade",
+equal(table.concat(cinematic_return_exit, ","), "restore_field_context_stay",
     "a source-context cinematic applies its dialogue descriptor after the pages")
 local service_handoff = open_exit_fixture({
     exit_behavior = E.DialogueExitBehavior.SOURCE_DOOR_RETURN,
@@ -378,8 +380,8 @@ local activity_exit = open_exit_fixture({
     exit_result_id = "return_from_world_activity",
 }, "return_from_world_activity")
 equal(table.concat(activity_exit, ","),
-    "return_to_activity_source,fade,resume_scene_profile",
-    "resource exit applies saved-scene, transition, and music policy")
+    "restore_field_context_return_to_activity_source",
+    "resource exit restores its saved source context through one operation")
 
 local bound_say_calls = {}
 local native_say = function(...)
@@ -518,37 +520,36 @@ end
 equal(execute_source_route(
           E.DialogueSource.RANDOM_ENCOUNTER,
           "field_random_events.present_haggard_man", "resolved"),
-      "stay,fade_83,lock_60",
-      "Haggard exit executor runtime requests same-scene 83-frame fade and lock 60")
+      "restore_field_context_stay",
+      "Haggard exit executor passes its 83-frame fade and lock through one restore")
 equal(execute_source_route(
           E.DialogueSource.SCRIPTED_ENCOUNTER,
           "salish_spirit_eyes.present_renraku_ambush",
           { type = "continue_in_place" }),
-      "stay,lock_60",
-      "Renraku exit executor runtime requests stay and lock 60 only")
+      "restore_field_context_stay",
+      "Renraku exit executor passes its lock through one restore")
 equal(execute_source_route(
           E.DialogueSource.RUN_TARGET,
           "run_employee_recruitment.present_random_contact", "resolved"),
-      "scene_change,fade",
+      "restore_field_context_scene_change",
       "an unfiltered completed run-target task resumes its pending scene route")
 equal(execute_source_route(
           E.DialogueSource.RUN_TARGET,
           "run_employee_recruitment.present_random_contact",
           { type = "return_to_caller" }),
-      "fade",
+      "restore_field_context_none",
       "typed caller handoffs skip scene change and retain the descriptor fade")
 equal(execute_source_route(
           E.DialogueSource.BUILDING_EXIT,
           "michael_package.present_field_exit_prompt",
           { type = "continue_in_place" }),
-      "source_door_return_collision_probe_lead_face_away_from_entry," ..
-      "fade,resume_scene_profile,lock_60",
-      "Stoker exit executor runtime requests door return, fade, music, lock")
+      "restore_field_context_source_door_return",
+      "Stoker exit executor passes door return, fade, music, and lock through one restore")
 equal(execute_source_route(
           E.DialogueSource.BUILDING_SERVICE,
           "michael_package.stoker_interaction",
           { type = "continue_in_place" }),
-      "stay,fade",
+      "restore_field_context_stay",
       "Stoker's same-context interaction keeps #28c STAY")
 equal(execute_source_route(
           E.DialogueSource.BUILDING_SERVICE,
@@ -556,14 +557,13 @@ equal(execute_source_route(
           { type = "continue_in_place" }, {
               scene_outcome = E.FieldLocationSceneOutcome.SOURCE_DOOR_RETURN,
           }),
-      "source_door_return_collision_probe_lead_face_away_from_entry," ..
-      "fade,resume_scene_profile,lock_60",
+      "restore_field_context_source_door_return",
       "Stoker's typed source-door exception applies all effects through the executor")
 equal(execute_source_route(
           E.DialogueSource.BUILDING_SERVICE,
           "michael_package.present_package_handoff",
           { type = "continue_in_place" }),
-      "stay,fade",
+      "restore_field_context_stay",
       "the standalone package-handoff page retains its same-context close")
 
 package.preload.dialogue_framework_fixture = nil

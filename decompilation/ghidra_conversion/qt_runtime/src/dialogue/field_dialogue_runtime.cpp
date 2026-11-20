@@ -109,6 +109,11 @@ void FieldDialogueRuntime::set_native_script_service_callback(
     native_script_service_callback_ = std::move(callback);
 }
 
+void FieldDialogueRuntime::set_field_context_push_callback(
+    std::function<void()> callback) {
+    field_context_push_callback_ = std::move(callback);
+}
+
 void FieldDialogueRuntime::set_script_runtime(
     scripting::GameScriptRuntime* runtime) noexcept {
     script_runtime_ = runtime;
@@ -378,6 +383,9 @@ bool FieldDialogueRuntime::open_stoker_prompt(
     input_lockout_frames_ = static_cast<std::uint8_t>(
         panel_.option_count == 0U ? DialogueInputLockout::closing_page
                                   : DialogueInputLockout::choice_page);
+    if (panel_.open && field_context_push_callback_) {
+        field_context_push_callback_();
+    }
     return true;
 }
 
@@ -420,7 +428,13 @@ bool FieldDialogueRuntime::start_script_task(
                 ? "dialogue script did not yield a presentation operation"
                 : script_runtime_->failure());
     }
-    return present_script_operation(*task.operation, prompt);
+    if (!present_script_operation(*task.operation, prompt)) {
+        return false;
+    }
+    if (field_context_push_callback_) {
+        field_context_push_callback_();
+    }
+    return true;
 }
 
 std::optional<FieldDialogueAdvanceResult>

@@ -1135,6 +1135,8 @@ FieldSceneRuntime::FieldSceneRuntime(
     register_dialogue_outcome_handlers();
     hospital_random_grid_cells_.fill(-1);
     field_dialogue_.set_script_runtime(&game_scripts_);
+    field_dialogue_.set_field_context_push_callback(
+        [this] { capture_field_modal_context(); });
     field_interaction_.set_script_runtime(&game_scripts_);
     field_interaction_.set_security_alarm_callbacks(
         [this] { advance_field_alarm(true); },
@@ -1259,170 +1261,11 @@ FieldSceneRuntime::FieldSceneRuntime(
             if (service_id.rfind(kDialogueExitPrefix, 0U) == 0U) {
                 const auto action = service_id.substr(
                     kDialogueExitPrefix.size());
-                if (action == "stay") {
-                    field_dialogue_exit_source_door_return_applied_ = false;
-                    field_dialogue_exit_activity_source_restored_ = false;
-                    field_dialogue_exit_scene_transition_applied_ = false;
-                    field_dialogue_exit_scene_change_resumed_ = false;
-                    if (active_field_script_route_.has_value() &&
-                        active_field_script_route_->kind !=
-                            FieldScriptRouteKind::field_service &&
-                        active_field_script_route_->scene_outcome !=
-                            FieldLocationSceneOutcome::source_door_return) {
-                        active_field_script_route_->return_anchor =
-                            FieldLocationReturnAnchor::none;
-                        active_field_script_route_->return_facing =
-                            FieldLocationReturnFacing::preserve_entry_heading;
-                        active_field_script_route_->return_music_policy =
-                            FieldLocationMusicReturnPolicy::none;
-                        pending_field_return_anchor_ =
-                            FieldLocationReturnAnchor::none;
-                        pending_field_return_facing_ =
-                            FieldLocationReturnFacing::preserve_entry_heading;
-                        pending_field_return_music_policy_ =
-                            FieldLocationMusicReturnPolicy::none;
-                        field_door_return_point_.valid = false;
-                    }
-                    return "applied";
-                }
-                constexpr std::string_view kSourceDoorReturnPrefix =
-                    "source_door_return_";
-                if (action.rfind(kSourceDoorReturnPrefix, 0U) == 0U) {
-                    const auto policy = action.substr(
-                        kSourceDoorReturnPrefix.size());
-                    if (policy.rfind("collision_probe_lead_", 0U) != 0U) {
-                        return std::nullopt;
-                    }
-                    const auto facing = policy.substr(
-                        std::string_view{"collision_probe_lead_"}.size());
-                    FieldLocationReturnFacing return_facing{};
-                    if (facing == "face_away_from_entry") {
-                        return_facing =
-                            FieldLocationReturnFacing::face_away_from_entry;
-                    } else if (facing == "preserve_entry") {
-                        return_facing =
-                            FieldLocationReturnFacing::preserve_entry_heading;
-                    } else {
-                        return std::nullopt;
-                    }
-                    if (!field_door_return_point_.valid) {
-                        return std::nullopt;
-                    }
-                    field_door_return_point_.return_anchor =
-                        FieldLocationReturnAnchor::collision_probe_lead;
-                    field_door_return_point_.return_facing = return_facing;
-                    pending_field_return_anchor_ =
-                        FieldLocationReturnAnchor::collision_probe_lead;
-                    pending_field_return_facing_ = return_facing;
-                    if (active_field_script_route_.has_value()) {
-                        active_field_script_route_->return_anchor =
-                            FieldLocationReturnAnchor::collision_probe_lead;
-                        active_field_script_route_->return_facing =
-                            return_facing;
-                    }
-                    field_dialogue_exit_scene_transition_applied_ = false;
-                    field_dialogue_exit_scene_change_resumed_ = false;
-                    field_dialogue_exit_activity_source_restored_ = false;
-                    field_dialogue_exit_source_door_return_applied_ =
-                        apply_field_door_exit_return();
-                    return field_dialogue_exit_source_door_return_applied_
-                        ? std::optional<std::string>{"applied"} : std::nullopt;
-                }
-                if (action == "scene_change") {
-                    field_dialogue_exit_scene_transition_applied_ = false;
-                    field_dialogue_exit_scene_change_resumed_ = false;
-                    field_dialogue_exit_source_door_return_applied_ = false;
-                    field_dialogue_exit_activity_source_restored_ = false;
-                    if (!field_mode_entry_transition_pending_) {
-                        return "applied";
-                    }
-                    if (!resume_field_mode_entry_route()) {
-                        return std::nullopt;
-                    }
-                    field_dialogue_exit_scene_transition_applied_ = true;
-                    field_dialogue_exit_scene_change_resumed_ = true;
-                    return "applied";
-                }
-                if (action == "return_to_activity_source") {
-                    field_dialogue_exit_source_door_return_applied_ = false;
-                    field_dialogue_exit_activity_source_restored_ =
-                        restore_world_activity_source_scene(
-                            field_runtime_state_);
-                    if (!field_dialogue_exit_activity_source_restored_) {
-                        return std::nullopt;
-                    }
-                    field_dialogue_exit_scene_transition_applied_ = true;
-                    field_dialogue_exit_scene_change_resumed_ = false;
-                    return "applied";
-                }
-                constexpr std::string_view kFadePrefix = "fade_";
-                std::uint8_t fade_frames =
-                    field_scene_detail::kFieldModalReturnTransitionFrames;
-                if (action != "fade" &&
-                    action.rfind(kFadePrefix, 0U) == 0U) {
-                    const auto frames_text = action.substr(
-                        kFadePrefix.size());
-                    std::uint32_t frames = 0U;
-                    const auto parsed = std::from_chars(
-                        frames_text.data(),
-                        frames_text.data() + frames_text.size(), frames);
-                    if (frames_text.empty() || parsed.ec != std::errc{} ||
-                        parsed.ptr != frames_text.data() + frames_text.size() ||
-                        frames == 0U || frames > 0xFFU) {
-                        return std::nullopt;
-                    }
-                    fade_frames = static_cast<std::uint8_t>(frames);
-                }
-                if (action == "fade" ||
-                    action.rfind(kFadePrefix, 0U) == 0U) {
-                    if (!field_dialogue_exit_scene_transition_applied_) {
-                        if (field_mode_entry_transition_pending_) {
-                            field_mode_entry_transition_pending_ = false;
-                            field_mode_entry_destination_scene_.reset();
-                            field_mode_entry_run_target_actor_group_.reset();
-                            this->source_boundary(
-                                "field.entry.location_dialogue_denied_transition");
-                        }
-                        if (active_field_script_route_.has_value() &&
-                            active_field_script_route_->scene_transition_policy ==
-                                FieldSceneTransitionPolicy::building_fade) {
-                            // The selected doorway route may offer a building
-                            // destination while its Lua passage still chooses
-                            // to stay on the source map. Only commit its fade
-                            // after the scene-change action actually ran.
-                            active_field_script_route_.reset();
-                            field_building_transition_source_image_ = QImage{};
-                        }
-                        advance_field_scene_transition_after_modal();
-                    }
-                    begin_field_modal_return_transition(fade_frames);
-                    field_dialogue_exit_scene_transition_applied_ = false;
-                    return "applied";
-                }
-                if (action == "resume_scene_profile") {
-                    scene_music_latch_ = true;
-                    return "applied";
-                }
-                constexpr std::string_view kLockPrefix = "lock_";
-                if (action.rfind(kLockPrefix, 0U) == 0U) {
-                    const auto frames_text = action.substr(
-                        kLockPrefix.size());
-                    std::uint32_t frames = 0U;
-                    const auto parsed = std::from_chars(
-                        frames_text.data(),
-                        frames_text.data() + frames_text.size(), frames);
-                    if (frames_text.empty() || parsed.ec != std::errc{} ||
-                        parsed.ptr != frames_text.data() +
-                                          frames_text.size() ||
-                        frames == 0U || frames > 0xFFU) {
-                        return std::nullopt;
-                    }
-                    field_world_activity_state_.timeout =
-                        static_cast<std::uint8_t>(frames);
-                    world_frame_logic_state_.resource_countdown =
-                        static_cast<std::uint8_t>(frames);
-                    field_runtime_state_.world_activity_countdown =
-                        static_cast<std::uint8_t>(frames);
+                constexpr std::string_view kRestorePrefix =
+                    "restore_field_context_";
+                if (action.rfind(kRestorePrefix, 0U) == 0U &&
+                    execute_dialogue_field_context_return(
+                        action.substr(kRestorePrefix.size()))) {
                     return "applied";
                 }
                 return std::nullopt;
@@ -8577,6 +8420,8 @@ void FieldSceneRuntime::request_scene_field_music() {
         }
         return;
     }
+    field_current_music_id_ = *music;
+    field_last_music_scene_id_ = scene;
     field_music_requests_.push_back(*music);
     if (source_music_callback_) {
         source_music_callback_(*music);
@@ -8593,6 +8438,7 @@ void FieldSceneRuntime::service_scene_music_latch() {
 }
 
 void FieldSceneRuntime::request_audio_attenuation(const std::uint8_t level) {
+    field_audio_attenuation_level_ = level;
     field_attenuation_requests_.push_back(level);
     if (source_attenuation_callback_) {
         source_attenuation_callback_(level);
@@ -8601,6 +8447,11 @@ void FieldSceneRuntime::request_audio_attenuation(const std::uint8_t level) {
 
 void FieldSceneRuntime::request_audio_fade() {
     ++field_fade_requests_;
+    // The shared GEMS fade ends with stop-all and attenuation zero [C]. Keep
+    // the host-side context in sync so a later modal pop can restore its prior
+    // music request and level instead of assuming the field channel survived.
+    field_current_music_id_.reset();
+    field_audio_attenuation_level_ = 0U;
     if (source_fade_callback_) {
         source_fade_callback_();
     }
@@ -15255,6 +15106,13 @@ void FieldSceneRuntime::advance_frame() {
     if (!ready_) {
         return;
     }
+    // Some source prompts enter through native field-event adapters before
+    // yielding to a Lua page. Ensure every visible field dialogue has the
+    // same pushed context, including those legacy presentation entry points.
+    if (field_dialogue_.open() &&
+        !field_modal_context_snapshot_.has_value()) {
+        capture_field_modal_context();
+    }
 #ifdef SHADOWRUN_QT_QA_DRIVER
     // The QA-only mirror stages field scroll and actor bounds on one host
     // tick, then checks their next-tick presentation against the ROM's
@@ -15266,6 +15124,17 @@ void FieldSceneRuntime::advance_frame() {
     }
 #endif
     service_scene_music_latch();
+    if (field_dialogue_.open() &&
+        field_modal_context_snapshot_.has_value() &&
+        !field_modal_context_snapshot_->music_id.has_value() &&
+        field_current_music_id_.has_value()) {
+        // A scene-profile request can be pending on the frame a field event
+        // opens its first dialogue. Bind that request to the saved field
+        // context after the normal 0x2900 service consumes the latch.
+        field_modal_context_snapshot_->music_id = field_current_music_id_;
+        field_modal_context_snapshot_->attenuation =
+            field_audio_attenuation_level_;
+    }
     if (field_building_scene_transition_active_) {
         advance_field_building_scene_transition();
         return;
