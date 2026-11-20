@@ -2932,12 +2932,13 @@ private:
     std::optional<std::int8_t> field_matrix_karma_counter_;
     // ROM FFF0A3: field setup seeds 1 at 0x174FC; Attack and Slow clear it.
     std::optional<std::int8_t> field_matrix_passive_ic_counter_;
-    // FFFC28 and the known fields of FFFBBE. The save adapter does not yet
-    // restore these source values, so loaded sessions retain unknown state.
+    // FFFC28 and the modeled FFFBBE fields are persisted through
+    // story.matrix_passcode_flags and story.matrix_field_state. Older saves
+    // without those values keep the corresponding source state unknown.
     std::optional<std::uint16_t> field_matrix_passcode_flags_;
     std::optional<CyberdeckRecord> field_matrix_deck_record_;
-    // FFFC22 is not present in the current save adapter. New Game initializes
-    // it to zero; restored saves remain an explicit source-state boundary.
+    // FFFC22 is persisted and restored as story.group_item_flags. New Game
+    // initializes it to zero.
     std::optional<std::uint32_t> group_item_flags_ = 0U;
     // A fresh New Game has no active run. Save restoration does not yet
     // publish the source FFFBEC run state to this presentation adapter.
@@ -3302,9 +3303,8 @@ private:
     std::optional<std::uint32_t> field_funds_{0x14U};
     // ROM FFE168 bit 0; set by debug-menu option 0x59C54.
     bool field_walk_fast_enabled_ = false;
-    // The fresh New Game runtime initializes these typed source globals to
-    // zero. The loaded-save adapter does not restore them, so paid writes stay
-    // explicit for that path.
+    // FF018F is persisted and restored as story.runner_feature_flags. Older
+    // saves without that byte leave the source fact unavailable.
     std::optional<std::uint8_t> field_runner_feature_flags_{0U}; // FF018F
     std::string field_shop_route_pending_service_id_;
     FieldEntityPresentation field_entity_{};

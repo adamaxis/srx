@@ -697,6 +697,157 @@ inline void write_lua_report(lua_State* state,
     }
 }
 
+inline std::optional<QString> first_json_difference(
+    const QJsonValue& expected, const QJsonValue& actual,
+    const QString& path = QStringLiteral("$")) {
+    if (expected.type() != actual.type()) {
+        return path + QStringLiteral(": JSON type changed");
+    }
+    if (expected.isObject()) {
+        const auto expected_object = expected.toObject();
+        const auto actual_object = actual.toObject();
+        for (const auto& key : expected_object.keys()) {
+            if (!actual_object.contains(key)) {
+                return path + QStringLiteral(".") + key +
+                    QStringLiteral(": missing after restore");
+            }
+            const auto difference = first_json_difference(
+                expected_object.value(key), actual_object.value(key),
+                path + QStringLiteral(".") + key);
+            if (difference.has_value()) return difference;
+        }
+        for (const auto& key : actual_object.keys()) {
+            if (!expected_object.contains(key)) {
+                return path + QStringLiteral(".") + key +
+                    QStringLiteral(": added after restore");
+            }
+        }
+        return std::nullopt;
+    }
+    if (expected.isArray()) {
+        const auto expected_array = expected.toArray();
+        const auto actual_array = actual.toArray();
+        if (expected_array.size() != actual_array.size()) {
+            return path + QStringLiteral(": array size changed");
+        }
+        for (qsizetype index = 0; index < expected_array.size(); ++index) {
+            const auto difference = first_json_difference(
+                expected_array.at(index), actual_array.at(index),
+                path + QStringLiteral("[") + QString::number(index) +
+                    QStringLiteral("]"));
+            if (difference.has_value()) return difference;
+        }
+        return std::nullopt;
+    }
+    if (expected != actual) {
+        return path + QStringLiteral(": value changed");
+    }
+    return std::nullopt;
+}
+
+inline std::optional<std::string> verify_seg1_save_round_trip(
+    FieldSceneRuntime& source_runtime,
+    const shadowrun::ghidra_conversion::integration::StartupIntegrationState&
+        startup_state) {
+    QString error;
+    const auto source_snapshot =
+        source_runtime.capture_game_save_snapshot_for_dump(&error);
+    if (!source_snapshot.has_value()) {
+        return "could not capture segment-1 save snapshot: " +
+            error.toStdString();
+    }
+
+    const auto fail_if_missing = [](const QJsonObject& object,
+                                    const char* name,
+                                    const std::string_view object_name)
+        -> std::optional<std::string> {
+        if (!object.contains(QLatin1String(name))) {
+            return std::string(object_name) + "." + name + " is missing";
+        }
+        return std::nullopt;
+    };
+    for (const auto* key : {"kind", "scene", "party", "funds_available",
+                            "funds", "story", "script_facts", "run_registry"}) {
+        if (const auto missing = fail_if_missing(
+                *source_snapshot, key, "save")) {
+            return missing;
+        }
+    }
+    const auto scene = source_snapshot->value(QStringLiteral("scene")).toObject();
+    for (const auto* key : {"reference", "player_x", "player_y"}) {
+        if (const auto missing = fail_if_missing(scene, key, "save.scene")) {
+            return missing;
+        }
+    }
+    const auto party = source_snapshot->value(QStringLiteral("party")).toObject();
+    if (const auto missing = fail_if_missing(
+            party, "members", "save.party")) {
+        return missing;
+    }
+    const auto story = source_snapshot->value(QStringLiteral("story")).toObject();
+    for (const auto* key : {
+             "exit_world_flags", "group_item_flags", "dialogue_register",
+             "dialogue_flags", "map_event_flags", "auxiliary_flags",
+             "render_effect_flags", "matrix_passcode_flags",
+             "matrix_field_state", "runner_feature_flags",
+             "notebook_tip_flags",
+             "notebook_current_run_available", "notebook_contacts_flags",
+             "notebook_referral_flags", "notebook_shadowrunner_flags"}) {
+        if (const auto missing = fail_if_missing(story, key, "save.story")) {
+            return missing;
+        }
+    }
+    if (!source_snapshot->value(QStringLiteral("run_registry")).isObject() ||
+        !source_snapshot->value(QStringLiteral("script_facts")).isObject()) {
+        return "save.run_registry or save.script_facts is not an object";
+    }
+    const auto party_members =
+        party.value(QStringLiteral("members")).toArray();
+    if (party_members.size() != static_cast<qsizetype>(
+            FieldPartyRosterRuntime::kSlotCount)) {
+        return "save.party.members has the wrong slot count";
+    }
+    for (qsizetype index = 0; index < party_members.size(); ++index) {
+        const auto member = party_members.at(index).toObject();
+        if (!member.value(QStringLiteral("record")).isObject()) {
+            return "save.party.members[" + std::to_string(index) +
+                "].record is missing";
+        }
+    }
+
+    std::vector<std::string> restored_source_events;
+    std::vector<std::uint16_t> restored_audio_events;
+    FieldSceneRuntime restored_runtime(
+        [&](const std::string_view event) {
+            restored_source_events.emplace_back(event);
+        },
+        [&](const std::uint16_t event) {
+            restored_audio_events.push_back(event);
+        },
+        [](const std::uint16_t) {});
+    restored_runtime.set_source_random_seed_for_dump(kSourceRandomSeed);
+    if (!restored_runtime.bootstrap(startup_state)) {
+        return "fresh runtime bootstrap failed before restore: " +
+            restored_runtime.failure();
+    }
+    if (!restored_runtime.restore_game_save_snapshot_for_dump(
+            *source_snapshot, &error)) {
+        return "fresh runtime restore failed: " + error.toStdString();
+    }
+    const auto restored_snapshot =
+        restored_runtime.capture_game_save_snapshot_for_dump(&error);
+    if (!restored_snapshot.has_value()) {
+        return "could not capture restored save snapshot: " +
+            error.toStdString();
+    }
+    const auto difference = first_json_difference(
+        QJsonValue(*source_snapshot), QJsonValue(*restored_snapshot));
+    if (difference.has_value()) {
+        return "snapshot mismatch at " + difference->toStdString();
+    }
+    return std::nullopt;
+}
+
 } // namespace walkthrough_detail
 
 inline int run_walkthrough_qa(
@@ -838,9 +989,21 @@ inline int run_walkthrough_qa(
     }
 
     const bool passed = lua_boolean_field(state, -1, "passed");
+    bool save_round_trip_passed = true;
+    if (segment == "seg1" && !reach_mode && passed) {
+        const auto round_trip_error = verify_seg1_save_round_trip(
+            runtime, startup_state);
+        if (round_trip_error.has_value()) {
+            save_round_trip_passed = false;
+            std::cerr << "walkthrough save round-trip failed: "
+                      << *round_trip_error << '\n';
+        } else {
+            std::cout << "walkthrough save round-trip: seg1_end passed\n";
+        }
+    }
     write_lua_report(state, output_directory, segment, reach_mode);
     lua_close(state);
-    return passed || reach_mode ? 0 : 1;
+    return (passed && save_round_trip_passed) || reach_mode ? 0 : 1;
 }
 
 } // namespace shadowrun::ghidra_conversion::qt_runtime::qa
