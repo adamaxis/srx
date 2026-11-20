@@ -14390,26 +14390,27 @@ int main() {
     }
     denied_resource_entry =
         scripts.complete_native_menu_input("cancel");
-    constexpr std::array<std::string_view, 3U> kResourceExitServices{
-        "dialogue_exit.return_to_activity_source",
-        "dialogue_exit.fade",
-        "dialogue_exit.resume_scene_profile",
-    };
-    for (const auto service_id : kResourceExitServices) {
-        if (!expect(denied_resource_entry.status ==
-                        ScriptTaskStep::Status::awaiting_native_operation &&
-                    denied_resource_entry.operation.has_value() &&
-                    denied_resource_entry.operation->type ==
-                        ScriptNativeOperation::Type::service_call &&
-                    denied_resource_entry.operation->service_id == service_id,
-                    "resource-scene exit did not request its common-framework "
-                    "return operation")) {
-            std::cerr << scripts.failure() << '\n';
-            return 15;
-        }
-        denied_resource_entry =
-            scripts.complete_native_service_result("applied");
+    if (!expect(denied_resource_entry.status ==
+                    ScriptTaskStep::Status::awaiting_native_operation &&
+                denied_resource_entry.operation.has_value() &&
+                denied_resource_entry.operation->type ==
+                    ScriptNativeOperation::Type::service_call &&
+                denied_resource_entry.operation->service_id ==
+                    "dialogue_exit.restore_field_context_"
+                    "return_to_activity_source" &&
+                denied_resource_entry.dialogue_open.has_value() &&
+                denied_resource_entry.dialogue_open->exit_behavior ==
+                    "return_to_activity_source" &&
+                denied_resource_entry.dialogue_open->transition == "fade" &&
+                denied_resource_entry.dialogue_open->music_return_policy ==
+                    "resume_scene_profile",
+                "resource-scene exit did not request its common-framework "
+                "return operation")) {
+        std::cerr << scripts.failure() << '\n';
+        return 15;
     }
+    denied_resource_entry =
+        scripts.complete_native_service_result("applied");
     if (!expect(denied_resource_entry.status ==
                         ScriptTaskStep::Status::completed &&
                     denied_resource_entry.result_id == std::optional<
