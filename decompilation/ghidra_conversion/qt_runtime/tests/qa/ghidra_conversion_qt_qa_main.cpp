@@ -60811,6 +60811,11 @@ int main(int argc, char** argv) {
                 const auto& source_collision_rectangles = field_scene.state()
                     .field_scene_buffers.source_metadata
                     .terrain_collision_rectangles;
+                const auto new_game_deck =
+                    field_scene.field_matrix_deck_record_for_dump();
+                // [C] New Game copies the default deck at ROM 0x14C1F4 into
+                // FFFBBE through 0x26938; Stoker grants ownership separately
+                // at 0x213FA. A record exists here, but it is not yet owned.
                 if (field_scene.field_scene_reference_for_dump() != 2U ||
                     spawn.x != 0x3CE0U || spawn.y != 0x2D00U ||
                     new_game_runner.delay_meter != 10U ||
@@ -60818,9 +60823,10 @@ int main(int argc, char** argv) {
                     source_collision_rectangles.size() <= 91U ||
                     source_collision_rectangles[91U].value != 0xC2U ||
                     field_scene.field_funds_for_dump() != 20U ||
-                    field_scene.field_matrix_deck_record_for_dump()
-                        .has_value()) {
-                    std::cerr << "field Hotel QA: fresh New Game does not have the source Stoker doorway, 20-nuyen wallet, and empty deck state\n";
+                    !new_game_deck.has_value() ||
+                    field_scene.cyberdeck_available_for_dump() !=
+                        std::optional<bool>{false}) {
+                    std::cerr << "field Hotel QA: fresh New Game does not have the source Stoker doorway, 20-nuyen wallet, and unowned ROM default deck state\n";
                     return 3;
                 }
                 std::ofstream route(output / "physical-route.tsv",
