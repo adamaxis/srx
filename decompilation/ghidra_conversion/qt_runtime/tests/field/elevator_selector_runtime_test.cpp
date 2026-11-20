@@ -258,5 +258,21 @@ int main() {
         transition.begin_fade_in()) {
         return 22;
     }
+    FieldSceneTransitionRuntime black_handoff;
+    if (!black_handoff.begin_black_handoff() ||
+        black_handoff.phase() !=
+            FieldSceneTransitionPhase::destination_handoff ||
+        black_handoff.palette_step() !=
+            kFieldSceneTransitionPaletteStepCount ||
+        black_handoff.begin_fade_in()) {
+        return 23;
+    }
+    const auto immediate_load = black_handoff.advance();
+    if (!immediate_load.destination_load_requested ||
+        immediate_load.palette_step_changed || immediate_load.completed ||
+        black_handoff.advance().destination_load_requested ||
+        !black_handoff.begin_fade_in()) {
+        return 24;
+    }
     return 0;
 }

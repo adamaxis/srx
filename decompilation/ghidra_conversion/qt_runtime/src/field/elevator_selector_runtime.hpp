@@ -110,12 +110,16 @@ struct FieldSceneTransitionUpdate {
     bool completed = false;
 };
 
-// The source scene handoff fades 17 palette passes toward black (0x131C),
-// reloads the destination scene (0x2BD2/0x16A8E), then fades toward its target
+// Ordinary scene handoffs fade 17 palette passes toward black (0x131C),
+// reload the destination scene (0x2BD2/0x16A8E), then fade toward its target
 // palette in 17 passes (0x12F6). Each pass waits two VBlanks via 0x1342.
+// Taxi mode exit 0x136B6 instead enters the black handoff after 0x136DE clears
+// FFDF40 at 0x136E4.
 class FieldSceneTransitionRuntime final {
 public:
     bool begin_fade_out() noexcept;
+    // Loads the destination on the next advance while presenting black.
+    bool begin_black_handoff() noexcept;
     bool begin_fade_in() noexcept;
     void cancel() noexcept;
     FieldSceneTransitionUpdate advance() noexcept;
@@ -133,6 +137,7 @@ private:
     FieldSceneTransitionPhase phase_ = FieldSceneTransitionPhase::idle;
     std::uint8_t palette_step_ = 0U;
     std::uint8_t vblanks_in_palette_step_ = 0U;
+    bool destination_load_pending_ = false;
 };
 
 } // namespace shadowrun::ghidra_conversion::qt_runtime

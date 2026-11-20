@@ -396,7 +396,11 @@ bool FieldSceneRuntime::transition_to_field_destination(
     // finish while the destination is still black.
     const auto restore_interaction_lock =
         field_movement_transition_state_.world_interaction_lock;
+    // ROM 0x136DE clears FFDF40 for the taxi's changed-region branch; like
+    // the other mode-zero entries, it uses the 31-pass setup at 0x08C0 before
+    // the destination palette is revealed at 0x12F6.
     const bool mode_entry_route =
+        route == FieldDestinationTransitionRoute::taxi ||
         route == FieldDestinationTransitionRoute::vid_phone ||
         route == FieldDestinationTransitionRoute::dialogue_scene_entry;
     if (mode_entry_route) {

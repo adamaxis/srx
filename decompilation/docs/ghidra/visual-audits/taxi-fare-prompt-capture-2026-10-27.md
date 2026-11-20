@@ -16,13 +16,33 @@ The longplay segment is
 | `frame_002400.png` | `02:58:20.000` | Cabbie portrait and Puyallup Barrens fare quote; visible choices are `Sure thing, Cabbie.` and `Sorry. I changed my mind.` |
 | `frame_002425.png` | `02:58:20.833` | Follow-up page says `Hop in, chum.` |
 | `frame_002430.png` | `02:58:21.000` | `Hop in, chum.` remains visible. |
+| `frame_002455.png` | `02:58:21.833` | The accepted ride page remains visible immediately before the mode handoff. |
 | `frame_002460.png` | `02:58:22.000` | Dialogue has closed; the display is in the travel transition. |
-| `frame_002600.png` | `02:58:26.667` | Field map is visible again after the ride. |
+| `frame_002522.png` | `02:58:24.067` | First captured frame with the destination map visible after the black interval. |
+| `frame_002600.png` | `02:58:26.667` | The destination field map remains visible after the ride. |
 
 The quote and follow-up are one observed path through the fare prompt. The
 screen sequence supports a selection of `Sure thing, Cabbie.` followed by the
 normal `Hop in, chum.` result. It does not show the wallet before and after,
 so the exact 40-nuyen debit is source-derived rather than visually measured.
+
+### Accepted-ride handoff
+
+**[C]** In the capture, frame `002455` still shows the accepted-ride page and
+frame `002460` has a black field viewport. The field remains black through
+frame `002520`; the first captured destination pixels appear at frame `002522`.
+The ROM changed-region path at `0x136B6` calls `0x136DE`; that routine clears
+`FFDF40` at `0x136E4`, sets the selected scene at `0x136FA`, and returns through
+to the caller, which runs a second `0x53126` mode-entry service at `0x136D6`.
+
+The native route previously began the shared fade-out before applying the
+mode reset. Its headless repro was still in `fading_to_black` after closing
+the ride page, with visible field pixels. Taxi acceptance now enters a black
+handoff, clears the typed `FFDF40` mode before loading the destination, and
+uses the 31-pass field-entry setup from `0x08C0` before starting the reveal at
+`0x12F6`. The focused QA checks the all-black frame, mode zero, destination
+order, fare debit, and completed arrival. It does not assert the full black
+hold duration seen in the independent capture.
 
 ### Post-ride destination map
 

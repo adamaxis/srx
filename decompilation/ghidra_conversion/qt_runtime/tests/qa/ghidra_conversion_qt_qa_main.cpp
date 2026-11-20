@@ -64735,6 +64735,17 @@ int main(int argc, char** argv) {
                 const auto capture_field_scene = [&field_scene] {
                     return render_qa_field(field_scene);
                 };
+                const auto is_black_field_frame = [](const QImage& image) {
+                    if (image.size() != QSize(320, 224)) return false;
+                    for (int y = 0; y < image.height(); ++y) {
+                        for (int x = 0; x < image.width(); ++x) {
+                            if (image.pixelColor(x, y) != QColor(Qt::black)) {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                };
                 constexpr std::uint8_t kRedmondRegion = 2U;
                 constexpr std::uint8_t kRenrakuRegion = 5U;
                 if (field_scene.field_scene_reference_for_dump() !=
@@ -65204,11 +65215,59 @@ int main(int argc, char** argv) {
                                  "show the cabbie's ride page\n";
                     return 3;
                 }
-                tap_qa_controller_button(field_scene, 0x40U); // Hop in.
+                // Dismissing "Hop in, chum." completes the Lua ride outcome.
+                // ROM 0x136B6 calls 0x136DE for a changed taxi region; that
+                // routine clears FFDF40 at 0x136E4 before its caller's second
+                // mode-entry service at 0x136D6. The field should therefore
+                // hand off to black as the ride dialogue closes.
+                settle_qa_dialogue_input(field_scene);
+                field_scene.set_controller_port_byte(0x40U);
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
                 const auto taxi_funds = field_scene.field_funds_for_dump();
                 if (!taxi_funds.has_value() || *taxi_funds != 80U) {
                     std::cerr << "field taxi dump: accepted cab fare did not "
                                  "deduct 20 nuyen\n";
+                    return 3;
+                }
+                const auto taxi_black_handoff = capture_field_scene();
+                auto taxi_black_handoff_path = *field_taxi_dump_path;
+                taxi_black_handoff_path.replace_filename(
+                    "field-taxi-black-handoff-actual.bmp");
+                const bool taxi_handoff_saved = taxi_black_handoff.save(
+                    QString::fromStdWString(
+                        taxi_black_handoff_path.wstring()));
+                const auto taxi_handoff_phase =
+                    field_scene.elevator_scene_transition_phase_for_dump();
+                const bool taxi_handoff_is_black_phase =
+                    taxi_handoff_phase ==
+                        FieldSceneTransitionPhase::destination_handoff ||
+                    (taxi_handoff_phase ==
+                         FieldSceneTransitionPhase::fading_from_black &&
+                     field_scene.elevator_scene_transition_palette_step_for_dump() ==
+                         0U);
+                const bool taxi_handoff_scene_order_ok =
+                    taxi_handoff_phase ==
+                            FieldSceneTransitionPhase::destination_handoff ||
+                    field_scene.field_scene_reference_for_dump() == 0U;
+                if (!taxi_handoff_saved ||
+                    !is_black_field_frame(taxi_black_handoff) ||
+                    !taxi_handoff_is_black_phase ||
+                    !taxi_handoff_scene_order_ok ||
+                    field_scene.field_interaction_mode_for_dump() != 0U) {
+                    std::cerr << "field taxi dump: closing the accepted ride "
+                                 "did not enter ROM mode-0 black handoff "
+                                 "(black="
+                              << is_black_field_frame(taxi_black_handoff)
+                              << ", scene_order="
+                              << taxi_handoff_scene_order_ok
+                              << ", phase=" << static_cast<unsigned>(
+                                     field_scene
+                                         .elevator_scene_transition_phase_for_dump())
+                              << ", mode="
+                              << field_scene.field_interaction_mode_for_dump()
+                              << ")\n";
                     return 3;
                 }
                 for (int frame = 0;
@@ -65217,9 +65276,9 @@ int main(int argc, char** argv) {
                      ++frame) {
                     field_scene.advance_frame();
                 }
-                // Scene reference changes at the black handoff between the
-                // source fade-out and fade-in. Let that presentation finish
-                // before accepting the destination as visually loaded.
+                // The ROM taxi mode reset hands directly to black before the
+                // destination scene appears. Let the destination fade finish
+                // before accepting it as visually loaded.
                 for (int frame = 0; frame < 90; ++frame) {
                     field_scene.advance_frame();
                 }

@@ -151,11 +151,24 @@ bool FieldSceneTransitionRuntime::begin_fade_out() noexcept {
     phase_ = FieldSceneTransitionPhase::fading_to_black;
     palette_step_ = 0U;
     vblanks_in_palette_step_ = 0U;
+    destination_load_pending_ = false;
+    return true;
+}
+
+bool FieldSceneTransitionRuntime::begin_black_handoff() noexcept {
+    if (phase_ != FieldSceneTransitionPhase::idle) {
+        return false;
+    }
+    phase_ = FieldSceneTransitionPhase::destination_handoff;
+    palette_step_ = kFieldSceneTransitionPaletteStepCount;
+    vblanks_in_palette_step_ = 0U;
+    destination_load_pending_ = true;
     return true;
 }
 
 bool FieldSceneTransitionRuntime::begin_fade_in() noexcept {
-    if (phase_ != FieldSceneTransitionPhase::destination_handoff) {
+    if (phase_ != FieldSceneTransitionPhase::destination_handoff ||
+        destination_load_pending_) {
         return false;
     }
     phase_ = FieldSceneTransitionPhase::fading_from_black;
@@ -168,11 +181,17 @@ void FieldSceneTransitionRuntime::cancel() noexcept {
     phase_ = FieldSceneTransitionPhase::idle;
     palette_step_ = 0U;
     vblanks_in_palette_step_ = 0U;
+    destination_load_pending_ = false;
 }
 
 FieldSceneTransitionUpdate FieldSceneTransitionRuntime::advance()
     noexcept {
     FieldSceneTransitionUpdate update{};
+    if (phase_ == FieldSceneTransitionPhase::destination_handoff) {
+        update.destination_load_requested = destination_load_pending_;
+        destination_load_pending_ = false;
+        return update;
+    }
     if (phase_ != FieldSceneTransitionPhase::fading_to_black &&
         phase_ != FieldSceneTransitionPhase::fading_from_black) {
         return update;

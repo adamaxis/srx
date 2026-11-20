@@ -10926,12 +10926,22 @@ void FieldSceneRuntime::configure_field_menu_route() {
                     state_.field_scene_buffers.scene_reference) {
                     field_taxi_pending_destination_.reset();
                     source_boundary("field.taxi.returned_to_current_region");
-                } else if (field_scene_transition_.begin_fade_out()) {
-                    field_taxi_transition_active_ = true;
-                    source_boundary("field.taxi.destination_fade_out_started");
                 } else {
-                    field_taxi_pending_destination_.reset();
-                    source_boundary("field.taxi.destination_transition_busy");
+                    if (field_scene_transition_.begin_black_handoff()) {
+                        // ROM 0x136B6 dispatches a changed destination to
+                        // 0x136DE. That routine clears FFDF40 at 0x136E4
+                        // before its caller's second mode-entry service at
+                        // 0x136D6, so taxi travel enters the black handoff
+                        // directly.
+                        field_movement_transition_state_.world_mode = 0U;
+                        field_taxi_transition_active_ = true;
+                        source_boundary(
+                            "field.taxi.destination_black_handoff_started");
+                    } else {
+                        field_taxi_pending_destination_.reset();
+                        source_boundary(
+                            "field.taxi.destination_transition_busy");
+                    }
                 }
             }
         }
@@ -15637,11 +15647,16 @@ void FieldSceneRuntime::advance_frame() {
                     } else {
                         field_taxi_pending_destination_ =
                             static_cast<std::uint16_t>(accepted_field_mode);
-                        if (field_scene_transition_.begin_fade_out()) {
+                        if (field_scene_transition_.begin_black_handoff()) {
+                            // ROM 0x136DE clears FFDF40 at 0x136E4 when the
+                            // accepted region differs from FFDDC4. Apply the
+                            // mode reset with the black handoff, before the
+                            // destination field data is loaded.
+                            field_movement_transition_state_.world_mode = 0U;
                             field_taxi_transition_active_ = true;
                             taxi_departure_started = true;
                             source_boundary(
-                                "field.taxi.destination_fade_out_started");
+                                "field.taxi.destination_black_handoff_started");
                         } else {
                             field_taxi_pending_destination_.reset();
                             source_boundary(
@@ -15651,8 +15666,8 @@ void FieldSceneRuntime::advance_frame() {
                 }
             }
             if (taxi_departure_started) {
-                // The cabbie task has already accepted and started the taxi
-                // route; the next host frame advances its source fade.
+                // The accepted cab ride has entered the black handoff; the
+                // next host frame loads the selected field destination.
             } else if (field_mode_entry_transition_pending_) {
                 const auto expected_result =
                     active_field_script_route_.has_value()
