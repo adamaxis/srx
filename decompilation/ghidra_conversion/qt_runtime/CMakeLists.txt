@@ -964,6 +964,13 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_edge_exit_scene5_w
                  --field-edge-exit-qa scene5_west
                  "${CMAKE_CURRENT_BINARY_DIR}/field-edge-exit-qa/scene5-west")
 
+# Exercise both ROM event-16 transitions in one live controller route so the
+# destination collision map is active before the runner walks back to Scene 5.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_edge_exit_scene5_downtown_roundtrip_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-edge-exit-qa scene5_downtown_roundtrip
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-edge-exit-qa/scene5-downtown-roundtrip")
+
 # The active field event byte selects a named resource scene, samples its ROM
 # bound into a typed floor index, and carries that state through the existing
 # Security Terminal result prompt. Captures also verify full-scene replacement

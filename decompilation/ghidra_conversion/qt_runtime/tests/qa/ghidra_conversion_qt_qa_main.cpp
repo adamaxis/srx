@@ -46204,14 +46204,17 @@ int run_field_edge_exit_qa(
         std::uint16_t camera_x;
         std::uint16_t camera_y;
         std::uint8_t input;
+        bool round_trip = false;
     };
     // These are all ROM event-16 edge routes: scene 0 west/east, scene 3
     // east, and scene 5 west (records 0x0D57FA/0x0D582C/0x18ABFA/0x067C72).
-    constexpr std::array<EdgeRoute, 4> routes{{
+    constexpr std::array<EdgeRoute, 5> routes{{
         {"scene0_west", 0U, 3U, 0x0300U, 0x2C00U, 0U, 0x2400U, 0x04U},
         {"scene0_east", 0U, 5U, 0x7500U, 0x2C00U, 0x6500U, 0x2400U, 0x08U},
         {"scene3_east", 3U, 0U, 0x7B00U, 0x2C00U, 0x6B00U, 0x2400U, 0x08U},
         {"scene5_west", 5U, 0U, 0x0300U, 0x3A00U, 0U, 0x3200U, 0x04U},
+        {"scene5_downtown_roundtrip", 5U, 0U, 0x0300U, 0x3A00U,
+         0U, 0x3200U, 0x04U, true},
     }};
     const auto selected = std::find_if(
         routes.begin(), routes.end(), [route_name](const auto& route) {
@@ -46236,6 +46239,9 @@ int run_field_edge_exit_qa(
     // modes 1..3, and 0x2F4E/0x136E4/0x594E0 clear it. 0x0992 reaches the
     // 0x03168 variant selector only from that zero mode.
     field_scene.set_field_interaction_mode_for_dump(0U);
+    const auto source_collision_map = field_scene.state()
+                                          .field_scene_buffers.source_metadata
+                                          .terrain_collision_map;
     const auto initial_event = field_scene.field_mode_event_code_for_dump();
     bool event16_published = false;
     bool observed_movement = false;
@@ -46273,10 +46279,93 @@ int run_field_edge_exit_qa(
         field_scene.advance_frame();
     }
     const auto arrival_mode = field_scene.field_interaction_mode_for_dump();
+    const auto arrival_camera_x =
+        field_scene.field_camera_follow_for_dump().camera_x;
     const auto arrival_fade_steps =
         field_scene.field_palette_fade_steps_for_dump();
     const auto arrival_image = render_qa_field(field_scene);
     const auto arrival_lit_pixels = count_playfield_lit(arrival_image);
+    // ROM 0x03168 selects Scene 0 profile 0x31F2 from Scene 5; 0x03084 then
+    // loads that scene's terrain, so the destination cannot retain Scene 5's
+    // collision bytes [C].
+    const bool destination_collision_map_matches_source =
+        route.round_trip &&
+        field_scene.state()
+                .field_scene_buffers.source_metadata.terrain_collision_map ==
+            source_collision_map;
+    const auto arrival_image_path = output / "actual.bmp";
+    if (!arrival_image.save(QString::fromStdWString(
+            arrival_image_path.wstring()))) {
+        std::cerr << "field edge exit QA: could not save arrival frame "
+                  << arrival_image_path.string() << '\n';
+        return 3;
+    }
+    bool returned_to_scene5 = !route.round_trip;
+    bool moved_east_after_arrival = !route.round_trip;
+    SceneRunnerPosition return_position = final_position;
+    auto return_scene = destination_scene;
+    auto return_mode = arrival_mode;
+    auto return_fade_steps = arrival_fade_steps;
+    auto return_lit_pixels = arrival_lit_pixels;
+    auto return_mode_event = field_scene.field_mode_event_code_for_dump();
+    auto return_variant_count = std::size_t{0};
+    std::uint32_t return_collision_dispatches = 0U;
+    int return_collision_scene = -1;
+    int return_collision_event = -1;
+    QImage return_image;
+    if (route.round_trip && destination_scene == 0U) {
+        // ROM 0x03168 selects Scene 5 from Scene 0's event-16 route when the
+        // prepared camera is east of 0x1400. 0x02BD2 then commits the selected
+        // scene and its collision map before normal field movement resumes.
+        field_scene.set_controller_nibble(0x08U);
+        const auto collision_dispatches_before =
+            field_scene.field_map_event_system_for_dump()
+                .collision_dispatch_count();
+        for (std::uint16_t tick = 0U; tick < 1200U; ++tick) {
+            const auto before = field_scene.field_entity_world_position();
+            field_scene.advance_frame();
+            const auto after = field_scene.field_entity_world_position();
+            if (after.x > before.x) moved_east_after_arrival = true;
+            if (field_scene.field_scene_reference_for_dump() != 0U) {
+                break;
+            }
+        }
+        field_scene.set_controller_nibble(0U);
+        for (std::uint8_t settle = 0U; settle < 36U; ++settle) {
+            field_scene.advance_frame();
+        }
+        return_scene = field_scene.field_scene_reference_for_dump();
+        return_position = field_scene.field_entity_world_position();
+        return_mode = field_scene.field_interaction_mode_for_dump();
+        return_mode_event = field_scene.field_mode_event_code_for_dump();
+        return_collision_dispatches =
+            field_scene.field_map_event_system_for_dump()
+                .collision_dispatch_count() - collision_dispatches_before;
+        const auto& last_collision_dispatch =
+            field_scene.field_map_event_system_for_dump()
+                .last_collision_dispatch();
+        if (last_collision_dispatch.has_value()) {
+            return_collision_scene =
+                last_collision_dispatch->input.scene_id;
+            return_collision_event = static_cast<int>(
+                last_collision_dispatch->decision.event_code);
+        }
+        return_variant_count = static_cast<std::size_t>(std::count(
+            source_boundaries.begin(), source_boundaries.end(),
+            std::string("field.runtime.scene_variant_selected")));
+        return_fade_steps =
+            field_scene.field_palette_fade_steps_for_dump();
+        return_image = render_qa_field(field_scene);
+        return_lit_pixels = count_playfield_lit(return_image);
+        returned_to_scene5 = return_scene == 5U;
+        const auto return_image_path = output / "roundtrip-return.bmp";
+        if (!return_image.save(QString::fromStdWString(
+                return_image_path.wstring()))) {
+            std::cerr << "field edge exit QA: could not save return frame "
+                      << return_image_path.string() << '\n';
+            return 3;
+        }
+    }
     const auto has_boundary = [&source_boundaries](
                                   const std::string_view boundary) {
         return std::find(source_boundaries.begin(), source_boundaries.end(),
@@ -46286,8 +46375,10 @@ int run_field_edge_exit_qa(
         has_boundary("field.runtime.field_transition_requested");
     const bool variant_selected =
         has_boundary("field.runtime.scene_variant_selected");
-    const auto expected_arrival_mode =
-        select_scene_interaction_mode(route.destination_scene);
+    // ROM 0x03168 changes FFDDC4/FFE114 and returns with carry; it does not
+    // write FFDF40, and the carry bypasses 0x167AE. This edge fixture starts
+    // with the street value zero, so both scene loads must preserve zero [C].
+    const auto expected_arrival_mode = std::optional<std::uint16_t>{0U};
     const bool passed = initial_event != 0x10U && event16_published &&
                         transition_requested && variant_selected &&
                         moved_in_exit_direction &&
@@ -46295,24 +46386,54 @@ int run_field_edge_exit_qa(
                         expected_arrival_mode.has_value() &&
                         arrival_mode == *expected_arrival_mode &&
                         arrival_fade_steps == 0U &&
-                        arrival_lit_pixels >= 100;
+                        arrival_lit_pixels >= 100 &&
+                        (!route.round_trip ||
+                         !destination_collision_map_matches_source) &&
+                        moved_east_after_arrival && returned_to_scene5 &&
+                        (!route.round_trip ||
+                         (return_collision_dispatches > 0U &&
+                          return_collision_scene == 0 &&
+                          return_collision_event == 0x10 &&
+                          return_variant_count == 2U &&
+                          arrival_camera_x >= 0x1400U)) &&
+                        (!route.round_trip ||
+                         (return_mode == 0U && return_fade_steps == 0U &&
+                          return_position.x == 0x0600U &&
+                          return_position.y == 0x3A00U &&
+                          return_lit_pixels >= 100));
     std::ofstream trace(output / "edge-routes.tsv", std::ios::trunc);
     if (!trace) return 3;
     trace << "route\tinitial_event\tevent16_published\tmoved_x\t"
              "source_scene\tdestination_scene\texpected_scene\tcamera_x\t"
              "world_x\tworld_y\trequest_boundary\tvariant_selected\t"
-             "arrival_mode\texpected_mode\tfade_steps\tlit_pixels\n";
+             "arrival_mode\texpected_mode\tfade_steps\tlit_pixels\t"
+             "round_trip\tmoved_east\treturn_scene\treturn_x\treturn_y\t"
+             "return_mode\treturn_mode_event\t"
+             "destination_map_matches_source\tvariant_count\t"
+             "return_collision_dispatches\treturn_collision_scene\t"
+             "return_collision_event\treturn_fade_steps\t"
+             "return_lit_pixels\n";
     trace << route.name << '\t' << static_cast<unsigned>(initial_event)
           << '\t' << event16_published << '\t'
           << moved_in_exit_direction << '\t' << route.source_scene << '\t'
           << destination_scene << '\t' << route.destination_scene << '\t'
-          << field_scene.field_camera_follow_for_dump().camera_x << '\t'
+          << arrival_camera_x << '\t'
           << final_position.x << '\t' << final_position.y << '\t'
           << transition_requested << '\t' << variant_selected << '\t'
           << arrival_mode << '\t'
           << expected_arrival_mode.value_or(0xFFFFU) << '\t'
           << static_cast<unsigned>(arrival_fade_steps) << '\t'
-          << arrival_lit_pixels << '\n';
+          << arrival_lit_pixels << '\t' << route.round_trip << '\t'
+          << moved_east_after_arrival << '\t' << return_scene << '\t'
+          << return_position.x << '\t' << return_position.y << '\t'
+          << return_mode << '\t'
+          << static_cast<unsigned>(return_mode_event) << '\t'
+          << destination_collision_map_matches_source << '\t'
+          << return_variant_count << '\t' << return_collision_dispatches
+          << '\t' << return_collision_scene << '\t'
+          << return_collision_event << '\t'
+          << static_cast<unsigned>(return_fade_steps) << '\t'
+          << return_lit_pixels << '\n';
     trace.close();
     if (!trace || !passed) {
         std::cerr << "field edge exit QA: " << route.name
@@ -46337,6 +46458,24 @@ int run_field_edge_exit_qa(
                   << " fade_steps="
                   << static_cast<unsigned>(arrival_fade_steps)
                   << " lit_pixels=" << arrival_lit_pixels
+                  << " round_trip=" << route.round_trip
+                  << " moved_east=" << moved_east_after_arrival
+                  << " return_scene=" << return_scene
+                  << " return_position=(" << return_position.x << ','
+                  << return_position.y << ')'
+                  << " return_mode=" << return_mode
+                  << " return_mode_event="
+                  << static_cast<unsigned>(return_mode_event)
+                  << " destination_map_matches_source="
+                  << destination_collision_map_matches_source
+                  << " variant_count=" << return_variant_count
+                  << " collision_dispatches="
+                  << return_collision_dispatches
+                  << " collision_scene=" << return_collision_scene
+                  << " collision_event=" << return_collision_event
+                  << " return_fade_steps="
+                  << static_cast<unsigned>(return_fade_steps)
+                  << " return_lit_pixels=" << return_lit_pixels
                   << " failure=" << field_scene.failure() << '\n';
         return 3;
     }
@@ -46347,6 +46486,11 @@ int run_field_edge_exit_qa(
               << " fade_steps="
               << static_cast<unsigned>(arrival_fade_steps)
               << " lit_pixels=" << arrival_lit_pixels
+              << " round_trip=" << route.round_trip
+              << " return_scene=" << return_scene
+              << " return_position=(" << return_position.x << ','
+              << return_position.y << ')'
+              << " return_mode=" << return_mode
               << " trace=" << (output / "edge-routes.tsv").string() << '\n';
     return 0;
 }

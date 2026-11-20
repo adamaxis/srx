@@ -6,6 +6,24 @@ composites do not count. Apply the question-by-question evidence process in
 [`visual-verification-checklist.md`](visual-verification-checklist.md) to each
 screen change.
 
+### Field scene-variant edge routes
+
+ROM `0x03168` handles event 16 for Scenes 0, 3, and 5. Scene 0 selects Scene 3
+when camera X is below `0x1400`, otherwise Scene 5; Scenes 3 and 5 select Scene
+0. The routine updates the scene/profile selection and leaves `FFDF40` alone.
+The `0x2BD2` nonzero-marker path reloads the selected scene through `0x281E` /
+`0x03084`. The Qt transition path now preserves that loaded collision map
+instead of copying the previous scene's complete terrain bytes over it, and
+keeps the street mode at zero across the edge load.
+
+Debug and Release CTests walk all four physical event-16 routes, then walk
+Scene 5 -> Downtown -> Scene 5 with controller input. The round trip checks the
+Scene 0 collision map differs from Scene 5's, Scene 0 dispatches event 16 on the
+return edge, and the Scene 5 profile installs the expected `(0x0600, 0x3A00)`
+arrival. Each route writes a full-frame `actual.bmp`; the round-trip test also
+writes `roundtrip-return.bmp`. These are internal renderer captures; no
+independent Genesis comparison for this edge route is available.
+
 ### Field entity edge culling
 
 At ROM `0x4618`, each active entity is projected by `0x5A62`; `0x5A98`–`0x5AB4`

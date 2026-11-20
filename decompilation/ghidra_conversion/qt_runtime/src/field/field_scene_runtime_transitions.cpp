@@ -212,6 +212,10 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
         field_pending_mode_transition_scene_ ==
             std::optional<std::uint16_t>{scene_reference} &&
         field_pending_mode_transition_spawn_.has_value();
+    const bool apply_scene_variant =
+        field_pending_mode_transition_scene_ ==
+            std::optional<std::uint16_t>{scene_reference} &&
+        !field_pending_mode_transition_spawn_.has_value();
     if (requested_spawn.has_value()) {
         input->pending_position_available = true;
         input->pending_position = *requested_spawn;
@@ -295,14 +299,18 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
     field_map_priority_overlay_ =
         std::move(next_field_map_priority_overlay);
     reset_field_map_cell_words();
-    // ROM 0x167AE selects FFDF40 before 0xA800's conditional actor decision;
+    // ROM 0x03168 selects the adjacent field scene and FFE114 but leaves
+    // FFDF40 untouched; its carry bypasses 0x167AE and 0x2BD2 commits the
+    // scene. Preserve the ordinary street mode across that edge load [C].
+    // ROM 0x167AE selects FFDF40 before the A800 conditional actor decision;
     // 0x136DE (taxi, paid travel, party-wipe wake) clears it through the
     // caller's override. The 0x2CE0 cave/mode-exit route writes FFDDC4 and
     // the FFE10A/C spawn only (0x2D44..), so FFDF40 keeps its prior value.
-    // Install the resolved destination mode before native actor population
-    // so Lua sees the source state on entry.
+    // Install the source-selected mode before native actor population so Lua
+    // sees the correct state on scene entry.
     field_movement_transition_state_.world_mode =
-        (same_scene && !force_scene_entry) || apply_mode_transition_spawn
+        (same_scene && !force_scene_entry) || apply_mode_transition_spawn ||
+                apply_scene_variant
             ? prior_world_mode
             : *interaction_mode;
     refresh_effect_terrain_marker_cell();
@@ -686,6 +694,8 @@ void FieldSceneRuntime::advance_field_scene_transition_after_modal() {
     scene_callbacks.upload_scene_profile_block =
         callbacks_.upload_scene_profile_block;
 
+    const bool scene_buffers_reloaded =
+        transition.field_transition_marker != 0U;
     ::shadowrun::ghidra_conversion::advance_field_scene_transition(
         transition, event_counters, scene_callbacks);
     if (one_shot_scene_profile_pending &&
@@ -706,8 +716,14 @@ void FieldSceneRuntime::advance_field_scene_transition_after_modal() {
 
     auto& updated_collision_map =
         state_.field_scene_buffers.source_metadata.terrain_collision_map;
-    std::copy(event_counters.begin(), event_counters.end(),
-              updated_collision_map.begin());
+    if (!scene_buffers_reloaded) {
+        // ROM 0x2BD2's zero-marker path may write one pending event counter
+        // into the current map. Its nonzero-marker branch re-enters 0x281E /
+        // 0x03084 and installs the destination terrain, so carrying the old
+        // map's bytes across that load replaces the new scene's collisions [C].
+        std::copy(event_counters.begin(), event_counters.end(),
+                  updated_collision_map.begin());
+    }
     if (transition.field_transition_marker == 0U &&
         transition.pending_event_index == 0U) {
         field_movement_transition_state_.activity_source_word = 0U;
