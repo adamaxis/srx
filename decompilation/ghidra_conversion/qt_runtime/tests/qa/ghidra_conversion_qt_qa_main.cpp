@@ -26967,7 +26967,72 @@ int run_field_scene2_pedestrians_qa(
                   << " failure=" << field_scene.failure() << '\n';
         return 3;
     }
-    const auto fleeing_position = flee_positions.front();
+    const auto fleeing_start_position = flee_positions.front();
+    auto fleeing_position = fleeing_start_position;
+    // ROM 0x13E8C -> 0x13E9E -> 0x145A2 installs the 0xB574 movement
+    // continuation; 0xB574 -> 0xBADE -> 0xBBE4 steps and commits an accepted
+    // position. Require a real step while the wounded actor is still
+    // projected, before the offscreen branch pauses that movement [C].
+    bool fleeing_pedestrian_moved_while_projected = false;
+    bool flee_projection_remained_active_until_step = true;
+    for (std::size_t frame = 0U; frame < 48U; ++frame) {
+        const auto before_step =
+            field_scene.active_default_actor_positions_for_dump();
+        if (before_step.size() != 3U) {
+            flee_projection_remained_active_until_step = false;
+            break;
+        }
+        const auto position = before_step.front();
+        EntityProjectionState projection{};
+        projection.world_x = position.x;
+        projection.world_y = position.y;
+        const auto projected = project_entity_screen_position_standard(
+            projection,
+            static_cast<std::uint16_t>(pedestrian_start.x - 0x0800U),
+            static_cast<std::uint16_t>(pedestrian_start.y - 0x0800U));
+        if (!projected.visible) {
+            flee_projection_remained_active_until_step = false;
+            break;
+        }
+        field_scene.advance_frame();
+        const auto after_step =
+            field_scene.active_default_actor_positions_for_dump();
+        if (after_step.size() != 3U) {
+            flee_projection_remained_active_until_step = false;
+            break;
+        }
+        if (after_step.front().x != fleeing_start_position.x ||
+            after_step.front().y != fleeing_start_position.y) {
+            fleeing_pedestrian_moved_while_projected = true;
+            break;
+        }
+    }
+    flee_positions = field_scene.active_default_actor_positions_for_dump();
+    if (fleeing_pedestrian_moved_while_projected &&
+        flee_positions.size() == 3U) {
+        // Anchor the offscreen hold check after the verified 0xB574 step.
+        fleeing_position = flee_positions.front();
+    }
+    if (!fleeing_pedestrian_moved_while_projected ||
+        !flee_projection_remained_active_until_step ||
+        flee_positions.size() != 3U) {
+        std::cerr << "Scene-2 flee QA: projected wounded pedestrian did not "
+                     "advance toward its ROM boundary target; moved="
+                  << fleeing_pedestrian_moved_while_projected
+                  << " projection_active="
+                  << flee_projection_remained_active_until_step
+                  << " start=" << fleeing_start_position.x << ","
+                  << fleeing_start_position.y << " current=";
+        if (!flee_positions.empty()) {
+            std::cerr << flee_positions.front().x << ","
+                      << flee_positions.front().y;
+        } else {
+            std::cerr << "<inactive>";
+        }
+        std::cerr << " flags=" << actor_flags()
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
     const auto offscreen_camera_x = static_cast<std::uint16_t>(
         fleeing_position.x + 0x2000U);
     const auto offscreen_camera_y = static_cast<std::uint16_t>(
