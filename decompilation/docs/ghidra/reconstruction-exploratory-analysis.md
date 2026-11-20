@@ -1134,7 +1134,7 @@ Known command observations are:
 | Context | Observed source command(s) | Status |
 | --- | --- | --- |
 | title reveal/settle | `0x5D` | confirmed boundary, timing still to trace |
-| opening stages | `0x10`, `0x11`, `0x12`, `0x2E` | Paired `0x10`/`0x12` tracks mapped; paired `0x11` trace has no YM key-on and remains unmapped; `0x2E` is verified silent slot 46 |
+| opening stages | `0x10`, `0x11`, `0x12`, `0x2E` | All three paired stage tracks mapped; `0x11` uses Timer-A YM DAC output through `0x2A`/`0x2B`; `0x2E` is verified silent slot 46 |
 | command/menu activity | `0x24`, `0x25` | confirmed boundary, per-action mapping pending |
 
 The native port can expose a platform-neutral `playMusic`, `playEffect`,

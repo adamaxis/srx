@@ -36,7 +36,7 @@ void check(const bool condition, const std::string& what) {
 } // namespace
 
 int main(int argc, char** argv) {
-    constexpr std::uint16_t kSilentIntroPageMusicId = 17U;
+    constexpr std::uint16_t kIntroStage2MusicId = 17U;
     QCoreApplication application(argc, argv);
     const auto loaded = load_conversion_asset_catalog(
         std::filesystem::path(SHADOWRUN_GHIDRA_ASSET_ROOT));
@@ -57,9 +57,10 @@ int main(int argc, char** argv) {
     };
     // Durations of the Timer-A regen (regen_audio_assets.py); DAC SFX tails
     // now run to their real release and 0x12 is a 60 s observation render.
-    constexpr std::array<Expectation, 23> kMapped{{
+    constexpr std::array<Expectation, 24> kMapped{{
         {0x00U, "audio.music.resource.000", 119900, 120100},
         {0x10U, "audio.intro.title.stage-1", 15851, 15911},
+        {0x11U, "audio.intro.title.stage-2", 16450, 16510},
         {0x16U, "audio.field.effect-016", 2843, 2903},
         {0x24U, "audio.menu.command-024", 3358, 3418},
         {0x25U, "audio.effects.resource.037", 2050, 2200},
@@ -103,24 +104,18 @@ int main(int argc, char** argv) {
               "newly mapped id " + std::to_string(id));
     }
 
-    const auto silent_intro_page =
-        playback.playback_status_for_event(kSilentIntroPageMusicId);
-    check(!silent_intro_page.mapped &&
-              playback.alias_for_event(kSilentIntroPageMusicId).empty(),
-          "the source-silent intro page has no playable asset");
-    const auto before_silent_intro = playback.events().size();
-    playback.play_music(kSilentIntroPageMusicId);
-    const auto& silent_intro_events = playback.events();
-    check(silent_intro_events.size() == before_silent_intro + 2U &&
-              silent_intro_events[before_silent_intro].op == AudioOp::stop &&
-              silent_intro_events[before_silent_intro + 1U].op ==
-                  AudioOp::start &&
-              silent_intro_events[before_silent_intro + 1U].id ==
-                  kSilentIntroPageMusicId &&
-              !playback.mixer().music_id().has_value() &&
-              playback.playing_channel_count_for_event(
-                  kSilentIntroPageMusicId) == 0U,
-          "the ROM request is logged without starting a silent intro track");
+    AudioPlaybackService intro_stage2(
+        resolver, AudioPlaybackService::Output::null);
+    check(intro_stage2.alias_for_event(kIntroStage2MusicId) ==
+              "audio.intro.title.stage-2" &&
+              intro_stage2.playback_status_for_event(kIntroStage2MusicId)
+                  .audio_available,
+          "ROM intro page 2 has its rendered Timer-A audio resource");
+    intro_stage2.play_music(kIntroStage2MusicId);
+    check(intro_stage2.mixer().music_id() == kIntroStage2MusicId &&
+              intro_stage2.playing_channel_count_for_event(
+                  kIntroStage2MusicId) == 1U,
+          "intro page 2 request starts its own music voice");
 
     // Intro music and effects have different ROM gates. The opening's SFX
     // requests 0x2E/0x46/0x2F use 0x530DE (FFFC0A); stage music uses 0x530EA

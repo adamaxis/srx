@@ -53,7 +53,7 @@ Full briefs are in `briefs_2026-11-18/` next to this file (WT/BUILD/TIP are plac
 
 - New decks start at MPCP 0 with zeroed stats; repair to MPCP 4 costs $1,600 (0x1AB190, 0x5787C). Jack-in checks deck, then MPCP, then datajack (0xE40C..0xE488).
 - No same-runner inventory reorder exists; only Equip/Unequip, Discard, Trade, Cancel (0x10D30..0x10F4E, Trade 0x1288E..0x12A4E).
-- Skipping the intro sends a stage-2 music request whose driver sequence is silent (272d26fb).
+- Stage-2 intro music was previously judged silent because its Timer-A DAC writes were not counted; the paired US-ROM trace now shows register `0x2A` data and `0x2B` DAC enables, and event `0x11` is mapped to `audio.intro.title.stage-2`.
 
 ## 6. Pushed 2026-11-17/18
 

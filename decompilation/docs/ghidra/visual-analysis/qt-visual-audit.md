@@ -673,9 +673,9 @@ sequence of distinct captured states are the evidence used below.
    then mapped stage-2 command `0x11` to the 14.8337-second stage-1 track.
    The independent section 02 audio correlates that track at 2.431/2.737 s;
    the field effect's strongest match is only 0.0682 at 24.292 s. Qt now
-   maps command `0x10` to `audio.intro.title.stage-1`. The exact ROM-driven
-   `FF 12 11`/`FF 10 11` probe has no YM key-on, so stage-2 command `0x11`
-   remains intentionally unmapped. See the [opening music
+   maps command `0x10` to `audio.intro.title.stage-1`. A Timer-A-aware replay of the paired ROM command records YM DAC writes to
+   `0x2A` and `0x2B`; command `0x11` now maps to the stage-2 asset. The earlier
+   key-on-only check missed this DAC stream. See the [opening music
    audit](../visual-audits/opening-music-start.md) for ROM queue bytes, player
    playback, durations, the FF 16 stage-boundary stop, and the 90-second source trace showing one-shot tracks.
 6. **Related screen parts:** checked the whole Seattle composition: date,
@@ -927,11 +927,12 @@ purchase/install/remove routes are traced.
    `audio.intro.title.stage-3` (21.0048 seconds); the independent section 02
    audio correlates this asset at 34.844 s. The airport animator at `0x5B100`
    makes no direct sound request. No rotor effect is assigned without a
-   traced event; the paired stage-2 request is source-silent. The FF 16 stage-boundary stop is wired in Qt; 90-second ROM traces show no
-   within-stage restart. The normal-input Release process-loopback capture
-   verifies Qt stage-1 and stage-3 playback and silence through stage 2; the
-   exact `0x11` ROM/Z80 pair has no audible notes. The supplied Genesis capture
-   does not isolate stage 2. Other event routes remain open under SOUND-03.
+   traced event; stage 2 (`0x11`) uses Timer-A-paced YM DAC music through `0x2A`/`0x2B` and is now mapped. The FF 16 stage-boundary stop is wired in Qt; 90-second ROM traces show no
+   within-stage restart. The earlier normal-input Release process-loopback capture
+   verified Qt stage-1 and stage-3 playback, but predates stage-2 mapping. The
+   current paired ROM/Z80 trace shows Timer-A DAC output for `0x11`. The supplied
+   Genesis capture does not establish stage-2 audio alignment. Other event routes
+   remain open under SOUND-03.
 6. **Related screen parts:** reviewed plates, transparency, sprite order,
    scroll, story/landing text, blank center rows, palette handoffs, and the
    next scene. The blank-row callback at local index 0xD7 clears center text;

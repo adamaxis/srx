@@ -78,9 +78,9 @@ constexpr std::uint16_t kSelect = 0x24U;   // MenuSound.SELECT / audio.menu.comm
 constexpr std::uint16_t kMove = 0x25U;
 constexpr std::uint16_t kEnding = 0x13U;   // MusicId.ENDING, has loop points
 constexpr std::uint16_t kMatrix = 0x03U;   // MusicId.MATRIX
-constexpr std::uint16_t kSilentIntroPageMusicId = 17U;
+constexpr std::uint16_t kIntroStage2MusicId = 17U;
 constexpr std::uint16_t kTimerADacMusicId = 44U;
-constexpr std::size_t kPlayableTableIds = 93U;
+constexpr std::size_t kPlayableTableIds = 94U;
 
 // One scripted session; returns the captured PCM.
 std::vector<std::int16_t> scripted_session(AudioResourceBank& bank,
@@ -115,11 +115,23 @@ int main() {
         check(!row.enum_name.empty() && row.enum_name != "-",
               "id " + std::to_string(id) + " has an enum name");
     }
-    // The paired intro request has no source chip note data; the Timer-A DAC
-    // slot remains available through its resource mapping.
-    check(bank.row(kSilentIntroPageMusicId) == nullptr &&
+    // Intro page 2 is a Timer-A-paced DAC sequence (ROM Z80 driver 0x02B9).
+    check(bank.row(kIntroStage2MusicId) != nullptr &&
+              bank.frame_count(kIntroStage2MusicId).has_value() &&
               bank.row(kTimerADacMusicId) != nullptr,
-          "silent intro page stays unmapped while the Timer-A DAC is mapped");
+          "intro page 2 and the Timer-A DAC resource are mapped");
+    {
+        AudioMixer intro_stage2(bank, true);
+        CaptureSink sink;
+        intro_stage2.start(kIntroStage2MusicId);
+        intro_stage2.advance_frame(&sink);
+        check(intro_stage2.music_id() == kIntroStage2MusicId &&
+                  std::any_of(sink.samples.begin(), sink.samples.end(),
+                              [](const std::int16_t sample) {
+                                  return sample != 0;
+                              }),
+              "intro page 2 renders nonzero DAC music PCM");
+    }
 
     // Determinism and the 735-sample frame.
     std::vector<AudioEvent> events_a, events_b;

@@ -3896,7 +3896,7 @@
         const std::uint32_t frames_before_a,
         const std::string& expected_start_stage) {
         constexpr std::uint16_t kFieldProfileSongId = 15U;
-        constexpr std::uint16_t kSilentIntroPageMusicId = 17U;
+        constexpr std::uint16_t kIntroStage2MusicId = 17U;
         constexpr std::uint16_t kFirstSoundEffectId = 20U;
         constexpr std::uint32_t kMaxChopperHandoffFrames = 5000U;
         constexpr std::uint32_t kNormalSkipHandoffFrames = 35U;
@@ -3909,10 +3909,13 @@
         if (prepare_opening_dump(0U, true) != 0) {
             return 3;
         }
-        if (audio_playback_->playback_status_for_event(
-                kSilentIntroPageMusicId).mapped) {
-            std::cerr << "opening Start-skip QA: the source-silent intro "
-                         "page has a playable host asset\n";
+        const auto intro_stage2_status =
+            audio_playback_->playback_status_for_event(kIntroStage2MusicId);
+        if (!intro_stage2_status.mapped || !intro_stage2_status.audio_available ||
+            audio_playback_->alias_for_event(kIntroStage2MusicId) !=
+                "audio.intro.title.stage-2") {
+            std::cerr << "opening Start-skip QA: intro page 2 audio is not "
+                         "mapped to its rendered Timer-A track\n";
             return 3;
         }
 
@@ -3940,6 +3943,19 @@
                       << frames_before_a + 1U << " reached stage "
                       << start_input_stage << "; expected "
                       << expected_start_stage << '\n';
+            return 3;
+        }
+        const bool route_has_reached_intro_stage2 =
+            expected_start_stage != "schedule";
+        if (route_has_reached_intro_stage2 &&
+            std::none_of(audio_playback_->events().begin(),
+                         audio_playback_->events().end(),
+                         [](const AudioEvent& event) {
+                             return event.op == AudioOp::start &&
+                                    event.id == kIntroStage2MusicId;
+                         })) {
+            std::cerr << "opening Start-skip QA: the source 0x11 page-2 "
+                         "music request did not start its mapped track\n";
             return 3;
         }
         const auto start_audio_event = audio_playback_->events().size();
@@ -4234,42 +4250,49 @@
                          "not observed\n";
             return 3;
         }
-        const auto first_fade = fade_start_frames.front();
         const auto second_fade_end = fade_end_frames.back();
         if (second_fade_end >= frame_peaks.size()) {
             std::cerr << "opening Start-skip QA: rendered PCM ended before "
                          "the second fade\n";
             return 3;
         }
-        auto previous_step_peak = std::numeric_limits<std::int32_t>::max();
-        for (auto step_start = first_fade; step_start <= second_fade_end;
-             step_start += kGemsFadeStepFrames) {
-            const auto step_end = std::min<std::uint64_t>(
-                step_start + kGemsFadeStepFrames - 1U, second_fade_end);
-            auto step_peak = 0;
-            for (auto frame = step_start; frame <= step_end; ++frame) {
-                step_peak = std::max(step_peak, frame_peaks[frame]);
+        // Stage 2 is a changing YM DAC waveform, so its mixed PCM peak can
+        // rise while the source gain steps down. Verify the ROM's exact
+        // command ramp here; audio_mixer_test separately checks the rendered
+        // release tail at 0x78 and that the same-frame restore cannot raise it.
+        const auto has_audio_event = [&audio_begin, &audio_events](
+                                         const AudioOp op,
+                                         const std::uint16_t id,
+                                         const std::uint64_t frame) {
+            return std::any_of(audio_begin, audio_events.end(),
+                               [op, id, frame](const AudioEvent& event) {
+                                   return event.op == op && event.id == id &&
+                                          event.frame == frame;
+                               });
+        };
+        for (std::size_t fade_index = 0U; fade_index < 2U; ++fade_index) {
+            const auto fade_start = fade_start_frames[fade_index];
+            for (std::uint32_t step = 1U; step <= kGemsFadeSteps; ++step) {
+                const auto frame = fade_start +
+                    static_cast<std::uint64_t>(step - 1U) *
+                        kGemsFadeStepFrames;
+                const auto level = static_cast<std::uint16_t>(
+                    step * kGemsFadeStep);
+                if (!has_audio_event(AudioOp::attenuate, level, frame)) {
+                    std::cerr << "opening Start-skip QA: ROM fade level "
+                              << level << " was not issued at mixer frame "
+                              << frame << '\n';
+                    return 3;
+                }
             }
-            if (step_peak > previous_step_peak) {
-                std::cerr << "opening Start-skip QA: fade PCM peak envelope "
-                          << "increased at step frame " << step_start << " from "
-                          << previous_step_peak << " to " << step_peak << '\n';
-                return 3;
-            }
-            previous_step_peak = step_peak;
-        }
-        const auto release_start = fade_end_frames.front();
-        if (release_start == 0U) {
-            std::cerr << "opening Start-skip QA: first release has no prior "
-                         "PCM frame\n";
-            return 3;
-        }
-        for (auto frame = release_start; frame <= second_fade_end; ++frame) {
-            if (frame_peaks[frame] > frame_peaks[frame - 1U]) {
-                std::cerr << "opening Start-skip QA: release PCM peak "
-                          << "increased at frame " << frame << " from "
-                          << frame_peaks[frame - 1U] << " to "
-                          << frame_peaks[frame] << '\n';
+            const auto fade_end = fade_start +
+                static_cast<std::uint64_t>(kGemsFadeSteps) *
+                    kGemsFadeStepFrames;
+            if (!has_audio_event(AudioOp::stop_all, 0U, fade_end) ||
+                !has_audio_event(AudioOp::attenuate, 0U, fade_end)) {
+                std::cerr << "opening Start-skip QA: ROM fade did not stop "
+                             "and restore gain at mixer frame "
+                          << fade_end << '\n';
                 return 3;
             }
         }
