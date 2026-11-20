@@ -548,8 +548,9 @@ bool FieldSceneRuntime::seed_microtronics_damaged_deck_for_dump() {
     }
 
     // Shop QA uses a damaged PCD-500 to exercise ROM 0x58394's MPCP repair
-    // quote and 0x19558's no-storage rejection. This fixture is separate from
-    // Michael's package, which grants a working Allegiance Alpha.
+    // quote and 0x19558's no-storage rejection. The New Game deck preset is
+    // copied from ROM 0x14C1F4 by 0x26938; Stoker's 0x213FA command only grants
+    // ownership and does not replace that record.
     CyberdeckRecord deck;
     deck.mpcp = 0U;
     deck.hardening = 0U;

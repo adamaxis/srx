@@ -1,6 +1,7 @@
 #pragma once
 
 #include "shadowrun_ghidra/core/asset_catalog_conversion.hpp"
+#include "shadowrun_ghidra/cyberspace/cyberdeck_record.hpp"
 #include "shadowrun_ghidra/entities/collision_probe_conversion.hpp"
 #include "shadowrun_ghidra/field/field_movement_input_conversion.hpp"
 #include "shadowrun_ghidra/entities/movement_probe_conversion.hpp"
@@ -19,7 +20,7 @@
 namespace shadowrun::ghidra_conversion::integration {
 
 constexpr std::size_t kFieldSessionActionProfileByteCount = 5U * 0x22U;
-constexpr std::size_t kFieldSessionModeSelectionWordCount = 0x17U;
+constexpr std::size_t kNewGameCyberdeckRecordByteCount = 0x17U * 2U;
 constexpr std::size_t kFieldSceneProfileWordCount = 48U;
 constexpr std::size_t kFieldSceneProfileByteCount =
     kFieldSceneProfileWordCount * sizeof(std::uint16_t);
@@ -127,8 +128,8 @@ struct FieldElevatorSceneGroupSourceRecord {
 struct FieldSessionSourceAssets {
     // ROM 0x166AD8, copied by 0x566A2.
     std::vector<std::uint8_t> action_selection_profile_source;
-    // ROM 0x14C1F4, copied by 0x26938.
-    std::vector<std::uint16_t> field_mode_selection_state_source;
+    // ROM 0x14C1F4, copied to FFFBBE by New Game routine 0x26938.
+    CyberdeckRecord new_game_cyberdeck_record;
     // ROM 0x3232: the selected scene id indexes all 56 copied 48-word
     // profiles. The importer resolves the pointers once and stores the
     // complete table as one direct host record; runtime code never follows

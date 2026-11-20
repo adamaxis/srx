@@ -378,18 +378,6 @@ std::size_t append_world_sprite_records(
     return sources.size();
 }
 
-bool copy_field_mode_selection_state(
-    const std::vector<std::uint16_t>& source,
-    std::vector<std::uint16_t>& destination) {
-    if (source.size() < kFieldModeSelectionStateWordCount) {
-        destination.clear();
-        return false;
-    }
-    destination.assign(source.begin(),
-                       source.begin() + kFieldModeSelectionStateWordCount);
-    return true;
-}
-
 void upload_decoded_source_stream(const std::function<void()>& decode_upload) {
     call_once(decode_upload);
 }

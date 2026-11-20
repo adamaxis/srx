@@ -20,9 +20,7 @@ int main() {
     const auto source = load_field_session_source_assets(loaded.catalog);
     if (!source.complete() ||
         source.assets->action_selection_profile_source.size() !=
-            kFieldSessionActionProfileByteCount ||
-        source.assets->field_mode_selection_state_source.size() !=
-            kFieldSessionModeSelectionWordCount) {
+            kFieldSessionActionProfileByteCount) {
         return 2;
     }
     if (loaded.catalog.find("records.field.mode.2.descriptor") != nullptr ||
@@ -37,10 +35,28 @@ int main() {
         profiles[0x25U] != 0x02U) {
         return 3;
     }
-    const auto& mode_state = source.assets->field_mode_selection_state_source;
-    if (mode_state.front() != 0x0300U || mode_state[1] != 0x001EU ||
-        mode_state[2] != 0x0064U || mode_state.back() != 0x0000U) {
+    // [C] New Game calls 0x26938 at 0x0890 to install the 23-word table from
+    // ROM 0x14C1F4 at FFFBBE. These typed fields are the first Allegiance Alpha
+    // profile, before any Stoker ownership flag or later program purchases.
+    const auto& deck = source.assets->new_game_cyberdeck_record;
+    constexpr std::array<std::uint8_t, 12U> expected_ratings{{
+        3U, 0U, 0U, 0U, 1U, 0U, 0U, 0U, 0U, 2U, 0U, 2U}};
+    constexpr std::array<std::int8_t, 5U> expected_active_programs{{
+        -1, -1, -1, -1, -1}};
+    if (deck.mpcp != 3U || deck.hardening != 0U ||
+        deck.memory_megapulses != 30U || deck.storage_megapulses != 100U ||
+        deck.load_io_speed != 10U || deck.response != 0U ||
+        deck.persona != std::array<std::uint8_t, 4U>{3U, 3U, 3U, 3U} ||
+        deck.persona_condition != 10U || deck.model_index != -1 ||
+        deck.program_ratings != expected_ratings ||
+        deck.active_programs != expected_active_programs ||
+        !deck.data_files.has_value()) {
         return 4;
+    }
+    for (const auto& file : *deck.data_files) {
+        if (file.id != -1 || file.size != 0U || file.value != 0) {
+            return 4;
+        }
     }
     const auto& scene_profiles = source.assets->scene_profile_table_source;
     const auto& normal_profile = scene_profiles[0];

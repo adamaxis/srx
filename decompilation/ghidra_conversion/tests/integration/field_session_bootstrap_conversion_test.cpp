@@ -37,10 +37,6 @@ FieldSessionBootstrapInput make_input() {
     input.action_selection_profile_source[1] = 0x05U;
     input.action_selection_profile_source[2] = 0x10U;
     input.action_selection_profile_source[3] = 0x20U;
-    input.field_mode_selection_state_source.resize(
-        kFieldModeSelectionStateWordCount, 0U);
-    input.field_mode_selection_state_source.front() = 0x1234U;
-    input.field_mode_selection_state_source.back() = 0x5678U;
     input.field_scene.scene_profiles[6][0] = 0x0300U;
     input.field_scene.scene_profiles[6][1] = 0x0400U;
     input.field_scene.scene_profile_table_available = true;
@@ -193,8 +189,6 @@ int main() {
            state.audio_menu_second.size() == 35U);
     assert(state.entity_runtime.entity_table_ready);
     assert(state.action_selection_profiles.rows[0].event_count_last_index == 5U);
-    assert(state.field_mode_selection_state.size() ==
-           kFieldModeSelectionStateWordCount);
     assert(state.field_scene_buffers.scene_mode == 1U &&
            state.field_scene_buffers.camera_x == 0x0300 &&
            state.field_scene_buffers.camera_y == 0x0400 &&
@@ -266,7 +260,7 @@ int main() {
     assert(mismatched_state.phase == FieldSessionBootstrapPhase::failed);
 
     auto incomplete_input = input;
-    incomplete_input.field_mode_selection_state_source.resize(2U);
+    incomplete_input.action_selection_profile_source.clear();
     FieldSessionBootstrapState incomplete_state;
     assert(bootstrap_field_session(incomplete_input, incomplete_state,
                                    callbacks) ==

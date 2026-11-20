@@ -12,8 +12,8 @@ namespace {
 
 constexpr const char* kActionProfilesAlias =
     "records.field.action.selection.profiles";
-constexpr const char* kModeSelectionAlias =
-    "records.field.mode.selection.state";
+constexpr const char* kNewGameCyberdeckAlias =
+    "records.cyberspace.new.game.default.deck";
 constexpr const char* kSceneProfileTableAlias =
     "records.field.scene.profiles";
 constexpr const char* kElevatorSceneGroupsAlias =
@@ -144,6 +144,59 @@ std::uint16_t read_big_endian_word(const std::vector<std::uint8_t>& bytes,
     return static_cast<std::uint16_t>(
         (static_cast<std::uint16_t>(bytes[offset]) << 8U) |
         static_cast<std::uint16_t>(bytes[offset + 1U]));
+}
+
+std::int8_t read_signed_source_byte(const std::uint8_t value) {
+    const auto signed_value = value < 0x80U
+        ? static_cast<int>(value)
+        : static_cast<int>(value) - 0x100;
+    return static_cast<std::int8_t>(signed_value);
+}
+
+CyberdeckRecord decode_new_game_cyberdeck_record(
+    const std::vector<std::uint8_t>& bytes) {
+    if (bytes.size() != kNewGameCyberdeckRecordByteCount) {
+        throw std::runtime_error(
+            "New Game cyberdeck record has the wrong source size");
+    }
+
+    // ROM 0x26938 copies 23 words from 0x14C1F4 to FFFBBE. Decode the
+    // extracted host record into named deck fields at this import boundary.
+    CyberdeckRecord record;
+    record.mpcp = bytes[0x00U];
+    record.hardening = bytes[0x01U];
+    record.memory_megapulses = read_big_endian_word(bytes, 0x02U);
+    record.storage_megapulses = read_big_endian_word(bytes, 0x04U);
+    record.load_io_speed = bytes[0x06U];
+    record.response = bytes[0x07U];
+    record.persona = std::array<std::uint8_t, 4U>{
+        bytes[0x08U], bytes[0x09U], bytes[0x0AU], bytes[0x0BU]};
+    record.persona_condition = bytes[0x0CU];
+    record.model_index = read_signed_source_byte(bytes[0x0DU]);
+
+    std::array<std::uint8_t, 12U> ratings{};
+    for (std::size_t index = 0U; index < ratings.size(); ++index) {
+        ratings[index] = bytes[0x0EU + index];
+    }
+    record.program_ratings = ratings;
+
+    std::array<std::int8_t, 5U> active_programs{};
+    for (std::size_t index = 0U; index < active_programs.size(); ++index) {
+        active_programs[index] =
+            read_signed_source_byte(bytes[0x1AU + index]);
+    }
+    record.active_programs = active_programs;
+
+    std::array<CyberdeckDataFile, 5U> data_files{};
+    for (std::size_t index = 0U; index < data_files.size(); ++index) {
+        const auto offset = 0x1FU + index * 3U;
+        data_files[index] = CyberdeckDataFile{
+            read_signed_source_byte(bytes[offset]),
+            bytes[offset + 1U],
+            read_signed_source_byte(bytes[offset + 2U])};
+    }
+    record.data_files = data_files;
+    return record;
 }
 
 std::array<std::uint16_t, kFieldSceneProfileWordCount>
@@ -277,9 +330,8 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
     const auto action_profiles = read_record_bytes(
         catalog, kActionProfilesAlias, kFieldSessionActionProfileByteCount,
         result.errors);
-    const auto mode_selection = read_record_bytes(
-        catalog, kModeSelectionAlias,
-        kFieldSessionModeSelectionWordCount * sizeof(std::uint16_t),
+    const auto new_game_cyberdeck = read_record_bytes(
+        catalog, kNewGameCyberdeckAlias, kNewGameCyberdeckRecordByteCount,
         result.errors);
     const auto scene_profiles = read_record_bytes(
         catalog, kSceneProfileTableAlias,
@@ -297,7 +349,7 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
     const auto movement_route_table = read_record_bytes(
         catalog, kFieldMovementRouteTableAlias, kFieldMovementRouteByteCount,
         result.errors);
-    if (!action_profiles.has_value() || !mode_selection.has_value() ||
+    if (!action_profiles.has_value() || !new_game_cyberdeck.has_value() ||
         !scene_profiles.has_value() || !elevator_scene_groups.has_value() ||
         !movement_direction_table.has_value() ||
         !collision_probe_offset_banks.has_value() ||
@@ -307,13 +359,8 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
 
     FieldSessionSourceAssets assets;
     assets.action_selection_profile_source = *action_profiles;
-    assets.field_mode_selection_state_source.reserve(
-        kFieldSessionModeSelectionWordCount);
-    for (std::size_t offset = 0; offset < mode_selection->size();
-         offset += sizeof(std::uint16_t)) {
-        assets.field_mode_selection_state_source.push_back(
-            read_big_endian_word(*mode_selection, offset));
-    }
+    assets.new_game_cyberdeck_record =
+        decode_new_game_cyberdeck_record(*new_game_cyberdeck);
     for (std::size_t scene_id = 0; scene_id < kFieldSceneProfileCount;
          ++scene_id) {
         const auto offset = scene_id * kFieldSceneProfileByteCount;

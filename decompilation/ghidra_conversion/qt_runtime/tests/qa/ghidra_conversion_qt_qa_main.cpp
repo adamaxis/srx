@@ -25095,10 +25095,9 @@ int run_field_stoker_collision_to_dialogue_qa(
     // QA fixture for the paid source branch; this does not claim an in-game
     // funds-acquisition route.
     field_scene.set_field_funds_for_dump(250U);
-    // 0x213FA..0x21456 has no item add/remove and writes no FFFBBE bytes:
-    // 0x21428 only sets FF018F bit 0. The host publishes the known zero RAM
-    // bytes as a typed deck record for shops; MPCP remains 0, so jack-in still
-    // rejects with 0xC2202 until repaired.
+    // [C] New Game's 0x26938 call has already copied ROM profile 0x14C1F4
+    // into FFFBBE. Stoker payment at 0x213FA grants ownership but does not
+    // change that typed deck record or add runner inventory.
     const auto collect_item_state = [&]() {
         std::map<std::string, QJsonValue> found;
         std::function<void(const QJsonValue&, const std::string&, bool)> walk =
@@ -25131,8 +25130,40 @@ int run_field_stoker_collision_to_dialogue_qa(
     };
     const auto items_before_payment = collect_item_state();
     const auto deck_before_payment = field_scene.field_matrix_deck_record_for_dump();
+    const auto is_new_game_deck = [](
+        const std::optional<CyberdeckRecord>& candidate) {
+        constexpr std::array<std::uint8_t, 12U> kRatings{{
+            3U, 0U, 0U, 0U, 1U, 0U, 0U, 0U, 0U, 2U, 0U, 2U}};
+        constexpr std::array<std::int8_t, 5U> kActiveSlots{{
+            -1, -1, -1, -1, -1}};
+        if (!candidate.has_value() || candidate->mpcp != 3U ||
+            candidate->hardening != 0U ||
+            candidate->memory_megapulses != 30U ||
+            candidate->storage_megapulses != 100U ||
+            candidate->load_io_speed != 10U || candidate->response != 0U ||
+            candidate->persona !=
+                std::array<std::uint8_t, 4U>{3U, 3U, 3U, 3U} ||
+            candidate->persona_condition != 10U ||
+            candidate->model_index != -1 ||
+            candidate->program_ratings != kRatings ||
+            candidate->active_programs != kActiveSlots ||
+            !candidate->data_files.has_value()) {
+            return false;
+        }
+        for (const auto& file : *candidate->data_files) {
+            if (file.id != -1 || file.size != 0U || file.value != 0) {
+                return false;
+            }
+        }
+        return true;
+    };
     if (items_before_payment.empty()) {
         std::cerr << "Stoker collision QA: no item state in the save snapshot\n";
+        return 3;
+    }
+    if (!is_new_game_deck(deck_before_payment)) {
+        std::cerr << "Stoker collision QA: New Game did not load the ROM "
+                     "default cyberdeck profile before payment\n";
         return 3;
     }
     const auto stoker_karma_before = field_scene.party_karma_for_dump();
@@ -25324,24 +25355,11 @@ int run_field_stoker_collision_to_dialogue_qa(
     }
 
     const auto deck_after_payment = field_scene.field_matrix_deck_record_for_dump();
-    const auto mpcp_of = [](const std::optional<CyberdeckRecord>& deck) {
-        return deck.has_value() && deck->mpcp.has_value() ? *deck->mpcp : 0U;
-    };
-    const auto programs_of = [](const std::optional<CyberdeckRecord>& deck) {
-        return deck.has_value() ? deck->program_ratings
-                                : std::optional<std::array<std::uint8_t, 12>>{};
-    };
-    const auto programs_before_payment = programs_of(deck_before_payment);
-    const auto programs_after_payment = programs_of(deck_after_payment);
-    if (!deck_after_payment.has_value() ||
-        mpcp_of(deck_after_payment) != 0U ||
-        mpcp_of(deck_before_payment) != 0U ||
-        !programs_after_payment.has_value() ||
-        *programs_after_payment != std::array<std::uint8_t, 12>{} ||
-        (programs_before_payment.has_value() &&
-         *programs_before_payment != std::array<std::uint8_t, 12>{})) {
-        std::cerr << "Stoker collision QA: Michael's package wrote MPCP or "
-                     "program ratings; ROM 0x213FA..0x21456 writes neither\n";
+    if (!is_new_game_deck(deck_before_payment) ||
+        !is_new_game_deck(deck_after_payment)) {
+        std::cerr << "Stoker collision QA: payment changed or lost the New "
+                     "Game deck profile; ROM 0x213FA..0x21456 only grants "
+                     "ownership\n";
         return 3;
     }
     const auto items_after_payment = collect_item_state();
@@ -51832,13 +51850,43 @@ int main(int argc, char** argv) {
                               << new_game_scene.failure() << '\n';
                     return 3;
                 }
-                if (new_game_scene.field_matrix_deck_record_for_dump()
-                        .has_value() ||
+                constexpr std::array<std::uint8_t, 12U>
+                    kExpectedPackageProgramRatings{{
+                        3U, 0U, 0U, 0U, 1U, 0U, 0U, 0U, 0U, 2U, 0U, 2U}};
+                constexpr std::array<std::int8_t, 5U>
+                    kExpectedPackageActivePrograms{{-1, -1, -1, -1, -1}};
+                const auto new_game_deck =
+                    new_game_scene.field_matrix_deck_record_for_dump();
+                if (!new_game_deck.has_value() ||
+                    new_game_deck->mpcp != 3U ||
+                    new_game_deck->hardening != 0U ||
+                    new_game_deck->memory_megapulses != 30U ||
+                    new_game_deck->storage_megapulses != 100U ||
+                    new_game_deck->load_io_speed != 10U ||
+                    new_game_deck->response != 0U ||
+                    new_game_deck->persona !=
+                        std::array<std::uint8_t, 4U>{3U, 3U, 3U, 3U} ||
+                    new_game_deck->persona_condition != 10U ||
+                    new_game_deck->model_index != -1 ||
+                    new_game_deck->program_ratings !=
+                        kExpectedPackageProgramRatings ||
+                    new_game_deck->active_programs !=
+                        kExpectedPackageActivePrograms ||
+                    !new_game_deck->data_files.has_value() ||
                     new_game_scene.cyberdeck_available_for_dump() !=
                         std::optional<bool>{false}) {
-                    std::cerr << "Cyberdeck gate QA: New Game created a "
-                                 "deck record before ownership\n";
+                    std::cerr << "Cyberdeck gate QA: New Game did not load "
+                                 "the ROM default deck while leaving ownership "
+                                 "false\n";
                     return 3;
+                }
+                for (const auto& data_file : *new_game_deck->data_files) {
+                    if (data_file.id != -1 || data_file.size != 0U ||
+                        data_file.value != 0) {
+                        std::cerr << "Cyberdeck gate QA: the ROM default deck "
+                                     "contains an unexpected data file\n";
+                        return 3;
+                    }
                 }
                 if (!enter_denial(new_game_scene,
                                   "cyberdeck to enter cyberspace",
@@ -51876,15 +51924,9 @@ int main(int argc, char** argv) {
                         return 3;
                     }
                 }
-                // Independent Section 15 frames 004180/004220 show Analyze 2
-                // and Attack 3. ROM 0xE2DF2/0x1952C make the two loaded
-                // programs 14 Mp total; the 10 Mp free display at 004220
-                // yields 24 Mp capacity via 0x1957E.
-                constexpr std::array<std::uint8_t, 12U>
-                    kExpectedPackageProgramRatings{{
-                        3U, 0U, 0U, 0U, 1U, 0U, 0U, 0U, 0U, 1U, 0U, 2U}};
-                constexpr std::array<std::int8_t, 5U>
-                    kExpectedPackageActivePrograms{{9, 11, -1, -1, -1}};
+                // [C] The ROM initializes this profile before the Stoker
+                // purchase; 0x213FA changes ownership and story/Karma state,
+                // not the FFFBBE deck record.
                 const auto package_deck =
                     package_scene.field_matrix_deck_record_for_dump();
                 if (package_scene.field_funds_for_dump() != 500U ||
@@ -51893,10 +51935,13 @@ int main(int argc, char** argv) {
                     !package_deck.has_value() ||
                     package_deck->mpcp != 3U ||
                     package_deck->hardening != 0U ||
-                    package_deck->memory_megapulses != 24U ||
+                    package_deck->memory_megapulses != 30U ||
                     package_deck->storage_megapulses != 100U ||
                     package_deck->load_io_speed != 10U ||
                     package_deck->response != 0U ||
+                    package_deck->persona !=
+                        std::array<std::uint8_t, 4U>{3U, 3U, 3U, 3U} ||
+                    package_deck->persona_condition != 10U ||
                     package_deck->model_index != -1 ||
                     !package_deck->program_ratings.has_value() ||
                     *package_deck->program_ratings !=
@@ -51906,8 +51951,8 @@ int main(int argc, char** argv) {
                         kExpectedPackageActivePrograms ||
                     !package_deck->data_files.has_value()) {
                     std::cerr << "Cyberdeck gate QA: Stoker payment did not "
-                                 "install Michael's Allegiance Alpha record "
-                                 "\n";
+                                 "preserve the ROM default Allegiance Alpha "
+                                 "record\n";
                     return 3;
                 }
                 for (const auto& data_file : *package_deck->data_files) {
@@ -52029,7 +52074,7 @@ int main(int argc, char** argv) {
                 const auto first_deck_view =
                     first_deck_scene.field_menu_route_snapshot_for_dump();
                 const std::array<std::string, 3>
-                    kExpectedPackageAttackDetails{{"18", "10", "2"}};
+                    kExpectedPackageAttackDetails{{"18", "30", "2"}};
                 const auto first_deck_output = output / "first-deck";
                 std::filesystem::create_directories(first_deck_output);
                 if (first_deck_image.size() !=
@@ -52053,16 +52098,16 @@ int main(int argc, char** argv) {
                     !image_has_green_ink(first_deck_image, 176, 24, 136, 56) ||
                     !save_qa_image(first_deck_output, "actual.bmp",
                                    first_deck_image)) {
-                    std::cerr << "Cyberdeck gate QA: acquired Alpha did not "
-                                 "present the initial Attack selection, "
-                                 "18/10/2 detail, loaded programs, and full "
-                                 "screen\n";
+                    std::cerr << "Cyberdeck gate QA: the default Alpha did "
+                                 "not present the initial Attack selection, "
+                                 "18/30/2 detail, available program ratings, "
+                                 "and empty active slots\n";
                     return 3;
                 }
 
-                // Exercise a different installed command through ordinary
-                // cursor input. The real longplay's Analyze 2 pane at frame
-                // 004180 reports 12 Mp, 10 Mp free, and a two-step load.
+                // Exercise another available command through ordinary cursor
+                // input. No programs are active in the default deck, so all
+                // 30 Mp remains free while the rating-2 Analyze row is shown.
                 tap_qa_controller_button(first_deck_scene, 0x02U);
                 tap_qa_controller_button(first_deck_scene, 0x02U);
                 for (int column = 0; column < 3; ++column) {
@@ -52072,7 +52117,7 @@ int main(int argc, char** argv) {
                     first_deck_scene.field_menu_route_snapshot_for_dump();
                 const auto analyze_image = render_qa_field(first_deck_scene);
                 const std::array<std::string, 3>
-                    kExpectedPackageAnalyzeDetails{{"12", "10", "2"}};
+                    kExpectedPackageAnalyzeDetails{{"12", "30", "2"}};
                 const auto analyze_output = output / "first-deck-analyze";
                 std::filesystem::create_directories(analyze_output);
                 if (first_deck_scene.field_menu_route_screen_for_dump() !=
@@ -52089,7 +52134,7 @@ int main(int argc, char** argv) {
                                    analyze_image)) {
                     std::cerr << "Cyberdeck gate QA: acquired Alpha did not "
                                  "present Analyze 2 with the ROM-derived "
-                                 "12/10/2 detail\n";
+                                 "12/30/2 detail\n";
                     return 3;
                 }
 
@@ -52184,7 +52229,8 @@ int main(int argc, char** argv) {
                     *purchase_package_deck->active_programs !=
                         kExpectedPackageActivePrograms) {
                     std::cerr << "Cyberdeck gate QA: purchase route did not "
-                                 "retain Michael's populated Allegiance Alpha\n";
+                                 "retain the ROM default Allegiance Alpha "
+                                 "profile\n";
                     return 3;
                 }
                 for (std::size_t page = 0U; page < 8U &&

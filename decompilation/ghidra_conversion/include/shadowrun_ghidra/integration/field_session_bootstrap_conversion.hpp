@@ -8,7 +8,6 @@
 #include "shadowrun_ghidra/field/field_scene_entry_conversion.hpp"
 #include "shadowrun_ghidra/rendering/display_service_batch_conversion.hpp"
 #include "shadowrun_ghidra/world/world_effect_batch_conversion.hpp"
-#include "shadowrun_ghidra/world/world_resource_batch_conversion.hpp"
 
 #include <array>
 #include <cstdint>
@@ -52,9 +51,6 @@ struct FieldSessionBootstrapInput {
     // ROM 0x566A2 / source table 0x166AD8: five 0x22-byte action-profile
     // rows used by field actions and entity behavior.
     std::vector<std::uint8_t> action_selection_profile_source;
-    // ROM 0x26938 / source table 0x14C1F4: one 23-word field/mode selection
-    // row copied into the working state before field entry.
-    std::vector<std::uint16_t> field_mode_selection_state_source;
     // Source-derived scene profiles and the two decoded terrain layers used
     // by the 0x03074 -> 0x0313A field-scene preparation path.
     FieldSceneBufferInput field_scene;
@@ -104,7 +100,6 @@ enum class FieldSessionMode : std::uint8_t {
 
 struct FieldSessionBootstrapState {
     EntityActionProfileTable action_selection_profiles;
-    std::vector<std::uint16_t> field_mode_selection_state;
     EntityRuntimeState entity_runtime;
     WorldEffectGlobals world_effect_globals;
     FieldSceneBuffers field_scene_buffers;

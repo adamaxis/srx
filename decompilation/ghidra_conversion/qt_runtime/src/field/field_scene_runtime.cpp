@@ -132,38 +132,6 @@ using field_scene_detail::right_aligned_text_x;
 using field_scene_detail::make_field_shop_progression_input;
 namespace {
 
-CyberdeckRecord make_michael_package_allegiance_alpha_record() {
-    CyberdeckRecord deck;
-
-    // [C] ROM 0x1AB100 names signed model -1 "Allegiance Alpha"; the model
-    // capacity bytes at 0x1AB190 begin 3, 4, 6, 8, 10, 12, making its MPCP 3.
-    // [H] The package-specific Hardening, Storage, Load/IO, Response, and
-    // persona values still need a first-acquisition Deck Stats capture. The
-    // reference frame below independently confirms the live memory amount.
-    deck.mpcp = 3U;
-    deck.hardening = 0U;
-    deck.memory_megapulses = 24U;
-    deck.storage_megapulses = 100U;
-    deck.load_io_speed = 10U;
-    deck.response = 0U;
-    deck.persona = std::array<std::uint8_t, 4U>{};
-    deck.persona_condition = 0U;
-    deck.model_index = std::int8_t{-1};
-
-    // [C] Independent longplay frame 004180 shows Analyze 2 (12 Mp), and
-    // frame 004220 shows Attack 3 (18 Mp); both display 10 Mp free. The loaded
-    // Deception 1 and Analyze 2 programs occupy 2 + 12 Mp by the ROM footprint
-    // table at 0xE2DF2 and size formula at 0x1952C. Adding that 14 Mp to the
-    // displayed 10 Mp free gives 24 Mp total under 0x1957E. The captures show
-    // the in-play deck state, not the exact first-acquisition transition.
-    deck.program_ratings = std::array<std::uint8_t, 12U>{
-        3U, 0U, 0U, 0U, 1U, 0U, 0U, 0U, 0U, 1U, 0U, 2U};
-    deck.active_programs =
-        std::array<std::int8_t, 5U>{9, 11, -1, -1, -1};
-    deck.data_files = std::array<CyberdeckDataFile, 5U>{};
-    return deck;
-}
-
 // Port-side scan limit for extracted per-direction actor art frames; the
 // longest 0x62AC list has 10 frames (0x75E8) [C], so 16 is headroom [H].
 constexpr std::uint8_t kActorArtFrameScanLimit = 16U;
@@ -1230,14 +1198,6 @@ FieldSceneRuntime::FieldSceneRuntime(
             }
             cyberdeck_available_ =
                 (payment_state.runner_feature_flags & 0x01U) != 0U;
-            if (!field_matrix_deck_record_.has_value()) {
-                // The transaction at 0x213FA changes deck ownership, while
-                // the package handoff names the included Allegiance Alpha.
-                // Do not treat the untouched RAM record as a PCD-500 filled
-                // with repeated program and data-file ID zero values.
-                field_matrix_deck_record_ =
-                    make_michael_package_allegiance_alpha_record();
-            }
         }
         notebook_tip_flags_[0] = payment_state.followup_state.story_flags;
         field_mode_flags_resolved_ = true;
@@ -11593,7 +11553,14 @@ bool FieldSceneRuntime::bootstrap(
         field_matrix_field_state_.maglocks_off = false;
     }
     field_matrix_passcode_flags_ = 0U;
-    field_matrix_deck_record_.reset();
+    // The typed default record represents the New Game copy at 0x26938.
+    // Save restore does not yet provide the live deck record, so leave it
+    // unknown there rather than applying a fresh-run preset to restored state.
+    field_matrix_deck_record_ = restored_field_state == nullptr
+        ? std::optional<CyberdeckRecord>{
+              startup_state.field_session_source_assets
+                  ->new_game_cyberdeck_record}
+        : std::nullopt;
     group_item_flags_ = restored_field_state == nullptr
                             ? std::optional<std::uint32_t>{0U}
                             : std::nullopt;
@@ -11755,10 +11722,8 @@ bool FieldSceneRuntime::bootstrap(
             }
             if (name == "cyberspace_mpcp_functional") {
                 if (!field_matrix_deck_record_.has_value()) {
-                    // ROM 0xE40C treats the uninitialized FFFBBE record as
-                    // MPCP zero. Michael's package sets deck ownership but
-                    // does not install chips, so the next menu opens the
-                    // ROM's C2202 rejection page.
+                    // The loaded-save adapter may leave this record unknown.
+                    // New Game initializes it from ROM 0x14C1F4 via 0x26938.
                     return false;
                 }
                 return field_matrix_deck_record_->mpcp != 0U;
@@ -12352,8 +12317,6 @@ bool FieldSceneRuntime::bootstrap(
     input_ = integration::FieldSessionBootstrapInput{};
     input_.action_selection_profile_source =
         assets.action_selection_profile_source;
-    input_.field_mode_selection_state_source =
-        assets.field_mode_selection_state_source;
     input_.field_scene = *scene_input;
     if (restored_field_state != nullptr) {
         std::array<SceneRunnerPosition, 3> restored_positions{};

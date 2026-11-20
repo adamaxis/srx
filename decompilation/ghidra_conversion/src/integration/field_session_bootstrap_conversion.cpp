@@ -105,8 +105,6 @@ FieldSessionBootstrapResult bootstrap_field_session(
         kEntityActionProfileCount * kEntityActionProfileRowSize;
     if (input.action_selection_profile_source.size() <
             action_profile_source_size ||
-        input.field_mode_selection_state_source.size() <
-            kFieldModeSelectionStateWordCount ||
         input.field_scene.terrain_stream.empty() ||
         input.field_scene.layer_a.size() < kFieldTerrainLayerWordCount ||
         input.field_scene.layer_b.size() < kFieldTerrainLayerWordCount ||
@@ -135,10 +133,7 @@ FieldSessionBootstrapResult bootstrap_field_session(
 
     if (!copy_action_selection_profile_table(
             input.action_selection_profile_source,
-            state.action_selection_profiles) ||
-        !copy_field_mode_selection_state(
-            input.field_mode_selection_state_source,
-            state.field_mode_selection_state)) {
+            state.action_selection_profiles)) {
         return fail(state, callbacks,
                     FieldSessionBootstrapResult::source_data_missing);
     }

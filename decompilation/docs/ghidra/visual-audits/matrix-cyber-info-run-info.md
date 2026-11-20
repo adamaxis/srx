@@ -570,35 +570,36 @@ establish independent pixel fidelity for that active branch.
 
 ## Stoker package deck record correction (2026-11-20)
 
-`[C]` The paid Stoker branch at ROM `0x213FA` sets deck ownership but does not
-populate the typed `FFFBBE` record. The previous Qt callback treated that
-missing host record as a purchased PCD-500, zeroed all program ratings, filled
-all five active slots with program ID 0 (Attack), and represented empty data
-files as ID 0 (Back-up Files). This produced the reported repeated Attack and
-Back-up Files entries.
+`[C]` The New Game path calls ROM routine `0x26938` at `0x0890`. The routine
+copies 23 words from the default record at `0x14C1F4` to the live deck record
+at `FFFBBE`; it runs before field entry. The typed host import now names this
+source record `records/cyberspace/new-game-default-deck.bin` and decodes the
+record fields directly.
 
-The callback now installs a named Allegiance Alpha record for Michael's
-package. `[C]` ROM `0x1AB100` identifies signed model `-1` as Allegiance Alpha,
-and `0x1AB190` gives that row MPCP capacity 3. Independent longplay Section 15
-frame `004180` shows Analyze 2 with size 12 Mp, 10 Mp free, and load time 2;
-frame `004220` shows Attack 3 with size 18 Mp, the same 10 Mp free, and load
-time 2. The two loaded programs are Deception 1 and Analyze 2. ROM `0xE2DF2`
-and `0x1952C` give their footprints as 2 and 12 Mp, so the 10 Mp free shown
-at `004220` implies 24 Mp total under `0x1957E`. The model name, MPCP,
-installed ratings, loaded program IDs, and empty file sentinels now reach the
-Cyberdeck view. The `Attack` selection remains at row 0/column 0 and its
-detail state is asserted as `(18, 10, 2)`; moving to Analyze asserts
-`(12, 10, 2)`.
+The ROM profile is MPCP 3, Hardening 0, Memory 30 Mp, Storage 100 Mp, Load/IO
+10, Response 0, persona values `(3,3,3,3)`, persona condition 10, and model
+`-1` (Allegiance Alpha; model table `0x1AB100`). Its program ratings, in the
+order of the name table at `0xE2F68`, are Attack 3, Medic 1, Deception 2, and
+Analyze 2; all other ratings are 0. The five active-program slots are `-1`,
+and each of the five data-file records is `(id=-1, size=0, value=0)`. Thus the
+deck has available program ratings but no loaded programs and no stored files.
 
-The longplay frame does not show the exact first-acquisition transition or the
-Deck Stats page. Hardening, Storage, Load/IO, Response, and the four persona
-values remain `[H]` where the independent frame does not expose them; the
-secondary reference guide is not treated as ROM evidence. The purchase-route
-shop QA now uses a separately named damaged PCD-500 fixture instead of
-overwriting the story deck. Debug/Release `shadowrun_ghidra_conversion_qt_field_cyberdeck_gate_qa`
-checks the typed record, all program ratings, empty file slots, Attack and
-Analyze detail values, and the visible empty-storage response. It writes
-separate Cyberdeck, Analyze, and empty-storage route captures under
-`qt_runtime/field-cyberdeck-gate-qa/`. The broader
-Cyberdeck hill remains partial pending a source trace of all deck initializers,
-first-acquisition Deck Stats evidence, and loaded-save behavior.
+Stoker's paid command at `0x213FA` changes funds, Karma/story state, and the
+deck-owned flag (`FF018F` bit 0); it does not write the deck record. The
+Cyberdeck availability gate remains false before payment even though the
+default record is already initialized. After payment, the same typed profile
+becomes accessible. This separates the preset data from the ownership event.
+
+With no active programs, all 30 Mp remain free. The initial Attack selection
+shows `(18, 30, 2)` and Analyze shows `(12, 30, 2)` under the existing ROM
+program-footprint and load-time rules. These are source-derived host QA values;
+the available longplay frames `004180`/`004220` show a later evolved deck
+instead, so they are not evidence for the first-acquisition profile or its
+Deck Stats screen. The purchase-route shop QA continues to use a separately
+named damaged PCD-500 fixture. Debug/Release
+`shadowrun_ghidra_conversion_qt_field_cyberdeck_gate_qa` checks the default
+record before ownership, its unchanged values after payment, all program
+ratings, empty active/file slots, Attack and Analyze detail values, and the
+visible empty-storage response. It writes route captures under
+`qt_runtime/field-cyberdeck-gate-qa/`. Independent first-acquisition Deck
+Stats imagery and loaded-save deck restoration remain open.

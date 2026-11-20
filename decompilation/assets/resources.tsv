@@ -1,7 +1,7 @@
 alias	path	kind	origin_x	origin_y
 state	native/state.bin	state	0	0
 records.field.action.selection.profiles	records/field/action-selection-profiles.bin	state	0	0
-records.field.mode.selection.state	records/field/mode-selection-state.bin	state	0	0
+records.cyberspace.new.game.default.deck	records/cyberspace/new-game-default-deck.bin	state	0	0
 records.field.scene.profiles	records/field/scene-profiles.bin	state	0	0
 records.field.elevator.scene.groups	records/field/elevator-scene-groups.bin	state	0	0
 records.field.entity.movement.direction.table	records/field/entity-movement-direction-table.bin	state	0	0

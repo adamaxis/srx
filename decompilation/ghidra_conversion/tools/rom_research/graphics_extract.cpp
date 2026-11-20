@@ -3117,7 +3117,12 @@ void extract_field_session_record_assets(
     write_rom_record(rom, root,
                      "records/field/action-selection-profiles.bin",
                      0x166AD8U, 5U * 0x22U);
-    write_rom_record(rom, root, "records/field/mode-selection-state.bin",
+    // The New Game copy at 0x26938 installs this 46-byte default deck record
+    // at FFFBBE before field entry. Extract it as a named host record so the
+    // runtime can consume typed cyberdeck fields instead of a memory-shaped
+    // mode-selection buffer.
+    write_rom_record(rom, root,
+                     "records/cyberspace/new-game-default-deck.bin",
                      0x14C1F4U, 0x17U * sizeof(std::uint16_t));
     // 0x03084 preserves FFDDC4 in D0 after the 0x3032 classifier and indexes
     // all 56 entries at 0x3232. Materialize the complete 48-word rows once
@@ -7032,8 +7037,8 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
         "records.field.action.selection.profiles",
         "records/field/action-selection-profiles.bin");
     emit_generated_state_row(
-        "records.field.mode.selection.state",
-        "records/field/mode-selection-state.bin");
+        "records.cyberspace.new.game.default.deck",
+        "records/cyberspace/new-game-default-deck.bin");
     emit_generated_state_row(
         "records.field.scene.profiles",
         "records/field/scene-profiles.bin");

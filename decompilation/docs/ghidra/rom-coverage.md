@@ -4,15 +4,15 @@ This is a structural source map, not a claim of behavioral ROM fidelity. A mappe
 
 The 66-entry historical B2 triage is recorded in [rom-coverage-triage.md](rom-coverage-triage.md) and [rom-coverage-triage.tsv](rom-coverage-triage.tsv). That ledger distinguishes port owners, host or asset replacements, and routines filed as missing bugs.
 
-Inventory: the union of `decompilation/docs/ghidra/decompiled-function-status.tsv` and `decompilation/export/functions.tsv`. The status ledger has 1083 rows; after address deduplication and including any export-only entries, the inventory contains **1080 routine entries** (911 unique Ghidra function exports). Ghidra names and sizes take precedence where the export list has the same address.
+Inventory: the union of `decompilation/docs/ghidra/decompiled-function-status.tsv` and `decompilation/export/functions.tsv`. The status ledger has 1088 rows; after address deduplication and including any export-only entries, the inventory contains **1085 routine entries** (911 unique Ghidra function exports). Ghidra names and sizes take precedence where the export list has the same address.
 
-Mapped: **726**. Unmapped backlog: **354**. Committed mapped-routine baseline: **726**.
+Mapped: **731**. Unmapped backlog: **354**. Committed mapped-routine baseline: **726**.
 
 | Inventory category | Entries | Mapped | Unmapped |
 |---|---:|---:|---:|
 | Ghidra code function exports | 911 | 562 | 349 |
-| Status-ledger-only addresses | 169 | 164 | 5 |
-| Combined unique addresses | 1080 | 726 | 354 |
+| Status-ledger-only addresses | 174 | 169 | 5 |
+| Combined unique addresses | 1085 | 731 | 354 |
 
 The `shadowrun_rom_coverage` CTest validates the current mapping references and fails if a routine in the baseline loses its mapping. Existing unmapped entries are reported but do not fail CTest. Run `python3 decompilation/ghidra_conversion/tools/rom_coverage.py --write-report` after updating the map.
 
@@ -20,8 +20,8 @@ The `shadowrun_rom_coverage` CTest validates the current mapping references and 
 
 | Status | Routines |
 |---|---:|
-| defended | 17 |
-| partial | 1062 |
+| defended | 18 |
+| partial | 1066 |
 | unclassified | 1 |
 
 ## Status ledger address conflicts
@@ -558,6 +558,7 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x20E7A` | electromagnetic-lock prompt setup | — | decompilation/ghidra_conversion/qt_runtime/src/field/field_interaction_runtime.cpp#FieldInteractionRuntime | port |
 | `0x20E92` | electromagnetic-lock choice-grid writer | — | decompilation/ghidra_conversion/qt_runtime/src/field/field_interaction_runtime.cpp#FieldInteractionRuntime | port |
 | `0x20EC2` | building Security Terminal continuation | — | decompilation/ghidra_conversion/qt_runtime/src/field/field_interaction_runtime.cpp#FieldInteractionRuntime | port |
+| `0x20F42` | Faction disturbance and ordered gang sequences | — | decompilation/gameplay/scripts/field_random_events.lua;decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#FieldSceneRuntime::process_pending_story_world_effect_sequence | port |
 | `0x211E8` | recruited runner conversation opener | — | decompilation/ghidra_conversion/src/integration/recruited_runner_conversation_conversion.cpp#ghidra_conversion::select_recruited_runner_conversation_prompt | port |
 | `0x21226` | recruited runner service offer preparation | — | decompilation/ghidra_conversion/src/integration/recruited_runner_conversation_conversion.cpp#ghidra_conversion::prepare_recruited_runner_service_offer | port |
 | `0x21318` | recruited runner free permanent-hire dispatch | — | decompilation/ghidra_conversion/src/session/recruited_runner_service_conversion.cpp | port |
@@ -597,6 +598,7 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x22CE8` | Agira Tetsumi Vid-Phone first/repeat affiliation handler | — | decompilation/gameplay/scripts/vid_phone/affiliations.lua | port |
 | `0x22F90` | mode-command conditional dialogue menu builder | — | decompilation/gameplay/scripts/johnson.lua | port |
 | `0x23750` | count_active_entities | 20 | decompilation/ghidra_conversion/src/world/world_resource_batch_conversion.cpp#ghidra_conversion::count_active_entities | port |
+| `0x23C52` | Haggard-man alternate Attack | — | decompilation/gameplay/scripts/field_random_events.lua;decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#FieldSceneRuntime::process_pending_story_world_effect_sequence | port |
 | `0x2401C` | recruited runner Ricky information branch | — | decompilation/ghidra_conversion/src/integration/recruited_runner_conversation_conversion.cpp#ghidra_conversion::select_recruited_runner_information_prompt | port |
 | `0x24034` | recruited runner Winston Marrs information branch | — | decompilation/ghidra_conversion/src/integration/recruited_runner_conversation_conversion.cpp#ghidra_conversion::select_recruited_runner_information_prompt | port |
 | `0x2404C` | recruited runner Trent information branch | — | decompilation/ghidra_conversion/src/integration/recruited_runner_conversation_conversion.cpp#ghidra_conversion::select_recruited_runner_information_prompt | port |
@@ -618,7 +620,7 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x26074` | clear_grid_segments | 58 | decompilation/ghidra_conversion/src/world/world_resource_batch_conversion.cpp#ghidra_conversion::clear_grid_segments | port |
 | `0x26610` | write_sequential_asset_grid | 2 | decompilation/ghidra_conversion/src/world/world_resource_batch_conversion.cpp#ghidra_conversion::write_sequential_asset_grid | port |
 | `0x26696` | copy_tile_blocks | 78 | decompilation/ghidra_conversion/src/world/world_resource_batch_conversion.cpp#ghidra_conversion::copy_tile_blocks | port |
-| `0x26938` | copy_two_word_rows | 32 | decompilation/ghidra_conversion/src/integration/field_session_bootstrap_conversion.cpp#ghidra_conversion::copy_field_mode_selection_state | port |
+| `0x26938` | copy_two_word_rows | 32 | decompilation/ghidra_conversion/src/integration/field_session_source_assets_conversion.cpp#ghidra_conversion::integration::load_field_session_source_assets | port |
 | `0x26958` | upload_decoded_source_stream | 26 | decompilation/ghidra_conversion/src/world/world_resource_batch_conversion.cpp#ghidra_conversion::upload_decoded_source_stream | port |
 | `0x26BFE` | write_masked_transfer | 40 | decompilation/ghidra_conversion/src/audio/audio_service_batch_conversion.cpp#ghidra_conversion::write_masked_transfer | port |
 | `0x26C26` | write_masked_transfer_with_display_control | 56 | decompilation/ghidra_conversion/src/audio/audio_service_batch_conversion.cpp#ghidra_conversion::write_masked_transfer | port |
@@ -693,6 +695,7 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x566C2` | copy_mode_selection_state_table | 22 | decompilation/ghidra_conversion/src/field/field_resource_sequence_conversion.cpp#ghidra_conversion::copy_mode_selection_state_table | port |
 | `0x56AC0` | run_field_mode_service | 772 | decompilation/ghidra_conversion/src/field/field_mode_service_conversion.cpp#ghidra_conversion::run_field_mode_service | port |
 | `0x56F4A` | remove_runner_action | — | decompilation/ghidra_conversion/qt_runtime/src/menus/shop_menu_runtime.cpp#ShopTransactionService::sell | port |
+| `0x573FC` | MicroTronics cyberdeck-model purchase | — | decompilation/gameplay/scripts/data/shop_catalog.lua;decompilation/ghidra_conversion/src/scripting/game_script_runtime.cpp;decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp | port |
 | `0x5787C` | calculate_field_action_quantity_cost | 72 | decompilation/ghidra_conversion/src/field/field_action_cost_conversion.cpp#ghidra_conversion::calculate_field_action_quantity_cost | port |
 | `0x5794E` | apply_selected_field_action | 246 | decompilation/ghidra_conversion/qt_runtime/src/menus/shop_menu_runtime.cpp#ghidra_conversion::apply_selected_field_action | port |
 | `0x57A44` | calculate_field_action_record_cost | 42 | decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime_shop_paint.cpp#ghidra_conversion::calculate_field_action_record_cost | port |
@@ -702,6 +705,8 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x57B42` | apply_large_field_action_cost_discount | 74 | decompilation/ghidra_conversion/src/field/field_action_cost_conversion.cpp#ghidra_conversion::apply_large_field_action_cost_discount | port |
 | `0x57B8C` | run_menu_confirmation_prompt | 174 | decompilation/ghidra_conversion/src/menus/menu_confirmation_conversion.cpp#ghidra_conversion::run_menu_confirmation_prompt | port |
 | `0x57D7E` | render_field_action_quantity | 368 | decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp#ghidra_conversion::prepare_field_action_progression_quote | port |
+| `0x5805C` | MicroTronics utility program rating purchase | — | decompilation/gameplay/scripts/data/shop_catalog.lua;decompilation/ghidra_conversion/src/scripting/game_script_runtime.cpp;decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp | port |
+| `0x58394` | MicroTronics MPCP repair and persona rating offer | — | decompilation/gameplay/scripts/data/shop_catalog.lua;decompilation/ghidra_conversion/src/scripting/game_script_runtime.cpp;decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp | port |
 | `0x5878E` | render_field_action_detail_text | 76 | decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime_shop_paint.cpp#ghidra_conversion::select_field_action_detail_text | port |
 | `0x58B5E` | refresh_field_mode_panel_grid | 88 | decompilation/ghidra_conversion/src/field/field_action_selection_navigation_conversion.cpp#ghidra_conversion::refresh_field_action_selection_panel_grid | port |
 | `0x58BB6` | render_field_mode_selection | 158 | decompilation/ghidra_conversion/src/field/field_action_selection_navigation_conversion.cpp#ghidra_conversion::render_field_action_selection_panel | port |
