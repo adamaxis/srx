@@ -2,9 +2,11 @@
 
 #include "../../src/field/field_scene_runtime.hpp"
 
+#include <QByteArray>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonParseError>
 #include <QJsonValue>
 
 extern "C" {
@@ -20,6 +22,7 @@ extern "C" {
 #include <fstream>
 #include <functional>
 #include <iostream>
+#include <iterator>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -33,6 +36,12 @@ namespace walkthrough_detail {
 constexpr std::uint32_t kFrameBudget = 3600U;
 constexpr std::uint32_t kStoryMilestoneCount = 33U;
 constexpr std::uint16_t kSourceRandomSeed = 23191U;
+constexpr std::string_view kSeg1EndFixtureFormat =
+    "shadowrun.walkthrough.save-fixture.v1";
+// The checkpoint records the code tip whose save state it captures. Keep this
+// stable so regeneration can be compared byte-for-byte after later QA edits.
+constexpr std::string_view kSeg1EndFixtureSourceCommit =
+    "8000b5cf4dc7c4fc4dd9cbf566c57fc85279af44";
 
 struct HostContext {
     FieldSceneRuntime* runtime = nullptr;
@@ -745,6 +754,220 @@ inline std::optional<QString> first_json_difference(
     return std::nullopt;
 }
 
+inline std::optional<std::string> validate_seg1_save_snapshot(
+    const QJsonObject& snapshot) {
+    const auto require_keys = [](const QJsonObject& object,
+                                 const std::initializer_list<const char*> keys,
+                                 const std::string_view object_name)
+        -> std::optional<std::string> {
+        for (const auto* key : keys) {
+            if (!object.contains(QLatin1String(key))) {
+                return std::string(object_name) + "." + key + " is missing";
+            }
+        }
+        return std::nullopt;
+    };
+    if (const auto missing = require_keys(
+            snapshot, {"kind", "scene", "party", "spell_tables",
+                       "funds_available", "funds", "story", "script_facts",
+                       "run_registry"}, "save")) {
+        return missing;
+    }
+    const auto scene = snapshot.value(QStringLiteral("scene")).toObject();
+    if (const auto missing = require_keys(
+            scene, {"reference", "mode", "player_x", "player_y", "heading",
+                    "direction", "camera_x", "camera_y", "target_heading"},
+            "save.scene")) {
+        return missing;
+    }
+    const auto party = snapshot.value(QStringLiteral("party")).toObject();
+    if (const auto missing = require_keys(
+            party, {"active_slot", "members", "primary_compact_marker",
+                    "secondary_compact_marker"}, "save.party")) {
+        return missing;
+    }
+    const auto party_members =
+        party.value(QStringLiteral("members")).toArray();
+    if (party_members.size() != static_cast<qsizetype>(
+            FieldPartyRosterRuntime::kSlotCount)) {
+        return "save.party.members has the wrong slot count";
+    }
+    for (qsizetype index = 0; index < party_members.size(); ++index) {
+        const auto member = party_members.at(index).toObject();
+        const auto member_name =
+            "save.party.members[" + std::to_string(index) + "]";
+        if (const auto missing = require_keys(
+                member, {"active", "name", "portrait_family", "record"},
+                member_name)) {
+            return missing;
+        }
+        const auto record = member.value(QStringLiteral("record")).toObject();
+        if (const auto missing = require_keys(
+                record, {"inventory_item_codes", "inventory_phase_bytes",
+                         "karma", "attributes", "skills"},
+                member_name + ".record")) {
+            return missing;
+        }
+        if (!record.value(QStringLiteral("inventory_item_codes")).isArray() ||
+            !record.value(QStringLiteral("inventory_phase_bytes")).isArray()) {
+            return member_name + ".record inventory fields are not arrays";
+        }
+    }
+
+    const auto story = snapshot.value(QStringLiteral("story")).toObject();
+    if (const auto missing = require_keys(
+            story,
+            {"exit_world_flags", "mode_flags_resolved", "auxiliary_flags",
+             "render_effect_flags", "dialogue_register", "dialogue_flags",
+             "map_event_flags", "group_item_flags", "cyberdeck_available",
+             "matrix_passcode_flags", "matrix_field_state", "karma_counter",
+             "passive_ic_counter", "cyberdeck_record", "runner_feature_flags",
+             "heat_level", "strike_team_counter",
+             "runner_contact_progress_counters", "runner_information_flags",
+             "walk_fast", "notebook_current_run_available",
+             "notebook_tips_resolved", "notebook_tip_flags",
+             "notebook_contacts_flags", "notebook_referral_flags",
+             "notebook_shadowrunner_flags", "world_frame_counter",
+             "world_encounter_sequence", "source_random_seed"}, "save.story")) {
+        return missing;
+    }
+    if (story.value(QStringLiteral("notebook_tip_flags")).toArray().size() != 3) {
+        return "save.story.notebook_tip_flags has the wrong word count";
+    }
+    const auto run_registry =
+        snapshot.value(QStringLiteral("run_registry")).toObject();
+    if (!run_registry.contains(QStringLiteral("schema_version")) ||
+        !snapshot.value(QStringLiteral("script_facts")).isObject()) {
+        return "save.run_registry schema or save.script_facts is missing";
+    }
+    return std::nullopt;
+}
+
+inline std::optional<std::string> read_seg1_end_fixture(
+    const std::filesystem::path& path, QJsonObject& snapshot) {
+    std::ifstream input(path, std::ios::binary);
+    if (!input) {
+        return "could not open walkthrough fixture: " + path.string();
+    }
+    const std::string bytes((std::istreambuf_iterator<char>(input)),
+                            std::istreambuf_iterator<char>());
+    QJsonParseError parse_error;
+    const auto document = QJsonDocument::fromJson(
+        QByteArray(bytes.data(), static_cast<qsizetype>(bytes.size())),
+        &parse_error);
+    if (parse_error.error != QJsonParseError::NoError ||
+        !document.isObject()) {
+        return "invalid walkthrough fixture JSON at byte " +
+            std::to_string(parse_error.offset) + ": " +
+            parse_error.errorString().toStdString();
+    }
+    const auto fixture = document.object();
+    if (fixture.value(QStringLiteral("format")).toString() !=
+            QString::fromLatin1(kSeg1EndFixtureFormat.data(),
+                                static_cast<qsizetype>(
+                                    kSeg1EndFixtureFormat.size())) ||
+        fixture.value(QStringLiteral("checkpoint")).toString() !=
+            QStringLiteral("seg1_end") ||
+        fixture.value(QStringLiteral("generated_from_commit")).toString().isEmpty()) {
+        return "walkthrough fixture header is missing its format, checkpoint, "
+               "or source commit";
+    }
+    const auto snapshot_value = fixture.value(QStringLiteral("snapshot"));
+    if (!snapshot_value.isObject()) {
+        return "walkthrough fixture snapshot is not an object";
+    }
+    snapshot = snapshot_value.toObject();
+    return validate_seg1_save_snapshot(snapshot);
+}
+
+inline QByteArray seg1_end_fixture_bytes(const QJsonObject& snapshot) {
+    QJsonObject fixture;
+    fixture.insert(QStringLiteral("format"),
+                   QString::fromLatin1(kSeg1EndFixtureFormat.data(),
+                                       static_cast<qsizetype>(
+                                           kSeg1EndFixtureFormat.size())));
+    fixture.insert(QStringLiteral("checkpoint"), QStringLiteral("seg1_end"));
+    fixture.insert(QStringLiteral("generated_from_commit"),
+                   QString::fromLatin1(kSeg1EndFixtureSourceCommit.data(),
+                                       static_cast<qsizetype>(
+                                           kSeg1EndFixtureSourceCommit.size())));
+    fixture.insert(QStringLiteral("snapshot"), snapshot);
+    return QJsonDocument(fixture).toJson(QJsonDocument::Indented);
+}
+
+inline std::optional<std::string> write_seg1_end_fixture(
+    const QJsonObject& snapshot, const std::filesystem::path& output_path,
+    const std::optional<std::filesystem::path>& compare_path) {
+    std::error_code filesystem_error;
+    if (!output_path.parent_path().empty()) {
+        std::filesystem::create_directories(output_path.parent_path(),
+                                            filesystem_error);
+    }
+    if (filesystem_error) {
+        return "could not create walkthrough fixture directory: " +
+            filesystem_error.message();
+    }
+    const auto bytes = seg1_end_fixture_bytes(snapshot);
+    std::ofstream output(output_path, std::ios::binary | std::ios::trunc);
+    if (!output) {
+        return "could not write walkthrough fixture: " + output_path.string();
+    }
+    output.write(bytes.constData(), static_cast<std::streamsize>(bytes.size()));
+    output.close();
+    if (!output) {
+        return "failed while writing walkthrough fixture: " +
+            output_path.string();
+    }
+    if (!compare_path.has_value()) return std::nullopt;
+
+    std::ifstream reference(*compare_path, std::ios::binary);
+    if (!reference) {
+        return "could not open reference walkthrough fixture: " +
+            compare_path->string();
+    }
+    const std::string reference_bytes(
+        (std::istreambuf_iterator<char>(reference)),
+        std::istreambuf_iterator<char>());
+    if (reference_bytes.size() != static_cast<std::size_t>(bytes.size()) ||
+        !std::equal(reference_bytes.begin(), reference_bytes.end(),
+                    bytes.constData())) {
+        std::size_t first_difference = 0U;
+        const auto common_size = std::min(
+            reference_bytes.size(), static_cast<std::size_t>(bytes.size()));
+        while (first_difference < common_size &&
+               reference_bytes[first_difference] == bytes.constData()[first_difference]) {
+            ++first_difference;
+        }
+        return "regenerated walkthrough fixture differs from " +
+            compare_path->string() + " at byte " +
+            std::to_string(first_difference) + " (generated " +
+            std::to_string(bytes.size()) + " bytes, reference " +
+            std::to_string(reference_bytes.size()) + " bytes)";
+    }
+    return std::nullopt;
+}
+
+inline std::optional<std::string> restore_fixture_and_compare(
+    FieldSceneRuntime& runtime, const QJsonObject& expected_snapshot) {
+    QString error;
+    if (!runtime.restore_game_save_snapshot_for_dump(expected_snapshot, &error)) {
+        return "fresh runtime could not restore walkthrough fixture: " +
+            error.toStdString();
+    }
+    const auto restored_snapshot =
+        runtime.capture_game_save_snapshot_for_dump(&error);
+    if (!restored_snapshot.has_value()) {
+        return "fresh runtime could not capture restored walkthrough fixture: " +
+            error.toStdString();
+    }
+    const auto difference = first_json_difference(
+        QJsonValue(expected_snapshot), QJsonValue(*restored_snapshot));
+    if (difference.has_value()) {
+        return "restored fixture mismatch at " + difference->toStdString();
+    }
+    return std::nullopt;
+}
+
 inline std::optional<std::string> verify_seg1_save_round_trip(
     FieldSceneRuntime& source_runtime,
     const shadowrun::ghidra_conversion::integration::StartupIntegrationState&
@@ -757,62 +980,9 @@ inline std::optional<std::string> verify_seg1_save_round_trip(
             error.toStdString();
     }
 
-    const auto fail_if_missing = [](const QJsonObject& object,
-                                    const char* name,
-                                    const std::string_view object_name)
-        -> std::optional<std::string> {
-        if (!object.contains(QLatin1String(name))) {
-            return std::string(object_name) + "." + name + " is missing";
-        }
-        return std::nullopt;
-    };
-    for (const auto* key : {"kind", "scene", "party", "funds_available",
-                            "funds", "story", "script_facts", "run_registry"}) {
-        if (const auto missing = fail_if_missing(
-                *source_snapshot, key, "save")) {
-            return missing;
-        }
-    }
-    const auto scene = source_snapshot->value(QStringLiteral("scene")).toObject();
-    for (const auto* key : {"reference", "player_x", "player_y"}) {
-        if (const auto missing = fail_if_missing(scene, key, "save.scene")) {
-            return missing;
-        }
-    }
-    const auto party = source_snapshot->value(QStringLiteral("party")).toObject();
-    if (const auto missing = fail_if_missing(
-            party, "members", "save.party")) {
-        return missing;
-    }
-    const auto story = source_snapshot->value(QStringLiteral("story")).toObject();
-    for (const auto* key : {
-             "exit_world_flags", "group_item_flags", "dialogue_register",
-             "dialogue_flags", "map_event_flags", "auxiliary_flags",
-             "render_effect_flags", "matrix_passcode_flags",
-             "matrix_field_state", "runner_feature_flags",
-             "notebook_tip_flags",
-             "notebook_current_run_available", "notebook_contacts_flags",
-             "notebook_referral_flags", "notebook_shadowrunner_flags"}) {
-        if (const auto missing = fail_if_missing(story, key, "save.story")) {
-            return missing;
-        }
-    }
-    if (!source_snapshot->value(QStringLiteral("run_registry")).isObject() ||
-        !source_snapshot->value(QStringLiteral("script_facts")).isObject()) {
-        return "save.run_registry or save.script_facts is not an object";
-    }
-    const auto party_members =
-        party.value(QStringLiteral("members")).toArray();
-    if (party_members.size() != static_cast<qsizetype>(
-            FieldPartyRosterRuntime::kSlotCount)) {
-        return "save.party.members has the wrong slot count";
-    }
-    for (qsizetype index = 0; index < party_members.size(); ++index) {
-        const auto member = party_members.at(index).toObject();
-        if (!member.value(QStringLiteral("record")).isObject()) {
-            return "save.party.members[" + std::to_string(index) +
-                "].record is missing";
-        }
+    if (const auto validation_error =
+            validate_seg1_save_snapshot(*source_snapshot)) {
+        return validation_error;
     }
 
     std::vector<std::string> restored_source_events;
@@ -830,20 +1000,10 @@ inline std::optional<std::string> verify_seg1_save_round_trip(
         return "fresh runtime bootstrap failed before restore: " +
             restored_runtime.failure();
     }
-    if (!restored_runtime.restore_game_save_snapshot_for_dump(
-            *source_snapshot, &error)) {
-        return "fresh runtime restore failed: " + error.toStdString();
-    }
-    const auto restored_snapshot =
-        restored_runtime.capture_game_save_snapshot_for_dump(&error);
-    if (!restored_snapshot.has_value()) {
-        return "could not capture restored save snapshot: " +
-            error.toStdString();
-    }
-    const auto difference = first_json_difference(
-        QJsonValue(*source_snapshot), QJsonValue(*restored_snapshot));
-    if (difference.has_value()) {
-        return "snapshot mismatch at " + difference->toStdString();
+    const auto restore_error = restore_fixture_and_compare(
+        restored_runtime, *source_snapshot);
+    if (restore_error.has_value()) {
+        return "fresh runtime save round-trip failed: " + *restore_error;
     }
     return std::nullopt;
 }
@@ -856,7 +1016,13 @@ inline int run_walkthrough_qa(
     const std::filesystem::path& asset_root,
     const std::string& segment,
     const std::filesystem::path& output_directory,
-    const bool reach_mode) {
+    const bool reach_mode,
+    const std::optional<std::filesystem::path>& from_fixture_path =
+        std::nullopt,
+    const std::optional<std::filesystem::path>& write_fixture_path =
+        std::nullopt,
+    const std::optional<std::filesystem::path>& compare_fixture_path =
+        std::nullopt) {
     using namespace walkthrough_detail;
     std::error_code error;
     std::filesystem::create_directories(output_directory, error);
@@ -895,6 +1061,34 @@ inline int run_walkthrough_qa(
         return reach_mode ? 0 : 3;
     }
     std::cerr.rdbuf(previous_stderr);
+
+    if (from_fixture_path.has_value()) {
+        QJsonObject fixture_snapshot;
+        const auto fixture_error = read_seg1_end_fixture(
+            *from_fixture_path, fixture_snapshot);
+        if (fixture_error.has_value()) {
+            std::cerr << "walkthrough fixture load failed: " << *fixture_error
+                      << '\n';
+            return 1;
+        }
+        const auto restore_error = restore_fixture_and_compare(
+            runtime, fixture_snapshot);
+        if (restore_error.has_value()) {
+            std::cerr << "walkthrough fixture restore failed: "
+                      << *restore_error << '\n';
+            return 1;
+        }
+        std::cout << "walkthrough from-fixture: seg1_end restored exactly\n";
+        if (segment == "fixture_restore") return 0;
+        if (segment == "seg1") {
+            std::cerr << "walkthrough: seg1_end is already past the seg1 route; "
+                         "use fixture_restore or a later segment\n";
+            return 3;
+        }
+    } else if (segment == "fixture_restore") {
+        std::cerr << "walkthrough: fixture_restore requires --from-fixture\n";
+        return 3;
+    }
 
     lua_State* state = luaL_newstate();
     if (state == nullptr) {
@@ -1001,9 +1195,49 @@ inline int run_walkthrough_qa(
             std::cout << "walkthrough save round-trip: seg1_end passed\n";
         }
     }
+    bool fixture_generation_passed = true;
+    if ((write_fixture_path.has_value() || compare_fixture_path.has_value()) &&
+        segment == "seg1" && !reach_mode && passed &&
+        save_round_trip_passed) {
+        if (!write_fixture_path.has_value()) {
+            fixture_generation_passed = false;
+            std::cerr << "walkthrough fixture generation failed: "
+                         "--compare-fixture requires --write-fixture\n";
+        } else {
+            QString snapshot_error;
+            const auto snapshot = runtime.capture_game_save_snapshot_for_dump(
+                &snapshot_error);
+            if (!snapshot.has_value()) {
+                fixture_generation_passed = false;
+                std::cerr << "walkthrough fixture generation failed: "
+                          << snapshot_error.toStdString() << '\n';
+            } else {
+                const auto write_error = write_seg1_end_fixture(
+                    *snapshot, *write_fixture_path, compare_fixture_path);
+                if (write_error.has_value()) {
+                    fixture_generation_passed = false;
+                    std::cerr << "walkthrough fixture generation failed: "
+                              << *write_error << '\n';
+                } else {
+                    std::cout << "walkthrough fixture: seg1_end generated"
+                              << (compare_fixture_path.has_value()
+                                      ? " and byte-exact comparison passed\n"
+                                      : "\n");
+                }
+            }
+        }
+    } else if (write_fixture_path.has_value() ||
+               compare_fixture_path.has_value()) {
+        fixture_generation_passed = false;
+        std::cerr << "walkthrough fixture generation requires a passing "
+                     "seg1 gate run\n";
+    }
     write_lua_report(state, output_directory, segment, reach_mode);
     lua_close(state);
-    return (passed && save_round_trip_passed) || reach_mode ? 0 : 1;
+    return (passed && save_round_trip_passed && fixture_generation_passed) ||
+                   reach_mode
+        ? 0
+        : 1;
 }
 
 } // namespace shadowrun::ghidra_conversion::qt_runtime::qa

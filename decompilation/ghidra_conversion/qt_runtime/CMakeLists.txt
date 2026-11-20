@@ -657,7 +657,25 @@ add_test(NAME shadowrun_walkthrough_reach
         --walkthrough seg1
         "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-seg1-reach"
         --reach)
+set(_shadowrun_seg1_end_fixture
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/tests_lua/fixtures/walkthrough/seg1_end.json")
+add_test(NAME shadowrun_walkthrough_fixture_determinism
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough seg1
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-seg1-fixture-generation"
+        --write-fixture
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-seg1-fixture-generation/seg1_end.generated.json"
+        --compare-fixture "${_shadowrun_seg1_end_fixture}")
+add_test(NAME shadowrun_walkthrough_fixture_restore
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough fixture_restore
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-seg1-fixture-restore"
+        --from-fixture "${_shadowrun_seg1_end_fixture}")
 set_tests_properties(shadowrun_walkthrough_seg1 shadowrun_walkthrough_reach
+    shadowrun_walkthrough_fixture_determinism
+    shadowrun_walkthrough_fixture_restore
     PROPERTIES LABELS "walkthrough" TIMEOUT 300
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 

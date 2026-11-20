@@ -47535,6 +47535,9 @@ int main(int argc, char** argv) {
         bool field_smoke = false;
         std::optional<std::string> walkthrough_segment;
         std::optional<std::filesystem::path> walkthrough_output_directory;
+        std::optional<std::filesystem::path> walkthrough_from_fixture_path;
+        std::optional<std::filesystem::path> walkthrough_write_fixture_path;
+        std::optional<std::filesystem::path> walkthrough_compare_fixture_path;
         bool walkthrough_reach = false;
         bool field_smoke_move_right = false;
         bool field_command_reopen_smoke = false;
@@ -47933,6 +47936,21 @@ int main(int argc, char** argv) {
                     walkthrough_reach = true;
                     ++index;
                 }
+            }
+            if (std::string(argv[index]) == "--from-fixture" &&
+                index + 1 < argc) {
+                walkthrough_from_fixture_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--write-fixture" &&
+                index + 1 < argc) {
+                walkthrough_write_fixture_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--compare-fixture" &&
+                index + 1 < argc) {
+                walkthrough_compare_fixture_path =
+                    std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--map-coverage" &&
                 index + 2 < argc) {
@@ -49637,9 +49655,23 @@ int main(int argc, char** argv) {
                 std::cerr << smoke_state_error << '\n';
                 return 3;
             }
+            const bool walkthrough_fixture_options =
+                walkthrough_from_fixture_path.has_value() ||
+                walkthrough_write_fixture_path.has_value() ||
+                walkthrough_compare_fixture_path.has_value();
+            if (walkthrough_fixture_options &&
+                (!walkthrough_segment.has_value() ||
+                 !walkthrough_output_directory.has_value())) {
+                std::cerr << "walkthrough fixture options require "
+                             "--walkthrough <segment> <output-directory>\n";
+                return 3;
+            }
             if (walkthrough_segment.has_value() &&
                 walkthrough_output_directory.has_value()) {
-                if (*walkthrough_segment != "seg1") {
+                const bool fixture_restore =
+                    *walkthrough_segment == "fixture_restore" &&
+                    walkthrough_from_fixture_path.has_value();
+                if (*walkthrough_segment != "seg1" && !fixture_restore) {
                     std::cerr << "walkthrough: unsupported segment '"
                               << *walkthrough_segment << "'\n";
                     std::cout << "walkthrough reach: "
@@ -49651,7 +49683,10 @@ int main(int argc, char** argv) {
                     run_walkthrough_qa(
                         std::move(smoke_state), asset_root,
                         *walkthrough_segment,
-                        *walkthrough_output_directory, walkthrough_reach);
+                        *walkthrough_output_directory, walkthrough_reach,
+                        walkthrough_from_fixture_path,
+                        walkthrough_write_fixture_path,
+                        walkthrough_compare_fixture_path);
             }
             if (map_coverage_rows_path.has_value() &&
                 map_coverage_results_path.has_value()) {
