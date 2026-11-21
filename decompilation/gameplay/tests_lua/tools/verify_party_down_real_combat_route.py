@@ -108,6 +108,21 @@ def main() -> int:
 
     rows = [json.loads(line) for line in trace_path.read_text(encoding="utf-8").splitlines()]
     rows = [row for row in rows if row.get("app.phase") == "field_ready"]
+    dialogue_close_index = next(
+        (index for index in range(1, len(rows))
+         if rows[index - 1].get("field.ui.dialogue") is True and
+         rows[index].get("field.ui.dialogue") is False),
+        None)
+    if dialogue_close_index is None:
+        fail("cold route did not return from the Stoker field dialogue")
+    # ROM 0xB7B8 owns FFDFE8 through the projected-interaction fade; the
+    # resumed 0x2BD2/0x08C4 field re-entry releases it after the modal returns.
+    # A stuck word blocks later field services at coordinator 0x0AEA.
+    dialogue_return_rows = rows[dialogue_close_index:dialogue_close_index + 4]
+    if not any(row.get("field.debug.display_service_word") == 0
+               for row in dialogue_return_rows):
+        fail("Stoker dialogue return left ROM FFDFE8 display gate set")
+
     leader = lambda row, key: row.get(f"party.runner.0.{key}")
     zeros = [row for row in rows if leader(row, "active") is True and
              (leader(row, "physical_meter") == 0 or

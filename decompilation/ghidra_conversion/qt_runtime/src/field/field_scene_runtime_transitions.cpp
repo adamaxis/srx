@@ -755,6 +755,7 @@ void FieldSceneRuntime::advance_field_scene_transition_after_modal() {
     // later interaction handler can dispatch.
     field_runtime_state_.display_service_word = 0U;
     state_.display_service_word = 0U;
+    field_scene_transition_after_modal_pending_ = false;
     source_boundary("field.scene.transition.display_service_released");
     field_camera_alignment_ready_ = false;
     update_source_field_camera();

@@ -2736,6 +2736,7 @@ private:
     bool field_building_scene_transition_active_ = false;
     bool field_building_transition_handoff_ = false;
     bool field_building_transition_fade_in_wait_pending_ = false;
+    bool field_scene_transition_after_modal_pending_ = false;
     TarislarCreditsTitleReturnRuntime tarislar_credits_title_return_{};
     std::optional<scripting::ScriptElevatorFloorGroup>
         field_elevator_floor_group_;

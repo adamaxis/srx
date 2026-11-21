@@ -10165,6 +10165,9 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
     field_runtime_callbacks_.advance_field_scene_transition = [this] {
         if (command_overview_.open() || field_interaction_.open() ||
             field_dialogue_.open() || field_elevator_selector_.is_open()) {
+            if (field_dialogue_.open()) {
+                field_scene_transition_after_modal_pending_ = true;
+            }
             // The source routine returns from the blocking command loop before
             // the field transition leaf can run. The Qt bridge keeps that
             // ordering explicit while the menu owns the next host frames.
@@ -12286,6 +12289,7 @@ bool FieldSceneRuntime::bootstrap(
     field_scene_transition_ = FieldSceneTransitionRuntime{};
     field_building_scene_transition_active_ = false;
     field_building_transition_handoff_ = false;
+    field_scene_transition_after_modal_pending_ = false;
     field_building_transition_source_image_ = QImage{};
     tarislar_credits_title_return_.reset();
     field_elevator_floor_group_.reset();
@@ -15121,6 +15125,20 @@ void FieldSceneRuntime::service_pending_field_viewports() {
 
 void FieldSceneRuntime::advance_frame() {
     if (!ready_) {
+        return;
+    }
+    const bool field_modal_owns_transition =
+        command_overview_.open() || field_interaction_.open() ||
+        field_dialogue_.open() || field_elevator_selector_.is_open();
+    if (field_scene_transition_after_modal_pending_ &&
+        !field_modal_owns_transition) {
+        // The source coordinator can enter 0x2BD2 while the non-blocking
+        // dialogue owns the host frame. Resume that same transition once the
+        // dialogue returns; otherwise FFDFE8 remains set and later field
+        // commands and random encounters stay gated.
+        field_scene_transition_after_modal_pending_ = false;
+        source_boundary("field.runtime.deferred_scene_transition_resumed");
+        advance_field_scene_transition_after_modal();
         return;
     }
     // Some source prompts enter through native field-event adapters before

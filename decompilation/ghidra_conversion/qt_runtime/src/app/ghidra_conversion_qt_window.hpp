@@ -353,7 +353,12 @@ public:
                         key == QStringLiteral("field.world.pending_effect") ||
                         key == QStringLiteral("field.world.active_effect") ||
                         key == QStringLiteral("field.world.frame") ||
+                        key == QStringLiteral("field.world.random_seed") ||
                         key == QStringLiteral("field.actor_count") ||
+                        key == QStringLiteral("field.debug.display_service_word") ||
+                        key == QStringLiteral("field.debug.world_active") ||
+                        key == QStringLiteral("field.debug.encounter_actor_count") ||
+                        key == QStringLiteral("field.debug.alarm_active") ||
                         key == QStringLiteral(
                             "field.debug.field_activity_lock") ||
                         key == QStringLiteral(

@@ -288,6 +288,12 @@ QJsonObject FieldSceneRuntime::debug_inspection_fields() const {
                       : QJsonValue(-1));
     fields.insert(QStringLiteral("field.debug.display_service_word"),
                   field_runtime_state_.display_service_word);
+    fields.insert(QStringLiteral("field.debug.world_active"),
+                  world_frame_logic_state_.world_active);
+    fields.insert(QStringLiteral("field.debug.encounter_actor_count"),
+                  field_world_activity_timeout_state_.encounter_actor_count);
+    fields.insert(QStringLiteral("field.debug.alarm_active"),
+                  field_matrix_field_state_.alarm.value_or(false));
     fields.insert(QStringLiteral("field.debug.pending_scene_handler"),
                   field_runtime_state_.pending_field_scene_handler);
     fields.insert(QStringLiteral("field.debug.scene_transition_requested"),
