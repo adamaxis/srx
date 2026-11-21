@@ -51665,6 +51665,10 @@ int main(int argc, char** argv) {
                                  "select the loaded Analyze-2 slot\n";
                     return 3;
                 }
+                // Freeze the shared source RNG at the Analyze action edge so
+                // this visual route exercises a repeatable result branch.
+                // The test still runs the ordinary ROM-shaped dice service.
+                field_scene.set_source_random_seed_for_dump(1U);
                 tap_qa_controller_button(field_scene, 0x40U); // A: Analyze
                 route = field_scene.field_menu_route_snapshot_for_dump();
                 if (!route.top_matrix_traversal_view.has_value() ||
@@ -51832,7 +51836,33 @@ int main(int argc, char** argv) {
                                           analyze_idle_runner, nullptr)) {
                     std::cerr << "Matrix Analyze QA: 61-tick profile "
                                  "transition did not settle to its ROM "
-                                 "result state\n";
+                                 "result state; view="
+                              << (route.top_matrix_traversal_view.has_value()
+                                      ? route.top_matrix_traversal_view
+                                            ->active_program_status_label
+                                      : "<missing>")
+                              << " ring="
+                              << (route.top_matrix_traversal_view.has_value()
+                                      ? route.top_matrix_traversal_view
+                                            ->analyze_effect_phase
+                                      : -99)
+                              << " runner="
+                              << (route.top_matrix_traversal_view.has_value()
+                                      ? route.top_matrix_traversal_view
+                                            ->analyze_runner_phase
+                                      : -99)
+                              << " analysis="
+                              << (route.top_matrix_traversal_view.has_value()
+                                      ? route.top_matrix_traversal_view
+                                            ->analysis_level
+                                      : -99)
+                              << " difficulty="
+                              << (route.top_matrix_traversal_view.has_value()
+                                      ? route.top_matrix_traversal_view
+                                            ->action_difficulty_label
+                                      : "<missing>")
+                              << " frame=" << analyze_complete_image.width()
+                              << 'x' << analyze_complete_image.height() << '\n';
                     return 3;
                 }
                 tap_qa_controller_button(field_scene, 0x04U); // Left: Medic
