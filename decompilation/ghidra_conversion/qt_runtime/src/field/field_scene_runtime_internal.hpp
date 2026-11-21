@@ -22,9 +22,12 @@ struct FieldDialogueEventTask {
     std::string_view task_name;
 };
 
-inline constexpr std::array<FieldDialogueEventTask, 5U>
+inline constexpr std::array<FieldDialogueEventTask, 6U>
     kFieldDialogueEventTasks{{
         {"hidden_camera", "present_hidden_camera"},
+        // Scene 20's sum-4 selector at ROM 0x1D7130 reaches 0x20FEC and
+        // prompt 0x121238; the same Lua task also serves guard contact.
+        {"security_guard_stop", "present_security_guard_stop"},
         // ROM 0x20FA2 opens the escaped-patient encounter; Lua owns its
         // choices and the 0x23CF2 Help result.
         {"haggard_man_collapse", "present_haggard_man"},

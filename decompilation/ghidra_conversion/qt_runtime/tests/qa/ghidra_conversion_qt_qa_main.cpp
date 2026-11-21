@@ -6081,6 +6081,82 @@ int run_field_company_man_toothpick_qa(
     return 0;
 }
 
+int run_field_security_guard_weighted_event_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code error;
+    std::filesystem::create_directories(output, error);
+    if (error) {
+        std::cerr << "field security-guard weighted-event QA: cannot create output: "
+                  << error.message() << '\n';
+        return 3;
+    }
+    clear_qa_bitmap_artifacts(output, error);
+    if (error || field_scene.field_scene_reference_for_dump() != 2U ||
+        !field_scene.reenter_field_scene_for_dump(20U)) {
+        std::cerr << "field security-guard weighted-event QA: could not prepare "
+                     "Scene 20: "
+                  << error.message() << " failure=" << field_scene.failure()
+                  << '\n';
+        return 3;
+    }
+
+    // The scene-20 cell at ROM 0x1D7130 and pointer at 0x1D72A4 select
+    // handler 0x20FEC for source sum 4; it opens prompt record 0x121238 [C].
+    // The bounded pair 2+2 exercises that selector through Lua and the normal
+    // field-dialogue dispatcher without forcing the 0x1E166 chance gate.
+    const auto spawned =
+        field_scene.resolve_and_spawn_field_encounter_for_dump(
+            2U, 2U, 0x4000U);
+    const auto& opening = field_scene.dialogue_panel();
+    const auto opening_image = render_qa_field(field_scene);
+    const auto contains = [&opening](const std::string_view text) {
+        for (std::size_t index = 0U;
+             index < opening.text_segment_count; ++index) {
+            if (opening.text_segments[index].find(text) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto prompt_boundary = std::find(
+        source_boundaries.begin(), source_boundaries.end(),
+        "field.random_encounter.security_guard_stop.prompt_opened");
+    const bool image_saved = opening_image.size() ==
+            QSize(kSceneWidth, kSceneHeight) &&
+        save_qa_image(output, "actual.bmp", opening_image);
+    if (spawned != 0U || !opening.open || !opening.has_more ||
+        !contains("A secuity guard spots you.") ||
+        !contains("Show me some ID, pal.") ||
+        prompt_boundary == source_boundaries.end() || !image_saved) {
+        std::cerr << "field security-guard weighted-event QA: selector did not "
+                     "open ROM 0x121238 through the Lua task (spawned="
+                  << spawned << ", dialogue=" << opening.open
+                  << ", more=" << opening.has_more
+                  << ", opening_text="
+                  << contains("A secuity guard spots you.")
+                  << ", prompt_text=" << contains("Show me some ID, pal.")
+                  << ", boundary="
+                  << (prompt_boundary != source_boundaries.end())
+                  << ", image_saved=" << image_saved
+                  << ", failure=" << field_scene.failure() << ")\n";
+        for (std::size_t index = 0U;
+             index < opening.text_segment_count; ++index) {
+            std::cerr << "  page[" << index << "]="
+                      << opening.text_segments[index] << '\n';
+        }
+        return 3;
+    }
+
+    std::cout << "field_security_guard_weighted_event_qa=passed scene=20 "
+                 "selector=2+2 handler=0x20FEC prompt=0x121238 "
+                 "actual="
+              << (output / "actual.bmp").string() << '\n';
+    return 0;
+}
+
 int run_field_hidden_camera_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& output,
@@ -47800,6 +47876,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_hidden_camera_qa_path;
         std::optional<std::filesystem::path>
+            field_security_guard_weighted_event_qa_path;
+        std::optional<std::filesystem::path>
             field_company_man_toothpick_qa_path;
         std::optional<std::string> field_faction_route_name;
         std::optional<std::string> field_faction_scene_name;
@@ -48351,6 +48429,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_hidden_camera_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-security-guard-weighted-event-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_security_guard_weighted_event_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -55637,6 +55722,12 @@ int main(int argc, char** argv) {
                     field_source_boundaries,
                     field_faction_route_name.value_or(std::string{}),
                     field_faction_scene_name.value_or(std::string("0")));
+            }
+            if (field_security_guard_weighted_event_qa_path.has_value()) {
+                return run_field_security_guard_weighted_event_qa(
+                    field_scene,
+                    *field_security_guard_weighted_event_qa_path,
+                    field_source_boundaries);
             }
             if (field_company_man_toothpick_qa_path.has_value()) {
                 return run_field_company_man_toothpick_qa(

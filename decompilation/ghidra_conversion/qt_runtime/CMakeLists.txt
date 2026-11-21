@@ -1139,6 +1139,14 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_hidden_camera_qa
                  --field-hidden-camera-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-hidden-camera-qa")
 
+# Scene 20's bounded selector pair 2+2 resolves the ROM security-guard event
+# at 0x20FEC and verifies the weighted outcome reaches its Lua dialogue task.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_security_guard_weighted_event_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-security-guard-weighted-event-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-security-guard-weighted-event-qa")
+
 # Scene 26's sum-1 selector opens the Company Man event. Confirm the Insult
 # reply displays the resource-variant clue and returns through the saved scene.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_company_man_toothpick_qa
