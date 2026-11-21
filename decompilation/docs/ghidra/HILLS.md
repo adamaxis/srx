@@ -2101,6 +2101,23 @@ handlers and the broader creature encounter system remain partial. Captures
 are internal Qt output without an independent Genesis comparison, and the
 Company Man fade cadence remains a presentation-contract hypothesis [H].
 
+### Phantasmal Watcher accept sequence (partial, 2026-11-21)
+
+ROM `0x23812` rolls the first runner's Body at `FF0177` against 6, chooses the
+four-actor list `0x1D6DAE` or two-actor list `0x1D6DB6`, then calls `0x1E1FC`.
+If the list cannot start, the source awards 200 nuyen and selects `0x120F64`;
+otherwise it displays `0x120F34` or `0x120F48`, followed by thanks at
+`0x120F5C`. The Lua response now resolves the typed map placement before
+showing that result, and sends the no-placement result to the ROM reward path.
+
+Debug/Release physical CTests use the Scene-3 sum-8 selector and live Body
+record to cover zero successes, one success, and the 200-nuyen branch. They
+check the ordered Eye-Fiver profiles, result/thanks text, funds, saved field
+return, and internal `actual.bmp` captures; all 17 accept-path images match
+byte-for-byte between builds. This does not defend the later combat exit or
+post-fight behavior, and the images are not an independent Genesis comparison.
+See the [field random-event selector audit](field-random-event-selector.md).
+
 ### Cave exits and destination camera (partial, 2026-11-20)
 
 The mode-exit dispatcher at ROM `0x0A12` gates event codes `8..11` with

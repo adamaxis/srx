@@ -525,7 +525,7 @@ local function run_watcher(choice, configuration)
     local prompt_titles = {}
     local prompt_options = {}
     local prompt_speakers = {}
-    local queued_world_effects = {}
+    local placed_world_effects = {}
     local random_values = configuration.random_values or { [6] = { 0 } }
     local random_indices = {}
     local funds = configuration.initial_nuyen or 125
@@ -602,9 +602,9 @@ local function run_watcher(choice, configuration)
                     return "scene_" .. tostring(game.location.scene_id)
                 end
                 if domain == "story" and
-                   action:match("^queue_world_effect_") then
-                    queued_world_effects[#queued_world_effects + 1] = action
-                    return configuration.queue_result or "queued"
+                   action:match("^place_world_effect_") then
+                    placed_world_effects[#placed_world_effects + 1] = action
+                    return configuration.placement_result or "spawned"
                 end
                 if domain == "random" then
                     random_calls[#random_calls + 1] = action
@@ -629,7 +629,7 @@ local function run_watcher(choice, configuration)
         E.DialogueSource.RANDOM_ENCOUNTER,
         "field_random_events", "present_phantasmal_watcher")
     return task_result, dialogue_pages, exit_calls, funds, random_calls,
-        prompt_titles, prompt_options, prompt_speakers, queued_world_effects,
+        prompt_titles, prompt_options, prompt_speakers, placed_world_effects,
         nuyen_writes
 end
 
@@ -1932,7 +1932,7 @@ eq(watcher_insult_pages[1].text_profile, "field.world_event",
 eq(watcher_insult_funds, 125, "Insult does not award nuyen")
 eq(watcher_insult_writes, 0, "Insult does not write nuyen")
 eq(#watcher_insult_random, 0, "Insult does not roll Body")
-eq(#watcher_insult_effects, 0, "Insult queues no actor list")
+eq(#watcher_insult_effects, 0, "Insult starts no actor list")
 eq(table.concat(watcher_insult_exit, ","), "restore_field_context_stay",
    "watcher returns through the haggard same-map dialogue exit")
 
@@ -1979,10 +1979,10 @@ eq(watcher_zero_writes, 0, "zero-success combat path does not write nuyen")
 eq(table.concat(watcher_zero_random, ","), "bounded_6",
    "zero-success branch rolls the first runner Body once")
 eq(watcher_zero_effects[1],
-   "queue_world_effect_5_4_phantasmal_watcher_eye_fivers_four",
-   "zero-success branch queues both Eye Fiver 2 and both Eye Fiver 1")
+   "place_world_effect_5_4_phantasmal_watcher_eye_fivers_four",
+   "zero-success branch places both Eye Fiver 2 and both Eye Fiver 1")
 eq(#watcher_zero_effects, 1,
-   "zero-success branch queues one watcher actor list")
+   "zero-success branch starts one watcher actor list")
 
 local watcher_one, watcher_one_pages, _, watcher_one_funds,
       watcher_one_random, _, _, _, watcher_one_effects, watcher_one_writes =
@@ -2006,10 +2006,10 @@ eq(watcher_one_writes, 0, "one-success combat path does not write nuyen")
 eq(table.concat(watcher_one_random, ","), "bounded_6,bounded_6",
    "one-success branch uses the controlled exploding-six Body roll")
 eq(watcher_one_effects[1],
-   "queue_world_effect_5_2_phantasmal_watcher_eye_fivers_two",
-   "one-success branch queues two Eye Fiver 1 actors")
+   "place_world_effect_5_2_phantasmal_watcher_eye_fivers_two",
+   "one-success branch places two Eye Fiver 1 actors")
 eq(#watcher_one_effects, 1,
-   "one-success branch queues one watcher actor list")
+   "one-success branch starts one watcher actor list")
 
 local watcher_two_plus, watcher_two_pages, _, watcher_two_funds,
       watcher_two_random, _, _, _, watcher_two_effects, watcher_two_writes =
@@ -2044,20 +2044,20 @@ local watcher_failed_start, watcher_failed_pages, _, watcher_failed_funds,
     body = 1,
     initial_nuyen = 40,
     random_values = { [6] = { 0 } },
-    queue_result = "busy",
+    placement_result = "no_placement",
 })
 eq(watcher_failed_start, "resolved",
-   "failed watcher list start falls through to the reward")
+   "failed watcher placement falls through to the reward")
 eq(#watcher_failed_pages, 2,
-   "failed list start shows accept and reward pages")
+   "failed placement shows accept and reward pages")
 eq(watcher_failed_funds, 240,
-   "failed watcher list start adds exactly 200 nuyen")
+   "failed watcher placement adds exactly 200 nuyen")
 eq(watcher_failed_writes, 1,
-   "failed watcher list start writes the reward exactly once")
+   "failed watcher placement writes the reward exactly once")
 eq(table.concat(watcher_failed_random, ","), "bounded_6",
-   "failed list start follows the source zero-success Body result")
+   "failed placement follows the source zero-success Body result")
 eq(#watcher_failed_effects, 1,
-   "failed list start follows one attempted actor-list queue")
+   "failed placement follows one attempted actor-list start")
 end
 
 local haggard_result, haggard_pages, haggard_exit, haggard_funds,

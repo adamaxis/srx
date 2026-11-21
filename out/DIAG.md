@@ -281,10 +281,21 @@ screenshots. The separate Company Man Insult route also passes in both builds;
 the Scene-2 gang-contract entry passage is physically covered and passes too.
 No tested route displays an error dialog.
 
+The accepted Watcher response is now covered separately. ROM `0x23812` reads
+Body from `FF0177`, uses target 6, and calls `0x1E1FC` with the selected actor
+list before displaying its combat result page. The Lua host resolves that
+typed placement synchronously: a no-placement result takes the source 200-
+nuyen page, and a successful start displays the selected combat text. Debug
+and Release Scene-3 tests cover zero successes, one success, and two-or-more
+successes, including ordered dynamic actor profiles, funds, return context,
+and 17 matching internal BMPs. This completes the accept sequence through its
+thanks/reward page; it does not cover the actual combat exit.
+
 **[H]** The handoff report does not identify which event produced the error
-window. The reported issue is not reproduced on this checkout, so no behavior
-change is supported yet. Ask for the event name or a save/repro if it appears
-again. The watcher accept/combat exit remains a separate open branch.
+window. The reported issue is not reproduced on this checkout, so the accepted
+sequence work does not establish its cause. Ask for the event name or a
+save/repro if it appears again. The Watcher combat exit and post-fight path
+remain open.
 
 ## Abandoned-building encounter report (ROM trace and physical QA, 2026-11-21)
 

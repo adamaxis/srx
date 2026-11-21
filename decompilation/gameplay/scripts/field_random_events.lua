@@ -488,11 +488,15 @@ function RandomEvents.present_phantasmal_watcher()
     if outcome == nil or scene == nil then
         return source_boundary("watcher Eye-Fiver sequence is unavailable")
     end
-    -- The source passes D0=1 to 0x1E1FC; the host resolves this map-derived
-    -- list after the dialogue returns, like the haggard-man sequence.
-    if not StoryState.queue_world_effect(scene, outcome) then
-        -- ROM 0x1E1FC returns zero when the selected list cannot start.
+    -- ROM 0x23812 calls 0x1E1FC and branches on its D0 result before choosing
+    -- the combat page. Resolve the map-derived list now so no placement takes
+    -- the same 200-nuyen fallback as a failed source sequence start.
+    local placement = StoryState.place_world_effect(scene, outcome)
+    if placement == "no_placement" then
         return watcher_reward()
+    end
+    if placement ~= "spawned" then
+        return source_boundary("watcher Eye-Fiver sequence placement is unavailable")
     end
     game.ui.say_text(outcome.result_text, true, HAGGARD_SPEAKER,
                      HAGGARD_TEXT_PROFILE)

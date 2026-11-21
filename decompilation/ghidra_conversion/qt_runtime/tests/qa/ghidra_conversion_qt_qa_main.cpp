@@ -630,8 +630,7 @@ int run_field_alarm_qa(
     const auto field_building = static_cast<std::uint16_t>(
         srx::SceneMode::BUILDING);
     const auto tile_shift = static_cast<unsigned>(srx::FieldAlarm::TILE_SHIFT);
-    const auto actors_before =
-        field_scene.world_activity_script_actor_count_for_dump();
+    const auto actors_before = field_scene.dynamic_world_actor_count_for_dump();
     field_scene.set_field_interaction_mode_for_dump(field_building);
     // Tile 33,385 lies inside the extracted Scene 21 rectangle beginning at
     // tile 32,384 [H probe inside the 0x1D7498 ROM rectangle, C].
@@ -6389,6 +6388,290 @@ int run_field_phantasmal_watcher_refusal_qa(
     std::cout << "field_phantasmal_watcher_refusal_qa=passed scene=3 "
                  "selector_sum=8 handler=0x20F2A response=0x120F18 "
                  "artifacts="
+              << output.string() << '\n';
+    return 0;
+}
+
+int run_field_phantasmal_watcher_accept_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output,
+    const std::uint8_t expected_successes,
+    const std::vector<std::string>& source_boundaries) {
+    if (expected_successes > 2U) {
+        std::cerr << "Phantasmal watcher accept QA: outcome must be 0, 1, or 2+\n";
+        return 2;
+    }
+    std::error_code error;
+    std::filesystem::remove_all(output, error);
+    if (error) {
+        std::cerr << "Phantasmal watcher accept QA: cannot clear old captures: "
+                  << error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, error);
+    if (error) {
+        std::cerr << "Phantasmal watcher accept QA: cannot create output: "
+                  << error.message() << '\n';
+        return 3;
+    }
+
+    // Scene 3's source sum-8 cell 0x1D7107 points through 0x1D7200 to
+    // handler 0x20F2A. The A choice follows 0x120F20 into 0x23812, where
+    // ROM bytes load FF0177 as the dice count and set target 6. At 0x23846,
+    // result 0/1 selects lists 0x1D6DAE/0x1D6DB6; 2+ adds 200 nuyen at
+    // 0x23834 and selects the terminal reward record 0x120F64.
+    if (field_scene.field_scene_reference_for_dump() != 2U ||
+        !field_scene.reenter_field_scene_for_dump(3U)) {
+        std::cerr << "Phantasmal watcher accept QA: could not prepare Scene 3: "
+                  << field_scene.failure() << '\n';
+        return 3;
+    }
+    field_scene.set_field_world_frame_counter_for_dump(0U);
+    field_scene.advance_frame();
+    const auto source_camera = std::pair{
+        field_scene.state().field_scene_buffers.camera_x,
+        field_scene.state().field_scene_buffers.camera_y};
+    const auto source_music = field_scene.field_current_music_id_for_dump();
+    const auto actors_before =
+        field_scene.world_activity_script_actor_count_for_dump();
+    const auto funds_before = field_scene.field_funds_for_dump();
+    if (!funds_before.has_value() ||
+        field_scene.resolve_and_spawn_field_encounter_for_dump(
+            4U, 4U, 0x4000U) != 0U) {
+        std::cerr << "Phantasmal watcher accept QA: ROM selector did not open "
+                     "its dialogue event: " << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    const auto contains_text = [](const auto& panel,
+                                  const std::string_view text) {
+        for (std::size_t index = 0U; index < panel.text_segment_count; ++index) {
+            if (panel.text_segments[index].find(text) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto save_panel = [&field_scene, &output](
+                                const std::string_view name) {
+        const auto image = render_qa_field(field_scene);
+        return image.size() == QSize(kSceneWidth, kSceneHeight) &&
+            save_qa_image(output, name, image);
+    };
+    const auto& prompt = field_scene.dialogue_panel();
+    if (!prompt.open || prompt.option_count != 2U ||
+        prompt.options[0U].source_label != "Take me to him.  I'll help." ||
+        prompt.options[1U].source_label != "Slot off, frag-face!!!" ||
+        !save_panel("opening-actual.bmp")) {
+        std::cerr << "Phantasmal watcher accept QA: source prompt did not open "
+                     "with its two ROM choices (dialogue=" << prompt.open
+                  << ", options=" << prompt.option_count << ", accept="
+                  << (prompt.option_count > 0U
+                          ? prompt.options[0U].source_label
+                          : std::string_view{}) << ", refuse="
+                  << (prompt.option_count > 1U
+                          ? prompt.options[1U].source_label
+                          : std::string_view{})
+                  << ", failure=" << field_scene.failure() << ")\n";
+        return 3;
+    }
+
+    const auto body = field_scene.active_runner_record().attributes[0U];
+    std::optional<std::uint16_t> selected_seed;
+    for (std::uint32_t candidate = 0U;
+         candidate <= std::numeric_limits<std::uint16_t>::max();
+         ++candidate) {
+        auto candidate_seed = static_cast<std::uint16_t>(candidate);
+        const auto successes =
+            shadowrun::ghidra_conversion::count_thresholded_random_rolls(
+                body, 6, [&candidate_seed](const std::uint16_t bound) {
+                    return shadowrun::ghidra_conversion::
+                        sample_source_random_bound(candidate_seed, bound);
+                });
+        const bool matches = expected_successes == 0U
+            ? successes == 0U
+            : expected_successes == 1U
+                ? successes == 1U
+                : successes >= 2U;
+        if (matches) {
+            selected_seed = static_cast<std::uint16_t>(candidate);
+            break;
+        }
+    }
+    if (!selected_seed.has_value()) {
+        std::cerr << "Phantasmal watcher accept QA: no source seed for Body="
+                  << static_cast<unsigned>(body) << " outcome="
+                  << static_cast<unsigned>(expected_successes) << "\n";
+        return 3;
+    }
+
+    // Press the real controller edge after the dialogue input lock has
+    // elapsed; pin the source dice seed immediately before ROM dispatch 0x9A.
+    settle_qa_dialogue_input(field_scene);
+    field_scene.set_source_random_seed_for_dump(*selected_seed);
+    tap_qa_controller_button(field_scene, 0x40U); // A: accept the watcher.
+    const auto& acceptance = field_scene.dialogue_panel();
+    if (!acceptance.open || !acceptance.has_more ||
+        !contains_text(acceptance, "He points ahead") ||
+        !save_panel("acceptance-actual.bmp")) {
+        std::cerr << "Phantasmal watcher accept QA: A did not show record "
+                     "0x120F20 (dialogue=" << acceptance.open << ", more="
+                  << acceptance.has_more << ", failure="
+                  << field_scene.failure() << ")\n";
+        return 3;
+    }
+
+    tap_qa_controller_button(field_scene, 0x40U); // Continue through 0x9A.
+    const auto& result = field_scene.dialogue_panel();
+    const auto result_image_saved = save_panel("outcome-actual.bmp");
+    if (!result.open || !result_image_saved) {
+        std::cerr << "Phantasmal watcher accept QA: Body result page did not "
+                     "open (dialogue=" << result.open << ", image="
+                  << result_image_saved << ", failure="
+                  << field_scene.failure() << ")\n";
+        return 3;
+    }
+
+    const std::size_t expected_actor_count = expected_successes == 0U
+        ? 4U
+        : expected_successes == 1U ? 2U : 0U;
+    const std::string_view expected_result_text = expected_successes == 0U
+        ? "Look, some new meat to tenderize!  Get him, boys!"
+        : expected_successes == 1U
+            ? "A couple of them run away, but the rest stay behind."
+            : "He hands you 200 nuyen.";
+    const bool expected_reward = expected_successes == 2U;
+    if (result.has_more == expected_reward ||
+        !contains_text(result, expected_result_text) ||
+        !save_panel("result-actual.bmp")) {
+        std::cerr << "Phantasmal watcher accept QA: Body outcome text or page "
+                     "boundary differs for result "
+                  << static_cast<unsigned>(expected_successes)
+                  << " (more=" << result.has_more << ", text="
+                  << contains_text(result, expected_result_text)
+                  << ", failure=" << field_scene.failure() << ")\n";
+        return 3;
+    }
+
+    if (!expected_reward) {
+        tap_qa_controller_button(field_scene, 0x40U);
+        const auto& thanks = field_scene.dialogue_panel();
+        if (!thanks.open || thanks.has_more ||
+            !contains_text(thanks, "giving you a wave of thanks") ||
+            !save_panel("thanks-actual.bmp")) {
+            std::cerr << "Phantasmal watcher accept QA: combat branch did not "
+                         "reach terminal record 0x120F5C (dialogue="
+                      << thanks.open << ", more=" << thanks.has_more
+                      << ", failure=" << field_scene.failure() << ")\n";
+            return 3;
+        }
+    }
+
+    tap_qa_controller_button(field_scene, 0x40U); // Close terminal record.
+    const bool transition_finished =
+        finish_field_modal_return_transition(field_scene);
+    const auto return_camera_before_field_pass = std::pair{
+        field_scene.state().field_scene_buffers.camera_x,
+        field_scene.state().field_scene_buffers.camera_y};
+    const auto return_music_before_field_pass =
+        field_scene.field_current_music_id_for_dump();
+    // The source-world list is started synchronously by the 0x1E1FC host
+    // service before the result page opens; advance one ordinary field pass
+    // after the modal return fade to check that the actors remain active.
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    const auto return_camera = std::pair{
+        field_scene.state().field_scene_buffers.camera_x,
+        field_scene.state().field_scene_buffers.camera_y};
+    const auto return_music = field_scene.field_current_music_id_for_dump();
+    const auto actors_after = field_scene.dynamic_world_actor_count_for_dump();
+    const auto funds_after = field_scene.field_funds_for_dump();
+    const auto field_image = render_qa_field(field_scene);
+    const bool field_saved = field_image.size() ==
+            QSize(kSceneWidth, kSceneHeight) &&
+        save_qa_image(output, "field-return-actual.bmp", field_image);
+    const auto returned_actors =
+        field_scene.active_default_actor_animations_for_dump();
+    bool actors_match = actors_after == actors_before + expected_actor_count;
+    if (actors_match && expected_successes < 2U) {
+        const std::array<std::string_view, 4> expected_profiles = expected_successes == 0U
+            ? std::array<std::string_view, 4>{
+                "eye5r_2_k07_item04", "eye5r_2_k07_item04",
+                "eye5r_1_k07_item01", "eye5r_1_k07_item01"}
+            : std::array<std::string_view, 4>{
+                "eye5r_1_k07_item01", "eye5r_1_k07_item01", "", ""};
+        for (std::size_t index = 0U; index < expected_actor_count; ++index) {
+            const auto actor = std::find_if(
+                returned_actors.begin(), returned_actors.end(),
+                [index](const FieldActorAnimationSnapshotForDump& candidate) {
+                    return candidate.actor_instance_id.find("_encounter_") !=
+                               std::string::npos &&
+                           candidate.source_order == index;
+                });
+            actors_match = actors_match && actor != returned_actors.end() &&
+                actor->script_profile_id == expected_profiles[index];
+        }
+    }
+    const bool funds_match = funds_after.has_value() &&
+        *funds_after == *funds_before +
+            (expected_reward ? 200U : 0U);
+    const bool context_restored =
+        return_camera_before_field_pass == source_camera &&
+        return_music_before_field_pass == source_music;
+    if (!transition_finished || field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 3U ||
+        !context_restored || return_music != source_music ||
+        !actors_match || !funds_match || !field_saved) {
+        std::cerr << "Phantasmal watcher accept QA: accepted response did not "
+                     "restore the source field and its selected outcome "
+                     "(transition=" << transition_finished << ", dialogue="
+                  << field_scene.dialogue_open() << ", scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", camera=" << context_restored
+                  << ", camera_after_pass=" << (return_camera == source_camera)
+                  << ", music=" << (return_music_before_field_pass == source_music)
+                  << ", dynamic_actors=" << actors_after << " expected="
+                  << actors_before + expected_actor_count
+                  << ", actor_profiles=";
+        for (const auto& actor : returned_actors) {
+            if (actor.actor_instance_id.find("_encounter_") ==
+                std::string::npos) {
+                continue;
+            }
+            std::cerr << '[' << actor.source_order << ':'
+                      << actor.script_profile_id << ']';
+        }
+        std::cerr << ", recent_source_events=";
+        for (std::size_t index = 0U;
+             index < source_boundaries.size(); ++index) {
+            if (source_boundaries[index].find("place_sequence") ==
+                    std::string::npos &&
+                source_boundaries[index].find("world_effect") ==
+                    std::string::npos &&
+                source_boundaries[index].find("watcher") ==
+                    std::string::npos) {
+                continue;
+            }
+            std::cerr << '[' << source_boundaries[index] << ']';
+        }
+        std::cerr
+                  << ", funds=" << (funds_after.has_value()
+                          ? std::to_string(*funds_after)
+                          : std::string("unresolved"))
+                  << " expected=" << *funds_before +
+                         (expected_reward ? 200U : 0U)
+                  << ", image=" << field_saved << ", failure="
+                  << field_scene.failure() << ")\n";
+        return 3;
+    }
+
+    std::cout << "field_phantasmal_watcher_accept_qa=passed scene=3 body="
+              << static_cast<unsigned>(body) << " outcome="
+              << static_cast<unsigned>(expected_successes)
+              << (expected_reward ? "+" : "") << " actors="
+              << expected_actor_count << " funds=" << *funds_after
+              << " seed=" << *selected_seed << " artifacts="
               << output.string() << '\n';
     return 0;
 }
@@ -49110,6 +49393,10 @@ int main(int argc, char** argv) {
             field_company_man_toothpick_qa_path;
         std::optional<std::filesystem::path>
             field_phantasmal_watcher_refusal_qa_path;
+        std::optional<std::filesystem::path>
+            field_phantasmal_watcher_accept_qa_path;
+        std::optional<std::uint8_t>
+            field_phantasmal_watcher_accept_expected_successes;
         std::optional<std::string> field_faction_route_name;
         std::optional<std::string> field_faction_scene_name;
         std::optional<std::filesystem::path>
@@ -49710,6 +49997,26 @@ int main(int argc, char** argv) {
                 field_smoke = true;
                 field_phantasmal_watcher_refusal_qa_path =
                     std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-phantasmal-watcher-accept-qa" &&
+                index + 2 < argc) {
+                field_smoke = true;
+                field_phantasmal_watcher_accept_qa_path =
+                    std::filesystem::path(argv[++index]);
+                std::uint8_t parsed_successes = 0U;
+                const std::string_view value = argv[++index];
+                const auto parsed = std::from_chars(
+                    value.data(), value.data() + value.size(), parsed_successes);
+                if (parsed.ec != std::errc{} ||
+                    parsed.ptr != value.data() + value.size() ||
+                    parsed_successes > 2U) {
+                    std::cerr << "invalid Phantasmal Watcher outcome: "
+                              << value << '\n';
+                    return 2;
+                }
+                field_phantasmal_watcher_accept_expected_successes =
+                    parsed_successes;
             }
             if (std::string(argv[index]) == "--field-faction-route" &&
                 index + 1 < argc) {
@@ -57025,6 +57332,13 @@ int main(int argc, char** argv) {
             if (field_phantasmal_watcher_refusal_qa_path.has_value()) {
                 return run_field_phantasmal_watcher_refusal_qa(
                     field_scene, *field_phantasmal_watcher_refusal_qa_path);
+            }
+            if (field_phantasmal_watcher_accept_qa_path.has_value() &&
+                field_phantasmal_watcher_accept_expected_successes.has_value()) {
+                return run_field_phantasmal_watcher_accept_qa(
+                    field_scene, *field_phantasmal_watcher_accept_qa_path,
+                    *field_phantasmal_watcher_accept_expected_successes,
+                    field_source_boundaries);
             }
             if (field_npc_item_action_qa_path.has_value()) {
                 return run_field_npc_item_action_qa(

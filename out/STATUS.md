@@ -240,3 +240,58 @@ Genesis evidence. The full CTest suite was not run. The exact user repro
 remains unknown; no gameplay behavior change is supported by this evidence.
 
 DONE
+
+---
+
+# STATUS: Phantasmal Watcher accept sequence
+
+Date: 2026-11-21
+Branch: `port-fixes`
+
+## Fixed
+
+The accepted Watcher branch now resolves the selected Eye-Fiver list before
+showing its combat result. ROM `0x23812` uses the lead runner Body at `FF0177`
+against target 6, selects list `0x1D6DAE` or `0x1D6DB6`, and calls `0x1E1FC`.
+A failed placement follows the source `+200` nuyen result at `0x23834` and
+record `0x120F64`; a successful placement shows `0x120F34` or `0x120F48` and
+then thanks at `0x120F5C`. Lua uses the typed `StoryState.place_world_effect`
+host service so the dialogue follows the actual placement result.
+
+The source return/combat exit after the thanks page is still partial. This
+does not resolve the reported "Slot off, frag-face" error: the original report
+does not identify which event displayed it, and the tested refusal routes do
+not reproduce it.
+
+## Changed files
+
+- `decompilation/gameplay/scripts/field_random_events.lua`
+- `decompilation/gameplay/tests_lua/field_random_events_tests.lua`
+- `decompilation/ghidra_conversion/qt_runtime/CMakeLists.txt`
+- `decompilation/ghidra_conversion/qt_runtime/tests/qa/ghidra_conversion_qt_qa_main.cpp`
+- `decompilation/docs/ghidra/field-random-event-selector.md`
+- `decompilation/docs/ghidra/HILLS.md`
+- `decompilation/docs/ghidra/decompiled-function-status.tsv`
+- `out/DIAG.md`
+- `out/STATUS.md`
+
+## Validation
+
+Debug and Release Qt QA targets build. The three focused accept CTests pass in
+both configurations (3/3 each), including zero successes (four ordered
+attackers), one success (two ordered attackers), and two-or-more successes
+(200 nuyen). The checks also require source result text, thanks/reward pages,
+funds, and the saved Scene-3 camera/music return. All 17 accept-path BMPs have
+matching Debug/Release SHA-256 hashes. `field_random_events_tests.lua` passes
+991/991 checks. The full Lua suite still fails in its existing `equiv_units`
+comparison (6,000 mismatches; 92 errors in both sides), matching the handoff's
+known baseline failure; the full CTest suite was not run. `git diff --check`
+passes. Captures are internal Qt output, not independent Genesis evidence.
+No push was made.
+
+Continuation note: `decompilation/ghidra_conversion/LUNA_HANDOFF.md` is absent
+in this checkout. The current equivalent and its walkthrough brief are
+`decompilation/docs/handoffs/luna_handoff_2026-11-18.md` and
+`decompilation/docs/handoffs/briefs_2026-11-18/run_walkthrough_3.md`.
+
+DONE

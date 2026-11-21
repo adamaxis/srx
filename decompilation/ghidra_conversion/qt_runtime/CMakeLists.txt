@@ -1190,6 +1190,33 @@ add_shadowrun_qt_qa_case(
     --field-phantasmal-watcher-refusal-qa
     "${CMAKE_CURRENT_BINARY_DIR}/field-phantasmal-watcher-refusal-qa")
 
+# Exercise the accepted Watcher action's two combat lists and its no-combat
+# reward result through ordinary A input and the same-map return.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_phantasmal_watcher_accept_zero_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-phantasmal-watcher-accept-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-phantasmal-watcher-accept-zero-qa"
+    0)
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_phantasmal_watcher_accept_one_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-phantasmal-watcher-accept-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-phantasmal-watcher-accept-one-qa"
+    1)
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_phantasmal_watcher_accept_reward_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-phantasmal-watcher-accept-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-phantasmal-watcher-accept-reward-qa"
+    2)
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_phantasmal_watcher_accept_zero_qa
+    shadowrun_ghidra_conversion_qt_field_phantasmal_watcher_accept_one_qa
+    shadowrun_ghidra_conversion_qt_field_phantasmal_watcher_accept_reward_qa
+    PROPERTIES LABELS "field;hill" TIMEOUT 300
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+
 # Run each mutually exclusive faction list in a fresh runtime so the first
 # encounter's active actors do not consume slots in the second source branch.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_faction_mafia_qa
