@@ -142,3 +142,23 @@ runtime transition change.
 ```
 
 The active validation is `shadowrun_ghidra_conversion_qt_map_coverage_pass_field_qa`.
+
+## Medicine Lodge Wise One scene profile was rolled back
+
+The Release suite found that the quest-gated `0x1F` response showed its
+direction text and started the normal return fade, but Joshua ended at the
+pre-dialogue coordinates instead of the ROM profile position.
+
+**[C]** ROM `0x21992` writes the longword `0x0001668A` to `FFE114`. The ROM
+profile at `0x1668A` contains camera `(0x5000,0)`, Joshua `(0x5B00,0x0880)`,
+and companions `(0x5B80,0x0900)` and `(0x5C00,0x0980)`. The following full
+scene refresh consumes that one-shot profile. The port did apply it during
+`0x2BD2` re-entry, then its generic modal snapshot restored the old party and
+camera pose over it.
+
+The modal restore now retains the newly applied pose when a pending scene
+profile was consumed, while restoring the snapshot's activity, timing, and
+audio state. Debug and Release passed the Medicine Lodge physical-entry,
+Wise One physical-entry, and Hospital physical-entry QA cases. Their five
+captures match byte-for-byte between configurations. `field-return.bmp` is
+internal Qt output, not an independent Genesis reference.

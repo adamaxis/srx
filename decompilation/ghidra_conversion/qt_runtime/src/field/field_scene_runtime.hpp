@@ -2083,7 +2083,8 @@ private:
         const MovementProbeResult& initial_probe);
     void advance_field_scene_transition_after_modal();
     void capture_field_modal_context();
-    void restore_field_modal_context();
+    void restore_field_modal_context(
+        bool preserve_scene_profile_pose = false);
     bool execute_dialogue_field_context_return(
         std::string_view return_behavior);
     void snapshot_world_activity_source_scene();

@@ -794,13 +794,19 @@ void FieldSceneRuntime::advance_field_building_scene_transition() {
         // ordinary field route, then reveal the new scene from black.
         field_building_transition_source_image_ = QImage{};
         field_building_transition_handoff_ = true;
+        const bool scene_profile_pending =
+            field_pending_scene_profile_.has_value();
         advance_field_scene_transition_after_modal();
         field_building_transition_handoff_ = false;
+        const bool scene_profile_applied = scene_profile_pending &&
+            !field_pending_scene_profile_.has_value();
         // A dialogue may sit over a same-scene building route. Its context
         // stays pushed across the fade-out and is restored after the field
         // refresh has finished, rather than before the refresh moves camera.
+        // A one-shot ROM scene profile is the new field pose, so restore the
+        // modal's nonspatial state without rolling that pose back.
         if (field_modal_context_snapshot_.has_value()) {
-            restore_field_modal_context();
+            restore_field_modal_context(scene_profile_applied);
         }
         if (!field_scene_transition_.begin_fade_in()) {
             field_scene_transition_.cancel();
@@ -987,7 +993,8 @@ void FieldSceneRuntime::capture_field_modal_context() {
     source_boundary("field.modal_context.pushed");
 }
 
-void FieldSceneRuntime::restore_field_modal_context() {
+void FieldSceneRuntime::restore_field_modal_context(
+    const bool preserve_scene_profile_pose) {
     if (!field_modal_context_snapshot_.has_value()) {
         return;
     }
@@ -999,28 +1006,31 @@ void FieldSceneRuntime::restore_field_modal_context() {
         return;
     }
 
-    field_entity_.world_position = snapshot.lead;
-    field_entity_.projection.world_x = snapshot.lead.x;
-    field_entity_.projection.world_y = snapshot.lead.y;
-    field_movement_state_.position_x = snapshot.lead.x;
-    field_movement_state_.position_y = snapshot.lead.y;
-    auto& party_records =
-        state_.field_scene_buffers.source_metadata.initial_field_records;
-    for (std::size_t index = 0U;
-         index < snapshot.party.size() && index < party_records.size(); ++index) {
-        party_records[index] = snapshot.party[index];
-    }
+    if (!preserve_scene_profile_pose) {
+        field_entity_.world_position = snapshot.lead;
+        field_entity_.projection.world_x = snapshot.lead.x;
+        field_entity_.projection.world_y = snapshot.lead.y;
+        field_movement_state_.position_x = snapshot.lead.x;
+        field_movement_state_.position_y = snapshot.lead.y;
+        auto& party_records =
+            state_.field_scene_buffers.source_metadata.initial_field_records;
+        for (std::size_t index = 0U;
+             index < snapshot.party.size() &&
+             index < party_records.size(); ++index) {
+            party_records[index] = snapshot.party[index];
+        }
 
-    field_camera_follow_ = snapshot.camera_follow;
-    field_camera_alignment_ready_ = snapshot.camera_alignment_ready;
-    state_.field_scene_buffers.camera_x = snapshot.camera_x;
-    state_.field_scene_buffers.camera_y = snapshot.camera_y;
-    state_.field_scene_entry.camera_x = snapshot.camera_x;
-    state_.field_scene_entry.camera_y = snapshot.camera_y;
-    state_.field_scene_entry.camera_transition_x =
-        snapshot.camera_transition_x;
-    state_.field_scene_entry.camera_transition_y =
-        snapshot.camera_transition_y;
+        field_camera_follow_ = snapshot.camera_follow;
+        field_camera_alignment_ready_ = snapshot.camera_alignment_ready;
+        state_.field_scene_buffers.camera_x = snapshot.camera_x;
+        state_.field_scene_buffers.camera_y = snapshot.camera_y;
+        state_.field_scene_entry.camera_x = snapshot.camera_x;
+        state_.field_scene_entry.camera_y = snapshot.camera_y;
+        state_.field_scene_entry.camera_transition_x =
+            snapshot.camera_transition_x;
+        state_.field_scene_entry.camera_transition_y =
+            snapshot.camera_transition_y;
+    }
 
     // These typed fields own whether the field pass and Start command loop
     // are available. Restoring them as one context prevents a modal exit from
