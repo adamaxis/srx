@@ -8924,7 +8924,8 @@ int run_field_elevator_group_route_qa(
     const FieldElevatorSceneGroupSourceRecord& source_group,
     const std::vector<std::uint16_t>& field_audio_events,
     const std::vector<std::string>& source_boundaries,
-    std::optional<std::uint8_t> destination_floor_override = std::nullopt);
+    std::optional<std::uint8_t> destination_floor_override = std::nullopt,
+    bool verify_neutral_hold = true);
 
 int run_field_elevator_floor_group_roundtrip_qa(
     FieldSceneRuntime& field_scene,
@@ -23533,7 +23534,8 @@ int run_field_elevator_group_route_qa(
     const FieldElevatorSceneGroupSourceRecord& source_group,
     const std::vector<std::uint16_t>& field_audio_events,
     const std::vector<std::string>& source_boundaries,
-    const std::optional<std::uint8_t> destination_floor_override) {
+    const std::optional<std::uint8_t> destination_floor_override,
+    const bool verify_neutral_hold) {
     const auto activity_start_count = static_cast<std::size_t>(
         std::count(source_boundaries.begin(), source_boundaries.end(),
                    "field.world.activity.started"));
@@ -23777,10 +23779,170 @@ int run_field_elevator_group_route_qa(
         ++timeline_frame_count;
         return true;
     };
-    const auto advance = [&]() {
+    const auto advance_sampled_frame = [&]() {
         field_scene.advance_frame();
         ++frame;
         return capture();
+    };
+    const auto company_man_prompt_open = [&]() {
+        const auto& prompt = field_scene.dialogue_panel();
+        return prompt.open && prompt.actor_name == "Company Man" &&
+               std::any_of(
+                   prompt.text_segments.begin(),
+                   prompt.text_segments.begin() +
+                       static_cast<std::ptrdiff_t>(
+                           prompt.text_segment_count),
+                   [](const std::string_view segment) {
+                       return segment.find(
+                                  "A Company Man walks up and flicks a ") !=
+                              std::string_view::npos;
+                   });
+    };
+    const auto resolve_idle_company_man = [&]() {
+        // [C ROM 0x210B4, prompt buttons 0x1214F4, Walk Away result 0x121538]
+        // A live field activity can open this three-choice dialogue during
+        // an otherwise neutral QA wait. Choose its no-roll Walk Away branch
+        // and record every update so the next elevator leg starts cleanly.
+        if (!company_man_prompt_open() ||
+            field_scene.dialogue_panel().option_count != 3U ||
+            field_scene.dialogue_panel().selected_option != 0U) {
+            return false;
+        }
+        const auto modal_scene =
+            field_scene.field_scene_reference_for_dump();
+        const auto modal_camera = std::pair{
+            field_scene.state().field_scene_buffers.camera_x,
+            field_scene.state().field_scene_buffers.camera_y};
+        const auto modal_music = field_scene.field_music_requests();
+        field_scene.set_controller_nibble(0U);
+        field_scene.set_controller_port_byte(0U);
+        std::uint16_t input_wait_frames = 0U;
+        while (field_scene.dialogue_input_locked() &&
+               input_wait_frames <
+                   std::numeric_limits<std::uint8_t>::max()) {
+            input_label = "company-man-input-wait";
+            if (!advance_sampled_frame()) {
+                return false;
+            }
+            ++input_wait_frames;
+        }
+        if (field_scene.dialogue_input_locked()) {
+            std::cerr << "Elevator group route QA: Company Man prompt did not "
+                         "release its source input wait\n";
+            return false;
+        }
+        input_label = "company-man-input-release";
+        if (!advance_sampled_frame()) {
+            return false;
+        }
+        field_scene.set_controller_port_byte(0x20U); // C: Walk Away.
+        input_label = "company-man-walk-away";
+        if (!advance_sampled_frame()) {
+            return false;
+        }
+        field_scene.set_controller_port_byte(0U);
+        input_label = "company-man-walk-away-release";
+        if (!advance_sampled_frame()) {
+            return false;
+        }
+        const auto& result = field_scene.dialogue_panel();
+        const bool walk_away_result =
+            result.open && result.actor_name == "Company Man" &&
+            !result.has_more && result.source_complete &&
+            std::any_of(
+                result.text_segments.begin(),
+                result.text_segments.begin() +
+                    static_cast<std::ptrdiff_t>(result.text_segment_count),
+                [](const std::string_view segment) {
+                    return segment.find("He saunters away.") !=
+                           std::string_view::npos;
+                });
+        if (!walk_away_result) {
+            std::cerr << "Elevator group route QA: Company Man C input did not "
+                         "select the ROM Walk Away result\n";
+            return false;
+        }
+        field_scene.set_controller_port_byte(0U);
+        input_wait_frames = 0U;
+        while (field_scene.dialogue_input_locked() &&
+               input_wait_frames <
+                   std::numeric_limits<std::uint8_t>::max()) {
+            input_label = "company-man-result-input-wait";
+            if (!advance_sampled_frame()) {
+                return false;
+            }
+            ++input_wait_frames;
+        }
+        if (field_scene.dialogue_input_locked()) {
+            std::cerr << "Elevator group route QA: Company Man result did not "
+                         "release its source input wait\n";
+            return false;
+        }
+        input_label = "company-man-result-input-release";
+        if (!advance_sampled_frame()) {
+            return false;
+        }
+        field_scene.set_controller_port_byte(0x40U); // A: close result.
+        input_label = "company-man-close-result";
+        if (!advance_sampled_frame()) {
+            return false;
+        }
+        field_scene.set_controller_port_byte(0U);
+        input_label = "company-man-close-release";
+        if (!advance_sampled_frame()) {
+            return false;
+        }
+        constexpr std::uint16_t kMaximumModalReturnFrames =
+            2U * shadowrun::ghidra_conversion::kRomBuildingTransitionVBlanks +
+            std::numeric_limits<std::uint8_t>::max();
+        std::uint16_t modal_return_frames = 0U;
+        while ((field_scene.building_scene_transition_active_for_dump() ||
+                field_scene.building_scene_transition_phase_for_dump() !=
+                    FieldSceneTransitionPhase::idle ||
+                field_scene.field_modal_return_transition_frames_for_dump() !=
+                    0U ||
+                field_scene.field_palette_fade_steps_for_dump() != 0U) &&
+               modal_return_frames < kMaximumModalReturnFrames) {
+            input_label = "company-man-return-transition";
+            if (!advance_sampled_frame()) {
+                return false;
+            }
+            ++modal_return_frames;
+        }
+        const bool context_restored =
+            modal_return_frames < kMaximumModalReturnFrames &&
+            no_modal_screen() &&
+            field_scene.field_scene_reference_for_dump() == modal_scene &&
+            field_scene.state().field_scene_buffers.camera_x ==
+                modal_camera.first &&
+            field_scene.state().field_scene_buffers.camera_y ==
+                modal_camera.second &&
+            field_scene.field_music_requests() == modal_music &&
+            std::find(source_boundaries.begin(), source_boundaries.end(),
+                      "field.random_encounter.company_man_toothpick.resolved") !=
+                source_boundaries.end();
+        if (!context_restored) {
+            std::cerr << "Elevator group route QA: Company Man Walk Away did "
+                         "not restore its field context\n";
+            return false;
+        }
+        input_label = "activity-cooldown";
+        return true;
+    };
+    const auto advance = [&]() {
+        if (!advance_sampled_frame()) {
+            return false;
+        }
+        if (!field_scene.dialogue_open()) {
+            return true;
+        }
+        if (company_man_prompt_open()) {
+            return resolve_idle_company_man();
+        }
+        std::cerr << "Elevator group route QA: unexpected dialogue interrupted "
+                     "the field route (speaker=\""
+                  << field_scene.dialogue_panel().actor_name << "\")\n";
+        return false;
     };
     const auto save = [&](const std::string_view name) {
         const auto image = render();
@@ -23811,19 +23973,28 @@ int run_field_elevator_group_route_qa(
         return 3;
     }
 
-    std::uint8_t activity_cooldown_frames = 0U;
+    const auto activity_cooldown_start_frame = frame;
+    constexpr std::uint32_t kActivityCooldownFrameLimit =
+        60U + 2U * std::numeric_limits<std::uint8_t>::max() +
+        2U * shadowrun::ghidra_conversion::kRomBuildingTransitionVBlanks;
     while (field_scene.world_activity_request_timeout_for_dump() != 0U &&
-           activity_cooldown_frames < 60U) {
+           frame - activity_cooldown_start_frame <
+               kActivityCooldownFrameLimit) {
         input_label = "activity-cooldown";
+        field_scene.set_controller_port_byte(0U);
         field_scene.set_controller_nibble(0U);
         if (!advance()) {
             return 3;
         }
-        ++activity_cooldown_frames;
     }
     if (field_scene.world_activity_request_timeout_for_dump() != 0U) {
         std::cerr << "Elevator group route QA: previous world activity did "
-                     "not release after its 60 field frames\n";
+                     "not release during the bounded cooldown (updates="
+                  << (frame - activity_cooldown_start_frame)
+                  << ", remaining="
+                  << static_cast<unsigned>(
+                         field_scene.world_activity_request_timeout_for_dump())
+                  << ")\n";
         return 3;
     }
 
@@ -24297,42 +24468,80 @@ int run_field_elevator_group_route_qa(
         camera_y = next_camera_y;
     }
     const auto destination = render();
+    const auto destination_field_only = render_qa_field(
+        field_scene, true, QImage::Format_ARGB32);
     if (stable_camera_frames != 3U ||
         field_scene.field_scene_reference_for_dump() != destination_scene ||
         field_scene.field_entity_world_position().x !=
             destination_landing_position.x ||
         field_scene.field_entity_world_position().y !=
             destination_landing_position.y ||
-        !no_modal_screen() || !field_hud_chrome_survives(destination, asset_root) ||
+        !no_modal_screen() || destination != destination_field_only ||
+        !field_hud_chrome_survives(destination, asset_root) ||
         !save("scene" + std::to_string(destination_scene) + "-destination")) {
         std::cerr << "Elevator group route QA: destination camera did not settle "
-                     "to a clean, stable field screen\n";
+                     "to a clean, stable field screen (field_only="
+                  << (destination == destination_field_only) << ", modal="
+                  << !no_modal_screen() << ", fade_steps="
+                  << static_cast<unsigned>(
+                         field_scene.field_palette_fade_steps_for_dump())
+                  << ")\n";
         return 3;
     }
-    for (std::uint8_t tick = 0U; tick < 30U; ++tick) {
-        if (!advance()) {
-            return 3;
+    if (verify_neutral_hold) {
+        for (std::uint8_t tick = 0U; tick < 30U; ++tick) {
+            if (!advance()) {
+                return 3;
+            }
         }
     }
-    // Live field actors may walk during the hold (creature movement port,
-    // 13c18334..f6b950a9), so the held frame is not compared with the first
-    // destination frame. Instead the full screen must equal a field-only
-    // redraw (no selector or lift overlay left), and the player and camera
-    // must not move.
+    // A neutral hold can run a live field service pass and open a separate
+    // gameplay event. In chained route QA, do that hold only after the final
+    // route so the next route starts from its clean descriptor landing. Every
+    // destination, including intermediate ones, is checked against a field-
+    // only redraw above before another service pass can run.
     const auto held = render();
     const auto held_field_only = render_qa_field(
         field_scene, true, QImage::Format_ARGB32);
-    if (held != held_field_only || !no_modal_screen() ||
+    const auto held_position = field_scene.field_entity_world_position();
+    const bool player_position_stable =
+        held_position.x == destination_landing_position.x &&
+        held_position.y == destination_landing_position.y;
+    const bool camera_stable =
+        field_scene.state().field_scene_buffers.camera_x == camera_x &&
+        field_scene.state().field_scene_buffers.camera_y == camera_y;
+    const bool held_field_only_equal = held == held_field_only;
+    const bool modal_interrupted_idle = !no_modal_screen();
+    const bool selector_closed =
+        !field_scene.elevator_selector_open_for_dump();
+    if ((!verify_neutral_hold && !held_field_only_equal) ||
+        (verify_neutral_hold && !modal_interrupted_idle &&
+         !held_field_only_equal) ||
+        !selector_closed ||
         field_scene.field_scene_reference_for_dump() != destination_scene ||
-        field_scene.field_entity_world_position().x !=
-            destination_landing_position.x ||
-        field_scene.field_entity_world_position().y !=
-            destination_landing_position.y ||
-        field_scene.state().field_scene_buffers.camera_x != camera_x ||
-        field_scene.state().field_scene_buffers.camera_y != camera_y ||
-        !save("scene" + std::to_string(destination_scene) + "-held-30")) {
+        !player_position_stable || !camera_stable ||
+        !save("scene" + std::to_string(destination_scene) +
+              (verify_neutral_hold
+                   ? (modal_interrupted_idle ? "-idle-modal" : "-held-30")
+                   : "-destination-stable"))) {
+        static_cast<void>(save_qa_image(output, "held-full.bmp", held));
+        static_cast<void>(save_qa_image(
+            output, "held-field-only.bmp", held_field_only));
         std::cerr << "Elevator group route QA: destination retained stale "
-                     "selector graphics or changed during idle\n";
+                     "selector state or changed during the field hold (field_only="
+                  << held_field_only_equal << ", scene="
+                  << field_scene.field_scene_reference_for_dump() << '/'
+                  << destination_scene << ", player_stable="
+                  << player_position_stable << ", camera_stable="
+                  << camera_stable << ", fade_steps="
+                  << static_cast<unsigned>(
+                         field_scene.field_palette_fade_steps_for_dump())
+                  << ", modal_fade="
+                  << static_cast<unsigned>(field_scene
+                         .field_modal_return_transition_frames_for_dump())
+                  << ", selector="
+                  << field_scene.elevator_selector_open_for_dump()
+                  << ", modal=" << modal_interrupted_idle << ")\n";
         return 3;
     }
     if (!save("actual")) {
@@ -55923,13 +56132,15 @@ int main(int argc, char** argv) {
                     [&](const std::uint16_t route_scene,
                         const std::filesystem::path& route_output,
                         const std::optional<std::uint8_t>
-                            destination_floor_override = std::nullopt) {
+                            destination_floor_override,
+                        const bool verify_neutral_hold) {
                         return run_field_elevator_group_route_qa(
                             field_scene, asset_root, route_output, route_scene,
                             source_assets.field_elevator_scene_groups[
                                 route_scene],
                             field_audio_events, field_source_boundaries,
-                            destination_floor_override);
+                            destination_floor_override,
+                            verify_neutral_hold);
                     };
                 if (field_elevator_scene25_matrix_entry_qa) {
                     const auto matrix_output =
@@ -56111,22 +56322,36 @@ int main(int argc, char** argv) {
                     // the following physical member route out of sequence.
                     initial_group_route_floor = 1U;
                 }
+                const bool route_chain_has_followup =
+                    *field_elevator_nonmember_entry_scene == 43U ||
+                    (*field_elevator_nonmember_entry_scene == 25U &&
+                     field_elevator_scene25_group_roundtrip_qa) ||
+                    (*field_elevator_nonmember_entry_scene == 34U &&
+                     field_elevator_scene34_group_roundtrip_qa) ||
+                    (*field_elevator_nonmember_entry_scene == 40U &&
+                     field_elevator_scene40_group_roundtrip_qa);
                 auto route_status = run_scene_route(
                     *field_elevator_nonmember_entry_scene,
                     *field_elevator_nonmember_entry_qa_path,
-                    initial_group_route_floor);
+                    initial_group_route_floor,
+                    !route_chain_has_followup);
                 if (route_status != 0) {
                     return route_status;
                 }
-                const auto run_group_members = [&](const auto& member_routes) {
-                    for (const auto& [member_scene, destination_floor] :
-                         member_routes) {
+                const auto run_group_members = [&](const auto& member_routes,
+                                                   const bool hold_after_chain) {
+                    for (std::size_t route_index = 0U;
+                         route_index < member_routes.size(); ++route_index) {
+                        const auto& [member_scene, destination_floor] =
+                            member_routes[route_index];
                         const auto member_status = run_scene_route(
                             member_scene,
                             *field_elevator_nonmember_entry_qa_path /
                                 ("scene" + std::to_string(member_scene) +
                                  "-member-trigger"),
-                            destination_floor);
+                            destination_floor,
+                            hold_after_chain &&
+                                route_index + 1U == member_routes.size());
                         if (member_status != 0) {
                             return member_status;
                         }
@@ -56140,7 +56365,8 @@ int main(int argc, char** argv) {
                             member_scene,
                             *field_elevator_nonmember_entry_qa_path /
                                 ("scene" + std::to_string(member_scene) +
-                                 "-member-trigger"));
+                                 "-member-trigger"),
+                            std::nullopt, member_scene == 41U);
                         if (route_status != 0) {
                             return route_status;
                         }
@@ -56151,7 +56377,7 @@ int main(int argc, char** argv) {
                                      5U>
                         member_routes{{{36U, 2U}, {37U, 3U}, {38U, 4U},
                                        {39U, 0U}, {35U, 1U}}};
-                    return run_group_members(member_routes);
+                    return run_group_members(member_routes, true);
                 } else if (*field_elevator_nonmember_entry_scene == 25U &&
                            field_elevator_scene25_group_roundtrip_qa) {
                     const std::array<std::pair<std::uint16_t, std::uint8_t>,
@@ -56159,7 +56385,7 @@ int main(int argc, char** argv) {
                         member_routes{{{22U, 2U}, {23U, 3U}, {24U, 0U},
                                        {21U, 1U}}};
                     const auto group_status =
-                        run_group_members(member_routes);
+                        run_group_members(member_routes, false);
                     if (group_status != 0) {
                         return group_status;
                     }
@@ -56169,7 +56395,7 @@ int main(int argc, char** argv) {
                                 22U,
                                 *field_elevator_nonmember_entry_qa_path /
                                     "scene22-to-scene24",
-                                3U);
+                                3U, false);
                         if (scene24_elevator_status != 0) {
                             return scene24_elevator_status;
                         }
@@ -56195,7 +56421,7 @@ int main(int argc, char** argv) {
                                 22U,
                                 *field_elevator_nonmember_entry_qa_path /
                                     "scene22-to-scene23",
-                                2U);
+                                2U, false);
                         if (scene23_elevator_status != 0) {
                             return scene23_elevator_status;
                         }
@@ -56236,7 +56462,7 @@ int main(int argc, char** argv) {
                                      4U>
                         member_routes{{{31U, 2U}, {32U, 3U}, {33U, 0U},
                                        {30U, 1U}}};
-                    return run_group_members(member_routes);
+                    return run_group_members(member_routes, true);
                 }
                 return 0;
             }
