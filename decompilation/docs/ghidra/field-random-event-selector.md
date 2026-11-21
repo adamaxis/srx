@@ -112,7 +112,7 @@ Scene IDs below are ROM field-scene IDs. The tables cover the field random-event
 | Sudden disturbance, handler `0x20EFA` | Scenes `0-3` and `5`; sums `0-3` and `7` | MORE checks `FFFBFB` and `FFFC22` bit 8. With stage `0-1` or the bit set, it selects one of 20 resource bundles but returns the holocam/photo text, with no Renraku attack. With stage `2-8` and the bit clear, it attempts a 2/4/5-person Strike Team encounter; a failed sequence start falls back to the photo text. |
 | Sudden disturbance, handler `0x20F42` | Scenes `0-1` and `3`; sums `0`, `3`, and `5` | MORE checks `FF018F` bits 1 and 2. The first set bit takes priority: bit 1 attempts four Mafia Eye-Fivers, bit 2 attempts four `weenr2` actors; neither bit gives only the generic gang-color text. A failed actor sequence falls back to the photo text. This handler does not use the Renraku or Lone Star follow-up. |
 | Sudden disturbance, handler `0x2115C` | Scenes `6-9` and `44-50`; sum `0` | MORE checks `FFFBFB` and `FFFC22` bit 8. Stages `0-1` or a set bit choose a wilderness pack from six weighted outcomes; stages `2-8` with the bit clear attempt a 2/4/5-person Strike Team encounter. |
-| Lone Star patrol, handler `0x20F12` | Scenes `0` and `3`; sums `3` and `4` | Attack queues the list at `0x1D6FDC` (`lone11`, `lone12`, `lone detectiv`). Run raises heat by one (cap eight), rolls the active party's average Quickness against target 4 plus the lead runner's armor modifier, then selects `0x1D6FE4` (0-1 successes), `0x1D6FE0` (2-3), or no actors (4+). The two actor lists use screen-edge candidates. |
+| Lone Star patrol, handler `0x20F12` | Scenes `0` and `3`; sums `3` and `4` | Attack synchronously starts list `0x1D6FDC` (`lone11`, `lone12`, `lone detectiv`); success adds two heat up to eight and shows the fight result, while failed placement shows `0x120E78` without changing heat. Run raises heat by one first (cap eight), rolls the active party's average Quickness against target 4 plus the lead runner's armor modifier, then selects `0x1D6FE4` (0-1 successes), `0x1D6FE0` (2-3), or no actors (4+). The two Run lists use screen-edge candidates; if their start fails, the ROM selects escape result `0x120E90` and retains the earlier heat update. |
 | Injured-person event, handler `0x20F72` | Scenes `0`, `1`, and `3`; sums `5` and `7` | The ordinary injured-man Attack choice can queue one Lone Star detective at `0x1D6FE4`. A separate pale-figure variant can reveal a vampire; its sequence starts at `0x1D6D8A`, after the Hell Hound pointer in the shared list. |
 | Open security panel, handler `0x20FBA` | Scenes `21-25` sums `1, 7`; `26-29` sum `2`; `30-34` sum `0` | Re-wiring rolls the party's highest Electronics field (`+0x8A`) as the dice pool against target 5. Zero successes trip the alarm and process the scene's map-effect list (2-5 corporate guards in these scenes); more than one disables the current world-effect service through `FFE170`. Walking away chains into the scientist prompt. |
 | Scientist, handler `0x20FD4` | Scenes `21-25` and `30-34`; sums `4` and `6` | Asking for information rolls slot 0's source field `+0x7A` as the dice pool against target 5. Both result branches return refusal/suspicion text; walking away returns a leave-behind and floor-text sequence. Neither command directly queues an actor. |
@@ -555,12 +555,13 @@ eight, then selects result record `0x120E70` / text `0x11D328`. A failed list
 start selects `0x120E78` / text `0x11D370` without adding heat. The list names
 `lone11`, `lone12`, and `lone detectiv` in that order.
 
-Lua now resolves those three profiles as a named map-derived sequence, queues
-it before raising heat, and presents the corresponding ROM result. The field
-runtime services that queue on the first ordinary field pass after the result
-dialogue and its return fade. Debug/Release QA checks the prompt choices,
-result page, heat cap, three spawned actor profiles, and saved 320x224 frames;
-Lua tests also exercise the nested Company Man Talk-zero and Walk-away-80
+Lua resolves those profiles as a named map-derived sequence and calls the
+typed synchronous placement service before selecting the result. A successful
+placement adds heat and presents the fight text; failed placement takes the
+source fallback without changing heat. Debug/Release QA checks that all three
+profiles are active while the result page is open and remain present after
+return, along with the heat cap and saved 320x224 frames. Lua tests cover the
+no-placement fallback and the nested Company Man Talk-zero and Walk-away-80
 routes.
 
 **[C]** Comply (`0x96`) from `0x20F12` and the Company Man patrol prompt enters
@@ -842,24 +843,26 @@ page `0x1216D8` (?You leave them behind.?) without a direct state change.
 nested patrol menus).** The helper at `0x23750` averages live Quickness from
 active party records. The lead runner's armor selector alone changes target
 4 to 5 or 6; support-slot armor does not. The shared `0x0DBA` roll explodes
-sixes. Results 0-1 show the caught text and queue the detective at `0x1D6FE4`;
-2-3 show the partial-caught text and queue Lone 12 plus a detective at
-`0x1D6FE0`; 4+ show the escape text without actors. The Run path clears D0
+sixes. Results 0-1 attempt the detective list at `0x1D6FE4`; 2-3 attempt Lone
+12 plus a detective at `0x1D6FE0`; 4+ show the escape text without starting a
+list. The Run path clears D0
 before `0x1E1FC` at `0x237F8`, which selects screen-edge candidates through
 `0x1E216`/`0x1E302`. If a requested list cannot start, the shared source tail
 returns the escape text while retaining the earlier heat increment.
 
 The Lua matrix covers all three result bands, active-runner averaging, each
-lead-armor case, heat caps, queue failure, and the nested Company Man caller.
+lead-armor case, heat caps, placement failure, and the nested Company Man caller.
 Debug/Release physical Scene-3 QA drives all three results through controller
 input. The caught branch returns with a detective; the partial branch returns
 with Lone 12 and a detective; the escape branch returns with no new actors.
 Each verifies heat 7 to 8 and its exact result text. The escape seed produces
 four successes over ten random face calls, exercising a valid service chain
 past the former eight-resume host limit; the guard is now 64. The host
-story-sequence publisher accepts the source-derived screen-edge policy as well
-as map-derived placement. Partial and escape result/field captures match
-byte-for-byte between Debug and Release. These are internal port checks;
+story-sequence placement service accepts the source-derived screen-edge policy
+as well as map-derived placement. Attack heat changes only after a successful
+start; Run placement failure selects escape while retaining the prior heat
+change. Partial and escape result/field captures match byte-for-byte between
+Debug and Release. These are internal port checks;
 nested-caller physical QA, arrest settlement, combat completion, and
 independent Genesis comparison remain open.
 

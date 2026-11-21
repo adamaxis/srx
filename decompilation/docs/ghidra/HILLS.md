@@ -2142,12 +2142,11 @@ Internal renderer captures establish the tested runtime paths only.
 
 The patrol event at ROM `0x20F12` now sends Attack through shared handler
 `0x23412`. The Lua path resolves list `0x1D6FDC` to the ordered Lone 11, Lone
-12, and detective profiles, queues the map-derived sequence, raises heat by
-two up to eight only after a successful queue, and presents the ROM result
-text. The typed field runtime now resumes a queued story sequence on its first
-normal field pass after the result dialogue returns, then publishes the three
-actors. The same Attack branch is reused by the nested Company Man patrol
-prompt.
+12, and detective profiles, then calls the typed synchronous placement
+service. Actors are placed before result selection; successful placement
+raises heat by two up to eight and presents the fight text, while failed
+placement returns the ROM fallback without changing heat. The same Attack
+branch is reused by the nested Company Man patrol prompt.
 
 Shared Comply handler `0x23452` now owns the patrol Talk choice and the nested
 Company Man patrol Talk. Its ROM branch at `0x23472` appears to allow the
@@ -2175,7 +2174,10 @@ remain open. See the [field random-event selector audit](field-random-event-sele
 ## Lone Star patrol Run choice (partial, 2026-11-21)
 
 Shared handler `0x23782` raises heat by one before the chase and caps it at
-eight. Its helper `0x23750` averages the active runners' live Quickness; the
+eight. Lua uses the synchronous typed placement service for the selected
+screen-edge list; a failed start replaces the caught/partial result with the
+ROM escape text and retains the earlier heat increase. Its helper `0x23750`
+averages the active runners' live Quickness; the
 lead runner's armor selector alone raises target 4 by one for a Lined Duster or
 two for Light Combat Armor. The shared exploding-six roll at `0x0DBA` sends
 0-1 successes to the detective list `0x1D6FE4`, 2-3 to Lone 12 plus detective
@@ -2191,9 +2193,10 @@ Lone 12 and a detective, and the escape branch returns without adding actors.
 All three verify heat 7 to 8 and the exact result text. The escape seed produces
 four successes across ten random face calls, exercising the valid Lua service
 chain beyond the former eight-resume limit; the runtime guard is now 64.
-Existing Attack QA still adds its three templates when the Run detective is
-already present. Debug and Release captures match byte-for-byte across both
-new result/field pairs and the caught/Attack route. This is internal Qt
+Attack QA checks its three templates at the result page and after return when
+the Run detective is already present. Debug and Release captures match
+byte-for-byte across both new result/field pairs and the caught/Attack route.
+This is internal Qt
 evidence, not a Genesis comparison; nested-caller physical QA, arrest
 settlement, and combat completion remain open, so the hill is partial. See the
 [field random-event selector audit](field-random-event-selector.md).

@@ -7321,9 +7321,9 @@ int run_field_lone_star_patrol_stop_qa(
         return 3;
     }
 
-    // ROM 0x23412 queues 0x1D6FDC before raising FFFBFA by two and showing
-    // page 0x11D328. Carry the same prompt through result display and actor
-    // arrival, with heat seeded at seven to check the source cap of eight.
+    // ROM 0x23412 starts 0x1D6FDC and checks the result before raising FFFBFA
+    // by two and showing page 0x11D328. Seed heat at seven to check the cap,
+    // and require the selected actors to exist while that result page is open.
     constexpr std::array<std::string_view, 3U> expected_fight_profiles{{
         "lone11_k05_item03", "lone12_k05_item07",
         "lone_detectiv_k05_item07",
@@ -7345,6 +7345,11 @@ int run_field_lone_star_patrol_stop_qa(
         field_scene.dynamic_world_actor_count_for_dump();
     const auto initial_fight_profile_counts = count_fight_profiles(
         field_scene.active_default_actor_animations_for_dump());
+    const std::array<std::size_t, 3U> expected_fight_profile_counts{{
+        initial_fight_profile_counts[0U] + 1U,
+        initial_fight_profile_counts[1U] + 1U,
+        initial_fight_profile_counts[2U] + 1U,
+    }};
     if (!field_scene.seed_field_heat_level_for_qa(7U)) {
         std::cerr << "Lone Star patrol QA: could not seed heat for Attack\n";
         return 3;
@@ -7367,17 +7372,19 @@ int run_field_lone_star_patrol_stop_qa(
             QSize(kSceneWidth, kSceneHeight) &&
         save_qa_image(output, "attack-result-actual.bmp", attack_image);
     const auto heat_after_attack = field_scene.field_heat_level_for_dump();
-    const auto attack_queued_boundary = std::find(
-        source_boundaries.begin(), source_boundaries.end(),
-        "field.world_activity.lone_star_patrol_attack_sequence_queued");
+    const auto attack_actor_count =
+        field_scene.dynamic_world_actor_count_for_dump();
+    const auto attack_profile_counts = count_fight_profiles(
+        field_scene.active_default_actor_animations_for_dump());
     if (!attack_result.open ||
         !result_contains(
             "The Lone Star forces draw their weapons with well-trained efficiency.") ||
         !heat_after_attack.has_value() || *heat_after_attack != 8U ||
-        attack_queued_boundary == source_boundaries.end() ||
+        attack_actor_count != initial_encounter_count + 3U ||
+        attack_profile_counts != expected_fight_profile_counts ||
         !attack_image_saved) {
         std::cerr << "Lone Star patrol QA: Attack did not preserve the ROM "
-                     "list, heat, and result-page order (dialogue="
+                     "list-start, heat, and result-page order (dialogue="
                   << attack_result.open << ", result="
                   << result_contains(
                          "The Lone Star forces draw their weapons with well-trained efficiency.")
@@ -7385,8 +7392,11 @@ int run_field_lone_star_patrol_stop_qa(
                   << (heat_after_attack.has_value()
                           ? std::to_string(*heat_after_attack)
                           : std::string("missing"))
-                  << ", queued="
-                  << (attack_queued_boundary != source_boundaries.end())
+                  << ", actors_at_result=" << attack_actor_count
+                  << ", expected_actors=" << initial_encounter_count + 3U
+                  << ", profiles_at_result=" << attack_profile_counts[0U]
+                  << ',' << attack_profile_counts[1U] << ','
+                  << attack_profile_counts[2U]
                   << ", image_saved=" << attack_image_saved
                   << ", failure=" << field_scene.failure() << ")\n";
         for (std::size_t index = 0U;
@@ -7399,24 +7409,11 @@ int run_field_lone_star_patrol_stop_qa(
     tap_qa_controller_button(field_scene, 0x40U);
     const bool attack_return_finished =
         finish_field_modal_return_transition(field_scene);
-    std::uint8_t attack_spawn_passes = 0U;
-    while (field_scene.dynamic_world_actor_count_for_dump() !=
-               initial_encounter_count + 3U &&
-           attack_spawn_passes < 8U) {
-        field_scene.set_controller_port_byte(0U);
-        field_scene.advance_frame();
-        ++attack_spawn_passes;
-    }
     const auto fight_actor_count =
         field_scene.dynamic_world_actor_count_for_dump();
     const auto fight_actors =
         field_scene.active_default_actor_animations_for_dump();
     const auto fight_profile_counts = count_fight_profiles(fight_actors);
-    const std::array<std::size_t, 3U> expected_fight_profile_counts{{
-        initial_fight_profile_counts[0U] + 1U,
-        initial_fight_profile_counts[1U] + 1U,
-        initial_fight_profile_counts[2U] + 1U,
-    }};
     const auto fight_image = render_qa_field(field_scene);
     const bool fight_image_saved = fight_image.size() ==
             QSize(kSceneWidth, kSceneHeight) &&
@@ -7425,13 +7422,12 @@ int run_field_lone_star_patrol_stop_qa(
         fight_actor_count != initial_encounter_count + 3U ||
         fight_profile_counts != expected_fight_profile_counts ||
         !fight_image_saved) {
-        std::cerr << "Lone Star patrol QA: queued fight did not publish the "
+        std::cerr << "Lone Star patrol QA: started fight did not retain the "
                      "three ROM templates (returned="
                   << attack_return_finished << ", dialogue="
                   << field_scene.dialogue_open() << ", actors="
                   << fight_actor_count << ", expected="
-                  << initial_encounter_count + 3U << ", spawn_passes="
-                  << static_cast<unsigned>(attack_spawn_passes)
+                  << initial_encounter_count + 3U
                   << ", profile_counts=" << fight_profile_counts[0] << ','
                   << fight_profile_counts[1] << ',' << fight_profile_counts[2]
                   << ", image_saved=" << fight_image_saved

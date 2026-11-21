@@ -1577,7 +1577,7 @@ FieldSceneRuntime::FieldSceneRuntime(
                            ? "busy"
                            : "idle";
             }
-            // story.queue_world_effect_<scene>_<actors>_<sequence id>
+            // story.place_world_effect_<scene>_<actors>_<sequence id>
             constexpr std::string_view kPlaceWorldEffectPrefix =
                 "story.place_world_effect_";
             if (service_id.rfind(kPlaceWorldEffectPrefix, 0U) == 0U) {
@@ -1635,15 +1635,20 @@ FieldSceneRuntime::FieldSceneRuntime(
                 }
                 auto outcome = game_scripts_.resolve_field_actor_sequence(
                     static_cast<std::uint16_t>(scene_id), sequence_id);
+                const bool supported_placement_policy = outcome.has_value() &&
+                    (outcome->placement_policy == scripting::
+                         ScriptFieldEncounterPlacementPolicy::
+                             map_derived_candidates ||
+                     outcome->placement_policy == scripting::
+                         ScriptFieldEncounterPlacementPolicy::
+                             screen_edge_candidates);
                 if (!outcome.has_value() ||
                     outcome->kind != scripting::
                         ScriptFieldEncounterOutcomeKind::
                             dynamic_world_effect_sequence ||
                     outcome->scene_id != scene_id ||
                     outcome->sequence_id != sequence_id ||
-                    outcome->placement_policy != scripting::
-                        ScriptFieldEncounterPlacementPolicy::
-                            map_derived_candidates ||
+                    !supported_placement_policy ||
                     outcome->actors.size() != actor_count ||
                     std::any_of(
                         outcome->actors.begin(), outcome->actors.end(),
@@ -1651,7 +1656,7 @@ FieldSceneRuntime::FieldSceneRuntime(
                             return actor.sequence_id != sequence_id;
                         })) {
                     failure_ = game_scripts_.failure().empty()
-                        ? "Story world-effect sequence did not resolve its map-placed actors"
+                        ? "Story world-effect sequence did not resolve its source placement policy"
                         : game_scripts_.failure();
                     this->source_boundary(
                         "field.world_activity.place_sequence_unresolved");

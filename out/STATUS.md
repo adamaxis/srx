@@ -295,3 +295,51 @@ in this checkout. The current equivalent and its walkthrough brief are
 `decompilation/docs/handoffs/briefs_2026-11-18/run_walkthrough_3.md`.
 
 DONE
+
+
+# STATUS: Lone Star patrol placement results
+
+Date: 2026-11-21
+Branch: `port-fixes`
+
+## Fixed
+
+ROM `0x23412` tests the return from `0x1E1FC` before changing heat or choosing
+its result page. The patrol Attack path now synchronously places the named
+`0x1D6FDC` sequence; successful placement raises heat by two, capped at eight,
+and selects the fight result. Failed placement selects `0x120E78` and leaves
+heat unchanged. ROM `0x237F8` clears D0 before starting the Run list, so the
+screen-edge placement result now selects the escape page `0x120E90` on failure
+while retaining Run's earlier heat increase. The typed host placement service
+accepts both map-derived and screen-edge candidate policies.
+
+The patrol Attack Qt QA now requires Lone 11, Lone 12, and the detective to be
+active while the fight result page is open, then checks that they remain after
+returning to the field. Existing Run QA covers caught, partial, and escaped
+results.
+
+## Changed files
+
+- `decompilation/gameplay/scripts/field_random_events.lua`
+- `decompilation/gameplay/tests_lua/field_random_events_tests.lua`
+- `decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp`
+- `decompilation/ghidra_conversion/qt_runtime/tests/qa/ghidra_conversion_qt_qa_main.cpp`
+- `decompilation/docs/ghidra/field-random-event-selector.md`
+- `decompilation/docs/ghidra/HILLS.md`
+- `decompilation/docs/ghidra/decompiled-function-status.tsv`
+- `out/DIAG.md`
+- `out/STATUS.md`
+
+## Validation
+
+The Debug and Release Qt QA targets build. The three focused patrol CTests pass
+in each configuration (3/3): Attack, partial Run, and Run escape. The Lua
+regression passes 991 checks. All generated patrol QA BMPs have matching
+Debug/Release SHA-256 hashes; the Attack field capture visibly contains the
+three expected actors. Captures are internal renderer output, not independent
+Genesis comparison. The Lua no-placement branches are covered; a physical
+host-level no-candidate setup, nested Company Man physical route, arrest
+settlement, combat completion, and independent Genesis comparison remain open.
+The full CTest suite was not run. `git diff --check` passes. No push was made.
+
+DONE

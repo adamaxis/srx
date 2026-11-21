@@ -898,7 +898,10 @@ local function run_company_man_confrontation(choice, configuration)
                         return "applied"
                     end
                     if type(action) == "string" and
-                       action:match("^queue_world_effect_3_%d+_[%w_]+$") then
+                       action:match("^[%w]+_world_effect_3_%d+_[%w_]+$") then
+                        if action:match("^place_world_effect_") then
+                            return configuration.placement_result or "spawned"
+                        end
                         return configuration.queue_world_effect_result or
                             "queued"
                     end
@@ -977,8 +980,8 @@ eq(patrol_attack_pages[1].continuation, true,
    "patrol fight lead-in waits for the source page to be acknowledged")
 eq(patrol_heat, 8, "ROM 0x23412 adds two heat capped at eight")
 eq(table.concat(patrol_story_calls, ","),
-   "get_heat_level,queue_world_effect_3_3_lone_star_patrol_attack,set_heat_level_8",
-   "patrol attack queues its three source actors before raising heat")
+   "get_heat_level,place_world_effect_3_3_lone_star_patrol_attack,set_heat_level_8",
+   "patrol attack places its three source actors before raising heat")
 local patrol_attack_sequence = Encounters.resolve_sequence(
     3, E.WorldEffectSequence.LONE_STAR_PATROL_ATTACK)
 eq(patrol_attack_sequence.kind, "dynamic_world_effect_sequence",
@@ -996,7 +999,7 @@ eq(patrol_attack_sequence.actors[3].profile_id,
    "lone_detectiv_k05_item07", "patrol sequence actor three is detective")
 
 do
-local function run_patrol_run(party, heat, dice, queue_result)
+local function run_patrol_run(party, heat, dice, placement_result)
     return run_company_man_confrontation("run_away", {
         event_id = "lone_star_patrol_stop",
         task_name = "present_lone_star_patrol_stop",
@@ -1004,7 +1007,7 @@ local function run_patrol_run(party, heat, dice, queue_result)
         party = party,
         heat_level = heat,
         random_values = { [6] = dice },
-        queue_world_effect_result = queue_result,
+        placement_result = placement_result,
     })
 end
 
@@ -1025,8 +1028,8 @@ eq(table.concat(caught_random, ","),
    "one active runner supplies four Quickness trials")
 eq(table.concat(caught_story, ","),
    "get_heat_level,set_heat_level_4," ..
-   "queue_world_effect_3_1_lone_star_patrol_run_detective",
-   "Run raises heat before its one-detective queue")
+   "place_world_effect_3_1_lone_star_patrol_run_detective",
+   "Run raises heat before placing its one detective")
 eq(caught_heat, 4, "patrol Run raises heat once")
 local caught_sequence = Encounters.resolve_sequence(
     3, E.WorldEffectSequence.LONE_STAR_PATROL_RUN_DETECTIVE)
@@ -1052,8 +1055,8 @@ eq(table.concat(partial_random, ","),
    "lined-duster check uses four live Quickness trials")
 eq(table.concat(partial_story, ","),
    "get_heat_level,set_heat_level_8," ..
-   "queue_world_effect_3_2_lone_star_patrol_run_lone12_and_detective",
-   "partial chase queues list 0x1D6FE0 after heat caps")
+   "place_world_effect_3_2_lone_star_patrol_run_lone12_and_detective",
+   "partial chase places list 0x1D6FE0 after heat caps")
 eq(partial_heat, 8, "patrol Run heat increment caps at eight")
 local partial_sequence = Encounters.resolve_sequence(
     3, E.WorldEffectSequence.LONE_STAR_PATROL_RUN_LONE12_AND_DETECTIVE)
@@ -1083,20 +1086,20 @@ eq(table.concat(escape_story, ","), "get_heat_level,set_heat_level_8",
    "successful escape increments capped heat without queuing actors")
 eq(escape_heat, 8, "successful escape retains the heat cap")
 
-local failed_queue_run, failed_queue_pages, _, _, _, _, _, failed_queue_story,
-      failed_queue_heat = run_patrol_run(
+local failed_placement_run, failed_placement_pages, _, _, _, _, _,
+      failed_placement_story, failed_placement_heat = run_patrol_run(
     { [0] = member(true, 4, 2), [1] = member(false, 0, 0),
       [2] = member(false, 0, 0) },
-    4, { 0, 0, 0, 0 }, "no_actor_slots")
-eq(failed_queue_run, "resolved", "actor placement failure uses the ROM fallback")
-eq(failed_queue_pages[1].text,
+    4, { 0, 0, 0, 0 }, "no_placement")
+eq(failed_placement_run, "resolved", "actor placement failure uses the ROM fallback")
+eq(failed_placement_pages[1].text,
    "<You easily outrun the slothfull patrol.>",
    "failed 0x1E1FC list start returns the shared escape text")
-eq(table.concat(failed_queue_story, ","),
+eq(table.concat(failed_placement_story, ","),
    "get_heat_level,set_heat_level_5," ..
-   "queue_world_effect_3_1_lone_star_patrol_run_detective",
+   "place_world_effect_3_1_lone_star_patrol_run_detective",
    "failed sequence keeps the pre-roll heat update")
-eq(failed_queue_heat, 5, "failed actor queue still retains Run heat")
+eq(failed_placement_heat, 5, "failed actor placement retains Run heat")
 
 -- The ROM only reads the lead runner's armor selector. Source armor indices
 -- 1-4 and 7 use target 4; lined duster (5) and light combat armor (6) use 5
@@ -1222,7 +1225,7 @@ local patrol_failed, patrol_failed_pages, _, _, _, _, _, patrol_failed_calls,
         event_id = "lone_star_patrol_stop",
         task_name = "present_lone_star_patrol_stop",
         prompt_choices = { "attack" },
-        queue_world_effect_result = "no_actor_slots",
+        placement_result = "no_placement",
         heat_level = 8,
     })
 eq(patrol_failed, "resolved", "failed patrol sequence returns its ROM text")
@@ -1232,7 +1235,7 @@ eq(patrol_failed_pages[1].text,
 eq(patrol_failed_heat, 8,
    "failed patrol sequence does not change Lone Star heat")
 eq(table.concat(patrol_failed_calls, ","),
-   "get_heat_level,queue_world_effect_3_3_lone_star_patrol_attack",
+   "get_heat_level,place_world_effect_3_3_lone_star_patrol_attack",
    "failed sequence does not write heat")
 
 local attack_flee, attack_flee_pages, attack_flee_exit,
@@ -1303,8 +1306,8 @@ eq(#talk_zero_random, 4,
    "nested Run continues after the two Company Man Talk dice")
 eq(table.concat(talk_zero_story, ","),
    "get_heat_level,set_heat_level_1," ..
-   "queue_world_effect_3_2_lone_star_patrol_run_lone12_and_detective",
-   "nested patrol Run uses the shared heat and actor queue")
+   "place_world_effect_3_2_lone_star_patrol_run_lone12_and_detective",
+   "nested patrol Run uses the shared heat and actor placement")
 eq(talk_zero_heat, 1, "nested patrol Run increments heat once")
 end
 
@@ -1321,10 +1324,10 @@ eq(talk_zero_attack_pages[1].text,
    "<The Lone Star forces draw their weapons with well-trained efficiency.>",
    "nested Talk patrol Attack uses the shared result record")
 eq(talk_zero_attack_heat, 8,
-   "nested Talk patrol Attack raises heat after the list queues")
+   "nested Talk patrol Attack raises heat after the list starts")
 eq(table.concat(talk_zero_attack_calls, ","),
-   "get_heat_level,queue_world_effect_3_3_lone_star_patrol_attack,set_heat_level_8",
-   "nested Talk patrol Attack uses the shared queue and heat path")
+   "get_heat_level,place_world_effect_3_3_lone_star_patrol_attack,set_heat_level_8",
+   "nested Talk patrol Attack uses the shared placement and heat path")
 
 local talk_one = run_company_man_confrontation("talk", {
     random_values = { [6] = { 4, 0 } },
@@ -1701,8 +1704,8 @@ eq(leave_patrol_attack_pages[1].text,
 eq(leave_patrol_attack_heat, 6,
    "nested Walk Away patrol Attack applies the shared heat increment")
 eq(table.concat(leave_patrol_attack_calls, ","),
-   "get_heat_level,queue_world_effect_3_3_lone_star_patrol_attack,set_heat_level_6",
-   "nested Walk Away patrol Attack uses the shared queue and heat path")
+   "get_heat_level,place_world_effect_3_3_lone_star_patrol_attack,set_heat_level_6",
+   "nested Walk Away patrol Attack uses the shared placement and heat path")
 end
 
 -- ROM 0x210B4's prompt and each visible response have their own source path.

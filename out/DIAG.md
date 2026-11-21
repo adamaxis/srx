@@ -257,6 +257,28 @@ builds. Captures are internal Qt output, not Genesis visual evidence. Nested
 caller physical QA, arrest settlement, combat completion, and independent
 Genesis comparison remain open.
 
+### Lone Star sequence-start return (ROM trace and implementation)
+
+**[C]** ROM `0x23412` starts by loading list `0x1D6FDC`, setting `D0=1`, and
+calling `0x1E1FC` (`4D F9 00 1D 6F DC 30 3C 00 01 4E B9 00 01 E1 FC`). Its
+following `TST.W D0` branches on zero before the heat write: a started list
+adds two to `FFFBFA` up to eight and selects `0x120E70`; zero selects
+`0x120E78` without changing heat. Lua now calls the typed synchronous
+`StoryState.place_world_effect`; the host resolves and places the named
+map-derived sequence before Lua chooses the result. Successful placement
+raises heat and returns the fight page; no placement returns the ROM failure
+page without changing heat.
+
+**[C]** The Run result at `0x237F8` saves the chosen result node, clears `D0`,
+and calls `0x1E1FC` (`2F 08 42 40 4E B9 00 01 E1 FC`). The selected actor list
+uses screen-edge candidates through `0x1E302`; zero return replaces the chosen
+result with escape node `0x120E90` while preserving Run's earlier heat
+increment. Lua now resolves that placement result before selecting text, and
+the typed service accepts both map-derived and screen-edge policies. The
+focused Lua suite and physical Debug/Release CTests cover the result branches
+and live actor publication; captures are internal Qt output, not independent
+Genesis evidence.
+
 ## "Slot off, frag-face" random-event response (ROM trace and QA)
 
 **[C]** The US ROM bytes at `0x20F2A` are `41 F9 00 12 0F 00` (load prompt

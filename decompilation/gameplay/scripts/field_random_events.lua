@@ -580,14 +580,21 @@ local function resolve_lone_star_patrol_attack()
         return source_boundary("ROM 0x23412 needs the current Lone Star heat")
     end
     local effect = { actors = #expected_profiles, sequence_id = sequence_id }
-    if not StoryState.queue_world_effect(scene, effect) then
+    -- ROM 0x23412 branches on D0 from 0x1E1FC before its heat write: zero
+    -- selects the leave page and successful placement selects the fight page.
+    local placement = StoryState.place_world_effect(scene, effect)
+    if placement == "no_placement" then
         game.ui.say_text(LONE_STAR_ATTACK_LIST_FAILURE, true)
         return "resolved"
+    end
+    if placement ~= "spawned" then
+        return source_boundary(
+            "ROM 0x23412 patrol sequence placement is unavailable")
     end
     if not StoryState.set_heat_level(math.min(
            StoryState.MAX_HEAT_LEVEL, heat + 2)) then
         return source_boundary(
-            "ROM 0x23412 queued the patrol but could not add two heat")
+            "ROM 0x23412 placed the patrol but could not add two heat")
     end
     game.ui.say_text(LONE_STAR_ATTACK_RESULT, true)
     return "resolved"
@@ -667,11 +674,16 @@ local function resolve_lone_star_patrol_run()
     if scene == nil then
         return source_boundary("ROM 0x237F8 needs the active field scene")
     end
-    if not StoryState.queue_world_effect(scene, outcome) then
-        -- ROM 0x23804 returns the escape record when a requested sequence
-        -- cannot start; heat has already been raised by the shared handler.
+    -- ROM 0x237F8 passes D0=0 to 0x1E1FC, selecting screen-edge placement;
+    -- its zero result returns the escape record after the heat increment.
+    local placement = StoryState.place_world_effect(scene, outcome)
+    if placement == "no_placement" then
         game.ui.say_text(LONE_STAR_RUN_ESCAPE_RESULT, false)
         return "resolved"
+    end
+    if placement ~= "spawned" then
+        return source_boundary(
+            "ROM 0x237F8 patrol sequence placement is unavailable")
     end
     game.ui.say_text(outcome.result_text, false)
     return "resolved"
