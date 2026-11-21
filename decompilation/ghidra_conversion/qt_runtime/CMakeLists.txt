@@ -299,6 +299,24 @@ set_tests_properties(shadowrun_ghidra_conversion_qt_map_coverage_cave_seed_qa
     PROPERTIES LABELS "map_coverage"
                TIMEOUT 300
                ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+
+# Defend the ROM room-7 south exit independently of the broader cave matrix:
+# the row must reach its resolved Scene-7 spawn and emit an actual.bmp dump.
+add_test(NAME shadowrun_ghidra_conversion_qt_cave_room7_south_qa
+    COMMAND "${Python3_EXECUTABLE}" "${SRX_MAP_COVERAGE_TOOL}"
+        --rom "${CMAKE_CURRENT_SOURCE_DIR}/../../input/shadowrun_genesis_us.bin"
+        --rows "${SRX_MAP_COVERAGE_FIXTURES}/rows.tsv"
+        --baseline "${SRX_MAP_COVERAGE_FIXTURES}/baseline_results.tsv"
+        --run-qa "$<TARGET_FILE:shadowrun_ghidra_conversion_qt_qa>"
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --out-dir "${CMAKE_CURRENT_BINARY_DIR}/cave-room7-south-qa"
+        --categories cave
+        --match "^cave-room07-south-r1d4e5e$"
+        --require-pass)
+set_tests_properties(shadowrun_ghidra_conversion_qt_cave_room7_south_qa
+    PROPERTIES LABELS "map_coverage;hill"
+               TIMEOUT 300
+               ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 # The full matrix takes ~18 minutes, so it is opt-in:
 #   cmake -DSRX_MAP_COVERAGE_FULL=ON . && ctest -L map_coverage_full
 # Narrow a run with: tools/map_coverage.py --run-qa <qa exe> --match <regex>.

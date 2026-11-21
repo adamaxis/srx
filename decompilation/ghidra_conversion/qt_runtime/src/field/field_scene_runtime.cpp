@@ -1102,6 +1102,78 @@ std::array<std::uint8_t, 4> field_sample_state_from_result(
 
 
 
+std::optional<FieldModeTransitionExit> resolve_cave_mode_exit(
+    scripting::GameScriptRuntime& game_scripts,
+    const std::uint8_t event_code,
+    const std::int16_t room) {
+    // ROM 0x2CE0 maps FFFBF9=8..11 to a directional exit lookup, then
+    // publishes the selected scene and FFE10A/C arrival pair. Keep the room
+    // graph in Lua and pass only named, typed facts across this boundary.
+    std::optional<std::string_view> direction;
+    switch (event_code) {
+    case 8U: direction = "north"; break;
+    case 9U: direction = "east"; break;
+    case 10U: direction = "south"; break;
+    case 11U: direction = "west"; break;
+    default: return std::nullopt;
+    }
+
+    scripting::ScriptPersistentValue context;
+    scripting::ScriptPersistentValue room_value;
+    room_value.value = static_cast<std::int64_t>(room);
+    scripting::ScriptPersistentValue direction_value;
+    direction_value.value = std::string(*direction);
+    context.value = scripting::ScriptPersistentValue::Object{
+        {"room", std::move(room_value)},
+        {"direction", std::move(direction_value)}};
+    const auto lua_exit = game_scripts.call_value(
+        "world_links", "cave_exit", {std::move(context)});
+    const auto* exit_object = lua_exit.has_value()
+        ? std::get_if<scripting::ScriptPersistentValue::Object>(
+              &lua_exit->value)
+        : nullptr;
+    if (exit_object == nullptr) {
+        return std::nullopt;
+    }
+
+    const auto read_integer = [](const auto* object, const char* field)
+        -> std::optional<std::int64_t> {
+        if (object == nullptr) return std::nullopt;
+        const auto found = object->find(field);
+        if (found == object->end()) return std::nullopt;
+        const auto* value = std::get_if<std::int64_t>(&found->second.value);
+        return value == nullptr ? std::nullopt
+                                : std::optional<std::int64_t>(*value);
+    };
+    const auto arrival_field = exit_object->find("arrival");
+    const auto* arrival = arrival_field == exit_object->end()
+        ? nullptr
+        : std::get_if<scripting::ScriptPersistentValue::Object>(
+              &arrival_field->second.value);
+    const auto destination_room = read_integer(exit_object, "room");
+    const auto destination_scene = read_integer(exit_object, "scene");
+    const auto arrival_x = read_integer(arrival, "x");
+    const auto arrival_y = read_integer(arrival, "y");
+    if (!destination_room.has_value() || !destination_scene.has_value() ||
+        !arrival_x.has_value() || !arrival_y.has_value() ||
+        *destination_room < 0 ||
+        *destination_room > std::numeric_limits<std::int16_t>::max() ||
+        *destination_scene < 0 ||
+        *destination_scene >= static_cast<std::int64_t>(
+            kFieldSceneProfileCount) ||
+        *arrival_x < 0 ||
+        *arrival_x > std::numeric_limits<std::uint16_t>::max() ||
+        *arrival_y < 0 ||
+        *arrival_y > std::numeric_limits<std::uint16_t>::max()) {
+        return std::nullopt;
+    }
+    return FieldModeTransitionExit{
+        static_cast<std::int16_t>(*destination_room),
+        static_cast<std::uint16_t>(*destination_scene),
+        static_cast<std::uint16_t>(*arrival_x),
+        static_cast<std::uint16_t>(*arrival_y)};
+}
+
 } // namespace
 
 FieldSceneRuntime::FieldSceneRuntime(
@@ -1925,6 +1997,15 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
     } else {
         source_boundary("field.exit.building_route_script_failed");
     }
+    const auto cave_mode_exit = resolved_event_route.has_value() &&
+            event_route.kind == FieldScriptRouteKind::no_route &&
+            runtime_state.mode_transition_gate != 0U
+        ? resolve_cave_mode_exit(
+              game_scripts_, runtime_state.mode_event_code,
+              runtime_state.transition_context)
+        : std::nullopt;
+    const bool continues_through_cave_mode_table =
+        cave_mode_exit.has_value();
     active_field_script_route_ = event_route;
     if (event_route.scene_transition_policy ==
         FieldSceneTransitionPolicy::building_fade) {
@@ -2250,8 +2331,13 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
             return true;
         };
     callbacks.select_field_exit_prompt =
-        [this, &runtime_state, &event_route](
+        [this, &runtime_state, &event_route,
+         continues_through_cave_mode_table](
             FieldExitOrchestratorState& state) {
+            if (continues_through_cave_mode_table) {
+                source_boundary("field.exit.cave_mode_table_continuation");
+                return false;
+            }
             if (event_route.field_exit_prompt.has_value()) {
                 const auto& task = *event_route.field_exit_prompt;
                 game_scripts_.set_field_mode_context(
@@ -2352,9 +2438,13 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
     callbacks.prepare_field_mode_exit =
         [this, &runtime_state, &event_route,
          &is_host_field_service_route,
-         &continues_through_area_event_table](
+         &continues_through_area_event_table,
+         continues_through_cave_mode_table](
             FieldExitOrchestratorState& state) {
         if (is_host_field_service_route()) {
+            return false;
+        }
+        if (continues_through_cave_mode_table) {
             return false;
         }
         if (continues_through_area_event_table()) {
@@ -2396,9 +2486,11 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
     callbacks.select_field_mode_service =
         [this, &runtime_state, &event_route,
          &is_host_field_service_route,
-         &continues_through_area_event_table](
+         &continues_through_area_event_table,
+         continues_through_cave_mode_table](
             FieldExitOrchestratorState& state) {
-            if (continues_through_area_event_table()) {
+            if (continues_through_area_event_table() ||
+                continues_through_cave_mode_table) {
                 return false;
             }
             if (!is_host_field_service_route()) {
@@ -2463,9 +2555,11 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
             return true;
         };
     callbacks.finalize_field_mode_exit =
-        [this, &continues_through_area_event_table](
+        [this, &continues_through_area_event_table,
+         continues_through_cave_mode_table](
             FieldExitOrchestratorState& state) {
-        if (continues_through_area_event_table()) {
+        if (continues_through_area_event_table() ||
+            continues_through_cave_mode_table) {
             return false;
         }
         source_boundary("field.exit.finalize_mode_exit_unresolved");
@@ -9392,78 +9486,9 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
             // Convert the source zone event into a compass exit at the host
             // boundary. Lua receives a room and a named direction; the
             // offline-imported room model supplies the resolved destination.
-            std::optional<std::string_view> exit_direction;
-            switch (runtime.mode_event_code) {
-            case 8U: exit_direction = "north"; break;
-            case 9U: exit_direction = "east"; break;
-            case 10U: exit_direction = "south"; break;
-            case 11U: exit_direction = "west"; break;
-            default: break;
-            }
-            std::optional<scripting::ScriptPersistentValue> lua_exit;
-            if (exit_direction.has_value()) {
-                scripting::ScriptPersistentValue context;
-                scripting::ScriptPersistentValue room_value;
-                room_value.value = static_cast<std::int64_t>(
-                    runtime.transition_context);
-                scripting::ScriptPersistentValue direction_value;
-                direction_value.value = std::string(*exit_direction);
-                context.value = scripting::ScriptPersistentValue::Object{
-                    {"room", std::move(room_value)},
-                    {"direction", std::move(direction_value)}};
-                lua_exit = game_scripts_.call_value(
-                    "world_links", "cave_exit", {std::move(context)});
-            }
-            std::optional<FieldModeTransitionExit> exit;
-            const auto* exit_object = lua_exit.has_value()
-                ? std::get_if<scripting::ScriptPersistentValue::Object>(
-                      &lua_exit->value)
-                : nullptr;
-            const auto read_integer = [exit_object](const char* field)
-                -> std::optional<std::int64_t> {
-                if (exit_object == nullptr) return std::nullopt;
-                const auto found = exit_object->find(field);
-                if (found == exit_object->end()) return std::nullopt;
-                const auto* value = std::get_if<std::int64_t>(
-                    &found->second.value);
-                return value == nullptr
-                    ? std::nullopt
-                    : std::optional<std::int64_t>(*value);
-            };
-            const auto* arrival_value = [&]() -> const scripting::
-                ScriptPersistentValue* {
-                if (exit_object == nullptr) return nullptr;
-                const auto found = exit_object->find("arrival");
-                return found == exit_object->end()
-                    ? nullptr : &found->second;
-            }();
-            const auto* arrival = arrival_value == nullptr
-                ? nullptr
-                : std::get_if<scripting::ScriptPersistentValue::Object>(
-                      &arrival_value->value);
-            const auto read_arrival = [arrival](const char* field)
-                -> std::optional<std::int64_t> {
-                if (arrival == nullptr) return std::nullopt;
-                const auto found = arrival->find(field);
-                if (found == arrival->end()) return std::nullopt;
-                const auto* value = std::get_if<std::int64_t>(
-                    &found->second.value);
-                return value == nullptr
-                    ? std::nullopt
-                    : std::optional<std::int64_t>(*value);
-            };
-            const auto destination_room = read_integer("room");
-            const auto destination_scene = read_integer("scene");
-            const auto arrival_x = read_arrival("x");
-            const auto arrival_y = read_arrival("y");
-            if (destination_room.has_value() && destination_scene.has_value() &&
-                arrival_x.has_value() && arrival_y.has_value()) {
-                exit = FieldModeTransitionExit{
-                    static_cast<std::int16_t>(*destination_room),
-                    static_cast<std::uint16_t>(*destination_scene),
-                    static_cast<std::uint16_t>(*arrival_x),
-                    static_cast<std::uint16_t>(*arrival_y)};
-            }
+            const auto exit = resolve_cave_mode_exit(
+                game_scripts_, runtime.mode_event_code,
+                runtime.transition_context);
             const auto plan = advance_field_mode_transition(
                 FieldModeTransitionInput{
                     runtime.mode_event_code,

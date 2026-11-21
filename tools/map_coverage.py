@@ -955,6 +955,10 @@ def run_qa(args: argparse.Namespace, rows: list[dict[str, str]]) -> int:
     current = read_results(results_path)
     regressions, improvements = compare_results(
         baseline, current, [row["row_id"] for row in selected])
+    required_pass_failures = [
+        row["row_id"] for row in selected
+        if args.require_pass and current.get(row["row_id"], {}).get("status") != "PASS"
+    ]
     counts = Counter(current.get(row["row_id"], {}).get("status", "ABSENT")
                      for row in selected)
     print("map coverage: " + ", ".join(f"{k}={v}" for k, v in sorted(counts.items())))
@@ -962,11 +966,14 @@ def run_qa(args: argparse.Namespace, rows: list[dict[str, str]]) -> int:
         print(f"IMPROVED {line}")
     for line in regressions:
         print(f"REGRESSED {line}", file=sys.stderr)
+    for row_id in required_pass_failures:
+        detail = current.get(row_id, {}).get("diff", "no result row")
+        print(f"REQUIRED-PASS {row_id}: {detail}", file=sys.stderr)
     if improvements:
         print(f"map coverage: {len(improvements)} rows now PASS; refresh "
               f"{args.baseline} with these results to lock them in")
     print(f"map coverage: results in {results_path}")
-    return 1 if regressions else 0
+    return 1 if regressions or required_pass_failures else 0
 
 
 def main() -> int:
@@ -985,6 +992,8 @@ def main() -> int:
     parser.add_argument("--baseline", type=Path, default=DEFAULT_BASELINE)
     parser.add_argument("--out-dir", type=Path, default=ROOT / "out/map_coverage")
     parser.add_argument("--only-baseline-pass", action="store_true")
+    parser.add_argument("--require-pass", action="store_true",
+                        help="fail if any selected QA row is not PASS")
     parser.add_argument("--categories")
     parser.add_argument("--match")
     args = parser.parse_args()

@@ -45,3 +45,45 @@ contract and remains a hypothesis [H]. Other random-event dialogue handlers
 remain open. No push was made.
 
 DONE
+
+---
+
+# STATUS: Cave room 7 south transition
+
+Date: 2026-11-20
+Branch: `port-fixes`
+
+## Fixed
+
+The host exit orchestrator now allows a verified cave mode-table exit to
+continue to the typed transition callback. The route is accepted only with the
+ROM scene-mode gate set, an event code from 8 through 11, an unclaimed script
+route, and a complete Lua-resolved destination. ROM `0x2CE0` then publishes
+the destination room, scene, and spawn while retaining the current field mode.
+
+The natural QA route now proves Scene 6 / room 0 -> Scene 45 / room 7 -> Scene
+7 / room 1, with arrival `(0x0B00, 0x0780)` and carried mode 0. The QA no longer
+uses the stale fixed arrival-mode column for cave exits.
+
+## Changed files
+
+- `decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp`
+- `decompilation/ghidra_conversion/qt_runtime/tests/qa/map_coverage_qa.hpp`
+- `decompilation/ghidra_conversion/qt_runtime/CMakeLists.txt`
+- `tools/map_coverage.py`
+- `out/DIAG.md`
+- `out/STATUS.md`
+
+## Validation
+
+The dedicated `shadowrun_ghidra_conversion_qt_cave_room7_south_qa` CTest
+requires PASS and writes `actual.bmp`. It passes in Debug and Release; the
+result images have the same SHA-256. The broader cave seed CTest also passes in
+both configurations. Headless tests used offscreen Qt and null audio. The
+captured image is internal Qt output, not an independent Genesis reference.
+
+`cave-room01-east-r1b45a6` remains MISSING because its final movement probe
+does not produce a fresh collision event. That is separate from the room-7
+transition fixed here. `git diff --check` passes. No push was made.
+
+DONE

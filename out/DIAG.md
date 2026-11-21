@@ -162,3 +162,28 @@ audio state. Debug and Release passed the Medicine Lodge physical-entry,
 Wise One physical-entry, and Hospital physical-entry QA cases. Their five
 captures match byte-for-byte between configurations. `field-return.bmp` is
 internal Qt output, not an independent Genesis reference.
+
+## Cave room 7 south exit reaches its ROM destination
+
+Reproduced headlessly with `tools/map_coverage.py` on
+`cave-room07-south-r1d4e5e`. The natural route enters Scene 6 / room 0 from
+the Scene-9 production dialogue transition, then reaches Scene 45 / room 7
+through the room-0 south exit. The room-7 south exit now reaches Scene 7 / room
+1 at `(0x0B00, 0x0780)`, preserving field mode 0. The collision probe can lead
+the actor beyond the row's rectangle bounds; require a fresh matching dispatch
+and the complete destination result rather than bounding the probe coordinate.
+
+**[C]** ROM bytes at `0x0A12` test `FFFC0E` and require `FFFBF9 >= 8` before
+calling `0x2CE0`. The routine at `0x2CE0` consumes the event and `FFFC10` room
+context and publishes the selected destination scene and pending spawn. The
+ROM row at `0x1D4E5E` is room 7 south (`FFFC10=7`, event `0x0A`); Lua link data
+resolves it to room 1, Scene 7, arrival `(0x0B00, 0x0780)`.
+
+The host exit orchestrator previously treated this valid mode-table route as
+an unresolved field service. It now continues only when the scene's FFFC0E gate
+is set and Lua resolves the event/room to a complete typed destination, then
+uses the existing mode-transition callback. The dedicated Debug and Release
+CTest requires this route to PASS and writes `actual.bmp`; both builds produce
+the same image hash. The separate room-1 east QA still fails to observe a fresh
+collision while approaching its event rectangle and remains open. The Qt dump
+is internal output, not an independent Genesis visual reference.
