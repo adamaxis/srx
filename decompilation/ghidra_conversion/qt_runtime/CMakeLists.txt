@@ -1155,6 +1155,13 @@ add_shadowrun_qt_qa_case(
     --field-company-man-confrontation-qa
     "${CMAKE_CURRENT_BINARY_DIR}/field-company-man-confrontation-qa")
 
+# Scene 3's sum-4 selector opens the shared Lone Star patrol prompt at 0x20F12.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_lone_star_patrol_stop_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-lone-star-patrol-stop-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-lone-star-patrol-stop-qa")
+
 # Scene 26's sum-1 selector opens the Company Man event. Confirm the Insult
 # reply displays the resource-variant clue and returns through the saved scene.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_company_man_toothpick_qa

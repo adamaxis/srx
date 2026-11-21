@@ -504,6 +504,46 @@ local function company_man_confrontation_roll(dice_pool)
     return successes
 end
 
+local function present_lone_star_patrol_stop_prompt()
+    local opening, choices = event_prompt_data(
+        "lone_star_patrol_stop", { "attack", "talk", "run_away" })
+    if opening == nil or choices == nil then
+        return nil, source_boundary(
+            "ROM 0x120FE8 Lone Star prompt data is unavailable")
+    end
+    return game.ui.prompt_text(
+        "lone_star_patrol_stop", opening, choices)
+end
+
+local function unresolved_lone_star_patrol_choice(choice)
+    if choice == "attack" then
+        return source_boundary(
+            "ROM 0x95 -> 0x23412 shared patrol Attack is not implemented")
+    end
+    if choice == "talk" then
+        return source_boundary(
+            "ROM 0x96 -> 0x23452 shared patrol comply is not implemented")
+    end
+    if choice == "run_away" then
+        return source_boundary(
+            "ROM 0x99 -> 0x23782 shared patrol chase is not implemented")
+    end
+    return source_boundary(
+        "ROM 0x120FE8 returned an unavailable Lone Star choice")
+end
+
+function RandomEvents.present_lone_star_patrol_stop()
+    local location = game.location
+    if type(location) ~= "table" or location.type ~= "field_map" or
+       location.id ~= "random_field_event" or
+       location.event_id ~= "lone_star_patrol_stop" then
+        return nil
+    end
+    local choice, failure = present_lone_star_patrol_stop_prompt()
+    if choice == nil then return failure end
+    return unresolved_lone_star_patrol_choice(choice)
+end
+
 function RandomEvents.present_company_man_confrontation()
     local location = game.location
     if type(location) ~= "table" or location.type ~= "field_map" or
@@ -555,8 +595,10 @@ function RandomEvents.present_company_man_confrontation()
         local successes, failure = company_man_confrontation_roll(dice_pool)
         if successes == nil then return failure end
         if successes == 0 then
-            return source_boundary(
-                "ROM 0x23920 Lone Star prompt 0x120FE8 is unresolved")
+            local patrol_choice, failure =
+                present_lone_star_patrol_stop_prompt()
+            if patrol_choice == nil then return failure end
+            return unresolved_lone_star_patrol_choice(patrol_choice)
         end
         if successes == 1 then
             return source_boundary(
@@ -588,8 +630,9 @@ function RandomEvents.present_company_man_confrontation()
             return source_boundary(
                 "ROM 0x23978 actor list 0x1D7074 gun-draw handoff is unresolved")
         end
-        return source_boundary(
-            "ROM 0x23978 Lone Star prompt 0x120FE8 is unresolved")
+        local patrol_choice, failure = present_lone_star_patrol_stop_prompt()
+        if patrol_choice == nil then return failure end
+        return unresolved_lone_star_patrol_choice(patrol_choice)
     end
 
     return source_boundary(

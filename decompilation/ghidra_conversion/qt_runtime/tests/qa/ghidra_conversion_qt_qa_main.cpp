@@ -6214,6 +6214,10 @@ int run_field_company_man_confrontation_qa(
         prompt.options[0].source_label == "<Attack!!>" &&
         prompt.options[1].source_label == "<Talk to him.>" &&
         prompt.options[2].source_label == "<Walk away.>";
+    const bool choice_rows_visible =
+        image_has_green_ink(prompt_image, 48, 148, 256, 18) &&
+        image_has_green_ink(prompt_image, 48, 172, 256, 18) &&
+        image_has_green_ink(prompt_image, 48, 196, 256, 18);
     const bool portrait_match = prompt.actor_name == "Company Man" &&
         prompt.portrait_alias ==
             "dialogue.portraits.club.penumbra.doorman" &&
@@ -6226,7 +6230,7 @@ int run_field_company_man_confrontation_qa(
         save_qa_image(output, "actual.bmp", prompt_image);
     if (spawned != 0U || !prompt.open || prompt.cursor_selection ||
         prompt.selected_option != 0U || !choices_match ||
-        !portrait_match ||
+        !portrait_match || !choice_rows_visible ||
         !contains("A Company Man storms up to you.") ||
         !contains("Hey, you can't get away with this!") ||
         !contains("Don't think I don't recognize you!") ||
@@ -6238,6 +6242,7 @@ int run_field_company_man_confrontation_qa(
                   << ", cursor=" << prompt.cursor_selection
                   << ", selected=" << prompt.selected_option
                   << ", labels=" << choices_match
+                  << ", choice_pixels=" << choice_rows_visible
                   << ", actor=" << prompt.actor_name
                   << ", portrait=" << prompt.portrait_alias
                   << ", portrait_pixels=" << portrait_color_pixels
@@ -6259,8 +6264,180 @@ int run_field_company_man_confrontation_qa(
         return 3;
     }
 
+    // ROM 0x23920's zero-success Talk branch enters the second prompt at
+    // 0x120FE8 directly. Select Talk with B after seeding a source RNG result
+    // that produces zero Charisma successes against target 5.
+    const auto charisma = field_scene.active_runner_record().attributes[3U];
+    std::optional<std::uint16_t> zero_success_seed;
+    for (std::uint32_t candidate = 0U;
+         candidate <= std::numeric_limits<std::uint16_t>::max(); ++candidate) {
+        auto simulated_seed = static_cast<std::uint16_t>(candidate);
+        const auto successes =
+            shadowrun::ghidra_conversion::count_thresholded_random_rolls(
+                charisma, 5U,
+                [&simulated_seed](const std::uint16_t bound) {
+                    return shadowrun::ghidra_conversion::
+                        sample_source_random_bound(simulated_seed, bound);
+                });
+        if (successes == 0U) {
+            zero_success_seed = static_cast<std::uint16_t>(candidate);
+            break;
+        }
+    }
+    if (!zero_success_seed.has_value()) {
+        std::cerr << "Company Man confrontation QA: no source seed for a "
+                     "zero-success Charisma roll (pool="
+                  << static_cast<unsigned>(charisma) << ")\n";
+        return 3;
+    }
+    field_scene.set_source_random_seed_for_dump(*zero_success_seed);
+    tap_qa_controller_button(field_scene, 0x10U);
+    const auto& patrol_prompt = field_scene.dialogue_panel();
+    const auto patrol_image = render_qa_field(field_scene);
+    const bool patrol_choices_match = patrol_prompt.option_count == 3U &&
+        patrol_prompt.options[0].source_label == "<Attack!!>" &&
+        patrol_prompt.options[1].source_label == "<Talk to them.>" &&
+        patrol_prompt.options[2].source_label == "<Run away!>";
+    const auto patrol_contains = [&patrol_prompt](
+                                    const std::string_view text) {
+        for (std::size_t index = 0U;
+             index < patrol_prompt.text_segment_count; ++index) {
+            if (patrol_prompt.text_segments[index].find(text) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const bool patrol_image_saved = patrol_image.size() ==
+            QSize(kSceneWidth, kSceneHeight) &&
+        save_qa_image(output, "patrol-actual.bmp", patrol_image);
+    const bool patrol_choice_rows_visible =
+        image_has_green_ink(patrol_image, 48, 148, 256, 18) &&
+        image_has_green_ink(patrol_image, 48, 172, 256, 18) &&
+        image_has_green_ink(patrol_image, 48, 196, 256, 18);
+    if (!patrol_prompt.open || patrol_prompt.cursor_selection ||
+        !patrol_choices_match || !patrol_choice_rows_visible ||
+        !patrol_contains(
+            "Crowds part as you are approached by a Lone Star patrol.") ||
+        !patrol_contains("A moment, citizen.  We want a word with you.") ||
+        !patrol_image_saved) {
+        std::cerr << "Company Man confrontation QA: Talk 0 did not open "
+                     "the source patrol menu (dialogue="
+                  << patrol_prompt.open << ", options="
+                  << patrol_prompt.option_count << ", cursor="
+                  << patrol_prompt.cursor_selection << ", labels="
+                  << patrol_choices_match << ", choice_pixels="
+                  << patrol_choice_rows_visible << ", opening="
+                  << patrol_contains(
+                         "Crowds part as you are approached by a Lone Star patrol.")
+                  << ", response="
+                  << patrol_contains(
+                         "A moment, citizen.  We want a word with you.")
+                  << ", image_saved=" << patrol_image_saved
+                  << ", failure=" << field_scene.failure() << ")\n";
+        for (std::size_t index = 0U;
+             index < patrol_prompt.text_segment_count; ++index) {
+            std::cerr << "  page[" << index << "]="
+                      << patrol_prompt.text_segments[index] << '\n';
+        }
+        return 3;
+    }
+
     std::cout << "field_company_man_confrontation_qa=passed scene=3 "
                  "selector=0+1 handler=0x20F5A prompt=0x120FAC "
+                 "talk_zero=0 prompt=0x120FE8 charisma="
+              << static_cast<unsigned>(charisma)
+              << " patrol_actual="
+              << (output / "patrol-actual.bmp").string() << " "
+                 "actual="
+              << (output / "actual.bmp").string() << '\n';
+    return 0;
+}
+
+int run_field_lone_star_patrol_stop_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code error;
+    std::filesystem::create_directories(output, error);
+    if (error) {
+        std::cerr << "Lone Star patrol QA: cannot create output: "
+                  << error.message() << '\n';
+        return 3;
+    }
+    clear_qa_bitmap_artifacts(output, error);
+    if (error || field_scene.field_scene_reference_for_dump() != 2U ||
+        !field_scene.reenter_field_scene_for_dump(3U)) {
+        std::cerr << "Lone Star patrol QA: could not prepare Scene 3: "
+                  << error.message() << " failure=" << field_scene.failure()
+                  << '\n';
+        return 3;
+    }
+
+    // Scene 3's sum-4 selector cell at 0x1D7103 reaches handler 0x20F12,
+    // which opens prompt record 0x120E54. Inject selector rolls 1+3 and
+    // confirm the normal Lua prompt path and source button labels.
+    const auto spawned =
+        field_scene.resolve_and_spawn_field_encounter_for_dump(
+            1U, 3U, 0x4000U);
+    const auto& prompt = field_scene.dialogue_panel();
+    const auto prompt_image = render_qa_field(field_scene);
+    const auto contains = [&prompt](const std::string_view text) {
+        for (std::size_t index = 0U;
+             index < prompt.text_segment_count; ++index) {
+            if (prompt.text_segments[index].find(text) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const bool choices_match = prompt.option_count == 3U &&
+        prompt.options[0].source_label == "<Attack!!>" &&
+        prompt.options[1].source_label == "<Talk to them.>" &&
+        prompt.options[2].source_label == "<Run away!>";
+    const auto prompt_boundary = std::find(
+        source_boundaries.begin(), source_boundaries.end(),
+        "field.random_encounter.lone_star_patrol_stop.prompt_opened");
+    const bool image_saved = prompt_image.size() ==
+            QSize(kSceneWidth, kSceneHeight) &&
+        save_qa_image(output, "actual.bmp", prompt_image);
+    const bool choice_rows_visible =
+        image_has_green_ink(prompt_image, 48, 148, 256, 18) &&
+        image_has_green_ink(prompt_image, 48, 172, 256, 18) &&
+        image_has_green_ink(prompt_image, 48, 196, 256, 18);
+    if (spawned != 0U || !prompt.open || prompt.cursor_selection ||
+        prompt.selected_option != 0U || !choices_match ||
+        !choice_rows_visible ||
+        !contains("Crowds part as you are approached by a Lone Star patrol.") ||
+        !contains("A moment, citizen.  We want a word with you.") ||
+        prompt_boundary == source_boundaries.end() || !image_saved) {
+        std::cerr << "Lone Star patrol QA: selector did not open ROM 0x120E54 "
+                     "through the Lua task (spawned="
+                  << spawned << ", dialogue=" << prompt.open
+                  << ", options=" << prompt.option_count
+                  << ", cursor=" << prompt.cursor_selection
+                  << ", labels=" << choices_match
+                  << ", choice_pixels=" << choice_rows_visible
+                  << ", first line="
+                  << contains("Crowds part as you are approached by a Lone Star patrol.")
+                  << ", second line="
+                  << contains("A moment, citizen.  We want a word with you.")
+                  << ", boundary="
+                  << (prompt_boundary != source_boundaries.end())
+                  << ", image_saved=" << image_saved
+                  << ", failure=" << field_scene.failure() << ")\n";
+        for (std::size_t index = 0U;
+             index < prompt.text_segment_count; ++index) {
+            std::cerr << "  page[" << index << "]="
+                      << prompt.text_segments[index] << '\n';
+        }
+        return 3;
+    }
+
+    std::cout << "field_lone_star_patrol_stop_qa=passed scene=3 "
+                 "selector=1+3 handler=0x20F12 prompt=0x120E54 "
                  "actual="
               << (output / "actual.bmp").string() << '\n';
     return 0;
@@ -47989,6 +48166,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_company_man_confrontation_qa_path;
         std::optional<std::filesystem::path>
+            field_lone_star_patrol_stop_qa_path;
+        std::optional<std::filesystem::path>
             field_company_man_toothpick_qa_path;
         std::optional<std::string> field_faction_route_name;
         std::optional<std::string> field_faction_scene_name;
@@ -48554,6 +48733,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_company_man_confrontation_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-lone-star-patrol-stop-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_lone_star_patrol_stop_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -55851,6 +56037,12 @@ int main(int argc, char** argv) {
                 return run_field_company_man_confrontation_qa(
                     field_scene,
                     *field_company_man_confrontation_qa_path,
+                    field_source_boundaries);
+            }
+            if (field_lone_star_patrol_stop_qa_path.has_value()) {
+                return run_field_lone_star_patrol_stop_qa(
+                    field_scene,
+                    *field_lone_star_patrol_stop_qa_path,
                     field_source_boundaries);
             }
             if (field_company_man_toothpick_qa_path.has_value()) {

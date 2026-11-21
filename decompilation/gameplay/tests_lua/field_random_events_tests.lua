@@ -749,14 +749,17 @@ local function run_company_man_confrontation(choice, configuration)
     local prompt_titles = {}
     local prompt_options = {}
     local prompt_speakers = {}
+    local prompt_call_count = 0
     local random_values = configuration.random_values or {}
     local random_indices = {}
+    local prompt_choices = configuration.prompt_choices or {}
     local party = configuration.party or { [0] = member(true, 2, 2) }
     game = {
         location = {
             type = "field_map",
             id = "random_field_event",
-            event_id = "company_man_confrontation",
+            event_id = configuration.event_id or
+                "company_man_confrontation",
             scene_id = 3,
         },
         modules = {
@@ -770,6 +773,13 @@ local function run_company_man_confrontation(choice, configuration)
                             "Hey, you can't get away with this!||" ..
                             "Don't think I don't recognize you!",
                     },
+                    {
+                        event_id = "lone_star_patrol_stop",
+                        opening_text =
+                            "<Crowds part as you are approached by a " ..
+                            "Lone Star patrol.>||A moment, citizen.  " ..
+                            "We want a word with you.",
+                    },
                 },
                 world_activity_event_choices = {
                     { event_id = "company_man_confrontation",
@@ -781,6 +791,15 @@ local function run_company_man_confrontation(choice, configuration)
                     { event_id = "company_man_confrontation",
                       choice_order = 3, choice_id = "leave",
                       label = "<Walk away.>" },
+                    { event_id = "lone_star_patrol_stop",
+                      choice_order = 1, choice_id = "attack",
+                      label = "<Attack!!>" },
+                    { event_id = "lone_star_patrol_stop",
+                      choice_order = 2, choice_id = "talk",
+                      label = "<Talk to them.>" },
+                    { event_id = "lone_star_patrol_stop",
+                      choice_order = 3, choice_id = "run_away",
+                      label = "<Run away!>" },
                 },
             },
         },
@@ -796,15 +815,17 @@ local function run_company_man_confrontation(choice, configuration)
             end,
             prompt_text = function(menu_id, prompt, options,
                                    speaker_id, text_profile)
-                eq(menu_id, "company_man_confrontation",
-                   "Company Man confrontation menu id")
+                assert(menu_id == "company_man_confrontation" or
+                       menu_id == "lone_star_patrol_stop",
+                       "Company Man and Lone Star menu ids")
                 prompt_titles[#prompt_titles + 1] = prompt
                 prompt_options[#prompt_options + 1] = options
                 prompt_speakers[#prompt_speakers + 1] = {
                     speaker_id = speaker_id,
                     text_profile = text_profile,
                 }
-                return choice
+                prompt_call_count = prompt_call_count + 1
+                return prompt_choices[prompt_call_count] or choice
             end,
         },
         services = {
@@ -830,7 +851,8 @@ local function run_company_man_confrontation(choice, configuration)
     }
     local result = DialogueFramework.open(
         E.DialogueSource.RANDOM_ENCOUNTER,
-        "field_random_events", "present_company_man_confrontation")
+        "field_random_events",
+        configuration.task_name or "present_company_man_confrontation")
     return result, pages, exit_calls, random_calls, prompt_titles,
         prompt_options, prompt_speakers
 end
@@ -855,6 +877,38 @@ eq(route.input_lock, E.DialogueInputLock.WORLD_ACTIVITY_FFE11C,
    "Company Man confrontation uses the world-activity input lock")
 eq(route.input_lock_frames, E.DialogueInputLockFrames.WORLD_ACTIVITY,
    "Company Man confrontation preserves the world-activity lock duration")
+
+local patrol_route = DialogueFramework.describe(
+    E.DialogueSource.RANDOM_ENCOUNTER,
+    "field_random_events.present_lone_star_patrol_stop")
+eq(patrol_route.scene_outcome, E.FieldLocationSceneOutcome.SAME_SCENE,
+   "Lone Star prompt returns to its source field")
+eq(patrol_route.exit_behavior, E.DialogueExitBehavior.STAY,
+   "Lone Star prompt uses the shared stay exit")
+eq(patrol_route.input_lock,
+   E.DialogueInputLock.WORLD_ACTIVITY_FFE11C,
+   "Lone Star prompt uses the world-activity input lock")
+
+local patrol_attack, _, _, _, patrol_titles, patrol_options =
+    run_company_man_confrontation("attack", {
+        event_id = "lone_star_patrol_stop",
+        task_name = "present_lone_star_patrol_stop",
+        prompt_choices = { "attack" },
+    })
+eq(type(patrol_attack), "table",
+   "Lone Star Attack reaches its explicit shared-handler boundary")
+eq(patrol_attack.type, "source_boundary",
+   "Lone Star Attack does not invent a combat result")
+eq(patrol_titles[1],
+   "<Crowds part as you are approached by a Lone Star patrol.>||" ..
+   "A moment, citizen.  We want a word with you.",
+   "ROM 0x20F12 uses its extracted patrol prompt")
+eq(#patrol_options[1], 3, "Lone Star prompt has three source choices")
+eq(patrol_options[1][1].id, "attack", "Lone Star Attack command")
+eq(patrol_options[1][2].id, "talk", "Lone Star Talk command")
+eq(patrol_options[1][3].id, "run_away", "Lone Star Run command")
+assert(patrol_attack.reason:find("0x23412", 1, true) ~= nil,
+       "Lone Star Attack names shared ROM handler 0x23412")
 
 local attack_flee, attack_flee_pages, attack_flee_exit,
       attack_flee_random, attack_flee_titles, attack_flee_options,
@@ -903,12 +957,20 @@ eq(talk_apology_pages[1].text,
 eq(table.concat(talk_apology_random, ","), "bounded_6,bounded_6",
    "Talk rolls the first runner's two Charisma dice against target 5")
 
-local talk_zero = run_company_man_confrontation("talk", {
-    random_values = { [6] = { 0, 0 } },
-})
-eq(type(talk_zero), "table", "Talk zero-success patrol remains explicit")
+local talk_zero, _, _, _, talk_zero_titles, talk_zero_options =
+    run_company_man_confrontation("talk", {
+        random_values = { [6] = { 0, 0 } },
+        prompt_choices = { "talk", "run_away" },
+    })
+eq(type(talk_zero), "table", "Talk zero-success opens patrol prompt")
 eq(talk_zero.type, "source_boundary",
-   "Talk zero-success does not invent the patrol path")
+   "Talk zero-success stops at the shared patrol choice handler")
+eq(#talk_zero_titles, 2,
+   "Talk zero-success presents the nested Lone Star prompt")
+eq(talk_zero_options[2][3].id, "run_away",
+   "Talk zero-success exposes the patrol Run choice")
+assert(talk_zero.reason:find("0x23782", 1, true) ~= nil,
+       "Lone Star Run identifies shared chase handler 0x23782")
 
 local talk_one = run_company_man_confrontation("talk", {
     random_values = { [6] = { 4, 0 } },
@@ -944,13 +1006,21 @@ eq(type(leave_gun_draw), "table",
 eq(leave_gun_draw.type, "source_boundary",
    "Walk Away 40 does not fabricate actor list 0x1D7074")
 
-local leave_patrol = run_company_man_confrontation("leave", {
-    random_values = { [100] = { 80 } },
-})
+local leave_patrol, _, _, _, leave_patrol_titles, leave_patrol_options =
+    run_company_man_confrontation("leave", {
+        random_values = { [100] = { 80 } },
+        prompt_choices = { "leave", "talk" },
+    })
 eq(type(leave_patrol), "table",
-   "Walk Away 80 patrol prompt remains explicit")
+   "Walk Away 80 opens patrol prompt")
 eq(leave_patrol.type, "source_boundary",
-   "Walk Away 80 does not substitute a different patrol menu")
+   "Walk Away 80 reaches the shared comply boundary")
+eq(#leave_patrol_titles, 2,
+   "Walk Away 80 presents the nested Lone Star prompt")
+eq(leave_patrol_options[2][2].id, "talk",
+   "Walk Away 80 exposes the patrol Talk choice")
+assert(leave_patrol.reason:find("0x23452", 1, true) ~= nil,
+       "Lone Star Talk identifies shared comply handler 0x23452")
 end
 
 -- ROM 0x210B4's prompt and each visible response have their own source path.
