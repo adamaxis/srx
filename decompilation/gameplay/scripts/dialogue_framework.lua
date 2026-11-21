@@ -168,6 +168,14 @@ local ROUTE_OVERRIDES = {
         input_lock = E.DialogueInputLock.WORLD_ACTIVITY_FFE11C,
         input_lock_frames = E.DialogueInputLockFrames.WORLD_ACTIVITY,
     }, -- 0x210B4 returns to its resource scene through the shared event exit.
+    ["field_random_events.present_company_man_confrontation"] = {
+        scene_outcome = E.FieldLocationSceneOutcome.SAME_SCENE,
+        exit_behavior = E.DialogueExitBehavior.STAY,
+        transition = E.DialogueTransition.FADE,
+        transition_frames = E.DialogueTransitionFrames.HAGGARD_BLACK_INTERVAL,
+        input_lock = E.DialogueInputLock.WORLD_ACTIVITY_FFE11C,
+        input_lock_frames = E.DialogueInputLockFrames.WORLD_ACTIVITY,
+    }, -- 0x20F5A returns to its source field through the shared event exit.
     ["salish_spirit_eyes.present"] = {
         transition = E.DialogueTransition.FADE,
     }, -- Preserve the native modal close around the typed source-context result.

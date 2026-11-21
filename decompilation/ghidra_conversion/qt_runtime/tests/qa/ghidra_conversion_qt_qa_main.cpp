@@ -6157,6 +6157,115 @@ int run_field_security_guard_weighted_event_qa(
     return 0;
 }
 
+int run_field_company_man_confrontation_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code error;
+    std::filesystem::create_directories(output, error);
+    if (error) {
+        std::cerr << "Company Man confrontation QA: cannot create output: "
+                  << error.message() << '\n';
+        return 3;
+    }
+    clear_qa_bitmap_artifacts(output, error);
+    if (error || field_scene.field_scene_reference_for_dump() != 2U ||
+        !field_scene.reenter_field_scene_for_dump(3U)) {
+        std::cerr << "Company Man confrontation QA: could not prepare "
+                     "Scene 3: "
+                  << error.message() << " failure=" << field_scene.failure()
+                  << '\n';
+        return 3;
+    }
+
+    // Scene 3's sum-1 cell at 0x1D7100 selects handler 0x20F5A and
+    // prompt record 0x120FAC. Inject only the selector rolls, then inspect
+    // the normal Lua-owned prompt and field renderer.
+    const auto spawned =
+        field_scene.resolve_and_spawn_field_encounter_for_dump(
+            0U, 1U, 0x4000U);
+    const auto& prompt = field_scene.dialogue_panel();
+    const auto prompt_image = render_qa_field(field_scene);
+    std::size_t portrait_color_pixels = 0U;
+    if (!prompt_image.isNull() &&
+        prompt_image.size() == QSize(kSceneWidth, kSceneHeight)) {
+        for (int y = 40; y < 108; ++y) {
+            for (int x = 16; x < 74; ++x) {
+                const auto color = prompt_image.pixelColor(x, y);
+                const auto brightest =
+                    std::max({color.red(), color.green(), color.blue()});
+                const auto darkest =
+                    std::min({color.red(), color.green(), color.blue()});
+                portrait_color_pixels += brightest - darkest > 20 ? 1U : 0U;
+            }
+        }
+    }
+    const auto contains = [&prompt](const std::string_view text) {
+        for (std::size_t index = 0U;
+             index < prompt.text_segment_count; ++index) {
+            if (prompt.text_segments[index].find(text) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const bool choices_match = prompt.option_count == 3U &&
+        prompt.options[0].source_label == "<Attack!!>" &&
+        prompt.options[1].source_label == "<Talk to him.>" &&
+        prompt.options[2].source_label == "<Walk away.>";
+    const bool portrait_match = prompt.actor_name == "Company Man" &&
+        prompt.portrait_alias ==
+            "dialogue.portraits.club.penumbra.doorman" &&
+        portrait_color_pixels >= 500U;
+    const auto prompt_boundary = std::find(
+        source_boundaries.begin(), source_boundaries.end(),
+        "field.random_encounter.company_man_confrontation.prompt_opened");
+    const bool image_saved = prompt_image.size() ==
+            QSize(kSceneWidth, kSceneHeight) &&
+        save_qa_image(output, "actual.bmp", prompt_image);
+    if (spawned != 0U || !prompt.open || prompt.cursor_selection ||
+        prompt.selected_option != 0U || !choices_match ||
+        !portrait_match ||
+        !contains("A Company Man storms up to you.") ||
+        !contains("Hey, you can't get away with this!") ||
+        !contains("Don't think I don't recognize you!") ||
+        prompt_boundary == source_boundaries.end() || !image_saved) {
+        std::cerr << "Company Man confrontation QA: selector did not open "
+                     "ROM 0x120FAC through the Lua task (spawned="
+                  << spawned << ", dialogue=" << prompt.open
+                  << ", options=" << prompt.option_count
+                  << ", cursor=" << prompt.cursor_selection
+                  << ", selected=" << prompt.selected_option
+                  << ", labels=" << choices_match
+                  << ", actor=" << prompt.actor_name
+                  << ", portrait=" << prompt.portrait_alias
+                  << ", portrait_pixels=" << portrait_color_pixels
+                  << ", opening="
+                  << contains("A Company Man storms up to you.")
+                  << ", first line="
+                  << contains("Hey, you can't get away with this!")
+                  << ", second line="
+                  << contains("Don't think I don't recognize you!")
+                  << ", boundary="
+                  << (prompt_boundary != source_boundaries.end())
+                  << ", image_saved=" << image_saved
+                  << ", failure=" << field_scene.failure() << ")\n";
+        for (std::size_t index = 0U;
+             index < prompt.text_segment_count; ++index) {
+            std::cerr << "  page[" << index << "]="
+                      << prompt.text_segments[index] << '\n';
+        }
+        return 3;
+    }
+
+    std::cout << "field_company_man_confrontation_qa=passed scene=3 "
+                 "selector=0+1 handler=0x20F5A prompt=0x120FAC "
+                 "actual="
+              << (output / "actual.bmp").string() << '\n';
+    return 0;
+}
+
 int run_field_hidden_camera_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& output,
@@ -47878,6 +47987,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_security_guard_weighted_event_qa_path;
         std::optional<std::filesystem::path>
+            field_company_man_confrontation_qa_path;
+        std::optional<std::filesystem::path>
             field_company_man_toothpick_qa_path;
         std::optional<std::string> field_faction_route_name;
         std::optional<std::string> field_faction_scene_name;
@@ -48436,6 +48547,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_security_guard_weighted_event_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-company-man-confrontation-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_company_man_confrontation_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -55727,6 +55845,12 @@ int main(int argc, char** argv) {
                 return run_field_security_guard_weighted_event_qa(
                     field_scene,
                     *field_security_guard_weighted_event_qa_path,
+                    field_source_boundaries);
+            }
+            if (field_company_man_confrontation_qa_path.has_value()) {
+                return run_field_company_man_confrontation_qa(
+                    field_scene,
+                    *field_company_man_confrontation_qa_path,
                     field_source_boundaries);
             }
             if (field_company_man_toothpick_qa_path.has_value()) {

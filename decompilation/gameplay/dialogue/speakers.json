@@ -443,6 +443,12 @@
       "portrait_alias": "none",
       "text_profile": "field.world_event"
     },
+    "company_man_confrontation": {
+      "events": {},
+      "name": "Company Man",
+      "portrait_alias": "dialogue.portraits.club.penumbra.doorman",
+      "text_profile": "field.world_event"
+    },
     "company_man_random_event": {
       "events": {},
       "name": "Company Man",

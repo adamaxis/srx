@@ -22,9 +22,13 @@ struct FieldDialogueEventTask {
     std::string_view task_name;
 };
 
-inline constexpr std::array<FieldDialogueEventTask, 6U>
+inline constexpr std::array<FieldDialogueEventTask, 7U>
     kFieldDialogueEventTasks{{
         {"hidden_camera", "present_hidden_camera"},
+        // Scene 3's sum-1 cell at ROM 0x1D7100 reaches handler 0x20F5A;
+        // Lua owns its separate Attack/Talk/Walk Away prompt.
+        {"company_man_confrontation",
+         "present_company_man_confrontation"},
         // Scene 20's sum-4 selector at ROM 0x1D7130 reaches 0x20FEC and
         // prompt 0x121238; the same Lua task also serves guard contact.
         {"security_guard_stop", "present_security_guard_stop"},

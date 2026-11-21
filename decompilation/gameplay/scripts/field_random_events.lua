@@ -96,6 +96,8 @@ local SECURITY_GUARD_BADGE_VERIFY_RESULT =
 -- no portrait.
 local HAGGARD_SPEAKER = "haggard_man_event"
 local HAGGARD_TEXT_PROFILE = "field.world_event"
+local COMPANY_MAN_CONFRONTATION_SPEAKER = "company_man_confrontation"
+local COMPANY_MAN_CONFRONTATION_TEXT_PROFILE = "field.world_event"
 local COMPANY_MAN_SPEAKER = "company_man_random_event"
 local COMPANY_MAN_TEXT_PROFILE = "field.world_event"
 local WATCHER_BODY_TARGET = 6 -- ROM 0x2381A [C].
@@ -127,6 +129,16 @@ local WATCHER_REWARD_RESULT =
     "This, I'm afraid, is all I can offer in return.||" ..
     "<He hands you 200 nuyen.>" -- ROM text 0x11DAF8 [C].
 local COMPANY_MAN_TARGET = 7 -- ROM 0x24846 and 0x2489A [C].
+local COMPANY_MAN_CONFRONTATION_TARGET = 5 -- ROM 0x23920 [C].
+local COMPANY_MAN_CONFRONTATION_ATTACK_FLEE_RESULT =
+    "<As you move to attack, the man turns white and runs away.>" -- ROM 0x120FC8 / text 0x11DC13 [C].
+local COMPANY_MAN_CONFRONTATION_LEAVE_RESULT =
+    "<The man follows you for a while, yelling at you.||" ..
+    "He eventually moves on.>" -- ROM 0x120FD0 / text 0x11DC4F [C].
+local COMPANY_MAN_CONFRONTATION_TALK_RESULT =
+    "Wait... You aren't Mr. Johnson, are you?||" ..
+    "I am very sorry to have bothered you.||" ..
+    "<The confused man scurries off.>" -- ROM 0x120FD8 / text 0x11DD5E [C].
 local COMPANY_MAN_ATTACK_FLEE_RESULT =
     "<As you pull your guns, the Company Man flees and raises the alarm.>"
     -- ROM record 0x121510 -> text 0x11FE92 [C].
@@ -473,6 +485,115 @@ local function company_man_roll(dice_pool, boundary_reason)
                                    " threshold roll is unavailable")
     end
     return successes
+end
+
+local function company_man_confrontation_roll(dice_pool)
+    local modules = type(game.modules) == "table" and game.modules or nil
+    local combat = type(modules) == "table" and modules.combat or nil
+    if type(combat) ~= "table" or
+       type(combat.roll_thresholded_successes) ~= "function" then
+        return nil, source_boundary(
+            "Company Man Talk needs the shared threshold-roll service")
+    end
+    local successes = combat.roll_thresholded_successes(
+        dice_pool, COMPANY_MAN_CONFRONTATION_TARGET, random_die)
+    if successes == nil then
+        return nil, source_boundary(
+            "Company Man Talk threshold roll is unavailable")
+    end
+    return successes
+end
+
+function RandomEvents.present_company_man_confrontation()
+    local location = game.location
+    if type(location) ~= "table" or location.type ~= "field_map" or
+       location.id ~= "random_field_event" or
+       location.event_id ~= "company_man_confrontation" then
+        return nil
+    end
+
+    local opening, choices = event_prompt_data(
+        "company_man_confrontation", { "attack", "talk", "leave" })
+    if opening == nil or choices == nil then
+        return source_boundary(
+            "Company Man confrontation prompt data is unavailable")
+    end
+    -- ROM 0x20F5A selects this separate three-choice record. Profile 0x121F40
+    -- decodes to dialogue.portraits.club.penumbra.doorman [C]; the toothpick
+    -- event uses its distinct profile at 0x121E2C.
+    local choice = game.ui.prompt_text(
+        "company_man_confrontation", opening, choices,
+        COMPANY_MAN_CONFRONTATION_SPEAKER,
+        COMPANY_MAN_CONFRONTATION_TEXT_PROFILE)
+
+    if choice == "attack" then
+        -- ROM 0x238EA selects 0x120FC8 for rolls 0-49. Rolls 50-99 reach
+        -- actor list 0x1D7074 and the unresolved gun-draw handoff.
+        local roll = random_die(100)
+        if roll == nil then
+            return source_boundary(
+                "ROM 0x238EA requires a bounded-100 random result")
+        end
+        if roll < 50 then
+            game.ui.say_text(
+                COMPANY_MAN_CONFRONTATION_ATTACK_FLEE_RESULT, false,
+                COMPANY_MAN_CONFRONTATION_SPEAKER,
+                COMPANY_MAN_CONFRONTATION_TEXT_PROFILE)
+            return "resolved"
+        end
+        return source_boundary(
+            "ROM 0x238EA actor list 0x1D7074 gun-draw handoff is unresolved")
+    end
+
+    if choice == "talk" then
+        -- ROM 0x23920 reads slot 0 +0x7A Charisma and rolls against target 5.
+        local dice_pool = first_runner_attribute("charisma")
+        if dice_pool == nil then
+            return source_boundary(
+                "Company Man Talk needs the first runner's Charisma")
+        end
+        local successes, failure = company_man_confrontation_roll(dice_pool)
+        if successes == nil then return failure end
+        if successes == 0 then
+            return source_boundary(
+                "ROM 0x23920 Lone Star prompt 0x120FE8 is unresolved")
+        end
+        if successes == 1 then
+            return source_boundary(
+                "ROM 0x23920 actor list 0x1D7074 gun-draw handoff is unresolved")
+        end
+        game.ui.say_text(
+            COMPANY_MAN_CONFRONTATION_TALK_RESULT, false,
+            COMPANY_MAN_CONFRONTATION_SPEAKER,
+            COMPANY_MAN_CONFRONTATION_TEXT_PROFILE)
+        return "resolved"
+    end
+
+    if choice == "leave" then
+        -- ROM 0x23978: 0-39 returns 0x120FD0; 40-79 attempts list 0x1D7074;
+        -- 80-99 opens the separate Lone Star menu at 0x120FE8.
+        local roll = random_die(100)
+        if roll == nil then
+            return source_boundary(
+                "ROM 0x23978 requires a bounded-100 random result")
+        end
+        if roll < 40 then
+            game.ui.say_text(
+                COMPANY_MAN_CONFRONTATION_LEAVE_RESULT, false,
+                COMPANY_MAN_CONFRONTATION_SPEAKER,
+                COMPANY_MAN_CONFRONTATION_TEXT_PROFILE)
+            return "resolved"
+        end
+        if roll < 80 then
+            return source_boundary(
+                "ROM 0x23978 actor list 0x1D7074 gun-draw handoff is unresolved")
+        end
+        return source_boundary(
+            "ROM 0x23978 Lone Star prompt 0x120FE8 is unresolved")
+    end
+
+    return source_boundary(
+        "ROM 0x120FAC returned an unavailable Company Man choice")
 end
 
 function RandomEvents.present_company_man_toothpick()

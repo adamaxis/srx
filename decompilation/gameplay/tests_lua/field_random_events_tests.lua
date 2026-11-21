@@ -741,6 +741,218 @@ local function run_company_man_toothpick(choice, configuration)
         resource_variant_calls
 end
 
+local function run_company_man_confrontation(choice, configuration)
+    configuration = configuration or {}
+    local pages = {}
+    local exit_calls = {}
+    local random_calls = {}
+    local prompt_titles = {}
+    local prompt_options = {}
+    local prompt_speakers = {}
+    local random_values = configuration.random_values or {}
+    local random_indices = {}
+    local party = configuration.party or { [0] = member(true, 2, 2) }
+    game = {
+        location = {
+            type = "field_map",
+            id = "random_field_event",
+            event_id = "company_man_confrontation",
+            scene_id = 3,
+        },
+        modules = {
+            combat = Combat,
+            world_content_data = {
+                world_activity_event_content = {
+                    {
+                        event_id = "company_man_confrontation",
+                        opening_text =
+                            "<A Company Man storms up to you.>||" ..
+                            "Hey, you can't get away with this!||" ..
+                            "Don't think I don't recognize you!",
+                    },
+                },
+                world_activity_event_choices = {
+                    { event_id = "company_man_confrontation",
+                      choice_order = 1, choice_id = "attack",
+                      label = "<Attack!!>" },
+                    { event_id = "company_man_confrontation",
+                      choice_order = 2, choice_id = "talk",
+                      label = "<Talk to him.>" },
+                    { event_id = "company_man_confrontation",
+                      choice_order = 3, choice_id = "leave",
+                      label = "<Walk away.>" },
+                },
+            },
+        },
+        party = function() return party end,
+        ui = {
+            say_text = function(text, continuation, speaker_id, text_profile)
+                pages[#pages + 1] = {
+                    text = text,
+                    continuation = continuation,
+                    speaker_id = speaker_id,
+                    text_profile = text_profile,
+                }
+            end,
+            prompt_text = function(menu_id, prompt, options,
+                                   speaker_id, text_profile)
+                eq(menu_id, "company_man_confrontation",
+                   "Company Man confrontation menu id")
+                prompt_titles[#prompt_titles + 1] = prompt
+                prompt_options[#prompt_options + 1] = options
+                prompt_speakers[#prompt_speakers + 1] = {
+                    speaker_id = speaker_id,
+                    text_profile = text_profile,
+                }
+                return choice
+            end,
+        },
+        services = {
+            call = function(domain, action)
+                if domain == "random" then
+                    local bound = tonumber(
+                        type(action) == "string" and
+                            action:match("^bounded_(%d+)$") or "")
+                    assert(bound == 6 or bound == 100,
+                           "Company Man confrontation random bound")
+                    random_calls[#random_calls + 1] = action
+                    random_indices[bound] = (random_indices[bound] or 0) + 1
+                    local values = random_values[bound]
+                    local value = values and values[random_indices[bound]]
+                    return value ~= nil and ("roll_" .. value) or nil
+                end
+                eq(domain, "dialogue_exit",
+                   "Company Man confrontation uses the shared exit service")
+                exit_calls[#exit_calls + 1] = action
+                return "applied"
+            end,
+        },
+    }
+    local result = DialogueFramework.open(
+        E.DialogueSource.RANDOM_ENCOUNTER,
+        "field_random_events", "present_company_man_confrontation")
+    return result, pages, exit_calls, random_calls, prompt_titles,
+        prompt_options, prompt_speakers
+end
+
+-- ROM entry 0x20F5A is a distinct Company Man encounter from the 0x210B4
+-- toothpick event. Cover each choice's no-actor outcome and explicit unresolved
+-- actor/patrol handoffs at the source branch conditions.
+do
+local route = DialogueFramework.describe(
+    E.DialogueSource.RANDOM_ENCOUNTER,
+    "field_random_events.present_company_man_confrontation")
+eq(route.scene_outcome, E.FieldLocationSceneOutcome.SAME_SCENE,
+   "Company Man confrontation returns to its source field scene")
+eq(route.exit_behavior, E.DialogueExitBehavior.STAY,
+   "Company Man confrontation uses the shared stay exit")
+eq(route.transition, E.DialogueTransition.FADE,
+   "Company Man confrontation returns through the shared fade")
+eq(route.transition_frames,
+   E.DialogueTransitionFrames.HAGGARD_BLACK_INTERVAL,
+   "Company Man confrontation preserves the measured event fade interval")
+eq(route.input_lock, E.DialogueInputLock.WORLD_ACTIVITY_FFE11C,
+   "Company Man confrontation uses the world-activity input lock")
+eq(route.input_lock_frames, E.DialogueInputLockFrames.WORLD_ACTIVITY,
+   "Company Man confrontation preserves the world-activity lock duration")
+
+local attack_flee, attack_flee_pages, attack_flee_exit,
+      attack_flee_random, attack_flee_titles, attack_flee_options,
+      attack_flee_speakers =
+    run_company_man_confrontation("attack", {
+        random_values = { [100] = { 49 } },
+    })
+eq(attack_flee, "resolved", "Company Man confrontation Attack 49 resolves")
+eq(attack_flee_titles[1],
+   "<A Company Man storms up to you.>||" ..
+   "Hey, you can't get away with this!||" ..
+   "Don't think I don't recognize you!",
+   "Company Man confrontation prompt uses its extracted opening")
+eq(#attack_flee_options[1], 3,
+   "Company Man confrontation prompt has three choices")
+eq(attack_flee_options[1][2].id, "talk",
+   "Company Man confrontation second choice is Talk")
+eq(attack_flee_options[1][3].id, "leave",
+   "Company Man confrontation third choice is Walk away")
+eq(attack_flee_speakers[1].speaker_id, "company_man_confrontation",
+   "Company Man confrontation uses its source-bound portrait speaker")
+eq(attack_flee_speakers[1].text_profile, "field.world_event",
+   "Company Man confrontation uses the event text profile")
+eq(#attack_flee_pages, 1, "Attack 49 has one result page")
+eq(attack_flee_pages[1].text,
+   "<As you move to attack, the man turns white and runs away.>",
+   "ROM 0x238EA Attack 49 result")
+eq(attack_flee_pages[1].speaker_id, "company_man_confrontation",
+   "Attack result preserves the source-bound speaker")
+eq(table.concat(attack_flee_random, ","), "bounded_100",
+   "Attack uses one bounded-100 source roll")
+eq(table.concat(attack_flee_exit, ","), "restore_field_context_stay",
+   "Attack flee returns through the common field exit")
+
+local talk_apology, talk_apology_pages, _, talk_apology_random =
+    run_company_man_confrontation("talk", {
+        random_values = { [6] = { 4, 4 } },
+    })
+eq(talk_apology, "resolved",
+   "Talk with two target-5 successes resolves")
+eq(talk_apology_pages[1].text,
+   "Wait... You aren't Mr. Johnson, are you?||" ..
+   "I am very sorry to have bothered you.||" ..
+   "<The confused man scurries off.>",
+   "ROM 0x23920 multi-success Talk result")
+eq(table.concat(talk_apology_random, ","), "bounded_6,bounded_6",
+   "Talk rolls the first runner's two Charisma dice against target 5")
+
+local talk_zero = run_company_man_confrontation("talk", {
+    random_values = { [6] = { 0, 0 } },
+})
+eq(type(talk_zero), "table", "Talk zero-success patrol remains explicit")
+eq(talk_zero.type, "source_boundary",
+   "Talk zero-success does not invent the patrol path")
+
+local talk_one = run_company_man_confrontation("talk", {
+    random_values = { [6] = { 4, 0 } },
+})
+eq(type(talk_one), "table", "Talk one-success actor path remains explicit")
+eq(talk_one.type, "source_boundary",
+   "Talk one-success does not silently skip actor list 0x1D7074")
+
+local attack_gun_draw = run_company_man_confrontation("attack", {
+    random_values = { [100] = { 50 } },
+})
+eq(type(attack_gun_draw), "table",
+   "Attack 50 actor handoff remains explicit")
+eq(attack_gun_draw.type, "source_boundary",
+   "Attack 50 does not fabricate the source pedestrian sequence")
+
+local leave_follow, leave_follow_pages, _, leave_follow_random =
+    run_company_man_confrontation("leave", {
+        random_values = { [100] = { 39 } },
+    })
+eq(leave_follow, "resolved", "Walk Away 39 resolves")
+eq(leave_follow_pages[1].text,
+   "<The man follows you for a while, yelling at you.||" ..
+   "He eventually moves on.>", "ROM 0x23978 Walk Away 39 result")
+eq(table.concat(leave_follow_random, ","), "bounded_100",
+   "Walk Away uses one bounded-100 source roll")
+
+local leave_gun_draw = run_company_man_confrontation("leave", {
+    random_values = { [100] = { 40 } },
+})
+eq(type(leave_gun_draw), "table",
+   "Walk Away 40 actor handoff remains explicit")
+eq(leave_gun_draw.type, "source_boundary",
+   "Walk Away 40 does not fabricate actor list 0x1D7074")
+
+local leave_patrol = run_company_man_confrontation("leave", {
+    random_values = { [100] = { 80 } },
+})
+eq(type(leave_patrol), "table",
+   "Walk Away 80 patrol prompt remains explicit")
+eq(leave_patrol.type, "source_boundary",
+   "Walk Away 80 does not substitute a different patrol menu")
+end
+
 -- ROM 0x210B4's prompt and each visible response have their own source path.
 do
 local company_route = DialogueFramework.describe(

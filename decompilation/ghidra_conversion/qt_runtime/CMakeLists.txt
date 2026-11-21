@@ -1147,6 +1147,14 @@ add_shadowrun_qt_qa_case(
     --field-security-guard-weighted-event-qa
     "${CMAKE_CURRENT_BINARY_DIR}/field-security-guard-weighted-event-qa")
 
+# Scene 3's sum-1 selector opens the distinct Company Man confrontation at
+# 0x20F5A. Check its Lua-owned prompt, source labels, and frame dump.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_company_man_confrontation_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-company-man-confrontation-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-company-man-confrontation-qa")
+
 # Scene 26's sum-1 selector opens the Company Man event. Confirm the Insult
 # reply displays the resource-variant clue and returns through the saved scene.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_company_man_toothpick_qa
