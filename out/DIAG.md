@@ -163,27 +163,39 @@ Wise One physical-entry, and Hospital physical-entry QA cases. Their five
 captures match byte-for-byte between configurations. `field-return.bmp` is
 internal Qt output, not an independent Genesis reference.
 
-## Cave room 7 south exit reaches its ROM destination
+## Cave exits use collision-map routes and preserve destination camera
 
 Reproduced headlessly with `tools/map_coverage.py` on
-`cave-room07-south-r1d4e5e`. The natural route enters Scene 6 / room 0 from
-the Scene-9 production dialogue transition, then reaches Scene 45 / room 7
-through the room-0 south exit. The room-7 south exit now reaches Scene 7 / room
-1 at `(0x0B00, 0x0780)`, preserving field mode 0. The collision probe can lead
-the actor beyond the row's rectangle bounds; require a fresh matching dispatch
-and the complete destination result rather than bounding the probe coordinate.
+`cave-room00-south-r14c0fe`, `cave-room07-south-r1d4e5e`, and
+`cave-room01-east-r1b45a6`. Each route starts through the Scene-9 production
+dialogue transition and is driven from the natural room spawn with ordinary
+directional input. The QA plans a path over the imported 64-by-64 collision
+map; it does not reposition the player to a trigger-side probe. The routes
+reach Scene 45 / room 7 at `(0x0600, 0x2800)`, Scene 7 / room 1 at
+`(0x0B00, 0x0780)`, then Scene 45 / room 11 at `(0x5E00, 0x2280)`, preserving
+field mode 0 throughout. Each exit requires the exact scene, room, spawn, and
+a fresh collision dispatch for its event.
 
 **[C]** ROM bytes at `0x0A12` test `FFFC0E` and require `FFFBF9 >= 8` before
 calling `0x2CE0`. The routine at `0x2CE0` consumes the event and `FFFC10` room
-context and publishes the selected destination scene and pending spawn. The
-ROM row at `0x1D4E5E` is room 7 south (`FFFC10=7`, event `0x0A`); Lua link data
-resolves it to room 1, Scene 7, arrival `(0x0B00, 0x0780)`.
+context and publishes the selected destination scene and pending spawn. ROM
+rows `0x14C0FE` (room 0 south/event `0x0A`), `0x1D4E5E` (room 7 south/event
+`0x0A`), and `0x1B45A6` (room 1 east/event `0x09`) resolve through Lua to the
+checked destinations above.
 
-The host exit orchestrator previously treated this valid mode-table route as
-an unresolved field service. It now continues only when the scene's FFFC0E gate
-is set and Lua resolves the event/room to a complete typed destination, then
-uses the existing mode-transition callback. The dedicated Debug and Release
-CTest requires this route to PASS and writes `actual.bmp`; both builds produce
-the same image hash. The separate room-1 east QA still fails to observe a fresh
-collision while approaching its event rectangle and remains open. The Qt dump
-is internal output, not an independent Genesis visual reference.
+The east route first failed because its event lies behind a curved corridor.
+The new QA follows clear source collision cells with normal D-pad input and now
+observes event `0x09` plus the exact room-11 destination. It also exposed a
+rendering defect: the scene-transition wrapper copied its camera snapshot
+before loading the destination, then wrote that old camera back over the
+spawn-recentered camera. Scene 45 is profile row `0x2D` at ROM table `0x3232`,
+pointer `0x1D4BD0`; profile camera bounds are `0x5300,0x2E00` (words +4/+5).
+The source spawn routine at `0x030CC..0x030FE` recenters from the consumed
+`FFE10A/FFE10C` position. The transition now synchronizes its typed camera
+state when that mode-transition spawn is consumed.
+
+**Validation:** Debug and Release pass the room-7 south, room-0 south, and
+room-1 east CTests. Each writes `actual.bmp`; the Scene-45 playfield assertion
+requires at least 1,000 lit pixels so a black destination fails. The captures
+are internal Qt output, not independent Genesis visual evidence. Other cave
+exits remain open. `git diff --check` passes. No push was made.

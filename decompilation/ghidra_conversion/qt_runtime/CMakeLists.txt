@@ -317,6 +317,43 @@ set_tests_properties(shadowrun_ghidra_conversion_qt_cave_room7_south_qa
     PROPERTIES LABELS "map_coverage;hill"
                TIMEOUT 300
                ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+
+# Defend the room-0 south exit independently so its Scene-45 spawn and camera
+# are rendered from the freshly loaded profile rather than a later room route.
+add_test(NAME shadowrun_ghidra_conversion_qt_cave_room0_south_qa
+    COMMAND "${Python3_EXECUTABLE}" "${SRX_MAP_COVERAGE_TOOL}"
+        --rom "${CMAKE_CURRENT_SOURCE_DIR}/../../input/shadowrun_genesis_us.bin"
+        --rows "${SRX_MAP_COVERAGE_FIXTURES}/rows.tsv"
+        --baseline "${SRX_MAP_COVERAGE_FIXTURES}/baseline_results.tsv"
+        --run-qa "$<TARGET_FILE:shadowrun_ghidra_conversion_qt_qa>"
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --out-dir "${CMAKE_CURRENT_BINARY_DIR}/cave-room0-south-qa"
+        --categories cave
+        --match "^cave-room00-south-r14c0fe$"
+        --require-pass)
+set_tests_properties(shadowrun_ghidra_conversion_qt_cave_room0_south_qa
+    PROPERTIES LABELS "map_coverage;hill"
+               TIMEOUT 300
+               ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+
+# Defend the room-1 east exit as a second collision-map route from the natural
+# cave entry, including its Scene-45 destination and resolved room-11 spawn.
+add_test(NAME shadowrun_ghidra_conversion_qt_cave_room1_east_qa
+    COMMAND "${Python3_EXECUTABLE}" "${SRX_MAP_COVERAGE_TOOL}"
+        --rom "${CMAKE_CURRENT_SOURCE_DIR}/../../input/shadowrun_genesis_us.bin"
+        --rows "${SRX_MAP_COVERAGE_FIXTURES}/rows.tsv"
+        --baseline "${SRX_MAP_COVERAGE_FIXTURES}/baseline_results.tsv"
+        --run-qa "$<TARGET_FILE:shadowrun_ghidra_conversion_qt_qa>"
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --out-dir "${CMAKE_CURRENT_BINARY_DIR}/cave-room1-east-qa"
+        --categories cave
+        --match "^cave-room01-east-r1b45a6$"
+        --require-pass)
+set_tests_properties(shadowrun_ghidra_conversion_qt_cave_room1_east_qa
+    PROPERTIES LABELS "map_coverage;hill"
+               TIMEOUT 300
+               ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+
 # The full matrix takes ~18 minutes, so it is opt-in:
 #   cmake -DSRX_MAP_COVERAGE_FULL=ON . && ctest -L map_coverage_full
 # Narrow a run with: tools/map_coverage.py --run-qa <qa exe> --match <regex>.

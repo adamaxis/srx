@@ -648,6 +648,8 @@ void FieldSceneRuntime::advance_field_scene_transition_after_modal() {
         state_.field_scene_entry.camera_transition_y);
     const bool one_shot_scene_profile_pending =
         field_pending_scene_profile_.has_value();
+    const bool mode_transition_spawn_pending =
+        field_pending_mode_transition_spawn_.has_value();
 
     const auto& collision_map =
         state_.field_scene_buffers.source_metadata.terrain_collision_map;
@@ -703,6 +705,21 @@ void FieldSceneRuntime::advance_field_scene_transition_after_modal() {
         // ROM 0x2B78 replaces the camera and clears its aligned-edge cache.
         // Keep the conversion's local transition record in sync with the
         // one-shot callback before its final state publication below.
+        transition.camera_x = static_cast<std::uint16_t>(
+            state_.field_scene_buffers.camera_x);
+        transition.camera_y = static_cast<std::uint16_t>(
+            state_.field_scene_buffers.camera_y);
+        transition.camera_transition_x = static_cast<std::uint16_t>(
+            state_.field_scene_entry.camera_transition_x);
+        transition.camera_transition_y = static_cast<std::uint16_t>(
+            state_.field_scene_entry.camera_transition_y);
+    } else if (scene_buffers_reloaded && mode_transition_spawn_pending &&
+               !field_pending_mode_transition_spawn_.has_value()) {
+        // ROM 0x030CC..0x030FE applies the consumed FFE10A/FFE10C spawn and
+        // recenters the destination camera. The scene-transition wrapper's
+        // local camera snapshot predates that reload, so publish the camera
+        // selected with the destination scene instead of restoring the
+        // previous scene's FFDF50/FFDF52 values over it.
         transition.camera_x = static_cast<std::uint16_t>(
             state_.field_scene_buffers.camera_x);
         transition.camera_y = static_cast<std::uint16_t>(

@@ -2100,3 +2100,23 @@ This defended hill is the Company Man dialogue path; other random-event
 handlers and the broader creature encounter system remain partial. Captures
 are internal Qt output without an independent Genesis comparison, and the
 Company Man fade cadence remains a presentation-contract hypothesis [H].
+
+### Cave exits and destination camera (partial, 2026-11-20)
+
+The mode-exit dispatcher at ROM `0x0A12` gates event codes `8..11` with
+`FFFC0E` before calling `0x2CE0`. Rows `0x14C0FE`, `0x1D4E5E`, and `0x1B45A6`
+now pass through collision-map paths from the natural Scene-6/room-0 cave
+entry. The three Debug and Release CTests require the exact destination
+scene/room/spawn, a fresh collision event, and a nonblack playfield dump. The
+tested routes reach Scene 45 / room 7, Scene 7 / room 1, and Scene 45 / room 11.
+
+The Scene-45 routes also exposed a stale-camera restore after scene preparation
+consumed a mode-transition spawn. The transition now retains the camera
+recentered from `FFE10A/FFE10C` by ROM `0x030CC..0x030FE`; Scene 45 bounds come
+from profile row `0x2D` at `0x3232`, pointer `0x1D4BD0`, with maxima
+`0x5300,0x2E00`. Debug and Release dumps match for all three focused routes at
+`build/conversion/qt/{debug,release}/qt_runtime/cave-room*-qa/actual.bmp`.
+
+This hill remains partial. The broader cave seed run has two chained-route
+gaps, and other cave exits plus independent Genesis comparison remain open.
+Internal renderer captures establish the tested runtime paths only.
