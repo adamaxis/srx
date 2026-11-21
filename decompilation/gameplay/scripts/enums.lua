@@ -250,6 +250,10 @@ E.WorldEffectSequence = {
     PHANTASMAL_WATCHER_EYE_FIVERS_TWO =
         "phantasmal_watcher_eye_fivers_two",
     LONE_STAR_PATROL_ATTACK = "lone_star_patrol_attack", -- 0x23412 queues list 0x1D6FDC [C]
+    LONE_STAR_PATROL_RUN_DETECTIVE =
+        "lone_star_patrol_run_detective", -- 0x23782 queues list 0x1D6FE4 [C]
+    LONE_STAR_PATROL_RUN_LONE12_AND_DETECTIVE =
+        "lone_star_patrol_run_lone12_and_detective", -- 0x23782 queues list 0x1D6FE0 [C]
     FACTION_MAFIA_EYE_FIVERS = "faction_mafia_eye_fivers",
     FACTION_HALLOWEENERS = "faction_halloweeners",
     FIELD_ALARM_REINFORCEMENTS = "field_alarm_reinforcements", -- ROM list 0x1E20A [C]

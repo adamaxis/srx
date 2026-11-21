@@ -6577,6 +6577,144 @@ int run_field_lone_star_patrol_stop_qa(
         return 3;
     }
 
+    // ROM 0x23782 is the Run choice shared by the standalone patrol and
+    // nested patrol prompts. Pick a source seed that produces zero chase
+    // successes for the live Quickness average so this physical route must
+    // queue exactly the detective at 0x1D6FE4.
+    if (field_scene.resolve_and_spawn_field_encounter_for_dump(
+            1U, 3U, 0x4000U) != 0U ||
+        !field_scene.dialogue_panel().open ||
+        !field_scene.seed_field_heat_level_for_qa(7U)) {
+        std::cerr << "Lone Star patrol QA: could not reopen prompt for Run\n";
+        return 3;
+    }
+    const auto& run_party = field_scene.field_party_records_for_dump();
+    std::uint32_t run_quickness_total = 0U;
+    std::uint32_t run_active_count = 0U;
+    for (const auto& runner : run_party) {
+        const auto status = static_cast<std::uint8_t>(runner.flags >> 8U);
+        if ((status & static_cast<std::uint8_t>(srx::RunnerStatus::ACTIVE)) ==
+            0U) {
+            continue;
+        }
+        run_quickness_total += runner.attributes[1U];
+        ++run_active_count;
+    }
+    if (run_active_count == 0U || run_active_count > run_party.size()) {
+        std::cerr << "Lone Star patrol QA: invalid active party for Run\n";
+        return 3;
+    }
+    const auto run_quickness = static_cast<std::uint16_t>(
+        run_quickness_total / run_active_count);
+    const auto lead_armor = run_party[0U].equipped_armor_index;
+    const auto run_target = static_cast<std::int16_t>(
+        4U + (lead_armor == 5U ? 1U : lead_armor == 6U ? 2U : 0U));
+    bool found_caught_run_seed = false;
+    std::uint16_t caught_run_seed = 0U;
+    for (std::uint32_t candidate = 0U;
+         candidate <= std::numeric_limits<std::uint16_t>::max();
+         ++candidate) {
+        auto candidate_seed = static_cast<std::uint16_t>(candidate);
+        const auto successes =
+            shadowrun::ghidra_conversion::count_thresholded_random_rolls(
+                run_quickness, run_target,
+                [&candidate_seed](const std::uint16_t bound) {
+                    return shadowrun::ghidra_conversion::
+                        sample_source_random_bound(candidate_seed, bound);
+                });
+        if (successes == 0U) {
+            caught_run_seed = static_cast<std::uint16_t>(candidate);
+            found_caught_run_seed = true;
+            break;
+        }
+    }
+    if (!found_caught_run_seed) {
+        std::cerr << "Lone Star patrol QA: no deterministic caught-Run seed\n";
+        return 3;
+    }
+    field_scene.set_source_random_seed_for_dump(caught_run_seed);
+    const auto run_actor_count_before =
+        field_scene.dynamic_world_actor_count_for_dump();
+    tap_qa_controller_button(field_scene, 0x20U); // Source C: Run away.
+    const auto& run_result = field_scene.dialogue_panel();
+    const auto run_image = render_qa_field(field_scene);
+    const auto run_contains = [&run_result](const std::string_view text) {
+        for (std::size_t index = 0U;
+             index < run_result.text_segment_count; ++index) {
+            if (run_result.text_segments[index].find(text) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const bool run_image_saved = run_image.size() ==
+            QSize(kSceneWidth, kSceneHeight) &&
+        save_qa_image(output, "run-result-actual.bmp", run_image);
+    const auto heat_after_run = field_scene.field_heat_level_for_dump();
+    if (!run_result.open || run_result.option_count != 0U ||
+        !run_contains("The detectives easily overtake you and begin firing.") ||
+        !heat_after_run.has_value() || *heat_after_run != 8U ||
+        !run_image_saved) {
+        std::cerr << "Lone Star patrol QA: Run did not resolve the caught "
+                     "result (dialogue="
+                  << run_result.open << ", result="
+                  << run_contains(
+                         "The detectives easily overtake you and begin firing.")
+                  << ", heat="
+                  << (heat_after_run.has_value()
+                          ? std::to_string(*heat_after_run)
+                          : std::string("missing"))
+                  << ", image_saved=" << run_image_saved
+                  << ", failure=" << field_scene.failure() << ")\n";
+        for (std::size_t index = 0U;
+             index < run_result.text_segment_count; ++index) {
+            std::cerr << "  run[" << index << "]="
+                      << run_result.text_segments[index] << '\n';
+        }
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U);
+    const bool run_return_finished =
+        finish_field_modal_return_transition(field_scene);
+    std::uint8_t run_spawn_passes = 0U;
+    while (field_scene.dynamic_world_actor_count_for_dump() !=
+               run_actor_count_before + 1U &&
+           run_spawn_passes < 8U) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        ++run_spawn_passes;
+    }
+    const auto run_actors =
+        field_scene.active_default_actor_animations_for_dump();
+    const auto run_actor_profile_count = static_cast<std::size_t>(
+        std::count_if(run_actors.begin(), run_actors.end(),
+                      [](const auto& actor) {
+                          return actor.script_profile_id ==
+                              "lone_detectiv_k05_item07";
+                      }));
+    const auto run_field_image = render_qa_field(field_scene);
+    const bool run_field_image_saved = run_field_image.size() ==
+            QSize(kSceneWidth, kSceneHeight) &&
+        save_qa_image(output, "run-field-actual.bmp", run_field_image);
+    if (!run_return_finished || field_scene.dialogue_open() ||
+        field_scene.dynamic_world_actor_count_for_dump() !=
+            run_actor_count_before + 1U ||
+        run_actor_profile_count != 1U || !run_field_image_saved) {
+        std::cerr << "Lone Star patrol QA: Run did not publish the ROM "
+                     "detective list (returned="
+                  << run_return_finished << ", dialogue="
+                  << field_scene.dialogue_open() << ", actors="
+                  << field_scene.dynamic_world_actor_count_for_dump()
+                  << ", expected=" << run_actor_count_before + 1U
+                  << ", spawn_passes="
+                  << static_cast<unsigned>(run_spawn_passes)
+                  << ", detective_profiles=" << run_actor_profile_count
+                  << ", image_saved=" << run_field_image_saved
+                  << ", failure=" << field_scene.failure() << ")\n";
+        return 3;
+    }
+
     // Re-open the same live patrol event for the Attack continuation below.
     // Its selector draws are injected by this QA helper, independently of
     // the source PRNG used by Comply.
@@ -6591,8 +6729,27 @@ int run_field_lone_star_patrol_stop_qa(
     // ROM 0x23412 queues 0x1D6FDC before raising FFFBFA by two and showing
     // page 0x11D328. Carry the same prompt through result display and actor
     // arrival, with heat seeded at seven to check the source cap of eight.
+    constexpr std::array<std::string_view, 3U> expected_fight_profiles{{
+        "lone11_k05_item03", "lone12_k05_item07",
+        "lone_detectiv_k05_item07",
+    }};
+    const auto count_fight_profiles = [&expected_fight_profiles](
+                                          const auto& actors) {
+        std::array<std::size_t, 3U> counts{};
+        for (const auto& actor : actors) {
+            for (std::size_t index = 0U;
+                 index < expected_fight_profiles.size(); ++index) {
+                if (actor.script_profile_id == expected_fight_profiles[index]) {
+                    ++counts[index];
+                }
+            }
+        }
+        return counts;
+    };
     const auto initial_encounter_count =
         field_scene.dynamic_world_actor_count_for_dump();
+    const auto initial_fight_profile_counts = count_fight_profiles(
+        field_scene.active_default_actor_animations_for_dump());
     if (!field_scene.seed_field_heat_level_for_qa(7U)) {
         std::cerr << "Lone Star patrol QA: could not seed heat for Attack\n";
         return 3;
@@ -6659,26 +6816,19 @@ int run_field_lone_star_patrol_stop_qa(
         field_scene.dynamic_world_actor_count_for_dump();
     const auto fight_actors =
         field_scene.active_default_actor_animations_for_dump();
-    constexpr std::array<std::string_view, 3U> expected_fight_profiles{{
-        "lone11_k05_item03", "lone12_k05_item07",
-        "lone_detectiv_k05_item07",
+    const auto fight_profile_counts = count_fight_profiles(fight_actors);
+    const std::array<std::size_t, 3U> expected_fight_profile_counts{{
+        initial_fight_profile_counts[0U] + 1U,
+        initial_fight_profile_counts[1U] + 1U,
+        initial_fight_profile_counts[2U] + 1U,
     }};
-    std::array<std::size_t, 3U> fight_profile_counts{};
-    for (const auto& actor : fight_actors) {
-        for (std::size_t index = 0U;
-             index < expected_fight_profiles.size(); ++index) {
-            if (actor.script_profile_id == expected_fight_profiles[index]) {
-                ++fight_profile_counts[index];
-            }
-        }
-    }
     const auto fight_image = render_qa_field(field_scene);
     const bool fight_image_saved = fight_image.size() ==
             QSize(kSceneWidth, kSceneHeight) &&
         save_qa_image(output, "attack-field-actual.bmp", fight_image);
     if (!attack_return_finished || field_scene.dialogue_open() ||
         fight_actor_count != initial_encounter_count + 3U ||
-        fight_profile_counts != std::array<std::size_t, 3U>{{1U, 1U, 1U}} ||
+        fight_profile_counts != expected_fight_profile_counts ||
         !fight_image_saved) {
         std::cerr << "Lone Star patrol QA: queued fight did not publish the "
                      "three ROM templates (returned="

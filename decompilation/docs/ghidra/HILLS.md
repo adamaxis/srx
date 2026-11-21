@@ -2151,7 +2151,28 @@ affiliation bounds and draw order for heat `0..8`, all eight illegal-item IDs
 in each of three ordered party slots, the inactive-slot cutoff, successful
 and failed ID/fine checks, permit acceptance, and the two nested Company Man
 Attack entries. These are internal captures, not an
-independent Genesis comparison. This hill remains partial while Run
-`0x23782`, arrest settlement, combat completion, the patrol portrait, nested
-caller physical QA, and independent Genesis comparison remain open. See the
-[field random-event selector audit](field-random-event-selector.md).
+independent Genesis comparison. Arrest settlement, combat completion, the
+patrol portrait, nested-caller physical QA, and independent Genesis comparison
+remain open. See the [field random-event selector audit](field-random-event-selector.md).
+
+## Lone Star patrol Run choice (partial, 2026-11-21)
+
+Shared handler `0x23782` raises heat by one before the chase and caps it at
+eight. Its helper `0x23750` averages the active runners' live Quickness; the
+lead runner's armor selector alone raises target 4 by one for a Lined Duster or
+two for Light Combat Armor. The shared exploding-six roll at `0x0DBA` sends
+0-1 successes to the detective list `0x1D6FE4`, 2-3 to Lone 12 plus detective
+list `0x1D6FE0`, and 4+ to the escape text without actors. `0x237F8` clears D0
+before calling `0x1E1FC`; `0x1E216` therefore uses screen-edge candidates at
+`0x1E302` for either Run list.
+
+Lua tests cover all result bands, heat and Quickness inputs, lead-only armor
+modifiers, list-start failure, and the nested Company Man prompt. Physical
+Scene-3 QA presses Run through the controller path, verifies the caught text
+and heat 7 to 8, returns to the field, and checks the detective profile is
+published. It also verifies the existing Attack route still adds its three
+templates when the Run detective is already present. Debug and Release
+captures match byte-for-byte for the Run result, returned field, and Attack
+field. This is internal Qt evidence, not a Genesis comparison; the other two
+Run result bands and nested-caller physical route remain open, so the hill is
+partial. See the [field random-event selector audit](field-random-event-selector.md).

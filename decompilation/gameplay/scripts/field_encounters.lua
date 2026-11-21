@@ -37,6 +37,13 @@ local multi_template_sequences = {
             profile_id = "lone_detectiv_k05_item07",
         },
     }, -- ROM list 0x1D6FDC: lone11, lone12, lone detectiv [C]
+    [E.WorldEffectSequence.LONE_STAR_PATROL_RUN_DETECTIVE] = {
+        { actor_name = "lone detectiv", profile_id = "lone_detectiv_k05_item07" },
+    }, -- ROM list 0x1D6FE4 contains one detective [C]
+    [E.WorldEffectSequence.LONE_STAR_PATROL_RUN_LONE12_AND_DETECTIVE] = {
+        { actor_name = "lone12", profile_id = "lone12_k05_item07" },
+        { actor_name = "lone detectiv", profile_id = "lone_detectiv_k05_item07" },
+    }, -- ROM list 0x1D6FE0 contains Lone 12 then one detective [C]
     [E.WorldEffectSequence.HOLLYWOOD_CORRECTIONAL_FAILED_SHOT_GUARDS] = {
         { actor_name = "lone11", profile_id = "lone11_k05_item03" },
         {
@@ -60,6 +67,14 @@ local multi_template_sequences = {
         { actor_name = "eye5r 1", profile_id = "eye5r_1_k07_item01" },
     },
 } -- ROM lists 0x1D6DAE / 0x1D6DB6: 0x1D65C6 and 0x1D657C [C].
+local multi_template_sequence_placement_policies = {
+    -- ROM 0x237F8 clears D0 before 0x1E1FC; its 0x1E216 dispatch uses the
+    -- screen-edge candidate path at 0x1E302 for both Run chase lists.
+    [E.WorldEffectSequence.LONE_STAR_PATROL_RUN_DETECTIVE] =
+        E.WorldEffectPlacementPolicy.SCREEN_EDGE_CANDIDATES,
+    [E.WorldEffectSequence.LONE_STAR_PATROL_RUN_LONE12_AND_DETECTIVE] =
+        E.WorldEffectPlacementPolicy.SCREEN_EDGE_CANDIDATES,
+}
 
 local function integer(value, minimum, maximum)
     return type(value) == "number" and value % 1 == 0 and
@@ -256,6 +271,13 @@ end
 local function resolve_multi_template_sequence(
     scene_id, sequence_id, descriptors, data)
     local actors = {}
+    local placement_policy =
+        multi_template_sequence_placement_policies[sequence_id] or
+        E.WorldEffectPlacementPolicy.MAP_DERIVED_CANDIDATES
+    local placement_rule =
+        placement_policy == E.WorldEffectPlacementPolicy.SCREEN_EDGE_CANDIDATES and
+        "open screen-edge candidates based on the current viewport and terrain" or
+        "map-derived candidates around camera-relative map anchors"
     for order, descriptor in ipairs(descriptors) do
         local selected
         for _, row in ipairs(data.dynamic_world_activity_actors or {}) do
@@ -285,13 +307,12 @@ local function resolve_multi_template_sequence(
         actor.action_id = descriptor.action_id or actor.action_id
         actor.sequence_order = order - 1
         actor.sequence_id = sequence_id
-        actor.placement_rule =
-            "map-derived candidates around camera-relative map anchors"
+        actor.placement_rule = placement_rule
         actors[#actors + 1] = actor
     end
     return {
         kind = "dynamic_world_effect_sequence",
-        placement_policy = E.WorldEffectPlacementPolicy.MAP_DERIVED_CANDIDATES,
+        placement_policy = placement_policy,
         scene_id = scene_id,
         outcome_id = sequence_id,
         sequence_id = sequence_id,

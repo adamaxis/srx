@@ -101,3 +101,53 @@ routes remain open. Captures are internal Qt output, not independent Genesis
 visual evidence. No push was made.
 
 DONE
+
+## STATUS: Lone Star patrol Run choice
+
+Date: 2026-11-21
+Branch: `port-fixes`
+
+## Fixed
+
+Run now follows the shared ROM chase handler at `0x23782`: heat increases by
+one before the roll and caps at eight; active runners' Quickness values are
+averaged; target 4 increases by one for the lead runner's Lined Duster and by
+two for Light Combat Armor. The 0-1, 2-3, and 4+ success bands return the exact
+caught, partially caught, and escape text and select the ROM detective / Lone
+12 actor lists as appropriate.
+
+The field story-sequence publisher previously rejected screen-edge placement.
+Run clears D0 at `0x237F8`, so `0x1E216` selects the existing `0x1E302`
+screen-edge candidate path. The publisher now accepts that typed policy and
+publishes the detective after the result dialogue returns.
+
+## Changed files
+
+- `decompilation/gameplay/scripts/enums.lua`
+- `decompilation/gameplay/scripts/field_encounters.lua`
+- `decompilation/gameplay/scripts/field_random_events.lua`
+- `decompilation/gameplay/tests_lua/field_random_events_tests.lua`
+- `decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp`
+- `decompilation/ghidra_conversion/qt_runtime/tests/qa/ghidra_conversion_qt_qa_main.cpp`
+- `decompilation/docs/ghidra/HILLS.md`
+- `decompilation/docs/ghidra/field-random-event-selector.md`
+- `decompilation/docs/ghidra/decompiled-function-status.tsv`
+- `out/DIAG.md`
+
+## Validation
+
+Headless Debug and Release each pass `shadowrun_gameplay_script_runtime_qa`,
+`shadowrun_gameplay_field_random_events_qa`, and
+`shadowrun_ghidra_conversion_qt_field_lone_star_patrol_stop_qa` (3/3).
+Physical QA drives the Scene-3 Run choice with controller input, checks the
+caught result and heat 7 to 8, returns to the field, and verifies the detective
+profile. The later Attack path also adds its three profiles with that detective
+already present. Run result, returned field, and Attack field BMPs match
+byte-for-byte between configurations. These are internal Qt captures, not an
+independent Genesis comparison. The Lua matrix covers all three result bands;
+physical QA for the partial-success and escape bands, nested caller, arrest
+settlement, and combat completion remain open. No separate
+`world-activity-terminal-outcomes.tsv` exists in this checkout; the current
+outcome reference is `field-random-event-selector.md`.
+
+DONE

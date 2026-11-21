@@ -17,10 +17,11 @@ end
 eq(type(RandomEvents.present_company_man_toothpick), "function",
    "Company Man toothpick random event has a Lua response handler")
 
-local function member(active, quickness, charisma)
+local function member(active, quickness, charisma, equipped_armor_id)
     return {
         runner_facts = { lifecycle = { active = active } },
         attributes = { quickness = quickness, charisma = charisma },
+        equipped_armor_id = equipped_armor_id,
         equipment = {},
     }
 end
@@ -896,8 +897,8 @@ local function run_company_man_confrontation(choice, configuration)
                         heat_level = new_heat
                         return "applied"
                     end
-                    if action ==
-                       "queue_world_effect_3_3_lone_star_patrol_attack" then
+                    if type(action) == "string" and
+                       action:match("^queue_world_effect_3_%d+_[%w_]+$") then
                         return configuration.queue_world_effect_result or
                             "queued"
                     end
@@ -994,6 +995,227 @@ eq(patrol_attack_sequence.actors[2].profile_id, "lone12_k05_item07",
 eq(patrol_attack_sequence.actors[3].profile_id,
    "lone_detectiv_k05_item07", "patrol sequence actor three is detective")
 
+do
+local function run_patrol_run(party, heat, dice, queue_result)
+    return run_company_man_confrontation("run_away", {
+        event_id = "lone_star_patrol_stop",
+        task_name = "present_lone_star_patrol_stop",
+        prompt_choices = { "run_away" },
+        party = party,
+        heat_level = heat,
+        random_values = { [6] = dice },
+        queue_world_effect_result = queue_result,
+    })
+end
+
+local caught_run, caught_pages, _, caught_random, _, caught_choices, _,
+      caught_story, caught_heat = run_patrol_run(
+    { [0] = member(true, 4, 2), [1] = member(false, 0, 0),
+      [2] = member(false, 0, 0) },
+    3, { 0, 0, 0, 0 })
+eq(caught_run, "resolved", "patrol Run resolves the lowest chase band")
+eq(caught_pages[1].text,
+   "<The detectives easily overtake you and begin firing.>",
+   "0-1 chase successes return ROM text 0x11D3C1")
+eq(caught_pages[1].continuation, false,
+   "patrol Run result is a terminal result page")
+eq(#caught_choices[1], 3, "patrol Run uses the source three-choice menu")
+eq(table.concat(caught_random, ","),
+   "bounded_6,bounded_6,bounded_6,bounded_6",
+   "one active runner supplies four Quickness trials")
+eq(table.concat(caught_story, ","),
+   "get_heat_level,set_heat_level_4," ..
+   "queue_world_effect_3_1_lone_star_patrol_run_detective",
+   "Run raises heat before its one-detective queue")
+eq(caught_heat, 4, "patrol Run raises heat once")
+local caught_sequence = Encounters.resolve_sequence(
+    3, E.WorldEffectSequence.LONE_STAR_PATROL_RUN_DETECTIVE)
+eq(#caught_sequence.actors, 1, "low Run result resolves one source actor")
+eq(caught_sequence.actors[1].profile_id, "lone_detectiv_k05_item07",
+   "0x1D6FE4 resolves the Lone Star detective")
+eq(caught_sequence.placement_policy,
+   E.WorldEffectPlacementPolicy.SCREEN_EDGE_CANDIDATES,
+   "Run actor list uses the source D0-zero edge placement")
+
+local partial_run, partial_pages, _, partial_random, _, _, _, partial_story,
+      partial_heat = run_patrol_run(
+    { [0] = member(true, 4, 2, "lined_duster"),
+      [1] = member(false, 0, 0), [2] = member(false, 0, 0) },
+    7, { 4, 4, 0, 0 })
+eq(partial_run, "resolved", "patrol Run resolves the partial chase band")
+eq(partial_pages[1].text,
+   "<You outrun some of them, but the others appear to be in better shape.||" ..
+   "They overtake you and open fire.>",
+   "2-3 successes at lined-duster target 5 return ROM text 0x11D3F8")
+eq(table.concat(partial_random, ","),
+   "bounded_6,bounded_6,bounded_6,bounded_6",
+   "lined-duster check uses four live Quickness trials")
+eq(table.concat(partial_story, ","),
+   "get_heat_level,set_heat_level_8," ..
+   "queue_world_effect_3_2_lone_star_patrol_run_lone12_and_detective",
+   "partial chase queues list 0x1D6FE0 after heat caps")
+eq(partial_heat, 8, "patrol Run heat increment caps at eight")
+local partial_sequence = Encounters.resolve_sequence(
+    3, E.WorldEffectSequence.LONE_STAR_PATROL_RUN_LONE12_AND_DETECTIVE)
+eq(#partial_sequence.actors, 2,
+   "mid Run result resolves both source actors")
+eq(partial_sequence.actors[1].profile_id, "lone12_k05_item07",
+   "0x1D6FE0 actor one is Lone 12")
+eq(partial_sequence.actors[2].profile_id, "lone_detectiv_k05_item07",
+   "0x1D6FE0 actor two is the detective")
+eq(partial_sequence.placement_policy,
+   E.WorldEffectPlacementPolicy.SCREEN_EDGE_CANDIDATES,
+   "partial Run uses source edge placement")
+
+local escape_run, escape_pages, _, escape_random, _, _, _, escape_story,
+      escape_heat = run_patrol_run(
+    { [0] = member(true, 4, 2), [1] = member(false, 0, 0),
+      [2] = member(false, 0, 0) },
+    7, { 3, 3, 3, 3 })
+eq(escape_run, "resolved", "four chase successes escape")
+eq(escape_pages[1].text,
+   "<You easily outrun the slothfull patrol.>",
+   "4+ chase successes return ROM text 0x11D462")
+eq(table.concat(escape_random, ","),
+   "bounded_6,bounded_6,bounded_6,bounded_6",
+   "four successes consume the complete source dice pool")
+eq(table.concat(escape_story, ","), "get_heat_level,set_heat_level_8",
+   "successful escape increments capped heat without queuing actors")
+eq(escape_heat, 8, "successful escape retains the heat cap")
+
+local failed_queue_run, failed_queue_pages, _, _, _, _, _, failed_queue_story,
+      failed_queue_heat = run_patrol_run(
+    { [0] = member(true, 4, 2), [1] = member(false, 0, 0),
+      [2] = member(false, 0, 0) },
+    4, { 0, 0, 0, 0 }, "no_actor_slots")
+eq(failed_queue_run, "resolved", "actor placement failure uses the ROM fallback")
+eq(failed_queue_pages[1].text,
+   "<You easily outrun the slothfull patrol.>",
+   "failed 0x1E1FC list start returns the shared escape text")
+eq(table.concat(failed_queue_story, ","),
+   "get_heat_level,set_heat_level_5," ..
+   "queue_world_effect_3_1_lone_star_patrol_run_detective",
+   "failed sequence keeps the pre-roll heat update")
+eq(failed_queue_heat, 5, "failed actor queue still retains Run heat")
+
+-- The ROM only reads the lead runner's armor selector. Source armor indices
+-- 1-4 and 7 use target 4; lined duster (5) and light combat armor (6) use 5
+-- and 6. Four face-4 dice distinguish those thresholds across the catalog.
+local run_armor_cases = {
+    { "armor_vest", true },
+    { "armor_clothing", true },
+    { "armor_jacket", true },
+    { "vest_with_plates", true },
+    { "lined_duster", false },
+    { "light_combat_armor", false },
+    { "heavy_combat_armor", true },
+}
+for _, armor_case in ipairs(run_armor_cases) do
+    local result, pages = run_patrol_run(
+        { [0] = member(true, 4, 2, armor_case[1]),
+          [1] = member(false, 0, 0), [2] = member(false, 0, 0) },
+        0, { 3, 3, 3, 3 })
+    eq(result, "resolved", "patrol Run resolves for armor " .. armor_case[1])
+    eq(pages[1].text,
+       armor_case[2] and "<You easily outrun the slothfull patrol.>" or
+           "<The detectives easily overtake you and begin firing.>",
+       "ROM 0x237A2/0x237B0 armor target branch " .. armor_case[1])
+end
+
+local support_armor_run, support_armor_pages = run_patrol_run(
+    { [0] = member(true, 4, 2, "armor_vest"),
+      [1] = member(true, 4, 2, "light_combat_armor"),
+      [2] = member(false, 0, 0) },
+    0, { 3, 3, 3, 3 })
+eq(support_armor_run, "resolved",
+   "support armor does not replace the lead armor modifier")
+eq(support_armor_pages[1].text,
+   "<You easily outrun the slothfull patrol.>",
+   "ROM 0x237A2 reads only runner slot zero armor")
+
+local two_runner_run, two_runner_pages, _, two_runner_random = run_patrol_run(
+    { [0] = member(true, 3, 2), [1] = member(true, 4, 2),
+      [2] = member(false, 0, 0) },
+    0, { 3, 3, 0 })
+eq(two_runner_run, "resolved", "two-runner chase resolves")
+eq(two_runner_pages[1].text,
+   "<You outrun some of them, but the others appear to be in better shape.||" ..
+   "They overtake you and open fire.>",
+   "two-runner Quickness average floors 3.5 to 3 trials")
+eq(#two_runner_random, 3, "two-runner average drives three dice")
+
+local three_runner_run, three_runner_pages, _, three_runner_random =
+    run_patrol_run(
+        { [0] = member(true, 3, 2), [1] = member(true, 4, 2),
+          [2] = member(true, 5, 2) },
+        0, { 3, 3, 3, 0 })
+eq(three_runner_run, "resolved", "three-runner chase resolves")
+eq(three_runner_pages[1].text,
+   "<You outrun some of them, but the others appear to be in better shape.||" ..
+   "They overtake you and open fire.>",
+   "three-runner average Quickness 4 controls the dice pool")
+eq(#three_runner_random, 4, "three-runner average drives four dice")
+
+local inactive_run, inactive_pages, _, inactive_random = run_patrol_run(
+    { [0] = member(true, 3, 2), [1] = member(false, 99, 2),
+      [2] = member(true, 5, 2) },
+    0, { 3, 3, 3, 3 })
+eq(inactive_run, "resolved", "inactive runner does not block party scan")
+eq(inactive_pages[1].text,
+   "<You easily outrun the slothfull patrol.>",
+   "inactive Quickness does not enter the active-party average")
+eq(#inactive_random, 4, "noncontiguous active records average both runners")
+
+local zero_quickness_run, zero_quickness_pages, _, zero_quickness_random =
+    run_patrol_run(
+        { [0] = member(true, 0, 2), [1] = member(false, 0, 0),
+          [2] = member(false, 0, 0) },
+        0, { 0 })
+eq(zero_quickness_run, "resolved", "zero Quickness still runs the source check")
+eq(zero_quickness_pages[1].text,
+   "<The detectives easily overtake you and begin firing.>",
+   "0x0DBA performs one trial for a zero dice pool")
+eq(#zero_quickness_random, 1,
+   "zero Quickness preserves the source minimum random draw")
+
+local exploding_armor_run, exploding_armor_pages, _, exploding_armor_random =
+    run_patrol_run(
+        { [0] = member(true, 2, 2, "light_combat_armor"),
+          [1] = member(false, 0, 0), [2] = member(false, 0, 0) },
+        0, { 5, 0, 5, 0 })
+eq(exploding_armor_run, "resolved",
+   "light-combat armor chase accepts exploding sixes")
+eq(exploding_armor_pages[1].text,
+   "<You outrun some of them, but the others appear to be in better shape.||" ..
+   "They overtake you and open fire.>",
+   "two target-6 successes select the partial pursuit")
+eq(#exploding_armor_random, 4,
+   "each six retries the same source trial before the next die")
+
+local nested_run, nested_run_pages, _, nested_run_random, nested_run_titles,
+      _, _, nested_run_story, nested_run_heat =
+    run_company_man_confrontation("talk", {
+        prompt_choices = { "talk", "run_away" },
+        random_values = { [6] = { 0, 0, 3, 3, 3, 3 } },
+        party = { [0] = member(true, 4, 2), [1] = member(false, 0, 0),
+                  [2] = member(false, 0, 0) },
+        heat_level = 2,
+    })
+eq(nested_run, "resolved",
+   "Company Man nested patrol Run uses the shared chase handler")
+eq(#nested_run_titles, 2,
+   "Company Man Talk-zero path opens the nested patrol prompt")
+eq(nested_run_pages[1].text,
+   "<You easily outrun the slothfull patrol.>",
+   "nested patrol Run resolves the ROM escape page")
+eq(#nested_run_random, 6,
+   "nested prompt and chase preserve both source random sequences")
+eq(table.concat(nested_run_story, ","),
+   "get_heat_level,set_heat_level_3",
+   "nested Run increments heat once before the escape roll")
+eq(nested_run_heat, 3, "nested Run retains its heat update")
+end
+
 local patrol_failed, patrol_failed_pages, _, _, _, _, _, patrol_failed_calls,
       patrol_failed_heat =
     run_company_man_confrontation("attack", {
@@ -1060,20 +1282,31 @@ eq(talk_apology_pages[1].text,
 eq(table.concat(talk_apology_random, ","), "bounded_6,bounded_6",
    "Talk rolls the first runner's two Charisma dice against target 5")
 
-local talk_zero, _, _, _, talk_zero_titles, talk_zero_options =
+do
+local talk_zero, talk_zero_pages, _, talk_zero_random,
+      talk_zero_titles, talk_zero_options, _, talk_zero_story,
+      talk_zero_heat =
     run_company_man_confrontation("talk", {
-        random_values = { [6] = { 0, 0 } },
+        random_values = { [6] = { 0, 0, 3, 3 } },
         prompt_choices = { "talk", "run_away" },
     })
-eq(type(talk_zero), "table", "Talk zero-success opens patrol prompt")
-eq(talk_zero.type, "source_boundary",
-   "Talk zero-success stops at the shared patrol choice handler")
+eq(talk_zero, "resolved", "Talk zero-success patrol Run resolves")
 eq(#talk_zero_titles, 2,
    "Talk zero-success presents the nested Lone Star prompt")
 eq(talk_zero_options[2][3].id, "run_away",
    "Talk zero-success exposes the patrol Run choice")
-assert(talk_zero.reason:find("0x23782", 1, true) ~= nil,
-       "Lone Star Run identifies shared chase handler 0x23782")
+eq(talk_zero_pages[1].text,
+   "<You outrun some of them, but the others appear to be in better shape.||" ..
+   "They overtake you and open fire.>",
+   "nested Company Man Run reaches the shared partial chase result")
+eq(#talk_zero_random, 4,
+   "nested Run continues after the two Company Man Talk dice")
+eq(table.concat(talk_zero_story, ","),
+   "get_heat_level,set_heat_level_1," ..
+   "queue_world_effect_3_2_lone_star_patrol_run_lone12_and_detective",
+   "nested patrol Run uses the shared heat and actor queue")
+eq(talk_zero_heat, 1, "nested patrol Run increments heat once")
+end
 
 local talk_zero_attack, talk_zero_attack_pages, _, _,
       _, _, _, talk_zero_attack_calls, talk_zero_attack_heat =

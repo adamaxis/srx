@@ -199,3 +199,54 @@ room-1 east CTests. Each writes `actual.bmp`; the Scene-45 playfield assertion
 requires at least 1,000 lit pixels so a black destination fails. The captures
 are internal Qt output, not independent Genesis visual evidence. Other cave
 exits remain open. `git diff --check` passes. No push was made.
+
+## Lone Star Run chase, ROM trace before implementation
+
+Primary source is `decompilation/input/shadowrun_genesis_us.bin` (2 MiB, ROM
+offset equals address). Raw bytes at `0x23750..0x23810` decode as follows;
+`decompilation/export/disassembly.s` independently covers the shared
+`0x0DBA` dice routine and the called actor-sequence placement dispatcher.
+
+- `0x23750`: clear the Quickness sum and active count; iterate three `0x100`
+  byte runner records from `0xFF0100`, test active bit 0 at `+0x10`, add the
+  live Quickness byte at `+0x78`, then unsigned-divide the sum by active count.
+  The raw sequence includes `08 2B 00 00 00 10` (BTST), `DC 2B 00 78`
+  (ADD.W), `52 00` (ADDQ count), `D7 FC 00 00 01 00` (advance record),
+  `51 CF FF E8` (DBF), and `8C C0` (DIVU). This is an integer average; class
+  and race affect it only through the live Quickness in each runner record.
+- `0x23782`: `52 39 00 FF FB FA` increments heat; `0C 39 00 09 00 FF FB FA`
+  checks against 9; `6B 00 00 0A` takes the store path at 9 or above, writing
+  8. `61 B2` then calls `0x23750`. The Run choice therefore raises heat by
+  one, capped at eight, before calculating the chase.
+- `0x2379E..0x237BE`: target starts at 4. The lead runner armor selector at
+  `0xFF0176` adds one only for selector 5 and adds two only for selector 6;
+  this is a lead-runner modifier, independent of support runners' armor.
+  Typed item mapping uses `lined_duster` and `light_combat_armor` for those
+  source selectors. The call at `0x237BE` passes average Quickness in D6 and
+  the target in D4 to `0x0DBA`.
+- `0x0DBA` rolls at least once, retries on a six while accumulating six, and
+  counts each trial meeting its target. `0x237C4..0x237DC` branches at success
+  counts 4 and 2: 0-1 selects one detective (`0x1D6FE4`, text record
+  `0x120E80`, text pointer `0x11D3C1`); 2-3 selects Lone 12 then detective
+  (`0x1D6FE0`, `0x120E88`, `0x11D3F8`); 4+ selects the escape result
+  (`0x120E90`, `0x11D462`) without actors. Text extracted from the ROM is
+  respectively “The detectives easily overtake you and begin firing.”,
+  “You outrun some of them, but the others appear to be in better shape. They
+  overtake you and open fire.”, and “You easily outrun the slothfull patrol.”
+- The actor pointers at `0x1D6FE0` are `0x1D640A` then `0x1D649E`; the pointer
+  at `0x1D6FE4` is `0x1D649E`. `0x237F8` saves the chosen text record, clears
+  D0, and calls `0x1E1FC`; `0x1E216` sends zero D0 through `0x1E302`, the
+  screen-edge candidate builder. If the actor sequence cannot start, the
+  shared tail returns escape text `0x120E90`; the earlier heat increment is
+  retained.
+
+Caller review: the field patrol prompt at `0x20F12` and nested Company Man
+patrol prompts at `0x20F5A` share command `0x99`. The undercover/police
+dialogue routes at `0x20F8A` and `0x20FA2` also use this chase routine, so the
+Lua resolver remains reusable by each already-supported caller. The Run
+handler now implements the three success bands and named lead-armor modifiers.
+The typed story-sequence publisher accepts the screen-edge policy selected by
+the source D0 value. Debug and Release Lua plus physical field QA pass; the
+physical route verifies the caught branch and returned detective actor. Other
+result-band physical routes, nested-caller physical QA, combat completion,
+and independent Genesis comparison remain open.

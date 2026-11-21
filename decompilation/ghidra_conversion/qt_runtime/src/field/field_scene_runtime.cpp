@@ -7858,11 +7858,17 @@ bool FieldSceneRuntime::process_pending_story_world_effect_sequence() {
     const auto sequence_id = effect.sequence_id;
     auto outcome = game_scripts_.resolve_field_actor_sequence(
         scene_id, sequence_id);
+    // Run clears D0 at ROM 0x237F8; 0x1E216 routes zero through the screen-edge
+    // candidate builder at 0x1E302, so story sequences can use either policy.
+    const bool supported_placement_policy = outcome.has_value() &&
+        (outcome->placement_policy == scripting::
+             ScriptFieldEncounterPlacementPolicy::map_derived_candidates ||
+         outcome->placement_policy == scripting::
+             ScriptFieldEncounterPlacementPolicy::screen_edge_candidates);
     if (!outcome.has_value() ||
         outcome->kind != scripting::
             ScriptFieldEncounterOutcomeKind::dynamic_world_effect_sequence ||
-        outcome->placement_policy != scripting::
-            ScriptFieldEncounterPlacementPolicy::map_derived_candidates ||
+        !supported_placement_policy ||
         outcome->sequence_id != sequence_id ||
         outcome->actors.size() != effect.actor_count ||
         std::any_of(outcome->actors.begin(), outcome->actors.end(),
@@ -7872,7 +7878,8 @@ bool FieldSceneRuntime::process_pending_story_world_effect_sequence() {
         failure_ = game_scripts_.failure().empty()
             ? "Story world-effect list " + effect.name +
                   " did not resolve its " +
-                  std::to_string(effect.actor_count) + " map-placed actors"
+                  std::to_string(effect.actor_count) +
+                  " candidate-placed actors"
             : game_scripts_.failure();
         source_boundary(
             "field.world_activity." + effect.name + "_list_unresolved");

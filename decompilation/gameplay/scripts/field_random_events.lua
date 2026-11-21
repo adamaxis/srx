@@ -65,6 +65,13 @@ local LONE_STAR_BRIBE_RESULT =
     "<You admit you must have misplaced the document.||In haste, you offer " ..
     "an \"on sight fine\" of 500 nuyen to take care of any further " ..
     "problems.||They accept your donation and leave.>" -- ROM text 0x11D544.
+local LONE_STAR_RUN_CAUGHT_RESULT =
+    "<The detectives easily overtake you and begin firing.>" -- 0x11D3C1.
+local LONE_STAR_RUN_PARTIAL_RESULT =
+    "<You outrun some of them, but the others appear to be in better shape.||" ..
+    "They overtake you and open fire.>" -- 0x11D3F8.
+local LONE_STAR_RUN_ESCAPE_RESULT =
+    "<You easily outrun the slothfull patrol.>" -- 0x11D462.
 local HAGGARD_CREDENTIALS_RESULT =
     "<They explain that they work for an insane asylum and that this is one " ..
     "of their patients.||After showing the proper credentials they give you " ..
@@ -582,6 +589,90 @@ local function resolve_lone_star_patrol_attack()
     return "resolved"
 end
 
+local function resolve_lone_star_patrol_run()
+    -- ROM 0x23782 raises heat before the chase check. Its 0x23750 helper
+    -- averages live Quickness across active runners; only slot 0's armor
+    -- selector changes the threshold at 0x237A2/0x237B0.
+    local heat = StoryState.heat_level()
+    if heat == nil then
+        return source_boundary("ROM 0x23782 needs the current Lone Star heat")
+    end
+    if not StoryState.set_heat_level(math.min(
+           StoryState.MAX_HEAT_LEVEL, heat + 1)) then
+        return source_boundary("ROM 0x23782 could not raise Lone Star heat")
+    end
+
+    local quickness = party_check()
+    if quickness == nil then
+        return source_boundary(
+            "ROM 0x23750 needs the active runners' Quickness values")
+    end
+    if type(game.party) ~= "function" then
+        return source_boundary(
+            "ROM 0x237A2 needs the lead runner's equipped armor")
+    end
+    local party = game.party()
+    local lead = type(party) == "table" and party[0] or nil
+    if type(lead) ~= "table" then
+        return source_boundary(
+            "ROM 0x237A2 needs the lead runner's equipped armor")
+    end
+
+    local target = 4 -- ROM 0x2379E.
+    if lead.equipped_armor_id == "lined_duster" then
+        target = target + 1 -- armor selector 5 at ROM 0x237A2.
+    elseif lead.equipped_armor_id == "light_combat_armor" then
+        target = target + 2 -- armor selector 6 at ROM 0x237B0.
+    end
+
+    local modules = type(game.modules) == "table" and game.modules or nil
+    local combat = type(modules) == "table" and modules.combat or nil
+    if type(combat) ~= "table" or
+       type(combat.roll_thresholded_successes) ~= "function" then
+        return source_boundary(
+            "ROM 0x237BE needs the shared threshold-roll service")
+    end
+    local successes = combat.roll_thresholded_successes(
+        quickness, target, random_die)
+    if successes == nil then
+        return source_boundary("ROM 0x237BE chase roll is unavailable")
+    end
+
+    if successes >= 4 then
+        game.ui.say_text(LONE_STAR_RUN_ESCAPE_RESULT, false)
+        return "resolved"
+    end
+
+    local outcome
+    if successes >= 2 then
+        outcome = {
+            actors = 2,
+            sequence_id =
+                E.WorldEffectSequence.LONE_STAR_PATROL_RUN_LONE12_AND_DETECTIVE,
+            result_text = LONE_STAR_RUN_PARTIAL_RESULT,
+        }
+    else
+        outcome = {
+            actors = 1,
+            sequence_id = E.WorldEffectSequence.LONE_STAR_PATROL_RUN_DETECTIVE,
+            result_text = LONE_STAR_RUN_CAUGHT_RESULT,
+        }
+    end
+
+    local scene = StoryState.scene()
+    if scene == nil then
+        return source_boundary("ROM 0x237F8 needs the active field scene")
+    end
+    if not StoryState.queue_world_effect(scene, outcome) then
+        -- ROM 0x23804 returns the escape record when a requested sequence
+        -- cannot start; heat has already been raised by the shared handler.
+        game.ui.say_text(LONE_STAR_RUN_ESCAPE_RESULT, false)
+        return "resolved"
+    end
+    game.ui.say_text(outcome.result_text, false)
+    return "resolved"
+end
+
 local LONE_STAR_ILLEGAL_EQUIPMENT = {
     ak_97 = true,
     hk227_s = true,
@@ -682,8 +773,7 @@ local function resolve_lone_star_compliance_followup(choice, route,
         return resolve_lone_star_weapon_permit_talk(charisma, heat)
     end
     if choice == "run_away" then
-        return source_boundary(
-            "ROM 0x99 -> 0x23782 shared patrol chase is not implemented")
+        return resolve_lone_star_patrol_run()
     end
     return source_boundary(
         "ROM Lone Star follow-up returned an unavailable choice")
@@ -807,8 +897,7 @@ local function unresolved_lone_star_patrol_choice(choice)
         return resolve_lone_star_patrol_comply()
     end
     if choice == "run_away" then
-        return source_boundary(
-            "ROM 0x99 -> 0x23782 shared patrol chase is not implemented")
+        return resolve_lone_star_patrol_run()
     end
     return source_boundary(
         "ROM 0x120FE8 returned an unavailable Lone Star choice")
