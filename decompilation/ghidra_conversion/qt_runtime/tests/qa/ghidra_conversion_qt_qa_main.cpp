@@ -23114,6 +23114,381 @@ int run_gang_contract_target_entry_qa(
             return 3;
         }
         if (!write_state("actual")) return 3;
+        if (test_case.name == "active-eye-fivers-contract") {
+            constexpr std::uint16_t kEyeFiverFightSeed = 0x4000U;
+            constexpr std::uint16_t kEyeFiverStagingOffset = 0x0100U;
+            constexpr std::uint16_t kEyeFiverCameraCenterX = 0x0800U;
+            constexpr std::uint16_t kEyeFiverCameraCenterY = 0x0700U;
+            constexpr std::uint16_t kEyeFiverPlayerActionFlags = 0x0300U;
+            constexpr std::uint8_t kControllerButtonB = 0x10U;
+            constexpr std::uint8_t kControllerButtonA = 0x40U;
+
+            const auto completed_transitions_before = std::count(
+                boundaries.begin(), boundaries.end(),
+                "field.building_transition.completed");
+            for (std::uint16_t tick = 0U;
+                 tick < 240U &&
+                 std::count(boundaries.begin(), boundaries.end(),
+                            "field.building_transition.completed") ==
+                     completed_transitions_before;
+                 ++tick) {
+                field_scene.set_controller_nibble(0U);
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                ++frame;
+            }
+            for (std::uint8_t tick = 0U; tick < 4U; ++tick) {
+                field_scene.set_controller_nibble(0U);
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                ++frame;
+            }
+            if (field_scene.field_scene_reference_for_dump() != 15U ||
+                field_scene.dynamic_world_actor_count_for_dump() != 4U) {
+                std::cerr << "Eye-Fiver fight QA: the ordinary Scene 15 fade-in "
+                             "did not settle before combat inputs (scene="
+                          << field_scene.field_scene_reference_for_dump()
+                          << ", actors="
+                          << field_scene.dynamic_world_actor_count_for_dump()
+                          << ")\n";
+                return 3;
+            }
+
+            const auto actors =
+                field_scene.active_default_actor_positions_for_dump();
+            if (actors.size() != 4U ||
+                actors.front().x < kEyeFiverStagingOffset) {
+                std::cerr << "Eye-Fiver fight QA: source group position setup "
+                             "is incomplete (actors=" << actors.size()
+                          << ")\n";
+                return 3;
+            }
+            const auto staged_runner_x = static_cast<std::uint16_t>(
+                actors.front().x - kEyeFiverStagingOffset);
+            field_scene.set_field_entity_world_position_for_dump(
+                staged_runner_x, actors.front().y);
+            field_scene.set_field_camera_world_position_for_dump(
+                staged_runner_x > kEyeFiverCameraCenterX
+                    ? static_cast<std::uint16_t>(
+                          staged_runner_x - kEyeFiverCameraCenterX)
+                    : 0U,
+                actors.front().y > kEyeFiverCameraCenterY
+                    ? static_cast<std::uint16_t>(
+                          actors.front().y - kEyeFiverCameraCenterY)
+                    : 0U);
+            for (std::uint8_t tick = 0U; tick < 30U; ++tick) {
+                field_scene.set_controller_nibble(0U);
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                ++frame;
+            }
+
+            const auto firing_lane_actors =
+                field_scene.active_default_actor_positions_for_dump();
+            if (firing_lane_actors.size() != 4U ||
+                firing_lane_actors[1U].x >
+                    std::numeric_limits<std::uint16_t>::max() -
+                        kEyeFiverStagingOffset) {
+                std::cerr << "Eye-Fiver fight QA: clear firing lane setup "
+                             "could not find actor 1\n";
+                return 3;
+            }
+            const auto firing_lane_runner_x = static_cast<std::uint16_t>(
+                firing_lane_actors[1U].x + kEyeFiverStagingOffset);
+            const auto firing_lane_runner_y = firing_lane_actors[1U].y;
+            field_scene.set_field_entity_world_position_for_dump(
+                firing_lane_runner_x, firing_lane_runner_y);
+            field_scene.set_field_camera_world_position_for_dump(
+                firing_lane_runner_x > kEyeFiverCameraCenterX
+                    ? static_cast<std::uint16_t>(
+                          firing_lane_runner_x - kEyeFiverCameraCenterX)
+                    : 0U,
+                firing_lane_runner_y > kEyeFiverCameraCenterY
+                    ? static_cast<std::uint16_t>(
+                          firing_lane_runner_y - kEyeFiverCameraCenterY)
+                    : 0U);
+            auto& player = field_scene.active_runner_record();
+            player.flags = static_cast<std::uint16_t>(
+                player.flags | kEyeFiverPlayerActionFlags);
+            player.inventory_item_codes[0] = 5U;
+            player.equipped_inventory_slot = 0;
+            player.equipped_item_code = 5U;
+            player.skills[1U] = 10U;
+            player.skills[2U] = 10U;
+            player.skills[3U] = 10U;
+            player.skills[4U] = 10U;
+            player.ammo_rounds = 60U;
+            player.ammo_clips = 5U;
+            field_scene.refresh_field_hud_for_dump();
+
+            const auto fight_trace_path = case_output / "fight.tsv";
+            const auto event_trace_path = case_output / "fight-events.tsv";
+            std::ofstream fight_trace(fight_trace_path, std::ios::trunc);
+            if (!fight_trace) return 3;
+            fight_trace << "frame\tstage\tplayer_x\tplayer_y\tplayer_hp"
+                           "\tplayer_rounds\tselected\tspawned\tresolved"
+                           "\tplayer_attack_result"
+                           "\tprojectile_x\tprojectile_y"
+                           "\tprojectile_spawn_x\tprojectile_spawn_y"
+                           "\tprojectile_heading\tprojectile_steps"
+                           "\tactor0_action\tactor0_ammo\tactor0_hp"
+                           "\tactor0_anim\tactor0_x\tactor0_y"
+                           "\tactor0_range\tactor0_target"
+                           "\tactor1_action\tactor1_ammo\tactor1_hp"
+                           "\tactor1_anim\tactor1_x\tactor1_y"
+                           "\tactor1_range\tactor1_target"
+                           "\tactor2_action\tactor2_ammo\tactor2_hp"
+                           "\tactor2_anim\tactor2_x\tactor2_y"
+                           "\tactor2_range\tactor2_target"
+                           "\tactor3_action\tactor3_ammo\tactor3_hp"
+                           "\tactor3_anim\tactor3_x\tactor3_y"
+                           "\tactor3_range\tactor3_target\n";
+            const auto fight_boundary_start = boundaries.size();
+            std::uint32_t player_frame = frame;
+            const auto count_prefix = [&boundaries, fight_boundary_start](
+                                          const std::string_view prefix) {
+                return static_cast<std::size_t>(std::count_if(
+                    boundaries.begin() + static_cast<std::ptrdiff_t>(
+                        fight_boundary_start),
+                    boundaries.end(), [&prefix](const auto& boundary) {
+                        return boundary.rfind(prefix, 0U) == 0U;
+                    }));
+            };
+            const auto write_fight_state = [&]() {
+                const auto position =
+                    field_scene.field_entity_world_position();
+                fight_trace << player_frame << "\tshot\t" << position.x
+                            << '\t' << position.y << '\t'
+                            << static_cast<unsigned>(player.delay_meter)
+                            << '\t'
+                            << static_cast<unsigned>(player.ammo_rounds)
+                            << '\t'
+                            << field_scene.selected_default_actor_id_for_dump()
+                                   .value_or("<none>")
+                            << '\t'
+                            << count_prefix(
+                                   "field.actor.weapon_projectile_spawned:")
+                            << '\t'
+                            << count_prefix(
+                                   "field.combat.weapon_hit_resolved:");
+                const auto attack_result =
+                    field_scene.field_weapon_primary_action_result_for_dump();
+                fight_trace << '\t'
+                            << (attack_result.has_value()
+                                    ? std::to_string(*attack_result)
+                                    : std::string{"-"});
+                const auto projectile_position =
+                    field_scene.field_weapon_primary_position_for_dump();
+                const auto projectile_spawn_position =
+                    field_scene.field_weapon_primary_spawn_position_for_dump();
+                const auto projectile_heading =
+                    field_scene.field_weapon_primary_heading_for_dump();
+                const auto projectile_steps =
+                    field_scene
+                        .field_weapon_primary_remaining_clear_steps_for_dump();
+                const auto optional_position = [](
+                    const std::optional<SceneRunnerPosition>& value,
+                    const bool x) {
+                    return value.has_value()
+                        ? std::to_string(x ? value->x : value->y)
+                        : std::string{"-"};
+                };
+                fight_trace << '\t' << optional_position(
+                    projectile_position, true)
+                    << '\t' << optional_position(projectile_position, false)
+                    << '\t' << optional_position(projectile_spawn_position, true)
+                    << '\t' << optional_position(projectile_spawn_position, false)
+                    << '\t' << (projectile_heading.has_value()
+                                    ? std::to_string(*projectile_heading)
+                                    : std::string{"-"})
+                    << '\t' << (projectile_steps.has_value()
+                                    ? std::to_string(*projectile_steps)
+                                    : std::string{"-"});
+                const auto positions =
+                    field_scene.active_default_actor_positions_for_dump();
+                for (std::uint16_t actor = 0U; actor < 4U; ++actor) {
+                    const auto optional_number = [](
+                        const std::optional<std::uint16_t> value) {
+                        return value.has_value()
+                            ? std::to_string(*value) : std::string{"-"};
+                    };
+                    const auto action_count =
+                        field_scene.default_actor_action_count_for_dump(actor);
+                    const auto ammo =
+                        field_scene.default_actor_ammunition_remaining_for_dump(
+                            actor);
+                    const auto physical =
+                        field_scene.default_actor_physical_meter_for_dump(
+                            actor);
+                    const auto animation =
+                        field_scene.default_actor_animation_id_for_dump(actor);
+                    const auto range =
+                        field_scene.default_actor_ai_target_distance_for_dump(
+                            actor);
+                    const auto target =
+                        field_scene.default_actor_ai_target_id_for_dump(actor);
+                    const auto position = actor < positions.size()
+                        ? std::optional<SceneRunnerPosition>{positions[actor]}
+                        : std::nullopt;
+                    fight_trace << '\t' << optional_number(action_count)
+                                << '\t' << optional_number(ammo) << '\t'
+                                << (physical.has_value()
+                                        ? std::to_string(*physical)
+                                        : std::string{"-"})
+                                << '\t' << animation.value_or("-") << '\t'
+                                << optional_position(position, true) << '\t'
+                                << optional_position(position, false) << '\t'
+                                << optional_number(range) << '\t'
+                                << target.value_or("-");
+                }
+                fight_trace << '\n';
+                fight_trace.flush();
+                return static_cast<bool>(fight_trace);
+            };
+
+            bool target_selected = false;
+            for (std::uint8_t attempt = 0U; attempt < 8U &&
+                 !target_selected; ++attempt) {
+                field_scene.set_controller_port_byte(kControllerButtonB);
+                field_scene.advance_frame();
+                ++player_frame;
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                ++player_frame;
+                target_selected =
+                    field_scene.selected_default_actor_id_for_dump()
+                        .has_value();
+            }
+            const auto duel_actors =
+                field_scene.active_default_actor_positions_for_dump();
+            if (!target_selected || duel_actors.size() != 4U ||
+                duel_actors[1U].x >
+                    std::numeric_limits<std::uint16_t>::max() -
+                        kEyeFiverStagingOffset) {
+                std::cerr << "Eye-Fiver fight QA: selected shooter could not "
+                             "be aligned with the runner\n";
+                return 3;
+            }
+            const auto duel_runner_x = static_cast<std::uint16_t>(
+                duel_actors[1U].x + kEyeFiverStagingOffset);
+            const auto duel_runner_y = duel_actors[1U].y;
+            field_scene.set_field_entity_world_position_for_dump(
+                duel_runner_x, duel_runner_y);
+            field_scene.set_field_camera_world_position_for_dump(
+                duel_runner_x > kEyeFiverCameraCenterX
+                    ? static_cast<std::uint16_t>(
+                          duel_runner_x - kEyeFiverCameraCenterX)
+                    : 0U,
+                duel_runner_y > kEyeFiverCameraCenterY
+                    ? static_cast<std::uint16_t>(
+                          duel_runner_y - kEyeFiverCameraCenterY)
+                    : 0U);
+            const auto actor_1_hp_before =
+                field_scene.default_actor_physical_meter_for_dump(1U);
+            if (!actor_1_hp_before.has_value()) {
+                std::cerr << "Eye-Fiver fight QA: selected actor has no "
+                             "physical track\n";
+                return 3;
+            }
+            field_scene.set_source_random_seed_for_dump(kEyeFiverFightSeed);
+            bool positive_player_attack_result = false;
+            for (std::uint16_t tick = 0U; tick < 1200U; ++tick) {
+                field_scene.set_controller_port_byte(kControllerButtonA);
+                field_scene.advance_frame();
+                ++player_frame;
+                const auto attack_result =
+                    field_scene.field_weapon_primary_action_result_for_dump();
+                positive_player_attack_result =
+                    positive_player_attack_result ||
+                    (attack_result.has_value() && *attack_result > 0);
+                if (tick % 12U == 0U && !write_fight_state()) return 3;
+            }
+            field_scene.set_controller_port_byte(0U);
+            field_scene.advance_frame();
+            ++player_frame;
+            if (!write_fight_state()) return 3;
+
+            std::ofstream event_trace(event_trace_path, std::ios::trunc);
+            if (!event_trace) return 3;
+            event_trace << "sequence\tboundary\n";
+            for (std::size_t index = fight_boundary_start;
+                 index < boundaries.size(); ++index) {
+                event_trace << (index - fight_boundary_start) << '\t'
+                            << boundaries[index] << '\n';
+            }
+            if (!event_trace) return 3;
+            std::cout << "active-eye-fivers-fight-diagnostic frames=1200"
+                      << " selected=" << target_selected
+                      << " player_shots=" << count_prefix(
+                             "field.combat.player_weapon_spawned")
+                      << " enemy_spawns=" << count_prefix(
+                             "field.actor.weapon_projectile_spawned:")
+                      << " all_hits=" << count_prefix(
+                             "field.combat.weapon_hit_resolved:")
+                      << " runner_hits=" << count_prefix(
+                             "field.combat.weapon_hit_resolved:party.runner.0")
+                      << " runner_hp=" << static_cast<unsigned>(
+                             player.delay_meter)
+                      << " actor_1_hp=" << static_cast<unsigned>(
+                             field_scene
+                                 .default_actor_physical_meter_for_dump(1U)
+                                 .value_or(0U))
+                      << " traces=" << fight_trace_path.string() << ','
+                      << event_trace_path.string() << '\n';
+            const auto player_shots =
+                count_prefix("field.combat.player_weapon_spawned");
+            const auto enemy_spawns =
+                count_prefix("field.actor.weapon_projectile_spawned:");
+            const auto shooter_2_spawns = count_prefix(
+                "field.actor.weapon_projectile_spawned:"
+                "field_scene_15_encounter_0_actor_2");
+            const auto shooter_3_spawns = count_prefix(
+                "field.actor.weapon_projectile_spawned:"
+                "field_scene_15_encounter_0_actor_3");
+            const auto resolved_hits =
+                count_prefix("field.combat.weapon_hit_resolved:");
+            const auto hostile_target_hits =
+                count_prefix("field.combat.weapon_hit_resolved:"
+                             "field_scene_15_encounter_0_actor_2") +
+                count_prefix("field.combat.weapon_hit_resolved:"
+                             "field_scene_15_encounter_0_actor_3");
+            const auto actor_1_hp_after =
+                field_scene.default_actor_physical_meter_for_dump(1U);
+            const bool shooter_targets_retained =
+                field_scene.default_actor_ai_target_id_for_dump(2U) ==
+                    std::optional<std::string>{"party.runner.0"} &&
+                field_scene.default_actor_ai_target_id_for_dump(3U) ==
+                    std::optional<std::string>{"party.runner.0"};
+            // These two shooters can be knocked down by ROM collision-order
+            // friendly fire before their 10-round magazines empty.
+            if (player_shots < 16U || enemy_spawns < 8U ||
+                shooter_2_spawns == 0U || shooter_3_spawns == 0U ||
+                !shooter_targets_retained || resolved_hits < 3U ||
+                hostile_target_hits == 0U ||
+                !positive_player_attack_result ||
+                !actor_1_hp_after.has_value() ||
+                *actor_1_hp_after >= *actor_1_hp_before) {
+                std::cerr << "Eye-Fiver fight QA: sustained live combat did "
+                             "not resolve player damage to the selected "
+                             "target at the expected firing cadence (shots="
+                          << player_shots
+                          << ", enemy-spawns=" << enemy_spawns
+                          << " (actor2=" << shooter_2_spawns
+                          << ", actor3=" << shooter_3_spawns << ')'
+                          << ", resolved-hits=" << resolved_hits
+                          << ", hostile-target-hits=" << hostile_target_hits
+                          << ", targets-retained="
+                          << shooter_targets_retained
+                          << ", positive-roll="
+                          << positive_player_attack_result
+                          << ", target-hp="
+                          << static_cast<unsigned>(*actor_1_hp_before) << "->"
+                          << static_cast<unsigned>(
+                                 actor_1_hp_after.value_or(0U))
+                          << ")\n";
+                return 3;
+            }
+        }
         trace << "source\tscene="
               << static_cast<unsigned>(test_case.scene_id)
               << "\trecord=0x" << std::hex

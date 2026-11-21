@@ -14278,9 +14278,9 @@ void FieldSceneRuntime::advance_field_weapon_projectiles(
         candidate.world_y = actor.world_position.y;
         candidate.flags = actor.source_record_flags;
         candidate.interaction_flags = actor.source_interaction_flags;
-        // ROM 0x15B58-0x15B9C checks candidate +0x9E bit 4 when
-        // the projectile's +0x10 bit 3 selects compatibility filtering.
-        // +0x9E is the actor's spawn-state flags, not its Lua movement state.
+        // ROM 0x15B58-0x15B9C checks candidate +0x9E bit 4 when the
+        // projectile's +0x10 bit 3 selects compatibility filtering. +0x9E
+        // carries spawn-state flags; +0xB0 carries the separate live range fact.
         candidate.behavior_flags = actor.source_spawn_state_flags;
         candidate.collision_enabled = actor.physical_meter != 0U;
         live_collision_target_ids[slot] = actor.actor_instance_id;
