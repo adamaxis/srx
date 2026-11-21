@@ -23173,19 +23173,59 @@ int run_gang_contract_target_entry_qa(
             }
 
             auto& runner = field_scene.active_runner_record();
-            constexpr std::array<std::uint8_t, 6U> kSamuraiAttributes{{
-                4U, 3U, 4U, 1U, 2U, 4U}};
-            if (runner.species_index != 0U || runner.archetype_index != 2U ||
-                !std::equal(kSamuraiAttributes.begin(),
-                            kSamuraiAttributes.end(),
-                            runner.attributes.begin()) ||
-                runner.skills[1U] != 4U || runner.equipped_item_code != 2U ||
-                runner.ammo_rounds == 0U) {
-                std::cerr << "Eye-Fivers fight QA: player is not the ROM "
-                             "Human Samurai starter from 0x7291A"
+            struct StarterProfile {
+                std::string_view name;
+                std::uint32_t source_address;
+                std::uint8_t archetype_index;
+                std::array<std::uint8_t, 6U> attributes;
+                std::uint8_t firearms;
+                std::uint8_t weapon_item;
+                std::uint16_t source_capability_word;
+                std::uint16_t repeat_interval_frames;
+            };
+            // The three New Game records at 0x7291A/0x72A1A/0x72B1A have
+            // distinct Human archetypes, stats, skills, and starter guns.
+            // With no +0x90 delay modifier, 0xD81C/0xD7EA/0xABFC produce
+            // attack delays 51/47/49; firearm codes 2/3 use half mode and
+            // 0xAE26..0xAE46 make the repeat intervals 52/48/50 passes.
+            constexpr std::array<StarterProfile, 3U> kStarterProfiles{{
+                {"samurai", 0x7291AU, 2U, {4U, 3U, 4U, 1U, 2U, 4U},
+                 4U, 2U, 0x0004U, 52U},
+                {"decker", 0x72A1AU, 3U, {2U, 5U, 2U, 2U, 4U, 3U},
+                 2U, 3U, 0x0001U, 48U},
+                {"gator_shaman", 0x72B1AU, 1U,
+                 {2U, 4U, 1U, 2U, 3U, 4U}, 2U, 2U, 0x0000U, 50U},
+            }};
+            const auto starter_profile = std::find_if(
+                kStarterProfiles.begin(), kStarterProfiles.end(),
+                [&runner](const StarterProfile& profile) {
+                    return profile.archetype_index == runner.archetype_index;
+                });
+            const bool expected_starter =
+                starter_profile != kStarterProfiles.end() &&
+                runner.species_index == 0U &&
+                std::equal(starter_profile->attributes.begin(),
+                           starter_profile->attributes.end(),
+                           runner.attributes.begin()) &&
+                runner.skills[1U] == starter_profile->firearms &&
+                runner.equipped_item_code == starter_profile->weapon_item &&
+                runner.cyberware_flags ==
+                    starter_profile->source_capability_word &&
+                runner.equipped_inventory_slot == 0 && runner.posture == 2U &&
+                runner.delay_meter == 10U && runner.behavior_meter == 10U &&
+                runner.ammo_rounds != 0U;
+            if (!expected_starter) {
+                std::cerr << "Eye-Fivers fight QA: player does not match one "
+                             "of the ROM Human starter profiles"
                           << " race=" << static_cast<unsigned>(runner.species_index)
                           << " class=" << static_cast<unsigned>(runner.archetype_index)
                           << " item=" << static_cast<unsigned>(runner.equipped_item_code)
+                          << " firearms=" << static_cast<unsigned>(runner.skills[1U])
+                          << " capabilities=0x" << std::hex
+                          << runner.cyberware_flags << std::dec
+                          << " posture=" << static_cast<unsigned>(runner.posture)
+                          << " physical=" << static_cast<unsigned>(runner.delay_meter)
+                          << " mental=" << static_cast<unsigned>(runner.behavior_meter)
                           << " ammo=" << static_cast<unsigned>(runner.ammo_rounds)
                           << '\n';
                 return 3;
@@ -23249,6 +23289,9 @@ int run_gang_contract_target_entry_qa(
             std::size_t npc_physical_hits = 0U;
             std::size_t npc_player_attack_resolutions = 0U;
             std::size_t npc_eye_fiver_physical_hits = 0U;
+            std::vector<std::uint32_t> player_shot_frames;
+            std::vector<std::uint32_t> npc_shot_frames;
+            bool party_runner_down_seen = false;
             const auto active_runner_id = "party.runner." + std::to_string(
                 field_scene.field_active_party_slot_for_dump());
             std::size_t boundary_cursor = boundaries.size();
@@ -23258,12 +23301,16 @@ int run_gang_contract_target_entry_qa(
                     const auto& boundary = boundaries[boundary_cursor++];
                     boundary_trace << frame << '\t' << boundary << '\n';
                     added = true;
-                    if (boundary == "field.combat.player_weapon_spawned") {
+                    if (boundary == "field.actor.combat.party_runner_down") {
+                        party_runner_down_seen = true;
+                    } else if (boundary == "field.combat.player_weapon_spawned") {
                         ++player_shots;
+                        player_shot_frames.push_back(frame);
                     } else if (boundary.rfind(
                                    "field.actor.weapon_projectile_spawned:",
                                    0U) == 0U) {
                         ++npc_shots;
+                        npc_shot_frames.push_back(frame);
                         for (std::size_t actor = 0U;
                              actor < eye_fiver_ids.size(); ++actor) {
                             const auto& actor_id = eye_fiver_ids[actor];
@@ -23622,9 +23669,11 @@ int run_gang_contract_target_entry_qa(
             const auto fight_start = frame;
             field_scene.set_controller_port_byte(0x40U); // Hold A to fire.
             constexpr std::uint32_t kMaximumFightFrames = 1800U;
+            std::uint32_t fight_frames = 0U;
             for (std::uint32_t tick = 0U; tick < kMaximumFightFrames; ++tick) {
                 field_scene.advance_frame();
                 ++frame;
+                fight_frames = tick + 1U;
                 if (!write_player_projectiles()) return 3;
                 const auto boundary_added = capture_boundaries();
                 eye_fiver_was_damaged =
@@ -23632,11 +23681,11 @@ int run_gang_contract_target_entry_qa(
                 if ((tick % 8U) == 0U || boundary_added) {
                     if (!write_fight_state(0x40U)) return 3;
                 }
-                if (player_shots >= 2U && npc_shots >= 2U &&
-                    runner.delay_meter < initial_player_meter &&
-                    eye_fiver_was_damaged) {
-                    break;
-                }
+                // ROM 0xB330 enters the runner's down continuation when either
+                // meter reaches zero. 0xABF2 then starts the party-wipe route;
+                // firing after that transition would test post-combat return,
+                // not sustained combat.
+                if (party_runner_down_seen) break;
             }
             field_scene.set_controller_port_byte(0U);
             ++frame;
@@ -23648,6 +23697,52 @@ int run_gang_contract_target_entry_qa(
             const auto distinct_eye_firers = static_cast<std::size_t>(
                 std::count_if(eye_shots.begin(), eye_shots.end(),
                     [](const auto shots) { return shots > 0U; }));
+            // A 300-frame window is more than twice the ROM's maximum
+            // mode-0 action delay (0xABFC's 0x6A base, before the actor's
+            // Quickness/Intelligence reduction). Requiring activity in every
+            // completed window catches a side that fires only during contact.
+            constexpr std::uint32_t kSustainedWindowFrames = 300U;
+            constexpr std::size_t kSustainedWindowCount =
+                kMaximumFightFrames / kSustainedWindowFrames;
+            std::array<std::size_t, kSustainedWindowCount> player_window_shots{};
+            std::array<std::size_t, kSustainedWindowCount> npc_window_shots{};
+            const auto count_window_shots = [&] (
+                const std::vector<std::uint32_t>& shot_frames,
+                auto& windows) {
+                for (const auto shot_frame : shot_frames) {
+                    if (shot_frame < fight_start) continue;
+                    const auto relative_frame = shot_frame - fight_start;
+                    if (relative_frame >= kMaximumFightFrames) continue;
+                    ++windows[relative_frame / kSustainedWindowFrames];
+                }
+            };
+            count_window_shots(player_shot_frames, player_window_shots);
+            count_window_shots(npc_shot_frames, npc_window_shots);
+            std::vector<std::uint32_t> player_fight_shot_frames;
+            for (const auto shot_frame : player_shot_frames) {
+                if (shot_frame >= fight_start &&
+                    shot_frame - fight_start < fight_frames) {
+                    player_fight_shot_frames.push_back(shot_frame);
+                }
+            }
+            const bool player_repeat_matches_source =
+                player_fight_shot_frames.size() >= 2U &&
+                player_fight_shot_frames[1U] -
+                        player_fight_shot_frames[0U] ==
+                    starter_profile->repeat_interval_frames;
+            const auto completed_sustained_windows = std::min(
+                kSustainedWindowCount,
+                static_cast<std::size_t>(fight_frames /
+                                         kSustainedWindowFrames));
+            const bool sustained_fire =
+                std::all_of(player_window_shots.begin(),
+                            player_window_shots.begin() +
+                                completed_sustained_windows,
+                            [](const auto shots) { return shots > 0U; }) &&
+                std::all_of(npc_window_shots.begin(),
+                            npc_window_shots.begin() +
+                                completed_sustained_windows,
+                            [](const auto shots) { return shots > 0U; });
             // ROM 0x55948-0x55A90 resolves a separate defense/damage branch
             // before changing +0x4C; an incoming Samurai attack may resolve
             // without changing the meter. Require that NPC attacks reach the
@@ -23655,13 +23750,15 @@ int run_gang_contract_target_entry_qa(
             // encounter member's physical meter, rather than demanding a
             // wound against this one seeded Human Samurai setup.
             if (!saved_after_fight || player_shots < 2U || npc_shots < 2U ||
+                !player_repeat_matches_source || !sustained_fire ||
                 distinct_eye_firers < 2U || player_physical_hits == 0U ||
                 npc_player_attack_resolutions == 0U ||
-                npc_eye_fiver_physical_hits == 0U ||
+                (npc_physical_hits == 0U &&
+                 npc_eye_fiver_physical_hits == 0U) ||
                 !eye_fiver_was_damaged || resolved_hits < 2U) {
                 std::cerr << "Eye-Fivers fight QA: two-sided sustained combat "
                              "did not produce shots and meter-changing hits"
-                          << " frames=" << (frame - fight_start)
+                          << " frames=" << fight_frames
                           << " player_shots=" << player_shots
                           << " npc_shots=" << npc_shots
                           << " eye_shots=" << eye_shots[0] << ','
@@ -23679,21 +23776,68 @@ int run_gang_contract_target_entry_qa(
                           << npc_player_attack_resolutions
                           << " npc_eye_fiver_physical_hits="
                           << npc_eye_fiver_physical_hits
+                          << " player_repeat_interval="
+                          << (player_fight_shot_frames.size() >= 2U
+                                  ? std::to_string(
+                                        player_fight_shot_frames[1U] -
+                                        player_fight_shot_frames[0U])
+                                  : std::string("unavailable"))
+                          << '/' << starter_profile->repeat_interval_frames
+                          << " player_window_shots=";
+                for (std::size_t window = 0U;
+                     window < kSustainedWindowCount; ++window) {
+                    std::cerr << (window == 0U ? "" : ",")
+                              << player_window_shots[window];
+                }
+                std::cerr << " npc_window_shots=";
+                for (std::size_t window = 0U;
+                     window < kSustainedWindowCount; ++window) {
+                    std::cerr << (window == 0U ? "" : ",")
+                              << npc_window_shots[window];
+                }
+                std::cerr
+                          << " sustained_windows="
+                          << completed_sustained_windows << '/'
+                          << kSustainedWindowCount
+                          << " party_runner_down=" << party_runner_down_seen
                           << " selected="
                           << field_scene.selected_default_actor_id_for_dump()
                                  .value_or("<none>") << '\n';
                 return 3;
             }
             std::cout << "field_eye_fivers_fight_qa=passed frames="
-                      << (frame - fight_start)
+                      << fight_frames
                       << " player_shots=" << player_shots
                       << " npc_shots=" << npc_shots
                       << " resolved_hits=" << resolved_hits
                       << " player_hits=" << player_physical_hits
                       << " npc_player_resolutions="
                       << npc_player_attack_resolutions
+                      << " npc_player_physical_hits=" << npc_physical_hits
                       << " npc_eye_fiver_physical_hits="
                       << npc_eye_fiver_physical_hits
+                      << " profile=" << starter_profile->name
+                      << " player_repeat_interval="
+                      << (player_fight_shot_frames[1U] -
+                          player_fight_shot_frames[0U])
+                      << '/' << starter_profile->repeat_interval_frames
+                      << " player_window_shots=";
+            for (std::size_t window = 0U;
+                 window < kSustainedWindowCount; ++window) {
+                std::cout << (window == 0U ? "" : ",")
+                          << player_window_shots[window];
+            }
+            std::cout << " npc_window_shots=";
+            for (std::size_t window = 0U;
+                 window < kSustainedWindowCount; ++window) {
+                std::cout << (window == 0U ? "" : ",")
+                          << npc_window_shots[window];
+            }
+            std::cout
+                      << " sustained_windows="
+                      << completed_sustained_windows << '/'
+                      << kSustainedWindowCount
+                      << " party_runner_down=" << party_runner_down_seen
                       << " player_physical="
                       << static_cast<unsigned>(initial_player_meter) << "->"
                       << static_cast<unsigned>(runner.delay_meter)

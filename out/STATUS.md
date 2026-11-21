@@ -343,3 +343,55 @@ settlement, combat completion, and independent Genesis comparison remain open.
 The full CTest suite was not run. `git diff --check` passes. No push was made.
 
 DONE
+
+---
+
+# STATUS: PT4 Eye-Fivers combat profile matrix
+
+Date: 2026-11-21
+Branch: `port-fixes`
+
+## Completed
+
+Expanded the Scene 3 event-4 to Scene 15 Eye-Fivers fight QA from the Human
+Samurai starter to all three ROM New Game profiles. Each case verifies the
+profile's race/class, attributes, Firearms skill, +0x90 capability word,
+equipped starter weapon, posture, and live meters before combat. The shared
+ROM-listed Eye-Fiver party retains its own profile, item, ammunition, and
+physical meters.
+
+Player held-fire intervals are checked against the ROM actor-delay rule and
+each starter weapon: Samurai 52 passes, Decker 48, Gator Shaman 50. The Samurai
+fight runs the full 1,800 frames and requires shots from both sides in all six
+300-frame windows. Decker and Gator Shaman reach the source party-runner down
+transition after physical hits; QA stops there instead of measuring the later
+party-wipe route as continued fighting.
+
+This slice changes QA coverage only. Existing combat implementation passes the
+Samurai fight; this work does not claim a newly fixed gameplay bug or an
+independent Genesis damage-rate comparison.
+
+## Changed files
+
+- `decompilation/ghidra_conversion/qt_runtime/CMakeLists.txt`
+- `decompilation/ghidra_conversion/qt_runtime/tests/qa/ghidra_conversion_qt_qa_main.cpp`
+- `decompilation/docs/ghidra/combat-system-audit.md`
+- `decompilation/docs/ghidra/decompiled-function-status.tsv`
+- `out/DIAG.md`
+- `out/STATUS.md`
+
+## Validation
+
+The Qt QA target builds in Debug and Release. All three Eye-Fivers fight cases
+pass in each configuration (3/3), headlessly with offscreen Qt and dummy audio.
+Samurai: 1,800 frames, 31 player shots, 25 NPC shots, 13 player physical hits,
+and 6/6 sustained-fire windows. Decker: 146 frames to down, 4 player shots,
+3 player physical hits, and 2 incoming physical hits. Gator Shaman: 84 frames
+to down, 2 player shots, 1 player physical hit, and 2 incoming physical hits.
+All three write `actual.bmp` under their Debug and Release build output paths.
+Those are internal Qt captures, not independent Genesis visual proof. The
+full CTest suite was not run.
+
+`git diff --check` passes. No gameplay code changed. No push was made.
+
+DONE

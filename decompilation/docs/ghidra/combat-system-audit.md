@@ -146,3 +146,9 @@ python3 decompilation/gameplay/tests_lua/tools/build_a3_emulator_fixture.py --ca
 ```
 
 Verified 2026-11-02: raw capture SHA-256 `d09d505c…e246`, compact capture `b8aa5bdd…dbe` (the hash pinned in the fixture), and the regenerated fixture is byte-identical to `gameplay/tests_lua/fixtures/a3_emulator_fight_summary.tsv` (SHA-256 `3d088cbb…9a73`). Inputs not in the repo: the Genesis Plus GX libretro core, `retro.py`, and savestate `hw2.state` (SHA-256 `b9bc8cfb…5019`; the script warns on a different state).
+
+### Eye-Fivers controlled field combat profile coverage
+
+[C] The ROM's Scene-15 Eye-Fivers list at `0x1D6D72` points to the same four source actor profiles used by the ordinary Scene 3 event-4 entry. The Human starter records at `0x7291A`, `0x72A1A`, and `0x72B1A` provide the Samurai, Decker, and Gator Shaman presets. Their capability words at `+0x90` are `0x0004`, `0x0001`, and `0x0000`. `0xABFC`/`0xD7EA`/`0xD81C` determine action delay from the source mode, capability, and Quickness/Intelligence; the held-fire gate at `0xAE26..0xAE46` plus weapon rows 2/3 produces first repeat intervals of 52, 48, and 50 source passes for these records.
+
+Headless Qt coverage now enters this contract fight using all three starter profiles, checks each live runner record before firing, and verifies the first held-fire repeat against those intervals. Debug and Release each pass all three cases. The Samurai remains in combat for 1,800 frames with player/NPC shots in each of six 300-frame windows; Decker and Gator Shaman each land player hits and receive NPC physical hits before their ROM zero-meter down transition (146 and 84 frames). This checks converted behavior against ROM-derived inputs and timing, not independent Genesis fire-rate or visual fidelity. No gameplay implementation changed in this coverage slice.

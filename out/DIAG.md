@@ -361,3 +361,53 @@ this makes that later screenshot inconclusive about the live presentation.
 Direct-bootstrap scene captures do not put the seeded actors in the standard
 projection window. These are internal Qt actuals and do not prove Genesis
 visual fidelity. No gameplay code was changed.
+
+## PT4 Eye-Fivers combat replay (before profile expansion)
+
+**[C]** The Scene-15 contract list at ROM `0x1D6D72` contains the ordered
+profile pointers `80 1D 66 10`, `80 1D 65 C6`, `80 1D 65 7C`, and
+`80 1D 65 7C`. Actor service entry `0xA8EA` begins `4E B9 00 01 38 74`
+and scans active records before their per-record continuation. NPC firearm
+dispatch at `0x1514E` creates the action records; `0x14FF8` contains
+`4E B9 00 05 56 40`, calling the attack resolver `0x55640` during the spawn
+pass. Action delay `0xABFC` calls `0xD7EA`; `0xD7EA` reads capability word
+`+0x90` and applies the source Quickness/Intelligence and modifier rules.
+The checked source bytes are retained here so the live-fire cadence assertion
+can be compared to the correct service and profile inputs.
+
+**Reproduction:** headless Debug
+`ctest -R shadowrun_ghidra_conversion_qt_field_eye_fivers_fight_qa -V`
+entered through Scene 3 event 4 and passed the existing Human Samurai fight
+case: 1,801 frames, 31 player shots, 25 NPC shots, 13 player-attributed
+physical hits, 4 NPC resolutions against the runner, and 9 NPC-attributed
+physical hits against other Eye-Fivers. The original report's complete stoppage
+does not reproduce in this checkout's controlled case. The test only covered
+the `0x7291A` Samurai starter and accepted two shots per side, despite three
+distinct New Game profiles at `0x7291A` (Samurai), `0x72A1A` (Decker), and
+`0x72B1A` (Gator Shaman). Expand this same ordinary-entry fight case over all
+three typed presets, checking each profile's stats, Firearms skill, and starter
+weapon while retaining the source-spawned Eye-Fiver party. This is a coverage
+extension; it does not claim the old defect is newly fixed here.
+
+### Profile matrix results
+
+**[C]** The raw Joshua capability words at `0x7291AA`, `0x72A1AA`, and
+`0x72B1AA` are `0004`, `0001`, and `0000`. The low bits do not select a
+`0xD7EA` delay modifier. `0xD81C` reads the Quickness and Intelligence bytes;
+`0xABFC` applies the `0x6A` base and half-mode firearm cadence. With the ROM
+weapon rows for codes 2/3 and the held-fire gate at `0xAE26..0xAE46`, the
+profile delays and repeat intervals are Samurai 51/52, Decker 47/48, and Gator
+Shaman 49/50 source passes.
+
+Debug and Release now pass the same three headless CTests (3/3 in each). The
+Samurai remains active for all 1,800 frames: 31 player shots, 25 NPC shots,
+13 outgoing physical hits, and at least one shot from each side in all six
+300-frame windows. The first player repeat is 52 passes. Decker repeats at 48
+passes and Gator Shaman at 50. Their seeded live fights receive physical hits
+from the Eye-Fivers and enter the ROM zero-meter down continuation after 146
+and 84 frames respectively; the test ends at `field.actor.combat.party_runner_down`
+instead of counting the subsequent party-wipe transition as active combat.
+Player hit attribution is 3 for Decker and 1 for Gator Shaman. This confirms
+the class-specific action cadence and live hit path inside the port; it is not
+an independent Genesis damage-rate or visual comparison. No gameplay code
+changed in this slice.
