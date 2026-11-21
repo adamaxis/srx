@@ -2121,7 +2121,7 @@ This hill remains partial. The broader cave seed run has two chained-route
 gaps, and other cave exits plus independent Genesis comparison remain open.
 Internal renderer captures establish the tested runtime paths only.
 
-## Lone Star patrol Attack choice (partial, 2026-11-21)
+## Lone Star patrol Attack and Comply choices (partial, 2026-11-21)
 
 The patrol event at ROM `0x20F12` now sends Attack through shared handler
 `0x23412`. The Lua path resolves list `0x1D6FDC` to the ordered Lone 11, Lone
@@ -2132,9 +2132,26 @@ normal field pass after the result dialogue returns, then publishes the three
 actors. The same Attack branch is reused by the nested Company Man patrol
 prompt.
 
-Debug and Release QA cover the prompt, result page, heat cap, actor profiles,
-and full 320x224 prompt/result/field captures; Lua tests also cover queue
-failure and the two nested Company Man Attack entries. This hill remains
-partial while Comply and Run, combat completion, the patrol portrait, and an
-independent Genesis comparison remain open. See the
+Shared Comply handler `0x23452` now owns the patrol Talk choice and the nested
+Company Man patrol Talk. Its ROM branch at `0x23472` appears to allow the
+`FF018F` bit-2 Faradouchi pass at result 21, but for valid heat `0..8` the
+bound at `0x2345E` is at most 10; the branch is unreachable. At heat 5/6 the
+bound is zero, and source routine `0x0D3A` still advances the PRNG. The
+reachable d12/Charisma release lowers heat by one. A failed check goes to the
+suspect-ID prompt at heat 3 or higher, or scans active party inventory below
+3; the weapon-permit path accepts permit bit 11 or takes a 500-nuyen on-sight
+fine after a d10/Charisma check. Successful ID, permit, and fine outcomes are
+implemented in Lua with named runner/equipment facts. The failed ID/fine path
+still stops at arrest-settlement boundary `0x235AA`.
+
+Debug and Release QA cover the patrol prompt, Comply release text and return,
+the live heat-5 bound-0/result-0 then bound-12/result-1 PRNG sequence, Attack
+result, heat cap, actor profiles, and full 320x224 captures. Lua tests cover
+affiliation bounds and draw order for heat `0..8`, all eight illegal-item IDs
+in each of three ordered party slots, the inactive-slot cutoff, successful
+and failed ID/fine checks, permit acceptance, and the two nested Company Man
+Attack entries. These are internal captures, not an
+independent Genesis comparison. This hill remains partial while Run
+`0x23782`, arrest settlement, combat completion, the patrol portrait, nested
+caller physical QA, and independent Genesis comparison remain open. See the
 [field random-event selector audit](field-random-event-selector.md).

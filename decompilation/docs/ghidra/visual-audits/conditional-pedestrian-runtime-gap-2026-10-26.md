@@ -765,6 +765,20 @@ input was selected or any resulting branch. `FF017A`, heat, active-runner
 inventory, and the permit flag remain live source inputs; the frame does not
 identify their values or the runner's class/race profile.
 
+**Implementation follow-up (2026-11-21).** The ROM calculation at `0x2345E`
+uses `(10 - FFFBFA) & 0x0A` as the special-pass bound before comparing its
+sample with 21 at `0x23472`. For legal heat `0..8`, the bound sequence is
+`10, 8, 8, 2, 2, 0, 0, 2, 2`; the referred-to Faradouchi pass cannot occur.
+The two zero-bound cases still consume the source PRNG call at `0x0D3A`. Lua
+and the typed host now follow reachable Comply checks through successful
+release, permit, and 500-nuyen fine outcomes. Debug and Release QA select the
+source B choice, check the heat-zero result, and assert the live draw sequence
+at heat 5 is bound 0/result 0 followed by bound 12/result 1. Both save an
+internal `comply-result` frame, with a separate `comply-zero-bound` capture.
+Failed ID/fine outcomes still stop at arrest settlement `0x235AA`, and Run
+`0x23782` remains open; this does not change the visual interpretation of
+`frame_001500` above.
+
 Frames `002140` through `002170` provide a route-level match for the brown
 walker. The unobscured 240x58 top strip in those frames matches the extracted
 mode-5 map at camera offsets `(1028,782)`, `(1070,782)`, `(1110,782)`, and

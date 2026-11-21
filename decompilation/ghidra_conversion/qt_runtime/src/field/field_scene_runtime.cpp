@@ -1345,9 +1345,11 @@ FieldSceneRuntime::FieldSceneRuntime(
                 if (bound_text.empty() ||
                     parsed.ec != std::errc{} ||
                     parsed.ptr != bound_text.data() + bound_text.size() ||
-                    bound == 0U || bound > 0x7FFFU) {
+                    bound > 0x7FFFU) {
                     return std::nullopt;
                 }
+                // ROM 0x2345E can pass a zero bound at legal heat levels 5
+                // and 6. 0x0D3A still advances the random seed and returns 0.
                 const auto roll = sample_source_random_bound(
                     field_random_seed_, static_cast<std::uint16_t>(bound));
                 return "roll_" +

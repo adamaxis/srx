@@ -546,7 +546,7 @@ deferred until the result dialogue returns, so the no-open-map-candidate and
 partial actor-slot cases still need the source fallback handoff. The `FF018F`
 bit writers and combat exit also remain untraced.
 
-### Lone Star Attack coverage (2026-11-21, partial)
+### Lone Star patrol Attack and Comply coverage (2026-11-21, partial)
 
 **[C]** The standalone patrol choice and the nested Company Man patrol choice
 reach shared Attack handler `0x23412`. It passes list `0x1D6FDC` to `0x1E1FC`
@@ -561,9 +561,42 @@ runtime services that queue on the first ordinary field pass after the result
 dialogue and its return fade. Debug/Release QA checks the prompt choices,
 result page, heat cap, three spawned actor profiles, and saved 320x224 frames;
 Lua tests also exercise the nested Company Man Talk-zero and Walk-away-80
-routes. The hill remains partial: shared Comply `0x23452`, Run `0x23782`,
-combat completion, the patrol portrait, and independent Genesis comparison
-remain open.
+routes.
+
+**[C]** Comply (`0x96`) from `0x20F12` and the Company Man patrol prompt enters
+the shared handler `0x23452`. If `FF018F` bit 2 is set, `0x2345E` samples with
+bound `(10 - FFFBFA) & 0x0A`, then `0x23472` compares the result with 21. For
+valid heat values 0..8, the bounds are `10, 8, 8, 2, 2, 0, 0, 2, 2`; that
+branch cannot pass. The zero-bound calls at heat 5 and 6 still advance the
+source PRNG through `0x0D3A`. The handler then samples 0..11, subtracts heat,
+and compares the result with first-runner Charisma `FF017A` at `0x23482`.
+
+A passing check releases the party and lowers heat by one, clamped at zero.
+After a failed check, heat at least 3 opens the suspect-ID prompt `0x120EB4`;
+Talk `0x98` reaches `0x2371A`, where a 0..19 result at most `FF017A` releases
+the party and lowers heat. A failed ID check enters arrest settlement
+`0x235AA`. Below heat 3, `0x234C8` scans the contiguous active party records
+for item codes `08, 09, 0A, 0C, 0D, 14, 31, 32`. No match releases the party
+and lowers heat; a match opens weapon-permit prompt `0x120E98`. Permit bit 11
+of `FFFC22` ends the stop. Without a permit, Talk `0x97` reaches `0x2354A`:
+a d10 result at most `FF017A` and at least 500 nuyen pays the fine, subtracts
+500, and lowers heat. Failed ID/fine outcomes still reach the unimplemented
+host settlement boundary at `0x235AA`; the ROM's arrest and confiscation
+effects are not simulated by that boundary.
+
+Lua and the typed host random service now implement the reachable successful
+release, permit, and fine paths. Tests cover all nine legal-heat affiliation
+bounds (including zero-bound PRNG advancement), the low-heat no-gear branch,
+suspect-ID success/failure, permit acceptance, fine success/failure, and
+insufficient funds. The inventory permutation tests each of the eight source
+item IDs in all three ordered party slots and verifies that the scan stops at
+the first inactive record. The Debug/Release field QA uses the source B-button choice
+and saves `comply-result-actual.bmp` plus `comply-zero-bound-actual.bmp`
+alongside the Attack captures. This is internal Qt output, not an independent
+Genesis comparison. The hill remains
+partial: arrest settlement `0x235AA`, Run `0x23782`, combat completion, the
+patrol portrait, nested-caller physical QA, and independent Genesis comparison
+remain open. See the [terminal-outcomes table](../../assets/field/world-activity-terminal-outcomes.tsv).
 
 **Custodian / missing-pass check (`0x2101E`, scene 20, sum 1).** The entry
 stub pairs prompt record `0x121330` with profile `0x121E5C`. That profile is a

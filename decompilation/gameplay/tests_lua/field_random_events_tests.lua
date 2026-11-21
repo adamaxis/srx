@@ -21,6 +21,7 @@ local function member(active, quickness, charisma)
     return {
         runner_facts = { lifecycle = { active = active } },
         attributes = { quickness = quickness, charisma = charisma },
+        equipment = {},
     }
 end
 
@@ -755,6 +756,7 @@ local function run_company_man_confrontation(choice, configuration)
     local prompt_choices = configuration.prompt_choices or {}
     local story_calls = {}
     local heat_level = configuration.heat_level or 0
+    local nuyen = configuration.nuyen or 1000
     local party = configuration.party or { [0] = member(true, 2, 2) }
     local patrol_profiles = {
         { actor_name = "lone11", profile_id = "lone11_k05_item03" },
@@ -788,6 +790,12 @@ local function run_company_man_confrontation(choice, configuration)
             event_id = configuration.event_id or
                 "company_man_confrontation",
             scene_id = 3,
+        },
+        state = {
+            vid_phone_affiliation_mafia =
+                configuration.mafia_affiliation == true,
+            ["group_item.weapon_permit"] =
+                configuration.weapon_permit == true,
         },
         modules = {
             combat = Combat,
@@ -844,7 +852,9 @@ local function run_company_man_confrontation(choice, configuration)
             prompt_text = function(menu_id, prompt, options,
                                    speaker_id, text_profile)
                 assert(menu_id == "company_man_confrontation" or
-                       menu_id == "lone_star_patrol_stop",
+                       menu_id == "lone_star_patrol_stop" or
+                       menu_id == "lone_star_suspect_id" or
+                       menu_id == "lone_star_illegal_weapon",
                        "Company Man and Lone Star menu ids")
                 prompt_titles[#prompt_titles + 1] = prompt
                 prompt_options[#prompt_options + 1] = options
@@ -862,7 +872,9 @@ local function run_company_man_confrontation(choice, configuration)
                     local bound = tonumber(
                         type(action) == "string" and
                             action:match("^bounded_(%d+)$") or "")
-                    assert(bound == 6 or bound == 100,
+                    assert(bound == 0 or bound == 2 or bound == 6 or
+                           bound == 8 or bound == 10 or bound == 12 or
+                           bound == 20 or bound == 100,
                            "Company Man confrontation random bound")
                     random_calls[#random_calls + 1] = action
                     random_indices[bound] = (random_indices[bound] or 0) + 1
@@ -897,13 +909,15 @@ local function run_company_man_confrontation(choice, configuration)
                 return "applied"
             end,
         },
+        nuyen = function() return nuyen end,
+        set_nuyen = function(value) nuyen = value end,
     }
     local result = DialogueFramework.open(
         E.DialogueSource.RANDOM_ENCOUNTER,
         "field_random_events",
         configuration.task_name or "present_company_man_confrontation")
     return result, pages, exit_calls, random_calls, prompt_titles,
-        prompt_options, prompt_speakers, story_calls, heat_level
+        prompt_options, prompt_speakers, story_calls, heat_level, nuyen
 end
 
 -- ROM entry 0x20F5A is a distinct Company Man encounter from the 0x210B4
@@ -1113,21 +1127,331 @@ eq(type(leave_gun_draw), "table",
 eq(leave_gun_draw.type, "source_boundary",
    "Walk Away 40 does not fabricate actor list 0x1D7074")
 
-local leave_patrol, _, _, _, leave_patrol_titles, leave_patrol_options =
+local leave_patrol, leave_patrol_pages, _, leave_patrol_random,
+      leave_patrol_titles, leave_patrol_options, _, leave_patrol_story,
+      leave_patrol_heat =
     run_company_man_confrontation("leave", {
-        random_values = { [100] = { 80 } },
+        random_values = { [100] = { 80 }, [12] = { 0 } },
         prompt_choices = { "leave", "talk" },
     })
-eq(type(leave_patrol), "table",
-   "Walk Away 80 opens patrol prompt")
-eq(leave_patrol.type, "source_boundary",
-   "Walk Away 80 reaches the shared comply boundary")
+eq(leave_patrol, "resolved",
+   "Walk Away 80 patrol Talk resolves the shared compliance check")
 eq(#leave_patrol_titles, 2,
    "Walk Away 80 presents the nested Lone Star prompt")
 eq(leave_patrol_options[2][2].id, "talk",
    "Walk Away 80 exposes the patrol Talk choice")
-assert(leave_patrol.reason:find("0x23452", 1, true) ~= nil,
-       "Lone Star Talk identifies shared comply handler 0x23452")
+eq(leave_patrol_pages[1].text,
+   "<Keeping your cool, you answer all of their questions convincingly.||" ..
+   "Finally, Lone Star continues on its way.>",
+   "Walk Away 80 patrol Talk uses ROM text 0x11D637")
+eq(table.concat(leave_patrol_random, ","), "bounded_100,bounded_12",
+   "Walk Away 80 patrol Talk samples its general 0-11 check")
+eq(table.concat(leave_patrol_story, ","),
+   "get_heat_level,set_heat_level_0",
+   "successful compliance lowers heat, clamped at zero")
+eq(leave_patrol_heat, 0,
+   "successful compliance preserves zero heat")
+
+local comply_party = {
+    [0] = member(true, 2, 2),
+    [1] = member(false, 0, 0),
+    [2] = member(false, 0, 0),
+}
+local comply_general, comply_general_pages, _, comply_general_random,
+      _, _, _, comply_general_story, comply_general_heat =
+    run_company_man_confrontation("talk", {
+        event_id = "lone_star_patrol_stop",
+        task_name = "present_lone_star_patrol_stop",
+        prompt_choices = { "talk" },
+        random_values = { [12] = { 4 } },
+        heat_level = 3,
+        party = comply_party,
+    })
+eq(comply_general, "resolved",
+   "ROM 0x23482 adjusted roll at or below Charisma releases the party")
+eq(comply_general_pages[1].text,
+   "<Keeping your cool, you answer all of their questions convincingly.||" ..
+   "Finally, Lone Star continues on its way.>",
+   "successful compliance uses the extracted release record")
+eq(table.concat(comply_general_random, ","), "bounded_12",
+   "general compliance uses one source-bounded 0-11 roll")
+eq(table.concat(comply_general_story, ","),
+   "get_heat_level,set_heat_level_2",
+   "general compliance lowers heat once")
+eq(comply_general_heat, 2,
+   "general compliance lowers heat from three to two")
+
+local comply_unarmed, comply_unarmed_pages, _, comply_unarmed_random,
+      _, _, _, comply_unarmed_story, comply_unarmed_heat =
+    run_company_man_confrontation("talk", {
+        event_id = "lone_star_patrol_stop",
+        task_name = "present_lone_star_patrol_stop",
+        prompt_choices = { "talk" },
+        random_values = { [12] = { 11 } },
+        heat_level = 0,
+        party = comply_party,
+    })
+eq(comply_unarmed, "resolved",
+   "failed low-heat check releases a party with no listed illegal items")
+eq(comply_unarmed_pages[1].text,
+   "<Keeping your cool, you answer all of their questions convincingly.||" ..
+   "Finally, Lone Star continues on its way.>",
+   "ROM 0x234C8 no-match branch returns the release page")
+eq(table.concat(comply_unarmed_random, ","), "bounded_12",
+   "low-heat item scan follows the general check without another draw")
+eq(table.concat(comply_unarmed_story, ","),
+   "get_heat_level,set_heat_level_0",
+   "no-illegal-item release clamps heat at zero")
+eq(comply_unarmed_heat, 0,
+   "no-illegal-item release preserves zero heat")
+
+local special_pass_bounds = { 10, 8, 8, 2, 2, 0, 0, 2, 2 }
+for heat = 0, 8 do
+    local special_bound = special_pass_bounds[heat + 1]
+    local special_party = {
+        [0] = member(true, 2, 255),
+        [1] = member(false, 0, 0),
+        [2] = member(false, 0, 0),
+    }
+    local special_result, special_pages, _, special_random =
+        run_company_man_confrontation("talk", {
+            event_id = "lone_star_patrol_stop",
+            task_name = "present_lone_star_patrol_stop",
+            prompt_choices = { "talk" },
+            random_values = {
+                [special_bound] = { 0 },
+                [12] = { 0 },
+            },
+            heat_level = heat,
+            mafia_affiliation = true,
+            party = special_party,
+        })
+    eq(special_result, "resolved",
+       "Mafia affiliation remains a live Comply input at heat " .. heat)
+    eq(special_pages[1].text,
+       "<Keeping your cool, you answer all of their questions convincingly.||" ..
+       "Finally, Lone Star continues on its way.>",
+       "special-pass roll below its ROM threshold takes the general check")
+    eq(table.concat(special_random, ","),
+       "bounded_" .. special_bound .. ",bounded_12",
+       "ROM 0x2345E source draw order at heat " .. heat)
+end
+
+local illegal_party = {
+    [0] = member(true, 2, 2),
+    [1] = member(false, 0, 0),
+    [2] = member(false, 0, 0),
+}
+illegal_party[0].equipment = { { id = "ak_97" } }
+local permit_result, permit_pages, _, permit_random,
+      permit_titles = run_company_man_confrontation("talk", {
+    event_id = "lone_star_patrol_stop",
+    task_name = "present_lone_star_patrol_stop",
+    prompt_choices = { "talk", "talk" },
+    random_values = { [12] = { 7 } },
+    party = illegal_party,
+    weapon_permit = true,
+})
+eq(permit_result, "resolved",
+   "illegal firearm with an active permit resolves without a fine")
+eq(permit_titles[2],
+   "Hey, Flick.  I think this guy's packing.||" ..
+   "You got a permit for that illegal weapon?",
+   "ROM 0x23542 displays the permit prompt after the named equipment scan")
+eq(permit_pages[1].text,
+   "<You show them your permit, and they continue on their patrol.>",
+   "ROM 0x2354A accepts the weapon permit")
+eq(table.concat(permit_random, ","), "bounded_12",
+   "accepted permit avoids the payment roll")
+
+for _, item_id in ipairs({
+        "ak_97", "hk227_s", "mach_22", "roomsweeper", "frag",
+        "maglock_passkey", "light_combat_armor", "heavy_combat_armor",
+    }) do
+    for target_slot = 0, 2 do
+        local party = {
+            [0] = member(true, 2, 2),
+            [1] = member(target_slot >= 1, 2, 2),
+            [2] = member(target_slot >= 2, 2, 2),
+        }
+        party[target_slot].equipment = { { id = item_id } }
+        local result, pages, _, random_calls, titles =
+            run_company_man_confrontation("talk", {
+                event_id = "lone_star_patrol_stop",
+                task_name = "present_lone_star_patrol_stop",
+                prompt_choices = { "talk", "talk" },
+                random_values = { [12] = { 11 } },
+                party = party,
+                weapon_permit = true,
+            })
+        local case_name = item_id .. " in party slot " .. target_slot
+        eq(result, "resolved",
+           case_name .. " is detected by the active-record scan")
+        eq(titles[2],
+           "Hey, Flick.  I think this guy's packing.||" ..
+           "You got a permit for that illegal weapon?",
+           case_name .. " opens the ROM weapon-permit prompt")
+        eq(pages[1].text,
+           "<You show them your permit, and they continue on their patrol.>",
+           case_name .. " accepts the permit")
+        eq(table.concat(random_calls, ","), "bounded_12",
+           case_name .. " checks inventory after the general roll")
+    end
+end
+
+local gap_party = {
+    [0] = member(true, 2, 2),
+    [1] = member(false, 0, 0),
+    [2] = member(false, 0, 0),
+}
+gap_party[1].equipment = { { id = "frag" } }
+local gap_result, gap_pages, _, gap_random, _, _, _, gap_story =
+    run_company_man_confrontation("talk", {
+        event_id = "lone_star_patrol_stop",
+        task_name = "present_lone_star_patrol_stop",
+        prompt_choices = { "talk" },
+        random_values = { [12] = { 11 } },
+        party = gap_party,
+    })
+eq(gap_result, "resolved",
+   "inventory scan ends at the first inactive runner record")
+eq(#gap_pages, 1,
+   "inactive-slot item does not open the weapon-permit prompt")
+eq(table.concat(gap_random, ","), "bounded_12",
+   "inactive-slot stop adds no payment roll")
+eq(table.concat(gap_story, ","),
+   "get_heat_level,set_heat_level_0",
+   "no active-slot match releases and lowers heat")
+
+local bribe_party = {
+    [0] = member(true, 2, 8),
+    [1] = member(false, 0, 0),
+    [2] = member(false, 0, 0),
+}
+bribe_party[0].equipment = { { id = "hk227_s" } }
+local bribe_result, bribe_pages, _, bribe_random, _, _, _, bribe_story,
+      bribe_heat, bribe_funds = run_company_man_confrontation("talk", {
+    event_id = "lone_star_patrol_stop",
+    task_name = "present_lone_star_patrol_stop",
+    prompt_choices = { "talk", "talk" },
+    random_values = { [12] = { 11 }, [10] = { 8 } },
+    heat_level = 1,
+    nuyen = 700,
+    party = bribe_party,
+})
+eq(bribe_result, "resolved",
+   "permitless armed runner can pass the 500-nuyen check")
+eq(bribe_pages[1].text,
+   "<You admit you must have misplaced the document.||In haste, you offer " ..
+   "an \"on sight fine\" of 500 nuyen to take care of any further " ..
+   "problems.||They accept your donation and leave.>",
+   "ROM 0x2354A uses the source on-sight payment text")
+eq(table.concat(bribe_random, ","), "bounded_12,bounded_10",
+   "weapon permit route rolls the fine only after finding illegal equipment")
+eq(bribe_funds, 200, "permitless route deducts exactly 500 nuyen")
+eq(bribe_heat, 0, "paid permitless route lowers heat once")
+eq(table.concat(bribe_story, ","),
+   "get_heat_level,set_heat_level_0",
+   "paid permitless route updates heat after the fine")
+
+local suspect_party = {
+    [0] = member(true, 2, 2),
+    [1] = member(false, 0, 0),
+    [2] = member(false, 0, 0),
+}
+local suspect_result, suspect_pages, _, suspect_random, suspect_titles,
+      _, _, suspect_story, suspect_heat =
+    run_company_man_confrontation("talk", {
+        event_id = "lone_star_patrol_stop",
+        task_name = "present_lone_star_patrol_stop",
+        prompt_choices = { "talk", "talk" },
+        random_values = { [12] = { 6 }, [20] = { 2 } },
+        heat_level = 3,
+        party = suspect_party,
+    })
+eq(suspect_result, "resolved", "suspect identification can release the party")
+eq(suspect_titles[2],
+   "You look an awful lot like a suspect we've been tracking.||" ..
+   "Goes by the name of Joshua.  Got any ID?",
+   "ROM 0x234B4 opens the suspect-ID prompt at heat three")
+eq(suspect_pages[1].text,
+   "<Keeping your cool, you answer all of their questions convincingly.||" ..
+   "Finally, Lone Star continues on its way.>",
+   "successful suspect-ID roll returns to the release record")
+eq(table.concat(suspect_random, ","), "bounded_12,bounded_20",
+   "suspect-ID Talk uses a 0-19 roll after the general check")
+eq(table.concat(suspect_story, ","),
+   "get_heat_level,set_heat_level_2",
+   "successful ID check lowers heat once")
+eq(suspect_heat, 2, "successful ID check lowers heat from three to two")
+
+local suspect_failure = run_company_man_confrontation("talk", {
+    event_id = "lone_star_patrol_stop",
+    task_name = "present_lone_star_patrol_stop",
+    prompt_choices = { "talk", "talk" },
+    random_values = { [12] = { 11 }, [20] = { 3 } },
+    heat_level = 3,
+    party = suspect_party,
+})
+eq(type(suspect_failure), "table",
+   "failed suspect-ID check reaches the explicit arrest-settlement boundary")
+eq(suspect_failure.type, "source_boundary",
+   "failed suspect-ID check does not fabricate arrest consequences")
+eq(suspect_failure.reason:find("0x235AA", 1, true) ~= nil, true,
+   "failed suspect-ID boundary names ROM settlement 0x235AA")
+
+local bribe_failure, _, _, bribe_failure_random, _, _, _, bribe_failure_story,
+      bribe_failure_heat, bribe_failure_funds =
+    run_company_man_confrontation("talk", {
+        event_id = "lone_star_patrol_stop",
+        task_name = "present_lone_star_patrol_stop",
+        prompt_choices = { "talk", "talk" },
+        random_values = { [12] = { 11 }, [10] = { 9 } },
+        heat_level = 0,
+        nuyen = 700,
+        party = bribe_party,
+    })
+eq(type(bribe_failure), "table",
+   "failed on-sight fine check reaches arrest settlement")
+eq(bribe_failure.type, "source_boundary",
+   "failed fine check remains an explicit source boundary")
+eq(bribe_failure.reason:find("0x235AA", 1, true) ~= nil, true,
+   "failed fine check identifies ROM arrest settlement 0x235AA")
+eq(table.concat(bribe_failure_random, ","), "bounded_12,bounded_10",
+   "failed on-sight fine uses its d10 roll after the weapon scan")
+eq(bribe_failure_funds, 700,
+   "failed on-sight fine leaves the wallet unchanged")
+eq(table.concat(bribe_failure_story, ","), "get_heat_level",
+   "failed on-sight fine does not lower heat before settlement")
+eq(bribe_failure_heat, 0,
+   "failed on-sight fine leaves heat unchanged before settlement")
+
+local insufficient_bribe, _, _, insufficient_bribe_random,
+      _, _, _, insufficient_bribe_story, insufficient_bribe_heat,
+      insufficient_bribe_funds =
+    run_company_man_confrontation("talk", {
+        event_id = "lone_star_patrol_stop",
+        task_name = "present_lone_star_patrol_stop",
+        prompt_choices = { "talk", "talk" },
+        random_values = { [12] = { 11 }, [10] = { 8 } },
+        heat_level = 1,
+        nuyen = 499,
+        party = bribe_party,
+    })
+eq(type(insufficient_bribe), "table",
+   "successful fine roll with insufficient cash reaches arrest settlement")
+eq(insufficient_bribe.type, "source_boundary",
+   "insufficient funds remain an explicit source boundary")
+eq(insufficient_bribe.reason:find("0x235AA", 1, true) ~= nil, true,
+   "insufficient funds identify ROM arrest settlement 0x235AA")
+eq(table.concat(insufficient_bribe_random, ","), "bounded_12,bounded_10",
+   "insufficient-funds branch consumes the source d10 roll")
+eq(insufficient_bribe_funds, 499,
+   "insufficient-funds branch preserves all nuyen")
+eq(table.concat(insufficient_bribe_story, ","), "get_heat_level",
+   "insufficient-funds branch leaves heat unchanged")
+eq(insufficient_bribe_heat, 1,
+   "insufficient-funds branch preserves heat before settlement")
 
 local leave_patrol_attack, leave_patrol_attack_pages, _, _, _, _, _,
       leave_patrol_attack_calls, leave_patrol_attack_heat =

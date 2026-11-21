@@ -6436,6 +6436,158 @@ int run_field_lone_star_patrol_stop_qa(
         return 3;
     }
 
+    // ROM 0x23452 is shared by the standalone patrol and nested caller.
+    // With heat 0, no affiliation bonus draw is taken; seed 0 produces a
+    // zero on the d12 check and exercises the ordinary Comply release at
+    // 0x23482. Capture the actual dialogue panel before returning to field.
+    if (!field_scene.seed_field_heat_level_for_qa(0U)) {
+        std::cerr << "Lone Star patrol QA: could not seed heat for Comply\n";
+        return 3;
+    }
+    field_scene.seed_runner_feature_flags_for_qa(0U);
+    // This ROM dialogue uses the three A/B/C choice buttons, not a cursor.
+    field_scene.set_source_random_seed_for_dump(0U);
+    tap_qa_controller_button(field_scene, 0x10U);
+    const auto& comply_result = field_scene.dialogue_panel();
+    const auto comply_image = render_qa_field(field_scene);
+    const auto comply_contains = [&comply_result](
+                                    const std::string_view text) {
+        for (std::size_t index = 0U;
+             index < comply_result.text_segment_count; ++index) {
+            if (comply_result.text_segments[index].find(text) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto heat_after_comply = field_scene.field_heat_level_for_dump();
+    const bool comply_image_saved = comply_image.size() ==
+            QSize(kSceneWidth, kSceneHeight) &&
+        save_qa_image(output, "comply-result-actual.bmp", comply_image);
+    if (!comply_result.open || comply_result.option_count != 0U ||
+        !comply_contains("Keeping your cool, you answer all of their questions convincingly.") ||
+        !comply_contains("Finally, Lone Star continues on its way.") ||
+        !heat_after_comply.has_value() || *heat_after_comply != 0U ||
+        !comply_image_saved) {
+        std::cerr << "Lone Star patrol QA: Comply did not show the release "
+                     "result and preserve zero heat (dialogue="
+                  << comply_result.open << ", choices="
+                  << comply_result.option_count << ", result="
+                  << comply_contains(
+                         "Keeping your cool, you answer all of their questions convincingly.")
+                  << ','
+                  << comply_contains(
+                         "Finally, Lone Star continues on its way.")
+                  << ", heat="
+                  << (heat_after_comply.has_value()
+                          ? std::to_string(*heat_after_comply)
+                          : std::string("missing"))
+                  << ", image_saved=" << comply_image_saved
+                  << ", failure=" << field_scene.failure() << ")\n";
+        for (std::size_t index = 0U;
+             index < comply_result.text_segment_count; ++index) {
+            std::cerr << "  comply[" << index << "]="
+                      << comply_result.text_segments[index] << '\n';
+        }
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U);
+    if (!finish_field_modal_return_transition(field_scene) ||
+        field_scene.dialogue_open()) {
+        std::cerr << "Lone Star patrol QA: Comply result did not return to field\n";
+        return 3;
+    }
+
+    // At heat 5, affiliation bit 2 makes 0x2345E call the random service with
+    // bound zero. The source routine still advances the seed before the
+    // ordinary bound-12 check; prove both calls against the live C++ service.
+    if (field_scene.resolve_and_spawn_field_encounter_for_dump(
+            1U, 3U, 0x4000U) != 0U ||
+        !field_scene.dialogue_panel().open ||
+        !field_scene.seed_field_heat_level_for_qa(5U)) {
+        std::cerr << "Lone Star patrol QA: could not reopen Comply for "
+                     "zero-bound check\n";
+        return 3;
+    }
+    field_scene.seed_runner_feature_flags_for_qa(0x04U);
+    settle_qa_dialogue_input(field_scene);
+    field_scene.set_source_random_seed_for_dump(0U);
+    std::vector<std::pair<std::uint16_t, std::int32_t>> comply_random_draws;
+    shadowrun::ghidra_conversion::set_source_random_observer(
+        [&comply_random_draws](const int event, const std::uint16_t bound,
+                              const std::int32_t result,
+                              const std::uint16_t) {
+            if (event == 1) comply_random_draws.emplace_back(bound, result);
+        });
+    field_scene.set_controller_port_byte(0x10U); // Source B: Comply.
+    field_scene.advance_frame();
+    shadowrun::ghidra_conversion::set_source_random_observer({});
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    settle_qa_menu_blank(field_scene);
+    const auto& zero_bound_result = field_scene.dialogue_panel();
+    const auto zero_bound_image = render_qa_field(field_scene);
+    const auto zero_bound_heat = field_scene.field_heat_level_for_dump();
+    const auto zero_bound_contains = [&zero_bound_result](
+                                        const std::string_view text) {
+        for (std::size_t index = 0U;
+             index < zero_bound_result.text_segment_count; ++index) {
+            if (zero_bound_result.text_segments[index].find(text) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const bool zero_bound_image_saved = zero_bound_image.size() ==
+            QSize(kSceneWidth, kSceneHeight) &&
+        save_qa_image(output, "comply-zero-bound-actual.bmp",
+                      zero_bound_image);
+    const bool zero_bound_draws_match = comply_random_draws.size() == 2U &&
+        comply_random_draws[0U] ==
+            std::pair<std::uint16_t, std::int32_t>{0U, 0} &&
+        comply_random_draws[1U] ==
+            std::pair<std::uint16_t, std::int32_t>{12U, 1};
+    if (!zero_bound_result.open || zero_bound_result.option_count != 0U ||
+        !zero_bound_contains(
+            "Keeping your cool, you answer all of their questions convincingly.") ||
+        !zero_bound_contains("Finally, Lone Star continues on its way.") ||
+        !zero_bound_heat.has_value() || *zero_bound_heat != 4U ||
+        !zero_bound_draws_match || !zero_bound_image_saved) {
+        std::cerr << "Lone Star patrol QA: bound-zero Comply did not preserve "
+                     "the source draw order (dialogue="
+                  << zero_bound_result.open << ", draws="
+                  << comply_random_draws.size() << ", heat="
+                  << (zero_bound_heat.has_value()
+                          ? std::to_string(*zero_bound_heat)
+                          : std::string("missing"))
+                  << ", image_saved=" << zero_bound_image_saved
+                  << ", failure=" << field_scene.failure() << ")\n";
+        for (const auto [bound, result] : comply_random_draws) {
+            std::cerr << "  bounded(" << bound << ")=" << result << '\n';
+        }
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U);
+    if (!finish_field_modal_return_transition(field_scene) ||
+        field_scene.dialogue_open()) {
+        std::cerr << "Lone Star patrol QA: zero-bound result did not return "
+                     "to field\n";
+        return 3;
+    }
+
+    // Re-open the same live patrol event for the Attack continuation below.
+    // Its selector draws are injected by this QA helper, independently of
+    // the source PRNG used by Comply.
+    if (field_scene.resolve_and_spawn_field_encounter_for_dump(
+            1U, 3U, 0x4000U) != 0U ||
+        !field_scene.dialogue_panel().open ||
+        field_scene.dialogue_panel().selected_option != 0U) {
+        std::cerr << "Lone Star patrol QA: could not re-open prompt after Comply\n";
+        return 3;
+    }
+
     // ROM 0x23412 queues 0x1D6FDC before raising FFFBFA by two and showing
     // page 0x11D328. Carry the same prompt through result display and actor
     // arrival, with heat seeded at seven to check the source cap of eight.

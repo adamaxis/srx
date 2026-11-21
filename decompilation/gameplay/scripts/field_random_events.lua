@@ -46,6 +46,25 @@ local LONE_STAR_ATTACK_RESULT =
 local LONE_STAR_ATTACK_LIST_FAILURE =
     "<As you are about to jump them, they get a call on the radio and " ..
     "hastily leave.>"
+local LONE_STAR_SUSPECT_PROMPT =
+    "You look an awful lot like a suspect we've been tracking.||" ..
+    "Goes by the name of Joshua.  Got any ID?" -- ROM text 0x11D4E0.
+local LONE_STAR_ILLEGAL_WEAPON_PROMPT =
+    "Hey, Flick.  I think this guy's packing.||" ..
+    "You got a permit for that illegal weapon?" -- ROM text 0x11D48C.
+local LONE_STAR_COMPLY_RESULT =
+    "<Keeping your cool, you answer all of their questions convincingly.||" ..
+    "Finally, Lone Star continues on its way.>" -- ROM text 0x11D637.
+local LONE_STAR_SPECIAL_PASS_RESULT =
+    "<One of the officers looks long and hard at you, then turns and whispers " ..
+    "to his companions.||He turns back to you with a sly grin.>||" ..
+    "You may go now, and give my regards to Mr. Faradouchi." -- ROM text 0x11D6A6.
+local LONE_STAR_PERMIT_RESULT =
+    "<You show them your permit, and they continue on their patrol.>" -- ROM text 0x11D5F7.
+local LONE_STAR_BRIBE_RESULT =
+    "<You admit you must have misplaced the document.||In haste, you offer " ..
+    "an \"on sight fine\" of 500 nuyen to take care of any further " ..
+    "problems.||They accept your donation and leave.>" -- ROM text 0x11D544.
 local HAGGARD_CREDENTIALS_RESULT =
     "<They explain that they work for an insane asylum and that this is one " ..
     "of their patients.||After showing the proper credentials they give you " ..
@@ -318,7 +337,8 @@ local function random_die(bound, service_id)
     local digits = type(response) == "string" and
         response:match("^roll_(%d+)$") or nil
     local value = digits and tonumber(digits) or nil
-    if value == nil or value % 1 ~= 0 or value < 0 or value >= bound then
+    if value == nil or value % 1 ~= 0 or value < 0 or
+       (bound == 0 and value ~= 0) or (bound > 0 and value >= bound) then
         return nil
     end
     return value
@@ -562,13 +582,229 @@ local function resolve_lone_star_patrol_attack()
     return "resolved"
 end
 
+local LONE_STAR_ILLEGAL_EQUIPMENT = {
+    ak_97 = true,
+    hk227_s = true,
+    mach_22 = true,
+    roomsweeper = true,
+    frag = true,
+    maglock_passkey = true,
+    light_combat_armor = true,
+    heavy_combat_armor = true,
+}
+
+local function lone_star_patrol_prompt_choices()
+    local _, choices = event_prompt_data(
+        "lone_star_patrol_stop", { "attack", "talk", "run_away" })
+    return choices
+end
+
+local function present_lone_star_compliance_followup(menu_id, opening)
+    local choices = lone_star_patrol_prompt_choices()
+    if choices == nil then
+        return nil, source_boundary(
+            "ROM Lone Star follow-up choice labels are unavailable")
+    end
+    return game.ui.prompt_text(menu_id, opening, choices)
+end
+
+local function lower_lone_star_heat(heat, source)
+    if not StoryState.set_heat_level(math.max(0, heat - 1)) then
+        return source_boundary(source .. " could not lower Lone Star heat")
+    end
+    return nil
+end
+
+local function resolve_lone_star_suspect_id_talk(charisma, heat)
+    local roll = random_die(20)
+    if roll == nil then
+        return source_boundary("ROM 0x2371A needs a bounded-20 roll")
+    end
+    if roll > charisma then
+        return source_boundary(
+            "ROM 0x2371A failed ID check enters arrest settlement 0x235AA")
+    end
+    local failure = lower_lone_star_heat(heat, "ROM 0x2371A")
+    if failure ~= nil then return failure end
+    game.ui.say_text(LONE_STAR_COMPLY_RESULT, false)
+    return "resolved"
+end
+
+local function resolve_lone_star_weapon_permit_talk(charisma, heat)
+    local permit
+    if type(game.state) == "table" then
+        permit = game.state["group_item.weapon_permit"]
+    end
+    if type(permit) ~= "boolean" then
+        return source_boundary(
+            "ROM 0x2354A needs the current weapon-permit fact")
+    end
+    if permit then
+        game.ui.say_text(LONE_STAR_PERMIT_RESULT, false)
+        return "resolved"
+    end
+
+    local roll = random_die(10)
+    if roll == nil then
+        return source_boundary("ROM 0x23560 needs a bounded-10 roll")
+    end
+    if roll > charisma then
+        return source_boundary(
+            "ROM 0x2354A failed permit check enters arrest settlement 0x235AA")
+    end
+    local funds = type(game.nuyen) == "function" and game.nuyen() or nil
+    if type(funds) ~= "number" or funds % 1 ~= 0 or funds < 0 then
+        return source_boundary("ROM 0x2354A needs the current wallet")
+    end
+    if funds < 500 then
+        return source_boundary(
+            "ROM 0x2354A insufficient funds enter arrest settlement 0x235AA")
+    end
+    if type(game.set_nuyen) ~= "function" then
+        return source_boundary("ROM 0x2354A needs the wallet update service")
+    end
+    game.set_nuyen(funds - 500)
+    local failure = lower_lone_star_heat(heat, "ROM 0x2354A")
+    if failure ~= nil then return failure end
+    game.ui.say_text(LONE_STAR_BRIBE_RESULT, false)
+    return "resolved"
+end
+
+local function resolve_lone_star_compliance_followup(choice, route,
+                                                     charisma, heat)
+    if choice == "attack" then
+        return resolve_lone_star_patrol_attack()
+    end
+    if choice == "talk" then
+        if route == "suspect_id" then
+            return resolve_lone_star_suspect_id_talk(charisma, heat)
+        end
+        return resolve_lone_star_weapon_permit_talk(charisma, heat)
+    end
+    if choice == "run_away" then
+        return source_boundary(
+            "ROM 0x99 -> 0x23782 shared patrol chase is not implemented")
+    end
+    return source_boundary(
+        "ROM Lone Star follow-up returned an unavailable choice")
+end
+
+local function party_has_lone_star_illegal_equipment()
+    if type(game.party) ~= "function" then
+        return nil, source_boundary(
+            "ROM 0x234C8 needs the ordered party equipment facts")
+    end
+    local party = game.party()
+    if type(party) ~= "table" then
+        return nil, source_boundary(
+            "ROM 0x234C8 party equipment facts are unavailable")
+    end
+    for slot = 0, 2 do
+        local runner = party[slot]
+        if type(runner) ~= "table" then
+            return nil, source_boundary(
+                "ROM 0x234C8 runner equipment facts are unavailable")
+        end
+        local facts = runner.runner_facts
+        local lifecycle = type(facts) == "table" and facts.lifecycle or nil
+        if type(lifecycle) ~= "table" or
+           type(lifecycle.active) ~= "boolean" then
+            return nil, source_boundary(
+                "ROM 0x234C8 runner activity facts are unavailable")
+        end
+        -- Source party slots are contiguous: the inventory loop leaves the
+        -- scan when it reaches the first inactive runner record.
+        if not lifecycle.active then break end
+        if type(runner.equipment) ~= "table" then
+            return nil, source_boundary(
+                "ROM 0x234C8 named equipment facts are unavailable")
+        end
+        for _, item in ipairs(runner.equipment) do
+            if type(item) ~= "table" or type(item.id) ~= "string" then
+                return nil, source_boundary(
+                    "ROM 0x234C8 contains an unresolved equipment item")
+            end
+            if LONE_STAR_ILLEGAL_EQUIPMENT[item.id] then return true end
+        end
+    end
+    return false
+end
+
+local function resolve_lone_star_patrol_comply()
+    local heat = StoryState.heat_level()
+    local charisma = first_runner_attribute("charisma")
+    if heat == nil or charisma == nil then
+        return source_boundary(
+            "ROM 0x23452 needs the current heat and first runner Charisma")
+    end
+
+    local mafia_affiliation
+    if type(game.state) == "table" then
+        mafia_affiliation = game.state.vid_phone_affiliation_mafia
+    end
+    if type(mafia_affiliation) ~= "boolean" then
+        return source_boundary(
+            "ROM 0x23452 needs the Lone Star special-pass affiliation fact")
+    end
+    if mafia_affiliation then
+        -- ROM 0x2345E computes (10 - heat) & 0x0A before sampling. For the
+        -- legal 0..8 heat range this is at most 10, so the following >= 21
+        -- branch at 0x23472 cannot be reached; retain the draw for its PRNG
+        -- side effect, including the source's zero-bound cases.
+        local special_bound = (10 - heat) & 0x0A
+        local special_roll = random_die(special_bound)
+        if special_roll == nil then
+            return source_boundary(
+                "ROM 0x2346C needs its heat-derived random sample")
+        end
+        if special_roll >= 21 then
+            game.ui.say_text(LONE_STAR_SPECIAL_PASS_RESULT, false)
+            return "resolved"
+        end
+    end
+
+    local roll = random_die(12)
+    if roll == nil then
+        return source_boundary("ROM 0x23486 needs a bounded-12 roll")
+    end
+    if roll - heat <= charisma then
+        local failure = lower_lone_star_heat(heat, "ROM 0x23482")
+        if failure ~= nil then return failure end
+        game.ui.say_text(LONE_STAR_COMPLY_RESULT, false)
+        return "resolved"
+    end
+
+    if heat >= 3 then
+        local choice, failure = present_lone_star_compliance_followup(
+            "lone_star_suspect_id", LONE_STAR_SUSPECT_PROMPT)
+        if choice == nil then return failure end
+        return resolve_lone_star_compliance_followup(
+            choice, "suspect_id", charisma, heat)
+    end
+
+    local has_illegal_equipment, failure =
+        party_has_lone_star_illegal_equipment()
+    if has_illegal_equipment == nil then return failure end
+    if not has_illegal_equipment then
+        local release_failure = lower_lone_star_heat(heat, "ROM 0x234C8")
+        if release_failure ~= nil then return release_failure end
+        game.ui.say_text(LONE_STAR_COMPLY_RESULT, false)
+        return "resolved"
+    end
+
+    local choice, prompt_failure = present_lone_star_compliance_followup(
+        "lone_star_illegal_weapon", LONE_STAR_ILLEGAL_WEAPON_PROMPT)
+    if choice == nil then return prompt_failure end
+    return resolve_lone_star_compliance_followup(
+        choice, "weapon_permit", charisma, heat)
+end
+
 local function unresolved_lone_star_patrol_choice(choice)
     if choice == "attack" then
         return resolve_lone_star_patrol_attack()
     end
     if choice == "talk" then
-        return source_boundary(
-            "ROM 0x96 -> 0x23452 shared patrol comply is not implemented")
+        return resolve_lone_star_patrol_comply()
     end
     if choice == "run_away" then
         return source_boundary(
