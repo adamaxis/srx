@@ -6436,10 +6436,123 @@ int run_field_lone_star_patrol_stop_qa(
         return 3;
     }
 
+    // ROM 0x23412 queues 0x1D6FDC before raising FFFBFA by two and showing
+    // page 0x11D328. Carry the same prompt through result display and actor
+    // arrival, with heat seeded at seven to check the source cap of eight.
+    const auto initial_encounter_count =
+        field_scene.dynamic_world_actor_count_for_dump();
+    if (!field_scene.seed_field_heat_level_for_qa(7U)) {
+        std::cerr << "Lone Star patrol QA: could not seed heat for Attack\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U);
+    const auto& attack_result = field_scene.dialogue_panel();
+    const auto attack_image = render_qa_field(field_scene);
+    const auto result_contains = [&attack_result](
+                                    const std::string_view text) {
+        for (std::size_t index = 0U;
+             index < attack_result.text_segment_count; ++index) {
+            if (attack_result.text_segments[index].find(text) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const bool attack_image_saved = attack_image.size() ==
+            QSize(kSceneWidth, kSceneHeight) &&
+        save_qa_image(output, "attack-result-actual.bmp", attack_image);
+    const auto heat_after_attack = field_scene.field_heat_level_for_dump();
+    const auto attack_queued_boundary = std::find(
+        source_boundaries.begin(), source_boundaries.end(),
+        "field.world_activity.lone_star_patrol_attack_sequence_queued");
+    if (!attack_result.open ||
+        !result_contains(
+            "The Lone Star forces draw their weapons with well-trained efficiency.") ||
+        !heat_after_attack.has_value() || *heat_after_attack != 8U ||
+        attack_queued_boundary == source_boundaries.end() ||
+        !attack_image_saved) {
+        std::cerr << "Lone Star patrol QA: Attack did not preserve the ROM "
+                     "list, heat, and result-page order (dialogue="
+                  << attack_result.open << ", result="
+                  << result_contains(
+                         "The Lone Star forces draw their weapons with well-trained efficiency.")
+                  << ", heat="
+                  << (heat_after_attack.has_value()
+                          ? std::to_string(*heat_after_attack)
+                          : std::string("missing"))
+                  << ", queued="
+                  << (attack_queued_boundary != source_boundaries.end())
+                  << ", image_saved=" << attack_image_saved
+                  << ", failure=" << field_scene.failure() << ")\n";
+        for (std::size_t index = 0U;
+             index < attack_result.text_segment_count; ++index) {
+            std::cerr << "  result[" << index << "]="
+                      << attack_result.text_segments[index] << '\n';
+        }
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U);
+    const bool attack_return_finished =
+        finish_field_modal_return_transition(field_scene);
+    std::uint8_t attack_spawn_passes = 0U;
+    while (field_scene.dynamic_world_actor_count_for_dump() !=
+               initial_encounter_count + 3U &&
+           attack_spawn_passes < 8U) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        ++attack_spawn_passes;
+    }
+    const auto fight_actor_count =
+        field_scene.dynamic_world_actor_count_for_dump();
+    const auto fight_actors =
+        field_scene.active_default_actor_animations_for_dump();
+    constexpr std::array<std::string_view, 3U> expected_fight_profiles{{
+        "lone11_k05_item03", "lone12_k05_item07",
+        "lone_detectiv_k05_item07",
+    }};
+    std::array<std::size_t, 3U> fight_profile_counts{};
+    for (const auto& actor : fight_actors) {
+        for (std::size_t index = 0U;
+             index < expected_fight_profiles.size(); ++index) {
+            if (actor.script_profile_id == expected_fight_profiles[index]) {
+                ++fight_profile_counts[index];
+            }
+        }
+    }
+    const auto fight_image = render_qa_field(field_scene);
+    const bool fight_image_saved = fight_image.size() ==
+            QSize(kSceneWidth, kSceneHeight) &&
+        save_qa_image(output, "attack-field-actual.bmp", fight_image);
+    if (!attack_return_finished || field_scene.dialogue_open() ||
+        fight_actor_count != initial_encounter_count + 3U ||
+        fight_profile_counts != std::array<std::size_t, 3U>{{1U, 1U, 1U}} ||
+        !fight_image_saved) {
+        std::cerr << "Lone Star patrol QA: queued fight did not publish the "
+                     "three ROM templates (returned="
+                  << attack_return_finished << ", dialogue="
+                  << field_scene.dialogue_open() << ", actors="
+                  << fight_actor_count << ", expected="
+                  << initial_encounter_count + 3U << ", spawn_passes="
+                  << static_cast<unsigned>(attack_spawn_passes)
+                  << ", profile_counts=" << fight_profile_counts[0] << ','
+                  << fight_profile_counts[1] << ',' << fight_profile_counts[2]
+                  << ", image_saved=" << fight_image_saved
+                  << ", failure=" << field_scene.failure() << ")\n";
+        for (const auto& actor : fight_actors) {
+            std::cerr << "  actor[" << actor.source_order << "]="
+                      << actor.script_profile_id << '\n';
+        }
+        return 3;
+    }
+
     std::cout << "field_lone_star_patrol_stop_qa=passed scene=3 "
                  "selector=1+3 handler=0x20F12 prompt=0x120E54 "
+                 "attack=0x23412 list=0x1D6FDC heat=7->8 "
                  "actual="
-              << (output / "actual.bmp").string() << '\n';
+              << (output / "actual.bmp").string() << " result="
+              << (output / "attack-result-actual.bmp").string() << " fight="
+              << (output / "attack-field-actual.bmp").string() << '\n';
     return 0;
 }
 

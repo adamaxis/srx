@@ -17101,6 +17101,13 @@ void FieldSceneRuntime::advance_frame() {
         refresh_command_overview_item_detail();
         return;
     }
+    // Story choices can queue a named actor list while their result dialogue
+    // still owns the field. The in-dialogue poll cannot consume it until the
+    // dialogue outcome is retired, so service it on the first ordinary field
+    // pass after the modal return transition has completed.
+    if (field_pending_story_world_effect_.has_value()) {
+        (void)process_pending_story_world_effect_sequence();
+    }
     if (field_entity_.active) {
         handle_field_map_event_activations(
             field_map_event_system_.evaluate_actor_scope(

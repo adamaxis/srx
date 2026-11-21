@@ -2120,3 +2120,21 @@ from profile row `0x2D` at `0x3232`, pointer `0x1D4BD0`, with maxima
 This hill remains partial. The broader cave seed run has two chained-route
 gaps, and other cave exits plus independent Genesis comparison remain open.
 Internal renderer captures establish the tested runtime paths only.
+
+## Lone Star patrol Attack choice (partial, 2026-11-21)
+
+The patrol event at ROM `0x20F12` now sends Attack through shared handler
+`0x23412`. The Lua path resolves list `0x1D6FDC` to the ordered Lone 11, Lone
+12, and detective profiles, queues the map-derived sequence, raises heat by
+two up to eight only after a successful queue, and presents the ROM result
+text. The typed field runtime now resumes a queued story sequence on its first
+normal field pass after the result dialogue returns, then publishes the three
+actors. The same Attack branch is reused by the nested Company Man patrol
+prompt.
+
+Debug and Release QA cover the prompt, result page, heat cap, actor profiles,
+and full 320x224 prompt/result/field captures; Lua tests also cover queue
+failure and the two nested Company Man Attack entries. This hill remains
+partial while Comply and Run, combat completion, the patrol portrait, and an
+independent Genesis comparison remain open. See the
+[field random-event selector audit](field-random-event-selector.md).

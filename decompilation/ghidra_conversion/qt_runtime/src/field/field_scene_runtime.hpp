@@ -866,6 +866,9 @@ public:
         field_heat_level_ = level;
         return true;
     }
+    std::optional<std::uint8_t> field_heat_level_for_dump() const noexcept {
+        return field_heat_level_;
+    }
 #endif
     bool hotel_menu_open() const noexcept { return hotel_menu_.open(); }
     bool hotel_karma_screen_loading() const noexcept {

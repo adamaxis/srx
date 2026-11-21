@@ -87,6 +87,10 @@ script_combat_inventory_item(const std::uint8_t position,
         property = "loaded_rounds";
     } else if (source_code >= 13U && source_code <= 19U) {
         property = "uses_remaining";
+    } else if (source_code == 20U) {
+        // ROM actor template 0x1D649E stores a level-3 passkey as item code
+        // 0x14 with value 3 [C]. Keep its level as a named item rating.
+        property = "rating";
     } else if (source_code == 24U) {
         property = "sorcery_bonus";
     } else if (source_code >= 25U && source_code <= 38U) {

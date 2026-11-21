@@ -546,6 +546,25 @@ deferred until the result dialogue returns, so the no-open-map-candidate and
 partial actor-slot cases still need the source fallback handoff. The `FF018F`
 bit writers and combat exit also remain untraced.
 
+### Lone Star Attack coverage (2026-11-21, partial)
+
+**[C]** The standalone patrol choice and the nested Company Man patrol choice
+reach shared Attack handler `0x23412`. It passes list `0x1D6FDC` to `0x1E1FC`
+with `D0=1`; only a successful list start adds two to `FFFBFA`, capped at
+eight, then selects result record `0x120E70` / text `0x11D328`. A failed list
+start selects `0x120E78` / text `0x11D370` without adding heat. The list names
+`lone11`, `lone12`, and `lone detectiv` in that order.
+
+Lua now resolves those three profiles as a named map-derived sequence, queues
+it before raising heat, and presents the corresponding ROM result. The field
+runtime services that queue on the first ordinary field pass after the result
+dialogue and its return fade. Debug/Release QA checks the prompt choices,
+result page, heat cap, three spawned actor profiles, and saved 320x224 frames;
+Lua tests also exercise the nested Company Man Talk-zero and Walk-away-80
+routes. The hill remains partial: shared Comply `0x23452`, Run `0x23782`,
+combat completion, the patrol portrait, and independent Genesis comparison
+remain open.
+
 **Custodian / missing-pass check (`0x2101E`, scene 20, sum 1).** The entry
 stub pairs prompt record `0x121330` with profile `0x121E5C`. That profile is a
 56x72 dialogue portrait; the ROM also selects the same profile for a separate

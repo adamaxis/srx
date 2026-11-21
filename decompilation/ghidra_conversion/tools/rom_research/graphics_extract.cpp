@@ -10525,27 +10525,34 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         throw std::runtime_error(
             "Boris strike-team actor list has no null sentinel");
     }
-    // ROM 0x23C52 passes the first runner's Body-roll result to 0x1E1FC,
-    // which starts one of two map-derived actor lists. Preserve the source
-    // list order and named semantic sequence for the encounter runtime.
-    struct HaggardAttackSequence {
+    // Shared dialogue attacks and Haggard's Body check both enter the normal
+    // map-derived actor placement path. Extract their template profiles as
+    // named host content; the runtime consumes these records without reading
+    // ROM addresses. ROM 0x23412 uses patrol list 0x1D6FDC [C], while
+    // 0x23C52 selects one of the two Haggard lists [C].
+    struct MapDerivedAttackSequence {
         std::uint16_t scene_id;
         std::uint32_t list_offset;
         std::uint16_t expected_actor_count;
     };
-    static constexpr std::array<HaggardAttackSequence, 4>
-        kHaggardAttackSequences{{
+    std::vector<MapDerivedAttackSequence> map_derived_attack_sequences{
             {2U, 0x1D704CU, 3U},
             {2U, 0x1D7050U, 2U},
             {5U, 0x1D704CU, 3U},
             {5U, 0x1D7050U, 2U},
-        }};
-    for (const auto& sequence : kHaggardAttackSequences) {
+    };
+    // The shared 0x23412 dispatcher is callable from random events across
+    // field contexts. Its template profiles do not vary by scene; scene 0 is
+    // only the catalog row anchor, while the typed sequence result carries
+    // the live scene to map-derived placement.
+    map_derived_attack_sequences.push_back(
+        MapDerivedAttackSequence{0U, 0x1D6FDCU, 3U});
+    for (const auto& sequence : map_derived_attack_sequences) {
         const auto context_group = rom[
             kFieldContextGroupTableOffset + sequence.scene_id];
         if (context_group >= kWorldActivityGroups) {
             throw std::runtime_error(
-                "Haggard attack sequence scene has an invalid context group");
+                "map-derived attack sequence scene has an invalid context group");
         }
         auto cursor = static_cast<std::size_t>(sequence.list_offset);
         std::uint16_t source_order = 0U;
@@ -10561,7 +10568,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             if (template_offset > rom.size() ||
                 rom.size() - template_offset < 0x4AU) {
                 throw std::runtime_error(
-                    "Haggard attack actor template points outside the ROM");
+                    "map-derived attack actor template points outside the ROM");
             }
             const auto entity_kind = read_big_endian_word(rom, template_offset);
             const auto palette_line = static_cast<std::uint8_t>(
@@ -10570,7 +10577,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             const auto actor_name = read_actor_name(template_offset);
             if (actor_name.empty()) {
                 throw std::runtime_error(
-                    "Haggard attack actor has no readable template name");
+                    "map-derived attack actor has no readable template name");
             }
             const auto action_selector = rom[template_offset + 8U];
             const auto action_code = rom[template_offset + 9U];
@@ -10646,7 +10653,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         if (!found_terminator ||
             source_order != sequence.expected_actor_count) {
             throw std::runtime_error(
-                "Haggard attack sequence list shape changed");
+                "map-derived attack sequence list shape changed");
         }
     }
     {

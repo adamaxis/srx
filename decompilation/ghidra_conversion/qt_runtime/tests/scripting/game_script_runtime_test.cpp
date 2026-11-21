@@ -148,9 +148,11 @@ bool verify_semantic_combat_inventory_translation() {
     // Actor inventory values at +0x66..+0x75 are decoded by item identity:
     // weapon rounds, consumable uses, focus/talisman modifiers, and equipped
     // armor identity. Lua receives named item facts rather than source values.
-    constexpr std::array<Case, 7U> cases{{
+    // ROM 0x1D649E gives the Lone Star detective item code 0x14/value 3 [C].
+    constexpr std::array<Case, 8U> cases{{
         {8U, 21U, "ak_97", "loaded_rounds"},
         {19U, 10U, "fetish", "uses_remaining"},
+        {20U, 3U, "maglock_passkey", "rating"},
         {24U, 2U, "power_focus", "sorcery_bonus"},
         {29U, 3U, "sleep_focus", "spell_action_bonus"},
         {39U, 4U, "protection_talisman", "rating"},
@@ -7909,6 +7911,8 @@ int main() {
         ScriptActorActionKind action_kind;
         std::uint8_t action_code;
         CatalogDecision decision;
+        const char* source_template = nullptr;
+        const char* source_ammo = nullptr;
     };
     constexpr CatalogProfile catalog_profiles[] = {
         {"hell_hound_k0c_none00", 12U, ScriptActorActionKind::none, 0U,
@@ -7921,6 +7925,10 @@ int main() {
          CatalogDecision::item_gated},
         {"lone11_k05_item03", 5U, ScriptActorActionKind::item, 3U,
          CatalogDecision::item_gated},
+        {"lone12_k05_item07", 5U, ScriptActorActionKind::item, 7U,
+         CatalogDecision::item_gated, "0x1D640A", "28"},
+        {"lone_detectiv_k05_item07", 5U, ScriptActorActionKind::item, 7U,
+         CatalogDecision::item_gated, "0x1D649E", "20"},
         {"lonemage_k0a_spell01", 10U, ScriptActorActionKind::spell, 1U,
          CatalogDecision::spell},
         {"ork_ganger_k04_none00", 4U, ScriptActorActionKind::none, 0U,
@@ -7973,6 +7981,8 @@ int main() {
         std::string action_kind;
         unsigned entity_kind = 0;
         unsigned action_code = 0;
+        std::string source_template;
+        std::string source_ammo;
     };
     std::vector<CatalogSeen> catalog_seen;
     bool catalog_file_ok = static_cast<bool>(catalog_file);
@@ -8013,7 +8023,7 @@ int main() {
             }
         }
         columns.push_back(cell);
-        if (columns.size() < 12U) {
+        if (columns.size() < 71U) {
             catalog_file_ok = false;
             break;
         }
@@ -8031,10 +8041,13 @@ int main() {
             });
         if (existing == catalog_seen.end()) {
             catalog_seen.push_back(CatalogSeen{
-                columns[7], columns[8], entity_kind, action_code});
+                columns[7], columns[8], entity_kind, action_code,
+                columns[16], columns[70]});
         } else if (existing->action_kind != columns[8] ||
                    existing->entity_kind != entity_kind ||
-                   existing->action_code != action_code) {
+                   existing->action_code != action_code ||
+                   existing->source_template != columns[16] ||
+                   existing->source_ammo != columns[70]) {
             catalog_file_ok = false;
             break;
         }
@@ -8060,14 +8073,18 @@ int main() {
     };
     bool catalog_ids_match =
         catalog_file_ok && catalog_seen.size() == catalog_profile_count &&
-        catalog_profile_count == 24U;
+        catalog_profile_count == 26U;
     if (catalog_ids_match) {
         for (const auto& seen : catalog_seen) {
             const auto* row = catalog_row_for(seen.profile_id);
             if (row == nullptr ||
                 action_name(row->action_kind) != seen.action_kind ||
                 row->entity_kind != seen.entity_kind ||
-                row->action_code != seen.action_code) {
+                row->action_code != seen.action_code ||
+                (row->source_template != nullptr &&
+                 row->source_template != seen.source_template) ||
+                (row->source_ammo != nullptr &&
+                 row->source_ammo != seen.source_ammo)) {
                 catalog_ids_match = false;
                 std::cerr << "catalog identity mismatch for "
                           << seen.profile_id << '\n';
@@ -8076,7 +8093,7 @@ int main() {
         }
     }
     if (!expect(catalog_ids_match,
-                "dynamic-world catalog no longer has the 24 "
+                "dynamic-world catalog no longer has the 26 "
                 "profile/action pairs")) {
         std::cerr << catalog_path.string() << " unique="
                   << catalog_seen.size() << '\n';

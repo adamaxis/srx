@@ -753,7 +753,34 @@ local function run_company_man_confrontation(choice, configuration)
     local random_values = configuration.random_values or {}
     local random_indices = {}
     local prompt_choices = configuration.prompt_choices or {}
+    local story_calls = {}
+    local heat_level = configuration.heat_level or 0
     local party = configuration.party or { [0] = member(true, 2, 2) }
+    local patrol_profiles = {
+        { actor_name = "lone11", profile_id = "lone11_k05_item03" },
+        { actor_name = "lone12", profile_id = "lone12_k05_item07" },
+        {
+            actor_name = "lone detectiv",
+            profile_id = "lone_detectiv_k05_item07",
+        },
+    }
+    local patrol_actor_rows = {}
+    for order, profile in ipairs(patrol_profiles) do
+        patrol_actor_rows[#patrol_actor_rows + 1] = {
+            scene_id = 3,
+            sequence_order = order - 1,
+            sequence_id = "patrol_profile_catalog",
+            actor_name = profile.actor_name,
+            profile_id = profile.profile_id,
+            visual_profile_id = E.ActorVisualProfile.HUMAN_GUARD,
+            action_kind = "item",
+            action_id = 7,
+            actor_facts = { interaction = {} },
+            physical_meter = 10,
+            palette_line = 1,
+            sprite_stem = "actor-kind-5-palette-1",
+        }
+    end
     game = {
         location = {
             type = "field_map",
@@ -801,6 +828,7 @@ local function run_company_man_confrontation(choice, configuration)
                       choice_order = 3, choice_id = "run_away",
                       label = "<Run away!>" },
                 },
+                dynamic_world_activity_actors = patrol_actor_rows,
             },
         },
         party = function() return party end,
@@ -842,6 +870,27 @@ local function run_company_man_confrontation(choice, configuration)
                     local value = values and values[random_indices[bound]]
                     return value ~= nil and ("roll_" .. value) or nil
                 end
+                if domain == "field" and action == "scene_reference" then
+                    return "scene_3"
+                end
+                if domain == "story" then
+                    story_calls[#story_calls + 1] = action
+                    if action == "get_heat_level" then
+                        return "level_" .. heat_level
+                    end
+                    local new_heat = tonumber(
+                        action:match("^set_heat_level_(%d+)$"))
+                    if new_heat ~= nil then
+                        heat_level = new_heat
+                        return "applied"
+                    end
+                    if action ==
+                       "queue_world_effect_3_3_lone_star_patrol_attack" then
+                        return configuration.queue_world_effect_result or
+                            "queued"
+                    end
+                    return nil
+                end
                 eq(domain, "dialogue_exit",
                    "Company Man confrontation uses the shared exit service")
                 exit_calls[#exit_calls + 1] = action
@@ -854,7 +903,7 @@ local function run_company_man_confrontation(choice, configuration)
         "field_random_events",
         configuration.task_name or "present_company_man_confrontation")
     return result, pages, exit_calls, random_calls, prompt_titles,
-        prompt_options, prompt_speakers
+        prompt_options, prompt_speakers, story_calls, heat_level
 end
 
 -- ROM entry 0x20F5A is a distinct Company Man encounter from the 0x210B4
@@ -889,16 +938,15 @@ eq(patrol_route.input_lock,
    E.DialogueInputLock.WORLD_ACTIVITY_FFE11C,
    "Lone Star prompt uses the world-activity input lock")
 
-local patrol_attack, _, _, _, patrol_titles, patrol_options =
+local patrol_attack, patrol_attack_pages, _, _, patrol_titles, patrol_options,
+      _, patrol_story_calls, patrol_heat =
     run_company_man_confrontation("attack", {
         event_id = "lone_star_patrol_stop",
         task_name = "present_lone_star_patrol_stop",
         prompt_choices = { "attack" },
+        heat_level = 7,
     })
-eq(type(patrol_attack), "table",
-   "Lone Star Attack reaches its explicit shared-handler boundary")
-eq(patrol_attack.type, "source_boundary",
-   "Lone Star Attack does not invent a combat result")
+eq(patrol_attack, "resolved", "Lone Star Attack starts its source sequence")
 eq(patrol_titles[1],
    "<Crowds part as you are approached by a Lone Star patrol.>||" ..
    "A moment, citizen.  We want a word with you.",
@@ -907,8 +955,49 @@ eq(#patrol_options[1], 3, "Lone Star prompt has three source choices")
 eq(patrol_options[1][1].id, "attack", "Lone Star Attack command")
 eq(patrol_options[1][2].id, "talk", "Lone Star Talk command")
 eq(patrol_options[1][3].id, "run_away", "Lone Star Run command")
-assert(patrol_attack.reason:find("0x23412", 1, true) ~= nil,
-       "Lone Star Attack names shared ROM handler 0x23412")
+eq(patrol_attack_pages[1].text,
+   "<The Lone Star forces draw their weapons with well-trained efficiency.>",
+   "ROM 0x23412 successful actor-list result")
+eq(patrol_attack_pages[1].continuation, true,
+   "patrol fight lead-in waits for the source page to be acknowledged")
+eq(patrol_heat, 8, "ROM 0x23412 adds two heat capped at eight")
+eq(table.concat(patrol_story_calls, ","),
+   "get_heat_level,queue_world_effect_3_3_lone_star_patrol_attack,set_heat_level_8",
+   "patrol attack queues its three source actors before raising heat")
+local patrol_attack_sequence = Encounters.resolve_sequence(
+    3, E.WorldEffectSequence.LONE_STAR_PATROL_ATTACK)
+eq(patrol_attack_sequence.kind, "dynamic_world_effect_sequence",
+   "ROM 0x1D6FDC resolves to a typed map-placed actor sequence")
+eq(patrol_attack_sequence.placement_policy,
+   E.WorldEffectPlacementPolicy.MAP_DERIVED_CANDIDATES,
+   "ROM 0x23412 uses map-derived actor placement")
+eq(#patrol_attack_sequence.actors, 3,
+   "ROM 0x1D6FDC contains three patrol actors")
+eq(patrol_attack_sequence.actors[1].profile_id, "lone11_k05_item03",
+   "patrol sequence actor one is Lone 11")
+eq(patrol_attack_sequence.actors[2].profile_id, "lone12_k05_item07",
+   "patrol sequence actor two is Lone 12")
+eq(patrol_attack_sequence.actors[3].profile_id,
+   "lone_detectiv_k05_item07", "patrol sequence actor three is detective")
+
+local patrol_failed, patrol_failed_pages, _, _, _, _, _, patrol_failed_calls,
+      patrol_failed_heat =
+    run_company_man_confrontation("attack", {
+        event_id = "lone_star_patrol_stop",
+        task_name = "present_lone_star_patrol_stop",
+        prompt_choices = { "attack" },
+        queue_world_effect_result = "no_actor_slots",
+        heat_level = 8,
+    })
+eq(patrol_failed, "resolved", "failed patrol sequence returns its ROM text")
+eq(patrol_failed_pages[1].text,
+   "<As you are about to jump them, they get a call on the radio and " ..
+   "hastily leave.>", "ROM 0x23412 zero-result response")
+eq(patrol_failed_heat, 8,
+   "failed patrol sequence does not change Lone Star heat")
+eq(table.concat(patrol_failed_calls, ","),
+   "get_heat_level,queue_world_effect_3_3_lone_star_patrol_attack",
+   "failed sequence does not write heat")
 
 local attack_flee, attack_flee_pages, attack_flee_exit,
       attack_flee_random, attack_flee_titles, attack_flee_options,
@@ -972,6 +1061,24 @@ eq(talk_zero_options[2][3].id, "run_away",
 assert(talk_zero.reason:find("0x23782", 1, true) ~= nil,
        "Lone Star Run identifies shared chase handler 0x23782")
 
+local talk_zero_attack, talk_zero_attack_pages, _, _,
+      _, _, _, talk_zero_attack_calls, talk_zero_attack_heat =
+    run_company_man_confrontation("talk", {
+        random_values = { [6] = { 0, 0 } },
+        prompt_choices = { "talk", "attack" },
+        heat_level = 7,
+    })
+eq(talk_zero_attack, "resolved",
+   "Talk zero-success routes nested patrol Attack through 0x23412")
+eq(talk_zero_attack_pages[1].text,
+   "<The Lone Star forces draw their weapons with well-trained efficiency.>",
+   "nested Talk patrol Attack uses the shared result record")
+eq(talk_zero_attack_heat, 8,
+   "nested Talk patrol Attack raises heat after the list queues")
+eq(table.concat(talk_zero_attack_calls, ","),
+   "get_heat_level,queue_world_effect_3_3_lone_star_patrol_attack,set_heat_level_8",
+   "nested Talk patrol Attack uses the shared queue and heat path")
+
 local talk_one = run_company_man_confrontation("talk", {
     random_values = { [6] = { 4, 0 } },
 })
@@ -1021,6 +1128,24 @@ eq(leave_patrol_options[2][2].id, "talk",
    "Walk Away 80 exposes the patrol Talk choice")
 assert(leave_patrol.reason:find("0x23452", 1, true) ~= nil,
        "Lone Star Talk identifies shared comply handler 0x23452")
+
+local leave_patrol_attack, leave_patrol_attack_pages, _, _, _, _, _,
+      leave_patrol_attack_calls, leave_patrol_attack_heat =
+    run_company_man_confrontation("leave", {
+        random_values = { [100] = { 80 } },
+        prompt_choices = { "leave", "attack" },
+        heat_level = 4,
+    })
+eq(leave_patrol_attack, "resolved",
+   "Walk Away 80 routes nested patrol Attack through 0x23412")
+eq(leave_patrol_attack_pages[1].text,
+   "<The Lone Star forces draw their weapons with well-trained efficiency.>",
+   "nested Walk Away patrol Attack uses the shared result record")
+eq(leave_patrol_attack_heat, 6,
+   "nested Walk Away patrol Attack applies the shared heat increment")
+eq(table.concat(leave_patrol_attack_calls, ","),
+   "get_heat_level,queue_world_effect_3_3_lone_star_patrol_attack,set_heat_level_6",
+   "nested Walk Away patrol Attack uses the shared queue and heat path")
 end
 
 -- ROM 0x210B4's prompt and each visible response have their own source path.

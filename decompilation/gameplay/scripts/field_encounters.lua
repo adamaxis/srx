@@ -29,6 +29,14 @@ local template_sequences = {
     },
 }
 local multi_template_sequences = {
+    [E.WorldEffectSequence.LONE_STAR_PATROL_ATTACK] = {
+        { actor_name = "lone11", profile_id = "lone11_k05_item03" },
+        { actor_name = "lone12", profile_id = "lone12_k05_item07" },
+        {
+            actor_name = "lone detectiv",
+            profile_id = "lone_detectiv_k05_item07",
+        },
+    }, -- ROM list 0x1D6FDC: lone11, lone12, lone detectiv [C]
     [E.WorldEffectSequence.HOLLYWOOD_CORRECTIONAL_FAILED_SHOT_GUARDS] = {
         { actor_name = "lone11", profile_id = "lone11_k05_item03" },
         {

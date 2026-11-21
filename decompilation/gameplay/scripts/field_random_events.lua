@@ -41,6 +41,11 @@ local FACTION_LIST_FAILURE_RESULT =
 local HAGGARD_HELP_RESULT =
     "<You grab the man and hold him while the henchmen straight-jacket " ..
     "him and drag him off.>||Here's fifty nuyen. Now get lost."
+local LONE_STAR_ATTACK_RESULT =
+    "<The Lone Star forces draw their weapons with well-trained efficiency.>"
+local LONE_STAR_ATTACK_LIST_FAILURE =
+    "<As you are about to jump them, they get a call on the radio and " ..
+    "hastily leave.>"
 local HAGGARD_CREDENTIALS_RESULT =
     "<They explain that they work for an insane asylum and that this is one " ..
     "of their patients.||After showing the proper credentials they give you " ..
@@ -515,10 +520,51 @@ local function present_lone_star_patrol_stop_prompt()
         "lone_star_patrol_stop", opening, choices)
 end
 
+local function resolve_lone_star_patrol_attack()
+    local scene = StoryState.scene()
+    if scene == nil then
+        return source_boundary(
+            "ROM 0x23412 needs the active field scene for list 0x1D6FDC")
+    end
+    local sequence_id = E.WorldEffectSequence.LONE_STAR_PATROL_ATTACK
+    local outcome = Encounters.resolve_sequence(scene, sequence_id)
+    local expected_profiles = {
+        "lone11_k05_item03",
+        "lone12_k05_item07",
+        "lone_detectiv_k05_item07",
+    }
+    if outcome == nil or #outcome.actors ~= #expected_profiles then
+        return source_boundary(
+            "ROM 0x23412 patrol actor list 0x1D6FDC is unavailable")
+    end
+    for order, profile_id in ipairs(expected_profiles) do
+        if outcome.actors[order].profile_id ~= profile_id then
+            return source_boundary(
+                "ROM 0x23412 patrol actor list 0x1D6FDC has an unexpected template")
+        end
+    end
+
+    local heat = StoryState.heat_level()
+    if heat == nil then
+        return source_boundary("ROM 0x23412 needs the current Lone Star heat")
+    end
+    local effect = { actors = #expected_profiles, sequence_id = sequence_id }
+    if not StoryState.queue_world_effect(scene, effect) then
+        game.ui.say_text(LONE_STAR_ATTACK_LIST_FAILURE, true)
+        return "resolved"
+    end
+    if not StoryState.set_heat_level(math.min(
+           StoryState.MAX_HEAT_LEVEL, heat + 2)) then
+        return source_boundary(
+            "ROM 0x23412 queued the patrol but could not add two heat")
+    end
+    game.ui.say_text(LONE_STAR_ATTACK_RESULT, true)
+    return "resolved"
+end
+
 local function unresolved_lone_star_patrol_choice(choice)
     if choice == "attack" then
-        return source_boundary(
-            "ROM 0x95 -> 0x23412 shared patrol Attack is not implemented")
+        return resolve_lone_star_patrol_attack()
     end
     if choice == "talk" then
         return source_boundary(
