@@ -1124,9 +1124,9 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_random_encounter_s
                  --field-random-encounter-spawn-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-random-encounter-spawn-qa")
 
-# Physically enter the three Puyallup abandoned-building routes, let scene 52
-# reach a natural 0x1E166 clock opportunity, then test deterministic dispatch.
-# Controlled scene 50-53 cases also check the source actor lists.
+# Physically enter every known Downtown, Puyallup, and Penumbra abandoned-
+# building collision record, let scene 52 reach a natural 0x1E166 clock
+# opportunity, and capture deterministic actor dispatch in scenes 50-53.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_abandoned_building_encounter_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --abandoned-building-encounter-qa

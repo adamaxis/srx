@@ -285,3 +285,46 @@ No tested route displays an error dialog.
 window. The reported issue is not reproduced on this checkout, so no behavior
 change is supported yet. Ask for the event name or a save/repro if it appears
 again. The watcher accept/combat exit remains a separate open branch.
+
+## Abandoned-building encounter report (ROM trace and physical QA, 2026-11-21)
+
+### Source findings
+
+**[C]** At ROM `0x1E1A8`, bytes
+`30 39 00 FF DF 88 02 40 03 FF 0C 40 00 0A` load `FFDF88`, mask its low ten
+bits, and compare against phase 10. The due phase repeats every 1024 counter
+increments. The VBlank service increments `FFDF88` at `0x0BD2`. The host
+field-counter correspondence to those ROM ticks remains **[H]**.
+
+**[C]** ROM `0x1E1BC` begins `32 39 00 FF DE 18 4E B9 00 00 0D 44 B0 41`:
+it reads profile word `FFDE18`, calls the source random routine `0xD44`, and
+uses an unsigned comparison. Scene-profile word 41 is `0xC000` for scenes
+50-53 at `0x1E8D8E`, `0x1E916E`, `0x1E952E`, and `0x1E9736`; this permits 75%
+of source 16-bit random values at each due opportunity.
+
+**[C]** The eight known building-site doors are nine collision records. Their
+source event words are `00C7`-`00CB`; the three map event tables resolve them
+to activity scenes 50-53. Exact record addresses and table cells are in
+`decompilation/docs/ghidra/field-encounter-trigger-gate.md`. The route test
+physically enters every record across Downtown (scene 0), Puyallup (scene 1),
+and Penumbra (scene 3).
+
+### QA findings
+
+`shadowrun_ghidra_conversion_qt_abandoned_building_encounter_qa` passes in
+headless Debug and Release. Natural Puyallup marker-12 entry reaches counter
+1034 (phase 10) after 973 further field updates; setting a deterministic test seed before
+the following live update yields `0xA47A < 0xC000` and five ghoul actors through the live
+spawn path. Separate seeded live-trigger cases exercise the Bandersnatch list
+in scene 50 and ghoul lists in scenes 51-53. The no-encounter report cannot be
+reproduced from the available description, and the source's 75% chance means a
+single missed roll does not establish a defect.
+
+The natural-entry screenshot immediately after dispatch contains one
+actor-sized sprite. After 120 neutral field updates, five actors remain active
+and their positions have changed, but the screenshot does not clearly resolve
+an actor. The QA player projects to screen y=278, below the 224-pixel image;
+this makes that later screenshot inconclusive about the live presentation.
+Direct-bootstrap scene captures do not put the seeded actors in the standard
+projection window. These are internal Qt actuals and do not prove Genesis
+visual fidelity. No gameplay code was changed.

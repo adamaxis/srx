@@ -5712,6 +5712,72 @@ int run_abandoned_building_encounter_qa(
               << " actors=" << natural_actors_before << "->"
               << natural_actors_after << " spawn_records="
               << natural_spawn_count << '\n';
+    const auto natural_positions =
+        field_scene.active_default_actor_positions_for_dump();
+    const auto natural_runner_position = field_scene.field_entity_world_position();
+    const auto natural_camera_x = static_cast<std::uint16_t>(
+        field_scene.state().field_scene_buffers.camera_x);
+    const auto natural_camera_y = static_cast<std::uint16_t>(
+        field_scene.state().field_scene_buffers.camera_y);
+    std::cout << "abandoned_building_natural_render_state visible="
+              << field_scene.visible_default_actor_count_for_dump() << '/'
+              << natural_positions.size() << " camera=(" << natural_camera_x
+              << ',' << natural_camera_y << ") runner=("
+              << natural_runner_position.x << ',' << natural_runner_position.y
+              << ") positions=";
+    for (const auto& position : natural_positions) {
+        std::cout << '(' << position.x << ',' << position.y << ')';
+    }
+    std::cout << '\n';
+    const auto natural_encounter_image = render_qa_field(field_scene);
+    if (natural_encounter_image.size() !=
+            QSize(kSceneWidth, kSceneHeight) ||
+        !save_qa_image(
+            output, "scene-52-natural-entry-encounter-actual.bmp",
+            natural_encounter_image)) {
+        std::cerr << "abandoned-building encounter QA: natural-entry "
+                     "encounter frame was not saved\n";
+        return 3;
+    }
+    for (std::uint16_t frame = 0U; frame < 120U; ++frame) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    }
+    const auto after_approach_positions =
+        field_scene.active_default_actor_positions_for_dump();
+    const auto after_approach_runner = field_scene.field_entity_world_position();
+    const auto after_approach_camera_x = static_cast<std::uint16_t>(
+        field_scene.state().field_scene_buffers.camera_x);
+    const auto after_approach_camera_y = static_cast<std::uint16_t>(
+        field_scene.state().field_scene_buffers.camera_y);
+    std::cout << "abandoned_building_natural_approach_state visible="
+              << field_scene.visible_default_actor_count_for_dump() << '/'
+              << after_approach_positions.size()
+              << " camera=(" << after_approach_camera_x << ','
+              << after_approach_camera_y << ") runner=("
+              << after_approach_runner.x << ',' << after_approach_runner.y
+              << ") player_projected="
+              << field_scene.field_entity_visible_for_dump()
+              << " player_active=" << field_scene.field_entity_active_for_dump()
+              << " screen=(" << field_scene.field_entity_screen_x_for_dump()
+              << ',' << field_scene.field_entity_screen_y_for_dump()
+              << ") animation="
+              << field_scene.field_entity_animation_id_for_dump()
+              << ':' << field_scene.field_entity_animation_frame_for_dump()
+              << ") positions=";
+    for (const auto& position : after_approach_positions) {
+        std::cout << '(' << position.x << ',' << position.y << ')';
+    }
+    std::cout << '\n';
+    const auto after_approach_image = render_qa_field(field_scene);
+    if (after_approach_image.size() != QSize(kSceneWidth, kSceneHeight) ||
+        !save_qa_image(
+            output, "scene-52-natural-entry-after-120-frames.bmp",
+            after_approach_image)) {
+        std::cerr << "abandoned-building encounter QA: post-spawn approach "
+                     "frame was not saved\n";
+        return 3;
+    }
 
     for (const auto [scene, selector_sum] : {
              std::pair{50U, 3U}, std::pair{51U, 2U},
@@ -5840,10 +5906,122 @@ int run_abandoned_building_encounter_qa(
                   << " actors=" << actors_before << "->" << actors_after
                   << " profile=" << expected_profile
                   << " spawn_records=" << spawn_count << '\n';
+
+        const auto actor_positions =
+            field_scene.active_default_actor_positions_for_dump();
+        const auto runner_position = field_scene.field_entity_world_position();
+        const auto camera_x = static_cast<std::uint16_t>(
+            field_scene.state().field_scene_buffers.camera_x);
+        const auto camera_y = static_cast<std::uint16_t>(
+            field_scene.state().field_scene_buffers.camera_y);
+        std::cout << "abandoned_building_render_state scene=" << scene
+                  << " visible="
+                  << field_scene.visible_default_actor_count_for_dump()
+                  << '/' << actor_positions.size()
+                  << " camera=(" << camera_x << ',' << camera_y << ')'
+                  << " runner=(" << runner_position.x << ','
+                  << runner_position.y << ") positions=";
+        for (const auto& position : actor_positions) {
+            std::cout << '(' << position.x << ',' << position.y << ')';
+        }
+        std::cout << '\n';
+
+        const auto encounter_image = render_qa_field(field_scene);
+        const auto image_name = "scene-" + std::to_string(scene) +
+            "-encounter-actual.bmp";
+        if (encounter_image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            !save_qa_image(output, image_name, encounter_image)) {
+            std::cerr << "abandoned-building encounter QA: scene " << scene
+                      << " encounter frame was not saved\n";
+            return 3;
+        }
+    }
+
+    // The handoff's unlocated repro may refer to Downtown or Penumbra rather
+    // than the three Puyallup entries above. These source collision records
+    // resolve through the ROM event tables to the same four interior scenes:
+    // Downtown 0x0D57D2/0x0D57DC -> 50/51; Penumbra
+    // 0x18ABD2/0x18ABDC/0x18ABE6/0x18ABF0 -> 52/51/51/53.
+    struct AbandonedBuildingEntryRoute {
+        std::uint8_t source_scene;
+        std::uint16_t x;
+        std::uint16_t y;
+        std::uint16_t record;
+        std::uint8_t event;
+        std::uint8_t destination;
+    };
+    constexpr std::array additional_routes{
+        AbandonedBuildingEntryRoute{0U, 0x2500U, 0x3900U, 50U, 8U, 50U},
+        AbandonedBuildingEntryRoute{0U, 0x4700U, 0x3900U, 51U, 9U, 51U},
+        AbandonedBuildingEntryRoute{3U, 0x5900U, 0x2500U, 102U, 8U, 52U},
+        AbandonedBuildingEntryRoute{3U, 0x4F00U, 0x0D00U, 103U, 7U, 51U},
+        AbandonedBuildingEntryRoute{3U, 0x5100U, 0x0D00U, 104U, 7U, 51U},
+        AbandonedBuildingEntryRoute{3U, 0x7900U, 0x1F00U, 105U, 9U, 53U},
+    };
+    for (const auto& route : additional_routes) {
+        if (!field_scene.bootstrap_for_scene_dump(
+                startup_state, route.source_scene)) {
+            std::cerr << "abandoned-building encounter QA: could not load "
+                         "source scene "
+                      << static_cast<unsigned>(route.source_scene) << ": "
+                      << field_scene.failure() << '\n';
+            return 3;
+        }
+        field_scene.set_field_entity_world_position_for_dump(
+            route.x, route.y);
+        std::uint16_t movement_ticks = 0U;
+        for (; movement_ticks < 100U; ++movement_ticks) {
+            field_scene.set_controller_nibble(0x01U); // ordinary Up input
+            field_scene.advance_frame();
+            if (field_scene.field_scene_reference_for_dump() !=
+                route.source_scene) {
+                ++movement_ticks;
+                break;
+            }
+        }
+        field_scene.set_controller_nibble(0U);
+        for (std::uint16_t settle = 0U;
+             settle < 180U &&
+             (field_scene.field_scene_reference_for_dump() !=
+                  route.destination ||
+              field_scene.field_transition_pending_for_dump() ||
+              field_scene.field_interaction_transition_active_for_dump());
+             ++settle) {
+            field_scene.advance_frame();
+        }
+        if (movement_ticks == 0U || movement_ticks >= 100U ||
+            field_scene.field_scene_reference_for_dump() !=
+                route.destination ||
+            field_scene.field_mode_event_code_for_dump() != route.event ||
+            field_scene.field_transition_pending_for_dump() ||
+            field_scene.field_interaction_transition_active_for_dump()) {
+            std::cerr << "abandoned-building encounter QA: source door did "
+                         "not reach its ROM activity source="
+                      << static_cast<unsigned>(route.source_scene)
+                      << " record=" << route.record
+                      << " event=" << static_cast<unsigned>(route.event)
+                      << " destination="
+                      << static_cast<unsigned>(route.destination)
+                      << " actual_scene="
+                      << field_scene.field_scene_reference_for_dump()
+                      << " actual_event=" << static_cast<unsigned>(
+                             field_scene.field_mode_event_code_for_dump())
+                      << " ticks=" << movement_ticks
+                      << " failure=" << field_scene.failure() << '\n';
+            return 3;
+        }
+        std::cout << "abandoned_building_entry=passed source_scene="
+                  << static_cast<unsigned>(route.source_scene)
+                  << " record=" << route.record << " event="
+                  << static_cast<unsigned>(route.event)
+                  << " destination="
+                  << static_cast<unsigned>(route.destination)
+                  << " movement_ticks=" << movement_ticks << '\n';
     }
     std::cout << "abandoned_building_encounter_qa=passed "
-                 "physical_scenes=50,51,52 tested_scenes=50,51,52,53 "
-                 "period=1024 phase=10 probability=75% sums=3,2,2,2\n";
+                 "physical_records=66,75,78,50,51,102,103,104,105 "
+                 "tested_scenes=50,51,52,53 period=1024 phase=10 "
+                 "probability=75% sums=3,2,2,2 dumps=4\n";
     return 0;
 }
 

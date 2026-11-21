@@ -202,3 +202,41 @@ The exact reported event and its original repro remain unknown. No push was
 made.
 
 DONE
+
+## STATUS: abandoned-building encounters
+
+Date: 2026-11-21
+Branch: `port-fixes`
+
+## Diagnosed
+
+The report does not identify the building. ROM collision records and event
+bytes cover eight known abandoned-building sites across Downtown, Puyallup,
+and Penumbra. Debug/Release physical QA enters all nine records and confirms
+the mapped interior scene and event index. Source scenes 50-53 each have an
+encounter threshold of `0xC000`; the strict unsigned roll accepts 75% of each
+due opportunity. Missing a single due chance is normal ROM behavior; the repeated no-encounter report remains unresolved because the building and play duration were not specified.
+
+## Changed files
+
+- `decompilation/ghidra_conversion/qt_runtime/tests/qa/ghidra_conversion_qt_qa_main.cpp`
+- `decompilation/ghidra_conversion/qt_runtime/CMakeLists.txt`
+- `decompilation/docs/ghidra/field-encounter-trigger-gate.md`
+- `decompilation/docs/ghidra/decompiled-function-status.tsv`
+- `decompilation/docs/ghidra/HILLS.md`
+- `out/DIAG.md`
+
+## Validation
+
+Headless Debug and Release builds pass the focused
+`shadowrun_ghidra_conversion_qt_abandoned_building_encounter_qa` CTest (1/1
+per configuration). The test reaches counter 1034 (phase 10) after 973 field updates without setting the clock, then a controlled seed takes the production roll on the following update
+and spawns five ghoul actors. Four seeded scene actuals and two physical-entry
+actuals have matching Debug/Release SHA-256 hashes. The capture after 120
+neutral updates is inconclusive for actor visibility: five actors remain
+active and moved, while the test player's projected y-coordinate is 278 on a
+224-pixel viewport. The screen images are internal Qt output, not independent
+Genesis evidence. The full CTest suite was not run. The exact user repro
+remains unknown; no gameplay behavior change is supported by this evidence.
+
+DONE
