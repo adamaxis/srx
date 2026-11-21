@@ -1182,6 +1182,14 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_company_man_toothp
                  --field-company-man-toothpick-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-company-man-toothpick-qa")
 
+# Exercise the Watcher refusal through the source sum-8 encounter, B response,
+# terminal text, and the common same-map field return.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_phantasmal_watcher_refusal_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-phantasmal-watcher-refusal-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-phantasmal-watcher-refusal-qa")
+
 # Run each mutually exclusive faction list in a fresh runtime so the first
 # encounter's active actors do not consume slots in the second source branch.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_faction_mafia_qa

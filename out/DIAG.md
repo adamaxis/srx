@@ -256,3 +256,32 @@ Release pass, and the new result and field BMPs match byte-for-byte across
 builds. Captures are internal Qt output, not Genesis visual evidence. Nested
 caller physical QA, arrest settlement, combat completion, and independent
 Genesis comparison remain open.
+
+## "Slot off, frag-face" random-event response (ROM trace and QA)
+
+**[C]** The US ROM bytes at `0x20F2A` are `41 F9 00 12 0F 00` (load prompt
+record `0x120F00` into A0), `4B F9 00 12 1D F0` (load field return record
+`0x121DF0` into A5), clear `FFF10C`, then branch to common mode-exit services
+at `0x1F246`. The Scene-3 selector table points to this handler for sum 8:
+cell `0x1D7107`, pointer slot `0x1D7200`.
+
+The response data at `0x120F00` places direct response pointers `0x120F20`
+(accept) and `0x120F18` ("Slot off, frag-face!!!") at offsets `+0x10/+0x14`;
+the refusal text pointer `0x11D893` follows at `+0x18`. Bytes at `0x11D893`
+decode to “This is horrible!  Where's your compassion?!” and “The watcher
+vanishes.” The refusal path has no additional roll, state write, or actor-list
+dispatch in this response record. Company Man Insult at `0x210B4` is a second
+use of the same label. Physical QA results for both routes follow.
+
+Debug/Release headless QA now exercises the watcher refusal through the live
+Scene-3 selector cell, B input, terminal response page, and saved field return.
+Both builds show the exact ROM rebuke/vanish text, restore Scene 3, camera,
+active music track, and actor count, and emit matching opening/result/return
+screenshots. The separate Company Man Insult route also passes in both builds;
+the Scene-2 gang-contract entry passage is physically covered and passes too.
+No tested route displays an error dialog.
+
+**[H]** The handoff report does not identify which event produced the error
+window. The reported issue is not reproduced on this checkout, so no behavior
+change is supported yet. Ask for the event name or a save/repro if it appears
+again. The watcher accept/combat exit remains a separate open branch.

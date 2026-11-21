@@ -159,3 +159,46 @@ QA, arrest settlement, combat completion, and independent Genesis comparison
 remain open.
 
 DONE
+
+## STATUS: "Slot off, frag-face" random-event report
+
+Date: 2026-11-21
+Branch: `port-fixes`
+
+## Diagnosed
+
+The Scene-3 sum-8 selector points to the Phantasmal Watcher response at ROM
+`0x20F2A` (`0x1D7107 -> 0x1D7200`). Prompt record `0x120F00` links B to
+`0x120F18`; text at `0x11D893` rebukes the player and says the watcher
+vanishes. That response record performs no additional roll, state write, or
+actor-list dispatch. The same label appears in the Company Man Insult route at
+`0x210B4`.
+
+Headless physical QA now drives the watcher prompt through Scene-3 sum 8,
+selects B, checks the terminal text and return snapshot (scene, camera, active
+music, actor count), and writes prompt/result/field BMPs. No error dialog
+appeared in the watcher, Company Man Insult, or tested Scene-2 gang-contract
+routes. The handoff does not identify which event produced the reported
+dialog; the issue remains unreproduced and no gameplay change is supported.
+
+## Changed files
+
+- `decompilation/ghidra_conversion/qt_runtime/tests/qa/ghidra_conversion_qt_qa_main.cpp`
+- `decompilation/ghidra_conversion/qt_runtime/CMakeLists.txt`
+- `decompilation/docs/ghidra/field-random-event-selector.md`
+- `decompilation/docs/ghidra/decompiled-function-status.tsv`
+- `decompilation/assets/field/world-activity-terminal-outcomes.tsv`
+- `out/DIAG.md`
+- `out/STATUS.md`
+
+## Validation
+
+Headless Debug and Release CTests cover the watcher refusal, Company Man
+Insult, Scene-2 gang-contract entry, and gang-contract target entry (4/4 per
+configuration). Watcher prompt/result/field captures match byte-for-byte
+between builds. The images are internal Qt output, not independent Genesis
+visual evidence. `git diff --check` passes; the full CTest suite was not run.
+The exact reported event and its original repro remain unknown. No push was
+made.
+
+DONE

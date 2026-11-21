@@ -6081,6 +6081,140 @@ int run_field_company_man_toothpick_qa(
     return 0;
 }
 
+int run_field_phantasmal_watcher_refusal_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output) {
+    std::error_code error;
+    std::filesystem::remove_all(output, error);
+    if (error) {
+        std::cerr << "Phantasmal watcher QA: cannot clear old captures: "
+                  << error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, error);
+    if (error) {
+        std::cerr << "Phantasmal watcher QA: cannot create output: "
+                  << error.message() << '\n';
+        return 3;
+    }
+
+    // Scene 3's source sum-8 cell 0x1D7107 points through 0x1D7200 to
+    // handler 0x20F2A. Inject its 4+4 selector pair, then use ordinary B input.
+    if (field_scene.field_scene_reference_for_dump() != 2U ||
+        !field_scene.reenter_field_scene_for_dump(3U)) {
+        std::cerr << "Phantasmal watcher QA: could not prepare Scene 3: "
+                  << field_scene.failure() << '\n';
+        return 3;
+    }
+    // Let the newly loaded scene's source music latch run before taking the
+    // modal snapshot; the direct QA scene-load seam does not itself tick it.
+    field_scene.set_field_world_frame_counter_for_dump(0U);
+    field_scene.advance_frame();
+    const auto source_camera = std::pair{
+        field_scene.state().field_scene_buffers.camera_x,
+        field_scene.state().field_scene_buffers.camera_y};
+    const auto source_music = field_scene.field_current_music_id_for_dump();
+    const auto actors_before = field_scene.dynamic_world_actor_count_for_dump();
+    if (field_scene.resolve_and_spawn_field_encounter_for_dump(
+            4U, 4U, 0x4000U) != 0U) {
+        std::cerr << "Phantasmal watcher QA: ROM selector did not open its "
+                     "dialogue event: " << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    const auto contains_text = [](const auto& panel,
+                                  const std::string_view text) {
+        for (std::size_t index = 0U; index < panel.text_segment_count; ++index) {
+            if (panel.text_segments[index].find(text) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto& prompt = field_scene.dialogue_panel();
+    const auto opening_image = render_qa_field(field_scene);
+    const bool opening_saved = opening_image.size() ==
+            QSize(kSceneWidth, kSceneHeight) &&
+        save_qa_image(output, "opening-actual.bmp", opening_image);
+    if (!prompt.open || prompt.option_count != 2U ||
+        !contains_text(prompt, "Come quickly!") ||
+        !contains_text(prompt, "My master needs help!") || !opening_saved) {
+        std::cerr << "Phantasmal watcher QA: source prompt did not open "
+                     "(dialogue=" << prompt.open << ", options="
+                  << prompt.option_count << ", come_quickly="
+                  << contains_text(prompt, "Come quickly!")
+                  << ", help=" << contains_text(prompt, "My master needs help!")
+                  << ", image_saved=" << opening_saved
+                  << ", failure=" << field_scene.failure() << ")\n";
+        return 3;
+    }
+
+    // ROM prompt record 0x120F00 assigns the refusal to 0x120F18.
+    tap_qa_controller_button(field_scene, 0x10U); // B: Slot off, frag-face!!!
+    const auto& result = field_scene.dialogue_panel();
+    const auto result_image = render_qa_field(field_scene);
+    const bool result_saved = result_image.size() ==
+            QSize(kSceneWidth, kSceneHeight) &&
+        save_qa_image(output, "refusal-result-actual.bmp", result_image);
+    if (!result.open || result.has_more || !result.source_complete ||
+        !contains_text(result, "This is horrible!  Where's your compassion?!") ||
+        !contains_text(result, "<The watcher vanishes.>") || !result_saved) {
+        std::cerr << "Phantasmal watcher QA: B did not follow ROM response "
+                     "0x120F18 (dialogue=" << result.open << ", has_more="
+                  << result.has_more << ", complete=" << result.source_complete
+                  << ", rebuke=" << contains_text(
+                         result, "This is horrible!  Where's your compassion?!")
+                  << ", vanishes="
+                  << contains_text(result, "<The watcher vanishes.>")
+                  << ", image_saved=" << result_saved
+                  << ", failure=" << field_scene.failure() << ")\n";
+        return 3;
+    }
+
+    tap_qa_controller_button(field_scene, 0x40U); // A closes terminal response.
+    const bool transition_finished =
+        finish_field_modal_return_transition(field_scene);
+    const auto return_camera = std::pair{
+        field_scene.state().field_scene_buffers.camera_x,
+        field_scene.state().field_scene_buffers.camera_y};
+    const auto return_music = field_scene.field_current_music_id_for_dump();
+    const auto field_image = render_qa_field(field_scene);
+    const bool field_saved = field_image.size() ==
+            QSize(kSceneWidth, kSceneHeight) &&
+        save_qa_image(output, "field-return-actual.bmp", field_image);
+    if (!transition_finished || field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 3U ||
+        return_camera != source_camera ||
+        return_music != source_music ||
+        field_scene.dynamic_world_actor_count_for_dump() != actors_before ||
+        !field_saved) {
+        std::cerr << "Phantasmal watcher QA: refusal did not return to the "
+                     "saved field context (transition=" << transition_finished
+                  << ", dialogue=" << field_scene.dialogue_open()
+                  << ", scene=" << field_scene.field_scene_reference_for_dump()
+                  << ", camera_restored=" << (return_camera == source_camera)
+                  << ", music_restored="
+                  << (return_music == source_music)
+                  << ", music="
+                  << (return_music.has_value()
+                          ? std::to_string(*return_music)
+                          : std::string("none"))
+                  << ", actors="
+                  << field_scene.dynamic_world_actor_count_for_dump()
+                  << " expected=" << actors_before
+                  << ", image_saved=" << field_saved
+                  << ", failure=" << field_scene.failure() << ")\n";
+        return 3;
+    }
+
+    std::cout << "field_phantasmal_watcher_refusal_qa=passed scene=3 "
+                 "selector_sum=8 handler=0x20F2A response=0x120F18 "
+                 "artifacts="
+              << output.string() << '\n';
+    return 0;
+}
+
 int run_field_security_guard_weighted_event_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& output,
@@ -48796,6 +48930,8 @@ int main(int argc, char** argv) {
             field_lone_star_patrol_run_escape_qa_path;
         std::optional<std::filesystem::path>
             field_company_man_toothpick_qa_path;
+        std::optional<std::filesystem::path>
+            field_phantasmal_watcher_refusal_qa_path;
         std::optional<std::string> field_faction_route_name;
         std::optional<std::string> field_faction_scene_name;
         std::optional<std::filesystem::path>
@@ -49388,6 +49524,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_company_man_toothpick_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-phantasmal-watcher-refusal-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_phantasmal_watcher_refusal_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-faction-route" &&
@@ -56700,6 +56843,10 @@ int main(int argc, char** argv) {
                 return run_field_company_man_toothpick_qa(
                     field_scene, *field_company_man_toothpick_qa_path,
                     field_source_boundaries);
+            }
+            if (field_phantasmal_watcher_refusal_qa_path.has_value()) {
+                return run_field_phantasmal_watcher_refusal_qa(
+                    field_scene, *field_phantasmal_watcher_refusal_qa_path);
             }
             if (field_npc_item_action_qa_path.has_value()) {
                 return run_field_npc_item_action_qa(

@@ -879,6 +879,15 @@ or failure to start the selected sequence, instead add 200 nuyen and show the
 mage's thanks and payment at `0x120F64`/`0x11DAF8`; that no-combat branch is
 traced to its end. The encounter does not introduce Lone Star.
 
+Debug/Release physical QA now enters the Scene-3 sum-8 cell at `0x1D7107`,
+selects the refusal with B, checks the exact `0x11D893` rebuke and watcher-
+vanish page, then returns with the same scene, camera, active music, and actor
+count. The three full-screen captures match byte-for-byte across builds. The
+same label's Company Man Insult is also physically tested in both builds.
+Neither route reproduces the reported error dialog; the report does not name
+which event was selected, so it remains a retest item rather than a confirmed
+fix. These are internal captures, not an independent Genesis comparison.
+
 **Company Man (`0x20F5A`, scenes 3 and 5).** Attack can make him flee or make
 him draw a gun; Talk and Walk Away each have state/roll branches that can bring
 in a patrol. The sequence `0x1D7074` starts one actor whose template label is
