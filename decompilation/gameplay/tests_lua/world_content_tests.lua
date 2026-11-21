@@ -355,6 +355,15 @@ assert(ricky_hired == "presented" and
        ricky_services[3] == "hire_recruited_runner_short_term",
        "Ricky information, live pricing, or short-term hire flow failed")
 
+-- ROM 0xFE908 -> 0x1001AF is the third subject's Gunderson answer [C].
+local ricky_johnson_result, ricky_johnson_events =
+    run_ricky_flow({ "information", "leave" }, "johnson", "not_selected")
+assert(ricky_johnson_result == "presented" and
+       ricky_johnson_events[3] ==
+           "subject.johnson_gunderson.page_0" and
+       #ricky_johnson_events == 3,
+       "Ricky's Johnson subject did not display its ROM response page")
+
 local ricky_insufficient, insufficient_events, _, _, insufficient_actor =
     run_ricky_flow({ "hire", "permanent", "leave" },
                    "local_area", "insufficient_funds")

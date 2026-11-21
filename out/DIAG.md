@@ -411,3 +411,22 @@ Player hit attribution is 3 for Decker and 1 for Gator Shaman. This confirms
 the class-specific action cadence and live hit path inside the port; it is not
 an independent Genesis damage-rate or visual comparison. No gameplay code
 changed in this slice.
+
+## Ricky contact third subject (ROM trace before implementation)
+
+**[C]** Ricky's third subject response descriptor at ROM `0xFE908` begins
+`00 10 01 AF`, pointing to text at `0x1001AF`. The text bytes there decode to
+"Yeah, sure. Gunderson's a Johnson I've used when I needed some quick nuyen."
+The extracted page is `runner.ricky.subject.johnson_gunderson.page_0`; the
+Ricky subject menu's stable option ID is `johnson`.
+
+The Lua response lookup uses the selected subject ID directly:
+`field_generic_contacts.lua` evaluates `runner.subject.responses[selected]`.
+But `dialogue.lua` currently names this response-table key
+`johnson_gunderson`, while the subject menu returns `johnson`. Selecting that
+third option therefore omits the source answer and returns to the common
+conversation. The new route regression failed with this mapping in place.
+Changing the response-table key to `johnson` makes the selected menu value
+reach `subject.johnson_gunderson.page_0`. The focused world-content CTest now
+passes Debug and Release; the source page text and portrait mapping were not
+changed.

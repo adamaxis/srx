@@ -395,3 +395,20 @@ full CTest suite was not run.
 `git diff --check` passes. No gameplay code changed. No push was made.
 
 DONE
+
+## Ricky Johnson subject response
+
+Corrected Ricky's third subject route: the menu selects `johnson`, and the contact runtime indexes the response table by that ID. It now displays `runner.ricky.subject.johnson_gunderson.page_0`. ROM descriptor `0xFE908` points to the answer at `0x1001AF` [C]. The regression failed before the key correction and passes afterward.
+
+**Changed files**
+
+- `decompilation/gameplay/scripts/dialogue.lua`
+- `decompilation/gameplay/tests_lua/world_content_tests.lua`
+- `out/DIAG.md`
+- `out/STATUS.md`
+
+**Validation**
+
+The focused `shadowrun_gameplay_world_content_policy_qa` CTest passes in Debug and Release. This verifies the Lua route in the port; no independent Genesis capture was available or used for visual comparison. `git diff --check` passes. No push was made.
+
+DONE

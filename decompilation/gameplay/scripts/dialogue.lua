@@ -144,7 +144,8 @@ local runner_dialogue = {
                     "runner.ricky.subject.local_area.page_0",
                     "runner.ricky.subject.local_area.page_1",
                 },
-                johnson_gunderson = {
+                -- ROM 0xFE908 points to Ricky's Johnson text at 0x1001AF [C].
+                johnson = {
                     "runner.ricky.subject.johnson_gunderson.page_0",
                 },
             },
