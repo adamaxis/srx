@@ -625,6 +625,11 @@ void FieldSceneRuntime::advance_field_scene_transition_after_modal() {
             return;
         }
         field_building_scene_transition_active_ = true;
+        // Starting the fade consumes a deferred 0x2BD2 request. Keep that
+        // request from being resumed again on the next host frame: the
+        // duplicate callback would add one idle frame before the first
+        // palette step (0x131C is 17 passes, two VBlanks per pass [C]).
+        field_scene_transition_after_modal_pending_ = false;
         field_building_transition_fade_in_wait_pending_ = false;
         suppress_field_modal_close_input();
         source_boundary("field.building_transition.fade_out_started");
