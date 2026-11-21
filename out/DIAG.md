@@ -430,3 +430,10 @@ Changing the response-table key to `johnson` makes the selected menu value
 reach `subject.johnson_gunderson.page_0`. The focused world-content CTest now
 passes Debug and Release; the source page text and portrait mapping were not
 changed.
+
+## Hireable-runner subject route coverage (source trace before test expansion)
+
+**[C]** The US ROM information branches at `0x2401C`, `0x24064`, `0x2407C`, `0x24094`, `0x240AC`, `0x240C4`, and `0x240DC` each load `FFFC2A`, set the runner-specific bit (`0`, `3` through `8`), write it back, and load a runner record pointer. For example, `0x24064` bytes are `30 39 00 FF FC 2A 08 C0 00 03 33 C0 00 FF FC 2A 41 F9 00 0F EE 34 4E 75`; this sets bit 3 and returns the Petr record at `0xFEE34`. `0x2401C` returns Ricky's record at `0xFEE48`; the other six load `0xFEE34`, `0xFF228`, `0xFF014`, `0xFF414`, `0xFF7E8`, and `0xFF5F4` in runner order.
+
+The typed source cross-check in `recruited_runner_service_conversion.cpp` lists six companion subject prompts, in order: Petr (2), Walking Bear (3), Phantom (3), Two Fists (2), Freya (2), and Rianna (2), with 14 response records. Lua has corresponding ordered menu IDs and page maps; the live contact presenter resolves responses by the selected ID. The existing test chose only the first subject for each runner, so it did not exercise the other 8 companion choices or Ricky's local-area page. Expanding route coverage tests those menu IDs and return-to-story follow-ups; it does not change source-derived text or menu order.
+The expanded Lua presenter test now drives every option in Ricky's and the six companion subject menus. All 17 selected topics reach their mapped speaker-profile pages and return through the source story follow-up. The focused world-content CTest passes in Debug and Release. This is route validation in the port, not an independent Genesis capture.

@@ -524,6 +524,137 @@ for _, route in ipairs(hireable_runner_routes) do
            "runner hire pricing, refusal, or story re-offer failed: " .. route.id)
 end
 
+local all_runner_subject_routes = {
+    { id = "ricky", scene = 19, response = "scene_19_group_0_default" },
+}
+for _, route in ipairs(hireable_runner_routes) do
+    all_runner_subject_routes[#all_runner_subject_routes + 1] = route
+end
+local function verify_runner_subject_route(route, topic_id)
+    local runner = Dialogue.runner_conversation(route.id)
+    local speaker = Dialogue.speaker_profile(route.id)
+    local text_profile = "runner." .. route.id
+    local actor_id = route.id .. "_subject_route"
+    local event_log = {}
+    local root_count = 0
+    local followup_count = 0
+    local followups = { "story", "questions", "different_subject" }
+    local prefix = "runner." .. route.id .. "."
+    game.location = {
+        type = "field_map",
+        id = E.GenericFieldContact.LOCATION_ID,
+        event_id = route.response,
+        speaker_id = route.id,
+        scene_id = route.scene,
+        actor_instance_id = actor_id,
+    }
+    game.actors = { [actor_id] = {
+        scene_id = route.scene,
+        actor_facts = { lifecycle = { active = true } },
+    } }
+    game.services = {
+        call = function(domain, action)
+            assert(domain == "recruited_runner" and
+                   action == "mark_recruited_runner_information")
+            return "applied"
+        end,
+    }
+    game.ui = {
+        prompt_text = function(menu_id, _, choices)
+            assert(menu_id == "opening" and choices[1] == "information" and
+                   choices[2] == "hire" and choices[3] == "leave")
+            root_count = root_count + 1
+            return root_count == 1 and "information" or "leave"
+        end,
+        prompt_text_key = function(menu_id, text_key, choices,
+                                   speaker_id, profile_id)
+            assert(menu_id == "story_followup" and speaker_id == route.id and
+                   profile_id == text_profile and choices[1] == "story" and
+                   script_text["boris.greenhouse.option.story"] ==
+                       "What's your story, chummer?",
+                   "runner subject page lost the ROM story follow-up")
+            assert(text_key:sub(1, #prefix) == prefix and
+                   script_text[text_key] ~= nil,
+                   "runner follow-up references missing script text")
+            local event_id = text_key:sub(#prefix + 1)
+            local event = Dialogue.event_text_keys(
+                speaker_id, profile_id, event_id)
+            assert(event ~= nil and event.title_key == text_key,
+                   "runner subject page is missing from its speaker profile")
+            event_log[#event_log + 1] = event_id
+            followup_count = followup_count + 1
+            return followups[followup_count]
+        end,
+        menu = function(menu_id, choices)
+            local menu = Dialogue.menu_text_keys(
+                route.id, text_profile, menu_id, choices, false)
+            assert(menu_id == "subjects" and menu ~= nil and
+                   #choices == #runner.subject.option_order,
+                   "runner subject choice list differs from its profile")
+            for index, id in ipairs(runner.subject.option_order) do
+                assert(choices[index] == id and
+                       runner.subject.options[id] ~= nil and
+                       runner.subject.responses[id] ~= nil and
+                       menu.choice_label_keys[index] ==
+                           runner.subject.options[id],
+                       "runner subject menu ID has no matching label/response: " ..
+                           route.id .. "." .. id)
+            end
+            return topic_id
+        end,
+        say = function(event_id, speaker_id, profile_id)
+            local event = Dialogue.event_text_keys(
+                speaker_id, profile_id, event_id)
+            assert(speaker_id == route.id and profile_id == text_profile and
+                   event ~= nil and script_text[event.title_key] ~= nil,
+                   "runner page missing from the selected speaker profile")
+            event_log[#event_log + 1] = event_id
+        end,
+        say_text = function()
+            error("runner subject route fell back to narrator text")
+        end,
+    }
+
+    assert(speaker ~= nil and runner ~= nil and
+           GenericFieldContacts.present() == "presented",
+           "runner subject route did not return to the common choices: " ..
+               route.id .. "." .. topic_id)
+
+    local biography = {}
+    for _, page_id in ipairs({ "opening", "continuation", "final" }) do
+        if runner.information[page_id] ~= nil then
+            biography[#biography + 1] = "information." .. page_id
+        end
+    end
+    local expected_events = {}
+    for _ = 1, 2 do
+        for _, page_id in ipairs(biography) do
+            expected_events[#expected_events + 1] = page_id
+        end
+    end
+    for _, page in ipairs(runner.subject.responses[topic_id]) do
+        expected_events[#expected_events + 1] = page:sub(#prefix + 1)
+    end
+    assert(#event_log == #expected_events and followup_count == 3,
+           "runner subject page or story follow-up count differs: " ..
+               route.id .. "." .. topic_id)
+    for index, event_id in ipairs(expected_events) do
+        assert(event_log[index] == event_id,
+               "runner selected a different subject response page: " ..
+                   route.id .. "." .. topic_id)
+    end
+end
+
+for _, route in ipairs(all_runner_subject_routes) do
+    local runner = Dialogue.runner_conversation(route.id)
+    assert(runner ~= nil and runner.subject ~= nil and
+           #runner.subject.option_order > 0,
+           "hireable runner has no ordered subject menu: " .. route.id)
+    for _, topic_id in ipairs(runner.subject.option_order) do
+        verify_runner_subject_route(route, topic_id)
+    end
+end
+
 local expected_runner_content = {
     { content_id = "petr_uvehr.subject.title", text_key = "runner.petr_uvehr.subject.title", text = "Like what?" },
     { content_id = "petr_uvehr.subject.option.matrix", text_key = "runner.petr_uvehr.subject.option.matrix", text = "Tell me about the Matrix." },

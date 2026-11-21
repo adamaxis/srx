@@ -412,3 +412,19 @@ Corrected Ricky's third subject route: the menu selects `johnson`, and the conta
 The focused `shadowrun_gameplay_world_content_policy_qa` CTest passes in Debug and Release. This verifies the Lua route in the port; no independent Genesis capture was available or used for visual comparison. `git diff --check` passes. No push was made.
 
 DONE
+
+## Recruited-runner subject routes
+
+Expanded the Lua contact-presenter regression from the first subject choice to every listed subject choice for Ricky, Petr, Walking Bear, Phantom, Two Fists, Freya, and Rianna. Each case checks ordered menu IDs and labels, response-page keys in the speaker profile, page sequence, and the returning story follow-up. This adds coverage for 17 subject choices; it does not change gameplay behavior.
+
+**Changed files**
+
+- `decompilation/gameplay/tests_lua/world_content_tests.lua`
+- `out/DIAG.md`
+- `out/STATUS.md`
+
+**Validation**
+
+`shadowrun_gameplay_world_content_policy_qa` passes in Debug and Release with headless/offscreen and dummy audio settings. The route tests use the Lua presenter and imported text catalog; they do not claim independent Genesis visual validation. `git diff --check` passes. No push was made.
+
+DONE
