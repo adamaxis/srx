@@ -2168,11 +2168,15 @@ before calling `0x1E1FC`; `0x1E216` therefore uses screen-edge candidates at
 
 Lua tests cover all result bands, heat and Quickness inputs, lead-only armor
 modifiers, list-start failure, and the nested Company Man prompt. Physical
-Scene-3 QA presses Run through the controller path, verifies the caught text
-and heat 7 to 8, returns to the field, and checks the detective profile is
-published. It also verifies the existing Attack route still adds its three
-templates when the Run detective is already present. Debug and Release
-captures match byte-for-byte for the Run result, returned field, and Attack
-field. This is internal Qt evidence, not a Genesis comparison; the other two
-Run result bands and nested-caller physical route remain open, so the hill is
-partial. See the [field random-event selector audit](field-random-event-selector.md).
+Scene-3 QA presses Run through the controller path and covers all three bands:
+the caught branch returns with a detective, the partial branch returns with
+Lone 12 and a detective, and the escape branch returns without adding actors.
+All three verify heat 7 to 8 and the exact result text. The escape seed produces
+four successes across ten random face calls, exercising the valid Lua service
+chain beyond the former eight-resume limit; the runtime guard is now 64.
+Existing Attack QA still adds its three templates when the Run detective is
+already present. Debug and Release captures match byte-for-byte across both
+new result/field pairs and the caught/Attack route. This is internal Qt
+evidence, not a Genesis comparison; nested-caller physical QA, arrest
+settlement, and combat completion remain open, so the hill is partial. See the
+[field random-event selector audit](field-random-event-selector.md).

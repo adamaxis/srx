@@ -6858,6 +6858,214 @@ int run_field_lone_star_patrol_stop_qa(
     return 0;
 }
 
+int run_field_lone_star_patrol_run_branch_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output,
+    const bool expect_escape) {
+    std::error_code error;
+    std::filesystem::create_directories(output, error);
+    if (error) {
+        std::cerr << "Lone Star Run branch QA: cannot create output: "
+                  << error.message() << '\n';
+        return 3;
+    }
+    clear_qa_bitmap_artifacts(output, error);
+    if (error || field_scene.field_scene_reference_for_dump() != 2U ||
+        !field_scene.reenter_field_scene_for_dump(3U)) {
+        std::cerr << "Lone Star Run branch QA: could not prepare Scene 3: "
+                  << error.message() << " failure=" << field_scene.failure()
+                  << '\n';
+        return 3;
+    }
+    if (field_scene.resolve_and_spawn_field_encounter_for_dump(
+            1U, 3U, 0x4000U) != 0U ||
+        !field_scene.dialogue_panel().open ||
+        !field_scene.seed_field_heat_level_for_qa(7U)) {
+        std::cerr << "Lone Star Run branch QA: could not open patrol prompt\n";
+        return 3;
+    }
+
+    if (expect_escape) {
+        // The source Decker starter at 0x72A1A has Quickness 5. Set only this
+        // live input because 0x23750 consumes Quickness and the lead armor;
+        // this makes the 4-success ROM branch reachable from the QA party.
+        const auto previous_slot = field_scene.field_active_party_slot_for_dump();
+        const auto slot_count =
+            field_scene.field_party_records_for_dump().size();
+        for (std::size_t slot = 0U; slot < slot_count; ++slot) {
+            if (!field_scene.field_party_slot_active_for_dump(slot)) {
+                continue;
+            }
+            field_scene.set_active_party_slot_for_dump(slot);
+            field_scene.active_runner_record().attributes[1U] = 5U;
+        }
+        field_scene.set_active_party_slot_for_dump(previous_slot);
+    }
+
+    // ROM 0x23750 averages active +0x78 Quickness; 0x2379E..0x237BE uses
+    // lead armor selectors 5/6 to set the target passed to 0x0DBA.
+    const auto& party = field_scene.field_party_records_for_dump();
+    std::uint32_t quickness_total = 0U;
+    std::uint32_t active_count = 0U;
+    for (const auto& runner : party) {
+        const auto status = static_cast<std::uint8_t>(runner.flags >> 8U);
+        if ((status & static_cast<std::uint8_t>(srx::RunnerStatus::ACTIVE)) ==
+            0U) {
+            continue;
+        }
+        quickness_total += runner.attributes[1U];
+        ++active_count;
+    }
+    if (active_count == 0U || active_count > party.size()) {
+        std::cerr << "Lone Star Run branch QA: invalid active party\n";
+        return 3;
+    }
+    const auto quickness = static_cast<std::uint16_t>(
+        quickness_total / active_count);
+    const auto lead_armor = party[0U].equipped_armor_index;
+    const auto target = static_cast<std::int16_t>(
+        4U + (lead_armor == 5U ? 1U : lead_armor == 6U ? 2U : 0U));
+    std::optional<std::uint16_t> run_seed;
+    std::uint16_t run_successes = 0U;
+    std::size_t run_random_calls = 0U;
+    for (std::uint32_t candidate = 0U;
+         candidate <= std::numeric_limits<std::uint16_t>::max();
+         ++candidate) {
+        auto candidate_seed = static_cast<std::uint16_t>(candidate);
+        std::size_t candidate_random_calls = 0U;
+        const auto successes =
+            shadowrun::ghidra_conversion::count_thresholded_random_rolls(
+                quickness, target,
+                [&candidate_seed, &candidate_random_calls](
+                    const std::uint16_t bound) {
+                    ++candidate_random_calls;
+                    return shadowrun::ghidra_conversion::
+                        sample_source_random_bound(candidate_seed, bound);
+                });
+        // Each sampled die face resumes the Lua task through one native
+        // dialogue service call. Require more than the former eight-call
+        // guard so this physical escape route covers the valid long chain.
+        const bool in_requested_band = expect_escape
+            ? successes >= 4U && candidate_random_calls >= 9U
+            : successes >= 2U && successes <= 3U;
+        if (in_requested_band) {
+            run_seed = static_cast<std::uint16_t>(candidate);
+            run_successes = successes;
+            run_random_calls = candidate_random_calls;
+            break;
+        }
+    }
+    if (!run_seed.has_value()) {
+        std::cerr << "Lone Star Run branch QA: no source seed for requested "
+                  << (expect_escape ? "escape" : "partial")
+                  << " band (Quickness=" << quickness << ", target="
+                  << target << ", minimum random calls="
+                  << (expect_escape ? 9U : 0U) << ")\n";
+        return 3;
+    }
+
+    const auto actors_before = field_scene.dynamic_world_actor_count_for_dump();
+    const auto profiles_before =
+        field_scene.active_default_actor_animations_for_dump();
+    const auto count_run_profiles = [](const auto& actors) {
+        std::array<std::size_t, 2U> counts{};
+        for (const auto& actor : actors) {
+            if (actor.script_profile_id == "lone12_k05_item07") {
+                ++counts[0U];
+            } else if (actor.script_profile_id == "lone_detectiv_k05_item07") {
+                ++counts[1U];
+            }
+        }
+        return counts;
+    };
+    const auto profile_counts_before = count_run_profiles(profiles_before);
+    field_scene.set_source_random_seed_for_dump(*run_seed);
+    tap_qa_controller_button(field_scene, 0x20U); // Source C: Run away.
+    const auto& result = field_scene.dialogue_panel();
+    const auto result_image = render_qa_field(field_scene);
+    const auto result_contains = [&result](const std::string_view text) {
+        for (std::size_t index = 0U; index < result.text_segment_count; ++index) {
+            if (result.text_segments[index].find(text) != std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const bool result_text_matches = expect_escape
+        ? result_contains("You easily outrun the slothfull patrol.")
+        : result_contains(
+              "You outrun some of them, but the others appear to be in better shape.") &&
+              result_contains("They overtake you and open fire.");
+    const auto heat_after_run = field_scene.field_heat_level_for_dump();
+    const bool result_image_saved = result_image.size() ==
+            QSize(kSceneWidth, kSceneHeight) &&
+        save_qa_image(output, "result-actual.bmp", result_image);
+    if (!result.open || result.option_count != 0U || !result_text_matches ||
+        !heat_after_run.has_value() || *heat_after_run != 8U ||
+        !result_image_saved) {
+        std::cerr << "Lone Star Run branch QA: wrong result/heat for "
+                  << (expect_escape ? "escape" : "partial")
+                  << " (dialogue=" << result.open
+                  << ", options=" << result.option_count
+                  << ", text=" << result_text_matches
+                  << ", heat="
+                  << (heat_after_run.has_value()
+                          ? std::to_string(*heat_after_run)
+                          : std::string("missing"))
+                  << ", image_saved=" << result_image_saved
+                  << ", failure=" << field_scene.failure() << ")\n";
+        return 3;
+    }
+
+    tap_qa_controller_button(field_scene, 0x40U);
+    const bool returned = finish_field_modal_return_transition(field_scene);
+    const auto expected_actor_delta = expect_escape ? 0U : 2U;
+    std::uint8_t spawn_passes = 0U;
+    while (field_scene.dynamic_world_actor_count_for_dump() !=
+               actors_before + expected_actor_delta &&
+           spawn_passes < 8U) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        ++spawn_passes;
+    }
+    const auto profiles_after =
+        field_scene.active_default_actor_animations_for_dump();
+    const auto profile_counts_after = count_run_profiles(profiles_after);
+    const std::array<std::size_t, 2U> expected_profile_counts{{
+        profile_counts_before[0U] + (expect_escape ? 0U : 1U),
+        profile_counts_before[1U] + (expect_escape ? 0U : 1U),
+    }};
+    const auto field_image = render_qa_field(field_scene);
+    const bool field_image_saved = field_image.size() ==
+            QSize(kSceneWidth, kSceneHeight) &&
+        save_qa_image(output, "field-actual.bmp", field_image);
+    if (!returned || field_scene.dialogue_open() ||
+        field_scene.dynamic_world_actor_count_for_dump() !=
+            actors_before + expected_actor_delta ||
+        profile_counts_after != expected_profile_counts || !field_image_saved) {
+        std::cerr << "Lone Star Run branch QA: field sequence mismatch for "
+                  << (expect_escape ? "escape" : "partial")
+                  << " (returned=" << returned
+                  << ", actors="
+                  << field_scene.dynamic_world_actor_count_for_dump()
+                  << ", expected=" << actors_before + expected_actor_delta
+                  << ", profiles=" << profile_counts_after[0U] << ','
+                  << profile_counts_after[1U]
+                  << ", spawn_passes=" << static_cast<unsigned>(spawn_passes)
+                  << ", image_saved=" << field_image_saved
+                  << ", failure=" << field_scene.failure() << ")\n";
+        return 3;
+    }
+    std::cout << "field_lone_star_patrol_run_branch_qa=passed branch="
+              << (expect_escape ? "escape" : "partial")
+              << " successes=" << run_successes
+              << " random_calls=" << run_random_calls << " heat=7->8 actors="
+              << expected_actor_delta << " result="
+              << (output / "result-actual.bmp").string() << " field="
+              << (output / "field-actual.bmp").string() << '\n';
+    return 0;
+}
+
 int run_field_hidden_camera_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& output,
@@ -48583,6 +48791,10 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_lone_star_patrol_stop_qa_path;
         std::optional<std::filesystem::path>
+            field_lone_star_patrol_run_partial_qa_path;
+        std::optional<std::filesystem::path>
+            field_lone_star_patrol_run_escape_qa_path;
+        std::optional<std::filesystem::path>
             field_company_man_toothpick_qa_path;
         std::optional<std::string> field_faction_route_name;
         std::optional<std::string> field_faction_scene_name;
@@ -49155,6 +49367,20 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_lone_star_patrol_stop_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-lone-star-patrol-run-partial-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_lone_star_patrol_run_partial_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-lone-star-patrol-run-escape-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_lone_star_patrol_run_escape_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -56459,6 +56685,16 @@ int main(int argc, char** argv) {
                     field_scene,
                     *field_lone_star_patrol_stop_qa_path,
                     field_source_boundaries);
+            }
+            if (field_lone_star_patrol_run_partial_qa_path.has_value()) {
+                return run_field_lone_star_patrol_run_branch_qa(
+                    field_scene, *field_lone_star_patrol_run_partial_qa_path,
+                    false);
+            }
+            if (field_lone_star_patrol_run_escape_qa_path.has_value()) {
+                return run_field_lone_star_patrol_run_branch_qa(
+                    field_scene, *field_lone_star_patrol_run_escape_qa_path,
+                    true);
             }
             if (field_company_man_toothpick_qa_path.has_value()) {
                 return run_field_company_man_toothpick_qa(

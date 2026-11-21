@@ -244,9 +244,15 @@ Caller review: the field patrol prompt at `0x20F12` and nested Company Man
 patrol prompts at `0x20F5A` share command `0x99`. The undercover/police
 dialogue routes at `0x20F8A` and `0x20FA2` also use this chase routine, so the
 Lua resolver remains reusable by each already-supported caller. The Run
-handler now implements the three success bands and named lead-armor modifiers.
+handler implements all three success bands and named lead-armor modifiers.
 The typed story-sequence publisher accepts the screen-edge policy selected by
-the source D0 value. Debug and Release Lua plus physical field QA pass; the
-physical route verifies the caught branch and returned detective actor. Other
-result-band physical routes, nested-caller physical QA, combat completion,
-and independent Genesis comparison remain open.
+the source D0 value. Debug/Release physical QA drives all bands: the caught
+route returns with a detective, the partial route returns with Lone 12 plus a
+detective, and the escape route returns without actor changes. The escape test
+uses Quickness 5 from the Decker starter record and a source seed that yields
+four successes over ten face calls. That valid chain exceeded the old
+eight-resume dialogue guard; the native host guard is now 64. Both Debug and
+Release pass, and the new result and field BMPs match byte-for-byte across
+builds. Captures are internal Qt output, not Genesis visual evidence. Nested
+caller physical QA, arrest settlement, combat completion, and independent
+Genesis comparison remain open.

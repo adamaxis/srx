@@ -121,6 +121,12 @@ Run clears D0 at `0x237F8`, so `0x1E216` selects the existing `0x1E302`
 screen-edge candidate path. The publisher now accepts that typed policy and
 publishes the detective after the result dialogue returns.
 
+Physical Run QA now covers the 2-3 success branch (Lone 12 plus detective)
+and the 4+ escape branch (no actors) as well as the previously tested caught
+branch. Escape uses a source seed with four successes and ten random face
+calls. The valid Lua service chain exceeded the dialogue host's former
+eight-resume cap, so its finite guard is now 64.
+
 ## Changed files
 
 - `decompilation/gameplay/scripts/enums.lua`
@@ -128,26 +134,28 @@ publishes the detective after the result dialogue returns.
 - `decompilation/gameplay/scripts/field_random_events.lua`
 - `decompilation/gameplay/tests_lua/field_random_events_tests.lua`
 - `decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp`
+- `decompilation/ghidra_conversion/qt_runtime/src/dialogue/field_dialogue_runtime.cpp`
+- `decompilation/ghidra_conversion/qt_runtime/CMakeLists.txt`
 - `decompilation/ghidra_conversion/qt_runtime/tests/qa/ghidra_conversion_qt_qa_main.cpp`
 - `decompilation/docs/ghidra/HILLS.md`
 - `decompilation/docs/ghidra/field-random-event-selector.md`
 - `decompilation/docs/ghidra/decompiled-function-status.tsv`
+- `decompilation/assets/field/world-activity-terminal-outcomes.tsv`
 - `out/DIAG.md`
 
 ## Validation
 
 Headless Debug and Release each pass `shadowrun_gameplay_script_runtime_qa`,
-`shadowrun_gameplay_field_random_events_qa`, and
-`shadowrun_ghidra_conversion_qt_field_lone_star_patrol_stop_qa` (3/3).
-Physical QA drives the Scene-3 Run choice with controller input, checks the
-caught result and heat 7 to 8, returns to the field, and verifies the detective
-profile. The later Attack path also adds its three profiles with that detective
-already present. Run result, returned field, and Attack field BMPs match
-byte-for-byte between configurations. These are internal Qt captures, not an
-independent Genesis comparison. The Lua matrix covers all three result bands;
-physical QA for the partial-success and escape bands, nested caller, arrest
-settlement, and combat completion remain open. No separate
-`world-activity-terminal-outcomes.tsv` exists in this checkout; the current
-outcome reference is `field-random-event-selector.md`.
+`shadowrun_gameplay_field_random_events_qa`, and the caught, partial, and
+escape Run physical QA tests (5/5). They drive controller input, check the
+result text and heat 7 to 8, return to the field, and verify the source actor
+delta for each branch. The escape path uses ten random face calls, proving the
+dialogue service chain can exceed eight resumes. The Run result/field BMPs
+match byte-for-byte across configurations. These are internal Qt captures,
+not an independent Genesis comparison. The current terminal outcome reference
+is `decompilation/assets/field/world-activity-terminal-outcomes.tsv`; its three
+Run rows now record the physical Debug/Release coverage. Nested caller physical
+QA, arrest settlement, combat completion, and independent Genesis comparison
+remain open.
 
 DONE

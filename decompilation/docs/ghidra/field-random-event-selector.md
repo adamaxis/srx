@@ -851,12 +851,17 @@ returns the escape text while retaining the earlier heat increment.
 
 The Lua matrix covers all three result bands, active-runner averaging, each
 lead-armor case, heat caps, queue failure, and the nested Company Man caller.
-Debug/Release physical Scene-3 QA drives the caught branch through controller
-input, checks heat 7 to 8 and the exact result text, returns to the field, and
-observes the detective spawn. The host story-sequence publisher now accepts
-the source-derived screen-edge policy as well as map-derived placement. These
-are internal port checks; independent Genesis comparison and physical QA of
-the other Run result bands remain open.
+Debug/Release physical Scene-3 QA drives all three results through controller
+input. The caught branch returns with a detective; the partial branch returns
+with Lone 12 and a detective; the escape branch returns with no new actors.
+Each verifies heat 7 to 8 and its exact result text. The escape seed produces
+four successes over ten random face calls, exercising a valid service chain
+past the former eight-resume host limit; the guard is now 64. The host
+story-sequence publisher accepts the source-derived screen-edge policy as well
+as map-derived placement. Partial and escape result/field captures match
+byte-for-byte between Debug and Release. These are internal port checks;
+nested-caller physical QA, arrest settlement, combat completion, and
+independent Genesis comparison remain open.
 
 **Phantasmal watcher (`0x20F2A`, scenes 0, 3, and 5; sums 1-2 and 8).** The
 opening prompt at `0x120F00` links the two responses directly to data nodes:

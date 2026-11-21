@@ -1162,6 +1162,19 @@ add_shadowrun_qt_qa_case(
     --field-lone-star-patrol-stop-qa
     "${CMAKE_CURRENT_BINARY_DIR}/field-lone-star-patrol-stop-qa")
 
+# Exercise the other two shared Run result bands in fresh field runtimes so
+# their actor lists and no-actor escape path cannot inherit prior sequences.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_lone_star_patrol_run_partial_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-lone-star-patrol-run-partial-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-lone-star-patrol-run-partial-qa")
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_lone_star_patrol_run_escape_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-lone-star-patrol-run-escape-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-lone-star-patrol-run-escape-qa")
+
 # Scene 26's sum-1 selector opens the Company Man event. Confirm the Insult
 # reply displays the resource-variant clue and returns through the saved scene.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_company_man_toothpick_qa

@@ -20,6 +20,10 @@ constexpr std::uint16_t kControllerCEvent = 0x2000U;
 constexpr std::uint16_t kControllerStartEvent = 0x8000U;
 constexpr std::uint16_t kControllerUpEvent = 0x0100U;
 constexpr std::uint16_t kControllerDownEvent = 0x0200U;
+// [C] ROM 0x0DBA draws at least one die face and repeats a die after a six.
+// Lua requests one native sample per face, so a valid exploding roll can
+// exceed eight sequential resumes. Keep a finite guard without rejecting it.
+constexpr std::size_t kMaximumDialogueServiceChain = 64U;
 // Values mirror E.MenuScreen and E.MenuInputAction in gameplay/scripts/enums.lua.
 enum class RoutedMenuScreen : std::int64_t {
     hospital_options = 46,
@@ -749,7 +753,8 @@ bool FieldDialogueRuntime::present_script_operation(
     }
     if (operation.type ==
         scripting::ScriptNativeOperation::Type::service_call) {
-        if (service_depth >= 8U || script_runtime_ == nullptr ||
+        if (service_depth >= kMaximumDialogueServiceChain ||
+            script_runtime_ == nullptr ||
             operation.service_id.empty()) {
             return open_source_boundary(
                 "dialogue script service call exceeded its limit");
