@@ -923,21 +923,67 @@ struct MapCoverageCaveRouteStep {
     std::uint16_t destination_room;
 };
 
-inline std::optional<std::vector<std::uint16_t>>
+struct MapCoverageCaveCollisionRoute {
+    std::vector<std::uint16_t> waypoint_cells;
+    std::uint16_t event_cell = 0U;
+    std::uint8_t event_input = 0U;
+    MapCoverageRect trigger{};
+    std::optional<std::uint32_t> expected_event;
+    std::string trigger_description;
+};
+
+inline std::optional<MapCoverageCaveCollisionRoute>
 map_coverage_cave_collision_path(
-    const FieldSceneRuntime& runtime, const MapCoverageRect& trigger,
-    const std::optional<std::uint32_t> expected_event) {
+    FieldSceneRuntime& runtime, const MapCoverageRect& trigger,
+    const std::optional<std::uint32_t> expected_event,
+    const std::string_view trigger_description,
+    std::string* route_analysis = nullptr,
+    const std::array<bool, 16384>* blocked_cells = nullptr) {
     if (!expected_event.has_value()) {
+        return std::nullopt;
+    }
+    constexpr std::string_view kDirectionMarker = ";direction=";
+    const auto direction_marker = trigger_description.rfind(kDirectionMarker);
+    if (direction_marker == std::string_view::npos) {
+        if (route_analysis != nullptr) {
+            *route_analysis = "ROM exit direction missing";
+        }
+        return std::nullopt;
+    }
+    const auto direction_start = direction_marker + kDirectionMarker.size();
+    const auto direction_end = trigger_description.find(';', direction_start);
+    const auto direction = trigger_description.substr(
+        direction_start,
+        direction_end == std::string_view::npos
+            ? direction_end : direction_end - direction_start);
+    std::uint8_t event_input = 0U;
+    if (direction == "north") {
+        event_input = 0x01U;
+    } else if (direction == "east") {
+        event_input = 0x08U;
+    } else if (direction == "south") {
+        event_input = 0x02U;
+    } else if (direction == "west") {
+        event_input = 0x04U;
+    } else {
+        if (route_analysis != nullptr) {
+            *route_analysis = "ROM exit direction is unrecognized";
+        }
         return std::nullopt;
     }
     constexpr std::uint16_t kCollisionMapSide = 64U;
     constexpr std::size_t kCollisionMapCellCount =
         kCollisionMapSide * kCollisionMapSide;
+    constexpr std::uint16_t kRouteGridSide = 128U;
+    constexpr std::size_t kRouteGridCellCount =
+        kRouteGridSide * kRouteGridSide;
     const auto map_cell = runtime.source_terrain_collision_map_for_dump();
+    const auto active_actor_positions =
+        runtime.active_default_actor_positions_for_dump();
     const auto start_position = runtime.field_entity_world_position();
-    const auto start_x = static_cast<std::uint32_t>(start_position.x) >> 9U;
-    const auto start_y = static_cast<std::uint32_t>(start_position.y) >> 9U;
-    if (start_x >= kCollisionMapSide || start_y >= kCollisionMapSide) {
+    const auto start_x = static_cast<std::uint32_t>(start_position.x) >> 8U;
+    const auto start_y = static_cast<std::uint32_t>(start_position.y) >> 8U;
+    if (start_x >= kRouteGridSide || start_y >= kRouteGridSide) {
         return std::nullopt;
     }
 
@@ -946,6 +992,13 @@ map_coverage_cave_collision_path(
     const auto last_x = static_cast<std::uint32_t>(trigger.x1) >> 9U;
     const auto first_y = static_cast<std::uint32_t>(trigger.y0) >> 9U;
     const auto last_y = static_cast<std::uint32_t>(trigger.y1) >> 9U;
+    const auto route_context = ";world_rect=" +
+        map_coverage_hex(trigger.x0) + ".." + map_coverage_hex(trigger.x1) +
+        "," + map_coverage_hex(trigger.y0) + ".." +
+        map_coverage_hex(trigger.y1) + ";grid_rect=" +
+        std::to_string(first_x) + ".." + std::to_string(last_x) + "," +
+        std::to_string(first_y) + ".." + std::to_string(last_y) +
+        ";direction=" + std::string(direction);
     for (auto y = first_y; y <= last_y && y < kCollisionMapSide; ++y) {
         for (auto x = first_x; x <= last_x && x < kCollisionMapSide; ++x) {
             const auto index = static_cast<std::size_t>(
@@ -960,54 +1013,163 @@ map_coverage_cave_collision_path(
     if (std::none_of(goals.begin(), goals.end(), [](const bool goal) {
             return goal;
         })) {
+        if (route_analysis != nullptr) {
+            *route_analysis = "event_cells=0" + route_context;
+        }
         return std::nullopt;
+    }
+    const auto event_cell_count = static_cast<std::size_t>(std::count(
+        goals.begin(), goals.end(), true));
+
+    // The byte map omits blocking geometry represented by terrain-object
+    // records. Classify each candidate waypoint with the runtime's ordinary
+    // terrain collision query so the QA route does not plan through those
+    // records and then mistake the resulting wall contact for a game exit bug.
+    std::array<bool, kRouteGridCellCount> passable_cells{};
+    std::size_t passable_event_cell_count = 0U;
+    constexpr std::int64_t kActorClearance = 0x0000;
+    constexpr std::int64_t kActorClearanceSquared =
+        kActorClearance * kActorClearance;
+    for (std::size_t index = 0U; index < passable_cells.size(); ++index) {
+        if (blocked_cells != nullptr && (*blocked_cells)[index]) {
+            continue;
+        }
+        const auto route_x = static_cast<std::uint32_t>(
+            index % kRouteGridSide);
+        const auto route_y = static_cast<std::uint32_t>(
+            index / kRouteGridSide);
+        const auto map_index = static_cast<std::size_t>(
+            (route_y / 2U) * kCollisionMapSide + route_x / 2U);
+        if (map_cell[map_index] != 0U && !goals[map_index]) {
+            continue;
+        }
+        const auto x = static_cast<std::uint16_t>(
+            route_x * 0x0100U + 0x0080U);
+        const auto y = static_cast<std::uint16_t>(
+            route_y * 0x0100U + 0x0080U);
+        const bool clear_of_active_actors = std::none_of(
+            active_actor_positions.begin(), active_actor_positions.end(),
+            [x, y](const SceneRunnerPosition& actor_position) {
+                const auto dx = static_cast<std::int64_t>(x) -
+                    actor_position.x;
+                const auto dy = static_cast<std::int64_t>(y) -
+                    actor_position.y;
+                return dx * dx + dy * dy <= kActorClearanceSquared;
+            });
+        passable_cells[index] = clear_of_active_actors &&
+            runtime.probe_field_collision_for_dump(x, y) == 0;
+        if (goals[map_index] && passable_cells[index]) {
+            ++passable_event_cell_count;
+        }
     }
 
     constexpr std::int32_t kUnvisited = -2;
     constexpr std::int32_t kPathStart = -1;
-    std::array<std::int32_t, kCollisionMapCellCount> parent{};
+    std::array<std::int32_t, kRouteGridCellCount> parent{};
     parent.fill(kUnvisited);
-    std::array<std::uint16_t, kCollisionMapCellCount> pending{};
+    std::array<std::int32_t, kRouteGridCellCount> event_for_approach{};
+    event_for_approach.fill(kUnvisited);
+    std::array<std::uint8_t, kRouteGridCellCount> input_for_approach{};
+    std::size_t clear_event_approach_count = 0U;
+    struct DirectionalApproach {
+        std::int8_t x;
+        std::int8_t y;
+        std::uint8_t input;
+    };
+    constexpr std::array<DirectionalApproach, 4> kApproaches{{
+        {0, -1, 0x01U}, {1, 0, 0x08U},
+        {0, 1, 0x02U}, {-1, 0, 0x04U}}};
+    std::size_t preferred_direction_index = 0U;
+    if (event_input == 0x08U) {
+        preferred_direction_index = 1U;
+    } else if (event_input == 0x02U) {
+        preferred_direction_index = 2U;
+    } else if (event_input == 0x04U) {
+        preferred_direction_index = 3U;
+    }
+    for (std::size_t event_cell = 0U; event_cell < goals.size(); ++event_cell) {
+        if (!goals[event_cell]) {
+            continue;
+        }
+        const auto event_x = static_cast<std::int32_t>(
+            event_cell % kCollisionMapSide);
+        const auto event_y = static_cast<std::int32_t>(
+            event_cell / kCollisionMapSide);
+        // The ROM direction identifies the exit-table slot. Physical approach
+        // still has to respect the live collision geometry, so try that side
+        // first and retain any other clear neighbor around the event cell.
+        for (std::size_t rank = 0U; rank < kApproaches.size(); ++rank) {
+            const auto direction = kApproaches[
+                (preferred_direction_index + rank) % kApproaches.size()];
+            const auto approach_x = event_x - direction.x;
+            const auto approach_y = event_y - direction.y;
+            if (approach_x < 0 || approach_x >= kCollisionMapSide ||
+                approach_y < 0 || approach_y >= kCollisionMapSide) {
+                continue;
+            }
+            for (std::int32_t sub_y = 0; sub_y < 2; ++sub_y) {
+                for (std::int32_t sub_x = 0; sub_x < 2; ++sub_x) {
+                    const auto approach = static_cast<std::uint16_t>(
+                        (approach_y * 2 + sub_y) * kRouteGridSide +
+                        approach_x * 2 + sub_x);
+                    if (!passable_cells[approach]) {
+                        continue;
+                    }
+                    if (event_for_approach[approach] == kUnvisited) {
+                        ++clear_event_approach_count;
+                        event_for_approach[approach] =
+                            static_cast<std::int32_t>(event_cell);
+                        input_for_approach[approach] = direction.input;
+                    }
+                }
+            }
+        }
+    }
+    std::array<std::uint16_t, kRouteGridCellCount> pending{};
     std::size_t pending_read = 0U;
     std::size_t pending_write = 0U;
     const auto start_index = static_cast<std::uint16_t>(
-        start_y * kCollisionMapSide + start_x);
+        start_y * kRouteGridSide + start_x);
     parent[start_index] = kPathStart;
     pending[pending_write++] = start_index;
-    const auto passable = [&map_cell, &goals](const std::uint16_t index) {
-        return map_cell[index] == 0U || goals[index];
+    const auto passable = [&passable_cells](const std::uint16_t index) {
+        return passable_cells[index];
     };
     constexpr std::array<std::pair<std::int8_t, std::int8_t>, 8> kNeighbors{{
         {0, -1}, {1, 0}, {0, 1}, {-1, 0},
         {1, -1}, {1, 1}, {-1, 1}, {-1, -1}}};
-    std::optional<std::uint16_t> goal_index;
+    std::optional<std::uint16_t> approach_index;
+    std::optional<std::uint16_t> event_index;
     while (pending_read < pending_write) {
         const auto current = pending[pending_read++];
-        if (goals[current]) {
-            goal_index = current;
+        if (event_for_approach[current] != kUnvisited) {
+            approach_index = current;
+            event_index = static_cast<std::uint16_t>(
+                event_for_approach[current]);
+            event_input = input_for_approach[current];
             break;
         }
         const auto x = static_cast<std::int32_t>(
-            current % kCollisionMapSide);
+            current % kRouteGridSide);
         const auto y = static_cast<std::int32_t>(
-            current / kCollisionMapSide);
+            current / kRouteGridSide);
         for (const auto [dx, dy] : kNeighbors) {
             const auto next_x = x + dx;
             const auto next_y = y + dy;
-            if (next_x < 0 || next_x >= kCollisionMapSide ||
-                next_y < 0 || next_y >= kCollisionMapSide) {
+            if (next_x < 0 || next_x >= kRouteGridSide ||
+                next_y < 0 || next_y >= kRouteGridSide) {
                 continue;
             }
             const auto next = static_cast<std::uint16_t>(
-                next_y * kCollisionMapSide + next_x);
+                next_y * kRouteGridSide + next_x);
             if (parent[next] != kUnvisited || !passable(next)) {
                 continue;
             }
             if (dx != 0 && dy != 0) {
                 const auto horizontal = static_cast<std::uint16_t>(
-                    y * kCollisionMapSide + next_x);
+                    y * kRouteGridSide + next_x);
                 const auto vertical = static_cast<std::uint16_t>(
-                    next_y * kCollisionMapSide + x);
+                    next_y * kRouteGridSide + x);
                 if (!passable(horizontal) || !passable(vertical)) {
                     continue;
                 }
@@ -1016,12 +1178,52 @@ map_coverage_cave_collision_path(
             pending[pending_write++] = next;
         }
     }
-    if (!goal_index.has_value()) {
+    if (!approach_index.has_value() || !event_index.has_value()) {
+        if (route_analysis != nullptr) {
+            *route_analysis = "event_cells=" +
+                std::to_string(event_cell_count) +
+                ";collision_clear_event_cells=" +
+                std::to_string(passable_event_cell_count) +
+                ";clear_directional_approaches=" +
+                std::to_string(clear_event_approach_count) +
+                ";collision_reachable_cells=" +
+                std::to_string(pending_read) + route_context;
+            const auto first_event = static_cast<std::size_t>(
+                std::find(goals.begin(), goals.end(), true) - goals.begin());
+            const auto event_x = static_cast<std::int32_t>(
+                first_event % kCollisionMapSide);
+            const auto event_y = static_cast<std::int32_t>(
+                first_event / kCollisionMapSide);
+            *route_analysis += ";event_neighborhood=";
+            for (std::int32_t y = event_y - 1; y <= event_y + 1; ++y) {
+                for (std::int32_t x = event_x - 1; x <= event_x + 1; ++x) {
+                    if (x < 0 || x >= kCollisionMapSide || y < 0 ||
+                        y >= kCollisionMapSide) {
+                        continue;
+                    }
+                    const auto cell = static_cast<std::size_t>(
+                        y * kCollisionMapSide + x);
+                    const auto world_x = static_cast<std::uint16_t>(
+                        x * 0x0200U + 0x0100U);
+                    const auto world_y = static_cast<std::uint16_t>(
+                        y * 0x0200U + 0x0100U);
+                    if (route_analysis->back() != '=') {
+                        route_analysis->push_back(',');
+                    }
+                    *route_analysis += std::to_string(x) + ":" +
+                        std::to_string(y) + "=" +
+                        map_coverage_hex(map_cell[cell]) + "/" +
+                        map_coverage_hex(static_cast<std::uint16_t>(
+                            runtime.probe_field_collision_for_dump(
+                                world_x, world_y)));
+                }
+            }
+        }
         return std::nullopt;
     }
 
     std::vector<std::uint16_t> path;
-    for (auto cell = static_cast<std::int32_t>(*goal_index);
+    for (auto cell = static_cast<std::int32_t>(*approach_index);
          cell != kPathStart; cell = parent[static_cast<std::size_t>(cell)]) {
         if (cell < 0) {
             return std::nullopt;
@@ -1029,15 +1231,31 @@ map_coverage_cave_collision_path(
         path.push_back(static_cast<std::uint16_t>(cell));
     }
     std::reverse(path.begin(), path.end());
-    return path;
+    MapCoverageCaveCollisionRoute route{};
+    route.waypoint_cells = std::move(path);
+    route.event_cell = *event_index;
+    route.event_input = event_input;
+    route.trigger = trigger;
+    route.expected_event = expected_event;
+    route.trigger_description = std::string(trigger_description);
+    if (route_analysis != nullptr) {
+        *route_analysis = "event_cells=" +
+            std::to_string(event_cell_count) +
+            ";collision_clear_event_cells=" +
+            std::to_string(passable_event_cell_count) +
+            ";clear_directional_approaches=" +
+            std::to_string(clear_event_approach_count) +
+            ";path_cells=" + std::to_string(route.waypoint_cells.size());
+    }
+    return route;
 }
 
 inline std::uint8_t map_coverage_cave_path_input(
     const std::uint16_t from, const std::uint16_t to) {
-    const auto from_x = static_cast<std::int32_t>(from % 64U);
-    const auto from_y = static_cast<std::int32_t>(from / 64U);
-    const auto to_x = static_cast<std::int32_t>(to % 64U);
-    const auto to_y = static_cast<std::int32_t>(to / 64U);
+    const auto from_x = static_cast<std::int32_t>(from % 128U);
+    const auto from_y = static_cast<std::int32_t>(from / 128U);
+    const auto to_x = static_cast<std::int32_t>(to % 128U);
+    const auto to_y = static_cast<std::int32_t>(to / 128U);
     std::uint8_t input = 0U;
     if (to_x < from_x) input |= 0x04U;
     if (to_x > from_x) input |= 0x08U;
@@ -1048,15 +1266,21 @@ inline std::uint8_t map_coverage_cave_path_input(
 
 inline MapCoverageAttempt map_coverage_drive_cave_collision_path(
     FieldSceneRuntime& runtime, const std::uint16_t source_scene,
-    const std::vector<std::uint16_t>& path,
+    MapCoverageCaveCollisionRoute route,
     const std::optional<std::uint32_t> expected_event) {
-    constexpr std::uint32_t kFrameBudget = 2400U;
+    constexpr std::uint32_t kFrameBudget = 4800U;
     constexpr std::uint32_t kFramesPerCell = 48U;
+    constexpr std::size_t kMaximumReplans = 8U;
+    std::array<bool, 16384> blocked_cells{};
+    std::size_t replan_count = 0U;
+    std::string last_replan_analysis;
     MapCoverageAttempt result;
     result.setup = true;
     result.approach_side = "collision-map-route";
     const auto starting_collision_dispatches =
         runtime.field_map_event_system_for_dump().collision_dispatch_count();
+    std::uint16_t active_target_cell = 0U;
+    std::uint8_t active_input = 0U;
     const auto record_frame = [&] {
         const auto event = runtime.field_mode_event_code_for_dump();
         if (event != 0U) {
@@ -1082,26 +1306,119 @@ inline MapCoverageAttempt map_coverage_drive_cave_collision_path(
         result.observed_y = position.y;
         result.observed_mode = runtime.field_interaction_mode_for_dump();
     };
+    const auto advance_with_input = [&](const std::uint8_t input) {
+        const auto before_scene = runtime.field_scene_reference_for_dump();
+        const auto before_position = runtime.field_entity_world_position();
+        const auto before_event = runtime.field_mode_event_code_for_dump();
+        const auto source_tile = static_cast<std::uint16_t>(
+            (static_cast<std::uint32_t>(before_position.y) >> 9U) * 64U +
+            (static_cast<std::uint32_t>(before_position.x) >> 9U));
+        const auto source_tile_byte =
+            runtime.terrain_collision_map_byte_for_dump(source_tile);
+        const auto source_default_actor_count =
+            runtime.default_actor_count_for_dump();
+        const auto source_dynamic_actor_count =
+            runtime.dynamic_world_actor_count_for_dump();
+        const auto source_script_actor_count =
+            runtime.world_activity_script_actor_count_for_dump();
+        const auto source_activity_countdown =
+            runtime.world_frame_logic_for_dump().activity_countdown;
+        const auto source_activity_timeout =
+            runtime.world_activity_timeout_for_dump().timeout_frames;
+        const auto source_request_timeout =
+            runtime.world_activity_request_timeout_for_dump();
+        const auto source_probe = static_cast<std::uint16_t>(
+            runtime.probe_field_collision_for_dump(
+                before_position.x, before_position.y));
+        std::string nearby_actors;
+        for (std::uint16_t source_order = 0U; source_order < 32U;
+             ++source_order) {
+            const auto actor_position =
+                runtime.default_actor_world_position_for_dump(source_order);
+            if (!actor_position.has_value()) continue;
+            const auto dx = std::abs(
+                static_cast<std::int32_t>(actor_position->x) -
+                static_cast<std::int32_t>(before_position.x));
+            const auto dy = std::abs(
+                static_cast<std::int32_t>(actor_position->y) -
+                static_cast<std::int32_t>(before_position.y));
+            if (dx <= 0x0800 && dy <= 0x0800) {
+                if (!nearby_actors.empty()) nearby_actors.push_back(',');
+                const auto actor_id =
+                    runtime.default_actor_instance_id_for_dump(source_order);
+                const auto actor_profile =
+                    runtime.default_actor_script_profile_for_dump(source_order);
+                const auto ai_package =
+                    runtime.default_actor_ai_package_for_dump(source_order);
+                const auto target_distance =
+                    runtime.default_actor_ai_target_distance_for_dump(
+                        source_order);
+                nearby_actors += std::to_string(source_order) + ":" +
+                    actor_id.value_or("?") + ":" +
+                    actor_profile.value_or("?") + ":" +
+                    ai_package.value_or("?") + ":" +
+                    (target_distance.has_value()
+                         ? std::to_string(*target_distance) : "?") + "@" +
+                    map_coverage_hex(actor_position->x) + "," +
+                    map_coverage_hex(actor_position->y);
+            }
+        }
+        runtime.set_controller_port_byte(input);
+        runtime.advance_frame();
+        ++result.frames_used;
+        record_frame();
+        if (runtime.field_scene_reference_for_dump() != before_scene) {
+            result.note += ";transition_from_scene=" +
+                std::to_string(before_scene) + ";transition_from_xy=" +
+                map_coverage_hex(before_position.x) + "," +
+                map_coverage_hex(before_position.y) +
+                ";transition_frame_event=" + map_coverage_hex(before_event) +
+                ";transition_source_tile=" + map_coverage_hex(source_tile_byte) +
+                ";transition_source_probe=" + map_coverage_hex(source_probe) +
+                ";transition_target=" + std::to_string(
+                    active_target_cell % 128U) + "," +
+                    std::to_string(active_target_cell / 128U) +
+                ";transition_input=" + map_coverage_hex(active_input) +
+                ";source_actor_counts=" + std::to_string(
+                    source_default_actor_count) + "," +
+                    std::to_string(source_dynamic_actor_count) + "," +
+                    std::to_string(source_script_actor_count) +
+                ";source_activity_timers=" + std::to_string(
+                    source_activity_countdown) + "," +
+                    std::to_string(source_activity_timeout) + "," +
+                    std::to_string(source_request_timeout) +
+                ";nearby_actors=" +
+                    (nearby_actors.empty() ? "none" : nearby_actors);
+        }
+    };
 
-    for (std::size_t index = 1U;
-         index < path.size() && result.frames_used < kFrameBudget; ++index) {
-        const auto target_cell = path[index];
+    std::size_t waypoint_index = 1U;
+    bool route_failed = false;
+    while (waypoint_index < route.waypoint_cells.size() &&
+           result.frames_used < kFrameBudget) {
+        const auto target_cell = route.waypoint_cells[waypoint_index];
+        active_target_cell = target_cell;
         const auto target_x = static_cast<std::uint16_t>(
-            (target_cell % 64U) * 0x0200U + 0x0100U);
+            (target_cell % 128U) * 0x0100U + 0x0080U);
         const auto target_y = static_cast<std::uint16_t>(
-            (target_cell / 64U) * 0x0200U + 0x0100U);
+            (target_cell / 128U) * 0x0100U + 0x0080U);
         const auto segment_limit = std::min(
             kFramesPerCell, kFrameBudget - result.frames_used);
-        bool reached_cell_center = false;
+        bool reached_target_cell = false;
         for (std::uint32_t frame = 0U; frame < segment_limit; ++frame) {
             const auto position = runtime.field_entity_world_position();
+            const auto position_cell = static_cast<std::uint16_t>(
+                ((static_cast<std::uint32_t>(position.y) >> 8U) * 128U) +
+                (static_cast<std::uint32_t>(position.x) >> 8U));
             const auto difference_x = static_cast<std::int32_t>(target_x) -
                 static_cast<std::int32_t>(position.x);
             const auto difference_y = static_cast<std::int32_t>(target_y) -
                 static_cast<std::int32_t>(position.y);
-            if (std::abs(difference_x) <= 0x80 &&
-                std::abs(difference_y) <= 0x80) {
-                reached_cell_center = true;
+            const bool centered_on_waypoint =
+                std::abs(difference_x) <= 0x80 &&
+                std::abs(difference_y) <= 0x80;
+            if (position_cell == target_cell || centered_on_waypoint) {
+                reached_target_cell = true;
                 break;
             }
             std::uint8_t input = 0U;
@@ -1109,10 +1426,8 @@ inline MapCoverageAttempt map_coverage_drive_cave_collision_path(
             if (difference_x > 0x80) input |= 0x08U;
             if (difference_y < -0x80) input |= 0x01U;
             if (difference_y > 0x80) input |= 0x02U;
-            runtime.set_controller_port_byte(input);
-            runtime.advance_frame();
-            ++result.frames_used;
-            record_frame();
+            active_input = input;
+            advance_with_input(input);
             if (result.trigger_seen || result.transition_fired) {
                 break;
             }
@@ -1120,24 +1435,86 @@ inline MapCoverageAttempt map_coverage_drive_cave_collision_path(
         if (result.trigger_seen || result.transition_fired) {
             break;
         }
-        if (!reached_cell_center) {
+        if (!reached_target_cell) {
             const auto position = runtime.field_entity_world_position();
             result.note = "collision-map route stalled before cell=" +
-                std::to_string(target_cell % 64U) + "," +
-                std::to_string(target_cell / 64U) + ";position=" +
+                std::to_string(target_cell % 128U) + "," +
+                std::to_string(target_cell / 128U) + ";position=" +
                 map_coverage_hex(position.x) + "," +
                 map_coverage_hex(position.y);
-            break;
+            if (replan_count >= kMaximumReplans) {
+                route_failed = true;
+                break;
+            }
+            blocked_cells[target_cell] = true;
+            ++replan_count;
+            const auto replanned = map_coverage_cave_collision_path(
+                runtime, route.trigger, route.expected_event,
+                route.trigger_description, &last_replan_analysis,
+                &blocked_cells);
+            if (!replanned.has_value()) {
+                result.note += ";replan_failed=" + last_replan_analysis;
+                route_failed = true;
+                break;
+            }
+            route = *replanned;
+            waypoint_index = 1U;
+            result.note.clear();
+            continue;
+        }
+        ++waypoint_index;
+    }
+
+    if (result.transition_fired &&
+        runtime.field_scene_reference_for_dump() != source_scene) {
+        const auto interrupted_scene =
+            runtime.field_scene_reference_for_dump();
+        for (std::uint32_t frame = 0U;
+             frame < 600U && result.frames_used < kFrameBudget &&
+             runtime.field_scene_reference_for_dump() != source_scene;
+             ++frame) {
+            advance_with_input(0U);
+        }
+        if (runtime.field_scene_reference_for_dump() == source_scene) {
+            result.transition_fired = false;
+            result.trigger_seen = false;
+            waypoint_index = 1U;
+            if (const auto resumed = map_coverage_cave_collision_path(
+                    runtime, route.trigger, route.expected_event,
+                    route.trigger_description, &last_replan_analysis,
+                    &blocked_cells);
+                resumed.has_value()) {
+                route = *resumed;
+                route_failed = false;
+            } else {
+                route_failed = true;
+                result.note += ";route_after_activity_failed=" +
+                    last_replan_analysis;
+            }
+        } else {
+            result.note += ";activity_wait_did_not_return=" +
+                std::to_string(interrupted_scene) + "->" +
+                std::to_string(runtime.field_scene_reference_for_dump());
         }
     }
 
     runtime.set_controller_port_byte(0U);
+    const bool reached_approach =
+        !route_failed && waypoint_index >= route.waypoint_cells.size();
+    if (reached_approach) {
+        for (std::uint32_t frame = 0U;
+             frame < 120U && result.frames_used < kFrameBudget; ++frame) {
+            advance_with_input(route.event_input);
+            if (result.trigger_seen || result.transition_fired) {
+                break;
+            }
+        }
+    }
+    runtime.set_controller_port_byte(0U);
     if (result.trigger_seen && !result.transition_fired) {
         for (std::uint32_t tail = 0U;
              tail < 60U && result.frames_used < kFrameBudget; ++tail) {
-            runtime.advance_frame();
-            ++result.frames_used;
-            record_frame();
+            advance_with_input(0U);
             if (result.transition_fired) {
                 break;
             }
@@ -1145,10 +1522,16 @@ inline MapCoverageAttempt map_coverage_drive_cave_collision_path(
     }
     runtime.set_controller_port_byte(0U);
     if (result.note.empty() && !result.trigger_seen) {
-        result.note = "collision-map path ended without a fresh event";
+        result.note = "directional collision-map approach ended without a fresh event";
     }
-    result.note += ";path_cells=" + std::to_string(path.size()) +
+    result.note += ";path_cells=" +
+        std::to_string(route.waypoint_cells.size()) +
+        ";event_cell=" + std::to_string(route.event_cell) +
+        ";replans=" + std::to_string(replan_count) +
         ";frames=" + std::to_string(result.frames_used);
+    if (!last_replan_analysis.empty()) {
+        result.note += ";last_replan=" + last_replan_analysis;
+    }
     return result;
 }
 
@@ -1161,11 +1544,15 @@ inline MapCoverageAttempt map_coverage_drive_cave_exit(
     // Prefer actual movement from the reached room spawn whenever the source
     // collision map connects that spawn to this event cell. The side probes
     // below remain only for rows whose source collision map has no route.
+    std::string collision_route_analysis;
     if (const auto path = map_coverage_cave_collision_path(
-            runtime, rect, expected_event);
-        path.has_value() && !path->empty()) {
-        return map_coverage_drive_cave_collision_path(
+            runtime, rect, expected_event, row.trigger,
+            &collision_route_analysis);
+        path.has_value()) {
+        auto attempt = map_coverage_drive_cave_collision_path(
             runtime, source_scene, *path, expected_event);
+        attempt.note += ";collision_route=" + collision_route_analysis;
+        return attempt;
     }
 
     // ROM 0xA12 dispatches FFFBF9=0x08..0x0B while FFFC0E is set. Try each
@@ -1192,6 +1579,9 @@ inline MapCoverageAttempt map_coverage_drive_cave_exit(
             runtime.field_scene_reference_for_dump() != source_scene) {
             return last_attempt;
         }
+    }
+    if (!collision_route_analysis.empty()) {
+        last_attempt.note += ";collision_route=" + collision_route_analysis;
     }
     return last_attempt;
 }
