@@ -152,7 +152,7 @@ bool runner_text_catalog_is_complete(
             {"runner.stark.name", 1U},
         }};
 
-    if (runner_text_keys.size() != 103U ||
+    if (runner_text_keys.size() != 104U ||
         runner_text_keys.find("shared.more") == runner_text_keys.end() ||
         runner_text_keys.at("shared.more") != "stoker.motel.arrival.more") {
         std::cerr << "runner Lua content-key catalog is incomplete\n";
@@ -348,6 +348,8 @@ int main(const int argc, char** argv) {
             SHADOWRUN_GAMEPLAY_SCRIPT_ROOT,
             std::filesystem::path(SHADOWRUN_GHIDRA_ASSET_ROOT) /
                 "dialogue" / "script-text.json")) {
+        std::cerr << "gameplay dialogue package failed to load: "
+                  << scripts.failure() << '\n';
         return 10;
     }
     const auto stoker_profile = scripts.speaker_profile("stoker");
@@ -412,7 +414,9 @@ int main(const int argc, char** argv) {
         std::string_view id;
         std::string_view portrait_alias;
     };
-    constexpr std::array<RunnerPortraitCase, 6> kRunnerPortraitCases{{
+    constexpr std::array<RunnerPortraitCase, 8> kRunnerPortraitCases{{
+        {"winston_marrs", "field.hud.party.face.4.palette.1"},
+        {"trent", "field.hud.party.face.5.palette.1"},
         {"petr_uvehr", "field.hud.party.face.6.palette.2"},
         {"walking_bear", "field.hud.party.face.7.palette.2"},
         {"phantom", "field.hud.party.face.8.palette.0"},

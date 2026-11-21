@@ -150,12 +150,19 @@ struct RunnerFieldContactRoute {
     RecruitedRunnerConversationRunner runner;
 };
 
-constexpr std::array<RunnerFieldContactRoute, 7> kRunnerFieldContactRoutes{{
+// ROM lists 0x17018 and 0x17050 publish Trent and Winston's mode-one field
+// contacts; the listed activity IDs bind those contacts to their source
+// dialogue templates before Lua presents their runner profiles [C].
+constexpr std::array<RunnerFieldContactRoute, 9> kRunnerFieldContactRoutes{{
     {19U, "scene_19_script", RecruitedRunnerConversationRunner::ricky},
     {10U, "scene_10_default_script",
      RecruitedRunnerConversationRunner::walking_bear},
+    {10U, "scene_10_event_6_script",
+     RecruitedRunnerConversationRunner::trent},
     {13U, "scene_13_ilene_gate_script",
      RecruitedRunnerConversationRunner::two_fists},
+    {11U, "scene_11_script",
+     RecruitedRunnerConversationRunner::winston_marrs},
     {14U, "scene_14_script",
      RecruitedRunnerConversationRunner::petr_uvehr},
     {16U, "scene_16_script",

@@ -1101,11 +1101,15 @@ void FieldSceneRuntime::initialize_field_party_roster(
             restored.runner_contact_progress_counters.end());
         field_runner_progress_counters_available_ = true;
         field_runner_information_flags_ = restored.runner_information_flags;
-    } else if (startup_state.new_game_opening_completed) {
-        // ROM 0x0806 clears FFFC12..FFFC1B during the New Game field setup.
-        field_runner_refresh_state_.effect_counters.resize(10U, 0U);
-        field_runner_progress_counters_available_ = true;
+    } else {
+        // ROM 0x0836 clears FFFC2A on New Game, before the first field
+        // contact. The saved word remains unresolved when an old save omits it.
         field_runner_information_flags_ = 0U;
+        if (startup_state.new_game_opening_completed) {
+            // ROM 0x0806 clears FFFC12..FFFC1B during New Game field setup.
+            field_runner_refresh_state_.effect_counters.resize(10U, 0U);
+            field_runner_progress_counters_available_ = true;
+        }
     }
     field_runner_refresh_state_.compact_record_markers = {
         field_party_roster_.primary_compact_marker(),
@@ -1189,13 +1193,31 @@ FieldSceneRuntime::recruited_runner_service_cost_modifiers() const {
 
 std::optional<std::string> FieldSceneRuntime::recruited_runner_service_call(
     const std::string_view action) {
-    if (action == "mark_recruited_runner_information") {
-        if (!field_runner_information_flags_.has_value()) {
+    if (action == "record_trent_jefferson_contact") {
+        if (!field_recruited_runner_contact_.has_value() ||
+            *field_recruited_runner_contact_ !=
+                RecruitedRunnerConversationRunner::trent ||
+            !notebook_contacts_flags_.has_value()) {
             return "unavailable";
         }
         RecruitedRunnerServiceState state{};
-        if (!field_recruited_runner_contact_.has_value()) {
+        state.story_flags = *notebook_contacts_flags_;
+        const auto response = select_trent_information_response(
+            TrentInformationSubject::contacts, state);
+        if (response.action != TrentInformationResponseAction::selected) {
             return "unavailable";
+        }
+        notebook_contacts_flags_ = state.story_flags;
+        return "applied";
+    }
+
+    if (action == "mark_recruited_runner_information") {
+        RecruitedRunnerServiceState state{};
+        if (!field_recruited_runner_contact_.has_value()) {
+            return "unavailable_contact";
+        }
+        if (!field_runner_information_flags_.has_value()) {
+            return "unavailable_information_flags";
         }
         state.selected_runner_template_index = static_cast<std::uint8_t>(
             *field_recruited_runner_contact_);
@@ -1204,7 +1226,7 @@ std::optional<std::string> FieldSceneRuntime::recruited_runner_service_call(
             select_recruited_runner_information_prompt(state);
         if (information.action !=
             RecruitedRunnerInformationAction::selected) {
-            return "unavailable";
+            return "unavailable_information_record";
         }
         field_runner_information_flags_ = information.information_flags;
         return "applied";

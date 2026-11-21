@@ -1714,6 +1714,92 @@
       "portrait_alias": "none",
       "text_profile": "wanderer.vigore_jarl"
     },
+    "winston_marrs": {
+      "events": {
+        "information.opening": {
+          "continuation_key": "shared.more",
+          "title_key": "runner.winston_marrs.information.opening"
+        },
+        "information.continuation": {
+          "continuation_key": "",
+          "title_key": "runner.winston_marrs.information.continuation"
+        },
+        "subject.halloweeners.page_0": {
+          "continuation_key": "",
+          "title_key": "runner.winston_marrs.subject.halloweeners.page_0"
+        },
+        "subject.lone_star.page_0": {
+          "continuation_key": "",
+          "title_key": "runner.winston_marrs.subject.lone_star.page_0"
+        },
+        "subject.troll_origin.page_0": {
+          "continuation_key": "shared.more",
+          "title_key": "runner.winston_marrs.subject.troll_origin.page_0"
+        },
+        "subject.troll_origin.page_1": {
+          "continuation_key": "",
+          "title_key": "runner.winston_marrs.subject.troll_origin.page_1"
+        },
+        "hire.insufficient": {
+          "continuation_key": "",
+          "title_key": "runner.ricky.hire.insufficient_funds"
+        },
+        "hire.success": {
+          "continuation_key": "",
+          "title_key": "runner.ricky.hire.success"
+        },
+        "hire.roster_full": {
+          "continuation_key": "",
+          "title_key": "runner.ricky.hire.roster_full"
+        }
+      },
+      "name": "Winston Marrs",
+      "portrait_alias": "field.hud.party.face.4.palette.1",
+      "text_profile": "runner.winston_marrs"
+    },
+    "trent": {
+      "events": {
+        "information.opening": {
+          "continuation_key": "shared.more",
+          "title_key": "runner.trent.information.opening"
+        },
+        "information.continuation": {
+          "continuation_key": "",
+          "title_key": "runner.trent.information.continuation"
+        },
+        "subject.mages.page_0": {
+          "continuation_key": "shared.more",
+          "title_key": "runner.trent.subject.mages.page_0"
+        },
+        "subject.mages.page_1": {
+          "continuation_key": "",
+          "title_key": "runner.trent.subject.mages.page_1"
+        },
+        "subject.contacts.page_0": {
+          "continuation_key": "",
+          "title_key": "runner.trent.subject.contacts.page_0"
+        },
+        "subject.johnsons.page_0": {
+          "continuation_key": "",
+          "title_key": "runner.trent.subject.johnsons.page_0"
+        },
+        "hire.insufficient": {
+          "continuation_key": "",
+          "title_key": "runner.ricky.hire.insufficient_funds"
+        },
+        "hire.success": {
+          "continuation_key": "",
+          "title_key": "runner.ricky.hire.success"
+        },
+        "hire.roster_full": {
+          "continuation_key": "",
+          "title_key": "runner.ricky.hire.roster_full"
+        }
+      },
+      "name": "Trent",
+      "portrait_alias": "field.hud.party.face.5.palette.1",
+      "text_profile": "runner.trent"
+    },
     "ricky": {
       "events": {
         "information.opening": {

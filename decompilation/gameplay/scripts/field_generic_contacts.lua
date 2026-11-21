@@ -44,6 +44,16 @@ local function present_runner(location, text, runner_id, runner)
         if type(pages) ~= "table" then
             return
         end
+        local selection_actions = subject.selection_actions
+        local selection_action = type(selection_actions) == "table" and
+            selection_actions[selected] or nil
+        if selection_action ~= nil then
+            if type(selection_action) ~= "string" or
+               game.services.call("recruited_runner", selection_action) ~=
+                   "applied" then
+                error("runner subject action could not be completed")
+            end
+        end
         local content_prefix = "runner." .. runner_id .. "."
         for page_index, event_id in ipairs(pages) do
             if type(event_id) ~= "string" or
@@ -60,10 +70,11 @@ local function present_runner(location, text, runner_id, runner)
     end
 
     local function information()
-        if game.services.call(
-                "recruited_runner", "mark_recruited_runner_information") ~=
-           "applied" then
-            error("runner information state is unavailable")
+        local result = game.services.call(
+            "recruited_runner", "mark_recruited_runner_information")
+        if result ~= "applied" then
+            error("runner information state is unavailable: " ..
+                tostring(result))
         end
 
         local choice = present_biography()

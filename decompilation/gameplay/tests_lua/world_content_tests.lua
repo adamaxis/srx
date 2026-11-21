@@ -315,8 +315,11 @@ local function run_ricky_flow(choices, subject, hire_result)
         end,
         prompt_text_key = function(menu_id, text_key, menu_choices,
                                    speaker_id, text_profile)
+            local menu = Dialogue.menu_text_keys(
+                speaker_id, text_profile, menu_id, menu_choices, true)
             assert(menu_id == "story_followup" and speaker_id == "ricky" and
                    text_profile == "runner.ricky" and
+                   menu ~= nil and
                    menu_choices[1] == "story")
             followup_count = followup_count + 1
             events[#events + 1] = text_key:sub(#"runner.ricky." + 1)
@@ -387,6 +390,12 @@ local script_text = Json.decode(text_file:read("*a")).texts
 text_file:close()
 
 local hireable_runner_routes = {
+    { id = "winston_marrs", scene = 11,
+      response = "scene_11_group_1_default",
+      portrait = "field.hud.party.face.4.palette.1" },
+    { id = "trent", scene = 10,
+      response = "scene_10_group_2_default",
+      portrait = "field.hud.party.face.5.palette.1" },
     { id = "petr_uvehr", scene = 14, response = "scene_14_group_3_default",
       portrait = "field.hud.party.face.6.palette.2" },
     { id = "walking_bear", scene = 10, response = "scene_10_default_neutral",
@@ -525,7 +534,8 @@ for _, route in ipairs(hireable_runner_routes) do
 end
 
 local all_runner_subject_routes = {
-    { id = "ricky", scene = 19, response = "scene_19_group_0_default" },
+    { id = "ricky", scene = 19, response = "scene_19_group_0_default",
+      portrait = "field.hud.party.face.3.palette.0" },
 }
 for _, route in ipairs(hireable_runner_routes) do
     all_runner_subject_routes[#all_runner_subject_routes + 1] = route
@@ -536,6 +546,7 @@ local function verify_runner_subject_route(route, topic_id)
     local text_profile = "runner." .. route.id
     local actor_id = route.id .. "_subject_route"
     local event_log = {}
+    local service_log = {}
     local root_count = 0
     local followup_count = 0
     local followups = { "story", "questions", "different_subject" }
@@ -554,9 +565,14 @@ local function verify_runner_subject_route(route, topic_id)
     } }
     game.services = {
         call = function(domain, action)
-            assert(domain == "recruited_runner" and
-                   action == "mark_recruited_runner_information")
-            return "applied"
+            assert(domain == "recruited_runner")
+            service_log[#service_log + 1] = action
+            if action == "mark_recruited_runner_information" or
+               (route.id == "trent" and topic_id == "contacts" and
+                action == "record_trent_jefferson_contact") then
+                return "applied"
+            end
+            error("unexpected runner subject service action: " .. action)
         end,
     }
     game.ui = {
@@ -568,8 +584,13 @@ local function verify_runner_subject_route(route, topic_id)
         end,
         prompt_text_key = function(menu_id, text_key, choices,
                                    speaker_id, profile_id)
+            local menu = Dialogue.menu_text_keys(
+                speaker_id, profile_id, menu_id, choices, true)
             assert(menu_id == "story_followup" and speaker_id == route.id and
-                   profile_id == text_profile and choices[1] == "story" and
+                   profile_id == text_profile and menu ~= nil and
+                   menu.choice_label_keys[1] ==
+                       "boris.greenhouse.option.story" and
+                   choices[1] == "story" and
                    script_text["boris.greenhouse.option.story"] ==
                        "What's your story, chummer?",
                    "runner subject page lost the ROM story follow-up")
@@ -616,6 +637,7 @@ local function verify_runner_subject_route(route, topic_id)
     }
 
     assert(speaker ~= nil and runner ~= nil and
+           speaker.portrait_alias == route.portrait and
            GenericFieldContacts.present() == "presented",
            "runner subject route did not return to the common choices: " ..
                route.id .. "." .. topic_id)
@@ -637,6 +659,15 @@ local function verify_runner_subject_route(route, topic_id)
     end
     assert(#event_log == #expected_events and followup_count == 3,
            "runner subject page or story follow-up count differs: " ..
+               route.id .. "." .. topic_id)
+    local expected_service_count =
+        route.id == "trent" and topic_id == "contacts" and 2 or 1
+    assert(#service_log == expected_service_count and
+           service_log[1] == "mark_recruited_runner_information" and
+           ((expected_service_count == 2 and
+             service_log[2] == "record_trent_jefferson_contact") or
+            expected_service_count == 1),
+           "runner subject did not apply its source selection action once: " ..
                route.id .. "." .. topic_id)
     for index, event_id in ipairs(expected_events) do
         assert(event_log[index] == event_id,

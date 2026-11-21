@@ -2181,6 +2181,73 @@
           "short_term": "runner.ricky.hire.option.short_term",
           "permanent": "runner.ricky.hire.option.permanent"
         }
+      },
+      "story_followup": {
+        "choice_label_keys": {
+          "story": "boris.greenhouse.option.story",
+          "questions": "gunderson.information.option.questions",
+          "different_subject": "gunderson.information.option.back"
+        }
+      }
+    },
+    "runner.winston_marrs": {
+      "opening": {
+        "choice_label_keys": {
+          "information": "runner.ricky.option.information",
+          "hire": "runner.ricky.option.hire",
+          "leave": "runner.ricky.option.leave"
+        }
+      },
+      "subjects": {
+        "choice_label_keys": {
+          "halloweeners": "runner.winston_marrs.subject.option.halloweeners",
+          "lone_star": "runner.winston_marrs.subject.option.lone_star",
+          "troll_origin": "runner.winston_marrs.subject.option.troll_origin"
+        },
+        "title_key": "runner.winston_marrs.subject.title"
+      },
+      "hire_offer": {
+        "choice_label_keys": {
+          "short_term": "runner.ricky.hire.option.short_term",
+          "permanent": "runner.ricky.hire.option.permanent"
+        }
+      },
+      "story_followup": {
+        "choice_label_keys": {
+          "story": "boris.greenhouse.option.story",
+          "questions": "gunderson.information.option.questions",
+          "different_subject": "gunderson.information.option.back"
+        }
+      }
+    },
+    "runner.trent": {
+      "opening": {
+        "choice_label_keys": {
+          "information": "runner.ricky.option.information",
+          "hire": "runner.ricky.option.hire",
+          "leave": "runner.ricky.option.leave"
+        }
+      },
+      "subjects": {
+        "choice_label_keys": {
+          "mages": "runner.trent.subject.option.mages",
+          "contacts": "runner.trent.subject.option.contacts",
+          "johnsons": "runner.trent.subject.option.johnsons"
+        },
+        "title_key": "runner.trent.subject.title"
+      },
+      "hire_offer": {
+        "choice_label_keys": {
+          "short_term": "runner.ricky.hire.option.short_term",
+          "permanent": "runner.ricky.hire.option.permanent"
+        }
+      },
+      "story_followup": {
+        "choice_label_keys": {
+          "story": "boris.greenhouse.option.story",
+          "questions": "gunderson.information.option.questions",
+          "different_subject": "gunderson.information.option.back"
+        }
       }
     },
     "runner.petr_uvehr": {

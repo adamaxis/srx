@@ -159,6 +159,7 @@ local runner_dialogue = {
         },
         subject = {
             title_key = "runner.winston_marrs.subject.title",
+            option_order = { "halloweeners", "lone_star", "troll_origin" },
             options = {
                 halloweeners = "runner.winston_marrs.subject.option.halloweeners",
                 lone_star = "runner.winston_marrs.subject.option.lone_star",
@@ -186,6 +187,7 @@ local runner_dialogue = {
         },
         subject = {
             title_key = "runner.trent.subject.title",
+            option_order = { "mages", "contacts", "johnsons" },
             options = {
                 mages = "runner.trent.subject.option.mages",
                 contacts = "runner.trent.subject.option.contacts",
@@ -202,6 +204,9 @@ local runner_dialogue = {
                 johnsons = {
                     "runner.trent.subject.johnsons.page_0",
                 },
+            },
+            selection_actions = {
+                contacts = "record_trent_jefferson_contact",
             },
         },
     },
@@ -391,6 +396,13 @@ local function runner_text_keys()
                         ".page_" .. (page_index - 1)
                     keys[content_id] = text_key
                 end
+            end
+            if runner_id == "ricky" and subject.responses.johnson ~= nil then
+                -- The typed source cross-check names the response by its ROM
+                -- contact (Gunderson), while the live menu selection ID is
+                -- simply "johnson"; retain both semantic lookup names.
+                keys["ricky.subject.johnson_gunderson.page_0"] =
+                    subject.responses.johnson[1]
             end
         end
     end

@@ -21464,21 +21464,32 @@ int run_bulk_generic_field_contacts_qa(
 
     struct ContactCase {
         std::uint16_t scene;
+        std::uint8_t event_code;
         const char* directory;
         const char* activity_id;
+        const char* speaker_name;
+        const char* portrait_alias;
         const char* expected_text;
         const char* row_evidence;
         bool permanent_hire;
     };
-    // ROM 0x17050 selects the Scene-11 hireling/Marrs dialogue through
-    // 0x21174/0xFE640; Ricky is the 0x16FFC actor and uses the same dispatcher.
-    constexpr std::array<ContactCase, 3U> cases{{
-        {11U, "marrs-hireling", "scene_11_script",
+    // ROM 0x17018 publishes Trent as Scene-10 event 6, and 0x17050 publishes
+    // Winston as the Scene-11 mode-one actor. Their dialogue rows resolve
+    // through 0x21174; Ricky is the 0x16FFC actor and uses the same dispatcher.
+    constexpr std::array<ContactCase, 4U> cases{{
+        {11U, 0U, "marrs-hireling", "scene_11_script", "Winston Marrs",
+         "field.hud.party.face.4.palette.1",
          "An armed troll studies you with his largest pupil.",
          "0x100353", false},
-        {19U, "ricky-short-term", "scene_19_script",
+        {10U, 6U, "trent", "scene_10_event_6_script", "Trent",
+         "field.hud.party.face.5.palette.1",
+         "A bright-eyed young man is creating magical fire",
+         "0x100A0C", false},
+        {19U, 0U, "ricky-short-term", "scene_19_script", "Ricky",
+         "field.hud.party.face.3.palette.0",
          "A rat-like dwarf is here.", "0xFFBDA", false},
-        {19U, "ricky-permanent", "scene_19_script",
+        {19U, 0U, "ricky-permanent", "scene_19_script", "Ricky",
+         "field.hud.party.face.3.palette.0",
          "A rat-like dwarf is here.", "0xFFBDA", true},
     }};
 
@@ -21805,6 +21816,9 @@ int run_bulk_generic_field_contacts_qa(
                 boundaries.emplace_back(boundary);
             });
         auto contact_startup_state = startup_state;
+        // This fixture drives the fresh-run contact paths. The shared startup
+        // integration state may also carry a save used by unrelated QA.
+        contact_startup_state.restored_field_state.reset();
         if (test_case.scene == 19U) {
             // Ricky's ROM progress counter is reset by the completed New
             // Game field handoff at 0x0806; this contact case uses that live
@@ -21819,6 +21833,11 @@ int run_bulk_generic_field_contacts_qa(
             return 3;
         }
         field_scene.set_compact_runner_markers_for_dump(0xFFU, 0xFFU);
+        field_scene.set_field_mode_event_code_for_dump(test_case.event_code);
+        if (std::string_view{test_case.activity_id} ==
+            "scene_10_event_6_script") {
+            field_scene.set_field_interaction_mode_for_dump(1U);
+        }
         if (!field_scene.reenter_field_scene_for_dump(test_case.scene)) {
             std::cerr << "Bulk generic-contact QA: Scene "
                       << test_case.scene << " actor-list reentry failed: "
@@ -21891,10 +21910,41 @@ int run_bulk_generic_field_contacts_qa(
         const bool actual_saved = !actual.isNull() &&
             actual.save(QString::fromStdString(
                 (case_output / "actual.bmp").string()));
+        const auto& opening = field_scene.dialogue_panel();
+        const auto* portrait_record = startup_state.asset_catalog.catalog.find(
+            test_case.portrait_alias);
+        QImage contact_portrait;
+        if (portrait_record != nullptr && portrait_record->kind == "image") {
+            contact_portrait = QImage(QString::fromStdWString(
+                portrait_record->absolute_path.wstring()));
+            if (!contact_portrait.isNull()) {
+                contact_portrait =
+                    convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
+                        contact_portrait.convertToFormat(
+                            QImage::Format_ARGB32_Premultiplied));
+            }
+        }
+        const auto shows_bound_portrait = [&contact_portrait](
+                                              const QImage& image) {
+            if (contact_portrait.isNull() ||
+                image.width() < 16 + contact_portrait.width() ||
+                image.height() < 32 + contact_portrait.height()) {
+                return false;
+            }
+            const auto rendered = image.copy(
+                16, 32, contact_portrait.width(), contact_portrait.height())
+                .convertToFormat(QImage::Format_ARGB32_Premultiplied);
+            const auto expected = contact_portrait.convertToFormat(
+                QImage::Format_ARGB32_Premultiplied);
+            return rendered == expected;
+        };
         if (!field_scene.dialogue_open() || dialogue_update != 23U ||
             !dialogue.source_complete ||
             !expected_text_shown || generic_open_count != 1 ||
-            timeout != 59U || resource_countdown != 59U || !actual_saved) {
+            opening.actor_name != test_case.speaker_name ||
+            opening.portrait_alias != test_case.portrait_alias ||
+            !shows_bound_portrait(actual) || timeout != 59U ||
+            resource_countdown != 59U || !actual_saved) {
             std::cerr << "Bulk generic-contact QA: Scene "
                       << test_case.scene
                       << " failed first-overlap dialogue; open="
@@ -21909,43 +21959,12 @@ int run_bulk_generic_field_contacts_qa(
         }
 
         if (test_case.scene == 19U) {
-            const auto opening = field_scene.dialogue_panel();
-            const auto* ricky_portrait_record =
-                startup_state.asset_catalog.catalog.find(
-                    "field.hud.party.face.3.palette.0");
-            QImage ricky_portrait;
-            if (ricky_portrait_record != nullptr &&
-                ricky_portrait_record->kind == "image") {
-                ricky_portrait = QImage(QString::fromStdWString(
-                    ricky_portrait_record->absolute_path.wstring()));
-                if (!ricky_portrait.isNull()) {
-                    ricky_portrait =
-                        convert_legacy_expanded_genesis_image_to_gpgx_rgb565(
-                            ricky_portrait.convertToFormat(
-                                QImage::Format_ARGB32_Premultiplied));
-                }
-            }
-            const auto shows_ricky_portrait = [&ricky_portrait](
-                                                  const QImage& image) {
-                if (ricky_portrait.isNull() ||
-                    image.width() < 16 + ricky_portrait.width() ||
-                    image.height() < 32 + ricky_portrait.height()) {
-                    return false;
-                }
-                const auto rendered = image.copy(
-                    16, 32, ricky_portrait.width(), ricky_portrait.height())
-                    .convertToFormat(QImage::Format_ARGB32_Premultiplied);
-                const auto expected = ricky_portrait.convertToFormat(
-                    QImage::Format_ARGB32_Premultiplied);
-                return rendered == expected;
-            };
-            if (opening.actor_name != "Ricky" ||
-                opening.portrait_alias !=
-                    "field.hud.party.face.3.palette.0" ||
+            if (opening.actor_name != test_case.speaker_name ||
+                opening.portrait_alias != test_case.portrait_alias ||
                 opening.option_count != 3U ||
                 opening.options[1U].source_label !=
                     "I'm lookin' for a good 'runner.  Care to sign on?" ||
-                !shows_ricky_portrait(actual)) {
+                !shows_bound_portrait(actual)) {
                 std::cerr << "Bulk generic-contact QA: Ricky's live contact "
                              "did not draw his bound portrait in the source "
                              "dialogue window\n";
@@ -22012,12 +22031,12 @@ int run_bulk_generic_field_contacts_qa(
             const auto offer_image = render_qa_field(field_scene);
             if (!field_scene.dialogue_open() || offer.option_count != 2U ||
                 offer.portrait_alias !=
-                    "field.hud.party.face.3.palette.0" ||
+                    test_case.portrait_alias ||
                 offer.options[0U].source_label !=
                     "I just need someone for the short-term.  Whadda' ya say?" ||
                 !offer_shows_rom_price ||
                 !offer_shows_rom_permanent_price ||
-                !shows_ricky_portrait(offer_image) ||
+                !shows_bound_portrait(offer_image) ||
                 !offer_image.save(QString::fromStdString(
                     (case_output / "hire-offer.bmp").string()))) {
                 std::cerr << "Bulk generic-contact QA: Ricky's live hire "
@@ -22069,9 +22088,8 @@ int run_bulk_generic_field_contacts_qa(
                 std::string("field.ricky.hire.completed"));
             const auto funds_after_hire = field_scene.field_funds_for_dump();
             if (!field_scene.dialogue_open() || !success_text_shown ||
-                success.actor_name != "Ricky" ||
-                success.portrait_alias !=
-                    "field.hud.party.face.3.palette.0" ||
+                success.actor_name != test_case.speaker_name ||
+                success.portrait_alias != test_case.portrait_alias ||
                 !field_scene.field_party_slot_active_for_dump(1U) ||
                 field_scene.field_hud_slot_state_for_dump(1U)
                         .asset_family_index != 3U ||
@@ -22090,7 +22108,7 @@ int run_bulk_generic_field_contacts_qa(
                          ? expected_fees.permanent_fee
                          : expected_fees.short_term_fee) ||
                 hire_completed_count != 1 ||
-                !shows_ricky_portrait(hired_image) ||
+                !shows_bound_portrait(hired_image) ||
                 !hired_image.save(QString::fromStdString(
                     (case_output / "hired.bmp").string()))) {
                 std::cerr << "Bulk generic-contact QA: short-term hire did "
@@ -22099,9 +22117,85 @@ int run_bulk_generic_field_contacts_qa(
                 return 3;
             }
         }
+        if (std::string_view{test_case.activity_id} ==
+            "scene_10_event_6_script") {
+            // [C] ROM 0x24964 sets FFFC2C bit 12 while selecting Trent's
+            // contacts response. Clear only that source bit in this QA state
+            // so the actual Lua-to-host action can be observed.
+            const auto flags_before =
+                field_scene.notebook_contact_flags_for_dump();
+            constexpr std::uint32_t kJeffersonContactFlag = 1U << 12U;
+            if (!flags_before.has_value() ||
+                !field_scene.set_notebook_contact_flags_for_dump(
+                    *flags_before & ~kJeffersonContactFlag)) {
+                std::cerr << "Trent contact QA: FFFC2C is unavailable\n";
+                return 3;
+            }
+
+            tap_qa_controller_button(field_scene, 0x40U); // Information.
+            auto information = field_scene.dialogue_panel();
+            if (!field_scene.dialogue_open() ||
+                information.actor_name != "Trent" ||
+                information.text_segment_count == 0U ||
+                !information.has_more) {
+                std::cerr << "Trent contact QA: information opening did not "
+                             "advance to its source continuation\n";
+                return 3;
+            }
+            tap_qa_controller_button(field_scene, 0x40U); // Continue.
+            auto followup = field_scene.dialogue_panel();
+            if (!field_scene.dialogue_open() ||
+                followup.actor_name != "Trent" ||
+                followup.option_count != 3U ||
+                followup.options[1U].source_label !=
+                    "I need some questions answered.") {
+                std::cerr << "Trent contact QA: story follow-up menu is "
+                             "missing its contacts action\n";
+                return 3;
+            }
+            tap_qa_controller_button(field_scene, 0x10U); // Questions.
+            auto subjects = field_scene.dialogue_panel();
+            if (!field_scene.dialogue_open() ||
+                subjects.cursor_selection ||
+                subjects.option_count != 3U ||
+                subjects.selected_option != 0U ||
+                subjects.options[1U].source_label !=
+                    "I'm looking for some contacts.") {
+                std::cerr << "Trent contact QA: three-button subject menu "
+                             "does not match the source choices\n";
+                return 3;
+            }
+            tap_qa_controller_button(field_scene, 0x10U); // Select contacts.
+            const auto flags_after =
+                field_scene.notebook_contact_flags_for_dump();
+            const auto response = field_scene.dialogue_panel();
+            bool shows_jefferson = false;
+            for (std::size_t index = 0U;
+                 index < response.text_segment_count; ++index) {
+                shows_jefferson = shows_jefferson ||
+                    response.text_segments[index].find("Jefferson") !=
+                        std::string_view::npos;
+            }
+            const auto response_image = render_qa_field(field_scene);
+            if (!field_scene.dialogue_open() || !flags_after.has_value() ||
+                *flags_after !=
+                    ((*flags_before & ~kJeffersonContactFlag) |
+                     kJeffersonContactFlag) ||
+                !shows_jefferson || response.actor_name != "Trent" ||
+                response.portrait_alias != test_case.portrait_alias ||
+                !shows_bound_portrait(response_image) ||
+                !response_image.save(QString::fromStdString(
+                    (case_output / "contacts-response.bmp").string()))) {
+                std::cerr << "Trent contact QA: selecting contacts did not "
+                             "show Jefferson and set only FFFC2C bit 12\n";
+                return 3;
+            }
+        }
         std::cout << "bulk_generic_contact=passed scene="
                   << test_case.scene << " activity="
                   << test_case.activity_id
+                  << " speaker=" << test_case.speaker_name
+                  << " portrait=" << test_case.portrait_alias
                   << " first_overlap_update=1 dialogue_update="
                   << dialogue_update << " delta=22"
                   << " timeout=" << static_cast<unsigned>(timeout)
