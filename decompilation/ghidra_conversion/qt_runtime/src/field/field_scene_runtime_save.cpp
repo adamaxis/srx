@@ -1161,8 +1161,16 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
     field_world_frame_counter_ = restored.world_frame_counter;
     field_world_encounter_sequence_ = restored.world_encounter_sequence;
     field_random_seed_ = restored.source_random_seed;
+    // Save snapshots contain resolved story facts, not an in-flight Lua task.
+    // The ROM's load path re-enters the saved scene rather than resuming the
+    // New Game opening coroutine.
+    game_scripts_.cancel_task();
     game_scripts_.set_story_state(restored.script_facts);
 
+    // The ROM arms FFE18B only for the New Game opening (0x59C5E) and
+    // consumes it from that startup continuation (0xACAE). A loaded save
+    // resumes its saved scene, not that boot-only opening walk.
+    field_opening_auto_walk_ = FieldOpeningAutoWalkState{};
     field_entity_.active = true;
     field_entity_.world_position = restored.player;
     field_entity_.direction = restored.direction;

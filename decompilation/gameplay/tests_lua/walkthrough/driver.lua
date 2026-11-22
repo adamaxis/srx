@@ -22,6 +22,7 @@ local function summary(snapshot)
         "panel=" .. tostring(snapshot.panel_actor) .. "#" ..
             tostring(snapshot.panel_page) .. ":" .. tostring(snapshot.panel_text),
         "dialogue_open=" .. tostring(snapshot.dialogue_open),
+        "elevator_open=" .. tostring(snapshot.elevator_open),
         "story=" .. tostring(snapshot.story),
         "mode=" .. tostring(snapshot.mode),
         "effect=" .. tostring(snapshot.effect),
@@ -199,6 +200,7 @@ local function load_route(segment)
     local modules = {
         seg1 = "walkthrough.route_seg1",
         w3 = "walkthrough.route_w3",
+        w3_b2 = "walkthrough.route_w3_b2",
         w4 = "walkthrough.route_w4",
         w5 = "walkthrough.route_w5",
         w6 = "walkthrough.route_w6",

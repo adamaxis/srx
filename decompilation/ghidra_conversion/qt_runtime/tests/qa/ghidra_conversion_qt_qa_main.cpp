@@ -52168,7 +52168,16 @@ int main(int argc, char** argv) {
                 const bool fixture_restore =
                     *walkthrough_segment == "fixture_restore" &&
                     walkthrough_from_fixture_path.has_value();
-                if (*walkthrough_segment != "seg1" && !fixture_restore) {
+                const bool supported_walkthrough_segment =
+                    *walkthrough_segment == "seg1" ||
+                    *walkthrough_segment == "w3" ||
+                    *walkthrough_segment == "w3_b2" ||
+                    *walkthrough_segment == "w4" ||
+                    *walkthrough_segment == "w5" ||
+                    *walkthrough_segment == "w6" ||
+                    *walkthrough_segment == "w7" ||
+                    *walkthrough_segment == "w8";
+                if (!supported_walkthrough_segment && !fixture_restore) {
                     std::cerr << "walkthrough: unsupported segment '"
                               << *walkthrough_segment << "'\n";
                     std::cout << "walkthrough reach: "

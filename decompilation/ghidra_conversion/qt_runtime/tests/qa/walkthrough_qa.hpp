@@ -381,6 +381,16 @@ inline int hold_until_modal(lua_State* state) {
     const auto* button_text = luaL_checklstring(state, 1, &button_length);
     lua_Integer limit = 0;
     const auto button = pad_byte(std::string_view(button_text, button_length));
+    std::optional<std::uint16_t> stop_scene;
+    if (!lua_isnoneornil(state, 3)) {
+        lua_Integer scene = 0;
+        if (!integer_argument(state, 3, scene) || scene < 0 || scene > 65535) {
+            lua_pushboolean(state, 0);
+            lua_pushliteral(state, "invalid movement target scene");
+            return 2;
+        }
+        stop_scene = static_cast<std::uint16_t>(scene);
+    }
     if (!button.has_value() || *button == 0U ||
         !integer_argument(state, 2, limit) || limit < 1 ||
         limit > static_cast<lua_Integer>(kFrameBudget)) {
@@ -392,7 +402,11 @@ inline int hold_until_modal(lua_State* state) {
     for (lua_Integer frame = 0; frame < limit &&
                                !runtime.dialogue_open() &&
                                !runtime.field_interaction_open() &&
-                               !runtime.taxi_selector_open_for_dump();
+                               !runtime.taxi_selector_open_for_dump() &&
+                               !runtime.elevator_selector_open_for_dump() &&
+                               (!stop_scene.has_value() ||
+                                runtime.field_scene_reference_for_dump() !=
+                                    *stop_scene);
          ++frame) {
         if (!advance_one(*host, *button) || !advance_one(*host, 0U)) {
             lua_pushboolean(state, 0);
@@ -403,7 +417,11 @@ inline int hold_until_modal(lua_State* state) {
     }
     lua_pushboolean(state, runtime.dialogue_open() ||
                                runtime.field_interaction_open() ||
-                               runtime.taxi_selector_open_for_dump());
+                               runtime.taxi_selector_open_for_dump() ||
+                               runtime.elevator_selector_open_for_dump() ||
+                               (stop_scene.has_value() &&
+                                runtime.field_scene_reference_for_dump() ==
+                                    *stop_scene));
     return 1;
 }
 
@@ -598,6 +616,8 @@ inline int snapshot(lua_State* state) {
     lua_setfield(state, -2, "command_open");
     lua_pushboolean(state, runtime.taxi_selector_open_for_dump());
     lua_setfield(state, -2, "taxi_selector_open");
+    lua_pushboolean(state, runtime.elevator_selector_open_for_dump());
+    lua_setfield(state, -2, "elevator_open");
     const auto page_key = runtime.active_story_page_text_key_for_dump();
     lua_pushlstring(state, page_key.data(), page_key.size());
     lua_setfield(state, -2, "page_key");
@@ -1104,6 +1124,7 @@ inline std::optional<std::string_view> input_fixture_checkpoint(
     const std::string_view segment) {
     if (segment == "seg1") return "seg1_end";
     if (segment == "w3") return "seg1_end";
+    if (segment == "w3_b2") return "seg1_end";
     if (segment == "w4") return "seg2_end";
     if (segment == "w5") return "seg3_end";
     if (segment == "w6") return "seg4_end";
@@ -1116,6 +1137,7 @@ inline std::optional<std::string_view> output_fixture_checkpoint(
     const std::string_view segment) {
     if (segment == "seg1") return "seg1_end";
     if (segment == "w3") return "seg2_end";
+    if (segment == "w3_b2") return "seg2_b2_end";
     if (segment == "w4") return "seg3_end";
     if (segment == "w5") return "seg4_end";
     if (segment == "w6") return "seg5_end";
@@ -1245,8 +1267,16 @@ inline int run_walkthrough_qa(
         }
         std::cout << "walkthrough from-fixture: " << expected_checkpoint
                   << " restored exactly\n";
-        if (segment == "fixture_restore") return 0;
-        if (segment == "seg1" || segment == "w3" || segment == "w4" ||
+        if (segment == "fixture_restore") {
+            if (runtime.opening_auto_walk_active_for_dump()) {
+                std::cerr << "walkthrough fixture restore retained the "
+                             "New Game-only opening walk\n";
+                return 1;
+            }
+            return 0;
+        }
+        if (segment == "seg1" || segment == "w3" ||
+            segment == "w3_b2" || segment == "w4" ||
             segment == "w5" || segment == "w6" || segment == "w7" ||
             segment == "w8") {
             resumed_from_fixture = true;

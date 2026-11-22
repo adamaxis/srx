@@ -765,6 +765,37 @@ set_tests_properties(shadowrun_walkthrough_w3
     PROPERTIES LABELS "walkthrough" TIMEOUT 300
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 
+# The production Salish b2 checkpoint is independently gated while the full
+# W3 route continues to cover b3/b4 without narrowing its existing test.
+set(_shadowrun_seg2_b2_end_fixture
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/tests_lua/fixtures/walkthrough/seg2_b2_end.json")
+add_test(NAME shadowrun_walkthrough_w3_b2
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough w3_b2
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-w3-b2-gate"
+        --from-fixture "${_shadowrun_seg2_start_fixture}")
+add_test(NAME shadowrun_walkthrough_w3_b2_fixture_determinism
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough w3_b2
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-w3-b2-fixture-generation"
+        --from-fixture "${_shadowrun_seg2_start_fixture}"
+        --write-fixture
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-w3-b2-fixture-generation/seg2_b2_end.generated.json"
+        --compare-fixture "${_shadowrun_seg2_b2_end_fixture}")
+add_test(NAME shadowrun_walkthrough_seg2_b2_fixture_restore
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough fixture_restore
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-seg2-b2-fixture-restore"
+        --from-fixture "${_shadowrun_seg2_b2_end_fixture}")
+set_tests_properties(shadowrun_walkthrough_w3_b2
+    shadowrun_walkthrough_w3_b2_fixture_determinism
+    shadowrun_walkthrough_seg2_b2_fixture_restore
+    PROPERTIES LABELS "walkthrough" TIMEOUT 300
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+
 # Scene 21's ROM rectangles exercise the real field-tick alarm bridge [C].
 # The test writes an actual.bmp checkpoint as a headless QA artifact [H].
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_alarm_qa
