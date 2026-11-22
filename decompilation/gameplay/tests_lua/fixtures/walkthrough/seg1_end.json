@@ -3,7 +3,7 @@
     "format": "shadowrun.walkthrough.save-fixture.v1",
     "generated_from_commit": "8000b5cf4dc7c4fc4dd9cbf566c57fc85279af44",
     "snapshot": {
-        "funds": 20,
+        "funds": 440,
         "funds_available": true,
         "kind": "field_session",
         "party": {
@@ -66,7 +66,7 @@
                             0,
                             0
                         ],
-                        "karma": 0,
+                        "karma": 3,
                         "kind": 3,
                         "magic_force": 0,
                         "magic_table_index": 0,
@@ -154,7 +154,7 @@
                             0,
                             0
                         ],
-                        "karma": 0,
+                        "karma": 3,
                         "kind": 0,
                         "magic_force": 0,
                         "magic_table_index": 0,
@@ -242,7 +242,7 @@
                             0,
                             0
                         ],
-                        "karma": 0,
+                        "karma": 3,
                         "kind": 0,
                         "magic_force": 0,
                         "magic_table_index": 0,
@@ -281,13 +281,13 @@
             "schema_version": 1
         },
         "scene": {
-            "camera_x": 13312,
-            "camera_y": 8656,
+            "camera_x": 17408,
+            "camera_y": 0,
             "direction": 0,
             "heading": 0,
             "mode": 0,
-            "player_x": 15584,
-            "player_y": 10860,
+            "player_x": 21248,
+            "player_y": 1402,
             "reference": 2,
             "target_heading": 0
         },
@@ -302,7 +302,7 @@
         ],
         "story": {
             "auxiliary_flags": 0,
-            "cyberdeck_available": false,
+            "cyberdeck_available": true,
             "cyberdeck_record": {
                 "active_programs": [
                     -1,
@@ -367,9 +367,9 @@
                 "response": 0,
                 "storage_megapulses": 100
             },
-            "dialogue_flags": 0,
+            "dialogue_flags": 6,
             "dialogue_register": 0,
-            "exit_world_flags": 0,
+            "exit_world_flags": 1027,
             "group_item_flags": 0,
             "heat_level": 0,
             "karma_counter": 0,
@@ -383,10 +383,10 @@
             "mode_flags_resolved": true,
             "notebook_contacts_flags": 0,
             "notebook_current_run_available": false,
-            "notebook_referral_flags": 0,
+            "notebook_referral_flags": 20,
             "notebook_shadowrunner_flags": 0,
             "notebook_tip_flags": [
-                1,
+                1048872,
                 0,
                 0
             ],
@@ -405,13 +405,13 @@
                 0,
                 0
             ],
-            "runner_feature_flags": 0,
+            "runner_feature_flags": 1,
             "runner_information_flags": 0,
-            "source_random_seed": 41690,
+            "source_random_seed": 62604,
             "strike_team_counter": 0,
             "walk_fast": false,
             "world_encounter_sequence": 0,
-            "world_frame_counter": 38
+            "world_frame_counter": 332
         }
     }
 }

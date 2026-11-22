@@ -150,6 +150,7 @@ struct ScriptMenuDefinition {
     ScriptMenuLayout layout = ScriptMenuLayout::standard;
     std::size_t selected_index = 0U;
     std::size_t button_choice_limit = kRomDialogueButtonChoices;
+    bool allow_no_selection = false;
 };
 
 // The live field-menu route is stored in the same Lua state as gameplay

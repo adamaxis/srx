@@ -714,7 +714,7 @@ add_test(NAME shadowrun_walkthrough_reach
         --reach)
 set(_shadowrun_seg1_end_fixture
     "${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/tests_lua/fixtures/walkthrough/seg1_end.json")
-add_test(NAME shadowrun_walkthrough_fixture_determinism
+add_test(NAME shadowrun_walkthrough_seg1_fixture_determinism
     COMMAND shadowrun_ghidra_conversion_qt_qa
         --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
         --walkthrough seg1
@@ -722,15 +722,46 @@ add_test(NAME shadowrun_walkthrough_fixture_determinism
         --write-fixture
         "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-seg1-fixture-generation/seg1_end.generated.json"
         --compare-fixture "${_shadowrun_seg1_end_fixture}")
-add_test(NAME shadowrun_walkthrough_fixture_restore
+add_test(NAME shadowrun_walkthrough_seg1_fixture_restore
     COMMAND shadowrun_ghidra_conversion_qt_qa
         --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
         --walkthrough fixture_restore
         "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-seg1-fixture-restore"
         --from-fixture "${_shadowrun_seg1_end_fixture}")
 set_tests_properties(shadowrun_walkthrough_seg1 shadowrun_walkthrough_reach
-    shadowrun_walkthrough_fixture_determinism
-    shadowrun_walkthrough_fixture_restore
+    shadowrun_walkthrough_seg1_fixture_determinism
+    shadowrun_walkthrough_seg1_fixture_restore
+    PROPERTIES LABELS "walkthrough" TIMEOUT 300
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+
+set(_shadowrun_seg2_start_fixture
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/tests_lua/fixtures/walkthrough/seg1_end.json")
+set(_shadowrun_seg2_end_fixture
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/tests_lua/fixtures/walkthrough/seg2_end.json")
+add_test(NAME shadowrun_walkthrough_w3
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough w3
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-w3-gate"
+        --from-fixture "${_shadowrun_seg2_start_fixture}")
+add_test(NAME shadowrun_walkthrough_w3_fixture_determinism
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough w3
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-w3-fixture-generation"
+        --from-fixture "${_shadowrun_seg2_start_fixture}"
+        --write-fixture
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-w3-fixture-generation/seg2_end.generated.json"
+        --compare-fixture "${_shadowrun_seg2_end_fixture}")
+add_test(NAME shadowrun_walkthrough_seg2_fixture_restore
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough fixture_restore
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-seg2-fixture-restore"
+        --from-fixture "${_shadowrun_seg2_end_fixture}")
+set_tests_properties(shadowrun_walkthrough_w3
+    shadowrun_walkthrough_w3_fixture_determinism
+    shadowrun_walkthrough_seg2_fixture_restore
     PROPERTIES LABELS "walkthrough" TIMEOUT 300
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 

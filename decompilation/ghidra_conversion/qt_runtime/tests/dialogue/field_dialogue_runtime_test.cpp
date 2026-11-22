@@ -806,6 +806,77 @@ int main() {
     }
     runtime.set_menu_b_policy("rom");
 
+    // ROM 0x20F2A opens the Phantasmal Watcher record. Its B row is the
+    // terminal refusal record at 0x120F18 (text 0x11D893). Exercise the real
+    // native menu/input bridge so this checks the choice ID passed back to
+    // Lua, not a manually supplied result.
+    gameplay_scripts.set_location_context(
+        "field_map", "random_field_event", "field.world_event",
+        "field_narrator", "phantasmal_watcher", 5U);
+    const bool watcher_rom_opened = runtime.open_gameplay_task(
+            scripting::ScriptDialogueSource::random_encounter,
+            "field_random_events", "present_phantasmal_watcher");
+    const bool watcher_rom_has_two_options =
+        runtime.panel().option_count == 2U;
+    const auto watcher_rom_response = watcher_rom_opened
+        ? runtime.advance_controller_events(0x1000U)
+        : FieldDialogueAdvanceResult::source_boundary;
+    const bool watcher_rom_text_matches =
+        runtime.panel().text_segment_count >= 1U &&
+        runtime.panel().text_segments[0].find(
+            "This is horrible!  Where's your compassion?!") !=
+            std::string::npos;
+    const auto watcher_rom_close = watcher_rom_response ==
+            FieldDialogueAdvanceResult::prompt_advanced
+        ? runtime.advance_controller_events(0x4000U)
+        : FieldDialogueAdvanceResult::source_boundary;
+    const auto watcher_rom_task_result = runtime.take_gameplay_task_result();
+    if (!expect(watcher_rom_opened) ||
+        !expect(watcher_rom_has_two_options) ||
+        !expect(watcher_rom_response ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(watcher_rom_text_matches) ||
+        !expect(watcher_rom_close ==
+                FieldDialogueAdvanceResult::returned_to_field) ||
+        !expect(watcher_rom_task_result ==
+                std::optional<std::string>{"resolved"})) {
+        std::cerr << "Phantasmal Watcher B response did not show the ROM "
+                     "refusal and return cleanly; response="
+                  << static_cast<int>(watcher_rom_response) << " close="
+                  << static_cast<int>(watcher_rom_close)
+                  << " failure=" << runtime.failure() << " boundary='"
+                  << runtime.panel().source_boundary_reason << "'\n";
+        return 166;
+    }
+
+    boundary = {};
+    runtime.set_menu_b_policy("always_cancel");
+    const bool watcher_cancel_opened = runtime.open_gameplay_task(
+            scripting::ScriptDialogueSource::random_encounter,
+            "field_random_events", "present_phantasmal_watcher");
+    const auto watcher_cancel_result = watcher_cancel_opened
+        ? runtime.advance_controller_events(0x1000U)
+        : FieldDialogueAdvanceResult::source_boundary;
+    const auto watcher_cancel_task_result = runtime.take_gameplay_task_result();
+    if (!expect(watcher_cancel_opened) ||
+        !expect(watcher_cancel_result ==
+                FieldDialogueAdvanceResult::returned_to_field) ||
+        !expect(!runtime.open()) ||
+        !expect(watcher_cancel_task_result ==
+                std::optional<std::string>{"resolved"}) ||
+        !expect(boundary.empty())) {
+        std::cerr << "Phantasmal Watcher B cancellation opened an error "
+                     "boundary; result="
+                  << static_cast<int>(watcher_cancel_result)
+                  << " failure=" << runtime.failure() << " boundary='"
+                  << runtime.panel().source_boundary_reason << "'\n";
+        return 167;
+    }
+    runtime.set_menu_b_policy("rom");
+    gameplay_scripts.set_location_context(
+        "building", "council_island_hospital",
+        "council_island_hospital", "council_island_hospital_narrator");
+
     gameplay_scripts.set_field_mode_context(
         scripting::ScriptFieldModeContext{4U, 4U, -1});
     if (!expect(runtime.open_gameplay_task(

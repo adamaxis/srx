@@ -6534,6 +6534,15 @@ struct GameScriptRuntime::Impl {
             lua_pushnil(lua);
             return 1;
         }
+        if (lua_gettop(lua) >= 5) {
+            if (lua_type(lua, 5) != LUA_TBOOLEAN) {
+                self->bridge_failure =
+                    "game.ui.menu optional no-selection flag must be boolean";
+                lua_pushnil(lua);
+                return 1;
+            }
+            menu.allow_no_selection = lua_toboolean(lua, 5) != 0;
+        }
         if (!read_string(lua, 1, menu_id) ||
             !valid_identifier(menu_id) ||
             !valid_identifier(text_profile) ||
@@ -16840,13 +16849,19 @@ ScriptTaskStep GameScriptRuntime::complete_native_menu_choice(
         [choice_id](const ScriptMenuChoice& choice) {
             return choice.id == choice_id;
         });
-    if (selected == operation->menu->choices.end()) {
+    const bool no_selection = choice_id.empty() &&
+                              operation->menu->allow_no_selection;
+    if (selected == operation->menu->choices.end() && !no_selection) {
         return impl_->failed_task(
             "native menu returned a choice absent from the Lua menu");
     }
     impl_->task_waiting = false;
     impl_->active_native_operation.reset();
-    lua_pushlstring(task, choice_id.data(), choice_id.size());
+    if (no_selection) {
+        lua_pushnil(task);
+    } else {
+        lua_pushlstring(task, choice_id.data(), choice_id.size());
+    }
     return impl_->resume_task(1);
 }
 

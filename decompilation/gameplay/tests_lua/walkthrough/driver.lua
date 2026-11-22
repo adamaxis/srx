@@ -5,7 +5,6 @@ local WORDS = {
     mode = "mode",         -- FFFC30
     effect = "effect",     -- FFFC34
     auxiliary = "auxiliary", -- FFFC38
-    group_item = "group_item", -- FFFC22
     dialogue = "dialogue", -- FFFC26
 }
 
@@ -22,6 +21,7 @@ local function summary(snapshot)
         "page=" .. tostring(snapshot.page_key),
         "panel=" .. tostring(snapshot.panel_actor) .. "#" ..
             tostring(snapshot.panel_page) .. ":" .. tostring(snapshot.panel_text),
+        "dialogue_open=" .. tostring(snapshot.dialogue_open),
         "story=" .. tostring(snapshot.story),
         "mode=" .. tostring(snapshot.mode),
         "effect=" .. tostring(snapshot.effect),
@@ -89,6 +89,36 @@ local function validate_flags(before, after, expected, expected_facts)
     return nil
 end
 
+local function validate_group_items(before, after, specification)
+    if type(before.group_items) ~= "table" or
+       type(after.group_items) ~= "table" then
+        return "group-item snapshot is unavailable"
+    end
+    local changes = {}
+    for _, item_id in ipairs(specification.set or {}) do
+        changes[item_id] = true
+    end
+    for _, item_id in ipairs(specification.clear or {}) do
+        changes[item_id] = false
+    end
+    for item_id, old_owned in pairs(before.group_items) do
+        local expected_owned = changes[item_id]
+        if expected_owned == nil then expected_owned = old_owned end
+        if after.group_items[item_id] ~= expected_owned then
+            return "group item " .. item_id .. " expected " ..
+                tostring(expected_owned) .. " but was " ..
+                tostring(after.group_items[item_id])
+        end
+    end
+    for item_id in pairs(changes) do
+        if before.group_items[item_id] == nil or
+           after.group_items[item_id] == nil then
+            return "group item " .. item_id .. " is not tracked"
+        end
+    end
+    return nil
+end
+
 local function validate(before, after, expected, host_result)
     if host_result.host_error ~= "" then
         return host_result.host_error
@@ -104,6 +134,9 @@ local function validate(before, after, expected, host_result)
     local flag_error = validate_flags(before, after, expected.flags or {},
         expected.facts)
     if flag_error ~= nil then return flag_error end
+    local group_item_error = validate_group_items(before, after,
+        expected.group_items or {})
+    if group_item_error ~= nil then return group_item_error end
 
     local expected_scene = expected.scene or before.scene
     if after.scene ~= expected_scene then
@@ -163,8 +196,18 @@ local function validate(before, after, expected, host_result)
 end
 
 local function load_route(segment)
-    if segment ~= "seg1" then error("no Lua route for segment " .. segment) end
-    return require("walkthrough.route_seg1")
+    local modules = {
+        seg1 = "walkthrough.route_seg1",
+        w3 = "walkthrough.route_w3",
+        w4 = "walkthrough.route_w4",
+        w5 = "walkthrough.route_w5",
+        w6 = "walkthrough.route_w6",
+        w7 = "walkthrough.route_w7",
+        w8 = "walkthrough.route_w8",
+    }
+    local module = modules[segment]
+    if module == nil then error("no Lua route for segment " .. segment) end
+    return require(module)
 end
 
 local function run(host, segment, reach_mode)
@@ -177,7 +220,10 @@ local function run(host, segment, reach_mode)
     local all_steps_passed = true
     local gate_passed = true
 
-    for _, step in ipairs(route.steps) do
+    local first_step = host.from_fixture and
+        (route.resume_from_fixture_step or 1) or 1
+    for step_index = first_step, #route.steps do
+        local step = route.steps[step_index]
         if not reach_mode and step.gate == false then
             break
         end

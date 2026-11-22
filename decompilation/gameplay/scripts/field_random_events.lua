@@ -454,6 +454,11 @@ function RandomEvents.present_phantasmal_watcher()
     local choice = game.ui.prompt_text(
         "phantasmal_watcher", opening, choices, HAGGARD_SPEAKER,
         HAGGARD_TEXT_PROFILE)
+    if choice == "menu_cancel" then
+        -- The ROM has no cancel row here. The port's ALWAYS_CANCEL policy
+        -- closes this prompt without taking either source response.
+        return "resolved"
+    end
     if choice == WATCHER_INSULT_CHOICE then
         -- Record 0x120F18 ends after text 0x11D893 without changing state [C].
         game.ui.say_text(WATCHER_REFUSAL_RESULT, false, HAGGARD_SPEAKER,

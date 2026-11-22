@@ -23,6 +23,7 @@ extern "C" {
 #include <functional>
 #include <iostream>
 #include <iterator>
+#include <limits>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -42,6 +43,28 @@ constexpr std::string_view kSeg1EndFixtureFormat =
 // stable so regeneration can be compared byte-for-byte after later QA edits.
 constexpr std::string_view kSeg1EndFixtureSourceCommit =
     "8000b5cf4dc7c4fc4dd9cbf566c57fc85279af44";
+constexpr std::array<std::string_view, 31U> kWalkthroughStoryFactIds{{
+    "motel_bill_paid", "tarislar_asked_shale", "owlfeather_asked",
+    "aragorn_found", "aragorn_freed_told", "shaman_met",
+    "shaman_item4_given", "shaman_pelt_given", "serpent_scale_taken",
+    "shaman_tasks_done", "michael_alias_learned", "mako_defeated",
+    "renraku_map_overlay", "michael_mission_told", "cyberheart_safe",
+    "ogami_left", "ito_fight_won", "ritual_of_binding",
+    "red_buffalo_woman", "ilene_met", "gillian_initiation",
+    "garden_apts_entered", "landmark_map_taken", "holopix_shown",
+    "medicine_lodge_turned_away", "hospital_visited",
+    "renraku_map_shown", "both_maps_shown", "post_ito_briefed",
+    "heart_delivered", "frosty_met",
+}};
+// Keep this identity order aligned with kGroupItemFactIds in the runtime's
+// fact adapter; the walkthrough host accepts E.GroupItemId values.
+constexpr std::array<std::string_view, 15U> kWalkthroughGroupItemIds{{
+    "prototype_cyberheart", "indian_lands_visa", "feathered_scale",
+    "hell_hound_pelt", "gargoyle_horn", "gift_lady_gillian",
+    "gift_red_buffalo_woman", "landmark_map", "map_overlay",
+    "current_run_package", "security_pass", "weapon_permit",
+    "eye_fiver_ear_cuff", "halloweener_patch", "ork_armband",
+}};
 
 struct HostContext {
     FieldSceneRuntime* runtime = nullptr;
@@ -54,6 +77,7 @@ struct HostContext {
     std::streambuf* previous_stderr = nullptr;
     std::string pending_stderr;
     bool first_step = true;
+    bool from_fixture = false;
 };
 
 struct LuaModuleRoots {
@@ -134,6 +158,86 @@ inline bool advance_one(HostContext& host, const std::uint8_t input) {
     host.runtime->advance_frame();
     ++host.frames_this_step;
     return true;
+}
+
+inline int grant_nuyen(lua_State* state) {
+    auto* host = context(state);
+    lua_Integer amount = 0;
+    if (!integer_argument(state, 1, amount) || amount < 0 ||
+        amount > std::numeric_limits<std::uint32_t>::max()) {
+        lua_pushboolean(state, 0);
+        lua_pushliteral(state, "nuyen grant must be an unsigned 32-bit amount");
+        return 2;
+    }
+    const auto funds = host->runtime->field_funds_for_dump();
+    if (!funds.has_value() ||
+        static_cast<std::uint64_t>(*funds) +
+                static_cast<std::uint64_t>(amount) >
+            std::numeric_limits<std::uint32_t>::max()) {
+        lua_pushboolean(state, 0);
+        lua_pushliteral(state, "nuyen grant cannot be applied to this runtime");
+        return 2;
+    }
+    host->runtime->set_field_funds_for_dump(
+        *funds + static_cast<std::uint32_t>(amount));
+    lua_pushboolean(state, 1);
+    return 1;
+}
+
+inline int grant_karma(lua_State* state) {
+    auto* host = context(state);
+    if (!lua_istable(state, 1)) {
+        lua_pushboolean(state, 0);
+        lua_pushliteral(state, "Karma grant must provide three runner amounts");
+        return 2;
+    }
+    const auto current = host->runtime->party_karma_for_dump();
+    if (!current.has_value()) {
+        lua_pushboolean(state, 0);
+        lua_pushliteral(state, "party Karma is unavailable for this runtime");
+        return 2;
+    }
+    auto granted = *current;
+    for (std::size_t index = 0U; index < granted.size(); ++index) {
+        lua_rawgeti(state, 1, static_cast<lua_Integer>(index + 1U));
+        lua_Integer amount = 0;
+        const bool valid = integer_argument(state, -1, amount) &&
+                           amount >= 0 && amount <= 255;
+        lua_pop(state, 1);
+        if (!valid) {
+            lua_pushboolean(state, 0);
+            lua_pushliteral(state,
+                "each Karma grant must be an unsigned byte amount");
+            return 2;
+        }
+        granted[index] = static_cast<std::uint8_t>(
+            (static_cast<unsigned int>(granted[index]) +
+             static_cast<unsigned int>(amount)) & 0xFFU);
+    }
+    host->runtime->seed_party_karma_for_qa(granted);
+    lua_pushboolean(state, 1);
+    return 1;
+}
+
+inline int grant_group_item(lua_State* state) {
+    auto* host = context(state);
+    std::size_t length = 0U;
+    const auto* item_id = luaL_checklstring(state, 1, &length);
+    const auto name = std::string_view(item_id, length);
+    const auto item = std::find(kWalkthroughGroupItemIds.begin(),
+                                kWalkthroughGroupItemIds.end(), name);
+    const auto flags = host->runtime->group_item_flags_for_dump();
+    if (item == kWalkthroughGroupItemIds.end() || !flags.has_value()) {
+        lua_pushboolean(state, 0);
+        lua_pushliteral(state, "unknown group item or unresolved group-item state");
+        return 2;
+    }
+    const auto bit = static_cast<unsigned int>(
+        std::distance(kWalkthroughGroupItemIds.begin(), item));
+    host->runtime->set_group_item_flags_for_dump(
+        *flags | (std::uint32_t{1U} << bit));
+    lua_pushboolean(state, 1);
+    return 1;
 }
 
 inline std::optional<std::uint8_t> pad_byte(const std::string_view name) {
@@ -229,8 +333,10 @@ inline int press(lua_State* state) {
         return 2;
     }
     host->runtime->set_controller_port_byte(0U);
+    bool waited_for_dialogue_lockout = false;
     for (lua_Integer frame = 0;
          frame < 180 && host->runtime->dialogue_input_locked(); ++frame) {
+        waited_for_dialogue_lockout = true;
         if (!advance_one(*host, 0U)) {
             lua_pushboolean(state, 0);
             lua_pushlstring(state, host->host_error.data(),
@@ -241,6 +347,12 @@ inline int press(lua_State* state) {
     if (host->runtime->dialogue_input_locked()) {
         lua_pushboolean(state, 0);
         lua_pushliteral(state, "dialogue input lockout did not elapse");
+        return 2;
+    }
+    if (waited_for_dialogue_lockout && !advance_one(*host, 0U)) {
+        lua_pushboolean(state, 0);
+        lua_pushlstring(state, host->host_error.data(),
+                        host->host_error.size());
         return 2;
     }
     for (lua_Integer frame = 0; frame < hold_frames; ++frame) {
@@ -533,25 +645,37 @@ inline int snapshot(lua_State* state) {
     }
     lua_setfield(state, -2, "runner_features");
 
-    lua_createtable(state, 0, 3);
+    lua_createtable(state, 0,
+                    static_cast<int>(kWalkthroughGroupItemIds.size()));
+    for (std::size_t index = 0U;
+         index < kWalkthroughGroupItemIds.size(); ++index) {
+        const auto flags = runtime.group_item_flags_for_dump();
+        lua_pushboolean(state, flags.has_value() &&
+            ((*flags & (std::uint32_t{1U} << index)) != 0U));
+        const auto item_id = kWalkthroughGroupItemIds[index];
+        lua_setfield(state, -2, std::string(item_id).c_str());
+    }
+    lua_setfield(state, -2, "group_items");
+
+    lua_createtable(state, 0,
+                    static_cast<int>(kWalkthroughStoryFactIds.size()));
     const auto story_flags = runtime.field_world_fact_flags_for_dump();
-    const std::array<std::pair<const char*, srx::StoryFlag>, 3> facts{{
-        {"motel_bill_paid", srx::StoryFlag::MOTEL_BILL_PAID},
-        {"tarislar_asked_shale", srx::StoryFlag::TARISLAR_ASKED_SHALE},
-        {"michael_alias_learned", srx::StoryFlag::MICHAEL_ALIAS_LEARNED},
-    }};
-    for (const auto& [name, flag] : facts) {
-        const auto bit = static_cast<std::uint8_t>(flag);
+    for (std::size_t index = 0U;
+         index < kWalkthroughStoryFactIds.size(); ++index) {
         lua_pushboolean(state,
-            (story_flags & (std::uint32_t{1U} << bit)) != 0U);
-        lua_setfield(state, -2, name);
+            (story_flags & (std::uint32_t{1U} << index)) != 0U);
+        const auto fact_id = kWalkthroughStoryFactIds[index];
+        lua_setfield(state, -2, std::string(fact_id).c_str());
     }
     lua_setfield(state, -2, "story_facts");
 
-    lua_createtable(state, 0, 3);
-    for (const auto& [name, flag] : facts) {
-        lua_pushinteger(state, static_cast<std::uint8_t>(flag));
-        lua_setfield(state, -2, name);
+    lua_createtable(state, 0,
+                    static_cast<int>(kWalkthroughStoryFactIds.size()));
+    for (std::size_t index = 0U;
+         index < kWalkthroughStoryFactIds.size(); ++index) {
+        lua_pushinteger(state, static_cast<lua_Integer>(index));
+        const auto fact_id = kWalkthroughStoryFactIds[index];
+        lua_setfield(state, -2, std::string(fact_id).c_str());
     }
     lua_setfield(state, -2, "story_fact_bits");
 
@@ -569,8 +693,9 @@ inline int snapshot(lua_State* state) {
                          iterator != object.end(); ++iterator) {
                         const auto key = iterator.key().toLower();
                         collect(iterator.value(), path + "/" + iterator.key(),
-                            key.contains("item") || key.contains("inventor") ||
-                                key.contains("equip"));
+                            (key.contains("item") || key.contains("inventor") ||
+                                key.contains("equip")) &&
+                                key != "group_item_flags");
                     }
                 } else if (value.isArray()) {
                     const auto array = value.toArray();
@@ -843,8 +968,9 @@ inline std::optional<std::string> validate_seg1_save_snapshot(
     return std::nullopt;
 }
 
-inline std::optional<std::string> read_seg1_end_fixture(
-    const std::filesystem::path& path, QJsonObject& snapshot) {
+inline std::optional<std::string> read_walkthrough_fixture(
+    const std::filesystem::path& path, const std::string_view checkpoint,
+    QJsonObject& snapshot) {
     std::ifstream input(path, std::ios::binary);
     if (!input) {
         return "could not open walkthrough fixture: " + path.string();
@@ -867,7 +993,8 @@ inline std::optional<std::string> read_seg1_end_fixture(
                                 static_cast<qsizetype>(
                                     kSeg1EndFixtureFormat.size())) ||
         fixture.value(QStringLiteral("checkpoint")).toString() !=
-            QStringLiteral("seg1_end") ||
+            QString::fromLatin1(checkpoint.data(),
+                                static_cast<qsizetype>(checkpoint.size())) ||
         fixture.value(QStringLiteral("generated_from_commit")).toString().isEmpty()) {
         return "walkthrough fixture header is missing its format, checkpoint, "
                "or source commit";
@@ -880,13 +1007,17 @@ inline std::optional<std::string> read_seg1_end_fixture(
     return validate_seg1_save_snapshot(snapshot);
 }
 
-inline QByteArray seg1_end_fixture_bytes(const QJsonObject& snapshot) {
+inline QByteArray walkthrough_fixture_bytes(
+    const QJsonObject& snapshot, const std::string_view checkpoint) {
     QJsonObject fixture;
     fixture.insert(QStringLiteral("format"),
                    QString::fromLatin1(kSeg1EndFixtureFormat.data(),
                                        static_cast<qsizetype>(
                                            kSeg1EndFixtureFormat.size())));
-    fixture.insert(QStringLiteral("checkpoint"), QStringLiteral("seg1_end"));
+    fixture.insert(QStringLiteral("checkpoint"),
+                   QString::fromLatin1(checkpoint.data(),
+                                       static_cast<qsizetype>(
+                                           checkpoint.size())));
     fixture.insert(QStringLiteral("generated_from_commit"),
                    QString::fromLatin1(kSeg1EndFixtureSourceCommit.data(),
                                        static_cast<qsizetype>(
@@ -895,8 +1026,9 @@ inline QByteArray seg1_end_fixture_bytes(const QJsonObject& snapshot) {
     return QJsonDocument(fixture).toJson(QJsonDocument::Indented);
 }
 
-inline std::optional<std::string> write_seg1_end_fixture(
-    const QJsonObject& snapshot, const std::filesystem::path& output_path,
+inline std::optional<std::string> write_walkthrough_fixture(
+    const QJsonObject& snapshot, const std::string_view checkpoint,
+    const std::filesystem::path& output_path,
     const std::optional<std::filesystem::path>& compare_path) {
     std::error_code filesystem_error;
     if (!output_path.parent_path().empty()) {
@@ -907,7 +1039,7 @@ inline std::optional<std::string> write_seg1_end_fixture(
         return "could not create walkthrough fixture directory: " +
             filesystem_error.message();
     }
-    const auto bytes = seg1_end_fixture_bytes(snapshot);
+    const auto bytes = walkthrough_fixture_bytes(snapshot, checkpoint);
     std::ofstream output(output_path, std::ios::binary | std::ios::trunc);
     if (!output) {
         return "could not write walkthrough fixture: " + output_path.string();
@@ -965,6 +1097,30 @@ inline std::optional<std::string> restore_fixture_and_compare(
     if (difference.has_value()) {
         return "restored fixture mismatch at " + difference->toStdString();
     }
+    return std::nullopt;
+}
+
+inline std::optional<std::string_view> input_fixture_checkpoint(
+    const std::string_view segment) {
+    if (segment == "seg1") return "seg1_end";
+    if (segment == "w3") return "seg1_end";
+    if (segment == "w4") return "seg2_end";
+    if (segment == "w5") return "seg3_end";
+    if (segment == "w6") return "seg4_end";
+    if (segment == "w7") return "seg5_end";
+    if (segment == "w8") return "seg6_end";
+    return std::nullopt;
+}
+
+inline std::optional<std::string_view> output_fixture_checkpoint(
+    const std::string_view segment) {
+    if (segment == "seg1") return "seg1_end";
+    if (segment == "w3") return "seg2_end";
+    if (segment == "w4") return "seg3_end";
+    if (segment == "w5") return "seg4_end";
+    if (segment == "w6") return "seg5_end";
+    if (segment == "w7") return "seg6_end";
+    if (segment == "w8") return "seg7_end";
     return std::nullopt;
 }
 
@@ -1062,10 +1218,19 @@ inline int run_walkthrough_qa(
     }
     std::cerr.rdbuf(previous_stderr);
 
+    bool resumed_from_fixture = false;
     if (from_fixture_path.has_value()) {
         QJsonObject fixture_snapshot;
-        const auto fixture_error = read_seg1_end_fixture(
-            *from_fixture_path, fixture_snapshot);
+        const auto checkpoint = segment == "fixture_restore"
+            ? std::optional<std::string_view>{}
+            : input_fixture_checkpoint(segment);
+        const auto checkpoint_from_path =
+            from_fixture_path->stem().string();
+        const std::string_view expected_checkpoint = checkpoint.has_value()
+            ? *checkpoint
+            : std::string_view{checkpoint_from_path};
+        const auto fixture_error = read_walkthrough_fixture(
+            *from_fixture_path, expected_checkpoint, fixture_snapshot);
         if (fixture_error.has_value()) {
             std::cerr << "walkthrough fixture load failed: " << *fixture_error
                       << '\n';
@@ -1078,12 +1243,13 @@ inline int run_walkthrough_qa(
                       << *restore_error << '\n';
             return 1;
         }
-        std::cout << "walkthrough from-fixture: seg1_end restored exactly\n";
+        std::cout << "walkthrough from-fixture: " << expected_checkpoint
+                  << " restored exactly\n";
         if (segment == "fixture_restore") return 0;
-        if (segment == "seg1") {
-            std::cerr << "walkthrough: seg1_end is already past the seg1 route; "
-                         "use fixture_restore or a later segment\n";
-            return 3;
+        if (segment == "seg1" || segment == "w3" || segment == "w4" ||
+            segment == "w5" || segment == "w6" || segment == "w7" ||
+            segment == "w8") {
+            resumed_from_fixture = true;
         }
     } else if (segment == "fixture_restore") {
         std::cerr << "walkthrough: fixture_restore requires --from-fixture\n";
@@ -1129,6 +1295,7 @@ inline int run_walkthrough_qa(
     lua_setglobal(state, "require");
 
     HostContext host{&runtime, &source_events};
+    host.from_fixture = resumed_from_fixture;
     host.pending_stderr = bootstrap_stderr.str();
     lua_getglobal(state, "require");
     lua_pushliteral(state, "walkthrough.driver");
@@ -1159,6 +1326,9 @@ inline int run_walkthrough_qa(
                       wait_for_taxi_selector);
     add_host_function(state, host, "wait_for_scene", wait_for_scene);
     add_host_function(state, host, "place_within_scene", place_within_scene);
+    add_host_function(state, host, "grant_nuyen", grant_nuyen);
+    add_host_function(state, host, "grant_karma", grant_karma);
+    add_host_function(state, host, "grant_group_item", grant_group_item);
     add_host_function(state, host, "snapshot", snapshot);
     const auto output_string = output_directory.string();
     lua_pushlstring(state, output_string.data(), output_string.size());
@@ -1166,6 +1336,8 @@ inline int run_walkthrough_qa(
     const auto asset_string = asset_root.string();
     lua_pushlstring(state, asset_string.data(), asset_string.size());
     lua_setfield(state, -2, "asset_root");
+    lua_pushboolean(state, host.from_fixture);
+    lua_setfield(state, -2, "from_fixture");
     lua_pushlstring(state, segment.data(), segment.size());
     lua_pushboolean(state, reach_mode);
     if (lua_pcall(state, 3, 1, 0) != LUA_OK) {
@@ -1196,8 +1368,9 @@ inline int run_walkthrough_qa(
         }
     }
     bool fixture_generation_passed = true;
+    const auto output_checkpoint = output_fixture_checkpoint(segment);
     if ((write_fixture_path.has_value() || compare_fixture_path.has_value()) &&
-        segment == "seg1" && !reach_mode && passed &&
+        output_checkpoint.has_value() && !reach_mode && passed &&
         save_round_trip_passed) {
         if (!write_fixture_path.has_value()) {
             fixture_generation_passed = false;
@@ -1212,14 +1385,16 @@ inline int run_walkthrough_qa(
                 std::cerr << "walkthrough fixture generation failed: "
                           << snapshot_error.toStdString() << '\n';
             } else {
-                const auto write_error = write_seg1_end_fixture(
-                    *snapshot, *write_fixture_path, compare_fixture_path);
+                const auto write_error = write_walkthrough_fixture(
+                    *snapshot, *output_checkpoint, *write_fixture_path,
+                    compare_fixture_path);
                 if (write_error.has_value()) {
                     fixture_generation_passed = false;
                     std::cerr << "walkthrough fixture generation failed: "
                               << *write_error << '\n';
                 } else {
-                    std::cout << "walkthrough fixture: seg1_end generated"
+                    std::cout << "walkthrough fixture: " << *output_checkpoint
+                              << " generated"
                               << (compare_fixture_path.has_value()
                                       ? " and byte-exact comparison passed\n"
                                       : "\n");

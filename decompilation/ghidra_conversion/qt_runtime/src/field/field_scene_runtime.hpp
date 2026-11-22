@@ -1656,7 +1656,8 @@ public:
     bool set_notebook_tip_unlocked(std::size_t source_index,
                                    bool unlocked) noexcept;
     // Diagnostic route coverage uses the same five FFFC27 source bits as
-    // 0xF416. Loaded-save flags stay unresolved until restoration is modeled.
+    // 0xF416. Saves preserve the value when present; older saves can leave it
+    // unresolved.
     bool set_notebook_referral_flags_for_dump(std::uint8_t flags) noexcept {
         if (!notebook_referral_flags_.has_value()) {
             return false;
@@ -2937,7 +2938,7 @@ private:
     std::optional<std::int8_t> field_matrix_karma_counter_;
     // ROM FFF0A3: field setup seeds 1 at 0x174FC; Attack and Slow clear it.
     std::optional<std::int8_t> field_matrix_passive_ic_counter_;
-    // FFFC28 and the modeled FFFBBE fields are persisted through
+    // FFFC28 and the modeled fields of FFFBBE are persisted through
     // story.matrix_passcode_flags and story.matrix_field_state. Older saves
     // without those values keep the corresponding source state unknown.
     std::optional<std::uint16_t> field_matrix_passcode_flags_;
@@ -2945,8 +2946,8 @@ private:
     // FFFC22 is persisted and restored as story.group_item_flags. New Game
     // initializes it to zero.
     std::optional<std::uint32_t> group_item_flags_ = 0U;
-    // A fresh New Game has no active run. Save restoration does not yet
-    // publish the source FFFBEC run state to this presentation adapter.
+    // A fresh New Game has no active run. The save snapshot preserves this
+    // Notebook availability state and the Lua run registry.
     bool notebook_current_run_available_ = false;
     std::array<std::uint32_t, 3> notebook_tip_flags_{{1U, 0U, 0U}};
     bool notebook_tip_flags_resolved_ = true;
@@ -3308,8 +3309,8 @@ private:
     std::optional<std::uint32_t> field_funds_{0x14U};
     // ROM FFE168 bit 0; set by debug-menu option 0x59C54.
     bool field_walk_fast_enabled_ = false;
-    // FF018F is persisted and restored as story.runner_feature_flags. Older
-    // saves without that byte leave the source fact unavailable.
+    // FF018F is initialized to zero by New Game and persisted/restored through
+    // story.runner_feature_flags. Older saves without it leave the fact unknown.
     std::optional<std::uint8_t> field_runner_feature_flags_{0U}; // FF018F
     std::string field_shop_route_pending_service_id_;
     FieldEntityPresentation field_entity_{};

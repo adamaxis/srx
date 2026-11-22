@@ -172,6 +172,8 @@ E.MovementBearingDegrees = {
     [E.MovementDirection.NORTH_WEST] = 315,
 } -- degrees clockwise from north; native boundary converts to field angles [C]
 E.Scene = {
+    PENUMBRA_DISTRICT = 3, -- Scene-3 Mitsuhama and Big Rhino records [C]
+    SALISH_SHIDHE = 6, -- Scene-6 Owlfeather lodge record 193 [C]
     STOKER_MOTEL = 2, -- Scene 2 trigger record 91 at 0x173138; prompt 0x1F65A [C]
     HOLLYWOOD_CORRECTIONAL = 2, -- Entry gate is in scene 2; cmd 0x65 at 0x2274A [C]
     JUMP_HOUSE = 13, WANDERER = 14, -- 0x1B3C06 / 0x1D5B52 scene profiles [C]

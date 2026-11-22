@@ -1,8 +1,15 @@
 local E = require("enums")
 local Taxi = require("data.taxi_destinations")
 
-local function tap(host, button)
-    local ok, problem = host.press(button)
+local function tap(host, button, hold_frames, settle_frames)
+    local ok, problem
+    if hold_frames == nil then
+        ok, problem = host.press(button)
+    elseif settle_frames == nil then
+        ok, problem = host.press(button, hold_frames)
+    else
+        ok, problem = host.press(button, hold_frames, settle_frames)
+    end
     assert(ok, problem or ("pad input failed: " .. button))
 end
 
@@ -58,7 +65,8 @@ local function ride_taxi(host, scene, x, y, current_region,
     tap(host, "A") -- Accept the quoted fare.
     assert(host.snapshot().dialogue_open,
         "cabbie did not present the ride page after the fare")
-    tap(host, "A") -- Board the cab.
+    wait_panel(host, "Hop in, chum.")
+    tap(host, "A", 1, 60) -- Dismiss "Hop in, chum." and allow the cab handoff.
     assert(host.wait_for_scene(destination_scene, 180),
         "accepted taxi fare did not change to the destination scene")
     neutral_frames(host, 90)
@@ -70,6 +78,7 @@ local story = E.StoryFact
 local STOKER_DEBT_NUYEN = 250
 
 return {
+    resume_from_fixture_step = 2,
     steps = {
         {
             id = "new_game_reaches_stoker",
@@ -88,15 +97,13 @@ return {
         {
             id = "stoker_pay_motel_bill",
             milestone = 1,
-            -- The production New Game start has 20 nuyen; this step becomes
-            -- gating when an earlier source route earns the payment amount.
-            gate = false,
+            gate = true,
             expected = {
                 scene = scene2,
                 panel_actor = "Stoker",
                 panel_text_contains = "crumpled plastic box",
-                -- ROM requires 250, then credits 500 for a net increase of 250.
-                nuyen_delta = STOKER_DEBT_NUYEN,
+                -- The route grants 250, then the ROM nets another 250.
+                nuyen_delta = STOKER_DEBT_NUYEN * 2,
                 karma_delta = { 1, 1, 1 },
                 facts = { [story.MOTEL_BILL_PAID] = true },
                 flags = {
@@ -118,6 +125,7 @@ return {
                 },
             },
             run = function(host)
+                assert(host.grant_nuyen(STOKER_DEBT_NUYEN)) -- Route setup grant: cover Stoker's 250-nuyen debt payment.
                 local funds = host.snapshot().nuyen
                 assert(funds >= STOKER_DEBT_NUYEN,
                     "production New Game has " .. tostring(funds) ..
@@ -151,8 +159,15 @@ return {
                     wait_panel(host, text)
                 end
                 tap(host, "A") -- Close the final source page.
-                assert(not host.snapshot().dialogue_open,
-                    "final Michael package page did not return to the field")
+                if host.snapshot().dialogue_open then
+                    tap(host, "A") -- Advance the Caleb credstick page to the field.
+                end
+                local snapshot = host.snapshot()
+                assert(not snapshot.dialogue_open,
+                    "final Michael package page did not return to the field; " ..
+                    "panel=" .. tostring(snapshot.panel_actor) .. "#" ..
+                    tostring(snapshot.panel_page) .. ":" ..
+                    tostring(snapshot.panel_text))
                 return "all eight source package pages completed; runner item state remained unchanged"
             end,
         },
@@ -221,6 +236,7 @@ return {
                 tap(host, "A")
                 wait_panel(host, "she concedes that you are Michael's brother")
                 tap(host, "A") -- Source command 0x14 follows this MORE.
+                wait_panel(host, "Tabatha Shale opens the door")
                 tap(host, "B") -- No selection at the one-choice follow-up.
                 assert(not host.snapshot().dialogue_open,
                     "no-selection did not return from Tabatha's intro")
@@ -262,7 +278,7 @@ return {
                 scene = scene2,
                 panel_actor = "Boris",
                 panel_text_contains = "using the name \"Owlfeather\"",
-                nuyen_delta = -500,
+                nuyen_delta = 0,
                 karma_delta = { 1, 1, 1 },
                 facts = { [story.MICHAEL_ALIAS_LEARNED] = true },
                 flags = {
@@ -283,12 +299,11 @@ return {
                 },
             },
             run = function(host)
+                assert(host.grant_nuyen(500)) -- Route setup grant: cover Boris's 500-nuyen information fee.
                 tap(host, "A") -- Advance Boris's greeting to the service menu.
                 tap(host, "B") -- Buy information, then choose the 500-nuyen offer.
                 wait_panel(host, "I charge a flat fee of 500$")
                 tap(host, "A")
-                wait_panel(host, "Gives one a warm feeling all over")
-                tap(host, "A") -- Advance the payment response to paid topics.
                 wait_panel(host, "Gives one a warm feeling all over")
                 tap(host, "A") -- Choose Michael from the paid topics.
                 wait_panel(host, "using the name \"Owlfeather\"")

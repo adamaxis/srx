@@ -50345,11 +50345,32 @@ int main(int argc, char** argv) {
                 walkthrough_segment = std::string(argv[++index]);
                 walkthrough_output_directory =
                     std::filesystem::path(argv[++index]);
-                if (index + 1 < argc &&
-                    std::string(argv[index + 1]) == "--reach") {
-                    walkthrough_reach = true;
-                    ++index;
+                int option_index = index + 1;
+                while (option_index < argc) {
+                    const std::string option(argv[option_index]);
+                    if (option == "--reach") {
+                        walkthrough_reach = true;
+                        ++option_index;
+                    } else if (option == "--from-fixture" &&
+                               option_index + 1 < argc) {
+                        walkthrough_from_fixture_path =
+                            std::filesystem::path(argv[option_index + 1]);
+                        option_index += 2;
+                    } else if (option == "--write-fixture" &&
+                               option_index + 1 < argc) {
+                        walkthrough_write_fixture_path =
+                            std::filesystem::path(argv[option_index + 1]);
+                        option_index += 2;
+                    } else if (option == "--compare-fixture" &&
+                               option_index + 1 < argc) {
+                        walkthrough_compare_fixture_path =
+                            std::filesystem::path(argv[option_index + 1]);
+                        option_index += 2;
+                    } else {
+                        break;
+                    }
                 }
+                index = option_index - 1;
             }
             if (std::string(argv[index]) == "--from-fixture" &&
                 index + 1 < argc) {

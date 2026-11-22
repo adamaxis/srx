@@ -778,7 +778,8 @@ function DialogueGraph.run(graph_id, registered_actions, invocation_context)
                     speaker_id, text_profile)
             end
             return game.ui.menu(
-                node.menuId, choice_ids, speaker_id, text_profile)
+                node.menuId, choice_ids, speaker_id, text_profile,
+                node.noSelectionNext ~= nil)
         end,
     }
     local session = Session.new(catalog, evaluator, actions, host)

@@ -1484,7 +1484,10 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
     } else if (active_script_menu_.has_value()) {
         return FieldDialogueAdvanceResult::waiting_for_controller;
     }
-    if (option_index >= panel_.option_count) {
+    const bool no_selection = option_index >= panel_.option_count &&
+                              active_script_menu_.has_value() &&
+                              active_script_menu_->allow_no_selection;
+    if (option_index >= panel_.option_count && !no_selection) {
         return FieldDialogueAdvanceResult::source_boundary;
     }
 
@@ -1492,13 +1495,16 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
     std::optional<StokerMotelPromptCommand> command;
     if (active_script_menu_.has_value()) {
         if (!script_task_waiting_ || script_runtime_ == nullptr ||
-            option_index >= active_script_menu_->choices.size()) {
+            (!no_selection &&
+             option_index >= active_script_menu_->choices.size())) {
             open_source_boundary(
                 "Stoker script menu is not waiting for a valid selection");
             return FieldDialogueAdvanceResult::source_boundary;
         }
-        const auto& selected_id =
-            active_script_menu_->choices[option_index].id;
+        const std::string_view selected_id = no_selection
+            ? std::string_view{}
+            : std::string_view{
+                  active_script_menu_->choices[option_index].id};
         const auto prompt = active_prompt_;
         const auto task =
             script_runtime_->complete_native_menu_choice(selected_id);
