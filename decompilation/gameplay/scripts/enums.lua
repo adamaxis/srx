@@ -173,6 +173,7 @@ E.MovementBearingDegrees = {
 } -- degrees clockwise from north; native boundary converts to field angles [C]
 E.Scene = {
     BIG_RHINO = 11, -- Scene-11 booth conversation is Mortimer Reed [C: 0x1D5B0C]
+    COUNCIL_ISLAND = 4, -- Council Island field map; Spirit Eyes record 96 [C: 0x15BDF6]
     PENUMBRA_DISTRICT = 3, -- Scene-3 Mitsuhama and Big Rhino records [C]
     SALISH_SHIDHE = 6, -- Scene-6 Owlfeather lodge record 193 [C]
     STOKER_MOTEL = 2, -- Scene 2 trigger record 91 at 0x173138; prompt 0x1F65A [C]
@@ -1105,6 +1106,10 @@ E.FieldModeFlagBit = {
   BIT_12 = 12, -- Mortimer's Aragorn answer at 0x2323A selects Salish entry [C]
   BIT_13 = 13, -- ROM 0x53C90 clears lead bits and sets this marker [C]
   BIT_14 = 14, -- ROM 0x53D32 marks Aragorn's return to Salish [C]
+  BIT_15 = 15, -- Spirit Eyes first-contact marker at 0x53D78 [C]
+  BIT_16 = 16, -- Spirit Eyes first-contact marker at 0x53D7C [C]
+  BIT_17 = 17, -- Gargoyle Horn turn-in marker at 0x53DE4 [C]
+  BIT_18 = 18, -- Hell Hound pelt turn-in marker at 0x53E4C [C]
   BIT_20 = 20,
   BIT_23 = 23,
   RENRAKU_HEADHUNTER_TOLD = 25, -- command 0x92 at 0x23328 (`08 C1 00 19`) [C]
@@ -1120,6 +1125,12 @@ E.FieldModeEffectFlagBit = {
   STARK_DYING_TIP = 18,
   STARK_HEART_FAILING_TIP = 19,
   CYBERHEART_CARRIED_TIP = 20,
+}
+
+E.FieldAuxiliaryFlagBit = {
+  SHAMAN_RITUAL_STAGE_0 = 0, -- Spirit Eyes first contact at 0x53D80 [C]
+  SHAMAN_RITUAL_STAGE_1 = 1, -- Gargoyle Horn turn-in at 0x53E08 [C]
+  SHAMAN_RITUAL_STAGE_2 = 2, -- Hell Hound pelt turn-in at 0x53E7A [C]
 }
 
 E.JohnsonContactFee = {

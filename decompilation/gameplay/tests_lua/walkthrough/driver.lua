@@ -21,6 +21,8 @@ local function summary(snapshot)
         "page=" .. tostring(snapshot.page_key),
         "panel=" .. tostring(snapshot.panel_actor) .. "#" ..
             tostring(snapshot.panel_page) .. ":" .. tostring(snapshot.panel_text),
+        "options=" .. tostring(snapshot.panel_option_count) .. ":" ..
+            tostring(snapshot.panel_selected_option),
         "dialogue_open=" .. tostring(snapshot.dialogue_open),
         "elevator_open=" .. tostring(snapshot.elevator_open),
         "story=" .. tostring(snapshot.story),
@@ -242,16 +244,29 @@ local function run(host, segment, reach_mode)
         else
             detail = action_detail or "route action completed"
         end
-        if #host_result.source_events > 0 then
-            detail = detail .. "; source_events=" ..
-                table.concat(host_result.source_events, ",")
-        end
         local validation_error = validate(before, after,
             step.expected or {}, host_result)
         if validation_error ~= nil then
             detail = detail .. "; " .. validation_error
         end
         local step_passed = ok and validation_error == nil
+        if not step_passed and #host_result.source_events > 0 then
+            local events = host_result.source_events
+            local event_summary = events
+            if #events > 24 then
+                event_summary = {}
+                for index = 1, 12 do
+                    event_summary[#event_summary + 1] = events[index]
+                end
+                event_summary[#event_summary + 1] =
+                    "... " .. tostring(#events - 24) .. " events omitted ..."
+                for index = #events - 11, #events do
+                    event_summary[#event_summary + 1] = events[index]
+                end
+            end
+            detail = detail .. "; source_events=" ..
+                table.concat(event_summary, ",")
+        end
         steps[#steps + 1] = {
             id = step.id,
             milestone = step.milestone or last_milestone,

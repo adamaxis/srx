@@ -796,6 +796,37 @@ set_tests_properties(shadowrun_walkthrough_w3_b2
     PROPERTIES LABELS "walkthrough" TIMEOUT 300
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 
+set(_shadowrun_seg2_b2_start_fixture
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/tests_lua/fixtures/walkthrough/seg2_b2_end.json")
+set(_shadowrun_seg3_b5_end_fixture
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/tests_lua/fixtures/walkthrough/seg3_b5_end.json")
+add_test(NAME shadowrun_walkthrough_w4
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough w4
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-w4-gate"
+        --from-fixture "${_shadowrun_seg2_b2_start_fixture}")
+add_test(NAME shadowrun_walkthrough_w4_fixture_determinism
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough w4
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-w4-fixture-generation"
+        --from-fixture "${_shadowrun_seg2_b2_start_fixture}"
+        --write-fixture
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-w4-fixture-generation/seg3_b5_end.generated.json"
+        --compare-fixture "${_shadowrun_seg3_b5_end_fixture}")
+add_test(NAME shadowrun_walkthrough_seg3_fixture_restore
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough fixture_restore
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-seg3-fixture-restore"
+        --from-fixture "${_shadowrun_seg3_b5_end_fixture}")
+set_tests_properties(shadowrun_walkthrough_w4
+    shadowrun_walkthrough_w4_fixture_determinism
+    shadowrun_walkthrough_seg3_fixture_restore
+    PROPERTIES LABELS "walkthrough" TIMEOUT 300
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+
 # Scene 21's ROM rectangles exercise the real field-tick alarm bridge [C].
 # The test writes an actual.bmp checkpoint as a headless QA artifact [H].
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_alarm_qa

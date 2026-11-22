@@ -629,6 +629,22 @@ inline int snapshot(lua_State* state) {
     lua_setfield(state, -2, "panel_actor");
     lua_pushinteger(state, static_cast<lua_Integer>(dialogue_panel.page_index));
     lua_setfield(state, -2, "panel_page");
+    lua_pushinteger(state,
+                    static_cast<lua_Integer>(dialogue_panel.option_count));
+    lua_setfield(state, -2, "panel_option_count");
+    lua_pushinteger(state,
+                    static_cast<lua_Integer>(dialogue_panel.selected_option));
+    lua_setfield(state, -2, "panel_selected_option");
+    lua_createtable(state,
+                    static_cast<int>(dialogue_panel.option_count), 0);
+    for (std::size_t index = 0U;
+         index < dialogue_panel.option_count &&
+         index < dialogue_panel.options.size(); ++index) {
+        const auto label = dialogue_panel.options[index].source_label;
+        lua_pushlstring(state, label.data(), label.size());
+        lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
+    }
+    lua_setfield(state, -2, "panel_options");
     std::string panel_text;
     for (std::size_t index = 0U;
          index < dialogue_panel.text_segment_count; ++index) {
@@ -1125,7 +1141,7 @@ inline std::optional<std::string_view> input_fixture_checkpoint(
     if (segment == "seg1") return "seg1_end";
     if (segment == "w3") return "seg1_end";
     if (segment == "w3_b2") return "seg1_end";
-    if (segment == "w4") return "seg2_end";
+    if (segment == "w4") return "seg2_b2_end";
     if (segment == "w5") return "seg3_end";
     if (segment == "w6") return "seg4_end";
     if (segment == "w7") return "seg5_end";
@@ -1138,7 +1154,7 @@ inline std::optional<std::string_view> output_fixture_checkpoint(
     if (segment == "seg1") return "seg1_end";
     if (segment == "w3") return "seg2_end";
     if (segment == "w3_b2") return "seg2_b2_end";
-    if (segment == "w4") return "seg3_end";
+    if (segment == "w4") return "seg3_b5_end";
     if (segment == "w5") return "seg4_end";
     if (segment == "w6") return "seg5_end";
     if (segment == "w7") return "seg6_end";

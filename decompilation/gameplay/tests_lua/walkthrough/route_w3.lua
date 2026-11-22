@@ -30,6 +30,9 @@ local function wait_panel(host, text)
     error("timed out waiting for dialogue panel text " .. string.format("%q", text) ..
         "; current actor=" .. tostring(snapshot.panel_actor) ..
         " panel=" .. string.format("%q", snapshot.panel_text) ..
+            " options=" .. tostring(snapshot.panel_option_count) ..
+            " selected=" .. tostring(snapshot.panel_selected_option) ..
+            " choices=" .. table.concat(snapshot.panel_options or {}, "|") ..
         " story page=" .. tostring(snapshot.page_key))
 end
 
@@ -230,8 +233,13 @@ return {
                 tap(host, "A") -- Information from Mortimer's root menu.
                 wait_panel(host, "However, I do know a valuable contact")
                 tap(host, "A") -- Finish the information opening.
-                tap(host, "C") -- The third live topic is Aragorn; B selected
-                -- Mako at ROM 0x23222 in the earlier probe.
+                tap(host, "C") -- Open the questions branch from the topic menu.
+                local question_menu = host.snapshot()
+                assert(question_menu.panel_option_count == 2 and
+                    question_menu.panel_options[1]:find("Mako", 1, true) and
+                    question_menu.panel_options[2]:find("Aragorn", 1, true),
+                    "Mortimer's live question choices were not Mako then Aragorn")
+                tap(host, "B") -- Select the verified second option, Aragorn.
                 wait_panel(host, "fragged a solo run against Mitsuhama")
                 return "Mortimer's source question set field-mode lead bit 12"
             end,
@@ -251,12 +259,13 @@ return {
                 assert(not host.snapshot().dialogue_open,
                     "Mortimer's leave page did not close")
 
-                -- Scene-11 records 8 and 9 are the ROM's south field-return cells.
+                -- Scene-11 records 8 and 9 are below the booth; approach them
+                -- from the south with real Up input.
                 local placed, placement_error = host.place_within_scene(
                     scene_big_rhino, 1280, 4352)
                 assert(placed, placement_error or "scene-11 exit placement failed")
-                local exited, exit_error = host.hold_until_modal("DOWN", 600)
-                assert(exited, exit_error or "Big Rhino south exit did not open")
+                local exited, exit_error = host.hold_until_modal("UP", 600)
+                assert(exited, exit_error or "Big Rhino field return did not open")
                 assert(host.wait_for_scene(scene_penumbra, 180),
                     "Big Rhino source exit did not return to Penumbra")
                 return "used Scene-11 event 8's physical field return"
