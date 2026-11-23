@@ -178,6 +178,7 @@ E.Scene = {
     ICARUS_DESCENDING = 12, -- Scene-12 Caleb booth event 30 at 0x1D605E [C]
     PENUMBRA_DISTRICT = 3, -- Scene-3 Mitsuhama and Big Rhino records [C]
     SALISH_SHIDHE = 6, -- Scene-6 Owlfeather lodge record 193 [C]
+    SINSEARACH_VILLAGE_GATE = 9, -- Scene-9 event 0 gate [C; guide-name crosswalk]
     STOKER_MOTEL = 2, -- Scene 2 trigger record 91 at 0x173138; prompt 0x1F65A [C]
     HOLLYWOOD_CORRECTIONAL = 2, -- Entry gate is in scene 2; cmd 0x65 at 0x2274A [C]
     JUMP_HOUSE = 13, WANDERER = 14, -- 0x1B3C06 / 0x1D5B52 scene profiles [C]
@@ -1075,6 +1076,7 @@ E.StoryFact = {
 
 E.StoryFlagBit = {
   SHAMAN_ITEM4_GIVEN = 6, -- FFFC1E bit 6, set by the b6 Horn service at 0x53DCA [C]
+  MICHAEL_MISSION_TOLD = 13, -- FFFC1E bit 13, set by Caleb handler 0x2193A [C]
   MEDICINE_LODGE_TURNED_AWAY = 24, -- FFFC1E bit 24, first Stark location visit at 0x1FDEA [C]
 }
 
@@ -1117,6 +1119,8 @@ E.FieldModeFlagBit = {
   BIT_16 = 16, -- Spirit Eyes first-contact marker at 0x53D7C [C]
   BIT_17 = 17, -- Gargoyle Horn turn-in marker at 0x53DE4 [C]
   BIT_18 = 18, -- Hell Hound pelt turn-in marker at 0x53E4C [C]
+  BIT_28 = 28, -- Sinsearach first-audience command 0x1B at 0x21902 [C]
+  BIT_29 = 29, -- Sinsearach first-audience command 0x1B at 0x21902 [C]
   BIT_20 = 20,
   BIT_23 = 23,
   RENRAKU_HEADHUNTER_TOLD = 25, -- command 0x92 at 0x23328 (`08 C1 00 19`) [C]

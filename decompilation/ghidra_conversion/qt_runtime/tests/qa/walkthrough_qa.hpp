@@ -254,6 +254,25 @@ inline int set_story_fact_for_setup(lua_State* state) {
     return 1;
 }
 
+inline int reenter_scene_for_setup(lua_State* state) {
+    auto* host = context(state);
+    lua_Integer scene = 0;
+    if (!integer_argument(state, 1, scene) || scene < 0 || scene > 55) {
+        lua_pushboolean(state, 0);
+        lua_pushliteral(state, "scene setup value must be in [0, 55]");
+        return 2;
+    }
+    const bool entered = host->runtime->reenter_field_scene_for_dump(
+        static_cast<std::uint16_t>(scene));
+    lua_pushboolean(state, entered);
+    if (!entered) {
+        lua_pushliteral(state,
+                        "QA scene setup could not load the requested scene");
+        return 2;
+    }
+    return 1;
+}
+
 inline int set_field_mode_flag_for_setup(lua_State* state) {
     auto* host = context(state);
     lua_Integer bit = 0;
@@ -1194,6 +1213,7 @@ inline std::optional<std::string_view> input_fixture_checkpoint(
     if (segment == "w5_b25") return "seg4_b23_end";
     if (segment == "w5_b29") return "seg4_b25_end";
     if (segment == "w5_b14_entry") return "seg4_b29_end";
+    if (segment == "w6_b17") return "seg4_b29_end";
     if (segment == "w5") return "seg3_end";
     if (segment == "w6") return "seg4_end";
     if (segment == "w7") return "seg5_end";
@@ -1213,6 +1233,7 @@ inline std::optional<std::string_view> output_fixture_checkpoint(
     if (segment == "w5_b25") return "seg4_b25_end";
     if (segment == "w5_b29") return "seg4_b29_end";
     if (segment == "w5_b14_entry") return "seg4_b14_entry_end";
+    if (segment == "w6_b17") return "seg5_b17_end";
     if (segment == "w5") return "seg4_end";
     if (segment == "w6") return "seg5_end";
     if (segment == "w7") return "seg6_end";
@@ -1357,6 +1378,7 @@ inline int run_walkthrough_qa(
             segment == "w5_b25" ||
             segment == "w5_b29" ||
             segment == "w5_b14_entry" ||
+            segment == "w6_b17" ||
             segment == "w5" || segment == "w6" || segment == "w7" ||
             segment == "w8") {
             resumed_from_fixture = true;
@@ -1441,6 +1463,8 @@ inline int run_walkthrough_qa(
     add_host_function(state, host, "grant_group_item", grant_group_item);
     add_host_function(state, host, "set_story_fact_for_setup",
                       set_story_fact_for_setup);
+    add_host_function(state, host, "reenter_scene_for_setup",
+                      reenter_scene_for_setup);
     add_host_function(state, host, "set_field_mode_flag_for_setup",
                       set_field_mode_flag_for_setup);
     add_host_function(state, host, "set_field_auxiliary_flag_for_setup",
