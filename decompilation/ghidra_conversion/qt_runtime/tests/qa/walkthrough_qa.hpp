@@ -240,6 +240,52 @@ inline int grant_group_item(lua_State* state) {
     return 1;
 }
 
+inline int set_story_fact_for_setup(lua_State* state) {
+    auto* host = context(state);
+    lua_Integer bit = 0;
+    if (!integer_argument(state, 1, bit) || bit < 0 || bit >= 32) {
+        lua_pushboolean(state, 0);
+        lua_pushliteral(state, "story flag bit must be in [0, 31]");
+        return 2;
+    }
+    const bool value = lua_toboolean(state, 2) != 0;
+    lua_pushboolean(state, host->runtime->set_story_flag_for_dump(
+        static_cast<std::uint8_t>(bit), value));
+    return 1;
+}
+
+inline int set_field_mode_flag_for_setup(lua_State* state) {
+    auto* host = context(state);
+    lua_Integer bit = 0;
+    if (!integer_argument(state, 1, bit) || bit < 0 || bit >= 32) {
+        lua_pushboolean(state, 0);
+        lua_pushliteral(state, "field mode flag bit must be in [0, 31]");
+        return 2;
+    }
+    const auto mask = std::uint32_t{1U} << static_cast<unsigned int>(bit);
+    auto flags = host->runtime->field_mode_flags_for_dump();
+    flags = lua_toboolean(state, 2) != 0 ? flags | mask : flags & ~mask;
+    host->runtime->seed_field_mode_flags_for_qa(flags);
+    lua_pushboolean(state, 1);
+    return 1;
+}
+
+inline int set_field_auxiliary_flag_for_setup(lua_State* state) {
+    auto* host = context(state);
+    lua_Integer bit = 0;
+    if (!integer_argument(state, 1, bit) || bit < 0 || bit >= 32) {
+        lua_pushboolean(state, 0);
+        lua_pushliteral(state, "field auxiliary flag bit must be in [0, 31]");
+        return 2;
+    }
+    const auto mask = std::uint32_t{1U} << static_cast<unsigned int>(bit);
+    auto flags = host->runtime->field_auxiliary_flags_for_dump();
+    flags = lua_toboolean(state, 2) != 0 ? flags | mask : flags & ~mask;
+    host->runtime->seed_field_auxiliary_flags_for_qa(flags);
+    lua_pushboolean(state, 1);
+    return 1;
+}
+
 inline std::optional<std::uint8_t> pad_byte(const std::string_view name) {
     const auto byte = [](const srx::Pad pad) {
         return static_cast<std::uint8_t>(
@@ -1142,6 +1188,8 @@ inline std::optional<std::string_view> input_fixture_checkpoint(
     if (segment == "w3") return "seg1_end";
     if (segment == "w3_b2") return "seg1_end";
     if (segment == "w4") return "seg2_b2_end";
+    if (segment == "w4_b7") return "seg3_b5_end";
+    if (segment == "w5_b13") return "seg2_b2_end";
     if (segment == "w5") return "seg3_end";
     if (segment == "w6") return "seg4_end";
     if (segment == "w7") return "seg5_end";
@@ -1155,6 +1203,8 @@ inline std::optional<std::string_view> output_fixture_checkpoint(
     if (segment == "w3") return "seg2_end";
     if (segment == "w3_b2") return "seg2_b2_end";
     if (segment == "w4") return "seg3_b5_end";
+    if (segment == "w4_b7") return "seg3_b7_end";
+    if (segment == "w5_b13") return "seg4_downtown_arrival_end";
     if (segment == "w5") return "seg4_end";
     if (segment == "w6") return "seg5_end";
     if (segment == "w7") return "seg6_end";
@@ -1293,6 +1343,8 @@ inline int run_walkthrough_qa(
         }
         if (segment == "seg1" || segment == "w3" ||
             segment == "w3_b2" || segment == "w4" ||
+            segment == "w4_b7" ||
+            segment == "w5_b13" ||
             segment == "w5" || segment == "w6" || segment == "w7" ||
             segment == "w8") {
             resumed_from_fixture = true;
@@ -1375,6 +1427,12 @@ inline int run_walkthrough_qa(
     add_host_function(state, host, "grant_nuyen", grant_nuyen);
     add_host_function(state, host, "grant_karma", grant_karma);
     add_host_function(state, host, "grant_group_item", grant_group_item);
+    add_host_function(state, host, "set_story_fact_for_setup",
+                      set_story_fact_for_setup);
+    add_host_function(state, host, "set_field_mode_flag_for_setup",
+                      set_field_mode_flag_for_setup);
+    add_host_function(state, host, "set_field_auxiliary_flag_for_setup",
+                      set_field_auxiliary_flag_for_setup);
     add_host_function(state, host, "snapshot", snapshot);
     const auto output_string = output_directory.string();
     lua_pushlstring(state, output_string.data(), output_string.size());

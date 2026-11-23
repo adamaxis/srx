@@ -174,6 +174,8 @@ E.MovementBearingDegrees = {
 E.Scene = {
     BIG_RHINO = 11, -- Scene-11 booth conversation is Mortimer Reed [C: 0x1D5B0C]
     COUNCIL_ISLAND = 4, -- Council Island field map; Spirit Eyes record 96 [C: 0x15BDF6]
+    DOWNTOWN_SEATTLE = 0, -- Scene-0 Icarus entrance record 53 at 0x0D57F0 [C]
+    ICARUS_DESCENDING = 12, -- Scene-12 Caleb booth event 30 at 0x1D605E [C]
     PENUMBRA_DISTRICT = 3, -- Scene-3 Mitsuhama and Big Rhino records [C]
     SALISH_SHIDHE = 6, -- Scene-6 Owlfeather lodge record 193 [C]
     STOKER_MOTEL = 2, -- Scene 2 trigger record 91 at 0x173138; prompt 0x1F65A [C]
@@ -1069,6 +1071,10 @@ E.StoryFact = {
   POST_ITO_BRIEFED = "post_ito_briefed",               -- dialogue at 0x21F58 [C site][H name]
   HEART_DELIVERED = "heart_delivered",                 -- service at 0x1F940 [C]
   FROSTY_MET = "frosty_met",                           -- handler at 0x21FD6 [C]
+}
+
+E.StoryFlagBit = {
+  SHAMAN_ITEM4_GIVEN = 6, -- FFFC1E bit 6, set by the b6 Horn service at 0x53DCA [C]
 }
 
 -- Transient field-mode state exposed through gameplay meaning. The host maps

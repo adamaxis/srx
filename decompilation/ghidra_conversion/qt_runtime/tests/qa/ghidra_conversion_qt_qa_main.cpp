@@ -52173,6 +52173,8 @@ int main(int argc, char** argv) {
                     *walkthrough_segment == "w3" ||
                     *walkthrough_segment == "w3_b2" ||
                     *walkthrough_segment == "w4" ||
+                    *walkthrough_segment == "w4_b7" ||
+                    *walkthrough_segment == "w5_b13" ||
                     *walkthrough_segment == "w5" ||
                     *walkthrough_segment == "w6" ||
                     *walkthrough_segment == "w7" ||

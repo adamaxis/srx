@@ -1770,6 +1770,9 @@ public:
     std::uint32_t field_auxiliary_flags_for_dump() const noexcept {
         return field_auxiliary_flags_;
     }
+    void seed_field_auxiliary_flags_for_qa(std::uint32_t flags) noexcept {
+        field_auxiliary_flags_ = flags;
+    }
     std::uint32_t field_world_fact_flags_for_dump() const noexcept {
         return field_exit_world_flags_;
     }
