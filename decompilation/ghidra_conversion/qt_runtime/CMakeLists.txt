@@ -960,8 +960,34 @@ set_tests_properties(shadowrun_walkthrough_w5_b24_salish_travel
     PROPERTIES LABELS "walkthrough" TIMEOUT 300
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 
+# This negative gate verifies the b24 prerequisite is absent on a real b23
+# checkpoint. It is not acceptance of b25's Stark-found path.
+set(_shadowrun_seg4_b25_gate_fixture
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/tests_lua/fixtures/walkthrough/seg4_b25_gate_end.json")
+add_test(NAME shadowrun_walkthrough_w5_b25_prerequisite_gate
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough w5_b25_gate
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-w5-b25-prerequisite-gate"
+        --from-fixture "${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/tests_lua/fixtures/walkthrough/seg4_b23_end.json")
+add_test(NAME shadowrun_walkthrough_w5_b25_gate_fixture_determinism
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough w5_b25_gate
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-w5-b25-gate-fixture-generation"
+        --from-fixture "${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/tests_lua/fixtures/walkthrough/seg4_b23_end.json"
+        --write-fixture
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-w5-b25-gate-fixture-generation/seg4_b25_gate_end.generated.json"
+        --compare-fixture "${_shadowrun_seg4_b25_gate_fixture}")
+set_tests_properties(shadowrun_walkthrough_w5_b25_prerequisite_gate
+    shadowrun_walkthrough_w5_b25_gate_fixture_determinism
+    PROPERTIES LABELS "walkthrough" TIMEOUT 300
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+
 # b25 is gated until the live Scene-7 b24 exit produces seg4_b24_end. The old
 # route seeded MEDICINE_LODGE_TURNED_AWAY, so its acceptance test is invalid.
+set(_shadowrun_w5_b25_live_ready FALSE)
+if(_shadowrun_w5_b25_live_ready)
 set(_shadowrun_seg4_b25_fixture
     "${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/tests_lua/fixtures/walkthrough/seg4_b25_end.json")
 
@@ -1059,6 +1085,7 @@ set_tests_properties(shadowrun_walkthrough_w6_b19
     shadowrun_walkthrough_w6_b19_fixture_determinism
     PROPERTIES LABELS "walkthrough" TIMEOUT 300
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+endif()
 
 # W6 b20 remains unretrofitted under the strict route rules; no CTests are
 # registered until its real predecessors and mode/effect transitions exist.
