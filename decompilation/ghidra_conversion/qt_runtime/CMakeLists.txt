@@ -914,6 +914,64 @@ set_tests_properties(shadowrun_walkthrough_w5_b23
     PROPERTIES LABELS "walkthrough" TIMEOUT 300
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 
+set(_shadowrun_seg4_b25_fixture
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/tests_lua/fixtures/walkthrough/seg4_b25_end.json")
+add_test(NAME shadowrun_walkthrough_w5_b25
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough w5_b25
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-w5-b25-gate"
+        --from-fixture "${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/tests_lua/fixtures/walkthrough/seg4_b23_end.json")
+add_test(NAME shadowrun_walkthrough_w5_b25_fixture_determinism
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough w5_b25
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-w5-b25-fixture-generation"
+        --from-fixture "${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/tests_lua/fixtures/walkthrough/seg4_b23_end.json"
+        --write-fixture
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-w5-b25-fixture-generation/seg4_b25_end.generated.json"
+        --compare-fixture "${_shadowrun_seg4_b25_fixture}")
+add_test(NAME shadowrun_walkthrough_seg4_b25_fixture_restore
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough fixture_restore
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-seg4-b25-fixture-restore"
+        --from-fixture "${_shadowrun_seg4_b25_fixture}")
+set_tests_properties(shadowrun_walkthrough_w5_b25
+    shadowrun_walkthrough_w5_b25_fixture_determinism
+    shadowrun_walkthrough_seg4_b25_fixture_restore
+    PROPERTIES LABELS "walkthrough" TIMEOUT 300
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+
+set(_shadowrun_seg4_b29_fixture
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/tests_lua/fixtures/walkthrough/seg4_b29_end.json")
+add_test(NAME shadowrun_walkthrough_w5_b29
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough w5_b29
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-w5-b29-gate"
+        --from-fixture "${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/tests_lua/fixtures/walkthrough/seg4_b25_end.json")
+add_test(NAME shadowrun_walkthrough_w5_b29_fixture_determinism
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough w5_b29
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-w5-b29-fixture-generation"
+        --from-fixture "${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/tests_lua/fixtures/walkthrough/seg4_b25_end.json"
+        --write-fixture
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-w5-b29-fixture-generation/seg4_b29_end.generated.json"
+        --compare-fixture "${_shadowrun_seg4_b29_fixture}")
+add_test(NAME shadowrun_walkthrough_seg4_b29_fixture_restore
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough fixture_restore
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-seg4-b29-fixture-restore"
+        --from-fixture "${_shadowrun_seg4_b29_fixture}")
+set_tests_properties(shadowrun_walkthrough_w5_b29
+    shadowrun_walkthrough_w5_b29_fixture_determinism
+    shadowrun_walkthrough_seg4_b29_fixture_restore
+    PROPERTIES LABELS "walkthrough" TIMEOUT 300
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+
 # Scene 21's ROM rectangles exercise the real field-tick alarm bridge [C].
 # The test writes an actual.bmp checkpoint as a headless QA artifact [H].
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_alarm_qa

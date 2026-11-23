@@ -1075,6 +1075,7 @@ E.StoryFact = {
 
 E.StoryFlagBit = {
   SHAMAN_ITEM4_GIVEN = 6, -- FFFC1E bit 6, set by the b6 Horn service at 0x53DCA [C]
+  MEDICINE_LODGE_TURNED_AWAY = 24, -- FFFC1E bit 24, first Stark location visit at 0x1FDEA [C]
 }
 
 -- Transient field-mode state exposed through gameplay meaning. The host maps
