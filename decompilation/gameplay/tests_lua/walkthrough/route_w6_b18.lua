@@ -30,7 +30,6 @@ local function visit_red_buffalo(host)
 end
 
 local story = E.StoryFact
-local bit = E.StoryFlagBit
 local mode = E.FieldModeFlagBit
 local red_gift = E.GroupItemId.GIFT_RED_BUFFALO_WOMAN
 local lady_gift = E.GroupItemId.GIFT_LADY_GILLIAN
@@ -38,29 +37,6 @@ local lady_gift = E.GroupItemId.GIFT_LADY_GILLIAN
 return {
     resume_from_fixture_step = 1,
     steps = {
-        {
-            id = "setup_b17_prerequisite_for_b18_test",
-            milestone = 0,
-            expected = {
-                scene = E.Scene.SALISH_SHIDHE,
-                facts = { [story.RITUAL_OF_BINDING] = true },
-                flags = {
-                    story = { set = { story.RITUAL_OF_BINDING } },
-                    mode = { set = { mode.BIT_0, mode.BIT_28, mode.BIT_29 } },
-                },
-                group_items = { set = { red_gift } },
-            },
-            run = function(host)
-                assert(host.set_story_fact_for_setup(
-                    bit.RITUAL_OF_BINDING, true)) -- Route setup: seed b17 because its staged-scene fixture does not restore.
-                assert(host.set_field_mode_flag_for_setup(mode.BIT_0, true))
-                assert(host.set_field_mode_flag_for_setup(mode.BIT_28, true))
-                assert(host.set_field_mode_flag_for_setup(mode.BIT_29, true))
-                assert(host.grant_group_item(red_gift)) -- Route setup grant: provide b17's Red Buffalo gift without replaying prior steps.
-                assert(host.reenter_scene_for_setup(E.Scene.SALISH_SHIDHE)) -- Route setup: stage Scene 6 after the blocked W5-to-W6 travel chain.
-                return "seeded b17 and its gift, then staged the production Scene-6 service context"
-            end,
-        },
         {
             id = "deliver_red_buffalo_gift_b18",
             milestone = 18,
@@ -81,9 +57,11 @@ return {
             },
             run = function(host)
                 local snapshot = host.snapshot()
+                assert(snapshot.scene == E.Scene.SALISH_SHIDHE,
+                    "b18 requires a production-reached Scene-6 checkpoint")
                 assert(snapshot.story_facts[story.RITUAL_OF_BINDING] == true and
                        snapshot.group_items[red_gift] == true,
-                    "b17 setup prerequisites are missing")
+                    "live b17 prerequisites or its gift are missing")
                 visit_red_buffalo(host)
                 return "Red Buffalo Woman consumed her gift and set b18 through live dialogue"
             end,

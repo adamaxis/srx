@@ -35,29 +35,12 @@ local function reach_first_audience(host)
 end
 
 local story = E.StoryFact
-local bit = E.StoryFlagBit
 local mode = E.FieldModeFlagBit
 local bundle = E.GroupItemId.GIFT_RED_BUFFALO_WOMAN
 
 return {
     resume_from_fixture_step = 1,
     steps = {
-        {
-            id = "setup_blocked_b13_prerequisite_for_b17",
-            milestone = 0,
-            expected = {
-                scene = E.Scene.SINSEARACH_VILLAGE_GATE,
-                facts = { [story.MICHAEL_MISSION_TOLD] = true },
-                flags = { story = { set = { story.MICHAEL_MISSION_TOLD } } },
-            },
-            run = function(host)
-                assert(host.set_story_fact_for_setup(
-                    bit.MICHAEL_MISSION_TOLD, true)) -- Route setup: seed blocked b13 so the live b17 branch can run.
-                assert(host.reenter_scene_for_setup(
-                    E.Scene.SINSEARACH_VILLAGE_GATE)) -- Route setup: stage the gated Scene-9 conversation after unresolved travel.
-                return "seeded b13 and staged the production Scene-9 gate context"
-            end,
-        },
         {
             id = "complete_sinsearach_first_audience_b17",
             milestone = 17,
@@ -71,7 +54,10 @@ return {
                 group_items = { set = { bundle } },
             },
             run = function(host)
-                assert(host.snapshot().story_facts[story.MICHAEL_MISSION_TOLD] == true,
+                local before = host.snapshot()
+                assert(before.scene == E.Scene.SINSEARACH_VILLAGE_GATE,
+                    "b17 requires a production-reached Scene-9 checkpoint")
+                assert(before.story_facts[story.MICHAEL_MISSION_TOLD] == true,
                     "b13 setup prerequisite is missing")
                 reach_first_audience(host)
                 return "Lady Gillian's live first-audience Yes set b17 and granted the bundle"
