@@ -285,7 +285,7 @@
             "camera_y": 0,
             "direction": 0,
             "heading": 0,
-            "mode": 1,
+            "mode": 0,
             "player_x": 1536,
             "player_y": 3264,
             "reference": 12,

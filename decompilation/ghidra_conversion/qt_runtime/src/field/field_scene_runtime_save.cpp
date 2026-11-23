@@ -77,6 +77,8 @@ using field_scene_detail::kFieldModalReturnTransitionFrames;
 using field_scene_detail::magic_action_record_from_runner;
 
 namespace {
+constexpr std::uint16_t kRomClearedFieldInteractionMode = 0U;
+
 bool read_save_integer(const QJsonObject& object, const char* key,
                        const std::int64_t minimum,
                        const std::int64_t maximum,
@@ -413,8 +415,9 @@ std::optional<QJsonObject> FieldSceneRuntime::capture_game_save_snapshot(
     // FFDDC4 at 0x2F78/0x308A [C]. Persist the word scene reference here.
     scene.insert(QStringLiteral("reference"),
                  state_.field_scene_buffers.scene_reference);
-    scene.insert(QStringLiteral("mode"),
-                 field_movement_transition_state_.world_mode);
+    // ROM 0x594E0 clears FFDF40 while loading a saved scene, so the transient
+    // interaction mode is not part of the persistent save snapshot.
+    scene.insert(QStringLiteral("mode"), kRomClearedFieldInteractionMode);
     scene.insert(QStringLiteral("player_x"), field_entity_.world_position.x);
     scene.insert(QStringLiteral("player_y"), field_entity_.world_position.y);
     scene.insert(QStringLiteral("heading"), field_movement_state_.heading);
