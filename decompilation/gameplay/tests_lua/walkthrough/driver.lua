@@ -206,6 +206,7 @@ local function load_route(segment)
         w4 = "walkthrough.route_w4",
         w4_b7 = "walkthrough.route_w4_b7",
         w5_b13 = "walkthrough.route_w5_b13",
+        w5_b23 = "walkthrough.route_w5_b23",
         w5 = "walkthrough.route_w5",
         w6 = "walkthrough.route_w6",
         w7 = "walkthrough.route_w7",

@@ -1190,6 +1190,7 @@ inline std::optional<std::string_view> input_fixture_checkpoint(
     if (segment == "w4") return "seg2_b2_end";
     if (segment == "w4_b7") return "seg3_b5_end";
     if (segment == "w5_b13") return "seg2_b2_end";
+    if (segment == "w5_b23") return "seg4_downtown_arrival_end";
     if (segment == "w5") return "seg3_end";
     if (segment == "w6") return "seg4_end";
     if (segment == "w7") return "seg5_end";
@@ -1205,6 +1206,7 @@ inline std::optional<std::string_view> output_fixture_checkpoint(
     if (segment == "w4") return "seg3_b5_end";
     if (segment == "w4_b7") return "seg3_b7_end";
     if (segment == "w5_b13") return "seg4_downtown_arrival_end";
+    if (segment == "w5_b23") return "seg4_b23_end";
     if (segment == "w5") return "seg4_end";
     if (segment == "w6") return "seg5_end";
     if (segment == "w7") return "seg6_end";
@@ -1345,6 +1347,7 @@ inline int run_walkthrough_qa(
             segment == "w3_b2" || segment == "w4" ||
             segment == "w4_b7" ||
             segment == "w5_b13" ||
+            segment == "w5_b23" ||
             segment == "w5" || segment == "w6" || segment == "w7" ||
             segment == "w8") {
             resumed_from_fixture = true;
