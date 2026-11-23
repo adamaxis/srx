@@ -179,6 +179,7 @@ E.Scene = {
     ICARUS_DESCENDING = 12, -- Scene-12 Caleb booth event 30 at 0x1D605E [C]
     PENUMBRA_DISTRICT = 3, -- Scene-3 Mitsuhama and Big Rhino records [C]
     SALISH_SHIDHE = 6, -- Scene-6 Owlfeather lodge record 193 [C]
+    CAVE_SCENE_45 = 45, -- Scene 6 west-exit route reached this cave scene [H]
     HOLLYWOOD_CORRECTIONAL_INTERIOR = 20, -- Scene-2 event-0 row selects scene 20 [C: 0x172CDC]
     SINSEARACH_VILLAGE_GATE = 9, -- Scene-9 event 0 gate [C; guide-name crosswalk]
     STOKER_MOTEL = 2, -- Scene 2 trigger record 91 at 0x173138; prompt 0x1F65A [C]

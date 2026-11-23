@@ -1042,6 +1042,35 @@ set_tests_properties(shadowrun_walkthrough_w5_b25_prerequisite_gate
     PROPERTIES LABELS "walkthrough" TIMEOUT 300
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 
+set(_shadowrun_seg4_b25_cave_entry_fixture
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/tests_lua/fixtures/walkthrough/seg4_b25_cave_entry_end.json")
+add_test(NAME shadowrun_walkthrough_w5_b25_cave_entry
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough w5_b25_cave_entry
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-w5-b25-cave-entry"
+        --from-fixture "${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/tests_lua/fixtures/walkthrough/seg4_b24_salish_end.json")
+add_test(NAME shadowrun_walkthrough_w5_b25_cave_entry_fixture_determinism
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough w5_b25_cave_entry
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-w5-b25-cave-entry-fixture-generation"
+        --from-fixture "${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/tests_lua/fixtures/walkthrough/seg4_b24_salish_end.json"
+        --write-fixture
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-w5-b25-cave-entry-fixture-generation/seg4_b25_cave_entry_end.generated.json"
+        --compare-fixture "${_shadowrun_seg4_b25_cave_entry_fixture}")
+add_test(NAME shadowrun_walkthrough_seg4_b25_cave_entry_fixture_restore
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough fixture_restore
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-seg4-b25-cave-entry-fixture-restore"
+        --from-fixture "${_shadowrun_seg4_b25_cave_entry_fixture}")
+set_tests_properties(shadowrun_walkthrough_w5_b25_cave_entry
+    shadowrun_walkthrough_w5_b25_cave_entry_fixture_determinism
+    shadowrun_walkthrough_seg4_b25_cave_entry_fixture_restore
+    PROPERTIES LABELS "walkthrough" TIMEOUT 300
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+
 # b25 is gated until the live Scene-7 b24 exit produces seg4_b24_end. The old
 # route seeded MEDICINE_LODGE_TURNED_AWAY, so its acceptance test is invalid.
 set(_shadowrun_w5_b25_live_ready FALSE)
