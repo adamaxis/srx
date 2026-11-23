@@ -1016,6 +1016,29 @@ set_tests_properties(shadowrun_walkthrough_w6_b17
     PROPERTIES LABELS "walkthrough" TIMEOUT 300
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 
+set(_shadowrun_seg5_b19_fixture
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/tests_lua/fixtures/walkthrough/seg5_b19_end.json")
+add_test(NAME shadowrun_walkthrough_w6_b19
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough w6_b19
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-w6-b19"
+        --from-fixture "${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/tests_lua/fixtures/walkthrough/seg4_b29_end.json")
+add_test(NAME shadowrun_walkthrough_w6_b19_fixture_determinism
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough w6_b19
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-w6-b19-fixture-generation"
+        --from-fixture "${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/tests_lua/fixtures/walkthrough/seg4_b29_end.json"
+        --write-fixture
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-w6-b19-fixture-generation/seg5_b19_end.generated.json"
+        --compare-fixture "${_shadowrun_seg5_b19_fixture}")
+set_tests_properties(shadowrun_walkthrough_w6_b19
+    shadowrun_walkthrough_w6_b19_fixture_determinism
+    PROPERTIES LABELS "walkthrough" TIMEOUT 300
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+
+
 # Scene 21's ROM rectangles exercise the real field-tick alarm bridge [C].
 # The test writes an actual.bmp checkpoint as a headless QA artifact [H].
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_alarm_qa

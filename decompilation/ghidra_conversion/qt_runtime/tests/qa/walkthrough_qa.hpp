@@ -289,6 +289,35 @@ inline int set_field_mode_flag_for_setup(lua_State* state) {
     return 1;
 }
 
+inline int set_field_mode_effect_flag_for_setup(lua_State* state) {
+    auto* host = context(state);
+    lua_Integer bit = 0;
+    if (!integer_argument(state, 1, bit) || bit < 0 || bit >= 32) {
+        lua_pushboolean(state, 0);
+        lua_pushliteral(state,
+                        "field mode effect flag bit must be in [0, 31]");
+        return 2;
+    }
+    const auto mask = std::uint32_t{1U} << static_cast<unsigned int>(bit);
+    auto flags = host->runtime->field_mode_effect_flags_for_dump();
+    flags = lua_toboolean(state, 2) != 0 ? flags | mask : flags & ~mask;
+    host->runtime->seed_field_mode_effect_flags_for_qa(flags);
+    lua_pushboolean(state, 1);
+    return 1;
+}
+
+inline int set_pending_world_effect_for_setup(lua_State* state) {
+    auto* host = context(state);
+    const bool pending = lua_toboolean(state, 1) != 0;
+    auto& runtime = *host->runtime;
+    runtime.seed_conditional_actor_effect_facts_for_dump(
+        runtime.world_effect_active_for_dump(), pending,
+        runtime.active_effect_index_for_dump(),
+        runtime.selected_effect_index_for_dump());
+    lua_pushboolean(state, 1);
+    return 1;
+}
+
 inline int set_field_auxiliary_flag_for_setup(lua_State* state) {
     auto* host = context(state);
     lua_Integer bit = 0;
@@ -1214,6 +1243,8 @@ inline std::optional<std::string_view> input_fixture_checkpoint(
     if (segment == "w5_b29") return "seg4_b25_end";
     if (segment == "w5_b14_entry") return "seg4_b29_end";
     if (segment == "w6_b17") return "seg4_b29_end";
+    if (segment == "w6_b18") return "seg4_b29_end";
+    if (segment == "w6_b19") return "seg4_b29_end";
     if (segment == "w5") return "seg3_end";
     if (segment == "w6") return "seg4_end";
     if (segment == "w7") return "seg5_end";
@@ -1234,6 +1265,8 @@ inline std::optional<std::string_view> output_fixture_checkpoint(
     if (segment == "w5_b29") return "seg4_b29_end";
     if (segment == "w5_b14_entry") return "seg4_b14_entry_end";
     if (segment == "w6_b17") return "seg5_b17_end";
+    if (segment == "w6_b18") return "seg5_b18_end";
+    if (segment == "w6_b19") return "seg5_b19_end";
     if (segment == "w5") return "seg4_end";
     if (segment == "w6") return "seg5_end";
     if (segment == "w7") return "seg6_end";
@@ -1379,6 +1412,8 @@ inline int run_walkthrough_qa(
             segment == "w5_b29" ||
             segment == "w5_b14_entry" ||
             segment == "w6_b17" ||
+            segment == "w6_b18" ||
+            segment == "w6_b19" ||
             segment == "w5" || segment == "w6" || segment == "w7" ||
             segment == "w8") {
             resumed_from_fixture = true;
@@ -1467,6 +1502,10 @@ inline int run_walkthrough_qa(
                       reenter_scene_for_setup);
     add_host_function(state, host, "set_field_mode_flag_for_setup",
                       set_field_mode_flag_for_setup);
+    add_host_function(state, host, "set_field_mode_effect_flag_for_setup",
+                      set_field_mode_effect_flag_for_setup);
+    add_host_function(state, host, "set_pending_world_effect_for_setup",
+                      set_pending_world_effect_for_setup);
     add_host_function(state, host, "set_field_auxiliary_flag_for_setup",
                       set_field_auxiliary_flag_for_setup);
     add_host_function(state, host, "snapshot", snapshot);

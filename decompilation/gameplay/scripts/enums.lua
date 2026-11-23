@@ -178,6 +178,7 @@ E.Scene = {
     ICARUS_DESCENDING = 12, -- Scene-12 Caleb booth event 30 at 0x1D605E [C]
     PENUMBRA_DISTRICT = 3, -- Scene-3 Mitsuhama and Big Rhino records [C]
     SALISH_SHIDHE = 6, -- Scene-6 Owlfeather lodge record 193 [C]
+    HOLLYWOOD_CORRECTIONAL_INTERIOR = 20, -- Scene-2 event-0 row selects scene 20 [C: 0x172CDC]
     SINSEARACH_VILLAGE_GATE = 9, -- Scene-9 event 0 gate [C; guide-name crosswalk]
     STOKER_MOTEL = 2, -- Scene 2 trigger record 91 at 0x173138; prompt 0x1F65A [C]
     HOLLYWOOD_CORRECTIONAL = 2, -- Entry gate is in scene 2; cmd 0x65 at 0x2274A [C]
@@ -1077,6 +1078,9 @@ E.StoryFact = {
 E.StoryFlagBit = {
   SHAMAN_ITEM4_GIVEN = 6, -- FFFC1E bit 6, set by the b6 Horn service at 0x53DCA [C]
   MICHAEL_MISSION_TOLD = 13, -- FFFC1E bit 13, set by Caleb handler 0x2193A [C]
+  RITUAL_OF_BINDING = 17, -- FFFC1E bit 17, set by command 0x1B at 0x2196C [C]
+  RED_BUFFALO_WOMAN = 18, -- FFFC1E bit 18, set by service at 0x5435C [C]
+  ILENE_MET = 19, -- FFFC1E bit 19, set by Scene-20 activity at 0x54402 [C]
   MEDICINE_LODGE_TURNED_AWAY = 24, -- FFFC1E bit 24, first Stark location visit at 0x1FDEA [C]
 }
 
@@ -1121,6 +1125,8 @@ E.FieldModeFlagBit = {
   BIT_18 = 18, -- Hell Hound pelt turn-in marker at 0x53E4C [C]
   BIT_28 = 28, -- Sinsearach first-audience command 0x1B at 0x21902 [C]
   BIT_29 = 29, -- Sinsearach first-audience command 0x1B at 0x21902 [C]
+  BIT_30 = 30, -- Sinsearach gate command 0x44 at 0x21FD0 [C]
+  BIT_31 = 31, -- Scene-20 Ilene activity clears this at 0x54402 [C]
   BIT_20 = 20,
   BIT_23 = 23,
   RENRAKU_HEADHUNTER_TOLD = 25, -- command 0x92 at 0x23328 (`08 C1 00 19`) [C]
@@ -1129,6 +1135,7 @@ E.FieldModeFlagBit = {
 -- Command 0xE6 at 0x24992 sets FFFC34 bit 4 (`08 C1 00 04`).
 E.FieldModeEffectFlagBit = {
   ILENE_INFORMATION_HEARD = 0, -- command 0x91 at 0x23310 (`08 C1 00 00`) [C]
+  ILENE_ACTIVITY_FOLLOWUP = 1, -- Scene-20 Ilene activity sets bit 1 at 0x54402 [C]
   BIT_4 = 4,
   -- Seattle General 0x1F8B4/0x22664 clear bit 18 and 0x1F8B8/0x22668 set
   -- bit 19 when Stark is admitted; 0x1F918 clears bit 20 at the heart
@@ -1142,6 +1149,8 @@ E.FieldAuxiliaryFlagBit = {
   SHAMAN_RITUAL_STAGE_0 = 0, -- Spirit Eyes first contact at 0x53D80 [C]
   SHAMAN_RITUAL_STAGE_1 = 1, -- Gargoyle Horn turn-in at 0x53E08 [C]
   SHAMAN_RITUAL_STAGE_2 = 2, -- Hell Hound pelt turn-in at 0x53E7A [C]
+  ILENE_TIP_76 = 12, -- Scene-20 Ilene activity clears Notebook tip 76 at 0x54440 [C]
+  ILENE_TIP_77 = 13, -- Scene-20 Ilene activity clears Notebook tip 77 at 0x54440 [C]
 }
 
 E.JohnsonContactFee = {
