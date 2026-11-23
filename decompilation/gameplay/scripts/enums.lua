@@ -1081,6 +1081,7 @@ E.StoryFlagBit = {
   RITUAL_OF_BINDING = 17, -- FFFC1E bit 17, set by command 0x1B at 0x2196C [C]
   RED_BUFFALO_WOMAN = 18, -- FFFC1E bit 18, set by service at 0x5435C [C]
   ILENE_MET = 19, -- FFFC1E bit 19, set by Scene-20 activity at 0x54402 [C]
+  GILLIAN_INITIATION = 20, -- FFFC1E bit 20, set by command 0x37 at 0x21E58 [C]
   MEDICINE_LODGE_TURNED_AWAY = 24, -- FFFC1E bit 24, first Stark location visit at 0x1FDEA [C]
 }
 
@@ -1136,6 +1137,8 @@ E.FieldModeFlagBit = {
 E.FieldModeEffectFlagBit = {
   ILENE_INFORMATION_HEARD = 0, -- command 0x91 at 0x23310 (`08 C1 00 00`) [C]
   ILENE_ACTIVITY_FOLLOWUP = 1, -- Scene-20 Ilene activity sets bit 1 at 0x54402 [C]
+  BIT_2 = 2, -- Command 0x37 sets FFFC34 bit 2 at 0x21E38 [C]
+  BIT_3 = 3, -- Commands 0x36/0x37 clear FFFC34 bit 3 [C]
   BIT_4 = 4,
   -- Seattle General 0x1F8B4/0x22664 clear bit 18 and 0x1F8B8/0x22668 set
   -- bit 19 when Stark is admitted; 0x1F918 clears bit 20 at the heart

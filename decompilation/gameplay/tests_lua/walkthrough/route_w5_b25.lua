@@ -34,28 +34,11 @@ local function admit_stark(host)
 end
 
 local fact = E.StoryFact
-local fact_bit = E.StoryFlagBit
 local effect = E.FieldModeEffectFlagBit
 
 return {
     resume_from_fixture_step = 1,
     steps = {
-        {
-            id = "setup_b24_prerequisite_for_b25_test",
-            milestone = 25,
-            expected = {
-                scene = E.Scene.DOWNTOWN_SEATTLE,
-                facts = { [fact.MEDICINE_LODGE_TURNED_AWAY] = true },
-                flags = {
-                    story = { set = { fact.MEDICINE_LODGE_TURNED_AWAY } },
-                },
-            },
-            run = function(host)
-                assert(host.set_story_fact_for_setup(
-                    fact_bit.MEDICINE_LODGE_TURNED_AWAY, true)) -- Route setup: seed b24 as a prerequisite; b25 remains live-tested.
-                return "prepared b24 prerequisite for the independent b25 hospital test"
-            end,
-        },
         {
             id = "admit_stark_at_seattle_general_b25",
             milestone = 25,
