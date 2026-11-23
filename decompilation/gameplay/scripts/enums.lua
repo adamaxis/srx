@@ -23,6 +23,7 @@ E.FieldModePrompt = {
     NONE = "none",
     LITTLE_CHIBA_STORE = "little_chiba_store",
     ARES_EMPORIUM = "ares_emporium",
+    MEDICINE_LODGE_FIRST_VISIT = "medicine_lodge_first_visit",
 }
 
 E.FieldLocationReturnAnchor = {

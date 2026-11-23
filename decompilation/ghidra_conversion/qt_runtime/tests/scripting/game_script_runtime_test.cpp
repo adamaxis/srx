@@ -11866,6 +11866,11 @@ int main() {
     const auto unmatched_mode_prompt = mode_prompt_content(2U, 2U, 0, "");
     const auto unnamed_renraku_service_prompt =
         mode_prompt_content(5U, 4U, 0, "");
+    scripts.set_story_state({{"medicine_lodge_turned_away", false}});
+    const auto medicine_lodge_first_visit = mode_prompt_content(
+        kMedicineLodgeSourceMode, kMedicineLodgeExitEventCode, 0, "");
+    const auto medicine_lodge_repeat = mode_prompt_content(
+        kMedicineLodgeSourceMode, kMedicineLodgeExitEventCode, 0, "");
     const auto valid_mode_prompt = [&](const auto& content,
                                        const std::string_view text_key,
                                        const std::string_view portrait_alias) {
@@ -11963,6 +11968,15 @@ int main() {
                         weapons_world_payment,
                         "field.mode.weapons_world.package_payment",
                         "field.mode.entry.ares.sprite") &&
+                    valid_mode_prompt(
+                        medicine_lodge_first_visit,
+                        "field.mode.medicine_lodge.first_visit", "none") &&
+                    medicine_lodge_repeat.has_value() &&
+                    medicine_lodge_repeat->at("status") == "unmatched" &&
+                    scripts.story_state().count(
+                        "medicine_lodge_turned_away") != 0U &&
+                    scripts.story_state().at(
+                        "medicine_lodge_turned_away") &&
                     unmatched_mode_prompt.has_value() &&
                     unmatched_mode_prompt->at("status") == "unmatched" &&
                     unmatched_mode_prompt->at("text_key") == "none" &&

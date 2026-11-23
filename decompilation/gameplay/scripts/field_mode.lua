@@ -2,6 +2,7 @@
 -- context is read-only; this module chooses the narrative record and optional
 -- speaker art while the generic presenter owns layout, timing, and input.
 local E = require("enums")
+local StoryFacts = require("story_facts")
 local FieldMode = {}
 
 local function prompt(text_key, portrait_alias)
@@ -44,6 +45,21 @@ end
 
 function FieldMode.mode_text_content()
     local field = game.field
+    if field.prompt_id == E.FieldModePrompt.MEDICINE_LODGE_FIRST_VISIT then
+        local turned_away = E.StoryFact.MEDICINE_LODGE_TURNED_AWAY
+        if StoryFacts.is_set(turned_away) == true then
+            return {
+                status = "unmatched",
+                text_key = "none",
+                portrait_alias = "none",
+            }
+        end
+        -- ROM 0x1FDCA..0x1FDF4 sets FFFC1E bit 24 before selecting text
+        -- 0x11B714 on the first Scene-7/event-0 exit.
+        StoryFacts.set(turned_away)
+        return prompt("field.mode.medicine_lodge.first_visit", "none")
+    end
+
     local renraku_store = renraku_store_prompt(field)
     if renraku_store ~= nil then
         return renraku_store

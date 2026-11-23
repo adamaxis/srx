@@ -1424,7 +1424,15 @@ enum class ScriptFieldModePromptId : std::uint8_t {
     none,
     little_chiba_store,
     ares_emporium,
+    medicine_lodge_first_visit,
 };
+
+inline constexpr std::uint8_t kLittleChibaSourceMode = 2U;
+inline constexpr std::uint8_t kLittleChibaStoreEventCode = 1U;
+inline constexpr std::uint8_t kAresEmporiumSourceMode = 2U;
+inline constexpr std::uint8_t kAresEmporiumEventCode = 11U;
+inline constexpr std::uint8_t kMedicineLodgeSourceMode = 7U;
+inline constexpr std::uint8_t kMedicineLodgeExitEventCode = 0U;
 
 // Translate the source-selected mode/event pair into the content identity
 // consumed by Lua. ROM 0x1F830 selects Little Chiba's Scene-2/event-1 prompt;
@@ -1434,11 +1442,17 @@ constexpr ScriptFieldModePromptId
 script_field_mode_prompt_id_from_source_context(
     const std::uint8_t source_mode,
     const std::uint8_t source_event_code) noexcept {
-    if (source_mode == 2U && source_event_code == 1U) {
+    if (source_mode == kLittleChibaSourceMode &&
+        source_event_code == kLittleChibaStoreEventCode) {
         return ScriptFieldModePromptId::little_chiba_store;
     }
-    if (source_mode == 2U && source_event_code == 11U) {
+    if (source_mode == kAresEmporiumSourceMode &&
+        source_event_code == kAresEmporiumEventCode) {
         return ScriptFieldModePromptId::ares_emporium;
+    }
+    if (source_mode == kMedicineLodgeSourceMode &&
+        source_event_code == kMedicineLodgeExitEventCode) {
+        return ScriptFieldModePromptId::medicine_lodge_first_visit;
     }
     return ScriptFieldModePromptId::none;
 }
@@ -1450,6 +1464,8 @@ constexpr std::string_view script_field_mode_prompt_id(
         return "little_chiba_store";
     case ScriptFieldModePromptId::ares_emporium:
         return "ares_emporium";
+    case ScriptFieldModePromptId::medicine_lodge_first_visit:
+        return "medicine_lodge_first_visit";
     case ScriptFieldModePromptId::none:
         return "none";
     }
