@@ -52177,6 +52177,7 @@ int main(int argc, char** argv) {
                     *walkthrough_segment == "w4_b7" ||
                     *walkthrough_segment == "w5_b13" ||
                     *walkthrough_segment == "w5_b13_icarus_entry" ||
+                    *walkthrough_segment == "w5_b13_caleb" ||
                     *walkthrough_segment == "w5_b23" ||
                     *walkthrough_segment == "w5_b24" ||
                     *walkthrough_segment == "w5_b25_gate" ||

@@ -62,6 +62,7 @@ return {
             milestone = 13,
             expected = {
                 scene = E.Scene.ICARUS_DESCENDING,
+                karma_delta = { 2, 2, 2 },
                 facts = { [fact.MICHAEL_MISSION_TOLD] = true },
                 flags = {
                     story = { set = { fact.MICHAEL_MISSION_TOLD } },

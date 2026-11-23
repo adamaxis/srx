@@ -1240,6 +1240,7 @@ inline std::optional<std::string_view> input_fixture_checkpoint(
     if (segment == "w4_b7") return "seg3_b6_end";
     if (segment == "w5_b13") return "seg2_b2_end";
     if (segment == "w5_b13_icarus_entry") return "seg4_downtown_arrival_end";
+    if (segment == "w5_b13_caleb") return "seg4_icarus_entry_end";
     if (segment == "w5_b23") return "seg4_downtown_arrival_end";
     if (segment == "w5_b24") return "seg4_b23_end";
     if (segment == "w5_b25_gate") return "seg4_b23_end";
@@ -1267,6 +1268,7 @@ inline std::optional<std::string_view> output_fixture_checkpoint(
     if (segment == "w4_b7") return "seg3_b7_end";
     if (segment == "w5_b13") return "seg4_downtown_arrival_end";
     if (segment == "w5_b13_icarus_entry") return "seg4_icarus_entry_end";
+    if (segment == "w5_b13_caleb") return "seg4_b13_end";
     if (segment == "w5_b23") return "seg4_b23_end";
     if (segment == "w5_b24") return "seg4_b24_salish_end";
     if (segment == "w5_b25_gate") return "seg4_b25_gate_end";

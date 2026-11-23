@@ -931,6 +931,35 @@ set_tests_properties(shadowrun_walkthrough_w5_b13_icarus_entry
     PROPERTIES LABELS "walkthrough" TIMEOUT 300
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 
+set(_shadowrun_seg4_b13_fixture
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/tests_lua/fixtures/walkthrough/seg4_b13_end.json")
+add_test(NAME shadowrun_walkthrough_w5_b13_caleb
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough w5_b13_caleb
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-w5-b13-caleb"
+        --from-fixture "${_shadowrun_seg4_icarus_entry_fixture}")
+add_test(NAME shadowrun_walkthrough_w5_b13_caleb_fixture_determinism
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough w5_b13_caleb
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-w5-b13-caleb-fixture-generation"
+        --from-fixture "${_shadowrun_seg4_icarus_entry_fixture}"
+        --write-fixture
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-w5-b13-caleb-fixture-generation/seg4_b13_end.generated.json"
+        --compare-fixture "${_shadowrun_seg4_b13_fixture}")
+add_test(NAME shadowrun_walkthrough_seg4_b13_fixture_restore
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough fixture_restore
+        "${CMAKE_CURRENT_BINARY_DIR}/walkthrough-seg4-b13-fixture-restore"
+        --from-fixture "${_shadowrun_seg4_b13_fixture}")
+set_tests_properties(shadowrun_walkthrough_w5_b13_caleb
+    shadowrun_walkthrough_w5_b13_caleb_fixture_determinism
+    shadowrun_walkthrough_seg4_b13_fixture_restore
+    PROPERTIES LABELS "walkthrough" TIMEOUT 300
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+
 set(_shadowrun_seg4_b23_fixture
     "${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/tests_lua/fixtures/walkthrough/seg4_b23_end.json")
 add_test(NAME shadowrun_walkthrough_w5_b23

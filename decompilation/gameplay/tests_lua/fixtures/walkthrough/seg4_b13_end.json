@@ -1,0 +1,417 @@
+{
+    "checkpoint": "seg4_b13_end",
+    "format": "shadowrun.walkthrough.save-fixture.v1",
+    "generated_from_commit": "8000b5cf4dc7c4fc4dd9cbf566c57fc85279af44",
+    "snapshot": {
+        "funds": 320,
+        "funds_available": true,
+        "kind": "field_session",
+        "party": {
+            "active_slot": 0,
+            "members": [
+                {
+                    "active": true,
+                    "name": "Joshua",
+                    "portrait_family": 0,
+                    "record": {
+                        "action_profile_modifier_flags": 0,
+                        "action_result": 0,
+                        "ammo_clips": 10,
+                        "ammo_rounds": 12,
+                        "animation_action_gate": -1,
+                        "archetype_index": 2,
+                        "attributes": [
+                            4,
+                            3,
+                            4,
+                            1,
+                            2,
+                            4,
+                            3,
+                            5
+                        ],
+                        "auxiliary": [
+                            0,
+                            0,
+                            9
+                        ],
+                        "behavior_meter": 10,
+                        "command_overview_panel_parameter": 8192,
+                        "cyberware_flags": 4,
+                        "delay_meter": 10,
+                        "equipped_armor_index": 1,
+                        "equipped_inventory_slot": 0,
+                        "equipped_item_code": 2,
+                        "first_aid_continuation": 46172,
+                        "flags": 3841,
+                        "hud_portrait_table_offset": 4,
+                        "hud_portrait_table_pointer": 467194,
+                        "inventory_item_codes": [
+                            2,
+                            44,
+                            14,
+                            16,
+                            0,
+                            0,
+                            0,
+                            0
+                        ],
+                        "inventory_phase_bytes": [
+                            0,
+                            0,
+                            6,
+                            6,
+                            0,
+                            0,
+                            0,
+                            0
+                        ],
+                        "karma": 6,
+                        "kind": 3,
+                        "magic_force": 0,
+                        "magic_table_index": 0,
+                        "posture": 2,
+                        "projection_word_08": 0,
+                        "race_index": 7,
+                        "record_type": 0,
+                        "skills": [
+                            0,
+                            4,
+                            0,
+                            0,
+                            0,
+                            3,
+                            2,
+                            0,
+                            1,
+                            0,
+                            1,
+                            1
+                        ],
+                        "species_index": 0,
+                        "state_index": 0,
+                        "state_pointer": 0,
+                        "state_selector": 0,
+                        "timing_accumulator": 0,
+                        "timing_multiplier": 4096,
+                        "timing_threshold": 4096
+                    }
+                },
+                {
+                    "active": false,
+                    "name": "",
+                    "portrait_family": 0,
+                    "record": {
+                        "action_profile_modifier_flags": 0,
+                        "action_result": -1,
+                        "ammo_clips": 0,
+                        "ammo_rounds": 0,
+                        "animation_action_gate": 0,
+                        "archetype_index": 0,
+                        "attributes": [
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0
+                        ],
+                        "auxiliary": [
+                            0,
+                            0,
+                            0
+                        ],
+                        "behavior_meter": 0,
+                        "command_overview_panel_parameter": 0,
+                        "cyberware_flags": 0,
+                        "delay_meter": 0,
+                        "equipped_armor_index": 0,
+                        "equipped_inventory_slot": -1,
+                        "equipped_item_code": 0,
+                        "first_aid_continuation": 0,
+                        "flags": 0,
+                        "hud_portrait_table_offset": 0,
+                        "hud_portrait_table_pointer": 0,
+                        "inventory_item_codes": [
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0
+                        ],
+                        "inventory_phase_bytes": [
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0
+                        ],
+                        "karma": 6,
+                        "kind": 0,
+                        "magic_force": 0,
+                        "magic_table_index": 0,
+                        "posture": 0,
+                        "projection_word_08": 0,
+                        "race_index": 0,
+                        "record_type": 0,
+                        "skills": [
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0
+                        ],
+                        "species_index": 0,
+                        "state_index": 0,
+                        "state_pointer": 0,
+                        "state_selector": 0,
+                        "timing_accumulator": 0,
+                        "timing_multiplier": 0,
+                        "timing_threshold": 0
+                    }
+                },
+                {
+                    "active": false,
+                    "name": "",
+                    "portrait_family": 0,
+                    "record": {
+                        "action_profile_modifier_flags": 0,
+                        "action_result": -1,
+                        "ammo_clips": 0,
+                        "ammo_rounds": 0,
+                        "animation_action_gate": 0,
+                        "archetype_index": 0,
+                        "attributes": [
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0
+                        ],
+                        "auxiliary": [
+                            0,
+                            0,
+                            0
+                        ],
+                        "behavior_meter": 0,
+                        "command_overview_panel_parameter": 0,
+                        "cyberware_flags": 0,
+                        "delay_meter": 0,
+                        "equipped_armor_index": 0,
+                        "equipped_inventory_slot": -1,
+                        "equipped_item_code": 0,
+                        "first_aid_continuation": 0,
+                        "flags": 0,
+                        "hud_portrait_table_offset": 0,
+                        "hud_portrait_table_pointer": 0,
+                        "inventory_item_codes": [
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0
+                        ],
+                        "inventory_phase_bytes": [
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0
+                        ],
+                        "karma": 6,
+                        "kind": 0,
+                        "magic_force": 0,
+                        "magic_table_index": 0,
+                        "posture": 0,
+                        "projection_word_08": 0,
+                        "race_index": 0,
+                        "record_type": 0,
+                        "skills": [
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0
+                        ],
+                        "species_index": 0,
+                        "state_index": 0,
+                        "state_pointer": 0,
+                        "state_selector": 0,
+                        "timing_accumulator": 0,
+                        "timing_multiplier": 0,
+                        "timing_threshold": 0
+                    }
+                }
+            ],
+            "primary_compact_marker": 255,
+            "secondary_compact_marker": 255
+        },
+        "run_registry": {
+            "schema_version": 1
+        },
+        "scene": {
+            "camera_x": 0,
+            "camera_y": 0,
+            "direction": 0,
+            "heading": 0,
+            "mode": 0,
+            "player_x": 226,
+            "player_y": 1160,
+            "reference": 12,
+            "target_heading": 0
+        },
+        "script_facts": {
+        },
+        "spell_tables": [
+            null,
+            null,
+            null,
+            null,
+            null
+        ],
+        "story": {
+            "auxiliary_flags": 0,
+            "cyberdeck_available": true,
+            "cyberdeck_record": {
+                "active_programs": [
+                    -1,
+                    -1,
+                    -1,
+                    -1,
+                    -1
+                ],
+                "data_files": [
+                    {
+                        "id": -1,
+                        "size": 0,
+                        "value": 0
+                    },
+                    {
+                        "id": -1,
+                        "size": 0,
+                        "value": 0
+                    },
+                    {
+                        "id": -1,
+                        "size": 0,
+                        "value": 0
+                    },
+                    {
+                        "id": -1,
+                        "size": 0,
+                        "value": 0
+                    },
+                    {
+                        "id": -1,
+                        "size": 0,
+                        "value": 0
+                    }
+                ],
+                "hardening": 0,
+                "load_io_speed": 10,
+                "memory_megapulses": 30,
+                "model_index": -1,
+                "mpcp": 3,
+                "persona": [
+                    3,
+                    3,
+                    3,
+                    3
+                ],
+                "persona_condition": 10,
+                "program_ratings": [
+                    3,
+                    0,
+                    0,
+                    0,
+                    1,
+                    0,
+                    0,
+                    0,
+                    0,
+                    2,
+                    0,
+                    2
+                ],
+                "response": 0,
+                "storage_megapulses": 100
+            },
+            "dialogue_flags": 6,
+            "dialogue_register": 0,
+            "exit_world_flags": 9223,
+            "group_item_flags": 0,
+            "heat_level": 0,
+            "karma_counter": 0,
+            "map_event_flags": 1,
+            "matrix_field_state": {
+                "alarm": false,
+                "maglocks_off": false,
+                "security_off": false
+            },
+            "matrix_passcode_flags": 0,
+            "mode_flags_resolved": true,
+            "notebook_contacts_flags": 0,
+            "notebook_current_run_available": false,
+            "notebook_referral_flags": 148,
+            "notebook_shadowrunner_flags": 0,
+            "notebook_tip_flags": [
+                9438216,
+                0,
+                0
+            ],
+            "notebook_tips_resolved": true,
+            "passive_ic_counter": 1,
+            "render_effect_flags": 0,
+            "runner_contact_progress_counters": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "runner_feature_flags": 1,
+            "runner_information_flags": 0,
+            "source_random_seed": 18843,
+            "strike_team_counter": 0,
+            "walk_fast": false,
+            "world_encounter_sequence": 0,
+            "world_frame_counter": 501
+        }
+    }
+}
