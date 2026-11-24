@@ -868,6 +868,8 @@ inline int snapshot(lua_State* state) {
     }
     lua_pushboolean(state, runtime.pending_world_effect_for_dump());
     lua_setfield(state, -2, "pending_world_effect");
+    lua_pushinteger(state, runtime.field_interaction_mode_for_dump());
+    lua_setfield(state, -2, "field_interaction_mode");
     const auto karma = runtime.party_karma_for_dump();
     if (karma.has_value()) {
         lua_createtable(state, 3, 0);

@@ -9,6 +9,10 @@ local kExitApproachY = 3300
 -- Scene-3 record 98 at 0x18ABAA, event-table row 5, enters Scene 11 [C].
 local kBigRhinoExteriorRecord98X = 9984
 local kBigRhinoExteriorRecord98Y = 9472
+-- FFDF40 values: 0 outside (Save/Load allowed by 0xEFC4/0x596C4), 1 for an
+-- event-table building scene (0x1684C).
+local kOutsideInteractionMode = 0
+local kBuildingInteractionMode = 1
 local kInputFrames = 600
 local kSceneTransitionFrames = 180
 
@@ -54,6 +58,13 @@ return {
                 assert(host.wait_for_scene(E.Scene.BIG_RHINO,
                     kSceneTransitionFrames),
                     "Big Rhino event-table row 5 did not load Scene 11")
+                -- 0x167AE sets FFDF40 = 1 for event-table scenes below
+                -- 0x15 (0x1684C); 0xEFC4 then refuses Save/Load here, so a
+                -- save can never be made without the door return point.
+                local mode = host.snapshot().field_interaction_mode
+                assert(mode == kBuildingInteractionMode,
+                    "Big Rhino entry left FFDF40=" .. tostring(mode) ..
+                    "; Save/Load would be allowed inside the building")
                 return "entered the Big Rhino through Scene-3 record 98"
             end,
         },
@@ -85,6 +96,10 @@ return {
                 assert(host.wait_for_scene(E.Scene.PENUMBRA_DISTRICT,
                     kSceneTransitionFrames),
                     "Scene 11 exit did not return to Penumbra")
+                -- The door return at 0x2F4E clears FFDF40 again.
+                local mode = host.snapshot().field_interaction_mode
+                assert(mode == kOutsideInteractionMode,
+                    "Penumbra return left FFDF40=" .. tostring(mode))
                 return "used Scene-11 records 8/9 with physical DOWN input"
             end,
         },
