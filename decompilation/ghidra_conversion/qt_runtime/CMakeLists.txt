@@ -798,20 +798,13 @@ set_tests_properties(shadowrun_beat_w1_puyallup_to_redmond_taxi
     PROPERTIES LABELS "walkthrough" TIMEOUT 180
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 
-add_test(NAME shadowrun_beat_w1_redmond_to_puyallup_taxi_expected_fail_WALK_003
-    COMMAND ${CMAKE_COMMAND}
-        "-DTEST_EXECUTABLE=$<TARGET_FILE:shadowrun_ghidra_conversion_qt_qa>"
-        "-DASSET_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
-        "-DSEGMENT=beat_w1_redmond_to_puyallup_taxi"
-        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/beat-w1-redmond-to-puyallup-taxi"
-        "-DINITIAL_SCENE=1"
-        "-DBUG_ID=WALK-003"
-        "-DEXPECTED_FAILURE_PATTERN=real UP did not reach the Redmond taxi terminal"
-        "-DEXPECTED_STEP_ID=w1_redmond_to_puyallup_taxi"
-        "-DEXPECTED_AFTER_SCENE=2"
-        "-DEXPECTED_AFTER_STORY=1"
-        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/qa/expect_walkthrough_failure.cmake")
-set_tests_properties(shadowrun_beat_w1_redmond_to_puyallup_taxi_expected_fail_WALK_003
+add_test(NAME shadowrun_beat_w1_redmond_to_puyallup_taxi
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough beat_w1_redmond_to_puyallup_taxi
+        "${CMAKE_CURRENT_BINARY_DIR}/beat-w1-redmond-to-puyallup-taxi"
+        --initial-scene 1)
+set_tests_properties(shadowrun_beat_w1_redmond_to_puyallup_taxi
     PROPERTIES LABELS "walkthrough" TIMEOUT 180
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 
@@ -825,20 +818,13 @@ set_tests_properties(shadowrun_beat_w1_tarislar_ask_shale
     PROPERTIES LABELS "walkthrough" TIMEOUT 180
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 
-add_test(NAME shadowrun_beat_w1_boris_reveal_alias_expected_fail_WALK_004
-    COMMAND ${CMAKE_COMMAND}
-        "-DTEST_EXECUTABLE=$<TARGET_FILE:shadowrun_ghidra_conversion_qt_qa>"
-        "-DASSET_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
-        "-DSEGMENT=beat_w1_boris_reveal_alias"
-        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/beat-w1-boris-reveal-alias"
-        "-DINITIAL_SCENE=1"
-        "-DBUG_ID=WALK-004"
-        "-DEXPECTED_FAILURE_PATTERN=Boris Scene-2 service did not open for record 87/event 6"
-        "-DEXPECTED_STEP_ID=w1_boris_reveal_michael_alias"
-        "-DEXPECTED_AFTER_SCENE=2"
-        "-DEXPECTED_AFTER_STORY=3"
-        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/qa/expect_walkthrough_failure.cmake")
-set_tests_properties(shadowrun_beat_w1_boris_reveal_alias_expected_fail_WALK_004
+add_test(NAME shadowrun_beat_w1_boris_reveal_alias
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough beat_w1_boris_reveal_alias
+        "${CMAKE_CURRENT_BINARY_DIR}/beat-w1-boris-reveal-alias"
+        --initial-scene 1)
+set_tests_properties(shadowrun_beat_w1_boris_reveal_alias
     PROPERTIES LABELS "walkthrough" TIMEOUT 180
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 

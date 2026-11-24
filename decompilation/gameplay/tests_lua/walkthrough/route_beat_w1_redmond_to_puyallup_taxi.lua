@@ -5,6 +5,7 @@ local kTaxiTerminalX = 29952
 local kTaxiTerminalY = 2816
 local kFareNuyen = 40
 
+local kStreetInteractionMode = 0 -- FFDF40 street value; 0xDB36 tst.w then bne 0xDBF8 [C]
 local function tap(host, button, hold_frames, settle_frames)
     local ok, problem
     if hold_frames == nil then
@@ -49,6 +50,16 @@ return {
                 assert(not host.snapshot().opening_auto_walk and
                        not host.snapshot().dialogue_open,
                     "Scene 2 setup unexpectedly opened the motel arrival")
+                -- The QA reload applies 0x167AE's mode-entry FFDF40 for
+                -- Scene 2. A player reaches this street by the Scene-1 edge
+                -- (0x03168 leaves FFDF40 untouched) or by taxi (0x136DE clears
+                -- it), so FFDF40 is 0 here; 0xDB36 then routes event 31 to the
+                -- ordinary field terminal.
+                local street_mode, street_error =
+                    host.set_field_interaction_mode_for_setup(
+                        kStreetInteractionMode)
+                assert(street_mode, street_error or
+                    "Scene 2 street-mode setup failed")
                 assert(host.grant_nuyen(kFareNuyen)) -- Setup grant: cover the ROM taxi fare without money grinding.
                 local placed, placement_error = host.place_within_scene(
                     E.Scene.STOKER_MOTEL, kTaxiTerminalX, kTaxiTerminalY)

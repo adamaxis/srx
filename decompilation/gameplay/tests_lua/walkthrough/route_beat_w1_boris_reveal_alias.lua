@@ -4,6 +4,7 @@ local kGreenhouseRecord87X = 21248
 local kGreenhouseRecord87Y = 1792
 local kInformationFeeNuyen = 500
 
+local kStreetInteractionMode = 0 -- FFDF40 street value (0x03168 edge / 0x136DE taxi) [C]
 local function tap(host, button)
     local ok, problem = host.press(button)
     assert(ok, problem or ("pad input failed: " .. button))
@@ -89,6 +90,15 @@ return {
                     host.reenter_scene_for_setup(E.Scene.STOKER_MOTEL)
                 assert(reentered, reenter_error or
                     "Redmond greenhouse setup reload failed")
+                -- The QA reload applies 0x167AE's mode-entry FFDF40 for
+                -- Scene 2. A player reaches this street by the Scene-1 edge
+                -- (0x03168 leaves FFDF40 untouched) or by taxi (0x136DE clears
+                -- it), so FFDF40 is 0 for the greenhouse door.
+                local street_mode, street_error =
+                    host.set_field_interaction_mode_for_setup(
+                        kStreetInteractionMode)
+                assert(street_mode, street_error or
+                    "Scene 2 street-mode setup failed")
                 assert(host.grant_nuyen(kInformationFeeNuyen)) -- Setup grant: cover Boris's ROM 500-nuyen information fee.
 
                 local placed, placement_error = host.place_within_scene(
