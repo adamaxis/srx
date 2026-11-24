@@ -1342,17 +1342,13 @@ add_test(NAME shadowrun_beat_w6_sinsearach_first_audience
 set_tests_properties(shadowrun_beat_w6_sinsearach_first_audience
     PROPERTIES LABELS "walkthrough" TIMEOUT 180
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
-add_test(NAME shadowrun_beat_w6_ilene_contact_expected_fail_WALK_006
-    COMMAND ${CMAKE_COMMAND}
-        "-DTEST_EXECUTABLE=$<TARGET_FILE:shadowrun_ghidra_conversion_qt_qa>"
-        "-DASSET_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
-        "-DSEGMENT=beat_w6_ilene_contact"
-        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/beat-w6-ilene-contact"
-        "-DBUG_ID=WALK-006"
-        "-DEXPECTED_FAILURE_PATTERN=real RIGHT did not trigger Ilene"
-        "-DINITIAL_SCENE=20"
-        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/qa/expect_walkthrough_failure.cmake")
-set_tests_properties(shadowrun_beat_w6_ilene_contact_expected_fail_WALK_006
+add_test(NAME shadowrun_beat_w6_ilene_contact
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough beat_w6_ilene_contact
+        "${CMAKE_CURRENT_BINARY_DIR}/beat-w6-ilene-contact"
+        --initial-scene 20)
+set_tests_properties(shadowrun_beat_w6_ilene_contact
     PROPERTIES LABELS "walkthrough" TIMEOUT 180
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 add_test(NAME shadowrun_beat_w6_gillian_gift_return

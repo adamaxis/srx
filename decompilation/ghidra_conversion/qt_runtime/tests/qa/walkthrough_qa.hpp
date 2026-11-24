@@ -781,6 +781,37 @@ inline int snapshot(lua_State* state) {
     lua_setfield(state, -2, "opening_auto_walk");
     lua_pushinteger(state, runtime.field_mode_event_code_for_dump());
     lua_setfield(state, -2, "event");
+    // Live world-activity script actors (lists such as Scene-20 0xA8CC that
+    // 0xA800 selects only while FFE182 is armed).
+    lua_pushinteger(state, static_cast<lua_Integer>(
+        runtime.world_activity_script_actor_count_for_dump()));
+    lua_setfield(state, -2, "script_actor_count");
+    {
+        std::string summaries;
+        for (const auto& summary :
+             runtime.world_activity_script_actor_summaries_for_dump()) {
+            if (!summaries.empty()) summaries.push_back('|');
+            summaries.append(summary);
+        }
+        lua_pushlstring(state, summaries.data(), summaries.size());
+        lua_setfield(state, -2, "script_actor_summaries");
+        const auto first_position =
+            runtime.world_activity_script_actor_position_for_dump(0U);
+        if (first_position.has_value()) {
+            lua_pushinteger(state, first_position->x);
+            lua_setfield(state, -2, "script_actor_x");
+            lua_pushinteger(state, first_position->y);
+            lua_setfield(state, -2, "script_actor_y");
+        }
+        const auto first_flags =
+            runtime.world_activity_script_actor_behavior_flags_for_dump(0U);
+        if (first_flags.has_value()) {
+            lua_pushinteger(state, *first_flags);
+            lua_setfield(state, -2, "script_actor_behavior_flags");
+        }
+    }
+    lua_pushboolean(state, runtime.pending_world_effect_for_dump());
+    lua_setfield(state, -2, "pending_world_effect");
     const auto karma = runtime.party_karma_for_dump();
     if (karma.has_value()) {
         lua_createtable(state, 3, 0);

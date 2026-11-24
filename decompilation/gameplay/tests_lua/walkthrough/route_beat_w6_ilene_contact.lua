@@ -1,8 +1,14 @@
 local E = require("enums")
 
-local kIleneApproachX = 3412 -- Reverse the measured 12-frame RIGHT vector into the ROM point.
-local kIleneApproachY = 1852
-local kContactInputFrames = 12
+-- Ilene's actor starts at ROM route 0xA8E4 (x=0x0E80, y=0x0700). The ROM
+-- pair check at 0xEB92..0xEC46 opens contact once the runner's centre is
+-- within 0x40 of hers on both axes. Approach from the open south side, one
+-- 0x40 window plus a 0x24 margin below her; RIGHT from her west side is
+-- deflected north by Scene-20 terrain and never enters the window.
+local kIleneWorldX = 3712 -- 0x0E80 [C: 0xA8E4]
+local kIleneApproachX = kIleneWorldX
+local kIleneApproachY = 1892 -- 0x0700 + 0x64
+local kContactInputFrames = 60
 
 local story = E.StoryFact
 local mode = E.FieldModeFlagBit
@@ -50,12 +56,19 @@ return {
                 assert(effect_seeded, effect_error or
                     "Ilene handoff prerequisite setup failed")
                 -- The test starts directly in Scene 20, bypassing Scene-2
-                -- service 19 at 0x543A2. Re-enter this map in setup so the
-                -- production Scene-20 entry handler arms the FFE182 handoff.
+                -- event 0, whose route preparation (service 19 at 0x543A2,
+                -- arm at 0x543D4..0x543EC) sets the transient FFE182 marker.
+                -- Seed that marker, then re-enter so the production scene
+                -- entry runs 0xA800: FFE180 clear + FFE182 set selects
+                -- Ilene's actor list 0xA8CC (0xA82C..0xA842).
+                assert(host.set_pending_world_effect_for_setup(true))
                 local entered, entry_error = host.reenter_scene_for_setup(
                     E.Scene.HOLLYWOOD_CORRECTIONAL_INTERIOR)
                 assert(entered, entry_error or
                     "Scene-20 setup re-entry failed")
+                local seeded = host.snapshot()
+                assert(seeded.script_actor_count == 1,
+                    "Scene-20 entry did not install Ilene's 0xA8CC actor list")
                 return "seeded the ROM b18 and Ilene-contact prerequisites"
             end,
         },
@@ -81,9 +94,9 @@ return {
                     kIleneApproachX, kIleneApproachY)
                 assert(placed, placement_error or "Ilene placement failed")
                 local opened = host.hold_until_modal(
-                    "RIGHT", kContactInputFrames)
+                    "UP", kContactInputFrames)
                 assert(opened,
-                    "real RIGHT did not trigger Ilene's Scene-20 contact")
+                    "real UP did not trigger Ilene's Scene-20 contact")
                 local contact = host.snapshot()
                 assert(contact.dialogue_open,
                     "Ilene's Scene-20 contact dialogue did not open")
