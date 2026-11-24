@@ -844,20 +844,13 @@ set_tests_properties(shadowrun_beat_w3_big_rhino_entry
     PROPERTIES LABELS "walkthrough" TIMEOUT 180
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 
-add_test(NAME shadowrun_beat_w3_mortimer_aragorn_question_expected_fail_WALK_005
-    COMMAND ${CMAKE_COMMAND}
-        "-DTEST_EXECUTABLE=$<TARGET_FILE:shadowrun_ghidra_conversion_qt_qa>"
-        "-DASSET_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
-        "-DSEGMENT=beat_w3_mortimer_aragorn_question"
-        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/beat-w3-mortimer-aragorn-question"
-        "-DINITIAL_SCENE=11"
-        "-DBUG_ID=WALK-005"
-        "-DEXPECTED_FAILURE_PATTERN=Mortimer panel did not contain"
-        "-DEXPECTED_STEP_ID=w3_mortimer_asks_about_aragorn"
-        "-DEXPECTED_AFTER_SCENE=11"
-        "-DEXPECTED_AFTER_STORY=1027"
-        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/qa/expect_walkthrough_failure.cmake")
-set_tests_properties(shadowrun_beat_w3_mortimer_aragorn_question_expected_fail_WALK_005
+add_test(NAME shadowrun_beat_w3_mortimer_aragorn_question
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough beat_w3_mortimer_aragorn_question
+        "${CMAKE_CURRENT_BINARY_DIR}/beat-w3-mortimer-aragorn-question"
+        --initial-scene 11)
+set_tests_properties(shadowrun_beat_w3_mortimer_aragorn_question
     PROPERTIES LABELS "walkthrough" TIMEOUT 180
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 

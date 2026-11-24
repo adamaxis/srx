@@ -1835,12 +1835,14 @@ int main() {
     if (!expect(runtime.open_gameplay_task(
             scripting::ScriptDialogueSource::run_target,
             "johnson", "interaction")) ||
-        !expect(mortimer_panel_contains("Long time no-see")) ||
+        // ROM 0x209BE arms FFF112 on every Scene 11 visit, so the known
+        // contact still gets descriptor 0x105544 then root 0x105558.
+        !expect(mortimer_panel_contains("You move into the booth")) ||
         !expect(capture_big_rhino("repeat-booth-entry")) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
         !expect(runtime.panel().text_segments[0].find(
-                    "Stick with me, buddy") != std::string_view::npos) ||
+                    "Well, what have we here") != std::string_view::npos) ||
         !expect(capture_big_rhino("repeat-root")) ||
         !expect(runtime.advance_controller_events(0x2000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||

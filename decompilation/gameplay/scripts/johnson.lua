@@ -17,6 +17,12 @@ local function present_location_intro(profile, entry_seen_before)
         end
         return not entry_seen_before
     end
+    if profile.first_visit_fact == nil and profile.entry_events ~= nil then
+        for _, event_id in ipairs(profile.entry_events) do
+            game.ui.say(event_id)
+        end
+        return false
+    end
     if profile.first_visit_fact == nil or
        game.state[profile.first_visit_fact] ~= false then
         return false

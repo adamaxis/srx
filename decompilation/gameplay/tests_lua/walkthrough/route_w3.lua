@@ -193,7 +193,7 @@ return {
             expected = {
                 scene = scene_big_rhino,
                 panel_actor = "Mortimer Reed",
-                panel_text_contains = "Joshua my friend!",
+                panel_text_contains = "You move into the booth",
             },
             run = function(host)
                 local placed, placement_error = host.place_within_scene(
@@ -207,7 +207,9 @@ return {
                     "Big Rhino event-table row 5 did not enter Scene 11")
                 place_and_enter(host, scene_big_rhino, 4608, 1536,
                     "the source Mortimer booth event")
-                wait_panel(host, "Joshua my friend!")
+                -- ROM 0x209BE arms FFF112 on every Scene 11 visit: the
+                -- booth search 0x105544 always precedes root 0x105558.
+                wait_panel(host, "You move into the booth")
                 return "physical record-98 entry reached Mortimer's scene-11 booth"
             end,
         },
@@ -217,7 +219,6 @@ return {
             expected = {
                 scene = scene_big_rhino,
                 panel_actor = "Mortimer Reed",
-                panel_text_contains = "Joshua my friend!",
                 panel_text_contains = "fragged a solo run against Mitsuhama",
                 flags = {
                     mode = {
@@ -228,8 +229,8 @@ return {
             },
             run = function(host)
                 tap(host, "A") -- Advance the first ROM booth-entry page.
-                wait_panel(host, "Stick with me, buddy")
-                tap(host, "A") -- Finish the booth-entry continuation.
+                wait_panel(host, "Well, what have we here")
+                tap(host, "A") -- Finish the root page text.
                 tap(host, "A") -- Information from Mortimer's root menu.
                 wait_panel(host, "However, I do know a valuable contact")
                 tap(host, "A") -- Finish the information opening.

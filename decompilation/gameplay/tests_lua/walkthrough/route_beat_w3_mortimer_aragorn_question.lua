@@ -2,6 +2,10 @@ local E = require("enums")
 
 local kMortimerBoothX = 4608
 local kMortimerBoothY = 1536
+-- Question builder 0x2317A offers Aragorn only when FFFC1E bit 2 is set
+-- (0x231F2) and bit 3 is clear (0x231FA). W3 sets bit 2 when Owlfeather is
+-- asked about Michael, before the Big Rhino visit.
+local kOwlfeatherAskedStoryBit = 2
 
 local function tap(host, button)
     local ok, problem = host.press(button)
@@ -35,6 +39,7 @@ return {
                     [E.StoryFact.MOTEL_BILL_PAID] = true,
                     [E.StoryFact.TARISLAR_ASKED_SHALE] = true,
                     [E.StoryFact.MICHAEL_ALIAS_LEARNED] = true,
+                    [E.StoryFact.OWLFEATHER_ASKED] = true,
                 },
                 flags = {
                     story = {
@@ -42,6 +47,7 @@ return {
                             E.StoryFact.MOTEL_BILL_PAID,
                             E.StoryFact.TARISLAR_ASKED_SHALE,
                             E.StoryFact.MICHAEL_ALIAS_LEARNED,
+                            E.StoryFact.OWLFEATHER_ASKED,
                         },
                     },
                     mode = {
@@ -61,6 +67,7 @@ return {
                     E.StoryFlagBit.MOTEL_BILL_PAID,
                     E.StoryFlagBit.TARISLAR_ASKED_SHALE,
                     E.StoryFlagBit.MICHAEL_ALIAS_LEARNED,
+                    kOwlfeatherAskedStoryBit,
                 }) do
                     local seeded, seed_error =
                         host.set_story_fact_for_setup(prerequisite, true)
@@ -88,9 +95,9 @@ return {
                     "real UP did not open Mortimer's booth")
                 wait_panel(host, "You move into the booth")
                 tap(host, "A")
-                wait_panel(host, "Joshua my friend!")
-                tap(host, "A")
-                wait_panel(host, "Stick with me, buddy")
+                -- ROM 0x209BE arms FFF112 on every Scene 11 visit, so even a
+                -- known contact gets root 0x105558, not repeat 0x105574.
+                wait_panel(host, "Well, what have we here")
                 tap(host, "A")
                 tap(host, "A")
                 wait_panel(host, "However, I do know a valuable contact")

@@ -469,12 +469,11 @@ Dialogue.johnson_interaction_profiles = {
         run_contact_id = E.RunContact.BIG_RHINO,
         information_flow = "big_rhino",
         access_facts = { E.JohnsonFact.MORTIMER_KNOWN },
-        -- Scene 11's first/repeat greeting uses this persistent fact; the
-        -- Notebook list builder at 0xF4AC exposes Mortimer's row 0xC5766.
-        entry_seen_fact = E.JohnsonFact.MORTIMER_KNOWN,
+        -- Scene 11 (0x209A6..0x209C6) sets FFFC27 bit 2 but always arms
+        -- FFF112, so 0x20B8A takes record 0x12CC70+4 (0x105544): every
+        -- non-return visit shows the booth search and "Well, what have we
+        -- here." The +0xC repeat record 0x105574 is unreachable here.
         entry_events = { "booth_entry" },
-        repeat_entry_events = { "repeat_booth_entry" },
-        repeat_root = "repeat_opening",
         run_return_root = "opening_after_run_return",
         -- ROM 0x215DA displays 0x108501 before offering a context-2 run.
         work_opening_event = "work_opening",

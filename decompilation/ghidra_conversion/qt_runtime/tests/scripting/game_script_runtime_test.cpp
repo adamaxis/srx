@@ -4728,16 +4728,17 @@ int main() {
     if (!expect(mortimer_task.operation.has_value() &&
                     mortimer_task.operation->dialogue.has_value() &&
                     mortimer_task.operation->dialogue->event_id ==
-                        "repeat_booth_entry",
-                "Mortimer repeat entry omitted ROM descriptor 0x105574")) {
+                        "booth_entry",
+                "Mortimer repeat entry did not replay ROM descriptor 0x105544 "
+                "(0x209BE always arms FFF112)")) {
         std::cerr << scripts.failure() << '\n';
         return 13;
     }
     mortimer_task = scripts.complete_native_operation(true);
     if (!expect(mortimer_task.operation.has_value() &&
                     mortimer_task.operation->menu.has_value() &&
-                    mortimer_task.operation->menu->id == "repeat_opening",
-                "Mortimer repeat entry did not select descriptor 0x105588")) {
+                    mortimer_task.operation->menu->id == "opening",
+                "Mortimer repeat entry did not select descriptor 0x105558")) {
         std::cerr << scripts.failure() << '\n';
         return 13;
     }
