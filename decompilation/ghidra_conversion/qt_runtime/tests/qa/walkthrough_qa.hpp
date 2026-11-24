@@ -357,6 +357,25 @@ inline int set_pending_world_effect_for_setup(lua_State* state) {
     return 1;
 }
 
+inline int set_world_effect_active_for_setup(lua_State* state) {
+    auto* host = context(state);
+    const bool active = lua_toboolean(state, 1) != 0;
+    lua_Integer effect_index = 0;
+    if (!integer_argument(state, 2, effect_index) || effect_index < 0 ||
+        effect_index > 65535) {
+        lua_pushboolean(state, 0);
+        lua_pushliteral(state, "world effect index must be in [0, 65535]");
+        return 2;
+    }
+    auto& runtime = *host->runtime;
+    runtime.seed_conditional_actor_effect_facts_for_dump(
+        active, runtime.world_effect_player_spawn_pending_for_dump(),
+        std::optional<std::uint16_t>{static_cast<std::uint16_t>(effect_index)},
+        std::optional<std::uint16_t>{static_cast<std::uint16_t>(effect_index)});
+    lua_pushboolean(state, 1);
+    return 1;
+}
+
 inline int set_field_auxiliary_flag_for_setup(lua_State* state) {
     auto* host = context(state);
     lua_Integer bit = 0;
@@ -1652,6 +1671,8 @@ inline int run_walkthrough_qa(
                       set_field_interaction_mode_for_setup);
     add_host_function(state, host, "set_pending_world_effect_for_setup",
                       set_pending_world_effect_for_setup);
+    add_host_function(state, host, "set_world_effect_active_for_setup",
+                      set_world_effect_active_for_setup);
     add_host_function(state, host, "set_field_auxiliary_flag_for_setup",
                       set_field_auxiliary_flag_for_setup);
     add_host_function(state, host, "snapshot", snapshot);

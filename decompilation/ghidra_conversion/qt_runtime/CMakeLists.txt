@@ -784,6 +784,15 @@ set_tests_properties(shadowrun_beat_w1_stoker_bill
     PROPERTIES LABELS "walkthrough" TIMEOUT 180
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 
+add_test(NAME shadowrun_beat_w1_stoker_arrival
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough beat_w1_stoker_arrival
+        "${CMAKE_CURRENT_BINARY_DIR}/beat-w1-stoker-arrival")
+set_tests_properties(shadowrun_beat_w1_stoker_arrival
+    PROPERTIES LABELS "walkthrough" TIMEOUT 180
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+
 add_test(NAME shadowrun_beat_w1_puyallup_to_redmond_taxi
     COMMAND shadowrun_ghidra_conversion_qt_qa
         --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
@@ -834,6 +843,70 @@ set_tests_properties(shadowrun_beat_w3_salish_to_penumbra_taxi
     PROPERTIES LABELS "walkthrough" TIMEOUT 180
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 
+add_test(NAME shadowrun_beat_w3_redmond_to_salish_taxi
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough beat_w3_redmond_to_salish_taxi
+        "${CMAKE_CURRENT_BINARY_DIR}/beat-w3-redmond-to-salish-taxi"
+        --initial-scene 1)
+set_tests_properties(shadowrun_beat_w3_redmond_to_salish_taxi
+    PROPERTIES LABELS "walkthrough" TIMEOUT 180
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+
+add_test(NAME shadowrun_beat_w3_owlfeather_first_contact
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough beat_w3_owlfeather_first_contact
+        "${CMAKE_CURRENT_BINARY_DIR}/beat-w3-owlfeather-first-contact"
+        --initial-scene 6)
+set_tests_properties(shadowrun_beat_w3_owlfeather_first_contact
+    PROPERTIES LABELS "walkthrough" TIMEOUT 180
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+
+add_test(NAME shadowrun_beat_w3_owlfeather_asks_about_michael
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough beat_w3_owlfeather_asks_about_michael
+        "${CMAKE_CURRENT_BINARY_DIR}/beat-w3-owlfeather-asks-about-michael"
+        --initial-scene 6)
+set_tests_properties(shadowrun_beat_w3_owlfeather_asks_about_michael
+    PROPERTIES LABELS "walkthrough" TIMEOUT 180
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+
+add_test(NAME shadowrun_beat_w3_owlfeather_aragorn_task_briefing
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough beat_w3_owlfeather_aragorn_task_briefing
+        "${CMAKE_CURRENT_BINARY_DIR}/beat-w3-owlfeather-aragorn-task-briefing"
+        --initial-scene 6)
+set_tests_properties(shadowrun_beat_w3_owlfeather_aragorn_task_briefing
+    PROPERTIES LABELS "walkthrough" TIMEOUT 180
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+
+add_test(NAME shadowrun_beat_w3_owlfeather_return_service
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough beat_w3_owlfeather_return_service
+        "${CMAKE_CURRENT_BINARY_DIR}/beat-w3-owlfeather-return-service"
+        --initial-scene 6)
+set_tests_properties(shadowrun_beat_w3_owlfeather_return_service
+    PROPERTIES LABELS "walkthrough" TIMEOUT 180
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+
+add_test(NAME shadowrun_beat_w3_aragorn_mitsuhama_contact_expected_fail_WALK_008
+    COMMAND ${CMAKE_COMMAND}
+        "-DTEST_EXECUTABLE=$<TARGET_FILE:shadowrun_ghidra_conversion_qt_qa>"
+        "-DASSET_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        "-DSEGMENT=beat_w3_aragorn_mitsuhama_contact"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/beat-w3-aragorn-mitsuhama-contact"
+        "-DINITIAL_SCENE=34"
+        "-DBUG_ID=WALK-008"
+        "-DEXPECTED_FAILURE_PATTERN=Aragorn contact panel did not contain"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/qa/expect_walkthrough_failure.cmake")
+set_tests_properties(shadowrun_beat_w3_aragorn_mitsuhama_contact_expected_fail_WALK_008
+    PROPERTIES LABELS "walkthrough;expected-failure" TIMEOUT 180
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+
 add_test(NAME shadowrun_beat_w3_big_rhino_entry
     COMMAND shadowrun_ghidra_conversion_qt_qa
         --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
@@ -882,6 +955,30 @@ add_test(NAME shadowrun_beat_w3_mitsuhama_elevator
         --initial-scene 30)
 set_tests_properties(shadowrun_beat_w3_mitsuhama_elevator
     PROPERTIES LABELS "walkthrough" TIMEOUT 180
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+
+add_test(NAME shadowrun_beat_w3_mitsuhama_elevator_return
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough beat_w3_mitsuhama_elevator_return
+        "${CMAKE_CURRENT_BINARY_DIR}/beat-w3-mitsuhama-elevator-return"
+        --initial-scene 34)
+set_tests_properties(shadowrun_beat_w3_mitsuhama_elevator_return
+    PROPERTIES LABELS "walkthrough" TIMEOUT 180
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+
+add_test(NAME shadowrun_beat_w3_mitsuhama_return_to_field_expected_fail_WALK_009
+    COMMAND ${CMAKE_COMMAND}
+        "-DTEST_EXECUTABLE=$<TARGET_FILE:shadowrun_ghidra_conversion_qt_qa>"
+        "-DASSET_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        "-DSEGMENT=beat_w3_mitsuhama_return_to_field"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/beat-w3-mitsuhama-return-to-field"
+        "-DINITIAL_SCENE=3"
+        "-DBUG_ID=WALK-009"
+        "-DEXPECTED_FAILURE_PATTERN=real DOWN did not open the Scene-30 source exit"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/qa/expect_walkthrough_failure.cmake")
+set_tests_properties(shadowrun_beat_w3_mitsuhama_return_to_field_expected_fail_WALK_009
+    PROPERTIES LABELS "walkthrough;expected-failure" TIMEOUT 180
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 
 add_test(NAME shadowrun_beat_w4_salish_to_council_taxi
@@ -1143,6 +1240,16 @@ add_test(NAME shadowrun_beat_w5_b24_salish_taxi
 set_tests_properties(shadowrun_beat_w5_b24_salish_taxi
     PROPERTIES LABELS "walkthrough" TIMEOUT 180
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+
+add_test(NAME shadowrun_beat_w5_salish_to_downtown_taxi
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough beat_w5_salish_to_downtown_taxi
+        "${CMAKE_CURRENT_BINARY_DIR}/beat-w5-salish-to-downtown-taxi"
+        --initial-scene 6)
+set_tests_properties(shadowrun_beat_w5_salish_to_downtown_taxi
+    PROPERTIES LABELS "walkthrough" TIMEOUT 180
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 add_test(NAME shadowrun_walkthrough_w5_b13_icarus_entry_fixture_determinism
     COMMAND shadowrun_ghidra_conversion_qt_qa
         --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
@@ -1336,6 +1443,73 @@ add_test(NAME shadowrun_beat_w6_gillian_initiation
         --initial-scene 9)
 set_tests_properties(shadowrun_beat_w6_gillian_initiation
     PROPERTIES LABELS "walkthrough" TIMEOUT 180
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+add_test(NAME shadowrun_beat_w6_gillian_frosty_referral
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough beat_w6_gillian_frosty_referral
+        "${CMAKE_CURRENT_BINARY_DIR}/beat-w6-gillian-frosty-referral"
+        --initial-scene 9)
+set_tests_properties(shadowrun_beat_w6_gillian_frosty_referral
+    PROPERTIES LABELS "walkthrough" TIMEOUT 180
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+add_test(NAME shadowrun_beat_w7_tarislar_apartments_first_entry
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough beat_w7_tarislar_apartments_first_entry
+        "${CMAKE_CURRENT_BINARY_DIR}/beat-w7-tarislar-apartments-first-entry"
+        --initial-scene 1)
+set_tests_properties(shadowrun_beat_w7_tarislar_apartments_first_entry
+    PROPERTIES LABELS "walkthrough" TIMEOUT 180
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+add_test(NAME shadowrun_beat_w7_tarislar_tomb_departure
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough beat_w7_tarislar_tomb_departure
+        "${CMAKE_CURRENT_BINARY_DIR}/beat-w7-tarislar-tomb-departure"
+        --initial-scene 1)
+set_tests_properties(shadowrun_beat_w7_tarislar_tomb_departure
+    PROPERTIES LABELS "walkthrough" TIMEOUT 180
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+add_test(NAME shadowrun_beat_w7_tarislar_paired_map_briefing
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough beat_w7_tarislar_paired_map_briefing
+        "${CMAKE_CURRENT_BINARY_DIR}/beat-w7-tarislar-paired-map-briefing"
+        --initial-scene 1)
+set_tests_properties(shadowrun_beat_w7_tarislar_paired_map_briefing
+    PROPERTIES LABELS "walkthrough" TIMEOUT 180
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+add_test(NAME shadowrun_beat_w7_tarislar_post_ito_briefing
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough beat_w7_tarislar_post_ito_briefing
+        "${CMAKE_CURRENT_BINARY_DIR}/beat-w7-tarislar-post-ito-briefing"
+        --initial-scene 1)
+set_tests_properties(shadowrun_beat_w7_tarislar_post_ito_briefing
+    PROPERTIES LABELS "walkthrough" TIMEOUT 180
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+add_test(NAME shadowrun_beat_w7_tarislar_renraku_map_briefing
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough beat_w7_tarislar_renraku_map_briefing
+        "${CMAKE_CURRENT_BINARY_DIR}/beat-w7-tarislar-renraku-map-briefing"
+        --initial-scene 1)
+set_tests_properties(shadowrun_beat_w7_tarislar_renraku_map_briefing
+    PROPERTIES LABELS "walkthrough" TIMEOUT 180
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+add_test(NAME shadowrun_beat_w8_tomb_antechamber_entry_expected_fail_WALK_007
+    COMMAND ${CMAKE_COMMAND}
+        "-DTEST_EXECUTABLE=$<TARGET_FILE:shadowrun_ghidra_conversion_qt_qa>"
+        "-DASSET_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        "-DSEGMENT=beat_w8_tomb_antechamber_entry"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/beat-w8-tomb-antechamber-entry"
+        "-DINITIAL_SCENE=54"
+        "-DBUG_ID=WALK-007"
+        "-DEXPECTED_FAILURE_PATTERN=real UP through Scene-54 record 0 did not enter Scene 55"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/qa/expect_walkthrough_failure.cmake")
+set_tests_properties(shadowrun_beat_w8_tomb_antechamber_entry_expected_fail_WALK_007
+    PROPERTIES LABELS "walkthrough;expected-failure" TIMEOUT 180
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 add_test(NAME shadowrun_beat_w5_b25_stark_admission
     COMMAND shadowrun_ghidra_conversion_qt_qa

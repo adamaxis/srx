@@ -52232,7 +52232,8 @@ int main(int argc, char** argv) {
                     *walkthrough_segment == "w5" ||
                     *walkthrough_segment == "w6" ||
                     *walkthrough_segment == "w7" ||
-                    *walkthrough_segment == "w8";
+                    *walkthrough_segment == "w8" ||
+                    walkthrough_segment->rfind("beat_", 0U) == 0U;
                 if (!supported_walkthrough_segment && !fixture_restore) {
                     std::cerr << "walkthrough: unsupported segment '"
                               << *walkthrough_segment << "'\n";

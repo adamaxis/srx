@@ -182,6 +182,8 @@ E.Scene = {
     SCENE_7 = 7, -- ROM Scene-7 record 206 at 0x1B4592 routes to field Scene 13 [C]
     FIELD_SCENE_13 = 13, -- Scene-13 south-edge return records 9/10 [C: 0x1B3CE4/0x1B3CEE]
     CAVE_SCENE_45 = 45, -- Scene 6 west-exit route reached this cave scene [H]
+    TARISLAR_TOMB = 54, -- ROM command 0xE4 at 0x24954 selects scene 54 [C]
+    TARISLAR_TOMB_ANTECHAMBER = 55, -- Scene-55 antechamber entry callback at 0x1E2EC [C]
     HOLLYWOOD_CORRECTIONAL_INTERIOR = 20, -- Scene-2 event-0 row selects scene 20 [C: 0x172CDC]
     SINSEARACH_VILLAGE_GATE = 9, -- Scene-9 event 0 gate [C; guide-name crosswalk]
     STOKER_MOTEL = 2, -- Scene 2 trigger record 91 at 0x173138; prompt 0x1F65A [C]
@@ -224,6 +226,9 @@ E.FieldActorContactAction = {
     RANDOM_PEDESTRIAN_CONTACT = "random_pedestrian_contact",
     GENERIC_DIALOGUE = "generic_contact_dialogue",
 } -- semantic outcomes for the shared 0xECCC actor-pair route [C]
+E.FieldWorldEffectIndex = {
+    ARAGORN_CONTACT = 4, -- Scene-34 actor list 0xA8AE requires FFF0C8 == 4 [C]
+}
 
 E.GenericFieldContact = {
     LOCATION_ID = "generic_field_contact",
@@ -1083,6 +1088,9 @@ E.StoryFlagBit = {
   MOTEL_BILL_PAID = 0, -- FFFC1E bit 0 enables cab service after the Stoker payment callback [C: 0x21410, 0x20714]
   SHAMAN_MET = 5, -- FFFC1E bit 5 set by Spirit Eyes first contact [C: Scene-4 record 96 / 0x53D5A]
   TARISLAR_ASKED_SHALE = 1, -- FFFC1E bit 1 set by Inn command 0x16 at 0x218BC [C]
+  OWLFEATHER_ASKED = 2, -- FFFC1E bit 2 set by Owlfeather command 0x17 at 0x53C50 [C]
+  ARAGORN_FOUND = 3, -- FFFC1E bit 3 set by the Scene-34 contact at 0x53C96 [C]
+  ARAGORN_FREED_TOLD = 4, -- FFFC1E bit 4 set by return-service command 0x19 at 0x53D4E [C]
   MICHAEL_ALIAS_LEARNED = 10, -- FFFC1E bit 10 set by Boris command 0x2B at 0x21B82 [C]
   SHAMAN_ITEM4_GIVEN = 6, -- FFFC1E bit 6, set by the b6 Horn service at 0x53DCA [C]
   SHAMAN_PELT_GIVEN = 7, -- FFFC1E bit 7, set by the b7 pelt service at 0x53E08 [C]
@@ -1094,6 +1102,13 @@ E.StoryFlagBit = {
   MEDICINE_LODGE_TURNED_AWAY = 24, -- FFFC1E bit 24, first Stark location visit at 0x1FDEA [C]
   HOSPITAL_VISITED = 25, -- FFFC1E bit 25, set after Stark is admitted at 0x1F8C2 [C]
   HOLOPIX_SHOWN = 23, -- FFFC1E bit 23, set by Seattle holopix handler 0x21EF8 [C]
+  SHAMAN_TASKS_DONE = 9, -- FFFC1E bit 9 set after final scale handoff at 0x53EA8 [C]
+  FROSTY_MET = 30, -- FFFC1E bit 30 set by command 0x44 at 0x21FD0 [C]
+  GARDEN_APTS_ENTERED = 21, -- FFFC1E bit 21 set on first visit at 0x5456E [C]
+  ITO_FIGHT_WON = 16, -- FFFC1E bit 16 set by the Ito encounter callback at 0x54286 [C]
+  RENRAKU_MAP_SHOWN = 26, -- FFFC1E bit 26 set by the map dialogue at 0x2203E [C]
+  BOTH_MAPS_SHOWN = 27, -- FFFC1E bit 27 set by the map dialogue at 0x2205C [C]
+  POST_ITO_BRIEFED = 28, -- FFFC1E bit 28 set by the briefing dialogue at 0x21F58 [C]
 }
 
 -- Transient field-mode state exposed through gameplay meaning. The host maps
@@ -1151,12 +1166,23 @@ E.FieldModeEffectFlagBit = {
   BIT_2 = 2, -- Command 0x37 sets FFFC34 bit 2 at 0x21E38 [C]
   BIT_3 = 3, -- Commands 0x36/0x37 clear FFFC34 bit 3 [C]
   BIT_4 = 4,
+  FROSTY_HARLEQUIN_EXPOSITION = 5, -- Command 0x49 at 0x220EA sets FFFC34 bit 5 [C]
+  GARDEN_APTS_FIRST_ENTRY = 6, -- Command 0x45 at 0x21FFC sets FFFC34 bit 6 [C]
+  HARLEQUIN_NO_ITO_INFORMATION = 7, -- Command 0x40 at 0x21F40 sets FFFC34 bit 7 [C]
+  HARLEQUIN_NO_RENRAKU_MAP_INFORMATION = 8, -- No-map branch at 0x220CC sets FFFC34 bit 8 [C]
+  RENRAKU_MAP_EXPLAINED = 12, -- One-map command 0x47 at 0x22072 sets FFFC34 bit 12 [C]
+  TOMB_MAPS_EXPLAINED = 14, -- Paired-map dialogue command 0x47 at 0x22072 sets FFFC34 bit 14 [C]
   -- Seattle General 0x1F8B4/0x22664 clear bit 18 and 0x1F8B8/0x22668 set
   -- bit 19 when Stark is admitted; 0x1F918 clears bit 20 at the heart
   -- turn-in. They gate Notebook tips 51/52/53.
   STARK_DYING_TIP = 18,
   STARK_HEART_FAILING_TIP = 19,
   CYBERHEART_CARRIED_TIP = 20,
+}
+
+E.FieldInteractionMode = {
+  CITY_STREET_TAXI = 0, -- Taxi-arrival mode clear at 0x136DE routes street event 31 [C]
+  SCENE54_EXIT_EVENT = 3, -- Scene 54 profile sets FFFBF8 to mode 3 at 0x03074 [C]
 }
 
 E.FieldAuxiliaryFlagBit = {
