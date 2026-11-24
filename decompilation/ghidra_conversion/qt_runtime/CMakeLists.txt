@@ -765,18 +765,14 @@ set_tests_properties(shadowrun_walkthrough_w3
     PROPERTIES LABELS "walkthrough" TIMEOUT 300
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 
-add_test(NAME shadowrun_beat_w3_scene11_exit_expected_fail_WALK_001
-    COMMAND ${CMAKE_COMMAND}
-        "-DTEST_EXECUTABLE=$<TARGET_FILE:shadowrun_ghidra_conversion_qt_qa>"
-        "-DASSET_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
-        "-DSEGMENT=beat_w3_scene11_exit"
-        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/beat-w3-scene11-exit"
-        "-DINITIAL_SCENE=11"
-        "-DBUG_ID=WALK-001"
-        "-DEXPECTED_FAILURE_PATTERN=Scene 11 return did not open or transition"
-        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/qa/expect_walkthrough_failure.cmake")
-set_tests_properties(shadowrun_beat_w3_scene11_exit_expected_fail_WALK_001
-    PROPERTIES LABELS "walkthrough;expected-failure" TIMEOUT 180
+add_test(NAME shadowrun_beat_w3_scene11_exit
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough beat_w3_scene11_exit
+        "${CMAKE_CURRENT_BINARY_DIR}/beat-w3-scene11-exit"
+        --initial-scene 3)
+set_tests_properties(shadowrun_beat_w3_scene11_exit
+    PROPERTIES LABELS "walkthrough" TIMEOUT 180
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 
 add_test(NAME shadowrun_beat_w1_stoker_bill
