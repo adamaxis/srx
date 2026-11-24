@@ -254,6 +254,31 @@ inline int set_story_fact_for_setup(lua_State* state) {
     return 1;
 }
 
+inline int set_field_dialogue_flag_for_setup(lua_State* state) {
+    auto* host = context(state);
+    lua_Integer bit = 0;
+    if (!integer_argument(state, 1, bit) || bit < 0 || bit > 3) {
+        lua_pushboolean(state, 0);
+        lua_pushliteral(state, "field dialogue flag bit must be in [0, 3]");
+        return 2;
+    }
+    const auto flags = host->runtime->field_dialogue_flags_for_dump();
+    if (!flags.has_value()) {
+        lua_pushboolean(state, 0);
+        lua_pushliteral(state, "field dialogue flag word is unresolved");
+        return 2;
+    }
+    const auto mask = static_cast<std::uint8_t>(
+        std::uint8_t{1U} << static_cast<unsigned int>(bit));
+    const bool value = lua_toboolean(state, 2) != 0;
+    host->runtime->seed_field_dialogue_flags_for_qa(
+        value ? static_cast<std::uint8_t>(*flags | mask)
+              : static_cast<std::uint8_t>(*flags &
+                    static_cast<std::uint8_t>(~mask)));
+    lua_pushboolean(state, 1);
+    return 1;
+}
+
 inline int reenter_scene_for_setup(lua_State* state) {
     auto* host = context(state);
     lua_Integer scene = 0;
@@ -1344,6 +1369,8 @@ inline int run_walkthrough_qa(
     const std::optional<std::filesystem::path>& write_fixture_path =
         std::nullopt,
     const std::optional<std::filesystem::path>& compare_fixture_path =
+        std::nullopt,
+    const std::optional<std::uint16_t>& initial_scene_for_setup =
         std::nullopt) {
     using namespace walkthrough_detail;
     std::error_code error;
@@ -1369,7 +1396,11 @@ inline int run_walkthrough_qa(
     startup_state.new_game_opening_completed = true;
     std::ostringstream bootstrap_stderr;
     auto* previous_stderr = std::cerr.rdbuf(bootstrap_stderr.rdbuf());
-    if (!runtime.bootstrap(startup_state)) {
+    const bool bootstrapped = initial_scene_for_setup.has_value()
+        ? runtime.bootstrap_for_scene_dump(startup_state,
+                                           *initial_scene_for_setup)
+        : runtime.bootstrap(startup_state);
+    if (!bootstrapped) {
         std::cerr.rdbuf(previous_stderr);
         const auto message = "production New Game bootstrap failed: " +
                              runtime.failure();
@@ -1518,6 +1549,8 @@ inline int run_walkthrough_qa(
     add_host_function(state, host, "grant_group_item", grant_group_item);
     add_host_function(state, host, "set_story_fact_for_setup",
                       set_story_fact_for_setup);
+    add_host_function(state, host, "set_field_dialogue_flag_for_setup",
+                      set_field_dialogue_flag_for_setup);
     add_host_function(state, host, "reenter_scene_for_setup",
                       reenter_scene_for_setup);
     add_host_function(state, host, "set_field_mode_flag_for_setup",

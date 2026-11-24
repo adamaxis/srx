@@ -49933,6 +49933,7 @@ int main(int argc, char** argv) {
         bool field_smoke = false;
         std::optional<std::string> walkthrough_segment;
         std::optional<std::filesystem::path> walkthrough_output_directory;
+        std::optional<std::uint16_t> walkthrough_initial_scene_for_setup;
         std::optional<std::filesystem::path> walkthrough_from_fixture_path;
         std::optional<std::filesystem::path> walkthrough_write_fixture_path;
         std::optional<std::filesystem::path> walkthrough_compare_fixture_path;
@@ -50365,6 +50366,16 @@ int main(int argc, char** argv) {
                                option_index + 1 < argc) {
                         walkthrough_compare_fixture_path =
                             std::filesystem::path(argv[option_index + 1]);
+                        option_index += 2;
+                    } else if (option == "--initial-scene" &&
+                               option_index + 1 < argc) {
+                        const auto scene = std::stoul(argv[option_index + 1]);
+                        if (scene > 55U) {
+                            std::cerr << "walkthrough: initial scene must be in [0, 55]\n";
+                            return 3;
+                        }
+                        walkthrough_initial_scene_for_setup =
+                            static_cast<std::uint16_t>(scene);
                         option_index += 2;
                     } else {
                         break;
@@ -52171,6 +52182,33 @@ int main(int argc, char** argv) {
                 const bool supported_walkthrough_segment =
                     *walkthrough_segment == "seg1" ||
                     *walkthrough_segment == "w3" ||
+                    *walkthrough_segment == "beat_w3_scene11_exit" ||
+                    *walkthrough_segment == "beat_w1_stoker_bill" ||
+                    *walkthrough_segment == "beat_w1_puyallup_to_redmond_taxi" ||
+                    *walkthrough_segment == "beat_w1_redmond_to_puyallup_taxi" ||
+                    *walkthrough_segment == "beat_w1_tarislar_ask_shale" ||
+                    *walkthrough_segment == "beat_w1_boris_reveal_alias" ||
+                    *walkthrough_segment == "beat_w3_salish_to_penumbra_taxi" ||
+                    *walkthrough_segment == "beat_w3_big_rhino_entry" ||
+                    *walkthrough_segment == "beat_w3_mortimer_aragorn_question" ||
+                    *walkthrough_segment == "beat_w3_penumbra_to_salish_taxi" ||
+                    *walkthrough_segment == "beat_w3_mitsuhama_entry" ||
+                    *walkthrough_segment == "beat_w3_mitsuhama_elevator" ||
+                    *walkthrough_segment == "beat_w4_salish_to_council_taxi" ||
+                    *walkthrough_segment == "beat_w4_spirit_eyes_first_contact" ||
+                    *walkthrough_segment == "beat_w4_spirit_eyes_horn_turn_in" ||
+                    *walkthrough_segment == "beat_w4_spirit_eyes_pelt_turn_in" ||
+                    *walkthrough_segment == "beat_w6_red_buffalo_gift" ||
+                    *walkthrough_segment == "beat_w5_scene7_exit" ||
+                    *walkthrough_segment == "beat_w5_caleb_b13" ||
+                    *walkthrough_segment == "beat_w5_fuchi_entry" ||
+                    *walkthrough_segment == "beat_w5_fuchi_safe_reward" ||
+                    *walkthrough_segment == "beat_w5_b23_holopix" ||
+                    *walkthrough_segment == "beat_w5_b24_salish_taxi" ||
+                    *walkthrough_segment == "beat_w5_b25_stark_admission" ||
+                    *walkthrough_segment == "beat_w5_b29_cyberheart_turn_in" ||
+                    *walkthrough_segment == "beat_w6_sinsearach_first_audience" ||
+                    *walkthrough_segment == "beat_w6_ilene_contact" ||
                     *walkthrough_segment == "w3_b2" ||
                     *walkthrough_segment == "w4" ||
                     *walkthrough_segment == "w4_b6" ||
@@ -52208,7 +52246,8 @@ int main(int argc, char** argv) {
                         *walkthrough_output_directory, walkthrough_reach,
                         walkthrough_from_fixture_path,
                         walkthrough_write_fixture_path,
-                        walkthrough_compare_fixture_path);
+                        walkthrough_compare_fixture_path,
+                        walkthrough_initial_scene_for_setup);
             }
             if (map_coverage_rows_path.has_value() &&
                 map_coverage_results_path.has_value()) {

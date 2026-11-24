@@ -38,7 +38,7 @@
         },
         "complete": {
           "type": "terminal",
-          "outcome": { "type": "completed" }
+          "outcome": { "type": "return_to_caller" }
         }
       }
     }

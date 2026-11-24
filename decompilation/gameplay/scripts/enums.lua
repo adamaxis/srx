@@ -179,6 +179,8 @@ E.Scene = {
     ICARUS_DESCENDING = 12, -- Scene-12 Caleb booth event 30 at 0x1D605E [C]
     PENUMBRA_DISTRICT = 3, -- Scene-3 Mitsuhama and Big Rhino records [C]
     SALISH_SHIDHE = 6, -- Scene-6 Owlfeather lodge record 193 [C]
+    SCENE_7 = 7, -- ROM Scene-7 record 206 at 0x1B4592 routes to field Scene 13 [C]
+    FIELD_SCENE_13 = 13, -- Scene-13 south-edge return records 9/10 [C: 0x1B3CE4/0x1B3CEE]
     CAVE_SCENE_45 = 45, -- Scene 6 west-exit route reached this cave scene [H]
     HOLLYWOOD_CORRECTIONAL_INTERIOR = 20, -- Scene-2 event-0 row selects scene 20 [C: 0x172CDC]
     SINSEARACH_VILLAGE_GATE = 9, -- Scene-9 event 0 gate [C; guide-name crosswalk]
@@ -1078,13 +1080,20 @@ E.StoryFact = {
 }
 
 E.StoryFlagBit = {
+  MOTEL_BILL_PAID = 0, -- FFFC1E bit 0 enables cab service after the Stoker payment callback [C: 0x21410, 0x20714]
+  SHAMAN_MET = 5, -- FFFC1E bit 5 set by Spirit Eyes first contact [C: Scene-4 record 96 / 0x53D5A]
+  TARISLAR_ASKED_SHALE = 1, -- FFFC1E bit 1 set by Inn command 0x16 at 0x218BC [C]
+  MICHAEL_ALIAS_LEARNED = 10, -- FFFC1E bit 10 set by Boris command 0x2B at 0x21B82 [C]
   SHAMAN_ITEM4_GIVEN = 6, -- FFFC1E bit 6, set by the b6 Horn service at 0x53DCA [C]
+  SHAMAN_PELT_GIVEN = 7, -- FFFC1E bit 7, set by the b7 pelt service at 0x53E08 [C]
   MICHAEL_MISSION_TOLD = 13, -- FFFC1E bit 13, set by Caleb handler 0x2193A [C]
   RITUAL_OF_BINDING = 17, -- FFFC1E bit 17, set by command 0x1B at 0x2196C [C]
   RED_BUFFALO_WOMAN = 18, -- FFFC1E bit 18, set by service at 0x5435C [C]
   ILENE_MET = 19, -- FFFC1E bit 19, set by Scene-20 activity at 0x54402 [C]
   GILLIAN_INITIATION = 20, -- FFFC1E bit 20, set by command 0x37 at 0x21E58 [C]
   MEDICINE_LODGE_TURNED_AWAY = 24, -- FFFC1E bit 24, first Stark location visit at 0x1FDEA [C]
+  HOSPITAL_VISITED = 25, -- FFFC1E bit 25, set after Stark is admitted at 0x1F8C2 [C]
+  HOLOPIX_SHOWN = 23, -- FFFC1E bit 23, set by Seattle holopix handler 0x21EF8 [C]
 }
 
 -- Transient field-mode state exposed through gameplay meaning. The host maps
