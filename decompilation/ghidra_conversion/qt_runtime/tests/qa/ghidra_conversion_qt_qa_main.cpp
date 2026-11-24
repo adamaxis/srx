@@ -52209,6 +52209,8 @@ int main(int argc, char** argv) {
                     *walkthrough_segment == "beat_w5_b29_cyberheart_turn_in" ||
                     *walkthrough_segment == "beat_w6_sinsearach_first_audience" ||
                     *walkthrough_segment == "beat_w6_ilene_contact" ||
+                    *walkthrough_segment == "beat_w6_gillian_gift_return" ||
+                    *walkthrough_segment == "beat_w6_gillian_initiation" ||
                     *walkthrough_segment == "w3_b2" ||
                     *walkthrough_segment == "w4" ||
                     *walkthrough_segment == "w4_b6" ||

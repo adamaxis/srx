@@ -230,6 +230,8 @@ local function load_route(segment)
         beat_w5_b29_cyberheart_turn_in = "walkthrough.route_beat_w5_b29_cyberheart_turn_in",
         beat_w6_sinsearach_first_audience = "walkthrough.route_beat_w6_sinsearach_first_audience",
         beat_w6_ilene_contact = "walkthrough.route_beat_w6_ilene_contact",
+        beat_w6_gillian_gift_return = "walkthrough.route_beat_w6_gillian_gift_return",
+        beat_w6_gillian_initiation = "walkthrough.route_beat_w6_gillian_initiation",
         w4 = "walkthrough.route_w4",
         w4_b6 = "walkthrough.route_w4_b6",
         w4_b7 = "walkthrough.route_w4_b7",

@@ -1,8 +1,8 @@
 local E = require("enums")
 
-local kIleneWorldX = 3712 -- ROM actor route 0xA8E4 positions Ilene at x=0x0E80 [C]
-local kIleneWorldY = 1792 -- ROM actor route 0xA8E4 positions Ilene at y=0x0700 [C]
-local kContactInputFrames = 24
+local kIleneApproachX = 3412 -- Reverse the measured 12-frame RIGHT vector into the ROM point.
+local kIleneApproachY = 1852
+local kContactInputFrames = 12
 
 local story = E.StoryFact
 local mode = E.FieldModeFlagBit
@@ -49,6 +49,13 @@ return {
                         effect.ILENE_INFORMATION_HEARD, true)
                 assert(effect_seeded, effect_error or
                     "Ilene handoff prerequisite setup failed")
+                -- The test starts directly in Scene 20, bypassing Scene-2
+                -- service 19 at 0x543A2. Re-enter this map in setup so the
+                -- production Scene-20 entry handler arms the FFE182 handoff.
+                local entered, entry_error = host.reenter_scene_for_setup(
+                    E.Scene.HOLLYWOOD_CORRECTIONAL_INTERIOR)
+                assert(entered, entry_error or
+                    "Scene-20 setup re-entry failed")
                 return "seeded the ROM b18 and Ilene-contact prerequisites"
             end,
         },
@@ -71,12 +78,12 @@ return {
             run = function(host)
                 local placed, placement_error = host.place_within_scene(
                     E.Scene.HOLLYWOOD_CORRECTIONAL_INTERIOR,
-                    kIleneWorldX, kIleneWorldY)
+                    kIleneApproachX, kIleneApproachY)
                 assert(placed, placement_error or "Ilene placement failed")
-                local opened, movement_error = host.hold_until_modal(
-                    "UP", kContactInputFrames)
-                assert(opened, movement_error or
-                    "real UP did not trigger Ilene's Scene-20 contact")
+                local opened = host.hold_until_modal(
+                    "RIGHT", kContactInputFrames)
+                assert(opened,
+                    "real RIGHT did not trigger Ilene's Scene-20 contact")
                 local contact = host.snapshot()
                 assert(contact.dialogue_open,
                     "Ilene's Scene-20 contact dialogue did not open")
