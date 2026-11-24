@@ -13,6 +13,14 @@ local function prompt(text_key, portrait_alias)
     }
 end
 
+-- ROM finalizer 0x1FD80 branches that end with D6 = -1 show their text and
+-- cancel the event-table route instead of continuing to its destination.
+local function cancelling_prompt(text_key, portrait_alias)
+    local content = prompt(text_key, portrait_alias)
+    content.route_after = "cancel"
+    return content
+end
+
 local renraku_arcology_store_ids = {
     wire_masters = true,
     merlins_lore = true,
@@ -46,18 +54,39 @@ end
 function FieldMode.mode_text_content()
     local field = game.field
     if field.prompt_id == E.FieldModePrompt.MEDICINE_LODGE_FIRST_VISIT then
+        -- ROM finalizer 0x1FDBE handles every Scene-7/event-0 entry; each
+        -- branch ends at 0x1FE7A..0x1FE80 with D6 = -1, so the lodge text
+        -- always cancels the event-table route.
         local turned_away = E.StoryFact.MEDICINE_LODGE_TURNED_AWAY
-        if StoryFacts.is_set(turned_away) == true then
-            return {
-                status = "unmatched",
-                text_key = "none",
-                portrait_alias = "none",
-            }
+        if StoryFacts.is_set(turned_away) ~= true then
+            -- ROM 0x1FDCA..0x1FDF4 sets FFFC1E bit 24 before selecting text
+            -- 0x11B714 on the first Scene-7/event-0 exit.
+            StoryFacts.set(turned_away)
+            return cancelling_prompt("field.mode.medicine_lodge.first_visit", "none")
         end
-        -- ROM 0x1FDCA..0x1FDF4 sets FFFC1E bit 24 before selecting text
-        -- 0x11B714 on the first Scene-7/event-0 exit.
-        StoryFacts.set(turned_away)
-        return prompt("field.mode.medicine_lodge.first_visit", "none")
+        if StoryFacts.is_set(E.StoryFact.HOSPITAL_VISITED) ~= true then
+            -- ROM 0x1FDFE..0x1FE0C: bit 24 set, bit 25 clear selects 0x11B7E4
+            -- (page 0x11C0EA).
+            return cancelling_prompt("field.mode.medicine_lodge.stark_time_short", "none")
+        end
+        -- ROM 0x1FE10..0x1FE16: bit 25 set calls 0x59BCC, which clears the
+        -- downed/dead conditions and refills physical and stun for all three
+        -- live-record slots, then selects 0x11B7EC (page 0x11C14C).
+        assert(type(game.party) == "function" and
+               type(game.commit_party) == "function",
+               "medicine lodge heal needs the party service")
+        local party = game.party()
+        for slot = 0, 2 do
+            local runner = party[slot]
+            if runner then
+                runner.runner_facts.lifecycle.dead = false
+                runner.runner_facts.lifecycle.downed = false
+                runner.physical = 10
+                runner.stun = 10
+            end
+        end
+        game.commit_party(party)
+        return cancelling_prompt("field.mode.medicine_lodge.stark_saved_heal", "none")
     end
 
     local renraku_store = renraku_store_prompt(field)

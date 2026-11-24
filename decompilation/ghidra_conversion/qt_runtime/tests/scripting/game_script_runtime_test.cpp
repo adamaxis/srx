@@ -11874,7 +11874,10 @@ int main() {
     const auto valid_mode_prompt = [&](const auto& content,
                                        const std::string_view text_key,
                                        const std::string_view portrait_alias) {
-        const bool valid = content.has_value() && content->size() == 3U &&
+        const bool valid = content.has_value() &&
+               (content->size() == 3U ||
+                (content->size() == 4U &&
+                 content->count("route_after") != 0U)) &&
                content->at("status") == "matched" &&
                content->at("text_key") == text_key &&
                content->at("portrait_alias") == portrait_alias &&
@@ -11971,8 +11974,14 @@ int main() {
                     valid_mode_prompt(
                         medicine_lodge_first_visit,
                         "field.mode.medicine_lodge.first_visit", "none") &&
-                    medicine_lodge_repeat.has_value() &&
-                    medicine_lodge_repeat->at("status") == "unmatched" &&
+                    medicine_lodge_first_visit->at("route_after") ==
+                        "cancel" &&
+                    // ROM 0x1FDFE..0x1FE0C: bit 24 set, bit 25 clear shows
+                    // 0x11B7E4 and 0x1FE80 still cancels the route.
+                    valid_mode_prompt(
+                        medicine_lodge_repeat,
+                        "field.mode.medicine_lodge.stark_time_short", "none") &&
+                    medicine_lodge_repeat->at("route_after") == "cancel" &&
                     scripts.story_state().count(
                         "medicine_lodge_turned_away") != 0U &&
                     scripts.story_state().at(

@@ -41,6 +41,9 @@ public:
 
     void close() noexcept;
     bool open() const noexcept { return open_; }
+    // Lua reports when the ROM finalizer cancels the area-event route after
+    // this text (D6 = -1, e.g. 0x1FD80's Scene-7/event-0 branches).
+    bool cancels_route() const noexcept { return cancels_route_; }
     const DialoguePanelView& panel() const noexcept { return panel_; }
     std::uint16_t frames_remaining() const noexcept {
         return prompt_state_.frames_remaining;
@@ -60,6 +63,7 @@ private:
     std::string failure_;
     bool assets_loaded_ = false;
     bool open_ = false;
+    bool cancels_route_ = false;
 };
 
 } // namespace shadowrun::ghidra_conversion::qt_runtime

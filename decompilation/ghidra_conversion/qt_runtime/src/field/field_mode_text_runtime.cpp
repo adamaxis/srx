@@ -128,6 +128,14 @@ FieldModeTextOpenResult FieldModeTextRuntime::open_if_matched(
     if (!resolve_panel(text_key->second)) {
         return FieldModeTextOpenResult::failed;
     }
+    const auto route_after = content->find("route_after");
+    if (route_after != content->end() && route_after->second != "continue" &&
+        route_after->second != "cancel") {
+        failure_ = "Lua field-mode prompt has an unknown route_after";
+        return FieldModeTextOpenResult::failed;
+    }
+    cancels_route_ = route_after != content->end() &&
+                     route_after->second == "cancel";
     if (portrait_alias->second != "none") {
         portrait_alias_storage_ = portrait_alias->second;
         panel_.portrait_alias = portrait_alias_storage_;
@@ -169,6 +177,7 @@ FieldModeTextAdvanceResult FieldModeTextRuntime::advance_controller_events(
 }
 
 void FieldModeTextRuntime::close() noexcept {
+    cancels_route_ = false;
     open_ = false;
     prompt_ = ModeTextPromptDescriptor{};
     prompt_state_ = ModeTextPromptState{};

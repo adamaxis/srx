@@ -2467,6 +2467,17 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                     runtime_state.field_mode,
                     field_movement_transition_state_.mode_event_code,
                     field_exit_alternate_result_});
+            if (content == FieldModeTextOpenResult::opened &&
+                field_mode_text_.cancels_route()) {
+                // ROM 0x1F64C/0x1FD80: a finalizer branch ending in D6 = -1
+                // shows its text and drops the event-table destination.
+                field_mode_entry_route_cancelled_ = true;
+                field_palette_fade_steps_ = 0U;
+                source_boundary(
+                    "field.mode_text.area_event_entry_cancelled_route");
+                state.caller_exit_status = -1;
+                return true;
+            }
             if (content == FieldModeTextOpenResult::opened) {
                 if (!event_route.area_event_target.has_value()) {
                     field_mode_text_.close();
@@ -11689,6 +11700,7 @@ bool FieldSceneRuntime::bootstrap(
     // work RAM) plus every title-screen draw, exactly as the ROM; the debugger records it in the SEEDS chunk.
     field_opening_auto_walk_ = FieldOpeningAutoWalkState{};
     field_mode_entry_transition_pending_ = false;
+    field_mode_entry_route_cancelled_ = false;
     field_mode_entry_destination_scene_.reset();
     field_mode_entry_run_target_actor_group_.reset();
     field_indexed_title_service_result_ = 0;
@@ -12780,6 +12792,7 @@ bool FieldSceneRuntime::bootstrap(
     // continuation (0xB574); a restored save never takes this branch.
     field_opening_auto_walk_ = FieldOpeningAutoWalkState{};
     field_mode_entry_transition_pending_ = false;
+    field_mode_entry_route_cancelled_ = false;
     field_mode_entry_destination_scene_.reset();
     field_mode_entry_run_target_actor_group_.reset();
     field_indexed_title_service_result_ = 0;
@@ -15471,6 +15484,11 @@ void FieldSceneRuntime::advance_frame() {
                     source_boundary(std::string("field.shop.") +
                                     std::string(shop_tag) + ".open_failed");
                 }
+            } else if (field_mode_entry_route_cancelled_) {
+                field_mode_entry_route_cancelled_ = false;
+                active_field_script_route_.reset();
+                source_boundary("field.mode_text.area_event_route_cancelled");
+                begin_field_modal_return_transition();
             } else if (field_mode_entry_transition_pending_) {
                 if (!resume_field_mode_entry_route()) {
                     source_boundary(

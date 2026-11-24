@@ -331,6 +331,20 @@ inline int set_field_mode_effect_flag_for_setup(lua_State* state) {
     return 1;
 }
 
+inline int set_field_interaction_mode_for_setup(lua_State* state) {
+    auto* host = context(state);
+    lua_Integer mode = 0;
+    if (!integer_argument(state, 1, mode) || mode < 0 || mode > 65535) {
+        lua_pushboolean(state, 0);
+        lua_pushliteral(state, "field interaction mode must be in [0, 65535]");
+        return 2;
+    }
+    host->runtime->set_field_interaction_mode_for_dump(
+        static_cast<std::uint16_t>(mode));
+    lua_pushboolean(state, 1);
+    return 1;
+}
+
 inline int set_pending_world_effect_for_setup(lua_State* state) {
     auto* host = context(state);
     const bool pending = lua_toboolean(state, 1) != 0;
@@ -541,6 +555,35 @@ inline int hold_until_modal(lua_State* state) {
                                (stop_scene.has_value() &&
                                 runtime.field_scene_reference_for_dump() ==
                                     *stop_scene));
+    return 1;
+}
+
+// Hold a direction until the shared field-mode text prompt (0x1F246 page
+// presenter used by area-event finalizers such as 0x1FD80) opens.
+inline int hold_until_mode_text(lua_State* state) {
+    auto* host = context(state);
+    std::size_t button_length = 0U;
+    const auto* button_text = luaL_checklstring(state, 1, &button_length);
+    lua_Integer limit = 0;
+    const auto button = pad_byte(std::string_view(button_text, button_length));
+    if (!button.has_value() || *button == 0U ||
+        !integer_argument(state, 2, limit) || limit < 1 ||
+        limit > static_cast<lua_Integer>(kFrameBudget)) {
+        lua_pushboolean(state, 0);
+        lua_pushliteral(state, "invalid movement-to-mode-text arguments");
+        return 2;
+    }
+    auto& runtime = *host->runtime;
+    for (lua_Integer frame = 0;
+         frame < limit && !runtime.field_mode_text_open_for_dump(); ++frame) {
+        if (!advance_one(*host, *button) || !advance_one(*host, 0U)) {
+            lua_pushboolean(state, 0);
+            lua_pushlstring(state, host->host_error.data(),
+                            host->host_error.size());
+            return 2;
+        }
+    }
+    lua_pushboolean(state, runtime.field_mode_text_open_for_dump());
     return 1;
 }
 
@@ -772,6 +815,19 @@ inline int snapshot(lua_State* state) {
     }
     lua_pushlstring(state, panel_text.data(), panel_text.size());
     lua_setfield(state, -2, "panel_text");
+    lua_pushboolean(state, runtime.field_mode_text_open_for_dump());
+    lua_setfield(state, -2, "mode_text_open");
+    {
+        const auto& mode_panel = runtime.field_mode_text_panel_for_dump();
+        std::string mode_text;
+        for (std::size_t index = 0U; index < mode_panel.text_segment_count;
+             ++index) {
+            if (!mode_text.empty()) mode_text.push_back(' ');
+            mode_text.append(mode_panel.text_segments[index]);
+        }
+        lua_pushlstring(state, mode_text.data(), mode_text.size());
+        lua_setfield(state, -2, "mode_text");
+    }
     const auto& position = runtime.field_entity_world_position();
     lua_pushinteger(state, position.x);
     lua_setfield(state, -2, "x");
@@ -1568,6 +1624,8 @@ inline int run_walkthrough_qa(
     add_host_function(state, host, "end_step", end_step);
     add_host_function(state, host, "press", press);
     add_host_function(state, host, "hold_until_modal", hold_until_modal);
+    add_host_function(state, host, "hold_until_mode_text",
+                      hold_until_mode_text);
     add_host_function(state, host, "advance", advance_frames);
     add_host_function(state, host, "wait_for_dialogue", wait_for_dialogue);
     add_host_function(state, host, "wait_for_page", wait_for_page);
@@ -1588,6 +1646,8 @@ inline int run_walkthrough_qa(
                       set_field_mode_flag_for_setup);
     add_host_function(state, host, "set_field_mode_effect_flag_for_setup",
                       set_field_mode_effect_flag_for_setup);
+    add_host_function(state, host, "set_field_interaction_mode_for_setup",
+                      set_field_interaction_mode_for_setup);
     add_host_function(state, host, "set_pending_world_effect_for_setup",
                       set_pending_world_effect_for_setup);
     add_host_function(state, host, "set_field_auxiliary_flag_for_setup",

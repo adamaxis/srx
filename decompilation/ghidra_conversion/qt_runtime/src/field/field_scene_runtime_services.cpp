@@ -438,6 +438,7 @@ bool FieldSceneRuntime::open_hospital_menu_for_dump(
         refresh_field_hud_runner_slot();
     }
     field_mode_entry_transition_pending_ = false;
+    field_mode_entry_route_cancelled_ = false;
     field_mode_entry_destination_scene_.reset();
     hospital_service_session_active_ = false;
     game_scripts_.set_location_context(
@@ -1466,6 +1467,7 @@ bool FieldSceneRuntime::handle_dialogue_continue_in_place(
     }
     hospital_service_session_active_ = false;
     field_mode_entry_transition_pending_ = false;
+    field_mode_entry_route_cancelled_ = false;
     field_mode_entry_destination_scene_.reset();
     field_mode_entry_run_target_actor_group_.reset();
     source_boundary("field.dialogue.continued_in_place");
@@ -1599,6 +1601,7 @@ bool FieldSceneRuntime::prepare_open_dialogue_service(
         return false;
     }
     field_mode_entry_transition_pending_ = false;
+    field_mode_entry_route_cancelled_ = false;
     field_mode_entry_destination_scene_.reset();
     field_mode_entry_run_target_actor_group_.reset();
     return true;

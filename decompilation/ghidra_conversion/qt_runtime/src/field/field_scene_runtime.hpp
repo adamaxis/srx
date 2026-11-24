@@ -3144,6 +3144,9 @@ private:
     // yields across frames, so retain the typed destination and resume its
     // scene-entry tail only after the player dismisses the entry page.
     bool field_mode_entry_transition_pending_ = false;
+    // Set while an area-event mode text whose ROM finalizer cancels the
+    // route (D6 = -1) is open; its return goes back to the source scene.
+    bool field_mode_entry_route_cancelled_ = false;
     bool field_dialogue_exit_scene_transition_applied_ = false;
     bool field_dialogue_exit_scene_change_resumed_ = false;
     bool field_dialogue_exit_source_door_return_applied_ = false;

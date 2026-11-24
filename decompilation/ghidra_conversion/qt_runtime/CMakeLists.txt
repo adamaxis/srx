@@ -959,20 +959,13 @@ set_tests_properties(shadowrun_beat_w6_red_buffalo_gift
     PROPERTIES LABELS "walkthrough" TIMEOUT 180
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 
-add_test(NAME shadowrun_beat_w5_scene7_exit_expected_fail_WALK_002
-    COMMAND ${CMAKE_COMMAND}
-        "-DTEST_EXECUTABLE=$<TARGET_FILE:shadowrun_ghidra_conversion_qt_qa>"
-        "-DASSET_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
-        "-DSEGMENT=beat_w5_scene7_exit"
-        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/beat-w5-scene7-exit"
-        "-DINITIAL_SCENE=7"
-        "-DBUG_ID=WALK-002"
-        "-DEXPECTED_FAILURE_PATTERN=field.entry.area_event_route_resume_failed"
-        "-DEXPECTED_STEP_ID=w5_scene7_first_exit_turns_away"
-        "-DEXPECTED_AFTER_SCENE=7"
-        "-DEXPECTED_AFTER_STORY=17301504"
-        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/qa/expect_walkthrough_failure.cmake")
-set_tests_properties(shadowrun_beat_w5_scene7_exit_expected_fail_WALK_002
+add_test(NAME shadowrun_beat_w5_scene7_exit
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough beat_w5_scene7_exit
+        "${CMAKE_CURRENT_BINARY_DIR}/beat-w5-scene7-exit"
+        --initial-scene 7)
+set_tests_properties(shadowrun_beat_w5_scene7_exit
     PROPERTIES LABELS "walkthrough" TIMEOUT 180
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 
