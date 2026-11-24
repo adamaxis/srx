@@ -15,6 +15,8 @@ local function tap(host, button)
     assert(ok, problem or ("pad input failed: " .. button))
 end
 
+local kInitiationPleasedText = "<Your answer pleases Lady Gillian."
+
 return {
     steps = {
         {
@@ -108,8 +110,13 @@ return {
                             "Gillian's initiation page was not shown")
                         return "Lady Gillian's live trial Yes completed b21 and awarded two Karma"
                     end
-                    if snapshot.page_key ==
-                       "salish.sinsearach.page.ritual_initiation_pleased" then
+                    -- ROM group 0xF56CC opens the initiation chain with the
+                    -- narration page "<Your answer pleases Lady Gillian...".
+                    -- Narration panels do not publish a story page_key, so
+                    -- match the ROM text shown in the panel.
+                    if snapshot.panel_actor == "Narration" and
+                       string.sub(snapshot.panel_text or "", 1,
+                           #kInitiationPleasedText) == kInitiationPleasedText then
                         saw_initiation_page = true
                     end
                     if snapshot.panel_actor == "Elven guard" and
