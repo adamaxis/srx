@@ -9,6 +9,7 @@ local kScene7LonghouseX = 26368
 local kScene7ApproachY = 22272
 local kInputFrames = 600
 local kSettleFrames = 180
+local kMaxLodgePages = 64
 
 local story = E.StoryFact
 
@@ -26,33 +27,39 @@ local function set_up_input_scene(host)
         "New Game opening walk did not settle before Scene-7 setup")
 end
 
--- Walk UP into the lodge door with real pad input, require the ROM page,
--- dismiss it, and require that the cancelled route leaves the party in
--- Scene 7.
-local function enter_lodge(host, rom_text_prefix, rom_text)
-    -- rom_text_prefix nil: WALK-007, the first-visit chain 0x11B714 (pages
-    -- 0x11B804.., commands 0x42/0x43) is not ported; only its last fragment
-    -- exists as field.mode.medicine_lodge.first_visit, so its text is not
-    -- asserted until that conversation is ported.
+-- Walk UP into the lodge door with real pad input. ROM 0x1FDBE opens a
+-- profile-0x121E08 dialogue root; A advances every record (single replies
+-- and <MORE> continuations alike). Require the root's first and last ROM
+-- pages, then require that the cancelled route leaves the party in Scene 7.
+local function enter_lodge(host, first_text, last_text, rom_root)
     local placed, placement_error = host.place_within_scene(
         E.Scene.SCENE_7, kScene7LonghouseX, kScene7ApproachY)
     assert(placed, placement_error or
         "Scene-7 longhouse approach placement failed")
-    local opened, open_error = host.hold_until_mode_text("UP", kInputFrames)
-    assert(opened, open_error or "Scene-7 lodge door did not open its text")
-    local shown = host.snapshot().mode_text
-    assert(rom_text_prefix == nil or shown:sub(1, #rom_text_prefix) == rom_text_prefix,
-        "Scene-7 lodge did not show ROM text " .. rom_text .. ": " .. shown)
-    for _ = 1, 16 do
-        if not host.snapshot().mode_text_open then break end
+    local opened, open_error = host.hold_until_modal("UP", kInputFrames)
+    assert(opened, open_error or "Scene-7 lodge door did not open its dialogue")
+    local pages = {}
+    for _ = 1, kMaxLodgePages do
+        local state = host.snapshot()
+        if not state.dialogue_open then break end
+        if pages[#pages] ~= state.panel_text then
+            pages[#pages + 1] = state.panel_text
+        end
         local pressed, press_error = host.press("A")
-        assert(pressed, press_error or "could not dismiss lodge text")
+        assert(pressed, press_error or "could not advance lodge dialogue")
     end
-    assert(not host.snapshot().mode_text_open,
-        "Scene-7 lodge text did not close")
+    assert(not host.snapshot().dialogue_open,
+        "Scene-7 lodge dialogue did not close")
+    assert(#pages > 0 and pages[1]:find(first_text, 1, true),
+        "Scene-7 lodge did not open ROM root " .. rom_root .. ": " ..
+        tostring(pages[1]))
+    assert(pages[#pages]:find(last_text, 1, true),
+        "Scene-7 lodge root " .. rom_root .. " did not end on its ROM page: " ..
+        tostring(pages[#pages]))
     advance(host, kSettleFrames)
     assert(host.snapshot().scene == E.Scene.SCENE_7,
-        "Scene-7 lodge text did not cancel the event-table route")
+        "Scene-7 lodge dialogue did not cancel the event-table route")
+    return #pages
 end
 
 return {
@@ -70,6 +77,10 @@ return {
                     story = {
                         set = { story.ILENE_MET, story.MEDICINE_LODGE_TURNED_AWAY },
                     },
+                    -- Command 0x42 (0x21F80) sets FFFC34 bit 18.
+                    effect = {
+                        set = { E.FieldModeEffectFlagBit.STARK_DYING_TIP },
+                    },
                 },
             },
             run = function(host)
@@ -83,9 +94,13 @@ return {
                 assert(host.snapshot().story_facts[
                     story.MEDICINE_LODGE_TURNED_AWAY] == false,
                     "first lodge visit requires FFFC1E bit 24 clear")
-                -- ROM 0x1FDCA..0x1FDF4: set bit 24, select 0x11B714.
-                enter_lodge(host, nil, "0x11B714")
-                return "first lodge visit set bit 24, showed 0x11B714, and stayed in Scene 7"
+                -- ROM 0x1FDCA..0x1FDF4: set bit 24, select 0x11B714, whose
+                -- eleven records run from text 0x11B804 to 0x11C014.
+                local pages = enter_lodge(host,
+                    "<You enter a large, dim building of AmerIndian design.",
+                    "If you could fetch help he may yet live.", "0x11B714")
+                assert(pages >= 11, "0x11B714 showed only " .. pages .. " pages")
+                return "first lodge visit set bit 24, played 0x11B714 through 0x11C014, and stayed in Scene 7"
             end,
         },
         {
@@ -102,6 +117,7 @@ return {
                 -- ROM 0x1FDFE..0x1FE0C: bit 24 set, bit 25 clear selects
                 -- 0x11B7E4 and still cancels the route.
                 enter_lodge(host, "The time for Stark to join his ancestors draws nigh.",
+                    "You do not have much more time to save him.",
                     "0x11B7E4 -> 0x11C0EA")
                 return "lodge revisit showed 0x11B7E4 and stayed in Scene 7"
             end,
@@ -122,6 +138,7 @@ return {
                 assert(admitted, admitted_error or
                     "Stark admission prerequisite setup failed")
                 enter_lodge(host, "Thank you for saving one of our own.",
+                    "You leave feeling refreshed and alive!",
                     "0x11B7EC -> 0x11C14C")
                 return "lodge visit after Stark's admission showed 0x11B7EC and stayed in Scene 7"
             end,

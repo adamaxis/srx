@@ -2334,6 +2334,53 @@
       "name": "Rianna",
       "portrait_alias": "field.hud.party.face.11.palette.0",
       "text_profile": "runner.rianna"
+    },
+    "salish_medicine_lodge_shaman": {
+      "events": {
+        "holo_commotion": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.medicine_lodge.page.holo_commotion"
+        },
+        "holo_youth": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.medicine_lodge.page.holo_youth"
+        },
+        "holo_shaman": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.medicine_lodge.page.holo_shaman"
+        },
+        "shaman_tension": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.medicine_lodge.page.shaman_tension"
+        },
+        "follow_me": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.medicine_lodge.page.follow_me"
+        },
+        "stark_found": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.medicine_lodge.page.stark_found"
+        },
+        "stark_magic": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.medicine_lodge.page.stark_magic"
+        },
+        "stark_fetch_help": {
+          "continuation_key": "",
+          "title_key": "salish.medicine_lodge.page.stark_fetch_help"
+        },
+        "stark_time_short": {
+          "continuation_key": "",
+          "title_key": "salish.medicine_lodge.page.stark_time_short"
+        },
+        "stark_saved_heal": {
+          "continuation_key": "",
+          "title_key": "salish.medicine_lodge.page.stark_saved_heal"
+        }
+      },
+      "name": "Young shaman",
+      "portrait_alias": "dialogue.portraits.aragorn.mitsuhama",
+      "text_profile": "salish.medicine_lodge"
     }
   },
   "schemaVersion": 1

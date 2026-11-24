@@ -2425,6 +2425,26 @@
           "different_subject": "gunderson.information.option.back"
         }
       }
+    },
+    "salish.medicine_lodge": {
+      "turned_away": {
+        "choice_label_keys": {
+          "neighborhood": "salish.medicine_lodge.option.neighborhood"
+        },
+        "title_key": "salish.medicine_lodge.page.turned_away"
+      },
+      "holo_michael": {
+        "choice_label_keys": {
+          "where_holo": "salish.medicine_lodge.option.where_holo"
+        },
+        "title_key": "salish.medicine_lodge.page.holo_michael"
+      },
+      "stark_alcove": {
+        "choice_label_keys": {
+          "call_stark": "salish.medicine_lodge.option.call_stark"
+        },
+        "title_key": "salish.medicine_lodge.page.stark_alcove"
+      }
     }
   },
   "schemaVersion": 1
