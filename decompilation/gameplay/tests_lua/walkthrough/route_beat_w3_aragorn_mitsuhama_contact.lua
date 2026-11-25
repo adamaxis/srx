@@ -37,6 +37,14 @@ local function advance(host, frames)
     assert(ok, problem or "Aragorn contact frame advance failed")
 end
 
+local function wait_for_elevator_selector(host, frames)
+    for _ = 1, frames do
+        if host.snapshot().elevator_open then return true end
+        advance(host, 1)
+    end
+    return host.snapshot().elevator_open
+end
+
 local function source_walk_bound(raw_distance)
     return math.floor((raw_distance + kMinimumStepRaw - 1) /
         kMinimumStepRaw) + 256 -- ROM QA heading/event settling allowance [C]
@@ -117,7 +125,7 @@ local function ride_to_floor_four(host)
     local opened, movement_error = host.hold_until_modal(
         "UP", source_walk_bound(kElevatorLaneY - kElevatorEventY))
     assert(opened, movement_error or "real UP did not reach the Mitsuhama lift")
-    assert(host.wait_for_elevator_selector(120),
+    assert(wait_for_elevator_selector(host, 120),
         "Scene-30 event 29 did not open the Mitsuhama elevator selector")
     for _ = 1, kFloorSelectionCount do
         tap(host, "UP")

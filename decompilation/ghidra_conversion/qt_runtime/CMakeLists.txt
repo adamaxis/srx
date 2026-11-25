@@ -901,7 +901,7 @@ add_test(NAME shadowrun_beat_w3_aragorn_mitsuhama_contact_expected_fail_WALK_008
         "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/beat-w3-aragorn-mitsuhama-contact"
         "-DINITIAL_SCENE=3"
         "-DBUG_ID=WALK-008"
-        "-DEXPECTED_FAILURE_PATTERN=wait_for_elevator_selector"
+        "-DEXPECTED_FAILURE_PATTERN=Scene-30 event 29 did not open"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/qa/expect_walkthrough_failure.cmake")
 set_tests_properties(shadowrun_beat_w3_aragorn_mitsuhama_contact_expected_fail_WALK_008
     PROPERTIES LABELS "walkthrough;expected-failure" TIMEOUT 180
