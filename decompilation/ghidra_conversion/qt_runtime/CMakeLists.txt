@@ -1409,6 +1409,19 @@ add_test(NAME shadowrun_beat_w5_b25_cave_entry
 set_tests_properties(shadowrun_beat_w5_b25_cave_entry
     PROPERTIES LABELS "walkthrough" TIMEOUT 180
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+add_test(NAME shadowrun_beat_w5_cave_continuation_expected_fail_WALK_014
+    COMMAND ${CMAKE_COMMAND}
+        "-DTEST_EXECUTABLE=$<TARGET_FILE:shadowrun_ghidra_conversion_qt_qa>"
+        "-DASSET_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        "-DSEGMENT=beat_w5_cave_continuation"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/beat-w5-cave-continuation"
+        "-DINITIAL_SCENE=45"
+        "-DBUG_ID=WALK-014"
+        "-DEXPECTED_FAILURE_PATTERN=real UP did not trigger the Scene-45 room-5 north exit"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/qa/expect_walkthrough_failure.cmake")
+set_tests_properties(shadowrun_beat_w5_cave_continuation_expected_fail_WALK_014
+    PROPERTIES LABELS "walkthrough" TIMEOUT 180
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 add_test(NAME shadowrun_beat_w5_b29_cyberheart_turn_in
     COMMAND shadowrun_ghidra_conversion_qt_qa
         --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"

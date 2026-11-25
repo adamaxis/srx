@@ -231,6 +231,7 @@ local function load_route(segment)
         w3_b2 = "walkthrough.route_w3_b2",
         beat_w6_red_buffalo_gift = "walkthrough.route_beat_w6_red_buffalo_gift",
         beat_w5_scene7_exit = "walkthrough.route_beat_w5_scene7_exit",
+        beat_w5_cave_continuation = "walkthrough.route_beat_w5_cave_continuation",
         beat_w5_caleb_b13 = "walkthrough.route_beat_w5_caleb_b13",
         beat_w5_fuchi_entry = "walkthrough.route_beat_w5_fuchi_entry",
         beat_w5_fuchi_safe_reward = "walkthrough.route_beat_w5_fuchi_safe_reward",

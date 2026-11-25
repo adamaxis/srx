@@ -182,6 +182,7 @@ E.Scene = {
     FEATHERED_SERPENT_LAIR = 47, -- Scene-47 event 25 at 0x1D54B0 [C]
     SCENE_7 = 7, -- ROM Scene-7 record 206 at 0x1B4592 routes to field Scene 13 [C]
     FIELD_SCENE_13 = 13, -- Scene-13 south-edge return records 9/10 [C: 0x1B3CE4/0x1B3CEE]
+    CAVE_SCENE_44 = 44, -- Scene-45 room-5 north exit resolves to Scene 44 [C: 0x2CE0]
     CAVE_SCENE_45 = 45, -- Scene 6 west-exit route reached this cave scene [H]
     TARISLAR_TOMB = 54, -- ROM command 0xE4 at 0x24954 selects scene 54 [C]
     TARISLAR_TOMB_ANTECHAMBER = 55, -- Scene-55 antechamber entry callback at 0x1E2EC [C]
@@ -210,11 +211,11 @@ E.Scene.PUYALLUP_BARRENS = 1 -- Scene 1 owns Tarislar City Inn record 68 [C]
 
 E.FieldTransitionContext = {
   SERPENT_LAIR_ENCOUNTER = 19, -- FFFC10=0x13 gates Scene-47 handler 0x53EFA [C]
+  CAVE_ROOM_5 = 5, -- ROM trigger 0x1D4E4A selects room-5 north exit [C]
 }
 E.FieldMode = {
   SERPENT_LAIR_ENCOUNTER = 8, -- ROM 0x53F1A profile/mode gate [C]
 }
-
 E.FieldDialogueRegisterFlagBit = {
   BIT_0 = 0, BIT_1 = 1, BIT_2 = 2, BIT_3 = 3,
 } -- FFFC26 bit indices; Boris command 0x2B sets bit 1 [C]
@@ -1192,6 +1193,7 @@ E.FieldModeEffectFlagBit = {
 E.FieldInteractionMode = {
   CITY_STREET_TAXI = 0, -- Taxi-arrival mode clear at 0x136DE routes street event 31 [C]
   SCENE54_EXIT_EVENT = 3, -- Scene 54 profile sets FFFBF8 to mode 3 at 0x03074 [C]
+  CAVE_EXIT_ENABLED = 1, -- ROM 0x0A12 requires FFFC0E nonzero for cave exits [C]
 }
 
 E.FieldAuxiliaryFlagBit = {
