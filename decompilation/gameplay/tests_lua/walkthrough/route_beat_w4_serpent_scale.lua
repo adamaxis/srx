@@ -42,7 +42,17 @@ return {
                         E.FieldTransitionContext.SERPENT_LAIR_ENCOUNTER)
                 assert(context, context_error or
                     "ROM lair transition-context setup failed")
-                return "seeded b7 and the ROM FFFC10=0x13 lair context; b8/item remain clear"
+                local field_mode, field_mode_error =
+                    host.set_field_interaction_mode_for_setup(
+                        E.FieldMode.SERPENT_LAIR_ENCOUNTER)
+                assert(field_mode, field_mode_error or
+                    "ROM lair field-mode setup failed")
+                local resource_mode, resource_mode_error =
+                    host.set_field_resource_mode_for_setup(
+                        E.FieldMode.SERPENT_LAIR_ENCOUNTER)
+                assert(resource_mode, resource_mode_error or
+                    "ROM lair resource-mode setup failed")
+                return "seeded b7, FFFBF8=8, and FFFC10=0x13; b8/item remain clear"
             end,
         },
         {

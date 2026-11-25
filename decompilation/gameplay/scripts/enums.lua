@@ -211,6 +211,9 @@ E.Scene.PUYALLUP_BARRENS = 1 -- Scene 1 owns Tarislar City Inn record 68 [C]
 E.FieldTransitionContext = {
   SERPENT_LAIR_ENCOUNTER = 19, -- FFFC10=0x13 gates Scene-47 handler 0x53EFA [C]
 }
+E.FieldMode = {
+  SERPENT_LAIR_ENCOUNTER = 8, -- ROM 0x53F1A profile/mode gate [C]
+}
 
 E.FieldDialogueRegisterFlagBit = {
   BIT_0 = 0, BIT_1 = 1, BIT_2 = 2, BIT_3 = 3,

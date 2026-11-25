@@ -360,6 +360,20 @@ inline int set_field_transition_context_for_setup(lua_State* state) {
     return 1;
 }
 
+inline int set_field_resource_mode_for_setup(lua_State* state) {
+    auto* host = context(state);
+    lua_Integer mode = 0;
+    if (!integer_argument(state, 1, mode) || mode < 0 || mode > 255) {
+        lua_pushboolean(state, 0);
+        lua_pushliteral(state, "field resource mode must be in [0, 255]");
+        return 2;
+    }
+    host->runtime->set_field_resource_mode_for_dump(
+        static_cast<std::uint8_t>(mode));
+    lua_pushboolean(state, 1);
+    return 1;
+}
+
 inline int set_pending_world_effect_for_setup(lua_State* state) {
     auto* host = context(state);
     const bool pending = lua_toboolean(state, 1) != 0;
@@ -1686,6 +1700,8 @@ inline int run_walkthrough_qa(
                       set_field_interaction_mode_for_setup);
     add_host_function(state, host, "set_field_transition_context_for_setup",
                       set_field_transition_context_for_setup);
+    add_host_function(state, host, "set_field_resource_mode_for_setup",
+                      set_field_resource_mode_for_setup);
     add_host_function(state, host, "set_pending_world_effect_for_setup",
                       set_pending_world_effect_for_setup);
     add_host_function(state, host, "set_world_effect_active_for_setup",

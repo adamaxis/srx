@@ -1123,6 +1123,10 @@ public:
     void set_field_interaction_mode_for_dump(std::uint16_t mode) noexcept {
         field_movement_transition_state_.world_mode = mode;
     }
+    void set_field_resource_mode_for_dump(std::uint8_t mode) noexcept {
+        state_.field_scene_buffers.field_resource_mode = mode;
+        field_runtime_state_.field_mode = mode;
+    }
     // Seed the exact FFFBF9/FFFC10/FFFC1E and FFFC0E inputs for the mode-table
     // route QA. The following advance_frame uses the normal coordinator and
     // scene-entry callbacks; this does not create a second transition path.
