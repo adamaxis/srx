@@ -179,6 +179,7 @@ E.Scene = {
     ICARUS_DESCENDING = 12, -- Scene-12 Caleb booth event 30 at 0x1D605E [C]
     PENUMBRA_DISTRICT = 3, -- Scene-3 Mitsuhama and Big Rhino records [C]
     SALISH_SHIDHE = 6, -- Scene-6 Owlfeather lodge record 193 [C]
+    FEATHERED_SERPENT_LAIR = 47, -- Scene-47 event 25 at 0x1D54B0 [C]
     SCENE_7 = 7, -- ROM Scene-7 record 206 at 0x1B4592 routes to field Scene 13 [C]
     FIELD_SCENE_13 = 13, -- Scene-13 south-edge return records 9/10 [C: 0x1B3CE4/0x1B3CEE]
     CAVE_SCENE_45 = 45, -- Scene 6 west-exit route reached this cave scene [H]
@@ -206,6 +207,10 @@ E.Scene = {
 } -- 0x3232 scene table; resource placements 0x15..0x2B; 0x37 is last ROM scene [C]
 E.Scene.FRIENDSHIP_RESTAURANT = 10 -- Scene-4 record 91 at 0x15BDC4 selects Scene 10 [C]
 E.Scene.PUYALLUP_BARRENS = 1 -- Scene 1 owns Tarislar City Inn record 68 [C]
+
+E.FieldTransitionContext = {
+  SERPENT_LAIR_ENCOUNTER = 19, -- FFFC10=0x13 gates Scene-47 handler 0x53EFA [C]
+}
 
 E.FieldDialogueRegisterFlagBit = {
   BIT_0 = 0, BIT_1 = 1, BIT_2 = 2, BIT_3 = 3,
@@ -1094,6 +1099,7 @@ E.StoryFlagBit = {
   MICHAEL_ALIAS_LEARNED = 10, -- FFFC1E bit 10 set by Boris command 0x2B at 0x21B82 [C]
   SHAMAN_ITEM4_GIVEN = 6, -- FFFC1E bit 6, set by the b6 Horn service at 0x53DCA [C]
   SHAMAN_PELT_GIVEN = 7, -- FFFC1E bit 7, set by the b7 pelt service at 0x53E08 [C]
+  SERPENT_SCALE_TAKEN = 8, -- FFFC1E bit 8, set by Scene-47 handler 0x53F50 [C]
   MICHAEL_MISSION_TOLD = 13, -- FFFC1E bit 13, set by Caleb handler 0x2193A [C]
   RITUAL_OF_BINDING = 17, -- FFFC1E bit 17, set by command 0x1B at 0x2196C [C]
   RED_BUFFALO_WOMAN = 18, -- FFFC1E bit 18, set by service at 0x5435C [C]

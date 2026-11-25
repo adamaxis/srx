@@ -1021,6 +1021,16 @@ set_tests_properties(shadowrun_beat_w4_spirit_eyes_pelt_turn_in
     PROPERTIES LABELS "walkthrough" TIMEOUT 180
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 
+add_test(NAME shadowrun_beat_w4_serpent_scale
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough beat_w4_serpent_scale
+        "${CMAKE_CURRENT_BINARY_DIR}/beat-w4-serpent-scale"
+        --initial-scene 47)
+set_tests_properties(shadowrun_beat_w4_serpent_scale
+    PROPERTIES LABELS "walkthrough" TIMEOUT 180
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+
 add_test(NAME shadowrun_beat_w6_red_buffalo_gift
     COMMAND shadowrun_ghidra_conversion_qt_qa
         --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"

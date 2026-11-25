@@ -1139,6 +1139,10 @@ public:
     std::uint16_t field_transition_context_for_dump() const noexcept {
         return field_movement_transition_state_.field_transition_context;
     }
+    void set_field_transition_context_for_dump(
+        const std::uint16_t context) noexcept {
+        field_movement_transition_state_.field_transition_context = context;
+    }
     std::uint8_t field_activity_selection_for_dump() const noexcept {
         return field_movement_transition_state_.activity_selection;
     }

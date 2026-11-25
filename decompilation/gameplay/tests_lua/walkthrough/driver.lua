@@ -227,6 +227,7 @@ local function load_route(segment)
         beat_w4_spirit_eyes_first_contact = "walkthrough.route_beat_w4_spirit_eyes_first_contact",
         beat_w4_spirit_eyes_horn_turn_in = "walkthrough.route_beat_w4_spirit_eyes_horn_turn_in",
         beat_w4_spirit_eyes_pelt_turn_in = "walkthrough.route_beat_w4_spirit_eyes_pelt_turn_in",
+        beat_w4_serpent_scale = "walkthrough.route_beat_w4_serpent_scale",
         w3_b2 = "walkthrough.route_w3_b2",
         beat_w6_red_buffalo_gift = "walkthrough.route_beat_w6_red_buffalo_gift",
         beat_w5_scene7_exit = "walkthrough.route_beat_w5_scene7_exit",
