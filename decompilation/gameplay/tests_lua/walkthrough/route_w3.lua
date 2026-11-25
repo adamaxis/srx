@@ -79,6 +79,9 @@ local scene_salish = E.Scene.SALISH_SHIDHE
 local scene_penumbra = E.Scene.PENUMBRA_DISTRICT
 local scene_big_rhino = E.Scene.BIG_RHINO
 local scene_mitsuhama_floor = E.Scene.RESOURCE_ACTIVITY_34
+local kBigRhinoExitApproachX = 1024
+local kBigRhinoExitApproachY = 3300
+local kBigRhinoExitInputFrames = 600
 local story = E.StoryFact
 local mode = E.FieldModeFlagBit
 local visa = E.GroupItemId.INDIAN_LANDS_VISA
@@ -260,12 +263,15 @@ return {
                 assert(not host.snapshot().dialogue_open,
                     "Mortimer's leave page did not close")
 
-                -- Scene-11 records 8 and 9 are below the booth; approach them
-                -- from the south with real Up input.
+                -- Scene-11 records 8/9 (0x1D5AF8/0x1D5B02, code 0x0080)
+                -- span x 512..1535 and y 3584..4095; enter from below with
+                -- real Down input.
                 local placed, placement_error = host.place_within_scene(
-                    scene_big_rhino, 1280, 4352)
+                    scene_big_rhino, kBigRhinoExitApproachX,
+                    kBigRhinoExitApproachY)
                 assert(placed, placement_error or "scene-11 exit placement failed")
-                local exited, exit_error = host.hold_until_modal("UP", 600)
+                local exited, exit_error = host.hold_until_modal(
+                    "DOWN", kBigRhinoExitInputFrames, scene_penumbra)
                 assert(exited, exit_error or "Big Rhino field return did not open")
                 assert(host.wait_for_scene(scene_penumbra, 180),
                     "Big Rhino source exit did not return to Penumbra")
