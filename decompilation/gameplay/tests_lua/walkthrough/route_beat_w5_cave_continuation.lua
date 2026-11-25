@@ -15,22 +15,19 @@ return {
             milestone = 25,
             expected = { scene = E.Scene.CAVE_SCENE_45 },
             run = function(host)
-                -- The ROM cave collision dispatcher at 0x0A12 requires
-                -- FFFC0E != 0; scene 45's event 8 requires FFFC10 = room 5.
-                local mode, mode_error = host.set_field_interaction_mode_for_setup(
-                    E.FieldInteractionMode.CAVE_EXIT_ENABLED)
-                assert(mode, mode_error or "cave exit mode setup failed")
+                -- ROM 0x1D4E4A requires FFFC10=5. Leave FFDF40 at its
+                -- natural zero: ROM 0x1651E rejects event 8 when nonzero.
                 local room, room_error =
                     host.set_field_transition_context_for_setup(
                         E.FieldTransitionContext.CAVE_ROOM_5)
                 assert(room, room_error or "ROM cave room setup failed")
-                return "seeded the ROM cave-exit gate for Scene-45 room 5"
+                return "seeded the ROM room context for Scene-45 room 5"
             end,
         },
         {
             id = "walk_scene45_room5_north_exit_to_scene44",
             milestone = 25,
-            expected = { scene = E.Scene.CAVE_2 },
+            expected = { scene = E.Scene.CAVE_SCENE_44 },
             run = function(host)
                 local placed, placement_error = host.place_within_scene(
                     E.Scene.CAVE_SCENE_45,
@@ -38,10 +35,10 @@ return {
                 assert(placed, placement_error or
                     "Scene-45 room-5 north-exit placement failed")
                 local opened, movement_error = host.hold_until_modal(
-                    "UP", kExitInputFrames, E.Scene.CAVE_2)
+                    "UP", kExitInputFrames, E.Scene.CAVE_SCENE_44)
                 assert(opened, movement_error or
                     "real UP did not trigger the Scene-45 room-5 north exit")
-                assert(host.wait_for_scene(E.Scene.CAVE_2,
+                assert(host.wait_for_scene(E.Scene.CAVE_SCENE_44,
                     kSceneTransitionFrames),
                     "Scene-45 room-5 north exit did not load Scene 44")
                 local arrival = host.snapshot()

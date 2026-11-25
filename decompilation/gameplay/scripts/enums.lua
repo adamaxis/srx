@@ -212,6 +212,7 @@ E.Scene.PUYALLUP_BARRENS = 1 -- Scene 1 owns Tarislar City Inn record 68 [C]
 E.FieldTransitionContext = {
   SERPENT_LAIR_ENCOUNTER = 19, -- FFFC10=0x13 gates Scene-47 handler 0x53EFA [C]
   CAVE_ROOM_5 = 5, -- ROM trigger 0x1D4E4A selects room-5 north exit [C]
+  CAVE_ROOM_7 = 7, -- ROM trigger 0x1D4E5E selects room-7 south exit [C]
 }
 E.FieldMode = {
   SERPENT_LAIR_ENCOUNTER = 8, -- ROM 0x53F1A profile/mode gate [C]
@@ -1180,6 +1181,9 @@ E.FieldModeEffectFlagBit = {
   GARDEN_APTS_FIRST_ENTRY = 6, -- Command 0x45 at 0x21FFC sets FFFC34 bit 6 [C]
   HARLEQUIN_NO_ITO_INFORMATION = 7, -- Command 0x40 at 0x21F40 sets FFFC34 bit 7 [C]
   HARLEQUIN_NO_RENRAKU_MAP_INFORMATION = 8, -- No-map branch at 0x220CC sets FFFC34 bit 8 [C]
+  RENRAKU_MAP_OVERLAY_GRANTED = 9, -- Renraku safe handler 0x540D6 sets FFFC34 bit 9 [C]
+  BIT_16 = 16, -- Renraku safe handler 0x540D6 clears FFFC34 bit 16 [C]
+  BIT_17 = 17, -- Renraku safe handler 0x540D6 clears FFFC34 bit 17 [C]
   RENRAKU_MAP_EXPLAINED = 12, -- One-map command 0x47 at 0x22072 sets FFFC34 bit 12 [C]
   TOMB_MAPS_EXPLAINED = 14, -- Paired-map dialogue command 0x47 at 0x22072 sets FFFC34 bit 14 [C]
   -- Seattle General 0x1F8B4/0x22664 clear bit 18 and 0x1F8B8/0x22668 set
@@ -1193,7 +1197,7 @@ E.FieldModeEffectFlagBit = {
 E.FieldInteractionMode = {
   CITY_STREET_TAXI = 0, -- Taxi-arrival mode clear at 0x136DE routes street event 31 [C]
   SCENE54_EXIT_EVENT = 3, -- Scene 54 profile sets FFFBF8 to mode 3 at 0x03074 [C]
-  CAVE_EXIT_ENABLED = 1, -- ROM 0x0A12 requires FFFC0E nonzero for cave exits [C]
+  CAVE_EXIT_ENABLED = 1, -- Setup setter writes FFDF40 world_mode; ROM 0x1651E needs it clear for event 8 [C]
 }
 
 E.FieldAuxiliaryFlagBit = {
