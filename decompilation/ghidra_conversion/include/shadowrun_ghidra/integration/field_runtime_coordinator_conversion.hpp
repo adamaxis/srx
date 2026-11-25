@@ -5,6 +5,16 @@
 
 namespace shadowrun::ghidra_conversion::integration {
 
+// FFE186 tomb-run states. 0x545A6 writes 1 after the Tarislar tomb-departure
+// prompt sets FFF0CC; 0x0986 promotes any nonzero state to 2 on the next
+// field transition; 0x1DDBE promotes 2 to 3. 0x167F0..0x16810 selects
+// Scene 54 for state 1 and Scene 55 for any other nonzero state [C].
+inline constexpr std::uint8_t kSceneRuntimeStateIdle = 0U;
+inline constexpr std::uint8_t kSceneRuntimeStateTombDeparture = 1U;
+inline constexpr std::uint8_t kSceneRuntimeStateTombAntechamber = 2U;
+inline constexpr std::uint16_t kSceneRuntimeTombScene = 54U; // 0x36 at 0x16800
+inline constexpr std::uint16_t kSceneRuntimeAntechamberScene = 55U; // 0x37 at 0x16810
+
 // The source compares the pending indirect handler against 0x5BAC4.  The
 // host names that behavior instead of retaining a code pointer or a ROM
 // address in runtime state.

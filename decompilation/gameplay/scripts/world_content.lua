@@ -153,6 +153,7 @@ local function normalize_entity_interaction(entity, interaction)
         link.entry_continue_result_id = entry.continueResultId or ""
         link.entry_continue_outcome_type = entry.continueOutcomeType or ""
         link.entry_resource_override = entry.resourceOverride or ""
+        link.entry_scene_runtime_state = entry.sceneRuntimeState or ""
         interaction_location_fields(
             link, entry.locationContext or location_context)
         link.entry_location_type = link.location_type

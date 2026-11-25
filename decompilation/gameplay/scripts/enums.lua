@@ -1196,7 +1196,6 @@ E.FieldModeEffectFlagBit = {
 
 E.FieldInteractionMode = {
   CITY_STREET_TAXI = 0, -- Taxi-arrival mode clear at 0x136DE routes street event 31 [C]
-  SCENE54_EXIT_EVENT = 3, -- Scene 54 profile sets FFFBF8 to mode 3 at 0x03074 [C]
   CAVE_EXIT_ENABLED = 1, -- Setup setter writes FFDF40 world_mode; ROM 0x1651E needs it clear for event 8 [C]
 }
 
@@ -1244,6 +1243,17 @@ E.JohnsonFact = {
   CALEB_FIRST_MEETING_SEEN = "johnson.caleb_first_meeting_seen",
   -- Vigore's alternate response is read by the question builder at 0x22F90 [C].
   VIGORE_ALTERNATE_RESPONSE_AVAILABLE = "johnson.vigore_alternate_response_available",
+}
+
+-- FFE186 tomb-run state (native field host byte). 0x545A6 writes 1 after the
+-- tomb-departure prompt; 0x0986 promotes nonzero to 2 on the next field
+-- transition; 0x1DDBE promotes 2 to 3. 0x167F0 selects Scene 54 for 1 and
+-- Scene 55 otherwise [C].
+E.FieldSceneRuntimeState = {
+  IDLE = 0,
+  TOMB_DEPARTURE = 1,
+  TOMB_ANTECHAMBER = 2,
+  TOMB_ENDING = 3,
 }
 
 return E

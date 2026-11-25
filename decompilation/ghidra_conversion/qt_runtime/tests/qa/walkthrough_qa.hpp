@@ -345,6 +345,21 @@ inline int set_field_interaction_mode_for_setup(lua_State* state) {
     return 1;
 }
 
+inline int set_field_scene_runtime_state_for_setup(lua_State* state) {
+    auto* host = context(state);
+    lua_Integer runtime_state = 0;
+    if (!integer_argument(state, 1, runtime_state) || runtime_state < 0 ||
+        runtime_state > 3) {
+        lua_pushboolean(state, 0);
+        lua_pushliteral(state, "field scene-runtime state must be in [0, 3]");
+        return 2;
+    }
+    host->runtime->set_field_scene_runtime_state_for_dump(
+        static_cast<std::uint8_t>(runtime_state));
+    lua_pushboolean(state, 1);
+    return 1;
+}
+
 inline int set_field_transition_context_for_setup(lua_State* state) {
     auto* host = context(state);
     lua_Integer transition_context = 0;
@@ -1698,6 +1713,8 @@ inline int run_walkthrough_qa(
                       set_field_mode_effect_flag_for_setup);
     add_host_function(state, host, "set_field_interaction_mode_for_setup",
                       set_field_interaction_mode_for_setup);
+    add_host_function(state, host, "set_field_scene_runtime_state_for_setup",
+                      set_field_scene_runtime_state_for_setup);
     add_host_function(state, host, "set_field_transition_context_for_setup",
                       set_field_transition_context_for_setup);
     add_host_function(state, host, "set_field_resource_mode_for_setup",

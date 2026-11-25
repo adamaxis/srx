@@ -149,6 +149,13 @@ inline constexpr std::uint8_t kRomBuildingTransitionVBlanks = 34U;
 // Some ROM title services select a particular resource entry and marker
 // after their gated dialogue completes. Entity link data names the typed
 // effect; the field host applies it at the shared resource-activity boundary.
+// Native scene-runtime byte written when an accepted entry dialogue resumes
+// its area-event route. tomb_departure is ROM 0x545A6 (FFE186 = 1).
+enum class FieldLocationSceneRuntimeEntry {
+    none,
+    tomb_departure,
+};
+
 enum class FieldLocationResourceEntryOverride {
     none,
     index_five_marker_zero,
@@ -215,6 +222,8 @@ struct FieldScriptRoute {
         entry_continue_outcome_type;
     FieldLocationResourceEntryOverride entry_resource_override =
         FieldLocationResourceEntryOverride::none;
+    FieldLocationSceneRuntimeEntry entry_scene_runtime_state =
+        FieldLocationSceneRuntimeEntry::none;
     std::string boundary_reason;
     std::string field_service_id;
     // Synchronous Lua policy that may update transient world facts before an

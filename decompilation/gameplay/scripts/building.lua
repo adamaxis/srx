@@ -197,17 +197,22 @@ local function entry_dialogue_fields(link, context)
     local continue_result = link.entry_continue_result_id or ""
     local continue_outcome = link.entry_continue_outcome_type or ""
     local resource_override = link.entry_resource_override or ""
+    local scene_runtime_state = link.entry_scene_runtime_state or ""
     if text_profile == "-" then text_profile = "" end
     if speaker_id == "-" then speaker_id = "" end
     if event_id == "-" then event_id = "" end
     if continue_result == "-" then continue_result = "" end
     if continue_outcome == "-" then continue_outcome = "" end
     if resource_override == "-" then resource_override = "" end
+    if scene_runtime_state == "-" then scene_runtime_state = "" end
     assert(continue_result == "" or continue_outcome == "",
         "location entry dialogue cannot use both result forms")
     assert(resource_override == "" or
            continue_result ~= "" or continue_outcome ~= "",
         "resource entry override needs a successful dialogue outcome")
+    assert(scene_runtime_state == "" or
+           continue_result ~= "" or continue_outcome ~= "",
+        "scene-runtime entry state needs a successful dialogue outcome")
     return {
         entry_dialogue_module = module,
         entry_dialogue_function = function_name,
@@ -219,6 +224,7 @@ local function entry_dialogue_fields(link, context)
         entry_continue_result_id = continue_result,
         entry_continue_outcome_type = continue_outcome,
         entry_resource_override = resource_override,
+        entry_scene_runtime_state = scene_runtime_state,
     }
 end
 

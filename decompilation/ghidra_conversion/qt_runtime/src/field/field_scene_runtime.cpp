@@ -8976,6 +8976,16 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                     active_field_script_route_->area_event_destination_mode;
                 entry_resource_override =
                     active_field_script_route_->entry_resource_override;
+                if (active_field_script_route_->entry_scene_runtime_state ==
+                    FieldLocationSceneRuntimeEntry::tomb_departure) {
+                    // ROM 0x5459A..0x545AE: after the tomb-departure prompt
+                    // leaves FFF0CC set, service 21 writes FFE186 = 1 before
+                    // 0x167AE runs, so the selector below takes Scene 54.
+                    runtime.scene_runtime_state =
+                        integration::kSceneRuntimeStateTombDeparture;
+                    source_boundary(
+                        "field.world_activity.tomb_departure_state_armed");
+                }
                 routed_resource_entry_placement = active_field_script_route_
                     ->resource_scene_entry_placement;
             }
@@ -8997,6 +9007,21 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                     FieldSceneTransitionPolicy::building_fade;
             if (!keep_route_for_building_transition) {
                 active_field_script_route_.reset();
+            }
+            if (!selected_scene.has_value() &&
+                runtime.scene_runtime_state !=
+                    integration::kSceneRuntimeStateIdle) {
+                // ROM 0x167F0..0x16810: a nonzero FFE186 replaces the
+                // FFDE14[FFFBF9] event-table destination. Scene 54's profile
+                // (0x1E98EC +0x4E) has no event table; its record-0 exit
+                // reaches here after 0x0986 promotes the state to 2 [C].
+                selected_scene =
+                    runtime.scene_runtime_state ==
+                            integration::kSceneRuntimeStateTombDeparture
+                        ? integration::kSceneRuntimeTombScene
+                        : integration::kSceneRuntimeAntechamberScene;
+                source_boundary(
+                    "field.world_activity.tomb_state_scene_selected");
             }
             if (!selected_scene.has_value()) {
                 source_boundary(

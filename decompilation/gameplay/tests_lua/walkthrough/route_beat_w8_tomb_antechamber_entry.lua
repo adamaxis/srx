@@ -15,18 +15,20 @@ end
 return {
     steps = {
         {
-            id = "prepare_rom_scene54_event_mode",
+            id = "prepare_rom_tomb_departure_state",
             milestone = 28,
             expected = { scene = E.Scene.TARISLAR_TOMB },
             run = function(host)
-                -- ROM 0x03074 loads Scene 54's FFFBF8 interaction mode as 3;
-                -- event 0 then calls 0x1651E with D0=0.
+                -- Setup only: the real Scene-1 tomb departure is covered by
+                -- shadowrun_beat_w7_tarislar_tomb_departure. Its Yes command
+                -- 0xE4 (0x24954) sets FFF0CC, then service 21 writes
+                -- FFE186 = 1 at 0x545A6 before 0x167AE selects Scene 54.
                 local seeded, seed_error =
-                    host.set_field_interaction_mode_for_setup(
-                        E.FieldInteractionMode.SCENE54_EXIT_EVENT)
+                    host.set_field_scene_runtime_state_for_setup(
+                        E.FieldSceneRuntimeState.TOMB_DEPARTURE)
                 assert(seeded, seed_error or
-                    "Scene-54 event mode setup failed")
-                return "seeded the ROM Scene-54 event-selection mode"
+                    "FFE186 tomb-departure state setup failed")
+                return "seeded the ROM FFE186 tomb-departure state"
             end,
         },
         {

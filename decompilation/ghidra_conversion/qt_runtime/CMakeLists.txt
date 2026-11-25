@@ -1539,18 +1539,14 @@ add_test(NAME shadowrun_beat_w7_tarislar_renraku_map_briefing
 set_tests_properties(shadowrun_beat_w7_tarislar_renraku_map_briefing
     PROPERTIES LABELS "walkthrough" TIMEOUT 180
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
-add_test(NAME shadowrun_beat_w8_tomb_antechamber_entry_expected_fail_WALK_007
-    COMMAND ${CMAKE_COMMAND}
-        "-DTEST_EXECUTABLE=$<TARGET_FILE:shadowrun_ghidra_conversion_qt_qa>"
-        "-DASSET_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
-        "-DSEGMENT=beat_w8_tomb_antechamber_entry"
-        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/beat-w8-tomb-antechamber-entry"
-        "-DINITIAL_SCENE=54"
-        "-DBUG_ID=WALK-007"
-        "-DEXPECTED_FAILURE_PATTERN=real UP through Scene-54 record 0 did not enter Scene 55"
-        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/qa/expect_walkthrough_failure.cmake")
-set_tests_properties(shadowrun_beat_w8_tomb_antechamber_entry_expected_fail_WALK_007
-    PROPERTIES LABELS "walkthrough;expected-failure" TIMEOUT 180
+add_test(NAME shadowrun_beat_w8_tomb_antechamber_entry
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough beat_w8_tomb_antechamber_entry
+        "${CMAKE_CURRENT_BINARY_DIR}/beat-w8-tomb-antechamber-entry"
+        --initial-scene 54)
+set_tests_properties(shadowrun_beat_w8_tomb_antechamber_entry
+    PROPERTIES LABELS "walkthrough" TIMEOUT 180
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 add_test(NAME shadowrun_beat_w5_b25_stark_admission
     COMMAND shadowrun_ghidra_conversion_qt_qa

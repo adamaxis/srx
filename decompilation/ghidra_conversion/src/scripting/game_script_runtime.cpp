@@ -8352,6 +8352,7 @@ GameScriptRuntime::resolve_field_location_route(
     route.scene_transition_vblanks = scene_transition_vblanks;
     route.resource_scene_entry_placement = resource_scene_entry_placement;
     std::string resource_override_name;
+    std::string scene_runtime_entry_name;
     std::string entry_continue_outcome_type_name;
     if (!read_optional_string("entry_dialogue_module",
                               route.entry_dialogue_module) ||
@@ -8373,6 +8374,8 @@ GameScriptRuntime::resolve_field_location_route(
                               entry_continue_outcome_type_name) ||
         !read_optional_string("entry_resource_override",
                               resource_override_name) ||
+        !read_optional_string("entry_scene_runtime_state",
+                              scene_runtime_entry_name) ||
         !read_optional_string("boundary_reason", route.boundary_reason) ||
         !read_optional_string("field_service_id",
                               route.field_service_id) ||
@@ -8407,6 +8410,14 @@ GameScriptRuntime::resolve_field_location_route(
             FieldLocationResourceEntryOverride::index_four;
     } else {
         return fail("building.lua route has an unknown resource entry override");
+    }
+    if (scene_runtime_entry_name.empty() || scene_runtime_entry_name == "-") {
+        route.entry_scene_runtime_state = FieldLocationSceneRuntimeEntry::none;
+    } else if (scene_runtime_entry_name == "tomb_departure") {
+        route.entry_scene_runtime_state =
+            FieldLocationSceneRuntimeEntry::tomb_departure;
+    } else {
+        return fail("building.lua route has an unknown scene-runtime entry state");
     }
     const bool no_target = !target_scene.has_value();
     if (kind_name == "no_route" && script_name == "none" && no_target) {
@@ -8490,6 +8501,16 @@ GameScriptRuntime::resolve_field_location_route(
           !route.entry_continue_outcome_type.has_value()))) {
         return fail(
             "resource entry override needs an accepted resource-activity dialogue");
+    }
+
+    if (route.entry_scene_runtime_state !=
+            FieldLocationSceneRuntimeEntry::none &&
+        (route.kind != FieldScriptRouteKind::area_event ||
+         route.entry_dialogue_module.empty() ||
+         (route.entry_continue_result_id.empty() &&
+          !route.entry_continue_outcome_type.has_value()))) {
+        return fail(
+            "scene-runtime entry state needs an accepted area-event dialogue");
     }
 
     if (route.resource_scene_entry_placement.has_value() &&

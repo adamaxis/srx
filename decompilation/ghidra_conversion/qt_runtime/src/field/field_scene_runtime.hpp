@@ -1120,6 +1120,10 @@ public:
     // Scene-entry QA checkpoint: 0x03074 selects the interaction mode for
     // the loaded field before ordinary movement resumes. Keep this setter on
     // the dump/test surface rather than exposing a second gameplay control.
+    // QA setup for FFE186; production writes it at ROM 0x545A6/0x0986/0x1DDBE.
+    void set_field_scene_runtime_state_for_dump(std::uint8_t state) noexcept {
+        field_runtime_state_.scene_runtime_state = state;
+    }
     void set_field_interaction_mode_for_dump(std::uint16_t mode) noexcept {
         field_movement_transition_state_.world_mode = mode;
     }

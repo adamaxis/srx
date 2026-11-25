@@ -166,7 +166,8 @@
           "speakerId": "tarislar_apartments_narrator"
         },
         "conditionId": "puyallup_site_02_tarislar_garden_apartments.rom_event_07_tomb_departure.entry",
-        "continueResultId": "enter_scene_54"
+        "continueResultId": "enter_scene_54",
+        "sceneRuntimeState": "tomb_departure"
       },
       "provenance": {
         "evidence": "ROM service 21 repeat root 0xF4E08 requires story bits 30, 21, 16, 28, 26, and 27 after the Harlequin/Ito/map branches. The Yes command 0xE4 calls 0x24954, sets FFF0CC, and selects scene 54; the no branch at 0xF5A5C returns to the field map. The native field host maps FFF0D5 to package_run_status before Lua reads it. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
