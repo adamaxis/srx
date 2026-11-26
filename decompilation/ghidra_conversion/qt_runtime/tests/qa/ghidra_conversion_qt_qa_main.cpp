@@ -42389,6 +42389,21 @@ int run_field_penumbra_mako_qa(
                 ? static_cast<std::uint16_t>(firing_actor.y - kCameraCenterY)
                 : 0U);
         field_scene.set_source_random_seed_for_dump(0xDF65U);
+        // WALK-010: the introduction's closing A press starts the modal-return
+        // interval, which blocks every button held across it until the pad is
+        // released (field_scene_runtime.cpp advance_frame). Holding A straight
+        // through left the field frozen: no player service, no B selection and
+        // no shots. Release the pad, as a player does, before fighting.
+        constexpr std::uint16_t kModalReleaseFrameLimit = 240U;
+        field_scene.set_controller_port_byte(0U);
+        for (std::uint16_t frame = 0U;
+             frame < kModalReleaseFrameLimit &&
+             (field_scene.field_modal_return_transition_frames_for_dump() !=
+                  0U ||
+              field_scene.field_modal_return_blocked_inputs_for_dump() != 0U);
+             ++frame) {
+            field_scene.advance_frame();
+        }
         std::uint16_t combat_frames = 0U;
         for (; combat_frames < kMaximumCombatFrames; ++combat_frames) {
             if (field_scene.dialogue_open() &&
