@@ -1496,6 +1496,14 @@
         }
       }
     },
+    "matchstick": {
+      "entry_fee": {
+        "choice_label_keys": {
+          "pay": "matchstick.entry_fee.option.pay",
+          "later": "matchstick.entry_fee.option.later"
+        }
+      }
+    },
     "penumbra.wylies_gala_inn": {
       "inn_service": {
         "choice_label_keys": {

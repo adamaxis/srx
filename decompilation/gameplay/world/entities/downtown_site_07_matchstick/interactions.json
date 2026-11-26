@@ -14,6 +14,19 @@
         "priority": 0,
         "sourceRoutePolicy": "resume_source_route"
       },
+      "entryDialogue": {
+        "task": {
+          "module": "matchstick",
+          "function": "present_doorman"
+        },
+        "continueOutcomeType": "resume_source_route",
+        "locationContext": {
+          "type": "building",
+          "id": "matchstick",
+          "textProfile": "matchstick",
+          "speakerId": "matchstick_doorman"
+        }
+      },
       "provenance": {
         "evidence": "ROM scene 0 record 48 at 0x0D57BE; after the conditional maglock path, event-table row 2 at 0x0D54B4 selects numeric field scene 18. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
       }

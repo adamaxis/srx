@@ -305,6 +305,11 @@ function World.world_activity_actors_for_activity_id(activity_id, scene_id)
         (type(scene_id) ~= "number" or scene_id % 1 ~= 0)) then
         return {}
     end
+    -- The ROM's Matchstick command queues list 0x1E5C4 (imported as
+    -- scene_47_alternate_activity); Lua names the story request matchstick_ito.
+    if activity_id == "matchstick_ito" then
+        activity_id = "scene_47_alternate_activity"
+    end
     return world_activity_actor_descriptors(activity_id, scene_id)
 end
 

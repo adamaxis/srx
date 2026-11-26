@@ -581,6 +581,27 @@
         "scope": "mako_pending_activity_story_gates"
       }
     },
+    "matchstick.active_runner_reputation_at_least_6": {
+      "expression": {
+        "fact": "runner.skill.reputation", "op": "gte", "value": 6
+      },
+      "provenance": {
+        "romAddresses": ["0x22452", "0x2245A"],
+        "scope": "matchstick_doorman_reputation_gate"
+      }
+    },
+    "matchstick.ito_activity_available": {
+      "expression": {
+        "all": [
+          { "fact": "story.ogami_left", "op": "eq", "value": true },
+          { "fact": "story.ito_fight_won", "op": "eq", "value": false }
+        ]
+      },
+      "provenance": {
+        "romAddresses": ["0x22466", "0x2246C", "0x22474", "0x22478"],
+        "scope": "matchstick_ito_lead_and_encounter_gate"
+      }
+    },
     "salish.owlfeather.first_contact_available": {
       "expression": {
         "all": [

@@ -13,6 +13,10 @@ StoryActivityRoutes.ACTIVITIES = {
     club_penumbra_mako = {
         callback = { module = "club_penumbra", fn = "present_mako_activity_result" },
     },
+    -- ROM 0x2247C queues list 0x1E5C4 for the Matchstick Ito encounter.
+    matchstick_ito = {
+      callback = { module = "matchstick", fn = "present_ito_activity_result" },
+    },
 }
 
 function StoryActivityRoutes.request(activity_id)

@@ -97,6 +97,33 @@
       "portrait_alias": "none",
       "text_profile": "club.penumbra"
     },
+    "matchstick_doorman": {
+      "events": {
+        "doorman_intro": {
+          "continuation_key": "",
+          "title_key": "matchstick.doorman.entry"
+        },
+        "entry_fee_insufficient": {
+          "continuation_key": "",
+          "title_key": "matchstick.entry_fee.insufficient"
+        },
+        "entry_fee_paid": {
+          "continuation_key": "",
+          "title_key": "matchstick.entry_fee.paid"
+        },
+        "high_reputation_notice": {
+          "continuation_key": "",
+          "title_key": "matchstick.doorman.high_reputation_notice"
+        },
+        "ito_intro": {
+          "continuation_key": "",
+          "title_key": "matchstick.ito.intro"
+        }
+      },
+      "name": "Matchstick doorman",
+      "portrait_alias": "dialogue.portraits.club.penumbra.doorman",
+      "text_profile": "matchstick"
+    },
     "caleb_brightmore": {
       "events": {
         "access_blocked": {

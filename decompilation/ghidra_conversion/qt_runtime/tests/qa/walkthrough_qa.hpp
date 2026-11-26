@@ -254,6 +254,20 @@ inline int set_story_fact_for_setup(lua_State* state) {
     return 1;
 }
 
+inline int set_runner_reputation_for_setup(lua_State* state) {
+    auto* host = context(state);
+    lua_Integer reputation = 0;
+    if (!integer_argument(state, 1, reputation) || reputation < 0 ||
+        reputation > 12) {
+        lua_pushboolean(state, 0);
+        lua_pushliteral(state, "runner Reputation must be in [0, 12]");
+        return 2;
+    }
+    lua_pushboolean(state, host->runtime->set_active_runner_reputation_for_dump(
+        static_cast<std::uint8_t>(reputation)));
+    return 1;
+}
+
 inline int set_field_dialogue_flag_for_setup(lua_State* state) {
     auto* host = context(state);
     lua_Integer bit = 0;
@@ -1710,6 +1724,8 @@ inline int run_walkthrough_qa(
     add_host_function(state, host, "grant_group_item", grant_group_item);
     add_host_function(state, host, "set_story_fact_for_setup",
                       set_story_fact_for_setup);
+    add_host_function(state, host, "set_runner_reputation_for_setup",
+                      set_runner_reputation_for_setup);
     add_host_function(state, host, "set_field_dialogue_flag_for_setup",
                       set_field_dialogue_flag_for_setup);
     add_host_function(state, host, "reenter_scene_for_setup",

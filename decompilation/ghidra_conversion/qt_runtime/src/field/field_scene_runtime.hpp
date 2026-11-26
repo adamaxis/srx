@@ -1756,6 +1756,16 @@ public:
             : field_exit_world_flags_ & ~mask;
         return true;
     }
+    bool set_active_runner_reputation_for_dump(
+        const std::uint8_t value) noexcept {
+        if (value > 12U) return false;
+        const auto index = static_cast<std::size_t>(
+            RunnerSkillIndex::reputation);
+        auto& runner = active_runner_record();
+        if (index >= runner.skills.size()) return false;
+        runner.skills[index] = value;
+        return true;
+    }
     void set_field_exit_alternate_result_for_dump(
         std::int8_t result) noexcept {
         field_exit_alternate_result_ = result;

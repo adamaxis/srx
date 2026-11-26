@@ -1,0 +1,158 @@
+{
+  "schemaVersion": 1,
+  "graphs": {
+    "matchstick.scene0_doorman_entry": {
+      "entryNode": "doorman_intro",
+      "speakerId": "matchstick_doorman",
+      "textProfile": "matchstick",
+      "provenance": {
+        "romAddresses": [
+          "0x1FE86", "0x1FF1E", "0x110ADA", "0x112E24", "0x22452",
+          "0x11115A", "0x112FAD", "0x224B4", "0x111186", "0x111826",
+          "0x2247C", "0x110B22", "0x1130F9"
+        ],
+        "scope": "scene0_matchstick_doorman_ito_producer"
+      },
+      "nodes": {
+        "doorman_intro": {
+          "type": "page",
+          "eventId": "doorman_intro",
+          "next": "reputation_gate",
+          "evidence": "The Scene-0 site-7 finalizer selects descriptor 0x110ADA and text 0x112E24."
+        },
+        "reputation_gate": {
+          "type": "branch",
+          "cases": [
+            {
+              "when": "matchstick.active_runner_reputation_at_least_6",
+              "next": "ito_activity_gate"
+            }
+          ],
+          "fallback": "entry_fee_prompt",
+          "evidence": "Command 0x59 at 0x22452 compares active-runner Reputation (FF018B) with 6."
+        },
+        "entry_fee_prompt": {
+          "type": "choice",
+          "menuId": "entry_fee",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "matchstick.entry_fee.prompt",
+          "choices": [
+            { "id": "pay", "next": "charge_entry_fee" },
+            { "id": "later", "next": "stay_outside" }
+          ],
+          "evidence": "Descriptor 0x11115A presents the 150-nuyen offer and command 0x5A."
+        },
+        "charge_entry_fee": {
+          "type": "action",
+          "actionId": "building.charge_amount",
+          "arguments": { "amount": 150 },
+          "results": {
+            "paid": "entry_fee_paid",
+            "insufficient": "entry_fee_insufficient",
+            "service_unavailable": "payment_boundary"
+          },
+          "evidence": "Command 0x5A at 0x224B4 debits 150 nuyen via 0x21A4E."
+        },
+        "entry_fee_insufficient": {
+          "type": "page",
+          "eventId": "entry_fee_insufficient",
+          "next": "stay_outside",
+          "evidence": "The insufficient-funds descriptor 0x111186 points to text 0x113002."
+        },
+        "entry_fee_paid": {
+          "type": "page",
+          "eventId": "entry_fee_paid",
+          "next": "ito_activity_paid_gate",
+          "evidence": "The paid descriptor 0x111826 points to text 0x1198C3."
+        },
+        "ito_activity_gate": {
+          "type": "branch",
+          "cases": [
+            {
+              "when": "matchstick.ito_activity_available",
+              "next": "queue_ito_activity"
+            }
+          ],
+          "fallback": "high_reputation_notice",
+          "evidence": "Command 0x59 queues list 0x1E5C4 only when FFFC1E bit 15 is set and bit 16 is clear."
+        },
+        "ito_activity_paid_gate": {
+          "type": "branch",
+          "cases": [
+            {
+              "when": "matchstick.ito_activity_available",
+              "next": "queue_ito_activity"
+            }
+          ],
+          "fallback": "resume_club_route",
+          "evidence": "After a successful 0x5A debit, ROM checks the same two story bits before queuing 0x1E5C4."
+        },
+        "queue_ito_activity": {
+          "type": "action",
+          "actionId": "field.queue_ito_activity",
+          "results": {
+            "queued": "ito_intro",
+            "service_unavailable": "activity_boundary"
+          },
+          "evidence": "ROM 0x2247C writes FFE120=0x1E5C4 before selecting descriptor 0x110B22."
+        },
+        "ito_intro": {
+          "type": "page",
+          "eventId": "ito_intro",
+          "next": "resume_club_route",
+          "evidence": "Descriptor 0x110B22 presents the Scene-47 alternate-activity introduction at 0x1130F9."
+        },
+        "high_reputation_notice": {
+          "type": "page",
+          "eventId": "high_reputation_notice",
+          "next": "resume_club_route",
+          "evidence": "Command 0x59 selects descriptor 0x111176 when either Ito story-bit gate fails."
+        },
+        "stay_outside": {
+          "type": "terminal",
+          "outcome": { "type": "continue_in_place" }
+        },
+        "resume_club_route": {
+          "type": "terminal",
+          "outcome": { "type": "resume_source_route" }
+        },
+        "payment_boundary": {
+          "type": "source_boundary",
+          "reason": "The native wallet service did not return a Matchstick fee result."
+        },
+        "activity_boundary": {
+          "type": "source_boundary",
+          "reason": "The pending Matchstick Ito activity could not be queued."
+        }
+      }
+    },
+    "matchstick.ito_activity_result": {
+      "entryNode": "apply_callback",
+      "speakerId": "matchstick_doorman",
+      "textProfile": "matchstick",
+      "provenance": {
+        "romAddresses": ["0x54286", "0x542AA", "0x5430A", "0x54310", "0x54316"],
+        "scope": "matchstick_ito_activity_result_callback"
+      },
+      "nodes": {
+        "apply_callback": {
+          "type": "action",
+          "actionId": "field.apply_ito_callback",
+          "results": {
+            "applied": "return_to_field",
+            "service_unavailable": "result_boundary"
+          },
+          "evidence": "The result callback at 0x54286 runs after the four activity actors finish."
+        },
+        "return_to_field": {
+          "type": "terminal",
+          "outcome": { "type": "continue_in_place" }
+        },
+        "result_boundary": {
+          "type": "source_boundary",
+          "reason": "The Ito activity result callback could not apply its ROM effects."
+        }
+      }
+    }
+  }
+}

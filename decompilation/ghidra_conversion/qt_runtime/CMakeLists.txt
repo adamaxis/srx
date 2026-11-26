@@ -1531,6 +1531,15 @@ add_test(NAME shadowrun_beat_w7_tarislar_renraku_map_briefing
 set_tests_properties(shadowrun_beat_w7_tarislar_renraku_map_briefing
     PROPERTIES LABELS "walkthrough" TIMEOUT 180
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+add_test(NAME shadowrun_beat_w7_b16_ito_producer
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough beat_w7_b16_ito_producer
+        "${CMAKE_CURRENT_BINARY_DIR}/beat-w7-b16-ito-producer"
+        --initial-scene 0)
+set_tests_properties(shadowrun_beat_w7_b16_ito_producer
+    PROPERTIES LABELS "walkthrough" TIMEOUT 180
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 add_test(NAME shadowrun_beat_w8_tomb_antechamber_entry
     COMMAND shadowrun_ghidra_conversion_qt_qa
         --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"

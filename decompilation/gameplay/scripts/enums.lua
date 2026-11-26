@@ -1115,6 +1115,7 @@ E.StoryFlagBit = {
   HOLOPIX_SHOWN = 23, -- FFFC1E bit 23, set by Seattle holopix handler 0x21EF8 [C]
   SHAMAN_TASKS_DONE = 9, -- FFFC1E bit 9 set after final scale handoff at 0x53EA8 [C]
   FROSTY_MET = 30, -- FFFC1E bit 30 set by command 0x44 at 0x21FD0 [C]
+  OGAMI_LEFT = 15, -- FFFC1E bit 15 set after Scene-0 event 3 shows Ogami left for Matchstick at 0x54222/0x5427A [C]
   GARDEN_APTS_ENTERED = 21, -- FFFC1E bit 21 set on first visit at 0x5456E [C]
   ITO_FIGHT_WON = 16, -- FFFC1E bit 16 set by the Ito encounter callback at 0x54286 [C]
   RENRAKU_MAP_SHOWN = 26, -- FFFC1E bit 26 set by the map dialogue at 0x2203E [C]
@@ -1167,6 +1168,8 @@ E.FieldModeFlagBit = {
   BIT_31 = 31, -- Scene-20 Ilene activity clears this at 0x54402 [C]
   BIT_20 = 20,
   BIT_23 = 23,
+  BIT_24 = 24, -- Ito encounter callback clears FFFC30 bit 24 at 0x542D0 [C]
+  BIT_27 = 27, -- Ito encounter callback clears FFFC30 bit 27 at 0x542D8 [C]
   RENRAKU_HEADHUNTER_TOLD = 25, -- command 0x92 at 0x23328 (`08 C1 00 19`) [C]
 }
 
@@ -1177,6 +1180,7 @@ E.FieldModeEffectFlagBit = {
   BIT_2 = 2, -- Command 0x37 sets FFFC34 bit 2 at 0x21E38 [C]
   BIT_3 = 3, -- Commands 0x36/0x37 clear FFFC34 bit 3 [C]
   BIT_4 = 4,
+  BIT_15 = 15, -- Ito encounter callback sets FFFC34 bit 15 at 0x542E8 [C]
   FROSTY_HARLEQUIN_EXPOSITION = 5, -- Command 0x49 at 0x220EA sets FFFC34 bit 5 [C]
   GARDEN_APTS_FIRST_ENTRY = 6, -- Command 0x45 at 0x21FFC sets FFFC34 bit 6 [C]
   HARLEQUIN_NO_ITO_INFORMATION = 7, -- Command 0x40 at 0x21F40 sets FFFC34 bit 7 [C]
@@ -1214,6 +1218,7 @@ E.JohnsonContactFee = {
 -- FFFC38 bits as Notebook tip flag indices (64 + bit). Seattle General's
 -- heart turn-in clears bits 2/3/11 at 0x1F928..0x1F930 (tips 67/68/76).
 E.NotebookTipFlagBit = {
+  BIT_64 = 64, -- Ito encounter callback clears FFFC38 bit 0 at 0x54300 [C]
   FUCHI_HEART_TRANSPORT_MEMO = 66,
   FUCHI_HEART_STORAGE_MEMO = 67,
   FUCHI_HEART_ESCORT_MEMO = 75,

@@ -143,6 +143,16 @@ local function validate(before, after, expected, host_result)
         return "runtime reported a source boundary: " ..
             table.concat(boundary_events, "; ")
     end
+    if expected.source_event ~= nil then
+        local found = false
+        for _, event in ipairs(host_result.source_events) do
+            if event == expected.source_event then found = true; break end
+        end
+        if not found then
+            return "expected source event " .. expected.source_event ..
+                " was not emitted"
+        end
+    end
     local flag_error = validate_flags(before, after, expected.flags or {},
         expected.facts)
     if flag_error ~= nil then return flag_error end
@@ -240,6 +250,7 @@ local function load_route(segment)
         w3_b2 = "walkthrough.route_w3_b2",
         beat_w6_red_buffalo_gift = "walkthrough.route_beat_w6_red_buffalo_gift",
         beat_w7_renraku_map_overlay = "walkthrough.route_beat_w7_renraku_map_overlay",
+        beat_w7_b16_ito_producer = "walkthrough.route_beat_w7_b16_ito_producer",
         beat_w5_scene7_exit = "walkthrough.route_beat_w5_scene7_exit",
         beat_w5_cave_continuation = "walkthrough.route_beat_w5_cave_continuation",
         beat_w5_cave_room7_to_scene7 = "walkthrough.route_beat_w5_cave_room7_to_scene7",
