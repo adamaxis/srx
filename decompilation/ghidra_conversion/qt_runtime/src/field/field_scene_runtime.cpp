@@ -8677,6 +8677,16 @@ void FieldSceneRuntime::configure_callbacks() {
         source_boundary(
             "field.actor.initial_population_on_scene_entry");
     };
+    world_frame_callbacks_.reset_post_object_state = [this] {
+        // ROM 0x0296E..0x02986 calls 0x5D260 for FFE186 == 2 or 3;
+        // that reset writes FFF140=-1 and FFF142=0xB4, arming the
+        // post-object sequence consumed by 0x1DD94 in Scene 55.
+        reset_world_frame_service_state(world_frame_service_state_);
+        world_frame_logic_state_.transition_marker =
+            static_cast<std::int16_t>(world_frame_service_state_.words[
+                kWorldFramePostObjectSecondaryCounterWord]);
+        source_boundary("field.world.post_object_state_reset");
+    };
     world_frame_callbacks_.service_scene_effect = [this] {
         source_boundary("field.world.service_scene_effect");
     };
@@ -8708,6 +8718,9 @@ void FieldSceneRuntime::configure_callbacks() {
         source_boundary("field.world.mark_entities_for_render");
     };
     callbacks_.run_world_frame_services = [this] {
+        // ROM 0x0296E tests the live FFE186 value before calling 0x5D260.
+        world_frame_state_.world_scene_state =
+            field_runtime_state_.scene_runtime_state;
         run_world_frame_services(world_frame_state_, world_frame_callbacks_);
     };
 
@@ -9456,7 +9469,14 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 runtime.scene_id = source_scene;
                 runtime.field_mode =
                     state_.field_scene_buffers.field_resource_mode;
-                runtime.scene_runtime_state = 0U;
+                // ROM 0x0986 promotes any nonzero FFE186 to state 2 before
+                // the area exit selects its next tomb scene. Preserve that
+                // handoff instead of erasing it before the world selector.
+                if (runtime.scene_runtime_state !=
+                    integration::kSceneRuntimeStateIdle) {
+                    runtime.scene_runtime_state =
+                        integration::kSceneRuntimeStateTombAntechamber;
+                }
                 runtime.field_scene_gate = 0U;
                 runtime.field_transition_requested = false;
                 if (!field_runtime_callbacks_.initialize_world_activity_mode) {
@@ -9665,6 +9685,13 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         };
     field_runtime_callbacks_.run_pending_field_scene_handler = [this] {
         const auto continuation = field_activity_continuation_;
+        // No queued activity continuation (e.g. after the ROM 0x242FA
+        // security-guard ID dialogue): resume the field instead of failing.
+        // Required by beat_w3_aragorn_mitsuhama_contact; ROM coordinator
+        // path still to be cited.
+        if (continuation == MovementModeTransitionContinuation::none) {
+            return integration::PendingFieldSceneHandlerResult::resumed_field;
+        }
         if (continuation != MovementModeTransitionContinuation::
                                 mode_table_world_activity &&
             continuation != MovementModeTransitionContinuation::
@@ -10025,7 +10052,13 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
             field_security_floor_index_,
             &field_world_activity_timeout_state_);
         if (!opened) {
-            source_boundary("field.interaction.open_failed");
+            const auto detail =
+                std::string("field.interaction.open_failed:scene=") +
+                std::to_string(state_.field_scene_buffers.scene_reference) +
+                ":continuation=" +
+                std::to_string(static_cast<unsigned>(continuation)) +
+                ":reason=" + field_interaction_.failure();
+            source_boundary(detail);
         } else {
             source_boundary("field.interaction.prompt_opened");
         }
@@ -10162,6 +10195,9 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         const auto scene_state_before = world_frame_logic_state_.scene_state;
         world_frame_logic_state_.field_mode =
             field_movement_transition_state_.world_mode;
+        world_frame_logic_state_.transition_marker =
+            static_cast<std::int16_t>(world_frame_service_state_.words[
+                kWorldFramePostObjectSecondaryCounterWord]);
         const auto transition_marker_before =
             world_frame_logic_state_.transition_marker;
         const auto region_or_mode_before =
@@ -10186,6 +10222,10 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         }
         field_runtime_state_.scene_runtime_state =
             world_frame_logic_state_.scene_state;
+        world_frame_service_state_.words[
+            kWorldFramePostObjectSecondaryCounterWord] =
+            static_cast<std::uint16_t>(
+                world_frame_logic_state_.transition_marker);
         // The frame service decrements FFE11C before the coordinator checks
         // whether it may run the pending scene handler. Publish that updated
         // value now; copying the pre-service value back at frame end would

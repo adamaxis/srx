@@ -67,9 +67,10 @@ return {
                     kMitsuhamaExitX, kMitsuhamaExitY)
                 assert(exit_placed, exit_placement_error or
                     "Mitsuhama exit setup placement failed")
-                local exited, exit_error = host.hold_until_modal("DOWN", 600)
+                local exited, exit_error = host.hold_until_modal(
+                    "DOWN", 600, E.Scene.PENUMBRA_DISTRICT)
                 assert(exited, exit_error or
-                    "real DOWN did not open the Scene-30 source exit")
+                    "real DOWN did not return through the Scene-30 source exit")
                 assert(host.wait_for_scene(E.Scene.PENUMBRA_DISTRICT, 180),
                     "Mitsuhama field exit did not restore Penumbra")
                 return "real Scene-30 DOWN restored the source Penumbra map"

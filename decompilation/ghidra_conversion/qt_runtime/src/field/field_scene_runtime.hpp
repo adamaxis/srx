@@ -51,6 +51,7 @@
 #include "shadowrun_ghidra/world/world_effect_batch_conversion.hpp"
 #include "shadowrun_ghidra/world/world_effect_edge_conversion.hpp"
 #include "shadowrun_ghidra/world/world_frame_logic_conversion.hpp"
+#include "shadowrun_ghidra/title_intro/title_intro_transfer_conversion.hpp"
 #include "shadowrun_ghidra/world/world_scene_entity_conversion.hpp"
 #include "shadowrun_ghidra/world/world_activity_routine_conversion.hpp"
 #include "shadowrun_ghidra/scripting/dialogue_outcome_dispatcher.hpp"
@@ -715,6 +716,7 @@ public:
         std::uint32_t contact_flags, std::uint32_t funds);
     bool open_spirit_eyes_ritual_for_dump();
     bool open_tarislar_tomb_credits_for_dump();
+    bool open_tarislar_tomb_ending_warning_for_dump();
     std::string_view active_credits_page_id_for_dump() const noexcept {
         return field_dialogue_.credits_page_id_for_dump();
     }
@@ -1123,6 +1125,9 @@ public:
     // QA setup for FFE186; production writes it at ROM 0x545A6/0x0986/0x1DDBE.
     void set_field_scene_runtime_state_for_dump(std::uint8_t state) noexcept {
         field_runtime_state_.scene_runtime_state = state;
+    }
+    std::uint8_t field_scene_runtime_state_for_dump() const noexcept {
+        return field_runtime_state_.scene_runtime_state;
     }
     void set_field_interaction_mode_for_dump(std::uint16_t mode) noexcept {
         field_movement_transition_state_.world_mode = mode;
@@ -2693,6 +2698,7 @@ private:
     ControllerLatchState field_controller_latch_state_{};
     WorldFrameState world_frame_state_;
     WorldFrameCallbacks world_frame_callbacks_;
+    WorldFrameServiceState world_frame_service_state_;
     WorldFrameLogicState world_frame_logic_state_;
     WorldFrameLogicCallbacks world_frame_logic_callbacks_;
     FieldViewportState viewport_state_;

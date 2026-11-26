@@ -131,8 +131,17 @@ local function validate(before, after, expected, host_result)
         return "runtime emitted warning: dialogue dead end"
     end
     if host_result.source_boundary_count > 0 then
+        local boundary_events = {}
+        for _, event in ipairs(host_result.source_events) do
+            if event:find("boundary", 1, true) or
+               event:find("unresolved", 1, true) or
+               event:find("unhandled", 1, true) or
+               event:find("failed", 1, true) then
+                boundary_events[#boundary_events + 1] = event
+            end
+        end
         return "runtime reported a source boundary: " ..
-            table.concat(host_result.source_events, "; ")
+            table.concat(boundary_events, "; ")
     end
     local flag_error = validate_flags(before, after, expected.flags or {},
         expected.facts)
@@ -253,6 +262,7 @@ local function load_route(segment)
         beat_w7_tarislar_post_ito_briefing = "walkthrough.route_beat_w7_tarislar_post_ito_briefing",
         beat_w7_tarislar_renraku_map_briefing = "walkthrough.route_beat_w7_tarislar_renraku_map_briefing",
         beat_w8_tomb_antechamber_entry = "walkthrough.route_beat_w8_tomb_antechamber_entry",
+        beat_w8_tomb_live_outro = "walkthrough.route_beat_w8_tomb_live_outro",
         w4 = "walkthrough.route_w4",
         w4_b6 = "walkthrough.route_w4_b6",
         w4_b7 = "walkthrough.route_w4_b7",

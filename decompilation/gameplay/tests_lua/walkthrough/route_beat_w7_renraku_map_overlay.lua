@@ -1,7 +1,8 @@
 local E = require("enums")
 
 -- Scene-40 safe records 89-93 are event 0x1A at 0x1DE1D0..0x1DE1F8.
-local kProjectedCellApproachOffset = 512
+-- ROM trigger bounds are 512 units wide; start 64 units inside each edge.
+local kProjectedCellApproachOffset = 64
 local kSafeInputFrames = 120
 local kDialogueInputLimit = 20
 local kSafeCells = {
@@ -13,7 +14,9 @@ local kSafeCells = {
 }
 local kApproaches = {
     { dx = -kProjectedCellApproachOffset, dy = 0, direction = "RIGHT" },
+    { dx = kProjectedCellApproachOffset, dy = 0, direction = "LEFT" },
     { dx = 0, dy = kProjectedCellApproachOffset, direction = "UP" },
+    { dx = 0, dy = -kProjectedCellApproachOffset, direction = "DOWN" },
 }
 
 local story = E.StoryFact
@@ -25,6 +28,7 @@ local function tap(host, button)
 end
 
 local function collect_map_overlay(host)
+    local attempts = {}
     for _, cell in ipairs(kSafeCells) do
         for _, approach in ipairs(kApproaches) do
             local placed = host.place_within_scene(
@@ -32,14 +36,24 @@ local function collect_map_overlay(host)
                 cell.x + approach.dx, cell.y + approach.dy)
             if placed then
                 -- Safe records publish only when crossed with real pad input.
-                host.hold_until_modal(approach.direction, kSafeInputFrames)
+                local before = host.snapshot()
+                local _, movement_error = host.hold_until_modal(
+                    approach.direction, kSafeInputFrames)
+                assert(not movement_error, movement_error or
+                    "safe approach input failed")
+                local after = host.snapshot()
+                attempts[#attempts + 1] = string.format(
+                    "record %d %s from %d,%d to %d,%d event=%d",
+                    cell.record, approach.direction, before.x, before.y,
+                    after.x, after.y, after.event)
                 if host.snapshot().story_facts[story.RENRAKU_MAP_OVERLAY] == true then
                     return cell.record
                 end
             end
         end
     end
-    error("Renraku map overlay did not trigger at Scene-40 safe records 89-93")
+    error("Renraku map overlay did not trigger at Scene-40 safe records 89-93: " ..
+        table.concat(attempts, "; "))
 end
 
 return {

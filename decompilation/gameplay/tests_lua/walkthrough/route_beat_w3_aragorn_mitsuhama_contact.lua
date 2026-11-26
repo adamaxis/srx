@@ -15,7 +15,7 @@ local kElevatorEventY = 0x0200
 local kMinimumStepRaw = 9 -- ROM 0xBDF2 cardinal movement table [C]
 local kWalkPollFrames = 16
 local kAragornContactX = 7462 -- 0x1D26, beside ROM actor at (0x1D00,0x4100) [C]
-local kAragornContactY = 16590 -- 0x40CE, production QA contact position [C]
+local kAragornContactY = 0x40C0 -- ROM 0xEBB0..0xEC44 excludes actor at player+0x40 [C]
 local kContactInputFrames = 600
 
 local function wait_panel(host, text)
@@ -25,6 +25,18 @@ local function wait_panel(host, text)
         assert(ok, problem or "Aragorn contact dialogue advance failed")
     end
     error("Aragorn contact panel did not contain " .. string.format("%q", text))
+end
+
+local function wait_panel_any(host, texts)
+    for _ = 1, 900 do
+        local panel = host.snapshot().panel_text
+        for _, text in ipairs(texts) do
+            if panel:find(text, 1, true) then return text end
+        end
+        local ok, problem = host.advance(1)
+        assert(ok, problem or "security guard dialogue advance failed")
+    end
+    error("security guard result panel did not open")
 end
 
 local function tap(host, button)
@@ -81,6 +93,8 @@ local function enter_mitsuhama(host)
         assert(seeded, seed_error or
             "ROM Aragorn entry mode prerequisite setup failed")
     end
+    assert(host.grant_group_item(E.GroupItemId.SECURITY_PASS),
+        "ROM 0x242FA security-pass setup grant failed") -- ROM 0x242FA selects the ID branch from FFFC22 bit 10.
     local placed, placement_error = host.place_within_scene(
         E.Scene.PENUMBRA_DISTRICT,
         kMitsuhamaEntranceX, kMitsuhamaEntranceY)
@@ -124,6 +138,34 @@ local function ride_to_floor_four(host)
         "real RIGHT did not align the Scene-30 row-33 elevator lane")
     local opened, movement_error = host.hold_until_modal(
         "UP", source_walk_bound(kElevatorLaneY - kElevatorEventY))
+    if opened then
+        -- ROM 0x242FA tests FFFC22 bit 10; complete its live ID check before
+        -- resuming UP toward event 29. The item is setup, the dialogue is live.
+        wait_panel(host, "A secuity guard spots you.")
+        tap(host, "A")
+        local result = wait_panel_any(host, {
+            "You show the ID, and he waves you past.",
+            "He checks your ID and calls dispatch to verify it.",
+        })
+        if result == "He checks your ID and calls dispatch to verify it." then
+            tap(host, "A")
+            result = wait_panel_any(host, {
+                "Dispatch verifies his check and he waves you by.",
+                "Dispatch comes back negative and sounds the alert.",
+            })
+        end
+        assert(result ~= "Dispatch comes back negative and sounds the alert.",
+            "ROM 0x24392 rejected the granted security pass")
+        tap(host, "A")
+        for _ = 1, 120 do
+            if not host.snapshot().dialogue_open then break end
+            advance(host, 1)
+        end
+        assert(not host.snapshot().dialogue_open,
+            "security guard result did not return to the field")
+        opened, movement_error = host.hold_until_modal(
+            "UP", source_walk_bound(kElevatorLaneY - kElevatorEventY))
+    end
     assert(opened, movement_error or "real UP did not reach the Mitsuhama lift")
     assert(wait_for_elevator_selector(host, 120),
         "Scene-30 event 29 did not open the Mitsuhama elevator selector")
@@ -150,6 +192,7 @@ return {
                     story = { set = { E.StoryFact.OWLFEATHER_ASKED } },
                     mode = { set = { mode.BIT_10, mode.BIT_12 } },
                 },
+                group_items = { set = { E.GroupItemId.SECURITY_PASS } },
             },
             run = function(host)
                 return enter_mitsuhama(host)
@@ -189,9 +232,9 @@ return {
                 assert(placed, placement_error or
                     "Aragorn contact actor placement failed")
                 local opened, movement_error = host.hold_until_modal(
-                    "UP", kContactInputFrames)
+                    "DOWN", kContactInputFrames)
                 assert(opened, movement_error or
-                    "real UP did not contact Aragorn in Scene 34")
+                    "real DOWN did not contact Aragorn in Scene 34")
                 local dialogue, dialogue_error = host.wait_for_dialogue(120)
                 assert(dialogue, dialogue_error or
                     "Scene-34 Aragorn contact dialogue did not open")

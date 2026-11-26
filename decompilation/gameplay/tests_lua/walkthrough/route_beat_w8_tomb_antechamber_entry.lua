@@ -57,8 +57,13 @@ return {
                 local arrival = host.snapshot()
                 assert(arrival.panel_option_count == 1,
                     "ROM Scene-55 arrival page did not offer MORE")
+                -- ROM 0x0986 promotes nonzero FFE186 to state 2 on this
+                -- field handoff; verify the production transition after UP.
+                assert(arrival.field_scene_runtime_state ==
+                    E.FieldSceneRuntimeState.TOMB_ANTECHAMBER,
+                    "Scene-54 exit did not promote FFE186 to state 2")
                 tap(host, "A")
-                return "real Scene-54 UP reached Scene 55 and dismissed the arrival page"
+                return "real Scene-54 UP reached Scene 55, promoted FFE186 to state 2, and dismissed the arrival page"
             end,
         },
     },

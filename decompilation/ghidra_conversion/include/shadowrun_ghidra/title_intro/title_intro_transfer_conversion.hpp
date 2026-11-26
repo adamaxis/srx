@@ -43,6 +43,8 @@ void fill_title_intro_word_block(
     const std::function<void(const TitleIntroFillRowRequest&)>& write_row);
 
 constexpr std::size_t kWorldFrameServiceWordCount = 34U;
+constexpr std::size_t kWorldFramePostObjectSecondaryCounterWord = 0x11U;
+constexpr std::size_t kWorldFramePostObjectCountdownWord = 0x12U;
 
 struct WorldFrameServiceState {
     std::array<std::uint16_t, kWorldFrameServiceWordCount> words{};

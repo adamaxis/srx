@@ -42,6 +42,7 @@ struct WorldFrameCallbacks {
     std::function<void()> clear_entity_effects;
     std::function<void()> clear_scene_pending;
     std::function<void()> finalize_entity_templates;
+    std::function<void()> reset_post_object_state;
     std::function<void()> service_scene_effect;
     std::function<void()> copy_terrain_layers;
     std::function<void()> process_terrain_entries;

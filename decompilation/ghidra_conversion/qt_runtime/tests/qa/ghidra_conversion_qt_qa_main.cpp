@@ -41860,6 +41860,7 @@ int run_field_council_island_inn_qa(
 
 enum class ClubPenumbraMakoQaPath {
     qualifying,
+    live_combat,
     doorman_later,
     fee_later,
     reputation_rejection,
@@ -41932,6 +41933,8 @@ int run_field_penumbra_mako_qa(
         qa_path == ClubPenumbraMakoQaPath::mako_lead_missing;
     const auto mode_flag_lead =
         qa_path == ClubPenumbraMakoQaPath::mode_flag_lead;
+    const auto live_combat =
+        qa_path == ClubPenumbraMakoQaPath::live_combat;
     const auto mako_gate_closed =
         story_gate_closed || mako_defeated || mako_lead_missing;
     const auto wallet_before = insufficient_funds ? 74U : 75U;
@@ -42338,12 +42341,113 @@ int run_field_penumbra_mako_qa(
         return 3;
     }
 
-    // The four list actors spawn live (combat-fixes-1); FFE177 counts them
-    // down only as each one dies (0xAB02). Stand in for the fight.
-    if (field_scene.defeat_mako_activity_for_qa() != 4U) {
-        std::cerr << "Club Penumbra Mako QA: could not defeat the four list "
-                     "actors\n";
-        return 3;
+    if (live_combat) {
+        // ROM 0x195C publishes held bits separately from newly pressed
+        // events. Keep A held through weapon action delays and pulse B to
+        // retarget; the seed is local to this combat exercise.
+        constexpr std::uint8_t kControllerButtonB = 0x10U;
+        constexpr std::uint8_t kControllerButtonA = 0x40U;
+        constexpr std::uint16_t kMaximumCombatFrames = 6000U;
+        constexpr std::uint16_t kTargetCycleInterval = 180U;
+        constexpr std::uint16_t kRunnerActionModeFlags = 0x0300U;
+        constexpr std::uint8_t kWarhawkItemCode = 5U;
+        constexpr std::uint16_t kFightLaneOffset = 0x0100U;
+        constexpr std::uint16_t kCameraCenterX = 0x0800U;
+        constexpr std::uint16_t kCameraCenterY = 0x0700U;
+        // Setup grants a Warhawk/ammo from the ROM item table at 0xD4540;
+        // ROM 0xAD86 requires the runner action-mode flags for live combat.
+        auto& player = field_scene.active_runner_record();
+        player.flags = static_cast<std::uint16_t>(
+            player.flags | kRunnerActionModeFlags);
+        player.inventory_item_codes[0U] = kWarhawkItemCode;
+        player.equipped_inventory_slot = 0;
+        player.equipped_item_code = kWarhawkItemCode;
+        player.ammo_rounds = 60U;
+        player.ammo_clips = 5U;
+        player.animation_action_gate = -1;
+        field_scene.refresh_field_hud_for_dump();
+        const auto fight_actors =
+            field_scene.active_default_actor_positions_for_dump();
+        if (fight_actors.size() < 2U) {
+            std::cerr << "Club Penumbra Mako live pad combat failed: "
+                         "source actors are not positioned for combat\n";
+            return 3;
+        }
+        const auto& firing_actor = fight_actors[1U];
+        const auto firing_lane_x = firing_actor.x > kFightLaneOffset
+            ? static_cast<std::uint16_t>(
+                  firing_actor.x - kFightLaneOffset)
+            : static_cast<std::uint16_t>(
+                  firing_actor.x + kFightLaneOffset);
+        field_scene.set_field_entity_world_position_for_dump(
+            firing_lane_x, firing_actor.y);
+        field_scene.set_field_camera_world_position_for_dump(
+            firing_lane_x > kCameraCenterX
+                ? static_cast<std::uint16_t>(firing_lane_x - kCameraCenterX)
+                : 0U,
+            firing_actor.y > kCameraCenterY
+                ? static_cast<std::uint16_t>(firing_actor.y - kCameraCenterY)
+                : 0U);
+        field_scene.set_source_random_seed_for_dump(0xDF65U);
+        std::uint16_t combat_frames = 0U;
+        for (; combat_frames < kMaximumCombatFrames; ++combat_frames) {
+            if (field_scene.dialogue_open() &&
+                contains("On the floor, Mako lies unconscious")) {
+                break;
+            }
+            const bool target_cycle =
+                combat_frames % kTargetCycleInterval == 0U;
+            const auto input = combat_frames == 0U
+                ? kControllerButtonB
+                : static_cast<std::uint8_t>(
+                      kControllerButtonA |
+                      (target_cycle ? kControllerButtonB : 0U));
+            field_scene.set_controller_port_byte(input);
+            field_scene.advance_frame();
+            if (!field_scene.failure().empty()) {
+                break;
+            }
+        }
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        if (!field_scene.dialogue_open() ||
+            !contains("On the floor, Mako lies unconscious")) {
+            const auto count_boundaries = [&source_boundaries](
+                                              const std::string_view prefix) {
+                return std::count_if(
+                    source_boundaries.begin(), source_boundaries.end(),
+                    [prefix](const std::string& boundary) {
+                        return boundary.compare(0U, prefix.size(), prefix) ==
+                            0;
+                    });
+            };
+            std::cerr << "Club Penumbra Mako live pad combat failed: "
+                      << "result dialogue not reached after " << combat_frames
+                      << " held-A frames with periodic B targeting (scene="
+                      << field_scene.field_scene_reference_for_dump()
+                      << ", actors="
+                      << field_scene.world_activity_script_actor_count_for_dump()
+                      << ", shots="
+                      << count_boundaries(
+                             "field.combat.player_weapon_spawned")
+                      << ", hits="
+                      << count_boundaries(
+                             "field.combat.weapon_hit_resolved:")
+                      << ", ammo="
+                      << static_cast<unsigned>(
+                             field_scene.active_runner_record().ammo_rounds)
+                      << ", failure=" << field_scene.failure() << ")\n";
+            return 3;
+        }
+    } else {
+        // The four list actors spawn live (combat-fixes-1); FFE177 counts
+        // them down only as each one dies (0xAB02). Keep the original seam QA
+        // separate from the real-pad beat above.
+        if (field_scene.defeat_mako_activity_for_qa() != 4U) {
+            std::cerr << "Club Penumbra Mako QA: could not defeat the four list "
+                         "actors\n";
+            return 3;
+        }
     }
     for (std::uint16_t frame = 0U;
          frame < 900U && !contains("On the floor, Mako lies unconscious");
@@ -45702,6 +45806,63 @@ int run_field_tarislar_tomb_credits_presenter_qa(
                  "panels=5 trigger=unconverted title_return=after_86_vblanks "
                  "artifacts=" << output.string() << '\n';
     return 0;
+}
+
+int run_field_tarislar_tomb_ending_boundary_expected_fail_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output) {
+    constexpr std::uint8_t kControllerButtonA = 0x40U;
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Tarislar Tomb ending QA: could not clear captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Tarislar Tomb ending QA: could not create captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    if (!field_scene.open_tarislar_tomb_ending_warning_for_dump() ||
+        !field_scene.dialogue_open()) {
+        std::cerr << "Tarislar Tomb ending QA: production warning graph did "
+                     "not open\n";
+        return 3;
+    }
+    const auto warning = render_qa_field(field_scene);
+    if (warning.size() != QSize(kSceneWidth, kSceneHeight) ||
+        !warning.save(QString::fromStdWString(
+            (output / "ending-warning.bmp").wstring()))) {
+        std::cerr << "Tarislar Tomb ending QA: warning capture failed\n";
+        return 3;
+    }
+
+    // The single live choice is the player's confirmation to destroy Thon.
+    tap_qa_controller_button(field_scene, kControllerButtonA); // ROM pad A.
+    const auto& panel = field_scene.dialogue_panel();
+    constexpr std::string_view kExpectedBoundary =
+        "dialogue_graph:tarislar.tomb.ending_warning:"
+        "ending_presentation_boundary";
+    if (panel.source_boundary_reason.find(kExpectedBoundary) ==
+        std::string::npos) {
+        std::cerr << "Tarislar Tomb ending QA: real A did not reach the "
+                     "ROM presentation boundary (boundary="
+                  << panel.source_boundary_reason << ")\n";
+        return 3;
+    }
+    const auto boundary_frame = render_qa_field(field_scene);
+    if (boundary_frame.size() != QSize(kSceneWidth, kSceneHeight) ||
+        !boundary_frame.save(QString::fromStdWString(
+            (output / "ending-presentation-boundary.bmp").wstring()))) {
+        std::cerr << "Tarislar Tomb ending QA: boundary capture failed\n";
+        return 3;
+    }
+    std::cerr << "WALK-015: real A confirmation reached the unported ending "
+                 "presentation boundary: "
+              << panel.source_boundary_reason << '\n';
+    return 2;
 }
 
 int run_field_sinsearach_gate_physical_entry_qa(
@@ -50060,6 +50221,7 @@ int main(int argc, char** argv) {
         std::string field_council_island_inn_qa_route = "paid-exact";
         std::optional<std::filesystem::path>
             field_penumbra_mako_qa_path;
+        bool field_penumbra_mako_live_combat_qa = false;
         std::optional<std::filesystem::path>
             field_penumbra_reputation_rejection_qa_path;
         std::optional<std::filesystem::path>
@@ -50271,6 +50433,8 @@ int main(int argc, char** argv) {
             field_spirit_eyes_physical_entry_qa_path;
         std::optional<std::filesystem::path>
             field_tarislar_tomb_credits_presenter_qa_path;
+        std::optional<std::filesystem::path>
+            field_tarislar_tomb_ending_boundary_qa_path;
         std::optional<std::filesystem::path>
             field_sinsearach_gate_choice_permutation_qa_path;
         std::optional<std::string>
@@ -50860,6 +51024,14 @@ int main(int argc, char** argv) {
                     "--field-penumbra-mako-qa" &&
                 index + 1 < argc) {
                 field_smoke = true;
+                field_penumbra_mako_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-penumbra-mako-live-combat-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_penumbra_mako_live_combat_qa = true;
                 field_penumbra_mako_qa_path =
                     std::filesystem::path(argv[++index]);
             }
@@ -51829,6 +52001,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_tarislar_tomb_credits_presenter_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-tarislar-tomb-ending-boundary-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_tarislar_tomb_ending_boundary_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -58146,7 +58325,9 @@ int main(int argc, char** argv) {
                 return run_field_penumbra_mako_qa(
                     field_scene, asset_root,
                     *field_penumbra_mako_qa_path, field_source_boundaries,
-                    ClubPenumbraMakoQaPath::qualifying);
+                    field_penumbra_mako_live_combat_qa
+                        ? ClubPenumbraMakoQaPath::live_combat
+                        : ClubPenumbraMakoQaPath::qualifying);
             }
             if (field_penumbra_reputation_rejection_qa_path.has_value()) {
                 return run_field_penumbra_mako_qa(
@@ -58296,6 +58477,11 @@ int main(int argc, char** argv) {
                     field_scene,
                     *field_tarislar_tomb_credits_presenter_qa_path,
                     field_source_boundaries);
+            }
+            if (field_tarislar_tomb_ending_boundary_qa_path.has_value()) {
+                return run_field_tarislar_tomb_ending_boundary_expected_fail_qa(
+                    field_scene,
+                    *field_tarislar_tomb_ending_boundary_qa_path);
             }
             if (field_sinsearach_gate_choice_permutation_qa_path.has_value()) {
                 if (!field_sinsearach_gate_choice_permutation_route.has_value()) {

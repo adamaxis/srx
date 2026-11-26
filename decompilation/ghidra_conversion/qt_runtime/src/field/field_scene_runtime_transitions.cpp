@@ -316,6 +316,10 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
     refresh_effect_terrain_marker_cell();
     if (!same_scene || field_world_activity_scene_entry_pending_ ||
         force_scene_entry) {
+        // ROM 0x281E sets FFDF8A before the 0x2900 field refresh. That pass
+        // calls 0x5D260 when FFE186 is 2 or 3, initializing the post-object
+        // counter consumed by the Scene-55 ending gate at 0x1DD94.
+        world_frame_state_.field_refresh_pending = true;
         initialize_default_field_actors(scene_reference);
     }
     if (!same_scene || force_scene_entry) {
@@ -679,9 +683,11 @@ void FieldSceneRuntime::advance_field_scene_transition_after_modal() {
         if (!prepare_runtime_field_scene(
                 destination_scene)) {
             source_boundary("field.scene.transition.scene_prepare_unresolved");
-        } else if (field_pending_mode_transition_scene_ ==
-                   std::optional<std::uint16_t>{destination_scene}) {
-            field_pending_mode_transition_scene_.reset();
+        } else {
+            if (field_pending_mode_transition_scene_ ==
+                std::optional<std::uint16_t>{destination_scene}) {
+                field_pending_mode_transition_scene_.reset();
+            }
         }
     };
     scene_callbacks.apply_scene_profile_selection =

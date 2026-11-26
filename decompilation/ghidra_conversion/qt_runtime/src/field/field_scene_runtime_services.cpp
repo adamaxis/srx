@@ -508,6 +508,21 @@ bool FieldSceneRuntime::open_tarislar_tomb_credits_for_dump() {
         "tarislar_tomb_credits", "present");
 }
 
+bool FieldSceneRuntime::open_tarislar_tomb_ending_warning_for_dump() {
+    if (!ready_) {
+        return false;
+    }
+    constexpr std::uint16_t kTarislarTombAntechamberScene =
+        55U; // ROM callback 0x1E2EC; E.Scene.TARISLAR_TOMB_ANTECHAMBER.
+    game_scripts_.set_location_context(
+        "site", "tarislar_tomb_antechamber",
+        "tarislar.tomb.ending_warning", "licourtrix",
+        "tomb_ending_warning", kTarislarTombAntechamberScene);
+    return field_dialogue_.open_gameplay_task(
+        scripting::ScriptDialogueSource::cinematic,
+        "tarislar_tomb_credits", "present_ending_warning");
+}
+
 bool FieldSceneRuntime::seed_cyberspace_access_for_dump() {
     if (!ready_) {
         return false;

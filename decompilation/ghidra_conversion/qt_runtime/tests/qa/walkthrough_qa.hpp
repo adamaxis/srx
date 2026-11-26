@@ -835,6 +835,13 @@ inline int snapshot(lua_State* state) {
     set_optional_integer(state, "nuyen", runtime.field_funds_for_dump());
     lua_pushinteger(state, runtime.field_scene_reference_for_dump());
     lua_setfield(state, -2, "scene");
+    lua_pushinteger(state, runtime.field_scene_runtime_state_for_dump());
+    lua_setfield(state, -2, "field_scene_runtime_state");
+    const auto& world_frame_logic = runtime.world_frame_logic_for_dump();
+    lua_pushinteger(state, world_frame_logic.transition_marker);
+    lua_setfield(state, -2, "world_frame_transition_marker");
+    lua_pushinteger(state, world_frame_logic.region_or_mode);
+    lua_setfield(state, -2, "world_frame_slot_three_meter");
     lua_pushboolean(state, runtime.dialogue_open());
     lua_setfield(state, -2, "dialogue_open");
     lua_pushboolean(state, runtime.command_overview_open());

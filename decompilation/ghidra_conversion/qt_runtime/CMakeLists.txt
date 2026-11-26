@@ -893,18 +893,14 @@ set_tests_properties(shadowrun_beat_w3_owlfeather_return_service
     PROPERTIES LABELS "walkthrough" TIMEOUT 180
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 
-add_test(NAME shadowrun_beat_w3_aragorn_mitsuhama_contact_expected_fail_WALK_008
-    COMMAND ${CMAKE_COMMAND}
-        "-DTEST_EXECUTABLE=$<TARGET_FILE:shadowrun_ghidra_conversion_qt_qa>"
-        "-DASSET_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
-        "-DSEGMENT=beat_w3_aragorn_mitsuhama_contact"
-        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/beat-w3-aragorn-mitsuhama-contact"
-        "-DINITIAL_SCENE=3"
-        "-DBUG_ID=WALK-008"
-        "-DEXPECTED_FAILURE_PATTERN=Scene-30 event 29 did not open"
-        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/qa/expect_walkthrough_failure.cmake")
-set_tests_properties(shadowrun_beat_w3_aragorn_mitsuhama_contact_expected_fail_WALK_008
-    PROPERTIES LABELS "walkthrough;expected-failure" TIMEOUT 180
+add_test(NAME shadowrun_beat_w3_aragorn_mitsuhama_contact
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough beat_w3_aragorn_mitsuhama_contact
+        "${CMAKE_CURRENT_BINARY_DIR}/beat-w3-aragorn-mitsuhama-contact"
+        --initial-scene 3)
+set_tests_properties(shadowrun_beat_w3_aragorn_mitsuhama_contact
+    PROPERTIES LABELS "walkthrough" TIMEOUT 180
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 
 add_test(NAME shadowrun_beat_w3_big_rhino_entry
@@ -967,18 +963,14 @@ set_tests_properties(shadowrun_beat_w3_mitsuhama_elevator_return
     PROPERTIES LABELS "walkthrough" TIMEOUT 180
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 
-add_test(NAME shadowrun_beat_w3_mitsuhama_return_to_field_expected_fail_WALK_009
-    COMMAND ${CMAKE_COMMAND}
-        "-DTEST_EXECUTABLE=$<TARGET_FILE:shadowrun_ghidra_conversion_qt_qa>"
-        "-DASSET_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
-        "-DSEGMENT=beat_w3_mitsuhama_return_to_field"
-        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/beat-w3-mitsuhama-return-to-field"
-        "-DINITIAL_SCENE=3"
-        "-DBUG_ID=WALK-009"
-        "-DEXPECTED_FAILURE_PATTERN=real DOWN did not open the Scene-30 source exit"
-        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/qa/expect_walkthrough_failure.cmake")
-set_tests_properties(shadowrun_beat_w3_mitsuhama_return_to_field_expected_fail_WALK_009
-    PROPERTIES LABELS "walkthrough;expected-failure" TIMEOUT 180
+add_test(NAME shadowrun_beat_w3_mitsuhama_return_to_field
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough beat_w3_mitsuhama_return_to_field
+        "${CMAKE_CURRENT_BINARY_DIR}/beat-w3-mitsuhama-return-to-field"
+        --initial-scene 3)
+set_tests_properties(shadowrun_beat_w3_mitsuhama_return_to_field
+    PROPERTIES LABELS "walkthrough" TIMEOUT 180
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 
 add_test(NAME shadowrun_beat_w4_salish_to_council_taxi
@@ -1547,6 +1539,22 @@ add_test(NAME shadowrun_beat_w8_tomb_antechamber_entry
         --initial-scene 54)
 set_tests_properties(shadowrun_beat_w8_tomb_antechamber_entry
     PROPERTIES LABELS "walkthrough" TIMEOUT 180
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+add_test(NAME shadowrun_beat_w8_tomb_live_outro_expected_fail_WALK_015
+    COMMAND ${CMAKE_COMMAND}
+        "-DTEST_EXECUTABLE=$<TARGET_FILE:shadowrun_ghidra_conversion_qt_qa>"
+        "-DASSET_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        "-DSEGMENT=beat_w8_tomb_live_outro"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/beat-w8-tomb-live-outro"
+        "-DINITIAL_SCENE=54"
+        "-DBUG_ID=WALK-015"
+        "-DEXPECTED_FAILURE_PATTERN=live Scene-55 outro did not open the warning"
+        "-DEXPECTED_AFTER_SCENE=55"
+        "-DEXPECTED_AFTER_STORY=0"
+        "-DEXPECTED_STEP_ID=advance_live_scene_55_outro_to_warning_boundary"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/qa/expect_walkthrough_failure.cmake")
+set_tests_properties(shadowrun_beat_w8_tomb_live_outro_expected_fail_WALK_015
+    PROPERTIES LABELS "walkthrough;expected-failure" TIMEOUT 180
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 add_test(NAME shadowrun_beat_w5_b25_stark_admission
     COMMAND shadowrun_ghidra_conversion_qt_qa
@@ -2477,6 +2485,18 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_penumbra_mako_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-penumbra-mako-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-penumbra-mako-qa")
+add_test(NAME shadowrun_beat_w7_b11_mako_defeat_expected_fail_WALK_010
+    COMMAND ${CMAKE_COMMAND}
+        "-DTEST_EXECUTABLE=$<TARGET_FILE:shadowrun_ghidra_conversion_qt_qa>"
+        "-DASSET_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        "-DFIELD_QA_FLAG=--field-penumbra-mako-live-combat-qa"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/beat-w7-b11-mako-defeat"
+        "-DBUG_ID=WALK-010"
+        "-DEXPECTED_FAILURE_PATTERN=Club Penumbra Mako live pad combat failed: result dialogue not reached"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/qa/expect_field_qa_failure.cmake")
+set_tests_properties(shadowrun_beat_w7_b11_mako_defeat_expected_fail_WALK_010 PROPERTIES
+    LABELS "walkthrough;expected-failure" TIMEOUT 360
+    ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 
 # Cover the entry choices, reputation and wallet rejections, and the known
 # Mako story-gate outcomes, including both lead sources.
@@ -3491,6 +3511,21 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_tarislar_tomb_cred
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-tarislar-tomb-credits-presenter-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-tarislar-tomb-credits-presenter-qa")
+
+# Confirm the production ending warning with real pad input. The expected
+# failure pins the remaining ROM pre-credit presentation boundary (WALK-015).
+add_test(NAME shadowrun_beat_w8_tomb_ending_warning_expected_fail_WALK_015
+    COMMAND ${CMAKE_COMMAND}
+        "-DTEST_EXECUTABLE=$<TARGET_FILE:shadowrun_ghidra_conversion_qt_qa>"
+        "-DASSET_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        "-DFIELD_QA_FLAG=--field-tarislar-tomb-ending-boundary-qa"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/beat-w8-tomb-ending-boundary"
+        "-DBUG_ID=WALK-015"
+        "-DEXPECTED_FAILURE_PATTERN=WALK-015: real A confirmation reached the unported ending presentation boundary"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/qa/expect_field_qa_failure.cmake")
+set_tests_properties(shadowrun_beat_w8_tomb_ending_warning_expected_fail_WALK_015
+    PROPERTIES LABELS "walkthrough;expected-failure" TIMEOUT 180
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 
 # Walk into the Sinsearach village gate through Scene-9 record 230/event 0,
 # follow the Lady Gillian/Frosty route, and capture its source-backed pages.

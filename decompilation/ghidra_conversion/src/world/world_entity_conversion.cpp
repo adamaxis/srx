@@ -34,6 +34,10 @@ void run_world_frame_services(WorldFrameState& state,
         call_once(callbacks.clear_entity_effects);
         call_once(callbacks.clear_scene_pending);
         call_once(callbacks.finalize_entity_templates);
+        if (state.world_scene_state == 2U ||
+            state.world_scene_state == 3U) {
+            call_once(callbacks.reset_post_object_state);
+        }
         if (state.world_scene_state != 3U) {
             call_once(callbacks.service_scene_effect);
         }

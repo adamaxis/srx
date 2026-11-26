@@ -29,8 +29,8 @@ void reset_world_frame_service_state(WorldFrameServiceState& state) {
     state.words.fill(0U);
     state.words[0] = 0x11C0U;
     state.words[2] = 0xFE80U;
-    state.words[0x11] = 0xFFFFU;
-    state.words[0x12] = 0x00B4U;
+    state.words[kWorldFramePostObjectSecondaryCounterWord] = 0xFFFFU;
+    state.words[kWorldFramePostObjectCountdownWord] = 0x00B4U;
 }
 
 WorldSceneSpecialEffectSpawnResult spawn_scene_special_effect(
