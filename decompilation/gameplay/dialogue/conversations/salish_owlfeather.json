@@ -435,14 +435,16 @@
         "clear_notebook_tip_bit_4": {
           "type": "action",
           "actionId": "field.set_notebook_tip_flag",
-          "arguments": { "flagBit": 4, "value": false },
-          "next": "clear_notebook_tip_bit_5"
+          "arguments": { "flagBit": 68, "value": false },
+          "next": "clear_notebook_tip_bit_5",
+          "evidence": "ROM 0x53CBC..0x53CCA clears FFFC38 bit 4; notebook-tip index 68 (64 + bit) maps to that word, not FFFC30."
         },
         "clear_notebook_tip_bit_5": {
           "type": "action",
           "actionId": "field.set_notebook_tip_flag",
-          "arguments": { "flagBit": 5, "value": false },
-          "next": "aragorn_contact_opening"
+          "arguments": { "flagBit": 69, "value": false },
+          "next": "aragorn_contact_opening",
+          "evidence": "ROM 0x53CBC..0x53CCA clears FFFC38 bit 5; notebook-tip index 69 (64 + bit) maps to that word, not FFFC30."
         },
         "aragorn_contact_opening": {
           "type": "page",
