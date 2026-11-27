@@ -621,6 +621,41 @@ E.MusicId = {
     INTRO_PAGE_1 = 0x10, INTRO_PAGE_2 = 0x11, INTRO_PAGE_3 = 0x12,         -- 0x59C76/96/BC [C]
     ENDING = 0x13,                   -- 0x5BB4E [C]
 }
+-- Scene-55 ending timeline predicates and loop bounds from ROM 0x5BAC4 and
+-- 0x5BC70. Sound ids 0x35/0x2C and ending music 0x13 already live in the
+-- existing SoundId/MusicId tables above.
+E.TarislarTombEnding = {
+    LOOP_ITERATION_COUNT = 1001, -- D7=0x3E8 DBRA at 0x5BB5A..0x5BB84 [C]
+    SHAKE_FIRST_FRAME = 0x64, -- 0x5BC70 random(0x20), compare against 4 [C]
+    SHAKE_END_FRAME_EXCLUSIVE = 0xAA,
+    SHAKE_RANDOM_BOUND = 0x20,
+    SHAKE_RANDOM_THRESHOLD = 4,
+    CAMERA_SHAKE_OFFSET_SIGN = -1,
+    SCROLL_FIRST_FRAME = 0x136,
+    SCROLL_END_FRAME_EXCLUSIVE = 0x190,
+    SCROLL_STOP_OFFSET = -0x90,
+    SCROLL_STEP = -2, -- FFDD0A/FFDD0E [C]
+    FADE_FRAME = 0x30C, -- 0x5BC70 calls 0x102A [C]
+    CHOREOGRAPHY_FRAME_1 = 0x190, -- 0x5C744 [C]
+    CHOREOGRAPHY_FRAME_2 = 0x26C, -- 0x5C842 [C]
+    CHOREOGRAPHY_FRAME_3_FIRST = 0x26D, -- 0x5C88C on even frames [C]
+    CHOREOGRAPHY_FRAME_3_LAST = 0x2BB,
+}
+E.TarislarTombEndingRomEvent = {
+    ENTITY_DRAW = 0x5C230, -- per-frame draw call [C]
+    ENTITY_UPDATE = 0x5BD2C, -- per-frame entity service [C]
+    CHOREOGRAPHY_ONE = 0x5C744, -- t=0x190 [C]
+    CHOREOGRAPHY_TWO = 0x5C842, -- t=0x26C [C]
+    CHOREOGRAPHY_THREE = 0x5C88C, -- even t=0x26D..0x2BB [C]
+}
+E.TarislarTombEndingEventKind = {
+    SOUND = 1, -- host event tag [C]
+    MUSIC = 2, -- host event tag [C]
+    CAMERA_SHAKE = 3, -- host event tag [C]
+    CAMERA_SCROLL = 4, -- host event tag [C]
+    FADE = 5, -- host event tag [C]
+    ROM_EVENT = 6, -- host event tag [C]
+}
 -- GEMS command ops sent as FF op args (0x52E96) [C]; the host mixer logs the same ops.
 E.AudioOp = { START = 0x10, STOP = 0x12, STOP_ALL = 0x16, ATTENUATE = 0x20 }
 E.AudioTuning = {

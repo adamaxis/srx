@@ -1328,6 +1328,11 @@ FieldSceneRuntime::FieldSceneRuntime(
                 }
                 return std::nullopt;
             }
+            if (service_id ==
+                    "field.start_tarislar_tomb_ending_presentation" &&
+                start_tarislar_tomb_ending_presentation()) {
+                return "applied";
+            }
             if (service_id == "random.security_guard_dispatch") {
                 const auto roll = source_random_bound(
                     100U, source_random_site::security_guard_dispatch);
@@ -15277,6 +15282,10 @@ void FieldSceneRuntime::service_pending_field_viewports() {
 
 void FieldSceneRuntime::advance_frame() {
     if (!ready_) {
+        return;
+    }
+    if (tarislar_tomb_ending_presentation_active_) {
+        advance_tarislar_tomb_ending_presentation();
         return;
     }
     const bool field_modal_owns_transition =

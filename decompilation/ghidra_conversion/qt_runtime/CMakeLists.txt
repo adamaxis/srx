@@ -3517,19 +3517,12 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_tarislar_tomb_cred
                  --field-tarislar-tomb-credits-presenter-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-tarislar-tomb-credits-presenter-qa")
 
-# Confirm the production ending warning with real pad input. The expected
-# failure pins the remaining ROM pre-credit presentation boundary (WALK-015).
-add_test(NAME shadowrun_beat_w8_tomb_ending_warning_expected_fail_WALK_015
-    COMMAND ${CMAKE_COMMAND}
-        "-DTEST_EXECUTABLE=$<TARGET_FILE:shadowrun_ghidra_conversion_qt_qa>"
-        "-DASSET_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
-        "-DFIELD_QA_FLAG=--field-tarislar-tomb-ending-boundary-qa"
-        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/beat-w8-tomb-ending-boundary"
-        "-DBUG_ID=WALK-015"
-        "-DEXPECTED_FAILURE_PATTERN=WALK-015: real A confirmation reached the unported ending presentation boundary"
-        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/qa/expect_field_qa_failure.cmake")
-set_tests_properties(shadowrun_beat_w8_tomb_ending_warning_expected_fail_WALK_015
-    PROPERTIES LABELS "walkthrough;expected-failure" TIMEOUT 180
+add_shadowrun_qt_qa_case(shadowrun_beat_w8_tomb_ending_presentation
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-tarislar-tomb-ending-boundary-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/beat-w8-tomb-ending-presentation")
+set_tests_properties(shadowrun_beat_w8_tomb_ending_presentation
+    PROPERTIES LABELS "walkthrough" TIMEOUT 180
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 
 # Walk into the Sinsearach village gate through Scene-9 record 230/event 0,

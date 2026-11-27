@@ -16,13 +16,19 @@
           "inputContract": "buttons_abc",
           "promptTextKey": "tarislar.tomb.ending.page.licourtrix_warning",
           "choices": [
-            { "id": "destroy_thon", "next": "ending_presentation_boundary" }
+            { "id": "destroy_thon", "next": "ending_presentation" }
           ],
           "evidence": "ROM callback 0x5BAC4 opens prompt group 0xFDD72 through 0x20950; text 0xFD62C is paired with the single response at 0xFD71E."
         },
-        "ending_presentation_boundary": {
-          "type": "source_boundary",
-          "reason": "ROM 0x5BAC4 runs a D7=1000 DBRA presentation loop with frame, controller, input, and animation services; the pre-credit presentation is not reconstructed."
+        "ending_presentation": {
+          "type": "action",
+          "actionId": "tarislar_tomb.start_ending_presentation",
+          "next": "return_to_field",
+          "evidence": "ROM 0x5BAC4 runs the 1001-frame pre-credit timeline before the existing credits callback at 0x5C3B4."
+        },
+        "return_to_field": {
+          "type": "terminal",
+          "outcome": { "type": "continue_in_place" }
         }
       }
     },

@@ -2053,6 +2053,14 @@ public:
     }
 
 private:
+    enum class TarislarTombEndingEventKind : std::uint8_t {
+        sound = 1U,
+        music = 2U,
+        camera_shake = 3U,
+        camera_scroll = 4U,
+        fade = 5U,
+        rom_event = 6U,
+    };
     enum class FieldDestinationTransitionRoute : std::uint8_t {
         elevator,
         taxi,
@@ -2094,6 +2102,8 @@ private:
     void advance_field_actor_animation();
     void advance_default_field_actor_animations();
     void advance_tarislar_tomb_outro();
+    bool start_tarislar_tomb_ending_presentation();
+    void advance_tarislar_tomb_ending_presentation();
     void advance_field_hit_spark_behaviors();
     void advance_field_hit_spark_animations();
     void advance_field_weapon_projectile_animations();
@@ -2899,6 +2909,9 @@ private:
     // docs/24 R1: aliases the single ROM RNG word FFF9F8 shared with title/menus/Matrix (random_conversion.hpp).
     std::uint16_t& field_random_seed_ = source_random_seed();
     std::uint16_t field_world_frame_counter_ = 0U;
+    bool tarislar_tomb_ending_presentation_active_ = false;
+    std::uint16_t tarislar_tomb_ending_presentation_frame_ = 0U;
+    std::uint16_t tarislar_tomb_ending_iteration_count_ = 0U;
     // Remaining alarm duration is gameplay time, independent of source width.
     std::int32_t alarm_time_remaining_frames_ = 0;
     std::uint32_t field_world_encounter_sequence_ = 0U;

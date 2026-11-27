@@ -1,6 +1,9 @@
 #include "field_scene_runtime.hpp"
 #include "field_scene_runtime_internal.hpp"
 
+#include <iomanip>
+#include <sstream>
+
 #include "enums.hpp"
 #include "shadowrun_ghidra/field/scene_profile_conversion.hpp"
 #include "shadowrun_ghidra/field/field_mode_conversion.hpp"
@@ -905,6 +908,145 @@ void FieldSceneRuntime::advance_tarislar_tomb_outro() {
         field_world_activity_state_.timeout;
     record_field_activity_start(continuation);
     source_boundary("field.scene55.tomb_outro_callback_queued");
+}
+
+bool FieldSceneRuntime::start_tarislar_tomb_ending_presentation() {
+    if (!ready_ || tarislar_tomb_ending_presentation_active_) {
+        return false;
+    }
+    const auto iteration_count = game_scripts_.call_integers(
+        "tarislar_tomb_ending", "iteration_count", {});
+    if (!iteration_count.has_value() || iteration_count->size() != 1U ||
+        iteration_count->front() < 1 ||
+        iteration_count->front() > 0xFFFF) {
+        failure_ = game_scripts_.failure().empty()
+            ? "Lua Tarislar Tomb ending iteration count is invalid"
+            : game_scripts_.failure();
+        source_boundary("ending.presentation.iteration_count_failed:0x5BB5A");
+        return false;
+    }
+    tarislar_tomb_ending_presentation_active_ = true;
+    tarislar_tomb_ending_presentation_frame_ = 0U;
+    tarislar_tomb_ending_iteration_count_ =
+        static_cast<std::uint16_t>(iteration_count->front());
+    source_boundary("ending.presentation.started:0x5BAC4");
+    return true;
+}
+
+void FieldSceneRuntime::advance_tarislar_tomb_ending_presentation() {
+    const auto frame = tarislar_tomb_ending_presentation_frame_;
+    const auto random_bound = game_scripts_.call_integers(
+        "tarislar_tomb_ending", "random_bound", {frame});
+    if (!random_bound.has_value() || random_bound->size() != 1U ||
+        random_bound->front() < 0 || random_bound->front() > 0xFFFF) {
+        failure_ = game_scripts_.failure().empty()
+            ? "Lua Tarislar Tomb ending random bound is invalid"
+            : game_scripts_.failure();
+        tarislar_tomb_ending_presentation_active_ = false;
+        source_boundary("ending.presentation.random_bound_failed:0x5BC70");
+        return;
+    }
+    std::int64_t shake_roll = -1;
+    if (random_bound->front() > 0) {
+        shake_roll = source_random_bound(
+            static_cast<std::uint16_t>(random_bound->front()),
+            source_random_site::unknown);
+    }
+    const auto events = game_scripts_.call_integers(
+        "tarislar_tomb_ending", "step",
+        {frame, shake_roll, field_camera_follow_.vertical_bias_b});
+    if (!events.has_value() || events->size() % 2U != 0U) {
+        failure_ = game_scripts_.failure().empty()
+            ? "Lua Tarislar Tomb ending step returned malformed events"
+            : game_scripts_.failure();
+        tarislar_tomb_ending_presentation_active_ = false;
+        source_boundary("ending.presentation.step_failed:0x5BC70");
+        return;
+    }
+
+    for (std::size_t index = 0U; index < events->size(); index += 2U) {
+        const auto kind = static_cast<TarislarTombEndingEventKind>(
+            events->at(index));
+        const auto value = events->at(index + 1U);
+        switch (kind) {
+        case TarislarTombEndingEventKind::sound:
+            if (value < 0 || value > 0xFFFF) {
+                source_boundary("ending.presentation.invalid_sound:0x5BBA6");
+                tarislar_tomb_ending_presentation_active_ = false;
+                return;
+            }
+            if (source_audio_event_callback_) {
+                source_audio_event_callback_(
+                    static_cast<std::uint16_t>(value));
+            }
+            source_boundary("ending.presentation.sound:" +
+                            std::to_string(frame) + ":" +
+                            std::to_string(value));
+            break;
+        case TarislarTombEndingEventKind::music:
+            if (value < 0 || value > 0xFFFF) {
+                source_boundary("ending.presentation.invalid_music:0x5BAC4");
+                tarislar_tomb_ending_presentation_active_ = false;
+                return;
+            }
+            field_current_music_id_ = static_cast<std::uint16_t>(value);
+            field_last_music_scene_id_ =
+                state_.field_scene_buffers.scene_reference;
+            field_music_requests_.push_back(
+                static_cast<std::uint16_t>(value));
+            if (source_music_callback_) {
+                source_music_callback_(static_cast<std::uint16_t>(value));
+            }
+            break;
+        case TarislarTombEndingEventKind::camera_shake:
+            field_camera_follow_.horizontal_bias_a =
+                static_cast<std::int16_t>(value);
+            break;
+        case TarislarTombEndingEventKind::camera_scroll:
+            field_camera_follow_.vertical_bias_a =
+                static_cast<std::int16_t>(
+                    field_camera_follow_.vertical_bias_a + value);
+            field_camera_follow_.vertical_bias_b =
+                static_cast<std::int16_t>(
+                    field_camera_follow_.vertical_bias_b + value);
+            break;
+        case TarislarTombEndingEventKind::fade:
+            // ROM 0x5BC70 calls fade-out 0x102A at t=0x30C; reuse the host's
+            // existing full palette fade (same 9-step value as the other
+            // 0x102A-style fade paths).
+            field_palette_fade_steps_ = 9U;
+            break;
+        case TarislarTombEndingEventKind::rom_event: {
+            std::ostringstream reason;
+            reason << "ending.presentation.rom_event:0x" << std::hex
+                   << std::uppercase << static_cast<std::uint32_t>(value);
+            source_boundary(reason.str());
+            break;
+        }
+        default:
+            source_boundary("ending.presentation.unknown_event_kind:0x5BC70");
+            tarislar_tomb_ending_presentation_active_ = false;
+            return;
+        }
+    }
+
+    ++field_world_frame_counter_;
+    if (frame < tarislar_tomb_ending_iteration_count_) {
+        tarislar_tomb_ending_presentation_frame_ =
+            static_cast<std::uint16_t>(frame + 1U);
+        return;
+    }
+
+    tarislar_tomb_ending_presentation_active_ = false;
+    source_boundary("ending.presentation.loop_complete:0x5C3B4");
+    if (!field_dialogue_.open_gameplay_task(
+            scripting::ScriptDialogueSource::cinematic,
+            "tarislar_tomb_credits", "present")) {
+        failure_ = game_scripts_.failure().empty()
+            ? "Lua Tarislar Tomb credits graph could not open after the ending"
+            : game_scripts_.failure();
+        source_boundary("ending.presentation.credits_open_failed:0x5C3B4");
+    }
 }
 
 void FieldSceneRuntime::update_source_field_camera() {

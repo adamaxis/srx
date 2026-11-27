@@ -34,6 +34,8 @@ for t in menu_tests menu_b_policy_tests pocket_secretary_options_tests shop_rout
   run "$t" "decompilation/gameplay/tests_lua/$t.lua"
 done
 run "field_events_tests" "decompilation/gameplay/tests_lua/field_events_tests.lua"
+run "tarislar_tomb_ending_tests" \
+  "decompilation/gameplay/tests_lua/tarislar_tomb_ending_tests.lua"
 run "matchstick_tests" "decompilation/gameplay/tests_lua/matchstick_tests.lua"
 run "ilene_tests" "decompilation/gameplay/tests_lua/ilene_tests.lua"
 run "caleb_brightmore_tests" \

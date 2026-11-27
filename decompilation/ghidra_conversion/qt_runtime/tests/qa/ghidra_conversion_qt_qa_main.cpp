@@ -45823,10 +45823,26 @@ int run_field_tarislar_tomb_credits_presenter_qa(
     return 0;
 }
 
-int run_field_tarislar_tomb_ending_boundary_expected_fail_qa(
+int run_field_tarislar_tomb_ending_presentation_qa(
     FieldSceneRuntime& field_scene,
-    const std::filesystem::path& output) {
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries) {
     constexpr std::uint8_t kControllerButtonA = 0x40U;
+    constexpr std::uint16_t kLoopIterationCount = 1001U;
+    constexpr std::uint16_t kSound35 = 0x35U;
+    constexpr std::uint16_t kSound2C = 0x2CU;
+    constexpr std::uint16_t kEndingMusic = 0x13U;
+    using TimedSound = std::pair<std::uint16_t, std::uint16_t>;
+    constexpr std::array<TimedSound, 20U> kExpectedSounds{{
+        {0x001U, kSound35}, {0x01CU, kSound35}, {0x030U, kSound35},
+        {0x045U, kSound35}, {0x058U, kSound35}, {0x06CU, kSound35},
+        {0x085U, kSound35}, {0x095U, kSound35}, {0x0A0U, kSound2C},
+        {0x0A8U, kSound35}, {0x0B0U, kSound2C}, {0x0BCU, kSound35},
+        {0x0C4U, kSound2C}, {0x0D0U, kSound35}, {0x0E0U, kSound35},
+        {0x0F0U, kSound2C}, {0x26FU, kSound35}, {0x280U, kSound35},
+        {0x294U, kSound35}, {0x2A8U, kSound35},
+    }};
     std::error_code output_error;
     std::filesystem::remove_all(output, output_error);
     if (output_error) {
@@ -45854,30 +45870,72 @@ int run_field_tarislar_tomb_ending_boundary_expected_fail_qa(
         return 3;
     }
 
+    const auto music_before = field_scene.field_music_requests().size();
+    const auto boundary_start = source_boundaries.size();
     // The single live choice is the player's confirmation to destroy Thon.
     tap_qa_controller_button(field_scene, kControllerButtonA); // ROM pad A.
-    const auto& panel = field_scene.dialogue_panel();
-    constexpr std::string_view kExpectedBoundary =
-        "dialogue_graph:tarislar.tomb.ending_warning:"
-        "ending_presentation_boundary";
-    if (panel.source_boundary_reason.find(kExpectedBoundary) ==
-        std::string::npos) {
-        std::cerr << "Tarislar Tomb ending QA: real A did not reach the "
-                     "ROM presentation boundary (boundary="
-                  << panel.source_boundary_reason << ")\n";
+    const auto audio_start = field_audio_events.size();
+    std::vector<TimedSound> observed_sounds;
+    for (std::uint16_t frame = 1U; frame <= kLoopIterationCount; ++frame) {
+        const auto before = field_audio_events.size();
+        field_scene.advance_frame();
+        for (std::size_t index = before;
+             index < field_audio_events.size(); ++index) {
+            observed_sounds.emplace_back(frame, field_audio_events[index]);
+        }
+    }
+    if (observed_sounds.size() != kExpectedSounds.size() ||
+        !std::equal(observed_sounds.begin(), observed_sounds.end(),
+                    kExpectedSounds.begin()) ||
+        field_scene.field_music_requests().size() != music_before + 1U ||
+        field_scene.field_music_requests().back() != kEndingMusic) {
+        std::cerr << "Tarislar Tomb ending QA: timed audio differs from ROM "
+                     "schedule (sounds=" << observed_sounds.size()
+                  << ", music_requests="
+                  << field_scene.field_music_requests().size() - music_before
+                  << ")\n";
         return 3;
     }
-    const auto boundary_frame = render_qa_field(field_scene);
-    if (boundary_frame.size() != QSize(kSceneWidth, kSceneHeight) ||
-        !boundary_frame.save(QString::fromStdWString(
-            (output / "ending-presentation-boundary.bmp").wstring()))) {
-        std::cerr << "Tarislar Tomb ending QA: boundary capture failed\n";
+
+    const auto suffix_count = [&source_boundaries, boundary_start](
+                                  const std::string_view value) {
+        return static_cast<std::size_t>(std::count(
+            source_boundaries.begin() +
+                static_cast<std::ptrdiff_t>(boundary_start),
+            source_boundaries.end(), value));
+    };
+    constexpr std::string_view kDrawEvent =
+        "ending.presentation.rom_event:0x5C230";
+    constexpr std::string_view kEntityUpdateEvent =
+        "ending.presentation.rom_event:0x5BD2C";
+    constexpr std::string_view kChoreographyOne =
+        "ending.presentation.rom_event:0x5C744";
+    constexpr std::string_view kChoreographyTwo =
+        "ending.presentation.rom_event:0x5C842";
+    constexpr std::string_view kChoreographyThree =
+        "ending.presentation.rom_event:0x5C88C";
+    const auto first_page = render_qa_field(field_scene);
+    if (suffix_count(kDrawEvent) != kLoopIterationCount ||
+        suffix_count(kEntityUpdateEvent) != kLoopIterationCount ||
+        suffix_count(kChoreographyOne) != 1U ||
+        suffix_count(kChoreographyTwo) != 1U ||
+        suffix_count(kChoreographyThree) != 39U ||
+        field_audio_events.size() - audio_start != kExpectedSounds.size() ||
+        !field_scene.dialogue_open() ||
+        field_scene.active_credits_page_id_for_dump() !=
+            "opening_and_game_design" ||
+        first_page.size() != QSize(kSceneWidth, kSceneHeight) ||
+        !first_page.save(QString::fromStdWString(
+            (output / "ending-credits-first-page.bmp").wstring()))) {
+        std::cerr << "Tarislar Tomb ending QA: loop events or credits handoff "
+                     "did not match ROM 0x5BAC4/0x5C3B4\n";
         return 3;
     }
-    std::cerr << "WALK-015: real A confirmation reached the unported ending "
-                 "presentation boundary: "
-              << panel.source_boundary_reason << '\n';
-    return 2;
+    std::cout << "field_tarislar_tomb_ending_presentation_qa=passed "
+                 "iterations=1001 timed_sounds=20 music=0x13 "
+                 "credits=opening_and_game_design artifacts="
+              << output.string() << '\n';
+    return 0;
 }
 
 int run_field_sinsearach_gate_physical_entry_qa(
@@ -58494,9 +58552,10 @@ int main(int argc, char** argv) {
                     field_source_boundaries);
             }
             if (field_tarislar_tomb_ending_boundary_qa_path.has_value()) {
-                return run_field_tarislar_tomb_ending_boundary_expected_fail_qa(
+                return run_field_tarislar_tomb_ending_presentation_qa(
                     field_scene,
-                    *field_tarislar_tomb_ending_boundary_qa_path);
+                    *field_tarislar_tomb_ending_boundary_qa_path,
+                    field_audio_events, field_source_boundaries);
             }
             if (field_sinsearach_gate_choice_permutation_qa_path.has_value()) {
                 if (!field_sinsearach_gate_choice_permutation_route.has_value()) {
