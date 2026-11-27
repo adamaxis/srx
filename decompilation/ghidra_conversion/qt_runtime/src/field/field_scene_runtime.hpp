@@ -1070,6 +1070,23 @@ public:
     std::uint16_t tarislar_tomb_ending_t_for_dump() const noexcept {
         return tarislar_tomb_ending_t_;
     }
+    std::uint16_t tarislar_tomb_ending_fff1b8_for_dump() const noexcept {
+        return tarislar_tomb_ending_fff1b8_;
+    }
+    std::vector<std::array<std::uint16_t, 5U>>
+    tarislar_tomb_ending_sat_for_dump() const {
+        std::vector<std::array<std::uint16_t, 5U>> result;
+        result.reserve(tarislar_tomb_ending_sat_entries_.size());
+        for (const auto& entry : tarislar_tomb_ending_sat_entries_) {
+            result.push_back({entry.y, entry.size, entry.link,
+                              entry.tile, entry.x});
+        }
+        return result;
+    }
+    std::vector<std::uint32_t>
+    tarislar_tomb_ending_sat_list_addresses_for_dump() const {
+        return tarislar_tomb_ending_sat_list_addresses_;
+    }
     std::uint16_t tarislar_tomb_ending_iteration_for_dump() const noexcept {
         return tarislar_tomb_ending_loop_iteration_;
     }
@@ -2094,6 +2111,19 @@ private:
         background_city = 15U,
         logo_reveal_overlay = 16U,
     };
+    struct TarislarTombEndingSpritePiece {
+        std::int16_t x_offset = 0;
+        std::int16_t y_offset = 0;
+        std::uint16_t size = 0U;
+        std::uint16_t tile = 0U;
+    };
+    struct TarislarTombEndingSatEntry {
+        std::uint16_t y = 0U;
+        std::uint8_t size = 0U;
+        std::uint8_t link = 0U;
+        std::uint16_t tile = 0U;
+        std::uint16_t x = 0U;
+    };
     enum class FieldDestinationTransitionRoute : std::uint8_t {
         elevator,
         taxi,
@@ -2137,6 +2167,9 @@ private:
     void advance_tarislar_tomb_outro();
     bool start_tarislar_tomb_ending_presentation();
     void advance_tarislar_tomb_ending_presentation();
+    bool load_tarislar_tomb_ending_sprite_lists();
+    bool emit_tarislar_tomb_ending_sprite_frame(
+        std::uint16_t t, std::uint16_t now);
     void advance_field_hit_spark_behaviors();
     void advance_field_hit_spark_animations();
     void advance_field_weapon_projectile_animations();
@@ -2944,6 +2977,8 @@ private:
     std::uint16_t field_world_frame_counter_ = 0U;
     bool tarislar_tomb_ending_presentation_active_ = false;
     std::uint16_t tarislar_tomb_ending_t_ = 0U;
+    std::uint16_t tarislar_tomb_ending_now_ = 0U;
+    std::uint16_t tarislar_tomb_ending_fff1b8_ = 0U;
     std::uint16_t tarislar_tomb_ending_loop_iteration_ = 0U;
     std::uint16_t tarislar_tomb_ending_iteration_count_ = 0U;
     bool tarislar_tomb_ending_music_pending_ = false;
@@ -2959,6 +2994,13 @@ private:
     bool tarislar_tomb_ending_scroll_words_zero_ = false;
     std::array<std::uint16_t, 15U> tarislar_tomb_ending_palette_line_0_{};
     std::array<std::uint16_t, 15U> tarislar_tomb_ending_palette_line_3_{};
+    std::unordered_map<std::uint32_t,
+        std::vector<TarislarTombEndingSpritePiece>>
+        tarislar_tomb_ending_sprite_lists_;
+    std::vector<TarislarTombEndingSatEntry>
+        tarislar_tomb_ending_sat_entries_;
+    std::vector<std::uint32_t>
+        tarislar_tomb_ending_sat_list_addresses_;
     // Remaining alarm duration is gameplay time, independent of source width.
     std::int32_t alarm_time_remaining_frames_ = 0;
     std::uint32_t field_world_encounter_sequence_ = 0U;

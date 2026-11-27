@@ -914,6 +914,9 @@ bool FieldSceneRuntime::start_tarislar_tomb_ending_presentation() {
     if (!ready_ || tarislar_tomb_ending_presentation_active_) {
         return false;
     }
+    if (!load_tarislar_tomb_ending_sprite_lists()) {
+        return false;
+    }
     const auto iteration_count = game_scripts_.call_integers(
         "tarislar_tomb_ending", "iteration_count", {});
     if (!iteration_count.has_value() || iteration_count->size() != 1U ||
@@ -953,6 +956,8 @@ bool FieldSceneRuntime::start_tarislar_tomb_ending_presentation() {
     tarislar_tomb_ending_fff154_ =
         static_cast<std::uint16_t>(initial_flash->at(3U));
     tarislar_tomb_ending_t_ = 0U;
+    tarislar_tomb_ending_now_ = 0U;
+    tarislar_tomb_ending_fff1b8_ = 0U;
     tarislar_tomb_ending_loop_iteration_ = 0U;
     tarislar_tomb_ending_fff1e2_ = 0U;
     tarislar_tomb_ending_fff1e6_ = 0U;
@@ -969,7 +974,173 @@ bool FieldSceneRuntime::start_tarislar_tomb_ending_presentation() {
     tarislar_tomb_ending_music_pending_ = true;
     tarislar_tomb_ending_iteration_count_ =
         static_cast<std::uint16_t>(iteration_count->front());
+    if (!emit_tarislar_tomb_ending_sprite_frame(0U, 0U)) {
+        tarislar_tomb_ending_presentation_active_ = false;
+        return false;
+    }
     source_boundary("ending.presentation.started:0x5BAC4");
+    return true;
+}
+
+bool FieldSceneRuntime::load_tarislar_tomb_ending_sprite_lists() {
+    constexpr std::string_view kSpritePieceTableAlias =
+        "cinematics.tarislar.tomb.sprites.pieces";
+    if (!field_asset_catalog_) {
+        failure_ = "Tarislar Tomb ROM sprite-piece asset catalog is missing";
+        source_boundary("ending.sprite_table.catalog_missing:0x1EFB5C");
+        return false;
+    }
+    const auto* record = field_asset_catalog_->find(kSpritePieceTableAlias);
+    if (record == nullptr || record->kind != "rom_sprite_piece_table") {
+        failure_ = "Tarislar Tomb ROM sprite-piece asset is missing";
+        source_boundary("ending.sprite_table.asset_missing:0x1EFB5C");
+        return false;
+    }
+    std::ifstream input(record->absolute_path);
+    std::string line;
+    if (!input || !std::getline(input, line) ||
+        line != "list_address\tw0\tw1\tw2\tw3") {
+        failure_ = "Tarislar Tomb ROM sprite-piece asset has an invalid header";
+        source_boundary("ending.sprite_table.header_invalid:0x1EFB5C");
+        return false;
+    }
+    std::unordered_map<std::uint32_t,
+        std::vector<TarislarTombEndingSpritePiece>> lists;
+    std::size_t line_number = 1U;
+    while (std::getline(input, line)) {
+        ++line_number;
+        if (line.empty()) continue;
+        std::uint32_t address = 0U;
+        int x_offset = 0;
+        int y_offset = 0;
+        unsigned int size = 0U;
+        unsigned int tile = 0U;
+        std::istringstream row(line);
+        if (!(row >> address >> x_offset >> y_offset >> size >> tile) ||
+            address == 0U || x_offset < -0x8000 || x_offset > 0x7FFF ||
+            y_offset < -0x8000 || y_offset > 0x7FFF || size > 0xFFFFU ||
+            tile > 0xFFFFU) {
+            failure_ = "Tarislar Tomb ROM sprite-piece asset row is invalid at " +
+                std::to_string(line_number);
+            source_boundary("ending.sprite_table.row_invalid:0x1EFB5C");
+            return false;
+        }
+        lists[address].push_back(TarislarTombEndingSpritePiece{
+            static_cast<std::int16_t>(x_offset),
+            static_cast<std::int16_t>(y_offset),
+            static_cast<std::uint16_t>(size),
+            static_cast<std::uint16_t>(tile)});
+    }
+    if (lists.empty() || !input.eof()) {
+        failure_ = "Tarislar Tomb ROM sprite-piece asset is incomplete";
+        source_boundary("ending.sprite_table.read_failed:0x1EFB5C");
+        return false;
+    }
+    tarislar_tomb_ending_sprite_lists_ = std::move(lists);
+    return true;
+}
+
+bool FieldSceneRuntime::emit_tarislar_tomb_ending_sprite_frame(
+    const std::uint16_t t, const std::uint16_t now) {
+    const auto random_bound = game_scripts_.call_integers(
+        "tarislar_tomb_ending", "sprite_random_bound", {t});
+    if (!random_bound.has_value() || random_bound->size() != 1U ||
+        random_bound->front() < 0 || random_bound->front() > 0xFFFF) {
+        failure_ = game_scripts_.failure().empty()
+            ? "Lua Tarislar Tomb sprite random bound is invalid"
+            : game_scripts_.failure();
+        source_boundary("ending.sprite.random_bound_failed:0x5BD6A");
+        return false;
+    }
+    std::int64_t scatter_roll = -1;
+    if (random_bound->front() > 0) {
+        scatter_roll = source_random_bound(
+            static_cast<std::uint16_t>(random_bound->front()),
+            source_random_site::unknown);
+    }
+    const auto requests = game_scripts_.call_integers(
+        "tarislar_tomb_ending", "sprite_frame",
+        {t, now, scatter_roll});
+    if (!requests.has_value() || requests->empty() ||
+        (requests->size() - 1U) % 4U != 0U) {
+        failure_ = game_scripts_.failure().empty()
+            ? "Lua Tarislar Tomb sprite frame is malformed"
+            : game_scripts_.failure();
+        source_boundary("ending.sprite.frame_failed:0x5BD2C");
+        return false;
+    }
+    if (requests->front() < 0 || requests->front() > 0xFFFF) {
+        source_boundary("ending.sprite.invalid_fff1b8:0x5BEA2");
+        return false;
+    }
+    tarislar_tomb_ending_fff1b8_ =
+        static_cast<std::uint16_t>(requests->front());
+
+    std::vector<TarislarTombEndingSatEntry> sat_entries;
+    std::vector<std::uint32_t> list_addresses;
+#ifdef SHADOWRUN_QT_QA_DRIVER
+    std::vector<VdpSpritePiece> vdp_pieces;
+#endif
+    std::uint16_t link = 2U;
+    const auto word = [](const std::int64_t value) {
+        return static_cast<std::uint16_t>(
+            static_cast<std::uint64_t>(value) & 0xFFFFU);
+    };
+    for (std::size_t index = 1U; index < requests->size(); index += 4U) {
+        const auto address_value = requests->at(index);
+        const auto x_value = requests->at(index + 1U);
+        const auto y_value = requests->at(index + 2U);
+        const auto attribute_value = requests->at(index + 3U);
+        if (address_value <= 0 || address_value > 0xFFFFFFFFLL ||
+            x_value < -0x8000 || x_value > 0x7FFF ||
+            y_value < -0x8000 || y_value > 0x7FFF ||
+            attribute_value < 0 || attribute_value > 0xFFFF) {
+            source_boundary("ending.sprite.invalid_request:0x1378");
+            return false;
+        }
+        const auto address = static_cast<std::uint32_t>(address_value);
+        const auto list = tarislar_tomb_ending_sprite_lists_.find(address);
+        if (list == tarislar_tomb_ending_sprite_lists_.end()) {
+            failure_ = "Tarislar Tomb ROM sprite-piece list is missing: " +
+                std::to_string(address);
+            source_boundary("ending.sprite.list_missing:0x1378");
+            return false;
+        }
+        list_addresses.push_back(address);
+        for (const auto& piece : list->second) {
+            // ROM 0x1378/0x1384 adds D1 to signed list word w0, then writes
+            // the wrapped word at SAT +6; 0x13BC returns to the next piece.
+            const auto x = word(x_value + piece.x_offset);
+            const auto y = word(y_value + piece.y_offset);
+            const auto size = static_cast<std::uint8_t>(piece.size & 0xFFU);
+            const auto tile = static_cast<std::uint16_t>(
+                piece.tile | static_cast<std::uint16_t>(attribute_value));
+            sat_entries.push_back(TarislarTombEndingSatEntry{
+                y, size, static_cast<std::uint8_t>(link), tile, x});
+            ++link;
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
+            const auto sat_x = x < 0x8000U
+                ? static_cast<int>(x) : static_cast<int>(x) - 0x10000;
+            const auto sat_y = y < 0x8000U
+                ? static_cast<int>(y) : static_cast<int>(y) - 0x10000;
+            const auto width =
+                (static_cast<int>((size >> 2U) & 0x03U) + 1) * 8;
+            const auto height =
+                (static_cast<int>(size & 0x03U) + 1) * 8;
+            vdp_pieces.push_back(VdpSpritePiece{
+                sat_x - 0x80, sat_y - 0x80, width, height});
+#endif
+        }
+    }
+    if (!sat_entries.empty()) {
+        sat_entries.back().link = 0U;
+    }
+    tarislar_tomb_ending_sat_entries_ = std::move(sat_entries);
+    tarislar_tomb_ending_sat_list_addresses_ = std::move(list_addresses);
+#ifdef SHADOWRUN_QT_QA_DRIVER
+    stage_field_sat_pieces(std::move(vdp_pieces));
+#endif
     return true;
 }
 
@@ -1013,6 +1184,7 @@ void FieldSceneRuntime::advance_tarislar_tomb_ending_presentation() {
     // Main-loop wait at 0x5BB60: t is FFDF88 - FFF11E, not loop index.
     ++tarislar_tomb_ending_loop_iteration_;
     ++tarislar_tomb_ending_t_;
+    ++tarislar_tomb_ending_now_;
     const auto t = tarislar_tomb_ending_t_;
     const auto random_bound = game_scripts_.call_integers(
         "tarislar_tomb_ending", "random_bound", {t});
@@ -1376,6 +1548,13 @@ void FieldSceneRuntime::advance_tarislar_tomb_ending_presentation() {
         }
         tarislar_tomb_ending_t_ = static_cast<std::uint16_t>(
             tarislar_tomb_ending_t_ + extra_wait_count);
+        tarislar_tomb_ending_now_ = static_cast<std::uint16_t>(
+            tarislar_tomb_ending_now_ + extra_wait_count);
+    }
+    if (!emit_tarislar_tomb_ending_sprite_frame(
+            tarislar_tomb_ending_t_, tarislar_tomb_ending_now_)) {
+        tarislar_tomb_ending_presentation_active_ = false;
+        return;
     }
 
     ++field_world_frame_counter_;

@@ -413,6 +413,7 @@ cinematics.tarislar.tomb.sprites.list.1efccc	cinematics/tarislar-tomb/sprites/li
 cinematics.tarislar.tomb.sprites.list.1efd0e	cinematics/tarislar-tomb/sprites/list-1efd0e.bmp	image	-18	-28
 cinematics.tarislar.tomb.sprites.list.1efd48	cinematics/tarislar-tomb/sprites/list-1efd48.bmp	image	-26	-28
 cinematics.tarislar.tomb.sprites.list.1efd6a	cinematics/tarislar-tomb/sprites/list-1efd6a.bmp	image	-29	-30
+cinematics.tarislar.tomb.sprites.pieces	cinematics/tarislar-tomb/sprites/pieces.tsv	rom_sprite_piece_table	0	0
 cyberspace.matrix.system.map.background	cyberspace/matrix/system-map-background.bmp	image	0	0
 cyberspace.matrix.system.map.font	cyberspace/matrix/system-map-font.bmp	image	0	0
 cyberspace.matrix.cyberinfo.cursor	cyberspace/matrix/cyberinfo-cursor.png	image	0	0

@@ -4931,6 +4931,47 @@ extract_scene55_sprite_list_images(
     return images;
 }
 
+void write_scene55_sprite_piece_table(
+    const std::vector<std::uint8_t>& rom,
+    const std::filesystem::path& output_path) {
+    std::filesystem::create_directories(output_path.parent_path());
+    std::ofstream output(output_path);
+    if (!output) {
+        throw std::runtime_error("could not create Scene-55 sprite-piece table");
+    }
+    output << "list_address\tw0\tw1\tw2\tw3\n";
+    for (const auto& source : kScene55SpriteLists) {
+        auto record = source.address;
+        bool terminated = false;
+        for (std::size_t piece_index = 0U; piece_index < 64U;
+             ++piece_index, record += 8U) {
+            if (record > rom.size() || rom.size() - record < 8U) {
+                throw std::runtime_error(
+                    "Scene-55 sprite-piece table source is truncated");
+            }
+            const auto w0 = read_big_endian_word(rom, record);
+            if (w0 == 0x8000U) {
+                terminated = true;
+                break;
+            }
+            const auto w1 = read_big_endian_word(rom, record + 2U);
+            const auto w2 = read_big_endian_word(rom, record + 4U);
+            const auto w3 = read_big_endian_word(rom, record + 6U);
+            output << source.address << '\t'
+                   << static_cast<std::int16_t>(w0) << '\t'
+                   << static_cast<std::int16_t>(w1) << '\t'
+                   << w2 << '\t' << w3 << '\n';
+        }
+        if (!terminated) {
+            throw std::runtime_error(
+                "Scene-55 sprite-piece table list has no terminator");
+        }
+    }
+    if (!output) {
+        throw std::runtime_error("could not write Scene-55 sprite-piece table");
+    }
+}
+
 shadowrun::graphics::RgbaImage compose_matrix_traversal_hud_frame(
     const std::vector<std::uint8_t>& rom,
     const shadowrun::graphics::RgbaImage& matrix_menu_patterns) {
@@ -12917,6 +12958,22 @@ int main(int argc, char** argv) {
             return 1;
         }
     }
+    if (argc == 4 &&
+        std::string(argv[3]) == "--scene-55-tomb-sprite-pieces") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const std::filesystem::path root(argv[2]);
+            const auto output = root /
+                "cinematics/tarislar-tomb/sprites/pieces.tsv";
+            write_scene55_sprite_piece_table(rom, output);
+            std::cout << "Scene-55 ROM sprite pieces -> "
+                      << output.string() << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
     const std::string sprite_list_mode = argc == 4 ? argv[3] : "";
     if (argc == 4 &&
         (sprite_list_mode == "--scene-5bd2c-sprite-lists" ||
@@ -14502,6 +14559,8 @@ int main(int argc, char** argv) {
                      "--scene-5bd2c-sprite-lists\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out-dir> "
                      "--scene-55-tomb-prelude-sprite-lists\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <asset-dir> "
+                     "--scene-55-tomb-sprite-pieces\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out-dir> "
                      "--scene-55-tomb-prelude-backgrounds\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out-dir> "

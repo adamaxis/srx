@@ -7,6 +7,53 @@ local NameMap = require("tarislar_tomb_name_map")
 local Ending = E.TarislarTombEnding
 local RomEvent = E.TarislarTombEndingRomEvent
 local Kind = E.TarislarTombEndingEventKind
+local SpriteList = E.TarislarTombEndingSpriteList
+
+local animation_lists = { SpriteList.ANIMATION_0, SpriteList.ANIMATION_1 }
+local spark_lists = {
+    SpriteList.SPARK_0, SpriteList.SPARK_1,
+    SpriteList.SPARK_2, SpriteList.SPARK_3,
+}
+local flash_lists = {
+    SpriteList.FLASH_0, SpriteList.FLASH_1, SpriteList.FLASH_2,
+    SpriteList.FLASH_3, SpriteList.FLASH_4, SpriteList.FLASH_5,
+}
+local debris_motion = {
+    { 0, Ending.SPRITE_CITY_Y_STEP,
+      Ending.SPRITE_DEBRIS_FIRST_DURATION },
+    { -Ending.SPRITE_CITY_Y_STEP, Ending.SPRITE_CITY_Y_STEP,
+      Ending.SPRITE_DEBRIS_SHORT_DURATION },
+    { -2 * Ending.SPRITE_CITY_Y_STEP, Ending.SPRITE_CITY_Y_STEP,
+      Ending.SPRITE_DEBRIS_SHORT_DURATION },
+    { -Ending.SPRITE_CITY_Y_STEP, Ending.SPRITE_CITY_Y_STEP,
+      Ending.SPRITE_DEBRIS_LAST_DURATION },
+    { 0, 0, 0 },
+}
+
+local function fresh_sprite_state()
+    return {
+        fff1b8 = Ending.SPRITE_MAIN_Y_START,
+        fff1ba = 0,
+        fff1be = 0,
+        fff1c0 = 0,
+        fff1c2 = 0,
+        fff1c6 = 0,
+        fff1c8 = 0,
+        fff14a = 0,
+        fff14e = 0,
+        fff150 = 0,
+        fff152 = Ending.SPRITE_FLASH_INITIAL_X,
+        fff154 = Ending.SPRITE_FLASH_INITIAL_Y,
+        fff1ac = 0,
+        fff1ae = 0,
+        fff1b0 = 0,
+        fff1b2 = 0,
+        fff1b4 = 0,
+        fff1b6 = 0,
+        last_wait_clock_t = 0,
+    }
+end
+local sprite_state = fresh_sprite_state()
 
 local palette_line_0 = {
     0x222, 0x028, 0x244, 0x000, 0x444, 0x464, 0x04A, 0x068,
@@ -67,6 +114,8 @@ local data = {
             address = RomEvent.CHOREOGRAPHY_THREE,
         },
     },
+    sprite_lists = SpriteList,
+    debris_motion = debris_motion, -- ROM table 0x5BE62 [C].
     spawns = {
         { t = 0x050, x = 0x0D3, y = 0x11C },
         { t = 0x06E, x = 0x114, y = 0x101 },
@@ -109,12 +158,14 @@ end
 
 function Timeline.reset()
     name_map_column = 0
+    sprite_state = fresh_sprite_state()
     return { name_map_column }
 end
 
 function Timeline.initial_flash_state()
     -- 0x5C30C sets idle, then 0x5C2FE calls 0x5C31C(0x106, 0x10B).
-    return { 0, 0, 0x106, 0x10B }
+    return { 0, 0, Ending.SPRITE_FLASH_INITIAL_X,
+             Ending.SPRITE_FLASH_INITIAL_Y }
 end
 
 function Timeline.flash_state(t)
@@ -122,7 +173,151 @@ function Timeline.flash_state(t)
     if spawn == nil then
         return nil
     end
+    sprite_state.fff150 = 0
+    sprite_state.fff14e = 0
+    sprite_state.fff152 = spawn.x
+    sprite_state.fff154 = spawn.y
     return { 0, 0, spawn.x, spawn.y }
+end
+
+function Timeline.sprite_random_bound(t)
+    if type(t) ~= "number" or t % 1 ~= 0 or t < 0 then
+        return nil
+    end
+    return { t < Ending.SPRITE_SCATTER_END_T
+        and Ending.SPRITE_SCATTER_RANDOM_BOUND or 0 }
+end
+
+-- The Lua policy mirrors 0x5BD2C's ordered calls to 0x5BEA2, 0x5C02E,
+-- 0x5C336, and 0x5BD6A. The host only emits these named ROM lists into its
+-- typed SAT shadow using the extracted piece records.
+function Timeline.sprite_frame(t, now, scatter_roll)
+    if not is_integer(t) or t < 0 or t > Ending.LOOP_ITERATION_COUNT +
+       Ending.CHOREOGRAPHY_ONE_EXTRA_WAITS or
+       not is_integer(now) or now < 0 or now > 0xFFFF then
+        return nil
+    end
+    -- ROM 0x5BEC6: one 0x33 step per 0x5BEA2 call while 0x190 <= t < 0x1F4.
+    -- 0x5BEA2 runs once per outer iteration (0x5BB7A), after 0x5C744's six
+    -- extra 0x0BD2 waits, so the first call in the window sees t=0x196 and
+    -- t=0x190..0x195 never descend: 94 steps, FFF1B8 ends at 0x3206.
+    if t >= Ending.SPRITE_CITY_START_T and t < Ending.SPRITE_CITY_SHIFT_END_T then
+        sprite_state.fff1b8 = sprite_state.fff1b8 - Ending.SPRITE_CITY_Y_STEP
+    end
+    sprite_state.last_wait_clock_t = t
+    local result = { sprite_state.fff1b8 }
+    local function emit(address, x, y, attributes)
+        result[#result + 1] = address
+        result[#result + 1] = x
+        result[#result + 1] = y
+        result[#result + 1] = attributes
+    end
+    local logical_y = math.floor(
+        sprite_state.fff1b8 / Ending.SPRITE_FIXED_POINT_SCALE)
+
+    -- ROM 0x5BEA2.
+    if t < Ending.SPRITE_MAIN_END_T then
+        emit(SpriteList.MAIN, Ending.SPRITE_MAIN_X, logical_y,
+             Ending.SPRITE_MAIN_ATTRIBUTE)
+        if t >= Ending.SPRITE_BACKGROUND_ALT_T or
+           (t >= Ending.SPRITE_FLASH_START_T and
+            t < Ending.SPRITE_FLASH_END_T) then
+            emit(SpriteList.MAIN_END, Ending.SPRITE_MAIN_X, logical_y,
+                 Ending.SPRITE_MAIN_ATTRIBUTE)
+        else
+            if now >= sprite_state.fff1c0 then
+                sprite_state.fff1ba = animation_lists[sprite_state.fff1be + 1]
+                sprite_state.fff1c0 = (now + Ending.SPRITE_ANIMATION_PERIOD) %
+                    Ending.SPRITE_WORD_MODULUS
+                sprite_state.fff1be =
+                    (sprite_state.fff1be + 1) % Ending.SPRITE_ANIMATION_COUNT
+            end
+            emit(sprite_state.fff1ba, Ending.SPRITE_MAIN_X, logical_y,
+                 Ending.SPRITE_MAIN_ATTRIBUTE)
+            if now >= sprite_state.fff1c8 then
+                sprite_state.fff1c2 = spark_lists[sprite_state.fff1c6 + 1]
+                sprite_state.fff1c8 = (now + Ending.SPRITE_SPARK_PERIOD) %
+                    Ending.SPRITE_WORD_MODULUS
+                sprite_state.fff1c6 =
+                    (sprite_state.fff1c6 + 1) % Ending.SPRITE_SPARK_COUNT
+            end
+            emit(sprite_state.fff1c2,
+                 Ending.SPRITE_SPARK_X +
+                     Ending.SPRITE_SPARK_X_STEP * (1 - sprite_state.fff1be),
+                 logical_y - Ending.SPRITE_SPARK_Y_OFFSET,
+                 Ending.SPRITE_MAIN_ATTRIBUTE)
+        end
+    end
+
+    -- ROM 0x5C02E.
+    if t >= Ending.SPRITE_CITY_START_T and t < Ending.SPRITE_MAIN_END_T then
+        emit(SpriteList.CITY, Ending.SPRITE_CITY_X,
+             logical_y + Ending.SPRITE_CITY_Y_OFFSET,
+             Ending.SPRITE_MAIN_ATTRIBUTE)
+    end
+
+    -- ROM 0x5C336; test the deadline before the six-list completion case.
+    if now < sprite_state.fff150 then
+        emit(sprite_state.fff14a, sprite_state.fff152, sprite_state.fff154,
+             Ending.SPRITE_FLASH_ATTRIBUTE)
+    elseif sprite_state.fff14e < Ending.SPRITE_FLASH_LIMIT then
+        sprite_state.fff14a = flash_lists[sprite_state.fff14e + 1]
+        sprite_state.fff150 = (now + Ending.SPRITE_FLASH_INTERVAL) %
+            Ending.SPRITE_WORD_MODULUS
+        sprite_state.fff14e = sprite_state.fff14e + 1
+        emit(sprite_state.fff14a, sprite_state.fff152, sprite_state.fff154,
+             Ending.SPRITE_FLASH_ATTRIBUTE)
+    end
+
+    -- ROM 0x5BD6A.
+    if t < Ending.SPRITE_SCATTER_END_T then
+        if not is_integer(scatter_roll) or scatter_roll < 0 or
+           scatter_roll >= Ending.SPRITE_SCATTER_RANDOM_BOUND then
+            return nil
+        end
+        local x = Ending.SPRITE_SCATTER_X
+        local y = Ending.SPRITE_SCATTER_Y
+        if scatter_roll < Ending.SPRITE_SCATTER_RANDOM_LIMIT then
+            x = x + scatter_roll
+            y = y + scatter_roll
+        end
+        emit(SpriteList.SCATTER, x, y, Ending.SPRITE_FLASH_ATTRIBUTE)
+    elseif t < Ending.SPRITE_SCATTER_END_T_EXCLUSIVE then
+        if t == Ending.SPRITE_DEBRIS_START_T then
+            sprite_state.fff1ac = 0
+            sprite_state.fff1ae = 0
+            sprite_state.fff1b0 = Ending.SPRITE_DEBRIS_X_START
+            sprite_state.fff1b2 = Ending.SPRITE_DEBRIS_Y_START
+        end
+        if now >= sprite_state.fff1ae and
+           sprite_state.fff1ac < Ending.SPRITE_DEBRIS_ANIMATION_STEPS then
+            local step = debris_motion[sprite_state.fff1ac + 1]
+            sprite_state.fff1b4 = step[1]
+            sprite_state.fff1b6 = step[2]
+            sprite_state.fff1ae = (now + step[3]) %
+                Ending.SPRITE_WORD_MODULUS
+            sprite_state.fff1ac = sprite_state.fff1ac + 1
+        end
+        sprite_state.fff1b0 = (sprite_state.fff1b0 +
+            sprite_state.fff1b4) % Ending.SPRITE_WORD_MODULUS
+        sprite_state.fff1b2 = (sprite_state.fff1b2 +
+            sprite_state.fff1b6) % Ending.SPRITE_WORD_MODULUS
+        emit(SpriteList.DEBRIS,
+             math.floor(sprite_state.fff1b0 / Ending.SPRITE_FIXED_POINT_SCALE),
+             math.floor(sprite_state.fff1b2 / Ending.SPRITE_FIXED_POINT_SCALE),
+             Ending.SPRITE_FLASH_ATTRIBUTE)
+    end
+    return result
+end
+
+function Timeline.sprite_registers()
+    return {
+        sprite_state.fff1b8, sprite_state.fff1be, sprite_state.fff1c0,
+        sprite_state.fff1c6, sprite_state.fff1c8, sprite_state.fff14a,
+        sprite_state.fff14e, sprite_state.fff150, sprite_state.fff152,
+        sprite_state.fff154, sprite_state.fff1ac, sprite_state.fff1ae,
+        sprite_state.fff1b0, sprite_state.fff1b2,
+    }
 end
 
 function Timeline.palette_line_0()

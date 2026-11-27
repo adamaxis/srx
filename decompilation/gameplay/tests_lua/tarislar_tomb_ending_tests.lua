@@ -141,6 +141,86 @@ local scroll = Timeline.step(Ending.SCROLL_FIRST_T, -1,
 check(scroll[1] == Kind.CAMERA_SCROLL and scroll[2] == Ending.SCROLL_STEP,
       "scroll requires FFDD0E above minus 0x90")
 
+local function sprite_list_addresses(frame)
+    local result = {}
+    for index = 2, #frame, 4 do
+        result[#result + 1] = frame[index]
+    end
+    return result
+end
+local SpriteList = E.TarislarTombEndingSpriteList
+check(Timeline.sprite_random_bound(0)[1] ==
+      Ending.SPRITE_SCATTER_RANDOM_BOUND and
+      Timeline.sprite_random_bound(Ending.SPRITE_SCATTER_END_T)[1] == 0,
+      "0x5BD6A draws only before t=0x6E")
+Timeline.reset()
+local first_sprite_frame = Timeline.sprite_frame(0, 0, 0)
+local first_sprite_lists = sprite_list_addresses(first_sprite_frame)
+check(first_sprite_frame[1] == Ending.SPRITE_MAIN_Y_START and
+      #first_sprite_lists == 5 and
+      first_sprite_lists[1] == SpriteList.MAIN and
+      first_sprite_lists[2] == SpriteList.ANIMATION_0 and
+      first_sprite_lists[3] == SpriteList.SPARK_0 and
+      first_sprite_lists[4] == SpriteList.FLASH_0 and
+      first_sprite_lists[5] == SpriteList.SCATTER,
+      "0x5BD2C emits the ROM list order at prologue t=0")
+check(#Timeline.data.debris_motion == Ending.SPRITE_DEBRIS_ANIMATION_STEPS and
+      Timeline.data.debris_motion[1][2] == Ending.SPRITE_CITY_Y_STEP and
+      Timeline.data.debris_motion[1][3] == Ending.SPRITE_DEBRIS_FIRST_DURATION and
+      Timeline.data.debris_motion[2][1] == -Ending.SPRITE_CITY_Y_STEP and
+      Timeline.data.debris_motion[2][3] == Ending.SPRITE_DEBRIS_SHORT_DURATION and
+      Timeline.data.debris_motion[3][1] == -2 * Ending.SPRITE_CITY_Y_STEP and
+      Timeline.data.debris_motion[4][3] == Ending.SPRITE_DEBRIS_LAST_DURATION,
+      "0x5BE62 debris motion rows and durations")
+
+Timeline.reset()
+for frame_t = 0, Ending.SPRITE_DEBRIS_SAMPLE_T do
+    Timeline.sprite_frame(frame_t, frame_t, 0)
+end
+local debris_registers = Timeline.sprite_registers()
+local debris_velocity_sum = 0
+local debris_frames_remaining = Ending.SPRITE_DEBRIS_SAMPLE_T -
+    Ending.SPRITE_DEBRIS_START_T + 1
+for _, row in ipairs(Timeline.data.debris_motion) do
+    local active_frames = math.min(debris_frames_remaining, row[3])
+    debris_velocity_sum = debris_velocity_sum + row[1] * active_frames
+    debris_frames_remaining = debris_frames_remaining - active_frames
+    if debris_frames_remaining == 0 then break end
+end
+check(debris_registers[13] == Ending.SPRITE_DEBRIS_X_START +
+      debris_velocity_sum,
+      "0x5BD6A applies each 0x5BE62 X velocity for its table duration")
+
+Timeline.reset()
+local city_sprite_lists = sprite_list_addresses(Timeline.sprite_frame(
+    Ending.SPRITE_CITY_START_T, Ending.SPRITE_CITY_START_T, -1))
+check(city_sprite_lists[1] == SpriteList.MAIN and
+      city_sprite_lists[2] == SpriteList.MAIN_END and
+      city_sprite_lists[3] == SpriteList.CITY,
+      "0x5BEA2 and 0x5C02E activate at t=0x190")
+Timeline.reset()
+local city_end_lists = sprite_list_addresses(Timeline.sprite_frame(
+    Ending.SPRITE_MAIN_END_T, Ending.SPRITE_MAIN_END_T, -1))
+check(#city_end_lists == 1 and city_end_lists[1] == SpriteList.FLASH_0,
+      "0x5BEA2 and 0x5C02E stop at t=0x352")
+
+-- 0x5BEA2 runs once per outer iteration. The t=0x190 iteration runs 0x5C744
+-- (six extra 0x0BD2 waits) before 0x5BD2C, so calls see t=0x18F then 0x196.
+Timeline.reset()
+local descent_frame
+for frame_t = 0, Ending.SPRITE_CITY_START_T - 1 do
+    descent_frame = Timeline.sprite_frame(frame_t, frame_t, -1)
+end
+for frame_t = Ending.SPRITE_CITY_START_T +
+        Ending.CHOREOGRAPHY_ONE_EXTRA_WAITS,
+        Ending.SPRITE_CITY_SHIFT_END_T do
+    descent_frame = Timeline.sprite_frame(frame_t, frame_t, -1)
+end
+check(descent_frame[1] == Ending.SPRITE_MAIN_Y_START -
+      Ending.SPRITE_CITY_Y_STEP * (Ending.SPRITE_CITY_SHIFT_END_T -
+          Ending.SPRITE_CITY_START_T - Ending.CHOREOGRAPHY_ONE_EXTRA_WAITS),
+      "0x5BEC6 descends once per 0x5BEA2 call (94 calls, FFF1B8=0x3206)")
+
 local clear = Timeline.step(Ending.PLANE_B_CLEAR_T, -1, -0x100)
 local saw_plane_b_clear = false
 for index = 1, #clear, 2 do
