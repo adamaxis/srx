@@ -3,7 +3,8 @@
 -- world_content_data.map_events. This module supplies the handler functions.
 -- Event flow is ordinary sequential Lua and movement is a narrow host service.
 local Events = {}
-local MovementDirection = require("enums").MovementDirection
+local E = require("enums")
+local MovementDirection = E.MovementDirection
 
 local action = {
     project_world_interaction = "project_world_interaction",
@@ -50,7 +51,11 @@ function Events.resolve_collision(context)
        type(context.interaction_gate_active) ~= "boolean" or
        type(context.activity_sequence_active) ~= "boolean" or
        type(context.terrain_event_suppressed) ~= "boolean" or
-       type(context.terrain_marker_publish_allowed) ~= "boolean" or
+       type(context.raw_terrain_collision_byte) ~= "number" or
+       context.raw_terrain_collision_byte % 1 ~= 0 or
+       context.raw_terrain_collision_byte < 0 or
+       context.raw_terrain_collision_byte > 0xFF or
+       type(context.world_effect_control_bit) ~= "boolean" or
        (context.maglocks_disabled ~= nil and
         type(context.maglocks_disabled) ~= "boolean") then
         return nil
@@ -71,7 +76,9 @@ function Events.resolve_collision(context)
     elseif kind == "terrain_marker" then
         local result = decision(action.mark_projected_terrain)
         result.projected_terrain_event_published =
-            context.terrain_marker_publish_allowed
+            context.raw_terrain_collision_byte ~=
+                E.TerrainCollisionByte.SAFE_MARK_NO_AWARD and
+            not context.world_effect_control_bit
         return result
     end
 

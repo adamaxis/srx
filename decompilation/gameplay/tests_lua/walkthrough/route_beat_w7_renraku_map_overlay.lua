@@ -43,9 +43,10 @@ local function collect_map_overlay(host)
                     "safe approach input failed")
                 local after = host.snapshot()
                 attempts[#attempts + 1] = string.format(
-                    "record %d %s from %d,%d to %d,%d event=%d",
+                    "record %d %s from %d,%d to %d,%d event=%d FFDF64=%04X",
                     cell.record, approach.direction, before.x, before.y,
-                    after.x, after.y, after.event)
+                    after.x, after.y, after.event,
+                    after.terrain_collision_word)
                 if host.snapshot().story_facts[story.RENRAKU_MAP_OVERLAY] == true then
                     return cell.record
                 end
@@ -78,7 +79,27 @@ return {
                     "ROM Ito-victory prerequisite setup failed")
                 assert(host.snapshot().story_facts[story.RENRAKU_MAP_OVERLAY] == false,
                     "Renraku map overlay must be clear before the safe beat")
-                return "seeded the ROM Ito-victory prerequisite; map overlay stayed clear"
+                -- ROM 0xEE86 converts the FFE185th 0xDA tile to 0x9A only
+                -- with FFDF40=2, FFE184/FFE187 (or FFFBED=4), matching
+                -- FFE12C/FFF0C8, and FFE180 clear. Model the index-five,
+                -- ordinal-zero resource selection so record 89 is the live
+                -- projected marker; no reward/FFE178 state is seeded.
+                local mode_set, mode_error =
+                    host.set_field_interaction_mode_for_setup(
+                    E.FieldInteractionMode.TERRAIN_MARKER_SWAP)
+                assert(mode_set, mode_error or
+                    "ROM terrain-marker mode setup failed")
+                local effect_set, effect_error =
+                    host.set_world_effect_active_for_setup(
+                    false, E.FieldWorldEffectIndex.RENRAKU_SAFE_MARKER)
+                assert(effect_set, effect_error or
+                    "ROM matching-effect-index setup failed")
+                local marker_set, marker_error =
+                    host.set_effect_terrain_marker_context_for_setup(
+                        true, false, 0)
+                assert(marker_set, marker_error or
+                    "ROM first-marker context setup failed")
+                return "seeded Ito victory and ROM 0xEE86 marker preconditions; map overlay clear"
             end,
         },
         {

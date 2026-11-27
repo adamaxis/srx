@@ -61,9 +61,8 @@ constexpr std::array<std::string_view, 8> kCompassDirections{
 constexpr std::array<CompassOffset, 8> kCompassOffsets{{
     {0, -1}, {1, -1}, {1, 0}, {1, 1},
     {0, 1}, {-1, 1}, {-1, 0}, {-1, -1}}};
-// ROM 0xB7B8 consumes these encodings. Keep them in the native adapter;
-// field_events.lua receives only the resulting event facts and rewrite intent.
-constexpr std::uint8_t kTerrainMarkerSuppressionByte = 0xDAU;
+// ROM 0xB7B8 consumes these encodings. FFE178's terrain-byte/control-bit
+// policy is owned by field_events.lua; this adapter supplies source facts.
 constexpr std::uint16_t kEvent25RewrittenCollisionCode = 0x00A8U;
 constexpr std::int8_t kEvent25DirectionProbe = -0x58;
 
@@ -9432,7 +9431,7 @@ GameScriptRuntime::resolve_field_collision_event(
         return fail("field_events.resolve_collision is missing");
     }
 
-    lua_createtable(state, 0, 11);
+    lua_createtable(state, 0, 12);
     const auto input_index = lua_absindex(state, -1);
     const auto source_event_code =
         field_collision_event_code(input.raw_collision_code);
@@ -9465,12 +9464,12 @@ GameScriptRuntime::resolve_field_collision_event(
     lua_setfield(state, input_index, "activity_sequence_active");
     lua_pushboolean(state, input.terrain_event_suppressed);
     lua_setfield(state, input_index, "terrain_event_suppressed");
-    const bool terrain_marker_publish_allowed =
-        (input.raw_collision_code & 0x00FFU) !=
-            kTerrainMarkerSuppressionByte &&
-        !input.world_effect_control_bit;
-    lua_pushboolean(state, terrain_marker_publish_allowed);
-    lua_setfield(state, input_index, "terrain_marker_publish_allowed");
+    // ROM 0xB918 compares FFDF64's low byte; 0xB920 reads FFFC1C bit 7.
+    lua_pushinteger(state, static_cast<std::uint8_t>(
+                               input.raw_collision_code));
+    lua_setfield(state, input_index, "raw_terrain_collision_byte");
+    lua_pushboolean(state, input.world_effect_control_bit);
+    lua_setfield(state, input_index, "world_effect_control_bit");
     if (input.maglocks_disabled.has_value()) {
         lua_pushboolean(state, *input.maglocks_disabled);
     } else {

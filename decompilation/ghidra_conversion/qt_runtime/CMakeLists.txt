@@ -1482,18 +1482,14 @@ add_test(NAME shadowrun_beat_w7_tarislar_apartments_first_entry
 set_tests_properties(shadowrun_beat_w7_tarislar_apartments_first_entry
     PROPERTIES LABELS "walkthrough" TIMEOUT 180
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
-add_test(NAME shadowrun_beat_w7_renraku_map_overlay_expected_fail_WALK_019
-    COMMAND ${CMAKE_COMMAND}
-        "-DTEST_EXECUTABLE=$<TARGET_FILE:shadowrun_ghidra_conversion_qt_qa>"
-        "-DASSET_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
-        "-DSEGMENT=beat_w7_renraku_map_overlay"
-        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/beat-w7-renraku-map-overlay"
-        "-DINITIAL_SCENE=40"
-        "-DBUG_ID=WALK-019"
-        "-DEXPECTED_FAILURE_PATTERN=Renraku map overlay did not trigger at Scene-40 safe records 89-93"
-        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/qa/expect_walkthrough_failure.cmake")
-set_tests_properties(shadowrun_beat_w7_renraku_map_overlay_expected_fail_WALK_019
-    PROPERTIES LABELS "walkthrough;expected-failure" TIMEOUT 180
+add_test(NAME shadowrun_beat_w7_renraku_map_overlay
+    COMMAND shadowrun_ghidra_conversion_qt_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --walkthrough beat_w7_renraku_map_overlay
+        "${CMAKE_CURRENT_BINARY_DIR}/beat-w7-renraku-map-overlay"
+        --initial-scene 40)
+set_tests_properties(shadowrun_beat_w7_renraku_map_overlay
+    PROPERTIES LABELS "walkthrough" TIMEOUT 180
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 add_test(NAME shadowrun_beat_w7_tarislar_tomb_departure
     COMMAND shadowrun_ghidra_conversion_qt_qa

@@ -707,6 +707,12 @@ public:
     std::optional<std::uint16_t> selected_effect_index_for_dump() const noexcept {
         return field_selected_effect_index_;
     }
+    const FieldEffectMarkerContext& effect_marker_context_for_dump() const noexcept {
+        return field_effect_marker_context_;
+    }
+    std::uint8_t effect_marker_ordinal_for_dump() const noexcept {
+        return field_effect_marker_ordinal_;
+    }
     const EffectFadeMarkerState& field_effect_fade_marker_for_dump()
         const noexcept {
         return field_effect_fade_marker_;

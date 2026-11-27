@@ -238,6 +238,7 @@ E.FieldActorContactAction = {
 } -- semantic outcomes for the shared 0xECCC actor-pair route [C]
 E.FieldWorldEffectIndex = {
     ARAGORN_CONTACT = 4, -- Scene-34 actor list 0xA8AE requires FFF0C8 == 4 [C]
+    RENRAKU_SAFE_MARKER = 5, -- ROM 0xEEB2 needs FFE12C == FFF0C8 for the 0xEE86 marker swap [C]
 }
 
 E.GenericFieldContact = {
@@ -1201,6 +1202,17 @@ E.FieldModeEffectFlagBit = {
 E.FieldInteractionMode = {
   CITY_STREET_TAXI = 0, -- Taxi-arrival mode clear at 0x136DE routes street event 31 [C]
   CAVE_EXIT_ENABLED = 1, -- Setup setter writes FFDF40 world_mode; ROM 0x1651E needs it clear for event 8 [C]
+  TERRAIN_MARKER_SWAP = 2, -- ROM 0xEE86 swaps the FFE185th 0xDA tile to 0x9A only with FFDF40 == 2 [C]
+}
+
+-- ROM 0xB918 compares FFDF64's sampled byte before publishing FFE178.
+E.TerrainCollisionByte = {
+  SAFE_MARK_NO_AWARD = 0xDA, -- FFDF64 low byte at ROM 0xB918 [C]
+}
+
+-- ROM 0xB920 tests FFFC1C bit 7 before publishing FFE178.
+E.WorldEffectControlBit = {
+  SAFE_MARK_NO_AWARD = 7, -- FFFC1C bit 7 at ROM 0xB920 [C]
 }
 
 E.FieldAuxiliaryFlagBit = {

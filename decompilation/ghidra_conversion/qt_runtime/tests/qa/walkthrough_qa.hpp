@@ -434,6 +434,25 @@ inline int set_world_effect_active_for_setup(lua_State* state) {
     return 1;
 }
 
+inline int set_effect_terrain_marker_context_for_setup(lua_State* state) {
+    auto* host = context(state);
+    lua_Integer marker_ordinal = 0;
+    if (!lua_isboolean(state, 1) || !lua_isboolean(state, 2) ||
+        !integer_argument(state, 3, marker_ordinal) || marker_ordinal < 0 ||
+        marker_ordinal > 255) {
+        lua_pushboolean(state, 0);
+        lua_pushliteral(state,
+            "terrain marker setup needs two booleans and an ordinal byte");
+        return 2;
+    }
+    host->runtime->seed_effect_terrain_marker_context_for_dump(
+        lua_toboolean(state, 1) != 0,
+        lua_toboolean(state, 2) != 0,
+        static_cast<std::uint8_t>(marker_ordinal));
+    lua_pushboolean(state, 1);
+    return 1;
+}
+
 inline int set_field_auxiliary_flag_for_setup(lua_State* state) {
     auto* host = context(state);
     lua_Integer bit = 0;
@@ -917,6 +936,8 @@ inline int snapshot(lua_State* state) {
     lua_setfield(state, -2, "x");
     lua_pushinteger(state, position.y);
     lua_setfield(state, -2, "y");
+    lua_pushinteger(state, runtime.field_terrain_collision_code_for_dump());
+    lua_setfield(state, -2, "terrain_collision_word");
     lua_pushboolean(state, runtime.opening_auto_walk_active_for_dump());
     lua_setfield(state, -2, "opening_auto_walk");
     lua_pushinteger(state, runtime.field_mode_event_code_for_dump());
@@ -1746,6 +1767,9 @@ inline int run_walkthrough_qa(
                       set_pending_world_effect_for_setup);
     add_host_function(state, host, "set_world_effect_active_for_setup",
                       set_world_effect_active_for_setup);
+    add_host_function(state, host,
+                      "set_effect_terrain_marker_context_for_setup",
+                      set_effect_terrain_marker_context_for_setup);
     add_host_function(state, host, "set_field_auxiliary_flag_for_setup",
                       set_field_auxiliary_flag_for_setup);
     add_host_function(state, host, "snapshot", snapshot);
