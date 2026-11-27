@@ -1067,6 +1067,29 @@ public:
         const auto viewport = field_vdp_mirror_->viewport_rect();
         return {viewport.x(), viewport.y()};
     }
+    std::uint16_t tarislar_tomb_ending_t_for_dump() const noexcept {
+        return tarislar_tomb_ending_t_;
+    }
+    std::uint16_t tarislar_tomb_ending_iteration_for_dump() const noexcept {
+        return tarislar_tomb_ending_loop_iteration_;
+    }
+    std::array<std::uint16_t, 4U>
+    tarislar_tomb_ending_flash_registers_for_dump() const noexcept {
+        return {tarislar_tomb_ending_fff150_, tarislar_tomb_ending_fff14e_,
+                tarislar_tomb_ending_fff152_, tarislar_tomb_ending_fff154_};
+    }
+    bool tarislar_tomb_ending_plane_b_cleared_for_dump() const noexcept {
+        return tarislar_tomb_ending_plane_b_cleared_;
+    }
+    bool tarislar_tomb_ending_scroll_words_zero_for_dump() const noexcept {
+        return tarislar_tomb_ending_scroll_words_zero_;
+    }
+    std::uint32_t tarislar_tomb_ending_fff1e2_for_dump() const noexcept {
+        return tarislar_tomb_ending_fff1e2_;
+    }
+    std::uint16_t tarislar_tomb_ending_fff1e6_for_dump() const noexcept {
+        return tarislar_tomb_ending_fff1e6_;
+    }
 #endif
     std::pair<std::uint16_t, std::uint16_t> field_map_cell_words_for_dump(
         const std::size_t cell) const {
@@ -2058,8 +2081,18 @@ private:
         music = 2U,
         camera_shake = 3U,
         camera_scroll = 4U,
-        fade = 5U,
+        clear_plane_b = 5U,
         rom_event = 6U,
+        extra_waits = 7U,
+        flash_spawn = 8U,
+        palette_line_0 = 9U,
+        name_map_column = 10U,
+        name_map_begin = 11U,
+        clear_planes = 12U,
+        zero_scroll_words = 13U,
+        palette_line_3 = 14U,
+        background_city = 15U,
+        logo_reveal_overlay = 16U,
     };
     enum class FieldDestinationTransitionRoute : std::uint8_t {
         elevator,
@@ -2910,8 +2943,22 @@ private:
     std::uint16_t& field_random_seed_ = source_random_seed();
     std::uint16_t field_world_frame_counter_ = 0U;
     bool tarislar_tomb_ending_presentation_active_ = false;
-    std::uint16_t tarislar_tomb_ending_presentation_frame_ = 0U;
+    std::uint16_t tarislar_tomb_ending_t_ = 0U;
+    std::uint16_t tarislar_tomb_ending_loop_iteration_ = 0U;
     std::uint16_t tarislar_tomb_ending_iteration_count_ = 0U;
+    bool tarislar_tomb_ending_music_pending_ = false;
+    std::uint16_t tarislar_tomb_ending_fff150_ = 0U;
+    std::uint16_t tarislar_tomb_ending_fff14e_ = 0U;
+    std::uint16_t tarislar_tomb_ending_fff152_ = 0U;
+    std::uint16_t tarislar_tomb_ending_fff154_ = 0U;
+    std::uint32_t tarislar_tomb_ending_fff1e2_ = 0U;
+    std::uint16_t tarislar_tomb_ending_fff1e6_ = 0U;
+    std::uint16_t tarislar_tomb_ending_name_map_columns_ = 0U;
+    std::uint16_t tarislar_tomb_ending_name_map_rows_ = 0U;
+    bool tarislar_tomb_ending_plane_b_cleared_ = false;
+    bool tarislar_tomb_ending_scroll_words_zero_ = false;
+    std::array<std::uint16_t, 15U> tarislar_tomb_ending_palette_line_0_{};
+    std::array<std::uint16_t, 15U> tarislar_tomb_ending_palette_line_3_{};
     // Remaining alarm duration is gameplay time, independent of source width.
     std::int32_t alarm_time_remaining_frames_ = 0;
     std::uint32_t field_world_encounter_sequence_ = 0U;

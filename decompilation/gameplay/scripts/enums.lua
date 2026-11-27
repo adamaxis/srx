@@ -626,23 +626,29 @@ E.MusicId = {
 -- existing SoundId/MusicId tables above.
 E.TarislarTombEnding = {
     LOOP_ITERATION_COUNT = 1001, -- D7=0x3E8 DBRA at 0x5BB5A..0x5BB84 [C]
-    SHAKE_FIRST_FRAME = 0x64, -- 0x5BC70 random(0x20), compare against 4 [C]
-    SHAKE_END_FRAME_EXCLUSIVE = 0xAA,
+    SHAKE_FIRST_T = 0x64, -- 0x5BC70 random(0x20), compare against 4 [C]
+    SHAKE_END_T_EXCLUSIVE = 0xAA,
     SHAKE_RANDOM_BOUND = 0x20,
     SHAKE_RANDOM_THRESHOLD = 4,
     CAMERA_SHAKE_OFFSET_SIGN = -1,
-    SCROLL_FIRST_FRAME = 0x136,
-    SCROLL_END_FRAME_EXCLUSIVE = 0x190,
+    SCROLL_FIRST_T = 0x136,
+    SCROLL_END_T_EXCLUSIVE = 0x190,
     SCROLL_STOP_OFFSET = -0x90,
     SCROLL_STEP = -2, -- FFDD0A/FFDD0E [C]
-    FADE_FRAME = 0x30C, -- 0x5BC70 calls 0x102A [C]
-    CHOREOGRAPHY_FRAME_1 = 0x190, -- 0x5C744 [C]
-    CHOREOGRAPHY_FRAME_2 = 0x26C, -- 0x5C842 [C]
-    CHOREOGRAPHY_FRAME_3_FIRST = 0x26D, -- 0x5C88C on even frames [C]
-    CHOREOGRAPHY_FRAME_3_LAST = 0x2BB,
+    PLANE_B_CLEAR_T = 0x30C, -- 0x5BC70 calls clear_and_fill_plane_b 0x102A [C]
+    CHOREOGRAPHY_T_1 = 0x190, -- 0x5C744 [C]
+    CHOREOGRAPHY_T_2 = 0x26C, -- 0x5C842 [C]
+    CHOREOGRAPHY_T_3_FIRST = 0x26D, -- 0x5C88C on even t [C]
+    CHOREOGRAPHY_T_3_LAST = 0x2BB,
+    CHOREOGRAPHY_ONE_EXTRA_WAITS = 6, -- 0x5C788/78E/7AC/7EE/816/83A [C]
+    NAME_MAP_SOURCE = 0x1F6532, -- 38x19 words consumed by 0x5C8C6 [C]
+    NAME_MAP_COLUMNS = 0x26, -- DBF D7=0x25 at 0x5C88C [C]
+    NAME_MAP_ROWS = 0x13, -- DBF D1=0x12 at 0x5C8C6 [C]
+    FIELD_SCREEN_WIDTH = 320,
+    FIELD_SCREEN_HEIGHT = 224,
 }
 E.TarislarTombEndingRomEvent = {
-    ENTITY_DRAW = 0x5C230, -- per-frame draw call [C]
+    SPARSE_FLASH_SPAWN = 0x5C230, -- calls 0x5C31C only at listed t values [C]
     ENTITY_UPDATE = 0x5BD2C, -- per-frame entity service [C]
     CHOREOGRAPHY_ONE = 0x5C744, -- t=0x190 [C]
     CHOREOGRAPHY_TWO = 0x5C842, -- t=0x26C [C]
@@ -653,8 +659,18 @@ E.TarislarTombEndingEventKind = {
     MUSIC = 2, -- host event tag [C]
     CAMERA_SHAKE = 3, -- host event tag [C]
     CAMERA_SCROLL = 4, -- host event tag [C]
-    FADE = 5, -- host event tag [C]
+    CLEAR_PLANE_B = 5, -- 0x102A at t=0x30C [C]
     ROM_EVENT = 6, -- host event tag [C]
+    EXTRA_WAITS = 7, -- 0x5C744 advances FFDF88 six times [C]
+    FLASH_SPAWN = 8, -- FFF14E/150/152/154 writes at 0x5C31C [C]
+    PALETTE_LINE_0 = 9, -- 0x5CA74 to FFD880 [C]
+    NAME_MAP_COLUMN = 10, -- one 19-word column from 0x1F6532 [C]
+    NAME_MAP_BEGIN = 11, -- FFF1E2/FFF1E6 initialization at 0x5C842 [C]
+    CLEAR_PLANES = 12, -- 0x0FFE and 0x102A in 0x5C744 [C]
+    ZERO_SCROLL_WORDS = 13, -- FFDD08/C/0A/0E in 0x5C744 [C]
+    PALETTE_LINE_3 = 14, -- 0x5C9B4 to FFD8E0 [C]
+    BACKGROUND_CITY = 15, -- predecoded 0x1530/0x1728 output at t=0x190 [C]
+    LOGO_REVEAL_OVERLAY = 16, -- predecoded 0x1F310E plus 0x1F6532 map [C]
 }
 -- GEMS command ops sent as FF op args (0x52E96) [C]; the host mixer logs the same ops.
 E.AudioOp = { START = 0x10, STOP = 0x12, STOP_ALL = 0x16, ATTENUATE = 0x20 }

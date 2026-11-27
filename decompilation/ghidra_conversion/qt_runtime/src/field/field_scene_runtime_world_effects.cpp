@@ -925,8 +925,48 @@ bool FieldSceneRuntime::start_tarislar_tomb_ending_presentation() {
         source_boundary("ending.presentation.iteration_count_failed:0x5BB5A");
         return false;
     }
+
+    const auto reset = game_scripts_.call_integers(
+        "tarislar_tomb_ending", "reset", {});
+    const auto initial_flash = game_scripts_.call_integers(
+        "tarislar_tomb_ending", "initial_flash_state", {});
+    if (!reset.has_value() || reset->size() != 1U || reset->front() != 0 ||
+        !initial_flash.has_value() || initial_flash->size() != 4U) {
+        failure_ = game_scripts_.failure().empty()
+            ? "Lua Tarislar Tomb ending initial state is invalid"
+            : game_scripts_.failure();
+        source_boundary("ending.presentation.initial_state_failed:0x5C2FE");
+        return false;
+    }
+    for (const auto value : *initial_flash) {
+        if (value < 0 || value > 0xFFFF) {
+            source_boundary("ending.presentation.invalid_initial_flash:0x5C31C");
+            return false;
+        }
+    }
+    tarislar_tomb_ending_fff150_ =
+        static_cast<std::uint16_t>(initial_flash->at(0U));
+    tarislar_tomb_ending_fff14e_ =
+        static_cast<std::uint16_t>(initial_flash->at(1U));
+    tarislar_tomb_ending_fff152_ =
+        static_cast<std::uint16_t>(initial_flash->at(2U));
+    tarislar_tomb_ending_fff154_ =
+        static_cast<std::uint16_t>(initial_flash->at(3U));
+    tarislar_tomb_ending_t_ = 0U;
+    tarislar_tomb_ending_loop_iteration_ = 0U;
+    tarislar_tomb_ending_fff1e2_ = 0U;
+    tarislar_tomb_ending_fff1e6_ = 0U;
+    tarislar_tomb_ending_name_map_columns_ = 0U;
+    tarislar_tomb_ending_name_map_rows_ = 0U;
+    tarislar_tomb_ending_plane_b_cleared_ = false;
+    tarislar_tomb_ending_scroll_words_zero_ = false;
+    tarislar_tomb_ending_palette_line_0_.fill(0U);
+    tarislar_tomb_ending_palette_line_3_.fill(0U);
+
     tarislar_tomb_ending_presentation_active_ = true;
-    tarislar_tomb_ending_presentation_frame_ = 0U;
+    // Process 0x5BAC4's t=0 music at the first active host frame, before its
+    // first 0x0BD2 loop wait, while the modal path still owns that frame.
+    tarislar_tomb_ending_music_pending_ = true;
     tarislar_tomb_ending_iteration_count_ =
         static_cast<std::uint16_t>(iteration_count->front());
     source_boundary("ending.presentation.started:0x5BAC4");
@@ -934,9 +974,48 @@ bool FieldSceneRuntime::start_tarislar_tomb_ending_presentation() {
 }
 
 void FieldSceneRuntime::advance_tarislar_tomb_ending_presentation() {
-    const auto frame = tarislar_tomb_ending_presentation_frame_;
+    if (tarislar_tomb_ending_music_pending_) {
+        const auto initial_events = game_scripts_.call_integers(
+            "tarislar_tomb_ending", "step",
+            {0, -1, field_camera_follow_.vertical_bias_b});
+        if (!initial_events.has_value() || initial_events->size() != 2U ||
+            initial_events->at(0U) != static_cast<std::int64_t>(
+                TarislarTombEndingEventKind::music) ||
+            initial_events->at(1U) < 0 || initial_events->at(1U) > 0xFFFF) {
+            failure_ = game_scripts_.failure().empty()
+                ? "Lua Tarislar Tomb ending music event is invalid"
+                : game_scripts_.failure();
+            tarislar_tomb_ending_presentation_active_ = false;
+            source_boundary("ending.presentation.music_start_failed:0x5BB4A");
+            return;
+        }
+        const auto music_id =
+            static_cast<std::uint16_t>(initial_events->at(1U));
+        field_current_music_id_ = music_id;
+        field_last_music_scene_id_ =
+            state_.field_scene_buffers.scene_reference;
+        field_music_requests_.push_back(music_id);
+        if (source_music_callback_) {
+            source_music_callback_(music_id);
+        }
+        tarislar_tomb_ending_music_pending_ = false;
+    }
+    if (tarislar_tomb_ending_loop_iteration_ >=
+        tarislar_tomb_ending_iteration_count_) {
+        return;
+    }
+    if (tarislar_tomb_ending_t_ == 0xFFFFU) {
+        failure_ = "Tarislar Tomb ending wait counter overflowed";
+        tarislar_tomb_ending_presentation_active_ = false;
+        source_boundary("ending.presentation.t_overflow:0x0BD2");
+        return;
+    }
+    // Main-loop wait at 0x5BB60: t is FFDF88 - FFF11E, not loop index.
+    ++tarislar_tomb_ending_loop_iteration_;
+    ++tarislar_tomb_ending_t_;
+    const auto t = tarislar_tomb_ending_t_;
     const auto random_bound = game_scripts_.call_integers(
-        "tarislar_tomb_ending", "random_bound", {frame});
+        "tarislar_tomb_ending", "random_bound", {t});
     if (!random_bound.has_value() || random_bound->size() != 1U ||
         random_bound->front() < 0 || random_bound->front() > 0xFFFF) {
         failure_ = game_scripts_.failure().empty()
@@ -954,7 +1033,7 @@ void FieldSceneRuntime::advance_tarislar_tomb_ending_presentation() {
     }
     const auto events = game_scripts_.call_integers(
         "tarislar_tomb_ending", "step",
-        {frame, shake_roll, field_camera_follow_.vertical_bias_b});
+        {t, shake_roll, field_camera_follow_.vertical_bias_b});
     if (!events.has_value() || events->size() % 2U != 0U) {
         failure_ = game_scripts_.failure().empty()
             ? "Lua Tarislar Tomb ending step returned malformed events"
@@ -964,6 +1043,7 @@ void FieldSceneRuntime::advance_tarislar_tomb_ending_presentation() {
         return;
     }
 
+    std::uint32_t extra_wait_count = 0U;
     for (std::size_t index = 0U; index < events->size(); index += 2U) {
         const auto kind = static_cast<TarislarTombEndingEventKind>(
             events->at(index));
@@ -980,7 +1060,7 @@ void FieldSceneRuntime::advance_tarislar_tomb_ending_presentation() {
                     static_cast<std::uint16_t>(value));
             }
             source_boundary("ending.presentation.sound:" +
-                            std::to_string(frame) + ":" +
+                            std::to_string(t) + ":" +
                             std::to_string(value));
             break;
         case TarislarTombEndingEventKind::music:
@@ -1010,17 +1090,274 @@ void FieldSceneRuntime::advance_tarislar_tomb_ending_presentation() {
                 static_cast<std::int16_t>(
                     field_camera_follow_.vertical_bias_b + value);
             break;
-        case TarislarTombEndingEventKind::fade:
-            // ROM 0x5BC70 calls fade-out 0x102A at t=0x30C; reuse the host's
-            // existing full palette fade (same 9-step value as the other
-            // 0x102A-style fade paths).
-            field_palette_fade_steps_ = 9U;
+        case TarislarTombEndingEventKind::clear_plane_b:
+            // ROM 0x5BC70 calls 0x102A, which clears and fills plane B.
+            tarislar_tomb_ending_plane_b_cleared_ = true;
+#ifdef SHADOWRUN_QT_QA_DRIVER
+            if (field_vdp_mirror_) {
+                auto& model = field_vdp_mirror_->model();
+                for (std::size_t y = 0U; y < VdpModel::kNameTableHeight; ++y) {
+                    for (std::size_t x = 0U; x < VdpModel::kNameTableWidth; ++x) {
+                        model.set_name_word(VdpPlane::plane_b, x, y, 0U);
+                    }
+                }
+            }
+#endif
+            source_boundary("ending.presentation.plane_b_clear:0x102A");
+            break;
+        case TarislarTombEndingEventKind::clear_planes:
+#ifdef SHADOWRUN_QT_QA_DRIVER
+            if (field_vdp_mirror_) {
+                auto& model = field_vdp_mirror_->model();
+                for (std::size_t y = 0U; y < VdpModel::kNameTableHeight; ++y) {
+                    for (std::size_t x = 0U; x < VdpModel::kNameTableWidth; ++x) {
+                        model.set_name_word(VdpPlane::plane_a, x, y, 0U);
+                        model.set_name_word(VdpPlane::plane_b, x, y, 0U);
+                    }
+                }
+            }
+#endif
+            source_boundary("ending.presentation.clear_planes:0x0FFE,0x102A");
+            break;
+        case TarislarTombEndingEventKind::zero_scroll_words:
+            // 0x5C744 clears FFDD08/C/0A/0E before its resource uploads.
+            field_camera_follow_.horizontal_bias_a = 0;
+            field_camera_follow_.horizontal_bias_b = 0;
+            field_camera_follow_.vertical_bias_a = 0;
+            field_camera_follow_.vertical_bias_b = 0;
+            tarislar_tomb_ending_scroll_words_zero_ = true;
+#ifdef SHADOWRUN_QT_QA_DRIVER
+            if (field_vdp_mirror_) {
+                field_vdp_mirror_->model().set_scroll(VdpScrollState{});
+            }
+#endif
+            source_boundary("ending.presentation.scroll_words_zero:0x5C744");
             break;
         case TarislarTombEndingEventKind::rom_event: {
             std::ostringstream reason;
             reason << "ending.presentation.rom_event:0x" << std::hex
                    << std::uppercase << static_cast<std::uint32_t>(value);
             source_boundary(reason.str());
+            break;
+        }
+        case TarislarTombEndingEventKind::extra_waits:
+            if (value < 0 || value > 0xFFFF) {
+                source_boundary("ending.presentation.invalid_extra_waits:0x5C744");
+                tarislar_tomb_ending_presentation_active_ = false;
+                return;
+            }
+            extra_wait_count += static_cast<std::uint32_t>(value);
+            break;
+        case TarislarTombEndingEventKind::flash_spawn: {
+            const auto registers = game_scripts_.call_integers(
+                "tarislar_tomb_ending", "flash_state", {t});
+            if (!registers.has_value() || registers->size() != 4U ||
+                std::any_of(registers->begin(), registers->end(),
+                            [](const std::int64_t value) {
+                                return value < 0 || value > 0xFFFF;
+                            })) {
+                failure_ = game_scripts_.failure().empty()
+                    ? "Lua Tarislar Tomb flash spawn is invalid"
+                    : game_scripts_.failure();
+                tarislar_tomb_ending_presentation_active_ = false;
+                source_boundary("ending.presentation.flash_spawn_failed:0x5C31C");
+                return;
+            }
+            tarislar_tomb_ending_fff150_ =
+                static_cast<std::uint16_t>(registers->at(0U));
+            tarislar_tomb_ending_fff14e_ =
+                static_cast<std::uint16_t>(registers->at(1U));
+            tarislar_tomb_ending_fff152_ =
+                static_cast<std::uint16_t>(registers->at(2U));
+            tarislar_tomb_ending_fff154_ =
+                static_cast<std::uint16_t>(registers->at(3U));
+            source_boundary("ending.presentation.flash_spawn:" +
+                            std::to_string(t) + ":0x5C31C");
+            break;
+        }
+        case TarislarTombEndingEventKind::palette_line_0: {
+            const auto words = game_scripts_.call_integers(
+                "tarislar_tomb_ending", "palette_line_0", {});
+            if (!words.has_value() || words->size() !=
+                    tarislar_tomb_ending_palette_line_0_.size() ||
+                std::any_of(words->begin(), words->end(),
+                            [](const std::int64_t word) {
+                                return word < 0 || word > 0x0FFF;
+                            })) {
+                failure_ = game_scripts_.failure().empty()
+                    ? "Lua Tarislar Tomb palette is invalid"
+                    : game_scripts_.failure();
+                tarislar_tomb_ending_presentation_active_ = false;
+                source_boundary("ending.presentation.palette_failed:0x5CA74");
+                return;
+            }
+            for (std::size_t color = 0U; color < words->size(); ++color) {
+                const auto word = static_cast<std::uint16_t>(words->at(color));
+                tarislar_tomb_ending_palette_line_0_[color] = word;
+#ifdef SHADOWRUN_QT_QA_DRIVER
+                if (field_vdp_mirror_) {
+                    field_vdp_mirror_->model().set_cram_word(
+                        0U, static_cast<std::uint8_t>(color + 1U), word);
+                }
+#endif
+            }
+            source_boundary("ending.presentation.palette_line_0:0x5CA74");
+            break;
+        }
+        case TarislarTombEndingEventKind::palette_line_3: {
+            const auto words = game_scripts_.call_integers(
+                "tarislar_tomb_ending", "palette_line_3", {});
+            if (!words.has_value() || words->size() !=
+                    tarislar_tomb_ending_palette_line_3_.size() ||
+                std::any_of(words->begin(), words->end(),
+                            [](const std::int64_t word) {
+                                return word < 0 || word > 0x0FFF;
+                            })) {
+                failure_ = game_scripts_.failure().empty()
+                    ? "Lua Tarislar Tomb line-3 palette is invalid"
+                    : game_scripts_.failure();
+                tarislar_tomb_ending_presentation_active_ = false;
+                source_boundary("ending.presentation.palette_line_3_failed:0x5C9B4");
+                return;
+            }
+            for (std::size_t color = 0U; color < words->size(); ++color) {
+                const auto word = static_cast<std::uint16_t>(words->at(color));
+                tarislar_tomb_ending_palette_line_3_[color] = word;
+#ifdef SHADOWRUN_QT_QA_DRIVER
+                if (field_vdp_mirror_) {
+                    field_vdp_mirror_->model().set_cram_word(
+                        3U, static_cast<std::uint8_t>(color + 1U), word);
+                }
+#endif
+            }
+            source_boundary("ending.presentation.palette_line_3:0x5C9B4");
+            break;
+        }
+        case TarislarTombEndingEventKind::background_city: {
+            constexpr auto kBackgroundAlias =
+                "cinematics.tarislar.tomb.background.city.at.400";
+            QImage background;
+            if (!field_asset_catalog_ ||
+                !load_image(*field_asset_catalog_, kBackgroundAlias,
+                            background) ||
+                background.size() != QSize(320, 224)) {
+                failure_ = failure_.empty()
+                    ? "Tarislar Tomb city background asset is invalid"
+                    : failure_;
+                tarislar_tomb_ending_presentation_active_ = false;
+                source_boundary("ending.presentation.background_failed:0x1E8802");
+                return;
+            }
+            // This named image is the already-extracted output of the ROM
+            // 0x1530/0x1728 resource sequence; the runtime does not decode ROM.
+            field_map_ = std::move(background);
+            field_map_priority_overlay_ = QImage(
+                field_map_.size(), QImage::Format_ARGB32_Premultiplied);
+            field_map_priority_overlay_.fill(Qt::transparent);
+            field_map_cell_words_.clear();
+            field_map_cell_columns_ = 0U;
+            source_boundary("ending.presentation.background_city:0x1E8802");
+            break;
+        }
+        case TarislarTombEndingEventKind::logo_reveal_overlay: {
+            constexpr auto kOverlayAlias =
+                "cinematics.tarislar.tomb.logo.reveal.overlay";
+            const auto* record = field_asset_catalog_
+                ? field_asset_catalog_->find(kOverlayAlias)
+                : nullptr;
+            QImage overlay;
+            if (!record || !load_image(*field_asset_catalog_, kOverlayAlias,
+                                       overlay) ||
+                field_map_.size() != QSize(320, 224)) {
+                failure_ = failure_.empty()
+                    ? "Tarislar Tomb logo overlay asset is invalid"
+                    : failure_;
+                tarislar_tomb_ending_presentation_active_ = false;
+                source_boundary("ending.presentation.logo_overlay_failed:0x1F310E");
+                return;
+            }
+            QPainter painter(&field_map_);
+            painter.drawImage(record->origin_x, record->origin_y, overlay);
+            if (!painter.end()) {
+                failure_ = "Tarislar Tomb logo overlay could not be composed";
+                tarislar_tomb_ending_presentation_active_ = false;
+                source_boundary("ending.presentation.logo_overlay_failed:0x1F6532");
+                return;
+            }
+            source_boundary("ending.presentation.logo_overlay:0x1F6532");
+            break;
+        }
+        case TarislarTombEndingEventKind::name_map_begin: {
+            const auto map = game_scripts_.call_integers(
+                "tarislar_tomb_ending", "name_map_begin", {});
+            if (!map.has_value() || map->size() != 3U || map->at(0U) < 0 ||
+                map->at(0U) > 0xFFFFFFFFLL || map->at(1U) < 1 ||
+                map->at(1U) > 0xFFFF || map->at(2U) < 1 ||
+                map->at(2U) > 0xFFFF) {
+                failure_ = game_scripts_.failure().empty()
+                    ? "Lua Tarislar Tomb name-map dimensions are invalid"
+                    : game_scripts_.failure();
+                tarislar_tomb_ending_presentation_active_ = false;
+                source_boundary("ending.presentation.name_map_begin_failed:0x5C842");
+                return;
+            }
+            tarislar_tomb_ending_fff1e2_ =
+                static_cast<std::uint32_t>(map->at(0U));
+            tarislar_tomb_ending_fff1e6_ = 0U;
+            tarislar_tomb_ending_name_map_columns_ =
+                static_cast<std::uint16_t>(map->at(1U));
+            tarislar_tomb_ending_name_map_rows_ =
+                static_cast<std::uint16_t>(map->at(2U));
+            source_boundary("ending.presentation.name_map_begin:0x5C842");
+            break;
+        }
+        case TarislarTombEndingEventKind::name_map_column: {
+            constexpr std::size_t kFirstPlaneAColumn = 1U;
+            constexpr std::size_t kFirstPlaneARow = 2U;
+            // ROM 0x0E9C encodes D4 unchanged. 0x5C8C6 starts at VRAM 0x0102
+            // and adds 0x80 bytes per row, so these words land in Plane A
+            // (x=1+column,y=2+row); 0x5C744's 0x1728 layout starts at 0x2680
+            // in Plane B. This preserves the reveal when 0x102A clears B.
+            if (value < 0 || value != tarislar_tomb_ending_fff1e6_ ||
+                value >= tarislar_tomb_ending_name_map_columns_) {
+                source_boundary("ending.presentation.invalid_name_map_column:0x5C88C");
+                tarislar_tomb_ending_presentation_active_ = false;
+                return;
+            }
+            const auto words = game_scripts_.call_integers(
+                "tarislar_tomb_ending", "name_map_column", {value});
+            if (!words.has_value() || words->size() !=
+                    tarislar_tomb_ending_name_map_rows_ ||
+                std::any_of(words->begin(), words->end(),
+                            [](const std::int64_t word) {
+                                return word < 0 || word > 0xFFFF;
+                            })) {
+                failure_ = game_scripts_.failure().empty()
+                    ? "Lua Tarislar Tomb name-map column is invalid"
+                    : game_scripts_.failure();
+                tarislar_tomb_ending_presentation_active_ = false;
+                source_boundary("ending.presentation.name_map_column_failed:0x1F6532");
+                return;
+            }
+#ifdef SHADOWRUN_QT_QA_DRIVER
+            if (field_vdp_mirror_) {
+                auto& model = field_vdp_mirror_->model();
+                for (std::size_t row = 0U; row < words->size(); ++row) {
+                    model.set_name_word(
+                        VdpPlane::plane_a, kFirstPlaneAColumn +
+                            static_cast<std::size_t>(value),
+                        kFirstPlaneARow + row,
+                        static_cast<std::uint16_t>(words->at(row)));
+                }
+            }
+#else
+            (void)kFirstPlaneAColumn;
+            (void)kFirstPlaneARow;
+#endif
+            ++tarislar_tomb_ending_fff1e6_;
+            tarislar_tomb_ending_fff1e2_ += 2U;
+            source_boundary("ending.presentation.name_map_column:" +
+                            std::to_string(value) + ":0x5C8C6");
             break;
         }
         default:
@@ -1030,10 +1367,20 @@ void FieldSceneRuntime::advance_tarislar_tomb_ending_presentation() {
         }
     }
 
+    if (extra_wait_count > 0U) {
+        if (extra_wait_count > 0xFFFFU - tarislar_tomb_ending_t_) {
+            failure_ = "Tarislar Tomb ending extra waits overflowed t";
+            tarislar_tomb_ending_presentation_active_ = false;
+            source_boundary("ending.presentation.extra_wait_overflow:0x5C744");
+            return;
+        }
+        tarislar_tomb_ending_t_ = static_cast<std::uint16_t>(
+            tarislar_tomb_ending_t_ + extra_wait_count);
+    }
+
     ++field_world_frame_counter_;
-    if (frame < tarislar_tomb_ending_iteration_count_) {
-        tarislar_tomb_ending_presentation_frame_ =
-            static_cast<std::uint16_t>(frame + 1U);
+    if (tarislar_tomb_ending_loop_iteration_ <
+        tarislar_tomb_ending_iteration_count_) {
         return;
     }
 

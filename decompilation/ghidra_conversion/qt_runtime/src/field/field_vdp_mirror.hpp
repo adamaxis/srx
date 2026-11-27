@@ -46,6 +46,7 @@ public:
                              std::size_t donor_cell,
                              std::size_t cell_columns);
 
+    VdpModel& model() noexcept { return model_; }
     const VdpModel& model() const noexcept { return model_; }
     const VdpFrameLatch& frame_latch() const noexcept { return frame_latch_; }
     const FieldVdpSpriteLimitState& sprite_limit_state() const noexcept {

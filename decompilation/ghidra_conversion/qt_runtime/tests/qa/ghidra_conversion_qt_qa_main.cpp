@@ -45856,6 +45856,7 @@ int run_field_tarislar_tomb_ending_presentation_qa(
                   << output_error.message() << '\n';
         return 3;
     }
+    field_scene.set_field_vdp_mirror_enabled_for_qa(true);
     if (!field_scene.open_tarislar_tomb_ending_warning_for_dump() ||
         !field_scene.dialogue_open()) {
         std::cerr << "Tarislar Tomb ending QA: production warning graph did "
@@ -45872,28 +45873,140 @@ int run_field_tarislar_tomb_ending_presentation_qa(
 
     const auto music_before = field_scene.field_music_requests().size();
     const auto boundary_start = source_boundaries.size();
-    // The single live choice is the player's confirmation to destroy Thon.
-    tap_qa_controller_button(field_scene, kControllerButtonA); // ROM pad A.
     const auto audio_start = field_audio_events.size();
     std::vector<TimedSound> observed_sounds;
+    std::vector<TimedSound> observed_sound_iterations;
+    bool late_sound_iteration_matches = false;
+    bool initial_flash_matches = false;
+    bool final_name_map_matches = false;
+    bool last_spawn_matches = false;
+    bool plane_b_clear_matches = false;
+    bool plane_a_map_survived_plane_b_clear = false;
+    bool line_0_palette_matches = false;
+    bool line_3_palette_and_scroll_matches = false;
+    auto audio_cursor = audio_start;
+    const auto capture_audio = [&] {
+        while (audio_cursor < field_audio_events.size()) {
+            const auto id = field_audio_events[audio_cursor++];
+            const auto t = field_scene.tarislar_tomb_ending_t_for_dump();
+            const auto iteration =
+                field_scene.tarislar_tomb_ending_iteration_for_dump();
+            observed_sounds.emplace_back(t, id);
+            observed_sound_iterations.emplace_back(iteration, id);
+            if (iteration == 0x269U && t == 0x26FU && id == kSound35) {
+                late_sound_iteration_matches = true;
+            }
+        }
+    };
+    // The single live choice is the player's confirmation to destroy Thon.
+    tap_qa_controller_button(field_scene, kControllerButtonA); // ROM pad A.
+    capture_audio();
+    initial_flash_matches =
+        field_scene.tarislar_tomb_ending_flash_registers_for_dump() ==
+        std::array<std::uint16_t, 4U>{0U, 0U, 0x106U, 0x10BU};
     for (std::uint16_t frame = 1U; frame <= kLoopIterationCount; ++frame) {
-        const auto before = field_audio_events.size();
         field_scene.advance_frame();
-        for (std::size_t index = before;
-             index < field_audio_events.size(); ++index) {
-            observed_sounds.emplace_back(frame, field_audio_events[index]);
+        capture_audio();
+        if (field_scene.tarislar_tomb_ending_t_for_dump() == 0x2A3U) {
+            const auto registers =
+                field_scene.tarislar_tomb_ending_flash_registers_for_dump();
+            last_spawn_matches = registers ==
+                std::array<std::uint16_t, 4U>{0U, 0U, 0x179U, 0x0FFU};
+        }
+        if (field_scene.tarislar_tomb_ending_t_for_dump() == 0x26CU) {
+            const auto* model = field_scene.field_vdp_model_for_dump();
+            constexpr std::array<std::uint16_t, 15U> kPaletteLine0{{
+                0x222U, 0x028U, 0x244U, 0x000U, 0x444U,
+                0x464U, 0x04AU, 0x068U, 0x466U, 0x884U,
+                0x26AU, 0x28CU, 0x08EU, 0x2AEU, 0x6EEU,
+            }};
+            line_0_palette_matches = model != nullptr;
+            for (std::size_t color = 0U; color < kPaletteLine0.size(); ++color) {
+                line_0_palette_matches = line_0_palette_matches &&
+                    model->cram_word(0U,
+                        static_cast<std::uint8_t>(color + 1U)) ==
+                        kPaletteLine0[color];
+            }
+        }
+        if (field_scene.tarislar_tomb_ending_iteration_for_dump() == 0x190U) {
+            const auto* model = field_scene.field_vdp_model_for_dump();
+            constexpr std::array<std::uint16_t, 15U> kPaletteLine3{{
+                0x200U, 0x600U, 0x420U, 0xA20U, 0xE20U,
+                0xE60U, 0x444U, 0x666U, 0x0AEU, 0x08CU,
+                0x06AU, 0xE0EU, 0xE0EU, 0xE0EU, 0xEEEU,
+            }}; // ROM 0x5C9B4 -> FFD8E0 [C].
+            line_3_palette_and_scroll_matches = model != nullptr &&
+                field_scene.tarislar_tomb_ending_t_for_dump() == 0x196U &&
+                field_scene.tarislar_tomb_ending_scroll_words_zero_for_dump();
+            for (std::size_t color = 0U; color < kPaletteLine3.size(); ++color) {
+                line_3_palette_and_scroll_matches =
+                    line_3_palette_and_scroll_matches &&
+                    model->cram_word(3U,
+                        static_cast<std::uint8_t>(color + 1U)) ==
+                        kPaletteLine3[color];
+            }
+            if (model != nullptr) {
+                const auto& scroll = model->scroll();
+                line_3_palette_and_scroll_matches =
+                    line_3_palette_and_scroll_matches &&
+                    scroll.plane_a_horizontal == 0 &&
+                    scroll.plane_a_vertical == 0 &&
+                    scroll.plane_b_horizontal == 0 &&
+                    scroll.plane_b_vertical == 0;
+            }
+        }
+        if (field_scene.tarislar_tomb_ending_t_for_dump() == 0x2BAU &&
+            field_scene.tarislar_tomb_ending_fff1e6_for_dump() == 0x26U &&
+            !final_name_map_matches) {
+            constexpr std::array<std::array<std::uint16_t, 3U>, 4U>
+                kRomMapCorners{{
+                    {{0U, 0U, 0x05D6U}}, {{37U, 0U, 0x05D6U}},
+                    {{0U, 18U, 0x05D6U}}, {{37U, 18U, 0x05D6U}},
+                }}; // ROM 0x1F6532 corners, read as big-endian words [C].
+            const auto* model = field_scene.field_vdp_model_for_dump();
+            final_name_map_matches = model != nullptr &&
+                field_scene.tarislar_tomb_ending_fff1e2_for_dump() ==
+                    0x1F6532U + 2U * 38U &&
+                field_scene.tarislar_tomb_ending_t_for_dump() <= 0x2BAU;
+            for (const auto& corner : kRomMapCorners) {
+                final_name_map_matches = final_name_map_matches &&
+                    model->name_word(qt_runtime::VdpPlane::plane_a,
+                        1U + corner[0], 2U + corner[1]) == corner[2];
+            }
+        }
+        if (field_scene.tarislar_tomb_ending_plane_b_cleared_for_dump()) {
+            const auto* model = field_scene.field_vdp_model_for_dump();
+            plane_b_clear_matches = model != nullptr &&
+                model->name_word(qt_runtime::VdpPlane::plane_b, 1U, 2U) == 0U;
+            plane_a_map_survived_plane_b_clear = model != nullptr &&
+                model->name_word(qt_runtime::VdpPlane::plane_a, 1U, 2U) ==
+                    0x05D6U;
         }
     }
     if (observed_sounds.size() != kExpectedSounds.size() ||
         !std::equal(observed_sounds.begin(), observed_sounds.end(),
                     kExpectedSounds.begin()) ||
+        !late_sound_iteration_matches ||
+        !initial_flash_matches ||
+        std::none_of(observed_sound_iterations.begin(),
+                    observed_sound_iterations.end(),
+                    [](const TimedSound& sound) {
+                        return sound.first == 0x269U &&
+                               sound.second == kSound35;
+                    }) ||
         field_scene.field_music_requests().size() != music_before + 1U ||
         field_scene.field_music_requests().back() != kEndingMusic) {
         std::cerr << "Tarislar Tomb ending QA: timed audio differs from ROM "
                      "schedule (sounds=" << observed_sounds.size()
                   << ", music_requests="
                   << field_scene.field_music_requests().size() - music_before
-                  << ")\n";
+                  << ", ids=";
+        for (auto index = music_before;
+             index < field_scene.field_music_requests().size(); ++index) {
+            std::cerr << "0x" << std::hex
+                      << field_scene.field_music_requests()[index] << ' ';
+        }
+        std::cerr << ")\n";
         return 3;
     }
 
@@ -45904,10 +46017,10 @@ int run_field_tarislar_tomb_ending_presentation_qa(
                 static_cast<std::ptrdiff_t>(boundary_start),
             source_boundaries.end(), value));
     };
-    constexpr std::string_view kDrawEvent =
-        "ending.presentation.rom_event:0x5C230";
     constexpr std::string_view kEntityUpdateEvent =
         "ending.presentation.rom_event:0x5BD2C";
+    constexpr std::string_view kSparseSpawnEvent =
+        "ending.presentation.rom_event:0x5C230";
     constexpr std::string_view kChoreographyOne =
         "ending.presentation.rom_event:0x5C744";
     constexpr std::string_view kChoreographyTwo =
@@ -45915,11 +46028,17 @@ int run_field_tarislar_tomb_ending_presentation_qa(
     constexpr std::string_view kChoreographyThree =
         "ending.presentation.rom_event:0x5C88C";
     const auto first_page = render_qa_field(field_scene);
-    if (suffix_count(kDrawEvent) != kLoopIterationCount ||
+    if (suffix_count(kSparseSpawnEvent) != 8U ||
         suffix_count(kEntityUpdateEvent) != kLoopIterationCount ||
         suffix_count(kChoreographyOne) != 1U ||
         suffix_count(kChoreographyTwo) != 1U ||
         suffix_count(kChoreographyThree) != 39U ||
+        !last_spawn_matches || !plane_b_clear_matches ||
+        !plane_a_map_survived_plane_b_clear ||
+        !line_0_palette_matches || !line_3_palette_and_scroll_matches ||
+        !final_name_map_matches ||
+        field_scene.tarislar_tomb_ending_t_for_dump() != 1007U ||
+        field_scene.tarislar_tomb_ending_fff1e6_for_dump() != 0x26U ||
         field_audio_events.size() - audio_start != kExpectedSounds.size() ||
         !field_scene.dialogue_open() ||
         field_scene.active_credits_page_id_for_dump() !=
@@ -45932,7 +46051,7 @@ int run_field_tarislar_tomb_ending_presentation_qa(
         return 3;
     }
     std::cout << "field_tarislar_tomb_ending_presentation_qa=passed "
-                 "iterations=1001 timed_sounds=20 music=0x13 "
+                 "iterations=1001 final_t=1007 timed_sounds=20 music=0x13 "
                  "credits=opening_and_game_design artifacts="
               << output.string() << '\n';
     return 0;
