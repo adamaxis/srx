@@ -2,6 +2,16 @@
 local DialogueGraph = require("dialogue_graph")
 local E = require("enums")
 local StoryState = require("story_state")
+local MatrixPasscodes = require("data.matrix_passcodes")
+
+local function passcode_flag_bit(passcode_id)
+    for _, passcode in ipairs(MatrixPasscodes.passcodes) do
+        if passcode.id == passcode_id then
+            return passcode.flag_bit
+        end
+    end
+    return nil
+end
 
 local Matchstick = {}
 
@@ -15,7 +25,8 @@ function Matchstick.apply_ito_callback()
     local heat = StoryState.heat_level()
     local stage = StoryState.strike_team_stage()
     local nuyen = game.nuyen()
-    if heat == nil or stage == nil or type(nuyen) ~= "number" then
+    if heat == nil or stage == nil or type(nuyen) ~= "number" or
+       game.state.matrix_passcode_flags_resolved ~= true then
         return "service_unavailable"
     end
 
@@ -25,6 +36,10 @@ function Matchstick.apply_ito_callback()
         return "service_unavailable"
     end
     game.state[E.StoryFact.ITO_FIGHT_WON] = true
+    -- ROM 0x542BA..0x542C4 sets FFFC28 bit 11, the Enter Passcode entry
+    -- for Ito's system (matrix_passcodes "ito_passcode", 0xC19C2 table).
+    game.state["matrix_passcode_bit_" ..
+        passcode_flag_bit("ito_passcode")] = true
 
     -- ROM 0x542D0..0x542FA clears FFFC30 bits 24/25/27 and sets
     -- FFFC34 bits 15/16/17. 0x54300 clears FFFC38 bit 0 (tip index 64).
@@ -41,8 +56,8 @@ function Matchstick.apply_ito_callback()
        not StoryState.increase_strike_team_stage(1) then
         return "service_unavailable"
     end
-    -- ROM also marks FFFC28 bit 11 and prepares audio variant B at 0x5430A;
-    -- the active host has no consumer for that opaque field/audio selector.
+    -- ROM 0x5430A also calls 0x5D1B4 (prepare_pre_title_audio_variant_b),
+    -- a host audio-asset preparation step with no gameplay state.
     return "applied"
 end
 

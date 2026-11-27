@@ -12156,6 +12156,34 @@ bool FieldSceneRuntime::bootstrap(
                           static_cast<std::uint8_t>(~mask));
                 return true;
             }
+            constexpr std::string_view kMatrixPasscodeBitPrefix =
+                "matrix_passcode_bit_";
+            if (name.size() > kMatrixPasscodeBitPrefix.size() &&
+                name.substr(0U, kMatrixPasscodeBitPrefix.size()) ==
+                    kMatrixPasscodeBitPrefix) {
+                // FFFC28 storage for the Enter Passcode entries; Lua owns
+                // which callback sets which entry (e.g. ROM 0x542BA).
+                constexpr unsigned kMatrixPasscodeLastBit = 11U;
+                unsigned bit = 0U;
+                const auto suffix =
+                    name.substr(kMatrixPasscodeBitPrefix.size());
+                const auto parsed = std::from_chars(
+                    suffix.data(), suffix.data() + suffix.size(), bit);
+                if (parsed.ec != std::errc{} ||
+                    parsed.ptr != suffix.data() + suffix.size() ||
+                    bit > kMatrixPasscodeLastBit ||
+                    !field_matrix_passcode_flags_.has_value()) {
+                    return false;
+                }
+                const auto mask = static_cast<std::uint16_t>(1U << bit);
+                *field_matrix_passcode_flags_ = value
+                    ? static_cast<std::uint16_t>(
+                          *field_matrix_passcode_flags_ | mask)
+                    : static_cast<std::uint16_t>(
+                          *field_matrix_passcode_flags_ &
+                          static_cast<std::uint16_t>(~mask));
+                return true;
+            }
             if (name == "hollywood_access_granted") {
                 if (!notebook_contacts_flags_.has_value()) {
                     return false;

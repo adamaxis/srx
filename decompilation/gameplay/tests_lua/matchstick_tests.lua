@@ -104,3 +104,37 @@ pages, choices, actions, outcome = play(6, true, true, "paid", "pay")
 assert(pages[2] == "high_reputation_notice" and #actions == 0)
 
 print("Matchstick Ito producer tests passed: reputation, bit gates, payment, and queue")
+
+-- ROM callback 0x54286: the Ito result also sets FFFC28 bit 11 at
+-- 0x542BA..0x542C4, the Enter Passcode entry for Ito's system.
+do
+    package.loaded["matchstick"] = nil
+    local nuyen, heat, stage = 500, 3, 2
+    local state = { matrix_passcode_flags_resolved = true }
+    game = {
+        state = state,
+        nuyen = function() return nuyen end,
+        set_nuyen = function(value) nuyen = value end,
+        services = {
+            call = function(domain, operation)
+                assert(domain == "story", operation)
+                if operation == "get_heat_level" then
+                    return "level_" .. heat
+                elseif operation == "get_strike_team_stage" then
+                    return "stage_" .. stage
+                end
+                local value = operation:match("^set_heat_level_(%d+)$")
+                if value then heat = tonumber(value); return "applied" end
+                value = operation:match("^set_strike_team_stage_(%d+)$")
+                if value then stage = tonumber(value); return "applied" end
+                error("unexpected story service " .. operation)
+            end,
+        },
+    }
+    local Matchstick = require("matchstick")
+    assert(Matchstick.apply_ito_callback() == "applied")
+    assert(nuyen == 10500 and heat == 5 and stage == 4)
+    assert(state.matrix_passcode_bit_11 == true,
+           "Ito callback must set the Ito passcode bit (FFFC28 bit 11)")
+    print("Matchstick Ito callback tests passed: passcode bit 11")
+end
