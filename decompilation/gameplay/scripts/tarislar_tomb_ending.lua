@@ -29,6 +29,51 @@ local debris_motion = {
       Ending.SPRITE_DEBRIS_LAST_DURATION },
     { 0, 0, 0 },
 }
+local object_a_motion = {
+    { Ending.SPRITE_OBJECT_MOTION_ZERO,
+      Ending.SPRITE_OBJECT_MOTION_ZERO,
+      Ending.SPRITE_OBJECT_A_ROW_0_DURATION },
+    { Ending.SPRITE_OBJECT_MOTION_33, Ending.SPRITE_OBJECT_MOTION_33,
+      Ending.SPRITE_OBJECT_A_SHORT_DURATION },
+    { Ending.SPRITE_OBJECT_MOTION_33, Ending.SPRITE_OBJECT_MOTION_66,
+      Ending.SPRITE_OBJECT_A_SHORT_DURATION },
+    { Ending.SPRITE_OBJECT_MOTION_66, Ending.SPRITE_OBJECT_MOTION_66,
+      Ending.SPRITE_OBJECT_A_SHORT_DURATION },
+    { Ending.SPRITE_OBJECT_MOTION_99, Ending.SPRITE_OBJECT_MOTION_99,
+      Ending.SPRITE_OBJECT_A_SHORT_DURATION },
+    { Ending.SPRITE_OBJECT_MOTION_66, Ending.SPRITE_OBJECT_MOTION_99,
+      Ending.SPRITE_OBJECT_A_SHORT_DURATION },
+    { Ending.SPRITE_OBJECT_MOTION_ZERO,
+      Ending.SPRITE_OBJECT_MOTION_ZERO,
+      Ending.SPRITE_OBJECT_A_ROW_6_DURATION },
+    { Ending.SPRITE_OBJECT_MOTION_ZERO, Ending.SPRITE_OBJECT_MOTION_80,
+      Ending.SPRITE_OBJECT_A_ROW_7_DURATION },
+    { Ending.SPRITE_OBJECT_MOTION_ZERO,
+      Ending.SPRITE_OBJECT_MOTION_ZERO,
+      Ending.SPRITE_OBJECT_A_ROW_8_DURATION },
+} -- ROM table 0x5C1FA [C].
+local object_b_motion = {
+    { Ending.SPRITE_OBJECT_MOTION_ZERO,
+      Ending.SPRITE_OBJECT_MOTION_ZERO,
+      Ending.SPRITE_OBJECT_B_ROW_0_DURATION },
+    { Ending.SPRITE_OBJECT_MOTION_33, Ending.SPRITE_OBJECT_MOTION_33,
+      Ending.SPRITE_OBJECT_B_ROW_1_DURATION },
+    { Ending.SPRITE_OBJECT_MOTION_33, Ending.SPRITE_OBJECT_MOTION_66,
+      Ending.SPRITE_OBJECT_B_SHORT_DURATION },
+    { Ending.SPRITE_OBJECT_MOTION_99, Ending.SPRITE_OBJECT_MOTION_CC,
+      Ending.SPRITE_OBJECT_B_SHORT_DURATION },
+    { Ending.SPRITE_OBJECT_MOTION_ZERO,
+      Ending.SPRITE_OBJECT_MOTION_ZERO,
+      Ending.SPRITE_OBJECT_B_ROW_4_DURATION },
+    { Ending.SPRITE_OBJECT_MOTION_ZERO, Ending.SPRITE_OBJECT_MOTION_80,
+      Ending.SPRITE_OBJECT_B_ROW_5_DURATION },
+    { Ending.SPRITE_OBJECT_MOTION_ZERO,
+      Ending.SPRITE_OBJECT_MOTION_ZERO,
+      Ending.SPRITE_OBJECT_B_ROW_6_DURATION },
+    { Ending.SPRITE_OBJECT_MOTION_ZERO,
+      Ending.SPRITE_OBJECT_MOTION_ZERO,
+      Ending.SPRITE_OBJECT_B_ROW_7_DURATION },
+} -- ROM table 0x5C1D0 [C].
 
 local function fresh_sprite_state()
     return {
@@ -50,6 +95,18 @@ local function fresh_sprite_state()
         fff1b2 = 0,
         fff1b4 = 0,
         fff1b6 = 0,
+        fff1ca = 0,
+        fff1cc = 0,
+        fff1ce = Ending.SPRITE_OBJECT_A_INITIAL_X,
+        fff1d0 = Ending.SPRITE_OBJECT_A_INITIAL_Y,
+        fff1d2 = 0,
+        fff1d4 = 0,
+        fff1d6 = 0,
+        fff1d8 = 0,
+        fff1da = Ending.SPRITE_OBJECT_B_INITIAL_X,
+        fff1dc = Ending.SPRITE_OBJECT_B_INITIAL_Y,
+        fff1de = 0,
+        fff1e0 = 0,
         last_wait_clock_t = 0,
     }
 end
@@ -116,6 +173,8 @@ local data = {
     },
     sprite_lists = SpriteList,
     debris_motion = debris_motion, -- ROM table 0x5BE62 [C].
+    object_a_motion = object_a_motion,
+    object_b_motion = object_b_motion,
     spawns = {
         { t = 0x050, x = 0x0D3, y = 0x11C },
         { t = 0x06E, x = 0x114, y = 0x101 },
@@ -306,6 +365,47 @@ function Timeline.sprite_frame(t, now, scatter_roll)
              math.floor(sprite_state.fff1b0 / Ending.SPRITE_FIXED_POINT_SCALE),
              math.floor(sprite_state.fff1b2 / Ending.SPRITE_FIXED_POINT_SCALE),
              Ending.SPRITE_FLASH_ATTRIBUTE)
+    end
+
+    -- ROM 0x5C0A6 advances two fixed-point objects until t reaches 0x17C.
+    if t < Ending.SPRITE_OBJECTS_END_T then
+        if now >= sprite_state.fff1cc and
+           sprite_state.fff1ca < #object_a_motion then
+            local step = object_a_motion[sprite_state.fff1ca + 1]
+            sprite_state.fff1d2 = step[1]
+            sprite_state.fff1d4 = step[2]
+            sprite_state.fff1cc = (now + step[3]) %
+                Ending.SPRITE_WORD_MODULUS
+            sprite_state.fff1ca = sprite_state.fff1ca + 1
+        end
+        sprite_state.fff1ce = (sprite_state.fff1ce + sprite_state.fff1d2) %
+            Ending.SPRITE_WORD_MODULUS
+        sprite_state.fff1d0 = (sprite_state.fff1d0 + sprite_state.fff1d4) %
+            Ending.SPRITE_WORD_MODULUS
+        emit(SpriteList.OBJECT_A,
+             math.floor(sprite_state.fff1ce /
+                 Ending.SPRITE_FIXED_POINT_SCALE),
+             math.floor(sprite_state.fff1d0 /
+                 Ending.SPRITE_FIXED_POINT_SCALE), 0)
+
+        if now >= sprite_state.fff1d8 and
+           sprite_state.fff1d6 < #object_b_motion then
+            local step = object_b_motion[sprite_state.fff1d6 + 1]
+            sprite_state.fff1de = step[1]
+            sprite_state.fff1e0 = step[2]
+            sprite_state.fff1d8 = (now + step[3]) %
+                Ending.SPRITE_WORD_MODULUS
+            sprite_state.fff1d6 = sprite_state.fff1d6 + 1
+        end
+        sprite_state.fff1da = (sprite_state.fff1da + sprite_state.fff1de) %
+            Ending.SPRITE_WORD_MODULUS
+        sprite_state.fff1dc = (sprite_state.fff1dc + sprite_state.fff1e0) %
+            Ending.SPRITE_WORD_MODULUS
+        emit(SpriteList.OBJECT_B,
+             math.floor(sprite_state.fff1da /
+                 Ending.SPRITE_FIXED_POINT_SCALE),
+             math.floor(sprite_state.fff1dc /
+                 Ending.SPRITE_FIXED_POINT_SCALE), 0)
     end
     return result
 end

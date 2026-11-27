@@ -149,6 +149,12 @@ local function sprite_list_addresses(frame)
     return result
 end
 local SpriteList = E.TarislarTombEndingSpriteList
+local function has_sprite_list(addresses, target)
+    for _, address in ipairs(addresses) do
+        if address == target then return true end
+    end
+    return false
+end
 check(Timeline.sprite_random_bound(0)[1] ==
       Ending.SPRITE_SCATTER_RANDOM_BOUND and
       Timeline.sprite_random_bound(Ending.SPRITE_SCATTER_END_T)[1] == 0,
@@ -157,12 +163,14 @@ Timeline.reset()
 local first_sprite_frame = Timeline.sprite_frame(0, 0, 0)
 local first_sprite_lists = sprite_list_addresses(first_sprite_frame)
 check(first_sprite_frame[1] == Ending.SPRITE_MAIN_Y_START and
-      #first_sprite_lists == 5 and
+      #first_sprite_lists == 7 and
       first_sprite_lists[1] == SpriteList.MAIN and
       first_sprite_lists[2] == SpriteList.ANIMATION_0 and
       first_sprite_lists[3] == SpriteList.SPARK_0 and
       first_sprite_lists[4] == SpriteList.FLASH_0 and
-      first_sprite_lists[5] == SpriteList.SCATTER,
+      first_sprite_lists[5] == SpriteList.SCATTER and
+      first_sprite_lists[6] == SpriteList.OBJECT_A and
+      first_sprite_lists[7] == SpriteList.OBJECT_B,
       "0x5BD2C emits the ROM list order at prologue t=0")
 check(#Timeline.data.debris_motion == Ending.SPRITE_DEBRIS_ANIMATION_STEPS and
       Timeline.data.debris_motion[1][2] == Ending.SPRITE_CITY_Y_STEP and
@@ -172,6 +180,33 @@ check(#Timeline.data.debris_motion == Ending.SPRITE_DEBRIS_ANIMATION_STEPS and
       Timeline.data.debris_motion[3][1] == -2 * Ending.SPRITE_CITY_Y_STEP and
       Timeline.data.debris_motion[4][3] == Ending.SPRITE_DEBRIS_LAST_DURATION,
       "0x5BE62 debris motion rows and durations")
+local expected_object_a_motion = {
+    { 0x000, 0x000, 0x0A0 }, { 0x033, 0x033, 0x00A },
+    { 0x033, 0x066, 0x00A }, { 0x066, 0x066, 0x00A },
+    { 0x099, 0x099, 0x00A }, { 0x066, 0x099, 0x00A },
+    { 0x000, 0x000, 0x064 }, { 0x000, 0x080, 0x046 },
+    { 0x000, 0x000, 0x000 },
+}
+local expected_object_b_motion = {
+    { 0x000, 0x000, 0x0AA }, { 0x033, 0x033, 0x014 },
+    { 0x033, 0x066, 0x00A }, { 0x099, 0x0CC, 0x00A },
+    { 0x000, 0x000, 0x064 }, { 0x000, 0x080, 0x046 },
+    { 0x000, 0x000, 0x000 }, { 0x000, 0x000, 0x0A0 },
+}
+for _, motion in ipairs({
+    { Timeline.data.object_a_motion, expected_object_a_motion,
+      "0x5C1FA object A" },
+    { Timeline.data.object_b_motion, expected_object_b_motion,
+      "0x5C1D0 object B" },
+}) do
+    check(#motion[1] == #motion[2], motion[3] .. " row count")
+    for row, expected in ipairs(motion[2]) do
+        check(motion[1][row][1] == expected[1] and
+              motion[1][row][2] == expected[2] and
+              motion[1][row][3] == expected[3],
+              motion[3] .. " row " .. row)
+    end
+end
 
 Timeline.reset()
 for frame_t = 0, Ending.SPRITE_DEBRIS_SAMPLE_T do
@@ -190,6 +225,19 @@ end
 check(debris_registers[13] == Ending.SPRITE_DEBRIS_X_START +
       debris_velocity_sum,
       "0x5BD6A applies each 0x5BE62 X velocity for its table duration")
+
+Timeline.reset()
+local object_window_open = sprite_list_addresses(Timeline.sprite_frame(
+    Ending.SPRITE_OBJECTS_END_T - 1,
+    Ending.SPRITE_OBJECTS_END_T - 1, 0))
+Timeline.reset()
+local object_window_closed = sprite_list_addresses(Timeline.sprite_frame(
+    Ending.SPRITE_OBJECTS_END_T, Ending.SPRITE_OBJECTS_END_T, 0))
+check(has_sprite_list(object_window_open, SpriteList.OBJECT_A) and
+      has_sprite_list(object_window_open, SpriteList.OBJECT_B) and
+      not has_sprite_list(object_window_closed, SpriteList.OBJECT_A) and
+      not has_sprite_list(object_window_closed, SpriteList.OBJECT_B),
+      "0x5C0A6 emits both objects only for t < 0x17C")
 
 Timeline.reset()
 local city_sprite_lists = sprite_list_addresses(Timeline.sprite_frame(

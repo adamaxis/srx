@@ -1565,6 +1565,10 @@ void FieldSceneRuntime::advance_tarislar_tomb_ending_presentation() {
 
     tarislar_tomb_ending_presentation_active_ = false;
     source_boundary("ending.presentation.loop_complete:0x5C3B4");
+    // The ROM timeline has now replaced the warning dialogue with credits.
+    // Discard its frozen host modal-return fade before painting the first page.
+    field_modal_return_transition_frames_remaining_ = 0U;
+    field_palette_fade_steps_ = 0U;
     if (!field_dialogue_.open_gameplay_task(
             scripting::ScriptDialogueSource::cinematic,
             "tarislar_tomb_credits", "present")) {

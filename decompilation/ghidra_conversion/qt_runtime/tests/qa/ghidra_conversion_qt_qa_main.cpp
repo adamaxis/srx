@@ -45838,6 +45838,14 @@ int run_field_tarislar_tomb_ending_presentation_qa(
     constexpr std::uint32_t kCitySpriteList = 0x1EF936U; // ROM 0x5C02E [C].
     constexpr std::uint32_t kScatterSpriteList = 0x1EF988U; // ROM 0x5BD6A [C].
     constexpr std::uint32_t kDebrisSpriteList = 0x1EFAAAU; // ROM 0x5BD6A [C].
+    constexpr std::uint32_t kObjectASpriteList = 0x1EFC66U; // ROM 0x5C0A6 [C].
+    constexpr std::uint32_t kObjectBSpriteList = 0x1EFC34U; // ROM 0x5C0A6 [C].
+    constexpr std::size_t kObjectAMotionTable = 0x5C1FAU; // ROM [C].
+    constexpr std::size_t kObjectBMotionTable = 0x5C1D0U; // ROM [C].
+    constexpr std::size_t kObjectAMotionRows = 9U;
+    constexpr std::size_t kObjectBMotionRows = 8U;
+    constexpr std::uint16_t kObjectInitialX = 0x24C0U; // 0x5C06C [C].
+    constexpr std::uint16_t kObjectInitialY = 0x37C0U; // 0x5C06C [C].
     constexpr std::array<std::uint32_t, 6U> kFlashSpriteLists{{
         0x1EFCA8U, 0x1EFCB2U, 0x1EFCCCU,
         0x1EFD0EU, 0x1EFD48U, 0x1EFD6AU,
@@ -45912,6 +45920,51 @@ int run_field_tarislar_tomb_ending_presentation_qa(
                    entry[3] == expected_tile && entry[4] == expected_x;
         });
     };
+    const auto first_sat_index_for_list = [&rom_sprite_list](
+        const std::vector<std::uint32_t>& lists,
+        const std::uint32_t address) {
+        std::size_t index = 0U;
+        for (const auto list_address : lists) {
+            if (list_address == address) return index;
+            index += rom_sprite_list(list_address).size();
+        }
+        return std::numeric_limits<std::size_t>::max();
+    };
+    const auto rom_motion_position = [&rom_word, &signed_word](
+        const std::size_t table, const std::size_t rows,
+        const std::uint16_t start_x, const std::uint16_t start_y,
+        std::uint32_t calls) {
+        std::int32_t x_sum = 0;
+        std::int32_t y_sum = 0;
+        constexpr std::size_t kMotionRecordBytes = 6U;
+        for (std::size_t row = 0U; row < rows && calls > 0U; ++row) {
+            const auto record = table + row * kMotionRecordBytes;
+            const auto dx = signed_word(rom_word(record));
+            const auto dy = signed_word(rom_word(record + 2U));
+            const auto duration = static_cast<std::uint32_t>(
+                rom_word(record + 4U));
+            if (duration == 0U) break;
+            const auto active_calls = std::min(calls, duration);
+            x_sum += dx * static_cast<std::int32_t>(active_calls);
+            y_sum += dy * static_cast<std::int32_t>(active_calls);
+            calls -= active_calls;
+        }
+        return std::pair<std::uint16_t, std::uint16_t>{
+            static_cast<std::uint16_t>(start_x + x_sum),
+            static_cast<std::uint16_t>(start_y + y_sum)};
+    };
+    const auto image_has_multiple_colors = [](const QImage& image) {
+        if (image.isNull() || image.width() < 1 || image.height() < 1) {
+            return false;
+        }
+        const auto first_pixel = image.pixel(0, 0);
+        for (int y = 0; y < image.height(); ++y) {
+            for (int x = 0; x < image.width(); ++x) {
+                if (image.pixel(x, y) != first_pixel) return true;
+            }
+        }
+        return false;
+    };
     using TimedSound = std::pair<std::uint16_t, std::uint16_t>;
     constexpr std::array<TimedSound, 20U> kExpectedSounds{{
         {0x001U, kSound35}, {0x01CU, kSound35}, {0x030U, kSound35},
@@ -45964,9 +46017,14 @@ int run_field_tarislar_tomb_ending_presentation_qa(
     bool line_0_palette_matches = false;
     bool line_3_palette_and_scroll_matches = false;
     bool sat_t20_matches = false;
+    bool objects_t20_matches = false;
     bool debris_ta0_matches = false;
+    bool object_a_tb0_matches = false;
     bool city_t200_matches = false;
     bool main_and_city_absent_t360 = false;
+    bool objects_absent_t180 = false;
+    bool ending_frame_saves = true;
+    std::map<std::uint16_t, QImage> ending_render_frames;
     auto audio_cursor = audio_start;
     const auto capture_audio = [&] {
         while (audio_cursor < field_audio_events.size()) {
@@ -45997,9 +46055,13 @@ int run_field_tarislar_tomb_ending_presentation_qa(
                 field_scene.tarislar_tomb_ending_sat_list_addresses_for_dump();
             const auto& main = rom_sprite_list(kMainSpriteList);
             const auto& scatter = rom_sprite_list(kScatterSpriteList);
-            bool list_order_matches = lists.size() == 5U &&
+            const auto& object_a = rom_sprite_list(kObjectASpriteList);
+            const auto& object_b = rom_sprite_list(kObjectBSpriteList);
+            bool list_order_matches = lists.size() == 7U &&
                 lists.front() == kMainSpriteList &&
-                lists.back() == kScatterSpriteList &&
+                lists[4] == kScatterSpriteList &&
+                lists[5] == kObjectASpriteList &&
+                lists[6] == kObjectBSpriteList &&
                 (lists[1] == 0x1EFB9EU || lists[1] == 0x1EFBB8U) &&
                 std::find(kSparkSpriteLists.begin(), kSparkSpriteLists.end(),
                           lists.size() > 2U ? lists[2] : 0U) !=
@@ -46007,12 +46069,9 @@ int run_field_tarislar_tomb_ending_presentation_qa(
             const bool flash_list_matches = lists.size() > 3U &&
                 std::find(kFlashSpriteLists.begin(), kFlashSpriteLists.end(),
                           lists[3]) != kFlashSpriteLists.end();
-            std::size_t expected_entries = 1U + main.size() + scatter.size();
-            if (lists.size() == 5U) {
-                for (std::size_t list_index = 1U; list_index < 4U;
-                     ++list_index) {
-                    expected_entries += rom_sprite_list(lists[list_index]).size();
-                }
+            std::size_t expected_entries = 1U;
+            for (const auto list_address : lists) {
+                expected_entries += rom_sprite_list(list_address).size();
             }
             bool first_piece_matches = !sat.empty() && !main.empty();
             if (first_piece_matches) {
@@ -46026,14 +46085,28 @@ int run_field_tarislar_tomb_ending_presentation_qa(
                     sat.front()[4] == static_cast<std::uint16_t>(
                         0x0188U + signed_word(piece[0]));
             }
+            const auto object_a_index = first_sat_index_for_list(
+                lists, kObjectASpriteList);
+            const auto object_b_index = first_sat_index_for_list(
+                lists, kObjectBSpriteList);
+            objects_t20_matches = list_order_matches && !sat.empty() &&
+                object_a.size() == 8U && object_b.size() == 6U &&
+                object_a_index < sat.size() && object_b_index < sat.size() &&
+                sat[object_a_index][4] == static_cast<std::uint16_t>(
+                    (kObjectInitialX >> 6U) + signed_word(object_a.front()[0])) &&
+                sat[object_b_index][4] == static_cast<std::uint16_t>(
+                    (kObjectInitialX >> 6U) + signed_word(object_b.front()[0]));
             sat_t20_matches = list_order_matches && flash_list_matches &&
                 scatter.size() == 36U && sat.size() + 1U == expected_entries &&
-                first_piece_matches && !sat.empty() && sat.back()[2] == 0U;
+                first_piece_matches && objects_t20_matches && !sat.empty() &&
+                sat.back()[2] == 0U;
         } else if (sprite_t == 0x0A0U) {
             const auto sat = field_scene.tarislar_tomb_ending_sat_for_dump();
             const auto lists =
                 field_scene.tarislar_tomb_ending_sat_list_addresses_for_dump();
             const auto& debris = rom_sprite_list(kDebrisSpriteList);
+            const auto debris_first_index = first_sat_index_for_list(
+                lists, kDebrisSpriteList);
             std::int32_t velocity_sum = 0;
             constexpr std::size_t kDebrisMotionTable = 0x5BE62U;
             constexpr std::size_t kMotionRecordBytes = 6U;
@@ -46055,12 +46128,11 @@ int run_field_tarislar_tomb_ending_presentation_qa(
             }
             const auto fixed_x = static_cast<std::uint16_t>(
                 0x40C0U + velocity_sum);
-            debris_ta0_matches = !debris.empty() && !sat.empty() &&
-                !lists.empty() && lists.back() == kDebrisSpriteList &&
-                debris.size() == 22U && sat.size() >= debris.size();
+            debris_ta0_matches = !debris.empty() &&
+                debris.size() == 22U && debris_first_index < sat.size() &&
+                sat.size() - debris_first_index >= debris.size();
             if (debris_ta0_matches) {
                 const auto& piece = debris.front();
-                const auto debris_first_index = sat.size() - debris.size();
                 debris_ta0_matches = sat[debris_first_index][4] ==
                     static_cast<std::uint16_t>(
                         (fixed_x >> 6U) + signed_word(piece[0]));
@@ -46075,6 +46147,49 @@ int run_field_tarislar_tomb_ending_presentation_qa(
                 std::cerr << "debris t=A0: lists=" << lists.size()
                           << " sat=" << sat.size()
                           << " debris_pieces=" << debris.size() << "\n";
+            }
+        } else if (sprite_t == 0x0B0U) {
+            const auto sat = field_scene.tarislar_tomb_ending_sat_for_dump();
+            const auto lists =
+                field_scene.tarislar_tomb_ending_sat_list_addresses_for_dump();
+            const auto& object_a = rom_sprite_list(kObjectASpriteList);
+            const auto& object_b = rom_sprite_list(kObjectBSpriteList);
+            const auto position = rom_motion_position(
+                kObjectAMotionTable, kObjectAMotionRows,
+                kObjectInitialX, kObjectInitialY,
+                static_cast<std::uint32_t>(sprite_t) + 1U);
+            const auto position_b = rom_motion_position(
+                kObjectBMotionTable, kObjectBMotionRows,
+                kObjectInitialX, kObjectInitialY,
+                static_cast<std::uint32_t>(sprite_t) + 1U);
+            const auto object_a_index = first_sat_index_for_list(
+                lists, kObjectASpriteList);
+            const auto object_b_index = first_sat_index_for_list(
+                lists, kObjectBSpriteList);
+            object_a_tb0_matches = lists.size() >= 2U &&
+                lists[lists.size() - 2U] == kObjectASpriteList &&
+                lists.back() == kObjectBSpriteList &&
+                !object_a.empty() && !object_b.empty() &&
+                object_a_index < sat.size() && object_b_index < sat.size() &&
+                sat[object_a_index][4] == static_cast<std::uint16_t>(
+                    (position.first >> 6U) + signed_word(object_a.front()[0])) &&
+                sat[object_a_index][0] == static_cast<std::uint16_t>(
+                    (position.second >> 6U) + signed_word(object_a.front()[1])) &&
+                sat[object_b_index][4] == static_cast<std::uint16_t>(
+                    (position_b.first >> 6U) + signed_word(object_b.front()[0])) &&
+                sat[object_b_index][0] == static_cast<std::uint16_t>(
+                    (position_b.second >> 6U) + signed_word(object_b.front()[1]));
+            if (!object_a_tb0_matches) {
+                std::cerr << "object A t=B0: fixed=(0x" << std::hex
+                          << position.first << ",0x" << position.second
+                          << ") sat_index=" << std::dec << object_a_index
+                          << " lists=" << lists.size();
+                if (object_a_index < sat.size()) {
+                    std::cerr << " actual=(0x" << std::hex
+                              << sat[object_a_index][4] << ",0x"
+                              << sat[object_a_index][0] << ")";
+                }
+                std::cerr << '\n';
             }
         } else if (sprite_t == 0x200U) {
             const auto sat = field_scene.tarislar_tomb_ending_sat_for_dump();
@@ -46131,6 +46246,15 @@ int run_field_tarislar_tomb_ending_presentation_qa(
                 std::find(lists.begin(), lists.end(), kMainEndSpriteList) ==
                     lists.end() &&
                 std::find(lists.begin(), lists.end(), kCitySpriteList) ==
+                    lists.end();
+        }
+        if (sprite_t == 0x180U) {
+            const auto lists =
+                field_scene.tarislar_tomb_ending_sat_list_addresses_for_dump();
+            objects_absent_t180 =
+                std::find(lists.begin(), lists.end(), kObjectASpriteList) ==
+                    lists.end() &&
+                std::find(lists.begin(), lists.end(), kObjectBSpriteList) ==
                     lists.end();
         }
         if (field_scene.tarislar_tomb_ending_t_for_dump() == 0x2A3U) {
@@ -46208,6 +46332,30 @@ int run_field_tarislar_tomb_ending_presentation_qa(
                 model->name_word(qt_runtime::VdpPlane::plane_a, 1U, 2U) ==
                     0x05D6U;
         }
+        if (sprite_t == 0x020U || sprite_t == 0x196U ||
+            sprite_t == 0x26DU || sprite_t == 0x2BCU) {
+            auto image = render_qa_field(field_scene);
+            const auto filename = QString::fromStdWString(
+                (output / ("ending-t" + std::to_string(sprite_t) + ".bmp"))
+                    .wstring());
+            const bool correct_size =
+                image.size() == QSize(kSceneWidth, kSceneHeight);
+            const bool multiple_colors = image_has_multiple_colors(image);
+            const bool saved = image.save(filename);
+            ending_frame_saves = ending_frame_saves && correct_size &&
+                multiple_colors && saved;
+            if (!correct_size || !multiple_colors || !saved) {
+                std::cerr << "ending render t=0x" << std::hex << sprite_t
+                          << std::dec << " size=" << image.width() << 'x'
+                          << image.height() << " multiple_colors="
+                          << multiple_colors << " rgb0="
+                          << image.pixelColor(0, 0).red() << ','
+                          << image.pixelColor(0, 0).green() << ','
+                          << image.pixelColor(0, 0).blue() << " saved=" << saved
+                          << '\n';
+            }
+            ending_render_frames.emplace(sprite_t, std::move(image));
+        }
     }
     if (observed_sounds.size() != kExpectedSounds.size() ||
         !std::equal(observed_sounds.begin(), observed_sounds.end(),
@@ -46253,7 +46401,37 @@ int run_field_tarislar_tomb_ending_presentation_qa(
         "ending.presentation.rom_event:0x5C842";
     constexpr std::string_view kChoreographyThree =
         "ending.presentation.rom_event:0x5C88C";
+    // The last presentation tick opens the first credits page at 0x5C3B4.
     const auto first_page = render_qa_field(field_scene);
+    if (!image_has_multiple_colors(first_page)) {
+        std::cerr << "credits render state: fade_steps="
+                  << static_cast<unsigned>(
+                         field_scene.field_palette_fade_steps_for_dump())
+                  << " modal_return_frames="
+                  << static_cast<unsigned>(field_scene
+                                               .field_modal_return_transition_frames_for_dump())
+                  << " transition_phase="
+                  << static_cast<unsigned>(field_scene
+                                               .elevator_scene_transition_phase_for_dump())
+                  << " dialogue=" << field_scene.dialogue_open() << '\n';
+    }
+    bool ending_render_check_matches = ending_frame_saves &&
+        ending_render_frames.size() == 4U &&
+        image_has_multiple_colors(first_page);
+    for (const auto t : {std::uint16_t{0x020U}, std::uint16_t{0x196U},
+                         std::uint16_t{0x26DU}, std::uint16_t{0x2BCU}}) {
+        const auto found = ending_render_frames.find(t);
+        ending_render_check_matches = ending_render_check_matches &&
+            found != ending_render_frames.end() &&
+            found->second.size() == QSize(kSceneWidth, kSceneHeight) &&
+            image_has_multiple_colors(found->second);
+    }
+    const auto early_render = ending_render_frames.find(0x020U);
+    const auto city_render = ending_render_frames.find(0x196U);
+    ending_render_check_matches = ending_render_check_matches &&
+        early_render != ending_render_frames.end() &&
+        city_render != ending_render_frames.end() &&
+        early_render->second != city_render->second;
     if (suffix_count(kSparseSpawnEvent) != 8U ||
         suffix_count(kEntityUpdateEvent) != kLoopIterationCount ||
         suffix_count(kChoreographyOne) != 1U ||
@@ -46263,8 +46441,10 @@ int run_field_tarislar_tomb_ending_presentation_qa(
         !plane_a_map_survived_plane_b_clear ||
         !line_0_palette_matches || !line_3_palette_and_scroll_matches ||
         !sprite_rom_lists_valid || !sat_t20_matches ||
-        !debris_ta0_matches || !city_t200_matches ||
+        !objects_t20_matches || !debris_ta0_matches ||
+        !object_a_tb0_matches || !objects_absent_t180 || !city_t200_matches ||
         !main_and_city_absent_t360 ||
+        !ending_render_check_matches ||
         !final_name_map_matches ||
         field_scene.tarislar_tomb_ending_t_for_dump() != 1007U ||
         field_scene.tarislar_tomb_ending_fff1e6_for_dump() != 0x26U ||
@@ -46277,9 +46457,19 @@ int run_field_tarislar_tomb_ending_presentation_qa(
             (output / "ending-credits-first-page.bmp").wstring()))) {
         std::cerr << "sprite checks: rom=" << sprite_rom_lists_valid
                   << " t20=" << sat_t20_matches
+                  << " objects_t20=" << objects_t20_matches
                   << " ta0=" << debris_ta0_matches
+                  << " object_a_tb0=" << object_a_tb0_matches
+                  << " objects_t180=" << objects_absent_t180
                   << " t200=" << city_t200_matches
-                  << " t360=" << main_and_city_absent_t360 << "\n";
+                  << " t360=" << main_and_city_absent_t360
+                  << " renders=" << ending_render_check_matches
+                  << " render_frames=" << ending_render_frames.size()
+                  << " credits_nonuniform="
+                  << image_has_multiple_colors(first_page)
+                  << " credits_rgb0=" << first_page.pixelColor(0, 0).red()
+                  << ',' << first_page.pixelColor(0, 0).green() << ','
+                  << first_page.pixelColor(0, 0).blue() << '\n';
         std::cerr << "Tarislar Tomb ending QA: loop events or credits handoff "
                      "or SAT sprite timeline did not match ROM "
                      "0x5BD2C/0x5BEA2/0x5C02E/0x5C336/0x5BD6A\n";

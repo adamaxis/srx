@@ -21391,6 +21391,12 @@ void FieldSceneRuntime::paint(QPainter& target_painter) const {
         target_painter.fillRect(0, 0, 320, 224, Qt::black);
         return;
     }
+    if (tarislar_tomb_ending_presentation_active_) {
+        // The ROM ending timeline owns the field display; the warning
+        // dialogue remains in its host task until the 0x5C3B4 handoff.
+        paint_field_scene(target_painter);
+        return;
+    }
 
     if (command_overview_return_transition_active_ &&
         command_overview_return_transition_phase_ ==
