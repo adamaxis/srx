@@ -906,6 +906,18 @@ for _, name in ipairs(targets) do
       return table.concat({ tostring(r[1]), r[1] and ser({ table.unpack(r, 2, r.n) }) or H.norm_err(r[2]), ser(s), ser(c), ser(g.actors), ser(x), service_log }, "|")
     end
     total = total + 1
+    if (name == "snapshot" or name == "projectile_heartbeat") and
+       ra[1] and type(ra[2]) == "table" and type(sB) == "table" and
+       (sB.damage_reaction_active == true or
+        (type(REG.action_movement_locked) == "function" and
+         REG.action_movement_locked(sB))) then
+      -- Post-split ROM fixes (#38 lockout, 44a6b445c hurt/down hold; ROM
+      -- 0xB07E/0xB330) withhold the stored route's movement facts while a
+      -- held pose owns the actor service. The frozen reference predates
+      -- them; combat_engine_tests.lua covers the hold itself.
+      ra[2].movement_bearing_degrees = nil
+      ra[2].movement_route_distance = nil
+    end
     local signature_a = sig(ra, sA, cA, gameA, logA, xA)
     local signature_b = sig(rb, sB, cB, gameB, logB, xB)
     if signature_a ~= signature_b then
