@@ -57,6 +57,35 @@ local function wait_for_elevator_selector(host, frames)
     return host.snapshot().elevator_open
 end
 
+local kSecurityGuardPrompt = "A secuity guard spots you."
+
+-- ROM 0x242FA's roaming Scene-30 guard may stop the runner anywhere on the
+-- lift approach. Show the setup-granted ID through the live dialogue.
+local function pass_security_guard(host)
+    wait_panel(host, kSecurityGuardPrompt)
+    tap(host, "A")
+    local result = wait_panel_any(host, {
+        "You show the ID, and he waves you past.",
+        "He checks your ID and calls dispatch to verify it.",
+    })
+    if result == "He checks your ID and calls dispatch to verify it." then
+        tap(host, "A")
+        result = wait_panel_any(host, {
+            "Dispatch verifies his check and he waves you by.",
+            "Dispatch comes back negative and sounds the alert.",
+        })
+    end
+    assert(result ~= "Dispatch comes back negative and sounds the alert.",
+        "ROM 0x24392 rejected the granted security pass")
+    tap(host, "A")
+    for _ = 1, 120 do
+        if not host.snapshot().dialogue_open then break end
+        advance(host, 1)
+    end
+    assert(not host.snapshot().dialogue_open,
+        "security guard result did not return to the field")
+end
+
 local function source_walk_bound(raw_distance)
     return math.floor((raw_distance + kMinimumStepRaw - 1) /
         kMinimumStepRaw) + 256 -- ROM QA heading/event settling allowance [C]
@@ -68,7 +97,11 @@ local function walk_to(host, button, limit, poll_frames, reached, failure)
         local chunk = math.min(poll_frames, limit - elapsed)
         local modal, problem = host.hold_until_modal(button, chunk)
         assert(not problem, problem or failure)
-        assert(not modal, "unexpected modal while walking to Mitsuhama lift")
+        if modal then
+            -- Any other modal fails in wait_panel's bounded wait.
+            pass_security_guard(host)
+            modal = false
+        end
         elapsed = elapsed + chunk
         local position = host.snapshot()
         if reached(position) then return position end
@@ -141,28 +174,7 @@ local function ride_to_floor_four(host)
     if opened then
         -- ROM 0x242FA tests FFFC22 bit 10; complete its live ID check before
         -- resuming UP toward event 29. The item is setup, the dialogue is live.
-        wait_panel(host, "A secuity guard spots you.")
-        tap(host, "A")
-        local result = wait_panel_any(host, {
-            "You show the ID, and he waves you past.",
-            "He checks your ID and calls dispatch to verify it.",
-        })
-        if result == "He checks your ID and calls dispatch to verify it." then
-            tap(host, "A")
-            result = wait_panel_any(host, {
-                "Dispatch verifies his check and he waves you by.",
-                "Dispatch comes back negative and sounds the alert.",
-            })
-        end
-        assert(result ~= "Dispatch comes back negative and sounds the alert.",
-            "ROM 0x24392 rejected the granted security pass")
-        tap(host, "A")
-        for _ = 1, 120 do
-            if not host.snapshot().dialogue_open then break end
-            advance(host, 1)
-        end
-        assert(not host.snapshot().dialogue_open,
-            "security guard result did not return to the field")
+        pass_security_guard(host)
         opened, movement_error = host.hold_until_modal(
             "UP", source_walk_bound(kElevatorLaneY - kElevatorEventY))
     end
@@ -182,6 +194,9 @@ local function ride_to_floor_four(host)
 end
 
 return {
+    -- Shared with route_w3: the real-pad Scene-30 lift ride (guard ID check
+    -- at ROM 0x242FA, event 29 selector, floor 4 / activity 34).
+    ride_to_floor_four = ride_to_floor_four,
     steps = {
         {
             id = "enter_mitsuhama_after_hours_for_aragorn_contact",

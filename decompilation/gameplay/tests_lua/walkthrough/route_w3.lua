@@ -279,44 +279,19 @@ return {
             end,
         },
         {
-            id = "grant_salish_visa_for_mitsuhama_return",
-            milestone = 3,
-            expected = {
-                scene = scene_penumbra,
-                group_items = { set = { visa } },
-            },
-            run = function(host)
-                assert(host.grant_group_item(visa)) -- Route setup grant: restore the visa consumed by the first Salish cab fare.
-                return "restored the travel-only visa for the second Salish visit"
-            end,
-        },
-        {
-            id = "taxi_penumbra_to_salish",
-            milestone = 3,
-            expected = {
-                scene = scene_salish,
-                nuyen_delta = -100,
-                group_items = { clear = { visa } },
-            },
-            run = function(host)
-                ride_taxi(host, scene_penumbra, 3328, 3840,
-                    Taxi.Region.PENUMBRA_DISTRICT,
-                    Taxi.Region.SALISH_SHIDHE, scene_salish)
-                return "returned by physical cab to Salish after the Mortimer lead"
-            end,
-        },
-        {
             id = "enter_after_hours_mitsuhama",
             milestone = 4,
-            expected = {
-                scene = E.Scene.RESOURCE_ACTIVITY_30,
-                panel_text_contains = "Hopefully Aragorn is still here",
-            },
+            -- run() asserts the entry page text before dismissing it; the
+            -- post-step snapshot is already inside resource scene 30.
+            expected = { scene = E.Scene.RESOURCE_ACTIVITY_30 },
             run = function(host)
                 place_and_enter(host, scene_penumbra, 11520, 3072,
                     "Penumbra record 95 after-hours Mitsuhama entry")
                 wait_panel(host, "Hopefully Aragorn is still here")
                 tap(host, "A")
+                -- Two ROM field-transition cadences (34 VBlanks each) settle
+                -- the building transition onto placement 0x1DAFE0.
+                neutral_frames(host, 2 * 34)
                 assert(host.wait_for_scene(E.Scene.RESOURCE_ACTIVITY_30, 180),
                     "Mitsuhama after-hours row 3 did not enter resource scene 30")
                 return "source-gated scene-3 event-3 entry reached Mitsuhama activity scene 30"
@@ -325,20 +300,18 @@ return {
         {
             id = "ride_mitsuhama_elevator_to_scene_34",
             milestone = 4,
-            expected = { scene = scene_mitsuhama_floor },
+            expected = {
+                scene = scene_mitsuhama_floor,
+                group_items = { set = { E.GroupItemId.SECURITY_PASS } },
+            },
             run = function(host)
-                local placed, placement_error = host.place_within_scene(
-                    E.Scene.RESOURCE_ACTIVITY_30, 14592, 17152)
-                assert(placed, placement_error or "scene-30 lift placement failed")
-                local opened, movement_error = host.hold_until_modal("UP", 600)
-                assert(opened, movement_error or "Mitsuhama lift did not open")
-                for _ = 1, 4 do tap(host, "UP") end
-                tap(host, "A")
-                neutral_frames(host, 140)
-                tap(host, "START")
-                assert(host.wait_for_scene(scene_mitsuhama_floor, 180),
-                    "Mitsuhama elevator did not reach floor 4 / scene 34")
-                return "used the source elevator selector from scene 30 to scene 34"
+                -- Route setup grant: ROM 0x242FA's Scene-30 guard takes the
+                -- ID branch from FFFC22 bit 10; the guard dialogue is live.
+                assert(host.grant_group_item(E.GroupItemId.SECURITY_PASS),
+                    "ROM 0x242FA security-pass setup grant failed")
+                return require(
+                    "walkthrough.route_beat_w3_aragorn_mitsuhama_contact")
+                    .ride_to_floor_four(host)
             end,
         },
         {
@@ -392,9 +365,15 @@ return {
                 assert(placed, placement_error or "scene-34 lift placement failed")
                 local opened, movement_error = host.hold_until_modal("UP", 600)
                 assert(opened, movement_error or "scene-34 lift did not open")
-                for _ = 1, 4 do tap(host, "DOWN") end
+                -- Same cadence as route_beat_w3_mitsuhama_elevator_return:
+                -- selector feedback after each press, then four floors of
+                -- 17*8-frame lift animation before START.
+                for _ = 1, 4 do
+                    tap(host, "DOWN")
+                    neutral_frames(host, 10)
+                end
                 tap(host, "A")
-                neutral_frames(host, 140)
+                neutral_frames(host, 4 * 17 * 8)
                 tap(host, "START")
                 assert(host.wait_for_scene(E.Scene.RESOURCE_ACTIVITY_30, 180),
                     "Mitsuhama elevator did not return to scene 30")
@@ -409,7 +388,8 @@ return {
                 local placed, placement_error = host.place_within_scene(
                     E.Scene.RESOURCE_ACTIVITY_30, 7936, 19712)
                 assert(placed, placement_error or "scene-30 return placement failed")
-                local exited, exit_error = host.hold_until_modal("DOWN", 600)
+                local exited, exit_error = host.hold_until_modal(
+                    "DOWN", 600, scene_penumbra)
                 assert(exited, exit_error or "scene-30 source return did not open")
                 assert(host.wait_for_scene(scene_penumbra, 180),
                     "Mitsuhama source return did not restore Penumbra")
@@ -484,6 +464,12 @@ return {
                     tap(host, "A")
                     wait_panel(host, text)
                 end
+                -- The reunion ends back on Owlfeather's topic menu; Thanks
+                -- (C) leaves it, matching route_beat_w3_owlfeather_return_service.
+                tap(host, "C")
+                wait_panel(host, "Sure thing.")
+                tap(host, "A")
+                wait_panel(host, "Farewell, and may the spirits guide you.")
                 tap(host, "A")
                 assert(not host.snapshot().dialogue_open,
                     "Owlfeather reunion did not return to the field")

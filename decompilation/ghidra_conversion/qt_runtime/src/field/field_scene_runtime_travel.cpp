@@ -363,7 +363,12 @@ bool FieldSceneRuntime::transition_to_field_destination(
     field_runtime_state_.scene_id = scene_reference;
     field_runtime_state_.field_mode =
         state_.field_scene_buffers.field_resource_mode;
-    field_runtime_state_.field_scene_gate = 0U;
+    // FFDF40: 0x136E4 clears it for taxi/dialogue/vid-phone travel, but the
+    // elevator floor load 0x16A8E leaves it set, so 0x0992 still routes the
+    // ground-floor exit through the building return branch at 0x0A72.
+    if (route != FieldDestinationTransitionRoute::elevator) {
+        field_runtime_state_.field_scene_gate = 0U;
+    }
     field_runtime_state_.field_transition_requested = false;
     field_runtime_state_.pending_field_scene_handler = false;
     field_runtime_state_.field_activity_lock = false;
@@ -378,7 +383,12 @@ bool FieldSceneRuntime::transition_to_field_destination(
     world_activity_routine_state_ = WorldActivityRoutineState{};
     world_activity_request_outcome_.reset();
     world_activity_request_start_state_ = WorldActivityStartState{};
-    world_activity_return_snapshot_.reset();
+    // The building return anchor (FFDF40/FFDF44, written by 0x167AE/0xBC66)
+    // survives elevator floor loads: 0x16A8E writes neither, so leaving the
+    // ground floor after a lift ride still restores the source street map.
+    if (route != FieldDestinationTransitionRoute::elevator) {
+        world_activity_return_snapshot_.reset();
+    }
     field_weapon_projectiles_.clear();
     field_hit_sparks_.clear();
     // ROM scene entry 0x16AB8 tears down the global barrier through 0x4B6C [C].
