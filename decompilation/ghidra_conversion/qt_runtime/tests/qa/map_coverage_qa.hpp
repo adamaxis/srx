@@ -422,7 +422,8 @@ inline std::optional<std::string> map_coverage_side_hint(
 
 inline std::uint8_t map_coverage_script_prompt_button(
     std::string_view script) {
-    if (script == "0x053F98" || script == "0x020484") {
+    if (script == "0x053F98" || script == "0x020484" ||
+        script == "0x01FEEE") {
         return 0x40U; // A accepts the ROM prompt branch.
     }
     if (script == "0x05432E") {
@@ -492,8 +493,10 @@ inline MapCoverageAttempt map_coverage_drive_rect(
     bool selector_done = false;
     std::uint32_t near_rect_frames = 0U;
     std::uint32_t prompt_inputs_used = 0U;
+    std::uint32_t next_prompt_frame = 0U;
     const auto prompt_button = map_coverage_script_prompt_button(script);
     const bool script_stays_on_scene = prompt_button != 0U;
+    const bool matchstick_dialogue = script == "0x01FEEE";
     std::uint16_t last_scene = starting_scene;
     if (row_category == "elevator" && source_scene >= 31U &&
         source_scene <= 34U) {
@@ -613,14 +616,20 @@ inline MapCoverageAttempt map_coverage_drive_rect(
                 result.backup_captured = true;
             }
         }
-        if (prompt_button != 0U && prompt_inputs_used < 1U &&
-            (runtime.dialogue_open() || runtime.field_mode_text_open_for_dump() ||
-             runtime.field_interaction_open()) &&
+        const bool prompt_open = runtime.dialogue_open() ||
+            runtime.field_mode_text_open_for_dump() ||
+            runtime.field_interaction_open();
+        if (prompt_button != 0U &&
+            (prompt_inputs_used < 1U || matchstick_dialogue) &&
+            frames_used >= next_prompt_frame && prompt_open &&
             frames_used + 2U <= frame_budget) {
             map_coverage_tap(runtime, prompt_button);
             frames_used += 2U;
             ++prompt_inputs_used;
             result.prompt_inputs = prompt_inputs_used;
+            if (matchstick_dialogue) {
+                next_prompt_frame = frames_used + 6U;
+            }
         }
         if (scene != source_scene || scene != last_scene ||
             (transition_pending && !script_stays_on_scene)) {
@@ -916,6 +925,17 @@ inline void map_coverage_set_mode(
     } else if (category == "travel" && scene <= 6U) {
         runtime.set_field_interaction_mode_for_dump(0U);
     }
+}
+
+inline bool map_coverage_prepare_rom_true_entry(
+    FieldSceneRuntime& runtime, const MapCoverageRow& entry) {
+    if (entry.row_id != "door-s00-r0d57be") {
+        return true;
+    }
+    // [C] The Matchstick entry checks Reputation >= 6 at ROM 0x22452.
+    constexpr std::uint8_t kMatchstickEntryReputation = 6U;
+    return runtime.set_active_runner_reputation_for_dump(
+        kMatchstickEntryReputation);
 }
 
 struct MapCoverageCaveRouteStep {
@@ -1804,6 +1824,9 @@ inline MapCoverageApproachProbe map_coverage_probe_approach_sides(
         if (!runtime.bootstrap_for_scene_dump(startup_state, source_scene)) {
             continue;
         }
+        if (!map_coverage_prepare_rom_true_entry(runtime, row)) {
+            continue;
+        }
         map_coverage_set_mode(
             runtime, row.category, source_scene, row.gate);
         const auto attempt = map_coverage_drive_rect(
@@ -1842,6 +1865,9 @@ inline MapCoverageApproachProbe map_coverage_probe_bexit_sides(
             probe.tried_sides += entry_side + ">" + exit_side;
             FieldSceneRuntime runtime([](std::string_view) {});
             if (!runtime.bootstrap_for_scene_dump(startup_state, *entry_scene)) {
+                continue;
+            }
+            if (!map_coverage_prepare_rom_true_entry(runtime, entry)) {
                 continue;
             }
             map_coverage_set_mode(runtime, entry.category, *entry_scene, entry.gate);
@@ -2362,7 +2388,11 @@ inline int run_map_coverage_qa(
                         results_path.parent_path(), field_audio_events,
                         source_boundaries)) {
                     attempt.setup = true;
-                    bool source_ready = true;
+                    bool source_ready =
+                        map_coverage_prepare_rom_true_entry(runtime, row);
+                    if (!source_ready) {
+                        attempt.note = "ROM entry prerequisite setup failed";
+                    }
                     std::string cave_route_evidence;
                     if (bexit_entry != std::string::npos) {
                         if (!bexit_entrance_passed) {
@@ -2378,6 +2408,10 @@ inline int run_map_coverage_qa(
                                 runtime.field_scene_reference_for_dump() != *outside_scene) {
                                 source_ready = false;
                                 attempt.note = "paired entrance scene could not be bootstrapped";
+                            } else if (!map_coverage_prepare_rom_true_entry(
+                                           runtime, *paired_entry)) {
+                                source_ready = false;
+                                attempt.note = "paired entrance ROM prerequisite setup failed";
                             } else {
                                 map_coverage_set_mode(
                                     runtime, paired_entry->category, *outside_scene,
@@ -2576,6 +2610,23 @@ inline int run_map_coverage_qa(
                         diff = attempt.note.empty()
                             ? "no map transition within 600 input frames"
                             : attempt.note;
+                        if (row.row_id == "door-s00-r0d57be") {
+                            std::size_t reported_dialogue_boundaries = 0U;
+                            for (const auto& boundary : source_boundaries) {
+                                if (boundary.rfind(
+                                        "field.dialogue.outcome.", 0U) == 0U ||
+                                    boundary ==
+                                        "field.dialogue.continued_in_place" ||
+                                    boundary ==
+                                        "field.dialogue.returned_to_field") {
+                                    diff += "dialogue=" + boundary + ";";
+                                    ++reported_dialogue_boundaries;
+                                    if (reported_dialogue_boundaries == 8U) {
+                                        break;
+                                    }
+                                }
+                            }
+                        }
                     } else if (status.empty()) {
                         bool matches = true;
                         const auto expected_destination =
