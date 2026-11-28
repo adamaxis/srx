@@ -942,6 +942,12 @@ inline int snapshot(lua_State* state) {
     lua_setfield(state, -2, "opening_auto_walk");
     lua_pushinteger(state, runtime.field_mode_event_code_for_dump());
     lua_setfield(state, -2, "event");
+    lua_pushinteger(state, static_cast<lua_Integer>(
+        runtime.default_actor_count_for_dump()));
+    lua_setfield(state, -2, "default_actor_count");
+    lua_pushinteger(state, static_cast<lua_Integer>(
+        runtime.dynamic_world_actor_count_for_dump()));
+    lua_setfield(state, -2, "dynamic_actor_count");
     // Live world-activity script actors (lists such as Scene-20 0xA8CC that
     // 0xA800 selects only while FFE182 is armed).
     lua_pushinteger(state, static_cast<lua_Integer>(
@@ -971,6 +977,8 @@ inline int snapshot(lua_State* state) {
             lua_setfield(state, -2, "script_actor_behavior_flags");
         }
     }
+    lua_pushboolean(state, runtime.world_effect_active_for_dump());
+    lua_setfield(state, -2, "world_effect_active");
     lua_pushboolean(state, runtime.pending_world_effect_for_dump());
     lua_setfield(state, -2, "pending_world_effect");
     lua_pushinteger(state, runtime.field_interaction_mode_for_dump());

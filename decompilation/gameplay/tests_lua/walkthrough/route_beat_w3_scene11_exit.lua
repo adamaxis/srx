@@ -15,6 +15,8 @@ local kOutsideInteractionMode = 0
 local kBuildingInteractionMode = 1
 local kInputFrames = 600
 local kSceneTransitionFrames = 180
+local kScene11ActivityActorId = "field_activity_scene_11_script_actor_0"
+local kScene11Lone11Profile = "lone11_k04_item03"
 
 local function press(host, button)
     local ok, problem = host.press(button)
@@ -58,6 +60,38 @@ return {
                 assert(host.wait_for_scene(E.Scene.BIG_RHINO,
                     kSceneTransitionFrames),
                     "Big Rhino event-table row 5 did not load Scene 11")
+                -- ROM list 0x17050 has one tagged Scene-11 row at
+                -- 0x17158. The world-activity table resolves it to this
+                -- lone11 template, source order 0, pool slot 3 [C].
+                local population = host.snapshot()
+                local actor_summaries =
+                    population.script_actor_summaries or ""
+                assert(not population.world_effect_active and
+                       not population.pending_world_effect,
+                    "Scene-11 entry unexpectedly armed an additional " ..
+                    "0xA800 FFE124 list")
+                assert(population.script_actor_count == 1,
+                    "Scene-11 list 0x17050 expected one script actor; got " ..
+                    tostring(population.script_actor_count) .. ": " ..
+                    actor_summaries)
+                assert(population.default_actor_count == 1,
+                    "Scene-11 ROM population expected one actor across the " ..
+                    "full pool; got " ..
+                    tostring(population.default_actor_count) .. ": " ..
+                    actor_summaries)
+                assert(population.dynamic_actor_count == 0,
+                    "Scene-11 ROM entry has no temporary encounter actors; " ..
+                    "got " .. tostring(population.dynamic_actor_count))
+                for _, expected in ipairs({
+                    "id=" .. kScene11ActivityActorId,
+                    "profile=" .. kScene11Lone11Profile,
+                    "source_order=0",
+                    "record_slot=3",
+                }) do
+                    assert(actor_summaries:find(expected, 1, true) ~= nil,
+                        "Scene-11 list 0x17050 population mismatch: " ..
+                        expected .. " in " .. actor_summaries)
+                end
                 -- 0x167AE sets FFDF40 = 1 for event-table scenes below
                 -- 0x15 (0x1684C); 0xEFC4 then refuses Save/Load here, so a
                 -- save can never be made without the door return point.
