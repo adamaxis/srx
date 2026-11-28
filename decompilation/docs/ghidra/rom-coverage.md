@@ -4,15 +4,15 @@ This is a structural source map, not a claim of behavioral ROM fidelity. A mappe
 
 The 66-entry historical B2 triage is recorded in [rom-coverage-triage.md](rom-coverage-triage.md) and [rom-coverage-triage.tsv](rom-coverage-triage.tsv). That ledger distinguishes port owners, host or asset replacements, and routines filed as missing bugs.
 
-Inventory: the union of `decompilation/docs/ghidra/decompiled-function-status.tsv` and `decompilation/export/functions.tsv`. The status ledger has 1088 rows; after address deduplication and including any export-only entries, the inventory contains **1085 routine entries** (911 unique Ghidra function exports). Ghidra names and sizes take precedence where the export list has the same address.
+Inventory: the union of `decompilation/docs/ghidra/decompiled-function-status.tsv` and `decompilation/export/functions.tsv`. The status ledger has 1096 rows; after address deduplication and including any export-only entries, the inventory contains **1093 routine entries** (911 unique Ghidra function exports). Ghidra names and sizes take precedence where the export list has the same address.
 
-Mapped: **731**. Unmapped backlog: **354**. Committed mapped-routine baseline: **726**.
+Mapped: **731**. Unmapped backlog: **362**. Committed mapped-routine baseline: **726**.
 
 | Inventory category | Entries | Mapped | Unmapped |
 |---|---:|---:|---:|
 | Ghidra code function exports | 911 | 562 | 349 |
-| Status-ledger-only addresses | 174 | 169 | 5 |
-| Combined unique addresses | 1085 | 731 | 354 |
+| Status-ledger-only addresses | 182 | 169 | 13 |
+| Combined unique addresses | 1093 | 731 | 362 |
 
 The `shadowrun_rom_coverage` CTest validates the current mapping references and fails if a routine in the baseline loses its mapping. Existing unmapped entries are reported but do not fail CTest. Run `python3 decompilation/ghidra_conversion/tools/rom_coverage.py --write-report` after updating the map.
 
@@ -20,8 +20,8 @@ The `shadowrun_rom_coverage` CTest validates the current mapping references and 
 
 | Status | Routines |
 |---|---:|
-| defended | 18 |
-| partial | 1066 |
+| defended | 19 |
+| partial | 1073 |
 | unclassified | 1 |
 
 ## Status ledger address conflicts
@@ -65,13 +65,13 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 
 | Group | Unmapped entries (combined) |
 |---|---:|
-| Core and shared | 82 |
-| Menus and dialogue | 80 |
+| Core and shared | 85 |
+| Menus and dialogue | 83 |
 | Field and world | 78 |
-| Actors and movement | 70 |
+| Actors and movement | 71 |
 | Opening and story | 25 |
 | Presentation and audio | 16 |
-| Combat and magic | 3 |
+| Combat and magic | 4 |
 
 | Group | Unmapped Ghidra code routines |
 |---|---:|
@@ -824,6 +824,7 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | ROM entry | Routine | Size (bytes) | Subsystem | Status |
 |---|---|---:|---|---|
 | `0x0436` | write_startup_text_to_vdp | 54 | startup text transfer | partial |
+| `0x0A12` | cave exit collision dispatch | — | cave exit collision dispatch | partial |
 | `0x0C2C` | clear_runtime_memory_and_vdp | 192 | runtime memory/display initialization | partial |
 | `0x0CEC` | install_startup_vdp_table | 40 | startup VDP table | partial |
 | `0x0EC0` | upload_startup_palette | 38 | startup palette upload | partial |
@@ -1098,7 +1099,14 @@ Groups are keyword buckets derived from the Ghidra name and status-ledger subsys
 | `0x1F3C4` | run_mode_text_prompt | 484 | run mode text prompt | partial |
 | `0x1F5A8` | prepare_mode_text_prompt | 34 | prepare mode text prompt | partial |
 | `0x1F830` | prepare_field_mode_exit | 584 | Field mode exit policy | partial |
+| `0x20F12` | field random event dialogue | — | field random event dialogue | partial |
+| `0x20F2A` | Phantasmal watcher response | — | Phantasmal watcher response | partial |
+| `0x20F5A` | field random event dialogue | — | field random event dialogue | partial |
+| `0x210B4` | field random event dialogue | — | field random event dialogue | defended |
 | `0x2196C` | mark_effect_bit | 22 | effect bit marker | partial |
+| `0x23412` | shared Lone Star patrol Attack dispatcher | — | shared Lone Star patrol Attack dispatcher | partial |
+| `0x23452` | shared Lone Star patrol Comply dispatcher | — | shared Lone Star patrol Comply dispatcher | partial |
+| `0x23782` | Lone Star patrol Run dispatcher | — | Lone Star patrol Run dispatcher | partial |
 | `0x266E4` | initialize_world_tile_buffers | 186 | World tile-buffer initializer | partial |
 | `0x2679E` | run_world_entry_sequence | 326 | World entry sequence loop | partial |
 | `0x268E6` | append_world_sprite_records | 82 | world sprite record append | partial |
