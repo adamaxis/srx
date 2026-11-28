@@ -1893,6 +1893,16 @@ void FieldSceneRuntime::begin_field_door_return() {
     field_door_return_point_.valid = false;
     field_door_return_active_ = true;
     field_door_return_frame_ = 0U;
+    // The service handler that opened this page was dispatched by the
+    // coordinator's pending-handler leaf, whose 0x2BD2 re-entry the host
+    // deferred while the page owned the frame. In the ROM that handler
+    // blocks until 0xDB20 returns d6=-1, then 0x2F32 -> 0x131C -> 0x2BD2 is
+    // the single reload this door return performs. Consume the deferred
+    // re-entry so the scene is not reloaded twice.
+    if (field_scene_transition_after_modal_pending_) {
+        field_scene_transition_after_modal_pending_ = false;
+        source_boundary("field.door.return_consumed_deferred_reentry");
+    }
     // Keep the last checkout page paint: 0x131C fades that page, not the
     // field behind it.
     source_boundary("field.door.return_started");
