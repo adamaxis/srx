@@ -251,6 +251,7 @@ local function load_route(segment)
         beat_w6_red_buffalo_gift = "walkthrough.route_beat_w6_red_buffalo_gift",
         beat_w7_renraku_map_overlay = "walkthrough.route_beat_w7_renraku_map_overlay",
         beat_w7_b16_ito_producer = "walkthrough.route_beat_w7_b16_ito_producer",
+        beat_w7_b16_ito_live_fight = "walkthrough.route_beat_w7_b16_ito_live_fight",
         beat_w5_scene7_exit = "walkthrough.route_beat_w5_scene7_exit",
         beat_w5_cave_continuation = "walkthrough.route_beat_w5_cave_continuation",
         beat_w5_cave_room7_to_scene7 = "walkthrough.route_beat_w5_cave_room7_to_scene7",
@@ -317,6 +318,15 @@ local function run(host, segment, reach_mode)
         local step = route.steps[step_index]
         if not reach_mode and step.gate == false then
             break
+        end
+        if step.setup ~= nil then
+            local setup_ok, setup_error = xpcall(function()
+                return step.setup(host)
+            end, function(problem) return tostring(problem) end)
+            if not setup_ok then
+                error("walkthrough fixture setup failed for " .. step.id ..
+                    ": " .. setup_error)
+            end
         end
         host.begin_step(step.id)
         local before = host.snapshot()

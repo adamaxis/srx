@@ -1098,6 +1098,7 @@ FieldSceneRuntime::world_activity_script_actor_summaries_for_dump() const {
             "entry=" + std::to_string(index) +
             ",id=" + actor.actor_instance_id +
             ",profile=" + actor.script_profile_id +
+            ",activity=" + actor.world_activity_id +
             ",source_order=" + std::to_string(actor.source_order) +
             ",record_slot=" +
                 (actor.source_record_slot.has_value()

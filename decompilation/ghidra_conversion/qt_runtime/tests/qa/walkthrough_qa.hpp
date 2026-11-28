@@ -240,6 +240,57 @@ inline int grant_group_item(lua_State* state) {
     return 1;
 }
 
+inline int prepare_ito_combat_for_setup(lua_State* state) {
+    auto* host = context(state);
+    constexpr auto kWarhawkItemCode = static_cast<std::uint8_t>(
+        srx::ItemId::WARHAWK); // Item table 0xD4540 [C].
+    constexpr auto kRunnerActionEligibilityMask = std::uint16_t{0x0300U};
+    constexpr auto kWarhawkRounds = std::uint8_t{60U};
+    constexpr auto kUniversalGunClips = std::uint8_t{5U};
+    auto& runner = host->runtime->active_runner_record();
+    const auto existing = std::find(runner.inventory_item_codes.begin(),
+                                    runner.inventory_item_codes.end(),
+                                    kWarhawkItemCode);
+    const auto slot = existing != runner.inventory_item_codes.end()
+        ? static_cast<std::size_t>(std::distance(
+              runner.inventory_item_codes.begin(), existing))
+        : static_cast<std::size_t>(std::distance(
+              runner.inventory_item_codes.begin(),
+              std::find(runner.inventory_item_codes.begin(),
+                        runner.inventory_item_codes.end(), 0U)));
+    if (slot >= runner.inventory_item_codes.size()) {
+        lua_pushboolean(state, 0);
+        lua_pushliteral(state, "no runner inventory slot for Ito combat weapon");
+        return 2;
+    }
+    runner.inventory_item_codes[slot] = kWarhawkItemCode;
+    runner.equipped_inventory_slot = static_cast<std::int8_t>(slot);
+    runner.equipped_item_code = kWarhawkItemCode;
+    runner.ammo_rounds = kWarhawkRounds;
+    runner.ammo_clips = kUniversalGunClips;
+    // ROM 0xAD86 requires both active-runner action bits before weapon use.
+    runner.flags = static_cast<std::uint16_t>(
+        runner.flags | kRunnerActionEligibilityMask);
+    host->runtime->set_source_random_seed_for_dump(0xDF65U);
+    host->runtime->refresh_field_hud_for_dump();
+    lua_pushboolean(state, 1);
+    return 1;
+}
+
+inline int set_heat_level_for_setup(lua_State* state) {
+    auto* host = context(state);
+    lua_Integer level = 0;
+    if (!integer_argument(state, 1, level) || level < 0 || level > 8 ||
+        !host->runtime->seed_field_heat_level_for_qa(
+            static_cast<std::uint8_t>(level))) {
+        lua_pushboolean(state, 0);
+        lua_pushliteral(state, "heat setup must be a level from zero through eight");
+        return 2;
+    }
+    lua_pushboolean(state, 1);
+    return 1;
+}
+
 inline int set_story_fact_for_setup(lua_State* state) {
     auto* host = context(state);
     lua_Integer bit = 0;
@@ -479,6 +530,8 @@ inline std::optional<std::uint8_t> pad_byte(const std::string_view name) {
     if (name == "LEFT") return byte(srx::Pad::LEFT);
     if (name == "RIGHT") return byte(srx::Pad::RIGHT);
     if (name == "A") return byte(srx::Pad::A);
+    if (name == "A+B")
+        return static_cast<std::uint8_t>(byte(srx::Pad::A) | byte(srx::Pad::B));
     if (name == "B") return byte(srx::Pad::B);
     if (name == "C") return byte(srx::Pad::C);
     if (name == "START") return byte(srx::Pad::START);
@@ -701,6 +754,46 @@ inline int advance_frames(lua_State* state) {
         }
     }
     lua_pushboolean(state, 1);
+    return 1;
+}
+
+inline int hold_pad(lua_State* state) {
+    auto* host = context(state);
+    std::size_t button_length = 0U;
+    const auto* button_text = luaL_checklstring(state, 1, &button_length);
+    lua_Integer frames = 0;
+    const auto input = pad_byte(std::string_view(button_text, button_length));
+    if (!input.has_value() || !integer_argument(state, 2, frames) ||
+        frames < 1 || frames > static_cast<lua_Integer>(kFrameBudget)) {
+        lua_pushboolean(state, 0);
+        lua_pushliteral(state, "invalid held-pad input arguments");
+        return 2;
+    }
+    for (lua_Integer frame = 0; frame < frames; ++frame) {
+        if (!advance_one(*host, *input)) {
+            lua_pushboolean(state, 0);
+            lua_pushlstring(state, host->host_error.data(),
+                            host->host_error.size());
+            return 2;
+        }
+    }
+    lua_pushboolean(state, 1);
+    return 1;
+}
+
+inline int count_source_events(lua_State* state) {
+    auto* host = context(state);
+    std::size_t prefix_length = 0U;
+    const auto* prefix_text = luaL_checklstring(state, 1, &prefix_length);
+    const std::string_view prefix(prefix_text, prefix_length);
+    const auto count = std::count_if(
+        host->source_events->begin() + static_cast<std::ptrdiff_t>(
+            std::min(host->source_event_start, host->source_events->size())),
+        host->source_events->end(),
+        [prefix](const std::string& event) {
+            return event.compare(0U, prefix.size(), prefix) == 0;
+        });
+    lua_pushinteger(state, static_cast<lua_Integer>(count));
     return 1;
 }
 
@@ -981,6 +1074,19 @@ inline int snapshot(lua_State* state) {
     lua_setfield(state, -2, "world_effect_active");
     lua_pushboolean(state, runtime.pending_world_effect_for_dump());
     lua_setfield(state, -2, "pending_world_effect");
+    const auto activity_debug = runtime.debug_inspection_fields();
+    lua_pushinteger(state, activity_debug.value(QStringLiteral(
+        "field.debug.mako_actor_transitions_remaining")).toInt(-1));
+    lua_setfield(state, -2, "activity_transitions_remaining");
+    lua_pushboolean(state, activity_debug.value(QStringLiteral(
+        "field.debug.actor_list_callback_pending")).toBool());
+    lua_setfield(state, -2, "activity_callback_pending");
+    lua_pushinteger(state, activity_debug.value(QStringLiteral(
+        "field.debug.heat_level")).toInt(-1));
+    lua_setfield(state, -2, "heat_level");
+    lua_pushinteger(state, activity_debug.value(QStringLiteral(
+        "field.debug.strike_team_counter")).toInt(-1));
+    lua_setfield(state, -2, "strike_team_stage");
     lua_pushinteger(state, runtime.field_interaction_mode_for_dump());
     lua_setfield(state, -2, "field_interaction_mode");
     const auto karma = runtime.party_karma_for_dump();
@@ -1742,6 +1848,9 @@ inline int run_walkthrough_qa(
     add_host_function(state, host, "hold_until_mode_text",
                       hold_until_mode_text);
     add_host_function(state, host, "advance", advance_frames);
+    add_host_function(state, host, "hold_pad", hold_pad);
+    add_host_function(state, host, "count_source_events",
+                      count_source_events);
     add_host_function(state, host, "wait_for_dialogue", wait_for_dialogue);
     add_host_function(state, host, "wait_for_page", wait_for_page);
     add_host_function(state, host, "wait_for_taxi_selector",
@@ -1751,6 +1860,10 @@ inline int run_walkthrough_qa(
     add_host_function(state, host, "grant_nuyen", grant_nuyen);
     add_host_function(state, host, "grant_karma", grant_karma);
     add_host_function(state, host, "grant_group_item", grant_group_item);
+    add_host_function(state, host, "prepare_ito_combat_for_setup",
+                      prepare_ito_combat_for_setup);
+    add_host_function(state, host, "set_heat_level_for_setup",
+                      set_heat_level_for_setup);
     add_host_function(state, host, "set_story_fact_for_setup",
                       set_story_fact_for_setup);
     add_host_function(state, host, "set_runner_reputation_for_setup",

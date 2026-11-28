@@ -2194,6 +2194,7 @@ struct ScriptWorldActivityActor {
     std::uint16_t scene_id = 0;
     std::string instance_id;
     std::string activity_id;
+    std::string source_activity_id;
     ScriptWorldActivityKind activity_kind =
         ScriptWorldActivityKind::event_driven;
     std::uint16_t source_order = 0;

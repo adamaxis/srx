@@ -2566,6 +2566,11 @@ int main() {
         scripts.world_activity_actors_for_activity_id(47U, "mode_13_entry");
     const auto mako_activity_actors =
         scripts.world_activity_actors_for_activity_id("club_penumbra_mako");
+    const auto ito_activity_actors =
+        scripts.world_activity_actors_for_activity_id("matchstick_ito");
+    const auto ito_activity_lookup_failure = scripts.failure();
+    const auto ito_source_activity_id =
+        scripts.activity_id_for_source_group(47U, 0x1E5C4U);
     const auto spirit_eyes_entry_failure = scripts.failure();
     const auto ilene_selected_pending_list =
         scripts.pending_world_activity_id_for_scene(20U, false, true);
@@ -2982,6 +2987,40 @@ int main() {
                     }),
             "Mako actor content did not resolve through its semantic activity id")) {
         std::cerr << "Mako activity lookup failure: " << scripts.failure()
+                  << '\n';
+        return 1;
+    }
+    if (!expect(
+            ito_activity_actors.has_value() &&
+                ito_activity_actors->size() == 4U &&
+                ito_source_activity_id ==
+                    std::optional<std::string>{
+                        "scene_47_alternate_activity"} &&
+                ito_activity_actors->front().activity_id ==
+                    "matchstick_ito" &&
+                ito_activity_actors->front().profile_id ==
+                    "strike_team_k07_item08" &&
+                ito_activity_actors->at(1U).profile_id ==
+                    "bodyguard_k05_item07" &&
+                ito_activity_actors->at(1U).sprite_stem ==
+                    "corp_guard_k05_item06" &&
+                ito_activity_actors->at(2U).profile_id ==
+                    "bodyguard_k05_item07" &&
+                ito_activity_actors->at(2U).sprite_stem ==
+                    "corp_guard_k05_item06" &&
+                ito_activity_actors->back().profile_id ==
+                    "pedestrian_k0b_none00",
+            "Ito actor content did not resolve through its semantic activity id")) {
+        std::cerr << "Ito activity lookup failure: "
+                  << ito_activity_lookup_failure
+                  << " source_group_id="
+                  << (ito_source_activity_id.has_value()
+                          ? *ito_source_activity_id
+                          : std::string("missing"))
+                  << " actor_count="
+                  << (ito_activity_actors.has_value()
+                          ? std::to_string(ito_activity_actors->size())
+                          : std::string("missing"))
                   << '\n';
         return 1;
     }

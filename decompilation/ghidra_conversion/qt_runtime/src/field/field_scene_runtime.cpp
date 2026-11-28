@@ -4777,8 +4777,11 @@ FieldSceneRuntime::source_profile_facts_for_actor(
 std::optional<FieldSceneRuntime::DynamicActorSourceProfileFacts>
 FieldSceneRuntime::world_activity_profile_facts_for_actor(
     const scripting::ScriptWorldActivityActor& actor) const {
-    const auto key = std::to_string(actor.scene_id) + "|" + actor.activity_id +
-        "|" + std::to_string(actor.source_order);
+    const auto& source_activity_id = actor.source_activity_id.empty()
+        ? actor.activity_id
+        : actor.source_activity_id;
+    const auto key = std::to_string(actor.scene_id) + "|" +
+        source_activity_id + "|" + std::to_string(actor.source_order);
     const auto found = field_world_activity_actor_profile_facts_.find(key);
     if (found == field_world_activity_actor_profile_facts_.end() ||
         found->second.profile_id != actor.profile_id ||

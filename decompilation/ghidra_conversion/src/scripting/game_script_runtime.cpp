@@ -10212,6 +10212,7 @@ GameScriptRuntime::world_activity_actors_for_activity_id_impl(
         std::string activity_kind;
         std::string row_instance_id;
         std::string row_activity_id;
+        std::string row_source_activity_id;
         std::string invalid_fact;
         const auto valid_fact = [&invalid_fact](
                                     const bool valid,
@@ -10237,6 +10238,12 @@ GameScriptRuntime::world_activity_actors_for_activity_id_impl(
             valid_fact(valid_identifier(row_activity_id), "activity id") &&
             valid_fact(row_activity_id == activity_id,
                        "activity selection") &&
+            valid_fact(read_field_string(
+                           state, row_index, "source_activity_id",
+                           row_source_activity_id),
+                       "source activity id") &&
+            valid_fact(valid_identifier(row_source_activity_id),
+                       "source activity id") &&
             valid_fact(read_field_string(state, row_index, "activity_kind",
                                          activity_kind), "activity kind") &&
             valid_fact(read_field_boolean(state, row_index,
@@ -10290,10 +10297,10 @@ GameScriptRuntime::world_activity_actors_for_activity_id_impl(
         const auto group = std::find_if(
             impl_->activity_group_bindings.begin(),
             impl_->activity_group_bindings.end(),
-            [row_scene, &row_activity_id](
+            [row_scene, &row_source_activity_id](
                 const ScriptWorldActivityGroupBinding& binding) {
                 return binding.scene_id == row_scene &&
-                       binding.activity_id == row_activity_id;
+                       binding.activity_id == row_source_activity_id;
             });
         if (group == impl_->activity_group_bindings.end()) {
             return fail("world-content actor has no native source-group mapping");
@@ -10329,6 +10336,7 @@ GameScriptRuntime::world_activity_actors_for_activity_id_impl(
         actor.scene_id = static_cast<std::uint16_t>(row_scene);
         actor.instance_id = std::move(row_instance_id);
         actor.activity_id = std::move(row_activity_id);
+        actor.source_activity_id = std::move(row_source_activity_id);
         actor.source_order = static_cast<std::uint16_t>(index);
         actor.activity_probe_enabled = activity_probe_enabled;
         actor.entity_kind = *source_sprite_type;

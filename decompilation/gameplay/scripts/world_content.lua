@@ -234,6 +234,13 @@ end
 
 -- Return actor definitions for one named activity. The import boundary
 -- resolves source selectors and gate encodings before Lua sees these rows.
+local WORLD_ACTIVITY_ART_STEM_BY_SOURCE_PROFILE = {
+    -- ROM lists 0x1D704C/0x1D7050 use actor template 0x1D6532. Its
+    -- extracted dynamic-art key is corp_guard_k05_item06; keep the list's
+    -- bodyguard_k05_item07 combat identity separate from that art identity.
+    bodyguard_k05_item07 = "corp_guard_k05_item06",
+}
+
 local function world_activity_actor_descriptors(activity_id, scene_id)
     local rows = content().world_activity_actors or {}
     local result = {}
@@ -250,7 +257,8 @@ local function world_activity_actor_descriptors(activity_id, scene_id)
                 profile_id = row.profile_id,
                 visual_profile_id = row.visual_profile_id,
                 palette_line = row.palette_line,
-                sprite = row.sprite_stem,
+                sprite = WORLD_ACTIVITY_ART_STEM_BY_SOURCE_PROFILE[
+                    row.profile_id] or row.sprite_stem,
                 x = row.world_x,
                 y = row.world_y,
                 heading = row.initial_heading,
@@ -305,12 +313,20 @@ function World.world_activity_actors_for_activity_id(activity_id, scene_id)
         (type(scene_id) ~= "number" or scene_id % 1 ~= 0)) then
         return {}
     end
+    local requested_activity_id = activity_id
     -- The ROM's Matchstick command queues list 0x1E5C4 (imported as
-    -- scene_47_alternate_activity); Lua names the story request matchstick_ito.
+    -- scene_47_alternate_activity); the native route request is named
+    -- matchstick_ito. Keep the requested identity on returned rows because
+    -- the host validates each row against the queued activity id.
     if activity_id == "matchstick_ito" then
         activity_id = "scene_47_alternate_activity"
     end
-    return world_activity_actor_descriptors(activity_id, scene_id)
+    local actors = world_activity_actor_descriptors(activity_id, scene_id)
+    for _, actor in ipairs(actors) do
+        actor.source_activity_id = activity_id
+        actor.activity_id = requested_activity_id
+    end
+    return actors
 end
 
 -- Expose only the semantic choices the A800 policy needs. Spawn placement,

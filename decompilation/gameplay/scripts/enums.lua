@@ -177,6 +177,7 @@ E.Scene = {
     COUNCIL_ISLAND = 4, -- Council Island field map; Spirit Eyes record 96 [C: 0x15BDF6]
     DOWNTOWN_SEATTLE = 0, -- Scene-0 Icarus entrance record 53 at 0x0D57F0 [C]
     ICARUS_DESCENDING = 12, -- Scene-12 Caleb booth event 30 at 0x1D605E [C]
+    MATCHSTICK = 18, -- Scene-0 record 48 event 2 selects byte 0x12 [C]
     PENUMBRA_DISTRICT = 3, -- Scene-3 Mitsuhama and Big Rhino records [C]
     SALISH_SHIDHE = 6, -- Scene-6 Owlfeather lodge record 193 [C]
     FEATHERED_SERPENT_LAIR = 47, -- Scene-47 event 25 at 0x1D54B0 [C]

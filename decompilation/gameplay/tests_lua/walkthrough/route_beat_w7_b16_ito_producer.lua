@@ -72,5 +72,44 @@ return {
                 return "walked through the Scene-0 door, then A reached the Ito producer and ROM intro text"
             end,
         },
+        {
+            id = "enter_ito_activity_scene_with_four_live_actors",
+            milestone = 16,
+            expected = { scene = E.Scene.MATCHSTICK },
+            run = function(host)
+                -- Closing the producer's intro resumes the real event-table
+                -- route from Scene 0 record 48 into Scene 12.
+                tap(host)
+                assert(host.wait_for_scene(E.Scene.MATCHSTICK, 180),
+                    "real A input did not enter the Ito activity destination")
+                local population = host.snapshot()
+                local summaries = population.script_actor_summaries or ""
+                local ito_actor_count = 0
+                for actor_summary in summaries:gmatch("[^|]+") do
+                    if actor_summary:find("activity=matchstick_ito", 1, true) then
+                        ito_actor_count = ito_actor_count + 1
+                    end
+                end
+                assert(ito_actor_count == 4,
+                    "ROM list 0x1E5C4 expected four live Ito actors; got " ..
+                    tostring(ito_actor_count) .. ": " .. summaries)
+                for _, expected in ipairs({
+                    "profile=strike_team_k07_item08,activity=matchstick_ito,source_order=0",
+                    "profile=bodyguard_k05_item07,activity=matchstick_ito,source_order=1",
+                    "profile=bodyguard_k05_item07,activity=matchstick_ito,source_order=2",
+                    "profile=pedestrian_k0b_none00,activity=matchstick_ito,source_order=3",
+                }) do
+                    assert(summaries:find(expected, 1, true) ~= nil,
+                        "Ito activity actor row mismatch: " .. expected ..
+                        " in " .. summaries)
+                end
+                assert(population.activity_transitions_remaining == 4,
+                    "ROM FFE177 should begin at four; got " ..
+                    tostring(population.activity_transitions_remaining))
+                assert(not population.activity_callback_pending,
+                    "Ito callback fired before the four actor transitions")
+                return "entered Scene 12 by pad input with all four Ito actors and callback count 4"
+            end,
+        },
     },
 }

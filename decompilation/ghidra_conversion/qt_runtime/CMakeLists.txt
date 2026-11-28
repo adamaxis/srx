@@ -1536,6 +1536,19 @@ add_test(NAME shadowrun_beat_w7_b16_ito_producer
 set_tests_properties(shadowrun_beat_w7_b16_ito_producer
     PROPERTIES LABELS "walkthrough" TIMEOUT 180
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
+add_test(NAME shadowrun_beat_w7_b16_ito_live_fight_expected_fail_WALK_010
+    COMMAND ${CMAKE_COMMAND}
+        "-DTEST_EXECUTABLE=$<TARGET_FILE:shadowrun_ghidra_conversion_qt_qa>"
+        "-DASSET_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        "-DSEGMENT=beat_w7_b16_ito_live_fight"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/beat-w7-b16-ito-live-fight"
+        "-DINITIAL_SCENE=0"
+        "-DBUG_ID=WALK-010"
+        "-DEXPECTED_FAILURE_PATTERN=Ito live pad combat did not dispatch the callback after two windows.*transitions=2.*completed=2.*shots=36.*hits=21"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/qa/expect_walkthrough_failure.cmake")
+set_tests_properties(shadowrun_beat_w7_b16_ito_live_fight_expected_fail_WALK_010
+    PROPERTIES LABELS "walkthrough;expected-failure" TIMEOUT 360
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;ALSOFT_DRIVERS=null")
 add_test(NAME shadowrun_beat_w8_tomb_antechamber_entry
     COMMAND shadowrun_ghidra_conversion_qt_qa
         --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
