@@ -411,6 +411,12 @@ local function rebuild_node_view(st, ctx)
     show_random_alert(st, ctx)
 end
 
+-- 0x53126 stop-all followed by play_music 0x530EA (hosts may omit audio).
+local function switch_music(ctx, music_id)
+    if ctx.stop_music then ctx.stop_music() end
+    if ctx.music then ctx.music(music_id) end
+end
+
 function M.new(args)
     return { matrix_state = args.matrix_state or MatrixSession.current_state(),
              system_id = args.system_id,
@@ -444,6 +450,9 @@ function M.enter(st, ctx)
         return { transition = T.POP, result = {} }
     end
     if st.traversal_view then
+        -- 0x1745E: stop-all at 0x1752C, then play_music(MATRIX) at 0x17656
+        -- replaces the field song for the Matrix world.
+        switch_music(ctx, E.MusicId.MATRIX)
         st.world_entry_pending = MatrixSession.begin_world_entry(
             st.matrix_state, world_effect_gate_negative(ctx.game))
         if st.world_entry_pending then
@@ -462,7 +471,11 @@ function M.enter(st, ctx)
     rebuild_node_view(st, ctx)
 end
 
-local function open_deck(st)
+local function open_deck(st, ctx)
+    if st.traversal_view then
+        -- 0x1B150 stop-all, 0x1B15A play_music(DECK_MENU) before 0x1822C.
+        switch_music(ctx, E.MusicId.DECK_MENU)
+    end
     return { transition = T.PUSH, screen = E.MenuScreen.CYBERDECK,
              args = { system_id = st.system_id, matrix_session = true,
                       return_to_node_action = true,
@@ -732,7 +745,7 @@ function M.input(st, events, ctx)
         end
         return
     end
-    if events & P.START ~= 0 then return open_deck(st) end
+    if events & P.START ~= 0 then return open_deck(st, ctx) end
 
     if state.phase == "node" then
         local action_count = #MatrixSession.node_actions(state)
@@ -890,7 +903,11 @@ end
 
 function M.child_returned(st, child, result, ctx)
     if result and result.matrix_resumed then
-        if st.traversal_view then update_deck_view(st, ctx) end
+        if st.traversal_view then
+            -- 0x1B19A stop-all, 0x1B1A4 play_music(MATRIX) after the deck.
+            switch_music(ctx, E.MusicId.MATRIX)
+            update_deck_view(st, ctx)
+        end
         st.row = 0
         rebuild_node_view(st, ctx)
     end

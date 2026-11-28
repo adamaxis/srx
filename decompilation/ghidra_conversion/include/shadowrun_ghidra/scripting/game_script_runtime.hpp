@@ -176,6 +176,10 @@ enum class ScriptNotebookBoundary : std::uint8_t {
 struct ScriptMenuRouteHost {
     std::function<void(std::uint16_t)> play_sound;
     std::function<void(std::uint16_t)> stop_sound;
+    // play_music 0x530EA (stop same id, then start) and the 0x53126
+    // stop-all/fade used by the Matrix world entry and deck round trips.
+    std::function<void(std::uint16_t)> play_music;
+    std::function<void()> stop_all_music;
     std::function<void(std::uint32_t)> redraw;
     // mode (E.DisplayBlank), then for ON the measured black-frame count and
     // the raster line where the display re-enables on the reveal frame.

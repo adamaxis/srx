@@ -8559,6 +8559,15 @@ void FieldSceneRuntime::request_scene_field_music() {
     }
 }
 
+void FieldSceneRuntime::restore_field_music_after_matrix() {
+    // ROM 0x17532 sets FFE172 after the Matrix session that replaced the
+    // field song, so 0x2900 restarts the scene track on field resume.
+    if (matrix_route_music_started_) {
+        matrix_route_music_started_ = false;
+        scene_music_latch_ = true;
+    }
+}
+
 void FieldSceneRuntime::service_scene_music_latch() {
     // 0x2900: tst.b FFE172; clear it and play_music(FFDE06). Several host
     // scene preparations in one frame therefore issue one song start.
@@ -10696,6 +10705,21 @@ void FieldSceneRuntime::configure_field_menu_route() {
             source_audio_stop_callback_(sound);
         }
     };
+    bindings.host.play_music = [this](const std::uint16_t music) {
+        // 0x530EA from a menu route (Matrix world 0x17656, deck 0x1B15A).
+        field_current_music_id_ = music;
+        field_music_requests_.push_back(music);
+        if (field_matrix_route_active_) {
+            matrix_route_music_started_ = true;
+        }
+        if (source_music_callback_) {
+            source_music_callback_(music);
+        }
+    };
+    bindings.host.stop_all_music = [this] {
+        // 0x53126 stop-all before the Matrix/deck songs (0x1752C, 0x1B150).
+        request_audio_fade();
+    };
     // FieldSceneRuntime repaints the complete authored Qt menu panel each
     // frame. These callbacks are retained as presenter boundaries for the
     // later screen ports; they do not execute source tile/VDP operations.
@@ -10763,6 +10787,7 @@ void FieldSceneRuntime::configure_field_menu_route() {
             // closing the menu tree. Do not leave the field compositor in
             // the Matrix state after that rebuild.
             field_matrix_route_active_ = false;
+            restore_field_music_after_matrix();
         }
         const auto is_secretary_tree_screen = [](const std::uint16_t value) {
             switch (static_cast<srx::MenuScreen>(value)) {
@@ -10900,6 +10925,7 @@ void FieldSceneRuntime::configure_field_menu_route() {
             field_entity_animation_.redraw_requested = true;
         }
         field_matrix_route_active_ = false;
+        restore_field_music_after_matrix();
         if (field_taxi_route_active_) {
             field_taxi_route_active_ = false;
             if (field_taxi_pending_destination_.has_value()) {

@@ -2882,6 +2882,8 @@ struct GameScriptRuntime::Impl {
         program_unloaded,
         menu_b_policy,
         set_menu_b_policy,
+        play_music,
+        stop_all_music,
     };
 
     lua_State* state = nullptr;
@@ -2958,6 +2960,17 @@ struct GameScriptRuntime::Impl {
             if (self->menu_route_bindings.host.stop_sound) {
                 self->menu_route_bindings.host.stop_sound(
                     static_cast<std::uint16_t>(integer_argument(1)));
+            }
+            return 0;
+        case MenuBinding::play_music:
+            if (self->menu_route_bindings.host.play_music) {
+                self->menu_route_bindings.host.play_music(
+                    static_cast<std::uint16_t>(integer_argument(1)));
+            }
+            return 0;
+        case MenuBinding::stop_all_music:
+            if (self->menu_route_bindings.host.stop_all_music) {
+                self->menu_route_bindings.host.stop_all_music();
             }
             return 0;
         case MenuBinding::redraw:
@@ -3866,6 +3879,10 @@ struct GameScriptRuntime::Impl {
                          MenuBinding::play_sound);
         add_menu_binding(state, table_index, "stop_sound",
                          MenuBinding::stop_sound);
+        add_menu_binding(state, table_index, "play_music",
+                         MenuBinding::play_music);
+        add_menu_binding(state, table_index, "stop_all_music",
+                         MenuBinding::stop_all_music);
         add_menu_binding(state, table_index, "redraw", MenuBinding::redraw);
         add_menu_binding(state, table_index, "blank", MenuBinding::blank);
         add_menu_binding(state, table_index, "mask", MenuBinding::mask);

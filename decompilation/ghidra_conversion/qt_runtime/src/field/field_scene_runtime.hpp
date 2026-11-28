@@ -2774,6 +2774,8 @@ private:
     bool start_menu_duck_active_ = false;
     bool scene_music_latch_ = false; // FFE172
     void service_scene_music_latch();
+    void restore_field_music_after_matrix();
+    bool matrix_route_music_started_ = false;
     void request_scene_field_music();
     void request_audio_attenuation(std::uint8_t level);
     void request_audio_fade();

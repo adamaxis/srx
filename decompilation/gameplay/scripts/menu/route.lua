@@ -24,6 +24,11 @@ function Route.new(host, game)
     r.ctx = {
         host = host, game = game,
         sound = function(id) host.play_sound(id) end,
+        -- play_music 0x530EA / stop-all 0x53126; optional for headless hosts.
+        music = function(id) if host.play_music then host.play_music(id) end end,
+        stop_music = function()
+            if host.stop_all_music then host.stop_all_music() end
+        end,
         redraw = function(mask) if mask and mask ~= 0 then host.redraw(mask) end end,
     }
     return r
