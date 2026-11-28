@@ -2503,6 +2503,10 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_penumbra_mako_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-penumbra-mako-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-penumbra-mako-qa")
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_penumbra_mako_pointblank_probe_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-penumbra-mako-pointblank-probe-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-penumbra-mako-pointblank-probe-qa")
 add_test(NAME shadowrun_beat_w7_b11_mako_defeat_expected_fail_WALK_010
     COMMAND ${CMAKE_COMMAND}
         "-DTEST_EXECUTABLE=$<TARGET_FILE:shadowrun_ghidra_conversion_qt_qa>"

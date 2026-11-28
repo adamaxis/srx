@@ -41915,6 +41915,7 @@ int run_field_council_island_inn_qa(
 enum class ClubPenumbraMakoQaPath {
     qualifying,
     live_combat,
+    pointblank_probe,
     doorman_later,
     fee_later,
     reputation_rejection,
@@ -41989,6 +41990,8 @@ int run_field_penumbra_mako_qa(
         qa_path == ClubPenumbraMakoQaPath::mode_flag_lead;
     const auto live_combat =
         qa_path == ClubPenumbraMakoQaPath::live_combat;
+    const auto pointblank_probe =
+        qa_path == ClubPenumbraMakoQaPath::pointblank_probe;
     const auto mako_gate_closed =
         story_gate_closed || mako_defeated || mako_lead_missing;
     const auto wallet_before = insufficient_funds ? 74U : 75U;
@@ -42395,7 +42398,7 @@ int run_field_penumbra_mako_qa(
         return 3;
     }
 
-    if (live_combat) {
+    if (live_combat || pointblank_probe) {
         // ROM 0x195C publishes held bits separately from newly pressed
         // events. Keep A held through weapon action delays and pulse B to
         // retarget; the seed is local to this combat exercise.
@@ -42426,6 +42429,388 @@ int run_field_penumbra_mako_qa(
             std::cerr << "Club Penumbra Mako live pad combat failed: "
                          "source actors are not positioned for combat\n";
             return 3;
+        }
+        if (pointblank_probe) {
+            // QA-only range sweep: retain the production Mako list actor and
+            // use real pad input for target selection and each shot. The
+            // runner is staged in test setup at exact same-row distances.
+            std::uint16_t probe_actor_order = 2U;
+            constexpr std::uint8_t kControllerButtonB = 0x10U;
+            constexpr std::uint8_t kControllerButtonA = 0x40U;
+            constexpr std::array<std::uint16_t, 5U> kProbeDistancesPixels{{
+                64U, 96U, 128U, 160U, 256U}};
+            constexpr std::uint16_t kCameraCenterX = 0x0800U;
+            constexpr std::uint16_t kCameraCenterY = 0x0700U;
+            auto trace_path = output / "pointblank.tsv";
+            std::ofstream trace(trace_path, std::ios::trunc);
+            if (!trace) return 3;
+            std::ofstream trajectory(
+                output / "pointblank-trajectory.tsv", std::ios::trunc);
+            if (!trajectory) return 3;
+            trace << "distance_px\tactor_order\tactor_id"
+                     "\tplayer_x\tplayer_y"
+                     "\tactor_x\tactor_y\tdelta_x\tdelta_y"
+                     "\tspawn_window_14d8e_clear"
+                     "\tselected_id\tshot_spawned\thit_resolved"
+                     "\thit_target\tattack_successes\tprojectile_heading"
+                     "\tfirst_semantic_step_x\tfirst_semantic_step_y"
+                     "\tprojectile_spawn_x\tprojectile_spawn_y"
+                     "\tprojectile_x\tprojectile_y\tremaining_clear_steps\n";
+            trajectory << "distance_px\tstage\tframe\tplayer_x\tplayer_y"
+                          "\tactor_x\tactor_y\tprojectile_x\tprojectile_y"
+                          "\theading\tattack_successes"
+                          "\tremaining_clear_steps\n";
+            const auto summaries =
+                field_scene.world_activity_script_actor_summaries_for_dump();
+            // Freeze only through the QA driver so actor movement cannot
+            // change the measured row or range while the weapon cooldown
+            // elapses; list entries remain live collision/target candidates.
+            for (std::size_t actor = 0U; actor < fight_actors.size(); ++actor) {
+                if (!field_scene.set_default_actor_frozen_for_dump(
+                        actor, true)) {
+                    std::cerr << "Mako point-blank QA: could not freeze live "
+                                 "list actor " << actor << '\n';
+                    return 3;
+                }
+            }
+            const auto actor_id_for_order = [&summaries](
+                                                const std::uint16_t order)
+                -> std::optional<std::string> {
+                const auto order_text = "source_order=" +
+                    std::to_string(order);
+                const auto summary = std::find_if(
+                    summaries.begin(), summaries.end(),
+                    [&order_text](const auto& value) {
+                        return value.find(order_text) != std::string::npos;
+                    });
+                if (summary == summaries.end()) return std::nullopt;
+                const auto id_marker = summary->find("id=");
+                const auto id_end = summary->find(',', id_marker);
+                if (id_marker == std::string::npos ||
+                    id_end == std::string::npos) {
+                    return std::nullopt;
+                }
+                return summary->substr(
+                    id_marker + 3U, id_end - id_marker - 3U);
+            };
+            if (!actor_id_for_order(probe_actor_order).has_value()) {
+                std::cerr << "Mako point-blank QA: source-order 2 is not a "
+                             "live list actor\n";
+                return 3;
+            }
+            const auto place_runner_at_distance =
+                [&field_scene, &probe_actor_order](
+                    const std::uint16_t distance_pixels)
+                    -> std::optional<SceneRunnerPosition> {
+                const auto actor =
+                    field_scene.world_activity_script_actor_position_for_dump(
+                        probe_actor_order);
+                if (!actor.has_value()) return std::nullopt;
+                const auto offset = static_cast<std::uint32_t>(
+                    distance_pixels) * 16U;
+                std::uint16_t player_x = 0U;
+                if (actor->x >= offset) {
+                    player_x = static_cast<std::uint16_t>(actor->x - offset);
+                } else if (static_cast<std::uint32_t>(actor->x) + offset <=
+                           std::numeric_limits<std::uint16_t>::max()) {
+                    player_x = static_cast<std::uint16_t>(actor->x + offset);
+                } else {
+                    return std::nullopt;
+                }
+                field_scene.set_field_entity_world_position_for_dump(
+                    player_x, actor->y);
+                field_scene.set_field_camera_world_position_for_dump(
+                    player_x > kCameraCenterX
+                        ? static_cast<std::uint16_t>(
+                              player_x - kCameraCenterX)
+                        : 0U,
+                    actor->y > kCameraCenterY
+                        ? static_cast<std::uint16_t>(
+                              actor->y - kCameraCenterY)
+                        : 0U);
+                return SceneRunnerPosition{player_x, actor->y};
+            };
+            field_scene.set_controller_port_byte(0U);
+            for (std::uint16_t wait = 0U;
+                 wait < 240U &&
+                 (field_scene.field_modal_return_transition_frames_for_dump() !=
+                      0U ||
+                  field_scene.field_modal_return_blocked_inputs_for_dump() !=
+                      0U);
+                 ++wait) {
+                field_scene.advance_frame();
+            }
+            if (!place_runner_at_distance(256U).has_value()) {
+                std::cerr << "Mako point-blank QA: actor cannot be staged "
+                             "within field coordinates\n";
+                return 3;
+            }
+            std::optional<std::string> actor_id;
+            for (std::uint8_t attempt = 0U; attempt < 8U; ++attempt) {
+                field_scene.set_controller_port_byte(kControllerButtonB);
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                const auto selected =
+                    field_scene.selected_default_actor_id_for_dump();
+                if (!selected.has_value()) continue;
+                for (std::uint16_t order = 0U; order < 4U; ++order) {
+                    if (actor_id_for_order(order) == selected) {
+                        probe_actor_order = order;
+                        actor_id = *selected;
+                        break;
+                    }
+                }
+                if (actor_id.has_value()) break;
+            }
+            if (!actor_id.has_value()) {
+                std::cerr << "Mako point-blank QA: real B input did not "
+                             "select a live list actor (selected="
+                          << field_scene.selected_default_actor_id_for_dump()
+                                 .value_or("<none>")
+                          << ")\n";
+                return 3;
+            }
+            field_scene.set_source_random_seed_for_dump(0xDF65U);
+            const auto count_prefix = [&source_boundaries](
+                                          const std::string_view prefix) {
+                return static_cast<std::size_t>(std::count_if(
+                    source_boundaries.begin(), source_boundaries.end(),
+                    [prefix](const auto& boundary) {
+                        return boundary.rfind(prefix, 0U) == 0U;
+                    }));
+            };
+            const auto optional_number = [](const auto& value) {
+                return value.has_value() ? std::to_string(*value)
+                                         : std::string("none");
+            };
+            // These measured shots are cardinal. Match entity_motion.lua's
+            // 96-map-unit projectile step without reading the ROM heading
+            // offset pair, which is still zero in the spawn-frame snapshot.
+            constexpr std::uint16_t kEastHeading = 0x4000U;
+            constexpr std::uint16_t kWestHeading = 0xC000U;
+            constexpr std::uint16_t kProjectileProbeDistance = 96U;
+            const auto first_semantic_step = [](
+                const std::optional<SceneRunnerPosition>& position,
+                const std::optional<std::uint16_t>& heading)
+                -> std::optional<SceneRunnerPosition> {
+                if (!position.has_value() || !heading.has_value()) {
+                    return std::nullopt;
+                }
+                if (*heading == kEastHeading &&
+                    position->x <= std::numeric_limits<std::uint16_t>::max() -
+                                       kProjectileProbeDistance) {
+                    return SceneRunnerPosition{
+                        static_cast<std::uint16_t>(
+                            position->x + kProjectileProbeDistance),
+                        position->y};
+                }
+                if (*heading == kWestHeading &&
+                    position->x >= kProjectileProbeDistance) {
+                    return SceneRunnerPosition{
+                        static_cast<std::uint16_t>(
+                            position->x - kProjectileProbeDistance),
+                        position->y};
+                }
+                return std::nullopt;
+            };
+            for (const auto distance_pixels : kProbeDistancesPixels) {
+                const auto player =
+                    place_runner_at_distance(distance_pixels);
+                const auto actor =
+                    field_scene.world_activity_script_actor_position_for_dump(
+                        probe_actor_order);
+                if (!player.has_value() || !actor.has_value() ||
+                    field_scene.selected_default_actor_id_for_dump() !=
+                        actor_id) {
+                    std::cerr << "Mako point-blank QA: actor/selection was "
+                                 "lost before " << distance_pixels << " px\n";
+                    return 3;
+                }
+                const auto line_clear =
+                    field_scene.player_action_line_clear_to_default_actor_for_dump(
+                        probe_actor_order);
+                const auto shots_before = count_prefix(
+                    "field.combat.player_weapon_spawned");
+                const auto active_runner_id = "party.runner." +
+                    std::to_string(
+                        field_scene.field_active_party_slot_for_dump());
+                const auto player_target_attribution_prefix =
+                    "field.combat.weapon_hit_attribution:" +
+                    active_runner_id + ":" + *actor_id + ":";
+                const auto target_hits_before = count_prefix(
+                    player_target_attribution_prefix);
+                const auto event_start = source_boundaries.size();
+                bool shot_spawned = false;
+                std::uint16_t shot_wait_frame = 0U;
+                for (std::uint16_t wait = 0U; wait < 180U; ++wait) {
+                    field_scene.set_controller_port_byte(kControllerButtonA);
+                    field_scene.advance_frame();
+                    shot_wait_frame = static_cast<std::uint16_t>(wait + 1U);
+                    if (count_prefix("field.combat.player_weapon_spawned") >
+                        shots_before) {
+                        shot_spawned = true;
+                        break;
+                    }
+                }
+                field_scene.set_controller_port_byte(0U);
+                if (!shot_spawned) {
+                    std::cerr << "Mako point-blank QA: A input did not spawn "
+                                 "a shot at " << distance_pixels << " px\n";
+                    return 3;
+                }
+                const auto heading =
+                    field_scene.field_weapon_primary_heading_for_dump();
+                const auto attack_successes =
+                    field_scene.field_weapon_primary_action_result_for_dump();
+                const auto spawn_position =
+                    field_scene.field_weapon_primary_spawn_position_for_dump();
+                const auto projectile_position =
+                    field_scene.field_weapon_primary_position_for_dump();
+                const auto clear_steps =
+                    field_scene
+                        .field_weapon_primary_remaining_clear_steps_for_dump();
+                const auto first_step =
+                    first_semantic_step(projectile_position, heading);
+                const auto write_trajectory_sample =
+                    [&](const std::string_view stage,
+                        const std::uint16_t sample_frame) {
+                    const auto runner_position =
+                        field_scene.field_entity_world_position();
+                    const auto actor_position =
+                        field_scene.world_activity_script_actor_position_for_dump(
+                            probe_actor_order);
+                    const auto projectiles =
+                        field_scene.field_weapon_primary_snapshots_for_dump();
+                    const auto projectile = std::find_if(
+                        projectiles.begin(), projectiles.end(),
+                        [&active_runner_id](const auto& candidate) {
+                            return candidate.shooter_id == active_runner_id;
+                        });
+                    trajectory << distance_pixels << '\t' << stage << '\t'
+                               << sample_frame << '\t'
+                               << runner_position.x << '\t'
+                               << runner_position.y << '\t'
+                               << (actor_position.has_value()
+                                       ? std::to_string(actor_position->x)
+                                       : std::string("none"))
+                               << '\t'
+                               << (actor_position.has_value()
+                                       ? std::to_string(actor_position->y)
+                                       : std::string("none"))
+                               << '\t'
+                               << (projectile != projectiles.end()
+                                       ? std::to_string(
+                                             projectile->position.x)
+                                       : std::string("none"))
+                               << '\t'
+                               << (projectile != projectiles.end()
+                                       ? std::to_string(
+                                             projectile->position.y)
+                                       : std::string("none"))
+                               << '\t'
+                               << (projectile != projectiles.end()
+                                       ? std::to_string(projectile->heading)
+                                       : std::string("none"))
+                               << '\t'
+                               << (projectile != projectiles.end()
+                                       ? std::to_string(
+                                             projectile->attack_successes)
+                                       : std::string("none"))
+                               << '\t'
+                               << optional_number(
+                                      field_scene
+                                          .field_weapon_primary_remaining_clear_steps_for_dump())
+                               << '\n';
+                    trajectory.flush();
+                    return static_cast<bool>(trajectory);
+                };
+                if (!write_trajectory_sample("spawn", shot_wait_frame)) {
+                    return 3;
+                }
+                for (std::uint16_t wait = 0U; wait < 180U; ++wait) {
+                    field_scene.advance_frame();
+                    if (!write_trajectory_sample(
+                            "flight", static_cast<std::uint16_t>(wait + 1U))) {
+                        return 3;
+                    }
+                    if (count_prefix(player_target_attribution_prefix) >
+                            target_hits_before ||
+                        field_scene.field_weapon_primary_count_for_dump() == 0U) {
+                        break;
+                    }
+                }
+                const auto target_hits_after = count_prefix(
+                    player_target_attribution_prefix);
+                std::string hit_target = "none";
+                bool player_target_hit_resolved = false;
+                bool player_target_hit_attributed = false;
+                const auto hit_resolved_prefix =
+                    "field.combat.weapon_hit_resolved:" + *actor_id;
+                for (std::size_t index = event_start;
+                     index < source_boundaries.size(); ++index) {
+                    const auto& boundary = source_boundaries[index];
+                    if (boundary.rfind(player_target_attribution_prefix, 0U) ==
+                        0U) {
+                        player_target_hit_attributed = true;
+                    } else if (player_target_hit_attributed &&
+                               boundary == hit_resolved_prefix) {
+                        player_target_hit_resolved = true;
+                        hit_target = *actor_id;
+                    }
+                }
+                const auto optional_position = [](
+                    const std::optional<SceneRunnerPosition>& value,
+                    const bool x) {
+                    return value.has_value()
+                        ? std::to_string(x ? value->x : value->y)
+                        : std::string("none");
+                };
+                const auto delta_x = static_cast<std::int32_t>(actor->x) -
+                    static_cast<std::int32_t>(player->x);
+                const auto delta_y = static_cast<std::int32_t>(actor->y) -
+                    static_cast<std::int32_t>(player->y);
+                trace << distance_pixels << '\t' << probe_actor_order << '\t'
+                      << *actor_id << '\t'
+                      << player->x << '\t' << player->y << '\t'
+                      << actor->x << '\t' << actor->y << '\t'
+                      << delta_x << '\t' << delta_y << '\t'
+                      << (line_clear ? "clear" : "blocked") << '\t'
+                      << field_scene.selected_default_actor_id_for_dump()
+                             .value_or("<none>") << '\t'
+                      << (count_prefix(
+                              "field.combat.player_weapon_spawned") >
+                                  shots_before
+                              ? "yes" : "no") << '\t'
+                      << (player_target_hit_resolved ? "yes" : "no") << '\t'
+                      << hit_target << '\t'
+                      << optional_number(attack_successes) << '\t'
+                      << optional_number(heading) << '\t'
+                      << optional_position(first_step, true) << '\t'
+                      << optional_position(first_step, false) << '\t'
+                      << optional_position(spawn_position, true) << '\t'
+                      << optional_position(spawn_position, false) << '\t'
+                      << optional_position(projectile_position, true) << '\t'
+                      << optional_position(projectile_position, false) << '\t'
+                      << optional_number(clear_steps) << '\n';
+                trace.flush();
+                if (!trace) return 3;
+                std::cout << "mako_pointblank actor_order="
+                          << probe_actor_order
+                          << " distance_px=" << distance_pixels
+                          << " shot=1 hit="
+                          << player_target_hit_resolved
+                          << " attributed_hits="
+                          << (target_hits_after - target_hits_before)
+                          << " spawn_window_14d8e="
+                          << (line_clear ? "clear" : "blocked")
+                          << " clear_steps=" << optional_number(clear_steps)
+                          << '\n';
+            }
+            std::cout << "field_penumbra_mako_pointblank_probe_qa=passed "
+                         "actor=" << *actor_id << " rows=5 artifacts="
+                      << trace_path.string() << '\n';
+            return 0;
         }
         const auto& firing_actor = fight_actors[1U];
         const auto firing_lane_x = firing_actor.x > kFightLaneOffset
@@ -50893,6 +51278,7 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_penumbra_mako_qa_path;
         bool field_penumbra_mako_live_combat_qa = false;
+        bool field_penumbra_mako_pointblank_probe_qa = false;
         std::optional<std::filesystem::path>
             field_penumbra_reputation_rejection_qa_path;
         std::optional<std::filesystem::path>
@@ -51703,6 +52089,14 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_penumbra_mako_live_combat_qa = true;
+                field_penumbra_mako_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-penumbra-mako-pointblank-probe-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_penumbra_mako_pointblank_probe_qa = true;
                 field_penumbra_mako_qa_path =
                     std::filesystem::path(argv[++index]);
             }
@@ -58996,9 +59390,11 @@ int main(int argc, char** argv) {
                 return run_field_penumbra_mako_qa(
                     field_scene, asset_root,
                     *field_penumbra_mako_qa_path, field_source_boundaries,
-                    field_penumbra_mako_live_combat_qa
-                        ? ClubPenumbraMakoQaPath::live_combat
-                        : ClubPenumbraMakoQaPath::qualifying);
+                    field_penumbra_mako_pointblank_probe_qa
+                        ? ClubPenumbraMakoQaPath::pointblank_probe
+                        : field_penumbra_mako_live_combat_qa
+                            ? ClubPenumbraMakoQaPath::live_combat
+                            : ClubPenumbraMakoQaPath::qualifying);
             }
             if (field_penumbra_reputation_rejection_qa_path.has_value()) {
                 return run_field_penumbra_mako_qa(
