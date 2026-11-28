@@ -23208,7 +23208,11 @@ int run_gang_contract_target_entry_qa(
             return 3;
         }
         if (!write_state("actual")) return 3;
-        if (test_case.name == "active-eye-fivers-contract") {
+        // The player-shot duel regression runs in the entry route only. The
+        // --field-eye-fivers-fight-qa mode checks the freshly loaded 0x1D6D72
+        // members (meter 10) below and then runs its own contract fight.
+        if (!fight_only &&
+            test_case.name == "active-eye-fivers-contract") {
             constexpr std::uint16_t kEyeFiverFightSeed = 0x4000U;
             constexpr std::uint16_t kEyeFiverStagingOffset = 0x0100U;
             constexpr std::uint16_t kEyeFiverCameraCenterX = 0x0800U;
