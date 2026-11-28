@@ -19248,7 +19248,11 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                 draw_centered(first_line_wrapped ? 80 : 72, lines[1]);
             }
             if (line_count > 2U) {
-                draw_centered(120, lines[2]);
+                // 0xE21E draws the C19B0 code row at VDP C796: row 15, col 11.
+                constexpr int kSearchCodeX = 11 * 8;
+                constexpr int kSearchCodeY = 15 * 8;
+                draw_command_overview_text(painter, kSearchCodeX, kSearchCodeY,
+                                           lines[2]);
             }
             return;
         }

@@ -3281,7 +3281,9 @@ int main() {
               route.top_text.find("RUNNING PERMUTATIONS") != std::string::npos &&
               sounds.back() == 0x36U,
           "System Search shows its ROM text and feedback sound", failures);
-    for (int frame = 0; frame < 219; ++frame) {
+    // 0xE248/0xE292: d6 = rand(11)+10 drives DBRA, so each round shows
+    // d6+1 digits; with this fixture's zero draws 11 x 11 x 2 VBlanks = 242.
+    for (int frame = 0; frame < 241; ++frame) {
         runtime.advance_menu_route(0U);
     }
     check(runtime.menu_route_snapshot().top_screen == kMatrixSearch,
