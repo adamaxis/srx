@@ -51443,6 +51443,8 @@ int main(int argc, char** argv) {
             field_matrix_gpgx_test_deck_qa_paths;
         std::optional<std::filesystem::path>
             field_matrix_traversal_entry_qa_path;
+        std::optional<std::filesystem::path>
+            field_matrix_persistence_qa_path;
         std::optional<std::uint8_t> field_command_page;
         bool field_barehand_status_qa = false;
         std::optional<std::filesystem::path>
@@ -52840,6 +52842,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_matrix_traversal_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-matrix-persistence-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_matrix_persistence_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-action-dump" &&
@@ -54300,6 +54309,7 @@ int main(int argc, char** argv) {
                 field_cyberdeck_gate_qa_path.has_value() ||
                 field_matrix_gpgx_test_deck_qa_paths.has_value() ||
                 field_matrix_traversal_entry_qa_path.has_value() ||
+                field_matrix_persistence_qa_path.has_value() ||
                 field_wylie_gala_inn_qa_path.has_value() ||
                 field_council_island_inn_qa_path.has_value() ||
                 field_penumbra_mako_qa_path.has_value() ||
@@ -54755,8 +54765,13 @@ int main(int argc, char** argv) {
                     field_audio_events, field_source_boundaries,
                     field_mitsuhama_after_hours_entry_qa_mode);
             }
-            if (field_matrix_traversal_entry_qa_path.has_value()) {
-                const auto output = *field_matrix_traversal_entry_qa_path;
+            if (field_matrix_traversal_entry_qa_path.has_value() ||
+                field_matrix_persistence_qa_path.has_value()) {
+                const bool persistence_only =
+                    field_matrix_persistence_qa_path.has_value();
+                const auto output = persistence_only
+                    ? *field_matrix_persistence_qa_path
+                    : *field_matrix_traversal_entry_qa_path;
                 std::filesystem::create_directories(output);
                 // The longplay reference frames under "video analysis/" are an
                 // untracked local capture. Without them every runtime check still
@@ -54975,9 +54990,10 @@ int main(int argc, char** argv) {
                                 max_y - min_y + 1)
                         : QRect{};
                 };
-                if (!field_scene.open_matrix_traversal_for_dump(2U, 2U)) {
+                if (!field_scene.open_matrix_traversal_for_dump(
+                        2U, persistence_only ? 3U : 2U)) {
                     std::cerr << "Matrix traversal entry QA: deterministic "
-                                 "System 2/node 2 route did not open\n";
+                                 "matrix route did not open\n";
                     return 3;
                 }
                 for (int frame = 0; frame < 21; ++frame) { // 0xC24 d5=0x14: 21 VBlanks [C]
@@ -54991,7 +55007,20 @@ int main(int argc, char** argv) {
                 }
                 tap_qa_controller_button(field_scene, 0x80U); // Start
                 auto route = field_scene.field_menu_route_snapshot_for_dump();
-                const auto valid_reference_route = [&route]() {
+                const auto valid_reference_route =
+                    [&route, persistence_only]() {
+                    if (persistence_only) {
+                        return route.top_matrix_system_id == 2 &&
+                            route.top_matrix_node == 3 &&
+                            route.top_matrix_state_present &&
+                            route.top_matrix_traversal_view.has_value() &&
+                            route.top_matrix_traversal_view
+                                    ->world_entry_phase == 0 &&
+                            route.top_matrix_traversal_view
+                                    ->world_entry_setup_vblanks == 1 &&
+                            route.top_matrix_traversal_view
+                                    ->world_entry_sequence_duration == 239;
+                    }
                     if (route.top_matrix_system_id != 2 ||
                         route.top_matrix_node != 2 ||
                         !route.top_matrix_traversal_view.has_value()) {
@@ -55062,13 +55091,16 @@ int main(int argc, char** argv) {
                     }
                     return 3;
                 }
-                auto setup_image = capture("matrix-traversal-setup");
-                if (!complete_frame(setup_image) ||
-                    !green_model_bounds(setup_image).isNull()) {
-                    std::cerr << "Matrix traversal entry QA: setup frame "
-                                 "is cropped or shows the model before the "
-                                 "entry stream\n";
-                    return 3;
+                if (!persistence_only) {
+                    const auto setup_image =
+                        capture("matrix-traversal-setup");
+                    if (!complete_frame(setup_image) ||
+                        !green_model_bounds(setup_image).isNull()) {
+                        std::cerr << "Matrix traversal entry QA: setup frame "
+                                     "is cropped or shows the model before "
+                                     "the entry stream\n";
+                        return 3;
+                    }
                 }
                 // The Start edge that leaves the deck services one VBlank in
                 // the newly entered traversal route.
@@ -55086,13 +55118,16 @@ int main(int argc, char** argv) {
                                  "setup duration is wrong\n";
                     return 3;
                 }
-                auto entry_start_image = capture("matrix-entry-stream-start");
-                if (!complete_frame(entry_start_image) ||
-                    !green_model_bounds(entry_start_image).isNull()) {
-                    std::cerr << "Matrix traversal entry QA: stream-start "
-                                 "frame is cropped or prematurely shows the "
-                                 "model\n";
-                    return 3;
+                if (!persistence_only) {
+                    const auto entry_start_image =
+                        capture("matrix-entry-stream-start");
+                    if (!complete_frame(entry_start_image) ||
+                        !green_model_bounds(entry_start_image).isNull()) {
+                        std::cerr << "Matrix traversal entry QA: stream-start "
+                                     "frame is cropped or prematurely shows "
+                                     "the model\n";
+                        return 3;
+                    }
                 }
 
                 struct EntryAnchor {
@@ -55113,8 +55148,13 @@ int main(int argc, char** argv) {
                     {220, 4820, QRect(124, 45, 64, 63)},
                     {239, 4830, QRect(122, 38, 74, 67)},
                 }};
-                int current_vblank = 0;
-                for (const auto& anchor : kEntryAnchors) {
+                if (persistence_only) {
+                    for (int frame = 0; frame < 239; ++frame) {
+                        field_scene.advance_frame();
+                    }
+                } else {
+                    int current_vblank = 0;
+                    for (const auto& anchor : kEntryAnchors) {
                     while (current_vblank < anchor.vblank) {
                         field_scene.advance_frame();
                         ++current_vblank;
@@ -55184,6 +55224,7 @@ int main(int argc, char** argv) {
                             return 3;
                         }
                     }
+                    }
                 }
                 const auto final_route =
                     field_scene.field_menu_route_snapshot_for_dump();
@@ -55194,19 +55235,140 @@ int main(int argc, char** argv) {
                             ->world_entry_published_frame != 56 ||
                     final_route.top_matrix_traversal_view
                             ->world_entry_sequence_vblanks != 239 ||
-                    final_route.top_matrix_traversal_view
-                            ->analysis_level != 4 ||
-                    final_route.top_matrix_traversal_view->palette_theme != 2 ||
-                    final_route.top_matrix_traversal_view->alert_band_label !=
-                        " Green-" ||
-                    final_route.top_matrix_traversal_view
-                            ->action_difficulty_label != "3" ||
-                    final_route.top_matrix_traversal_view->file_class_label !=
-                        " Data Routing ") {
+                    (!persistence_only &&
+                     (final_route.top_matrix_traversal_view
+                              ->analysis_level != 4 ||
+                      final_route.top_matrix_traversal_view->palette_theme !=
+                          2 ||
+                      final_route.top_matrix_traversal_view
+                              ->alert_band_label != " Green-" ||
+                      final_route.top_matrix_traversal_view
+                              ->action_difficulty_label != "3" ||
+                      final_route.top_matrix_traversal_view
+                              ->file_class_label != " Data Routing "))) {
                     std::cerr << "Matrix traversal entry QA: compact source "
                                  "stream or 0x54662 knowledge publication did "
                                  "not settle at VBlank 239\n";
                     return 3;
+                }
+                if (persistence_only) {
+                    constexpr std::uint8_t kControllerDown = 0x02U;
+                    // The controller port's 0x02 direction bit is Down.
+                    const auto trace_path = output / "idle-route.tsv";
+                    std::ofstream trace(trace_path, std::ios::trunc);
+                    if (!trace) {
+                        std::cerr << "Matrix persistence QA: could not open "
+                                  << trace_path << '\n';
+                        return 3;
+                    }
+                    trace << "frame\topen\ttop_screen\tmatrix_state_present"
+                             "\tfield_matrix_route_active\tsource_boundaries\n";
+                    std::size_t boundary_cursor = 0U;
+                    const auto write_trace_row = [&](
+                        const int frame,
+                        const auto& state) {
+                        trace << frame << '\t' << state.open << '\t'
+                              << state.top_screen << '\t'
+                              << state.top_matrix_state_present << '\t'
+                              << field_scene.matrix_route_active_for_dump()
+                              << '\t';
+                        while (boundary_cursor <
+                               field_source_boundaries.size()) {
+                            if (boundary_cursor != 0U) {
+                                trace << ';';
+                            }
+                            for (const char character :
+                                 field_source_boundaries[boundary_cursor]) {
+                                trace << (character == '\t' ||
+                                                  character == '\n' ||
+                                                  character == '\r'
+                                              ? ' '
+                                              : character);
+                            }
+                            ++boundary_cursor;
+                        }
+                        trace << '\n';
+                    };
+                    write_trace_row(
+                        0, field_scene.field_menu_route_snapshot_for_dump());
+                    field_scene.set_controller_port_byte(0U);
+                    int first_closed_frame = 0;
+                    int first_invalid_frame = 0;
+                    for (int frame = 1; frame <= 600; ++frame) {
+                        field_scene.advance_frame();
+                        const auto idle_route =
+                            field_scene.field_menu_route_snapshot_for_dump();
+                        write_trace_row(frame, idle_route);
+                        if (first_closed_frame == 0 && !idle_route.open) {
+                            first_closed_frame = frame;
+                        }
+                        if (first_invalid_frame == 0 &&
+                            (!idle_route.open ||
+                             idle_route.top_screen !=
+                                 static_cast<std::uint16_t>(
+                                     srx::MenuScreen::MATRIX_NODE_ACTION) ||
+                             !idle_route.top_matrix_state_present ||
+                             !field_scene.matrix_route_active_for_dump())) {
+                            first_invalid_frame = frame;
+                        }
+                    }
+                    trace.close();
+                    if (first_invalid_frame != 0) {
+                        std::cerr << "Matrix persistence QA: route first "
+                                  << "left node-action state at idle frame "
+                                  << first_invalid_frame
+                                  << " (closed frame=" << first_closed_frame
+                                  << ", trace=" << trace_path << ")\n";
+                        return 3;
+                    }
+                    const auto before_down =
+                        field_scene.field_menu_route_snapshot_for_dump();
+                    if (!before_down.top_row.has_value()) {
+                        std::cerr << "Matrix persistence QA: node-action row "
+                                     "selection is absent after 600 idle frames\n";
+                        return 3;
+                    }
+                    tap_qa_controller_button(field_scene,
+                                             kControllerDown);
+                    const auto after_down =
+                        field_scene.field_menu_route_snapshot_for_dump();
+                    if (!after_down.open ||
+                        after_down.top_screen !=
+                            static_cast<std::uint16_t>(
+                                srx::MenuScreen::MATRIX_NODE_ACTION) ||
+                        !after_down.top_matrix_state_present ||
+                        !after_down.top_row.has_value() ||
+                        *after_down.top_row == *before_down.top_row) {
+                        std::cerr << "Matrix persistence QA: Down did not "
+                                     "move the node-action selection; row="
+                                  << *before_down.top_row << "->"
+                                  << (after_down.top_row.has_value()
+                                          ? std::to_string(
+                                                *after_down.top_row)
+                                          : std::string("nil"))
+                                  << " options=";
+                        for (const auto& label :
+                             before_down.top_option_labels) {
+                            std::cerr << '[' << label << ']';
+                        }
+                        std::cerr << " model="
+                                  << (before_down.top_matrix_traversal_view
+                                          .has_value()
+                                          ? std::to_string(
+                                                static_cast<int>(
+                                                    before_down
+                                                        .top_matrix_traversal_view
+                                                        ->world_model_id))
+                                          : std::string("nil"))
+                                  << '\n';
+                        return 3;
+                    }
+                    std::cout << "field_matrix_persistence_qa=passed "
+                              << "idle_frames=600 row="
+                              << *before_down.top_row << "->"
+                              << *after_down.top_row << " trace="
+                              << trace_path << '\n';
+                    return 0;
                 }
                 const auto actual_image = capture("actual");
                 const auto runner_bounds = silver_runner_bounds(actual_image);

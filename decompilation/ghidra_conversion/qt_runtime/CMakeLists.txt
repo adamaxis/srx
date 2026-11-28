@@ -3314,6 +3314,11 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_matrix_traversal_e
 set_tests_properties(shadowrun_ghidra_conversion_qt_field_matrix_traversal_entry_qa
     PROPERTIES SKIP_RETURN_CODE 77)
 
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_matrix_persistence_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-matrix-persistence-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-matrix-persistence-qa")
+
 # The runner summary uses the equipped item's Lua-backed name/category before
 # its ROM-indexed damage and power rows. Keep that shared menu panel covered by
 # a full-frame artifact with the default equipped Model 101T fixture.

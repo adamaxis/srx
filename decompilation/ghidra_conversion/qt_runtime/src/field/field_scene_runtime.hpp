@@ -776,6 +776,9 @@ public:
             menu_route_screen_ == static_cast<std::uint16_t>(
                                       srx::MenuScreen::MATRIX_SEARCH);
     }
+    bool matrix_route_active_for_dump() const noexcept {
+        return field_matrix_route_active_;
+    }
     std::uint16_t field_menu_route_screen_for_dump() const noexcept {
         return menu_route_screen_;
     }
