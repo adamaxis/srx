@@ -1,5 +1,6 @@
 #pragma once
 
+#include "shadowrun_ghidra/core/random_conversion.hpp"
 #include "../../src/field/field_scene_runtime.hpp"
 
 #include <QImage>
@@ -2186,7 +2187,16 @@ inline int run_map_coverage_qa(
               "\ttransition_fired\tdest_scene\tarrival_xy\tarrival_mode\tdiff\n";
     std::size_t tested = 0U;
     std::size_t total_attempted = 0U;
+    // FFF9F8 is one process-wide word (core/random_conversion.hpp), so a
+    // fresh FieldSceneRuntime per row still inherited the previous row's
+    // draws. Every row is a fresh scene setup: restore the startup seed so
+    // live world activity (e.g. event.security_guard_stop, the Company Man)
+    // rolls the same way whichever rows ran before it.
+    const auto startup_random_seed =
+        shadowrun::ghidra_conversion::source_random_seed();
     for (const auto& row : rows) {
+        shadowrun::ghidra_conversion::source_random_seed() =
+            startup_random_seed;
         bool attempted = row.category == "edge" || row.category == "door" ||
                          row.category == "bexit" || row.category == "elevator" ||
                          row.category == "cave" || row.category == "travel";
