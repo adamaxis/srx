@@ -19161,8 +19161,8 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         // between options. C376 writes its right cursor tile at C3A2, x=136;
         // tile 0x05FF holds the 0xC0C2 arrow (see draw_pocket_secretary_cursor).
         if (matrix_search) {
-            // The console is an overlay on the field; restore the map and HUD
-            // outside the central frame after laying down its opaque art.
+            // 0xE204 redraws only the C3E6 grid over the opaque 0x10A7E
+            // bezel; the party HUD stays visible from x = 272.
             paint_field_console_background(painter);
         } else {
             painter.drawImage(0, 0, pocket_secretary_background_);
@@ -21847,19 +21847,16 @@ void FieldSceneRuntime::paint_field_console_background(
     QPainter& painter) const {
     painter.drawImage(0, 0, pocket_secretary_background_);
     painter.drawImage(24, 24, pocket_secretary_grid_);
-
-    // Cyberspace uses the silver console as an overlay on the field. The
-    // extracted Pocket Secretary bitmap is opaque outside that console, so
-    // redraw the field only in the exposed screen regions after the frame.
-    QRegion exposed(QRect(0, 0, 320, 224));
-    exposed -= QRegion(QRect(6, 7, 261, 178));
-    // The source keeps two compact terminal controls over the field beneath
-    // the window: the console icon and the small map/route control.
-    exposed -= QRegion(QRect(146, 184, 38, 26));
-    exposed -= QRegion(QRect(216, 184, 32, 26));
+    // ROM 0x10A7E lays the Pocket Secretary bezel over all of plane A,
+    // including its bottom control strip (y = 184..223); the field never
+    // shows through it. Only the window-plane party HUD stays visible from
+    // x = 272, exactly as on the Pocket Secretary page (0x10A7E is 0x21
+    // cells wide; emulator 8690 vs 8640 match for x >= 272) [C].
+    constexpr int kWindowHudX = 272;
     painter.save();
-    painter.setClipRegion(exposed);
-    paint_field_scene(painter);
+    painter.setClipRect(QRect(kWindowHudX, 0, 320 - kWindowHudX, 224));
+    painter.drawImage(0, 0, field_hud_);
+    paint_field_hud_overlays(painter);
     painter.restore();
 }
 
