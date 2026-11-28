@@ -10492,6 +10492,14 @@ int run_field_elevator_physical_entry_qa(
     const std::vector<std::uint16_t>& field_audio_events,
     const std::vector<std::string>& source_boundaries);
 
+// Corporate scenes 20 and 26-33 list event.security_guard_stop in their
+// world-activity rows (ROM 0x20FEC opening, no-ID record 0x121278).
+bool resolve_security_guard_no_id_talk_for_qa(
+    FieldSceneRuntime& field_scene,
+    const std::vector<std::string>& source_boundaries,
+    std::string& reason,
+    std::uint16_t expected_scene = 30U);
+
 int run_field_elevator_group_route_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -26132,6 +26140,39 @@ int run_field_elevator_group_route_qa(
         if (company_man_prompt_open()) {
             return resolve_idle_company_man();
         }
+        if (field_scene.dialogue_panel().actor_name == "Narration" &&
+            std::find(source_boundaries.begin(), source_boundaries.end(),
+                      "field.random_encounter.security_guard_stop.prompt_opened") !=
+                source_boundaries.end()) {
+            // Scenes 26-29 list event.security_guard_stop in world-activity
+            // slot 4 (ROM 0x20FEC opening, no-ID record 0x121278). Resolve
+            // the live guard through the same controlled no-ID Talk path as
+            // the Mitsuhama routes, then continue the elevator leg.
+            const auto guard_scene =
+                field_scene.field_scene_reference_for_dump();
+            const auto guard_opening_visible = [&field_scene] {
+                const auto& page = field_scene.dialogue_panel();
+                return page.has_more && page.option_count == 1U;
+            };
+            for (std::uint16_t settle = 0U;
+                 settle < 120U && !guard_opening_visible(); ++settle) {
+                input_label = "security-guard-opening-wait";
+                if (!advance_sampled_frame()) {
+                    return false;
+                }
+            }
+            std::string guard_failure;
+            input_label = "security-guard-no-id-talk";
+            if (!resolve_security_guard_no_id_talk_for_qa(
+                    field_scene, source_boundaries, guard_failure,
+                    guard_scene)) {
+                std::cerr << "Elevator group route QA: live security guard "
+                             "handling failed: " << guard_failure << '\n';
+                return false;
+            }
+            input_label = "activity-cooldown";
+            return true;
+        }
         std::cerr << "Elevator group route QA: unexpected dialogue interrupted "
                      "the field route (speaker=\""
                   << field_scene.dialogue_panel().actor_name << "\")\n";
@@ -34682,7 +34723,8 @@ private:
 bool resolve_security_guard_no_id_talk_for_qa(
     FieldSceneRuntime& field_scene,
     const std::vector<std::string>& source_boundaries,
-    std::string& reason) {
+    std::string& reason,
+    const std::uint16_t expected_scene) {
     const auto has_text = [](const auto& panel,
                              const std::string_view needle) {
         for (std::size_t index = 0U; index < panel.text_segment_count; ++index) {
@@ -34730,7 +34772,7 @@ bool resolve_security_guard_no_id_talk_for_qa(
         }
         return escaped;
     };
-    if (field_scene.field_scene_reference_for_dump() != 30U ||
+    if (field_scene.field_scene_reference_for_dump() != expected_scene ||
         !field_scene.dialogue_open() ||
         (!on_guard_opening_page && !on_guard_choices_page)) {
         reason = "guard dialogue did not match the ROM opening or no-ID choices";
@@ -34760,6 +34802,14 @@ bool resolve_security_guard_no_id_talk_for_qa(
         field_scene.dynamic_world_actor_count_for_dump();
     if (on_guard_opening_page) {
         tap_qa_controller_button(field_scene, 0x40U); // ROM 0xCC: MORE.
+    }
+    // The no-ID page is drawn by the next text-service pass; wait for it the
+    // same bounded way as the later Talk pages.
+    for (std::uint16_t settle = 0U;
+         settle < 120U && field_scene.dialogue_open() &&
+         field_scene.dialogue_panel().option_count == 0U;
+         ++settle) {
+        field_scene.advance_frame();
     }
     const auto& choices = field_scene.dialogue_panel();
     if (!field_scene.dialogue_open() || choices.option_count != 2U ||
@@ -34877,7 +34927,7 @@ bool resolve_security_guard_no_id_talk_for_qa(
     }
     if (field_scene.dialogue_open() ||
         !finish_field_modal_return_transition(field_scene) ||
-        field_scene.field_scene_reference_for_dump() != 30U ||
+        field_scene.field_scene_reference_for_dump() != expected_scene ||
         count_boundary("field.dialogue.returned_to_field") !=
             return_count + 1) {
         reason = "the result did not return through the field modal lifecycle";
@@ -59562,6 +59612,14 @@ int main(int argc, char** argv) {
                      field_elevator_scene34_group_roundtrip_qa) ||
                     (*field_elevator_nonmember_entry_scene == 40U &&
                      field_elevator_scene40_group_roundtrip_qa);
+                // The scene-entry checkpoint carries no FFFC22 word, so the
+                // runtime leaves the group items unknown. A live
+                // event.security_guard_stop (ROM 0x242FA reads FFFC22 bit 10)
+                // then stops on an unresolved state. Seed the New Game value
+                // (FFFC22 = 0: no security pass) when nothing set it.
+                if (!field_scene.group_item_flags_for_dump().has_value()) {
+                    field_scene.set_group_item_flags_for_dump(0U);
+                }
                 auto route_status = run_scene_route(
                     *field_elevator_nonmember_entry_scene,
                     *field_elevator_nonmember_entry_qa_path,
